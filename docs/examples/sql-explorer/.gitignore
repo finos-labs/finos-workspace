@@ -1,0 +1,7 @@
+dist/
+.cache/
+.venv/
+__pycache__/
+.pytest_cache/
+examples/data/
+examples/secrets/

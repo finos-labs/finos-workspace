@@ -1,15 +1,5 @@
 import type { HtmlArtifact } from "./types.ts";
 
-/**
- * The FINOS Workspace has no table artifact: it renders `text`, `html` and `app`
- * artifacts. A table is therefore an `html` artifact, styled the way Ines's
- * own `html-table` skill (src/skills/html-table.md) asks for: its exact
- * light/dark colors, no borders, the theme background on the outermost element
- * with small padding, and no title repeated inside the HTML (the artifact's
- * name is shown by the FINOS Workspace). The artifact renders in a sandboxed iframe
- * with no script, so the theme is chosen with `prefers-color-scheme`.
- */
-
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -42,13 +32,11 @@ tbody tr:nth-child(even){background:#2A2A31}
 }
 `.trim();
 
-/** One HTML document holding `rows` as a table; columns are the first row's keys plus any later ones. */
 export function renderHtmlTable(rows: Record<string, unknown>[]): string {
   const columns: string[] = [];
   for (const row of rows) {
     for (const key of Object.keys(row)) if (!columns.includes(key)) columns.push(key);
   }
-  // A column is numeric when it has at least one number and nothing but numbers or blanks.
   const numeric = new Set(
     columns.filter(
       (c) =>

@@ -16,7 +16,6 @@ type InterceptorHandler<V> = {
   rejected: (error: AxiosError) => unknown;
 };
 
-// The interceptors registered on the real axios instance
 const requestHandler = () =>
   (
     apiClient.interceptors.request as unknown as {
@@ -30,7 +29,6 @@ const responseHandler = () =>
     }
   ).handlers[0];
 
-// The test runtime config puts the API at http://localhost:3000
 function send(config: Partial<InternalAxiosRequestConfig>) {
   return requestHandler().fulfilled({
     headers: new AxiosHeaders(),

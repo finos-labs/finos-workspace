@@ -1,7 +1,3 @@
-/**
- * Tier 1 — workspace bridge tool factory.
- */
-
 import { describe, it } from "node:test";
 import { expect } from "expect";
 import { makeWorkspaceTools } from "../../../../../src/agent/tools/workspace.ts";

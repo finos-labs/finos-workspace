@@ -85,8 +85,6 @@ describe("CreateFolderPopup Component", () => {
       expect(mockCreateFolder).toHaveBeenCalled();
       expect(mockSetCreateFolderPopup).toHaveBeenCalledWith(false);
     });
-
-    // this will actually make a toast show up, so we need to wait for that - not sure how to do that for now
   });
 
   it("closes the dialog when cancel button is clicked", async () => {

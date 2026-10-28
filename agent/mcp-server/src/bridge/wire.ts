@@ -1,15 +1,3 @@
-/**
- * FINOS Workspace command wire schemas — Zod source of truth.
- *
- * Mirrors the WorkspaceCommand discriminated union from backend-api/backend/workspace_mcp/models.py.
- * Output JSON envelopes are byte-compat with the frontend's bridge protocol.
- *
- * Note: Pydantic's `validation_alias=AliasChoices(...)` (e.g. origin|backend_name)
- * affects parsing of inbound payloads. Our outbound (server → browser) uses
- * canonical Pydantic field names. Inbound aliases not handled in PoC; add
- * `.transform()` if/when an LLM-facing surface needs them.
- */
-
 import { z } from "zod";
 import { BridgeErrorSchema } from "./types.ts";
 
@@ -29,7 +17,6 @@ const baseCommand = {
   request_id: z.string().nullable().optional(),
 };
 
-// 18 command variants — keep ordering aligned with models.py:359-379
 
 export const GetWidgetDataCommandSchema = z.object({
   command: z.literal("get_widget_data"),
@@ -49,6 +36,11 @@ export const GetWidgetSchemaCommandSchema = z.object({
   ...baseCommand,
   origin: z.string().nullable().optional(),
   widget_id: z.string(),
+});
+
+export const GetWidgetsSchemaCommandSchema = z.object({
+  command: z.literal("get_widgets_schema"),
+  ...baseCommand,
 });
 
 export const GetParamOptionsCommandSchema = z.object({
@@ -100,8 +92,6 @@ export const ManageDashboardCommandSchema = z.object({
   activate: z.boolean().nullable().optional(),
 });
 
-// Note: tool name is `update_widget_layout` but wire command name is
-// `update_dashboard_layout` — matches Pydantic `models.py:259`.
 export const UpdateDashboardLayoutCommandSchema = z.object({
   command: z.literal("update_dashboard_layout"),
   ...baseCommand,
@@ -195,6 +185,7 @@ export const WorkspaceCommandSchema = z.discriminatedUnion("command", [
   GetWidgetDataCommandSchema,
   ListAvailableWidgetsCommandSchema,
   GetWidgetSchemaCommandSchema,
+  GetWidgetsSchemaCommandSchema,
   GetParamOptionsCommandSchema,
   ReadWidgetCommandSchema,
   CreateWidgetCommandSchema,
@@ -220,19 +211,12 @@ export const WorkspaceCommandResultSchema = z.object({
   message: z.string(),
   data: z.unknown().nullable().optional(),
   error: BridgeErrorSchema.nullable().optional(),
+  warnings: z.array(z.string()).default([]),
 });
 export type WorkspaceCommandResult = z.infer<
   typeof WorkspaceCommandResultSchema
 >;
 
-/**
- * Snapshot envelope returned by `get_workspace_snapshot`.
- *
- * Mirrors backend-api/backend/workspace_mcp/models.py. `workspace_state` and `tools[]`
- * are typed loosely (z.unknown() / record) — strict validation would require
- * porting the FINOS Workspace's WorkspaceState + AgentTool models, which is out of PoC
- * scope. Envelope-level shape is enforced; deep validation is deferred.
- */
 export const WorkspaceSnapshotSchema = z.object({
   generated_at: z.number().int(),
   workspace_state: z.unknown().nullable().optional(),

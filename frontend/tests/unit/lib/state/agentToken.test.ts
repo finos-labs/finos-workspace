@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "~/api/api";
 import { clearAgentToken, fetchAgent, getAgentToken } from "~/lib/state/agentToken";
 
-// The test runtime config puts the default Copilot at http://localhost:3000/ai
 const AGENT_URL = "http://localhost:3000/ai/v1/query";
 const MINUTE = 60 * 1000;
 
@@ -107,7 +106,6 @@ describe("agent token", () => {
       expect(new Headers(call[1]?.headers).get("Content-Type")).toBe(
         "application/json",
       );
-      // The caller's header set is left as it was
       expect(callerHeaders).toEqual({ "Content-Type": "application/json" });
     });
 

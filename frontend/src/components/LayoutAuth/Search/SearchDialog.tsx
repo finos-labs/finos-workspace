@@ -241,7 +241,6 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
 
       const targetIsInput = event.target === inputRef.current;
 
-      // Handle shift key
       if (event.key === "Shift" && !event.repeat) {
         dispatch({ isShiftPressed: true });
       }
@@ -302,7 +301,6 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
 
   const handleOnKeyUp = useCallback(
     (event: KeyboardEvent) => {
-      // Handle shift key release - only update shift state, don't clear anchor
       if (event.key === "Shift") {
         dispatch({
           isShiftPressed: false,

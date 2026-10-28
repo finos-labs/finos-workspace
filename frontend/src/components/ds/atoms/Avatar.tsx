@@ -27,8 +27,6 @@ const avatarVariants = cva(
   },
 );
 
-/* Radix parts */
-
 interface AvatarRootProps
   extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>,
     VariantProps<typeof avatarVariants> {}
@@ -79,14 +77,11 @@ export const AvatarFallback = React.forwardRef<
 ));
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
 
-/* Composed molecule */
-
 export interface AvatarProps extends AvatarRootProps {
   src?: string;
   alt?: string;
   icon?: IconId;
   fallback?: React.ReactNode;
-  /** Delay in milliseconds to show the fallback */
   delayMs?: number;
 }
 

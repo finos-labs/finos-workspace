@@ -13,7 +13,6 @@ import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import type { CreateUserDTO } from "~/types/user.type";
 
-/** A user a row of the CSV file names, who is invited with the permissions chosen. */
 type FileUser = Pick<TUserForm, "first_name" | "last_name" | "email">;
 
 export default function ImportUsers({
@@ -35,7 +34,7 @@ export default function ImportUsers({
     accept: {
       "text/csv": [".csv"],
     },
-    maxSize: 5 * 1024 * 1024, // 5MB max size
+    maxSize: 5 * 1024 * 1024,
     multiple: false,
     onDrop: async (acceptedFiles, rejectedFiles) => {
       setError(null);

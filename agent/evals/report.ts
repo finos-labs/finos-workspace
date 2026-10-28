@@ -1,8 +1,3 @@
-/**
- * Pretty-prints an eval run summary to stdout. Tools-style table; bold
- * pass/fail indicator; failed grader breakdown for diagnosis.
- */
-
 import type { GradeResult } from "./graders/index.ts";
 
 export interface TrialReport {
@@ -62,7 +57,6 @@ export function renderReport(summary: SummaryShape): string {
       `[${status}] ${c.id} — ${c.passed}/${c.trials} (${pct(c.observedRate)} ≥ req ${pct(c.requiredRate)})`,
     );
     if (!c.pass) {
-      // Show grader breakdown of the FIRST failing trial for quick triage.
       const firstFail = c.trialReports.find((t) => !t.pass);
       if (firstFail) {
         const failed = firstFail.grades.filter((g) => !g.pass);

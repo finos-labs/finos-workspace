@@ -10,13 +10,15 @@ import {
   getSharedDashboardsAndUpdate,
   postDashboards,
   saveDashboards,
+  saveDashboardsOnExit,
   shareDashboard,
 } from "~/api/dashboard.api";
 import { type SharingLevel, useAccessStore } from "~/lib/state/access";
+import type { Item } from "~/lib/state/app";
 import { showNotificationWithRememberMe } from "~/lib/utils/toast";
 import { partial } from "../mocks";
+import "../../mocks/runtimeConfig";
 
-// Mock apiClient
 vi.mock("~/api/api", () => ({
   apiClient: {
     get: vi.fn(),
@@ -31,7 +33,6 @@ vi.mock("~/api/api", () => ({
   },
 }));
 
-// Mock state management functions
 vi.mock("~/lib/state/app", () => ({
   useAppStore: {
     getState: vi.fn().mockReturnValue({
@@ -50,7 +51,6 @@ vi.mock("~/lib/state/auth", () => ({
   },
 }));
 
-// Mock useSharedAppStore
 vi.mock("~/lib/state/sharedApp", () => ({
   useSharedAppStore: {
     getState: vi.fn().mockReturnValue({
@@ -71,7 +71,6 @@ vi.mock("~/lib/utils/toast", () => ({
   NotificationId: { SaveDashboards: "save-dashboards" },
 }));
 
-// Test suite
 describe("Dashboard API functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -88,6 +87,113 @@ describe("Dashboard API functions", () => {
       expect(apiClient.post).toHaveBeenCalledWith("/app/dash/sync", {
         items: dashboardData,
       });
+    });
+
+    it("sends one save at a time, the next after the last one failed too", async () => {
+      const replies: Array<(value: unknown) => void> = [];
+      const failures: Array<(reason: unknown) => void> = [];
+      vi.spyOn(apiClient, "post").mockImplementation(
+        () =>
+          new Promise((resolve, reject) => {
+            replies.push(resolve);
+            failures.push(reject);
+          }),
+      );
+
+      const first = postDashboards({ a: "DELETE" });
+      const second = postDashboards({ b: "DELETE" });
+      const third = postDashboards({ c: "DELETE" });
+      await waitFor(() => expect(apiClient.post).toHaveBeenCalledTimes(1));
+
+      failures[0](new Error("offline"));
+      await expect(first).rejects.toThrow("offline");
+      await waitFor(() => expect(apiClient.post).toHaveBeenCalledTimes(2));
+      expect(apiClient.post).toHaveBeenLastCalledWith("/app/dash/sync", {
+        items: { b: "DELETE" },
+      });
+
+      replies[1]({ data: "second" });
+      await expect(second).resolves.toBe("second");
+      await waitFor(() => expect(apiClient.post).toHaveBeenCalledTimes(3));
+      replies[2]({ data: "third" });
+      await expect(third).resolves.toBe("third");
+    });
+  });
+
+  describe("saveDashboardsOnExit", () => {
+    const changed = { "some-uuid": partial<Item>({ index: "some-uuid" }) };
+
+    async function withChanges(items: object) {
+      const { diffItemsWithRemote } = await import("~/lib/utils");
+      const { useAppStore } = await import("~/lib/state/app");
+      const updateItemsStoredInCloud = vi.fn();
+      vi.mocked(diffItemsWithRemote).mockReturnValue(changed);
+      vi.mocked(useAppStore.getState).mockReturnValue(
+        partial({ items, itemsStoredInCloud: {}, updateItemsStoredInCloud }),
+      );
+      return updateItemsStoredInCloud;
+    }
+
+    it("sends what changed in a request that outlives the page", async () => {
+      const fetch = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal("fetch", fetch);
+      const items = { "some-uuid": {} };
+      const updateItemsStoredInCloud = await withChanges(items);
+
+      saveDashboardsOnExit();
+
+      expect(fetch).toHaveBeenCalledWith("http://localhost:3000/app/dash/sync", {
+        method: "POST",
+        keepalive: true,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Workspace-Client": "web",
+        },
+        body: JSON.stringify({ items: changed }),
+      });
+      await waitFor(() => expect(updateItemsStoredInCloud).toHaveBeenCalledWith(items));
+      vi.unstubAllGlobals();
+    });
+
+    it("sends the same dashboards once, hidden and then gone", async () => {
+      const fetch = vi.fn().mockResolvedValue({ ok: false });
+      vi.stubGlobal("fetch", fetch);
+      await withChanges({ "other-uuid": {} });
+
+      saveDashboardsOnExit();
+      saveDashboardsOnExit();
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+      vi.unstubAllGlobals();
+    });
+
+    it("sends a change too large to outlive the page as an ordinary request", async () => {
+      const fetch = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal("fetch", fetch);
+      const { diffItemsWithRemote } = await import("~/lib/utils");
+      await withChanges({ "large-uuid": {} });
+      vi.mocked(diffItemsWithRemote).mockReturnValue({
+        "large-uuid": partial<Item>({ index: "x".repeat(70 * 1024) }),
+      });
+
+      saveDashboardsOnExit();
+
+      expect(fetch.mock.calls[0][1].keepalive).toBe(false);
+      vi.unstubAllGlobals();
+    });
+
+    it("sends nothing when nothing changed", async () => {
+      const fetch = vi.fn();
+      vi.stubGlobal("fetch", fetch);
+      const { diffItemsWithRemote } = await import("~/lib/utils");
+      await withChanges({ "same-uuid": {} });
+      vi.mocked(diffItemsWithRemote).mockReturnValue({});
+
+      saveDashboardsOnExit();
+
+      expect(fetch).not.toHaveBeenCalled();
+      vi.unstubAllGlobals();
     });
   });
 
@@ -110,7 +216,6 @@ describe("Dashboard API functions", () => {
       "55d809ef-19d1-4e63-8dce-ce57f66e5536": { creator: false, content: {} },
     };
 
-    /** The server's answers: the user's access, then the dashboards shared with them. */
     const serve = (sharing: SharingLevel) =>
       vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
         if (url === "/app/access") {

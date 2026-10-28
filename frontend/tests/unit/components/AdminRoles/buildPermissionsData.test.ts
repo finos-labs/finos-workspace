@@ -3,7 +3,6 @@ import type { EntityRolePermissions } from "~/api/entity_roles.api";
 import { buildPermissionsData } from "~/components/AdminRoles/EditPermissionsDialog";
 import type { ElementType } from "~/lib/contexts/MyDataConnectorsContext";
 
-// Minimal connector universe: one backend with one widget.
 const elemsDc = [
   {
     type: "backend",
@@ -52,7 +51,6 @@ describe("buildPermissionsData", () => {
   });
 
   it("resets to a clean tree for a role with no permissions (no stale access)", () => {
-    // Regression: an empty role must not keep the previously selected role's access.
     const backend = backendOf(buildPermissionsData(elemsDc, [], []));
     expect(backend?.access).toBeUndefined();
     expect(backend?.widgets?.find((w) => w.uuid === "b1:::w1")?.access).toBeUndefined();

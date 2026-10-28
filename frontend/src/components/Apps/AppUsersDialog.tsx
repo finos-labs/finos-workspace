@@ -8,8 +8,6 @@ import { type App, formatDate } from "./adminApps";
 
 const getAppId = (app: App) => app.uuid;
 
-// Surrounding border per row. `<tr>` borders are ignored in border-separate, so
-// the border lives on the cells: top/bottom on all, left/right on the end cells.
 const BORDERED_ROW =
   "[&>td]:border-y [&>td]:border-general-border-secondary " +
   "[&>td:first-child]:border-l [&>td:last-child]:border-r";
@@ -18,7 +16,6 @@ interface Props {
   open: boolean;
   onClose: () => void;
   appName: string;
-  /** Every app record (one per user) for the selected (name, url). */
   apps: App[];
 }
 

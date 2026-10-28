@@ -116,7 +116,6 @@ describe("extractUrlsFromText", () => {
     const text = "Go to www.example.com or www.google.com";
     const urls = extractUrlsFromText(text);
     expect(urls.length).toBe(2);
-    // linkify-it normalizes URLs by adding protocol
     expect(urls).toContain("http://www.example.com");
     expect(urls).toContain("http://www.google.com");
   });
@@ -330,7 +329,6 @@ describe("slugify", () => {
 
 describe("beautifySlug", () => {
   it("should convert underscores to spaces and capitalize first word", () => {
-    // beautifySlug capitalizes the first letter of each camelCase segment
     expect(beautifySlug("hello_world")).toBe(" Hello world");
   });
 
@@ -407,14 +405,12 @@ describe("formatNumber", () => {
 
 describe("formatNumberThousands", () => {
   it("should add commas to large numbers", () => {
-    // formatNumberThousands only adds commas when value > 1000 (not >= 1000)
     expect(formatNumberThousands(1001)).toBe("1,001");
     expect(formatNumberThousands(10000)).toBe("10,000");
     expect(formatNumberThousands(1000000)).toBe("1,000,000");
   });
 
   it("should not add commas to exactly 1000", () => {
-    // The function uses > 1000, not >= 1000
     expect(formatNumberThousands(1000)).toBe("1000");
   });
 

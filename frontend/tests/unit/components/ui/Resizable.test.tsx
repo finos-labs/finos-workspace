@@ -67,7 +67,6 @@ describe("Resizable Components", () => {
         </ResizablePanelGroup>,
       );
 
-      // The component wraps children in a panel group
       expect(screen.getByTestId("panel-group")).toBeInTheDocument();
     });
   });
@@ -117,14 +116,12 @@ describe("Resizable Components", () => {
     it("shows different icon when collapsed on left", () => {
       render(<ResizableHandle type="left" withHandle={true} collapsed={true} />);
 
-      // When collapsed on left, should show layout icon
       expect(screen.getByTestId("icon-layout")).toBeInTheDocument();
     });
 
     it("shows different icon when collapsed on right", () => {
       render(<ResizableHandle type="right" withHandle={true} collapsed={true} />);
 
-      // When collapsed on right, should show sparkles icon
       expect(screen.getByTestId("icon-sparkles-icon")).toBeInTheDocument();
     });
 

@@ -1,17 +1,3 @@
-/**
- * Single-shot trace capture of `runAgentLoop` for evals.
- *
- * Runs the agent loop with a real LLM, drains the AsyncGenerator, and
- * records every SSE event in order. Returns a normalized Trace that
- * graders can introspect.
- *
- * The eval runner stops at the FIRST round-trip emit (executeAgentTool /
- * getWidgetData / get_skill_content / FINOS Workspace
- * function call) or at the final-answer text. Multi-turn evals (re-POST
- * with simulated tool results) are deferred to a later iteration — most
- * useful first-action graders only need this single shot.
- */
-
 import { runAgentLoop } from "../src/agent/loop.ts";
 import type {
   AgentTool,
@@ -27,11 +13,8 @@ import type { LanguageModel } from "ai";
 
 export interface CapturedToolCall {
   name: string;
-  /** Raw input_arguments object from the SSE. */
   args: Record<string, unknown>;
-  /** Convenience: parameters object for execute_agent_tool, args otherwise. */
   parameters: Record<string, unknown>;
-  /** Server-side tool name for execute_agent_tool calls. */
   serverToolName?: string;
 }
 
@@ -41,9 +24,7 @@ export interface Trace {
   events: SSEEvent[];
   toolCalls: CapturedToolCall[];
   finalText: string;
-  /** Concatenated text chunks (model's final answer or interleaved narration). */
   textChunks: string[];
-  /** Citation list emitted at end of turn (empty if none). */
   citations: Array<Record<string, unknown>>;
   durationMs: number;
   errored: boolean;
@@ -86,11 +67,6 @@ function extractToolCalls(events: SSEEvent[]): CapturedToolCall[] {
       }
       continue;
     }
-    // In-process tool calls (execute_sql, peek_table, create_artifact,
-    // search_widgets) don't emit a copilotFunctionCall — they ride
-    // structured details on reasoning events. Surface them here so
-    // graders like `toolCalled("execute_sql")` and `argContains` can
-    // attribute the call.
     if (e.event === "copilotStatusUpdate") {
       const data = e.data as {
         tool_call?: Record<string, unknown>;
@@ -109,8 +85,6 @@ function extractToolCalls(events: SSEEvent[]): CapturedToolCall[] {
         }
         continue;
       }
-      // Legacy fallback: older reasoning events carried the structured
-      // tool-call descriptor inside `details`.
       const detailList = Array.isArray(data.details)
         ? data.details
         : data.details

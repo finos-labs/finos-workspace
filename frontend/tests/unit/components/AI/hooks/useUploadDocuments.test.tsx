@@ -42,7 +42,6 @@ const file = () => new File(["hello"], "notes.txt", { type: "text/plain" });
 describe("useUploadDocuments", () => {
   beforeEach(() => {
     useAuthStore.setState({ user: makeAuthUser() });
-    // No AI descriptions: only the upload itself is under test
     useThemeStore.setState({ aiEnhancements: false });
     vi.stubGlobal(
       "fetch",
@@ -92,7 +91,6 @@ describe("useUploadDocuments", () => {
     expect(headers.get("X-Agent-Key")).toBe("agent-key");
     expect(headers.get("Authorization")).toBeNull();
     expect(headers.get("X-Workspace-Client")).toBeNull();
-    // The browser sets the multipart content type with its boundary
     expect(headers.get("Content-Type")).toBeNull();
     expect(init.credentials).toBeUndefined();
   });

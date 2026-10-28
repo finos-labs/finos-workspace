@@ -15,10 +15,8 @@ import { installErrorGuards, installShutdown } from "./lib/process-guards.ts";
 
 const logger = getLogger(["app", "server"]);
 
-// Must run before any span is created. No-op unless an OTLP endpoint is set.
 initTelemetry();
 
-// A deployment that is missing something it needs says so and stops, instead of running without users.
 let config: ReturnType<typeof loadConfig>;
 try {
   config = loadConfig();
@@ -31,12 +29,9 @@ if (config.auth.mode === "none") {
   logger.warn("INES_AUTH=none: there are no users. Every request is anonymous and nothing is counted. Do not use this where others can reach the agent.");
 }
 
-// The links to the FINOS Workspace's own files are the one internal address the agent may fetch from.
 configureFetchPolicy({ workspace: config.workspaceFiles ?? undefined });
 
-// Shared between replicas when REDIS_URL names a Redis, in this process otherwise.
 const store = createStore();
-// A chat's rows and widget data are kept in Redis alone, never in this process; without REDIS_URL they are not kept.
 keepChatDataIn(store.sharedOnly());
 
 const limits = createLimits({
@@ -64,8 +59,6 @@ const app = createApp({
 
 const PORT = Number(process.env.PORT ?? 7777);
 
-// Prometheus scrapes this on its own port, which is not published with the agent's: metrics say how
-// the deployment is being used, and are for the operator.
 if (config.metricsPort !== null) {
   metrics.activeQueries.set(0);
   serve({
@@ -85,8 +78,6 @@ if (liveDebugIgnored()) {
 
 installErrorGuards(process, logger);
 
-// A deploy sends SIGTERM: take no new queries, give the running ones time to end, then flush telemetry
-// (without an explicit flush the batch processor drops what it holds, and the last trace would vanish).
 let listening: ServerType | null = null;
 installShutdown(process, {
   stopAccepting: () => listening?.close(),

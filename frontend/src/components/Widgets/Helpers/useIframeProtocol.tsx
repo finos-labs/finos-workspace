@@ -35,15 +35,8 @@ const getIframeOrigin = (iframeRef: React.RefObject<HTMLIFrameElement | null>) =
   }
 };
 
-/** How many frames deep a page may nest its content (and still be taken for the widget's iframe). */
 const MAX_FRAME_DEPTH = 8;
 
-/**
- * Whether `source` is `frame` or a frame inside it. A page that nests its content in sub-iframes (Streamlit
- * does) sends from one of those, so the widget's own window is somewhere up its parent chain. Two iframes of
- * the same origin are not each other's: judging by origin made every widget take the messages (and the
- * handshake) of its siblings for its own.
- */
 function isWindowWithin(
   source: MessageEventSource | null,
   frame: Window | null | undefined,
@@ -75,9 +68,6 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
     manifest: null as WorkspaceWidgetManifest[] | null,
     paramDefs: null as WorkspaceParamDef[] | null,
   });
-  // The source's headers, from page memory: the iframe gets them at its handshake, and
-  // again whenever they change after it (after a reload they arrive from the API later)
-  // The iframe page is the widget's endpoint: it gets them only on its source's origin
   const widget = useWidgetContext()?.widget;
   const authHeaders = useSourceCredentials(
     widget?.sourceId,
@@ -88,14 +78,9 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
 
   const pendingRequestsRef = useRef<Map<string, PendingRequest>>(new Map());
 
-  // Store the actual source window from the handshake message.
-  // Needed because iframes like Streamlit nest content in sub-iframes,
-  // so event.source won't be iframeRef.current.contentWindow.
   const bridgeSourceRef = useRef<MessageEventSource | null>(null);
-  // Store the origin from the handshake to scope outgoing postMessage calls.
   const bridgeOriginRef = useRef<string>("*");
 
-  /** Posts the source's headers to the iframe's page that made the handshake, when there are any. */
   const postAuth = useCallback(
     (
       target: MessageEventSource | null,
@@ -250,7 +235,6 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
     ],
   );
 
-  // Headers that arrive or change after the handshake go to the same page
   useEffect(() => {
     postAuth(bridgeSourceRef.current, bridgeOriginRef.current, authHeaders);
   }, [authHeaders, postAuth]);
@@ -270,7 +254,6 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
   const requestWidgetData = useCallback(
     (widgetId: string): Promise<WorkspaceDataMessage> => {
       return new Promise((resolve, reject) => {
-        // Prefer the stored bridge source (handles nested iframes)
         const target = bridgeSourceRef.current ?? iframeRef.current?.contentWindow;
         if (!target) {
           reject(new Error("Iframe not available"));

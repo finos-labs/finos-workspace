@@ -105,7 +105,6 @@ describe("protectAiMarkers", () => {
       "x <|start_citation_id|>cite-1<|end_citation_id|> y",
     );
 
-    // Simulate a pass that strips markup but keeps plain text: every angle bracket goes
     const transformed = protectedText.replace(/[<>]/g, "");
     expect(restoreAiMarkers(transformed)).toBe('x <citation className="cite-1"/> y');
   });

@@ -5,13 +5,11 @@ from rq.job import JobStatus
 
 from utilities.config import settings
 
-# Import cluster-compatible classes if cluster mode or RQ hash tags are enabled
 if settings.REDIS_CLUSTER_MODE or settings.REDIS_RQ_HASH_TAGS:
     from rq import worker_registration
 
     from utilities.rq_cluster import ClusterQueue as Queue
 
-    # Patch worker registration keys for cluster mode
     worker_registration.REDIS_WORKER_KEYS = "rq:{rq}:workers"  # type: ignore
     worker_registration.WORKERS_BY_QUEUE_KEY = "rq:{rq}:workers:%s"  # type: ignore
 else:
@@ -30,23 +28,6 @@ JOB_STATUSES = {
 
 
 async def get_results(sleep: int, job_key):
-    """Get Results from Worker Queue
-
-    Checks job status, returns result if finished.
-    Sleep and checks until finished or failed.
-
-    Parameters
-    ----------
-    sleep : float
-        The time to sleep between checking the job status.
-    job_key : str
-        The job key.
-
-    Returns
-    -------
-    dict | Any
-        The result of the job.
-    """
     j = rq_que.fetch_job(job_key)
 
     while (job_status := j.get_status()) not in JOB_STATUSES:

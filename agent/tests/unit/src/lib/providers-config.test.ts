@@ -1,10 +1,6 @@
 import { describe, it } from "node:test";
 import { expect } from "expect";
 
-// No model id is written in providers.ts, so these tests use made-up ids: the
-// code must not care what a model is called. providers.ts reads its environment
-// while the module is evaluated, so each case loads a fresh copy (the query
-// string defeats the module cache).
 const KEYS = ["OPENAI_API_KEY", "NVIDIA_API_KEY"] as const;
 
 async function withProviders<T>(

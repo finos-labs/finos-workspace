@@ -1,24 +1,10 @@
-/**
- * What the agent is told of a conversation.
- *
- * The FINOS Workspace sends the whole chat with every request. The model is not given it: it is served what
- * the current turn needs (the question and what has happened since in this turn) and one note that says
- * the earlier messages exist, how many they are, and what the user last asked. Anything else of the
- * conversation it fetches itself with `recall_conversation`. Serving the whole chat every time costs more
- * with every message (a long chat pays for all of it on each question, and counts it against the user's
- * daily tokens) and ends, in a long enough chat, in a request the model refuses.
- */
-
 import type { Message } from "../protocol/types.ts";
 import { stripPlaceholderTags } from "../protocol/events.ts";
 
-/** A message of the conversation as a person would read it: what the user wrote, what the agent answered. */
 export interface TranscriptEntry {
-  /** Position in the conversation, counting from 1. What `recall_conversation` and the note call it. */
   number: number;
   role: "user" | "assistant";
   text: string;
-  /** Position in the request's `messages`. */
   source: number;
 }
 
@@ -53,7 +39,6 @@ function isInternalProtocolEnvelope(value: unknown): boolean {
   return false;
 }
 
-/** What an assistant message says to a reader: null for a protocol envelope (a tool call) or an empty one. */
 export function sanitizeAssistantContent(content: string): string | null {
   const parsed = parseJsonEnvelope(content);
   if (isInternalProtocolEnvelope(parsed)) return null;
@@ -62,7 +47,6 @@ export function sanitizeAssistantContent(content: string): string | null {
   return cleaned.length > 0 ? cleaned : null;
 }
 
-/** Where the current turn starts: at the user's last message, or at the start when there is none. */
 export function currentTurnStart(messages: Message[]): number {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === "human") return i;
@@ -70,7 +54,6 @@ export function currentTurnStart(messages: Message[]): number {
   return 0;
 }
 
-/** The conversation as text, numbered. Tool round trips and protocol envelopes are not part of it. */
 export function transcriptOf(messages: Message[]): TranscriptEntry[] {
   const entries: TranscriptEntry[] = [];
   messages.forEach((message, source) => {
@@ -84,7 +67,6 @@ export function transcriptOf(messages: Message[]): TranscriptEntry[] {
   return entries;
 }
 
-/** The messages from before the current turn: the ones the model is not shown. */
 export function earlierEntries(messages: Message[]): TranscriptEntry[] {
   const start = currentTurnStart(messages);
   return transcriptOf(messages).filter((entry) => entry.source < start);
@@ -98,10 +80,6 @@ function oneLine(text: string, max: number): string {
   return flat.length > max ? `${flat.slice(0, max)}…` : flat;
 }
 
-/**
- * The only thing the model is told of what came before: that it exists, and what the user last asked, so
- * that it can tell whether the question needs it. Null when this is the first turn.
- */
 export function conversationNote(earlier: TranscriptEntry[]): string | null {
   if (earlier.length === 0) return null;
   const questions = earlier

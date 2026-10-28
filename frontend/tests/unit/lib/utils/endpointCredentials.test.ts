@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { WidgetJsonT, WidgetT } from "~/components/types";
+import type { ParamDefT, WidgetJsonT, WidgetT } from "~/components/types";
+import type { Widget } from "~/lib/state/app";
 import {
   getSourceCredentials,
   type Source,
   useBackendConnectorStore,
 } from "~/lib/state/backendConnector";
-import { getEndpointParamRequestArgs, getWidgetData } from "~/lib/utils/app";
+import { endpointOptionsRequest, getWidgetData } from "~/lib/utils/app";
 import {
   splitEndpointHeaders,
   withoutEndpointCredentials,
 } from "~/lib/utils/endpointCredentials";
+import { requestInit } from "~/lib/utils/widgetRequest";
 import { partial } from "../../mocks";
 
 vi.mock("sonner", () => ({
@@ -79,11 +81,9 @@ describe("credentials of a data backend", () => {
 
   it("go only to the backend's own origin, whatever a widget pairs with its source id", () => {
     const none = { headers: {}, query: {} };
-    // A widget shared back with the victim's source id and a URL of the sharer's
     expect(getSourceCredentials("src-1", "https://attacker.example/collect")).toEqual(
       none,
     );
-    // Same host, another port or scheme, and a lookalike host are other origins
     expect(getSourceCredentials("src-1", "https://api.example.com:8443/x")).toEqual(
       none,
     );
@@ -96,20 +96,22 @@ describe("credentials of a data backend", () => {
   });
 
   it("go with an endpoint parameter's options request: headers, and query rows in its URL", () => {
-    type Args = Parameters<typeof getEndpointParamRequestArgs>;
-    const { url, reqInit } = getEndpointParamRequestArgs(
-      partial<Args[0]>({ sourceId: "src-1" }),
-      partial<Args[1]>({
+    const built = endpointOptionsRequest(
+      partial<Widget>({ sourceId: "src-1", params: [] }),
+      partial<ParamDefT<"endpoint">>({
+        type: "endpoint",
+        paramName: "region_options",
         optionsEndpoint: "https://api.example.com/options",
         optionsParams: { region: "eu" },
       }),
       {},
     );
+    if (!built?.ok) throw new Error("The options request was not built");
 
-    const { searchParams } = new URL(url);
+    const { searchParams } = new URL(built.request.url);
     expect(searchParams.get("apikey")).toBe("query-secret");
     expect(searchParams.get("region")).toBe("eu");
-    expect(reqInit.headers).toMatchObject({
+    expect(requestInit(built.request).headers).toMatchObject({
       Authorization: "Bearer data-backend-secret",
     });
   });

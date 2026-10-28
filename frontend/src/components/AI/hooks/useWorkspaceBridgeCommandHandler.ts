@@ -41,6 +41,8 @@ import {
   type ManageNavigationBarInputArgumentsT,
 } from "~/lib/utils/ai";
 import { createCustomTemplateTab } from "~/lib/utils/createTemplates";
+import { widgetsSchemaReady } from "~/lib/utils/validateBackend";
+import { dataArgsSchema, paramPlace, uiArgsSchema } from "~/lib/utils/widgetArgsSchema";
 import {
   deserializeDashboardTabId,
   getDashboardInfo,
@@ -136,19 +138,10 @@ function successResult(
   };
 }
 
-/**
- * Bridge-internal command names are not always the tool names the MCP sidecar
- * exposes to agents. Error/help text must reference the MCP-facing name so an
- * agent can actually call the tool it is pointed at.
- */
 const MCP_TOOL_NAME_OVERRIDES: Record<string, string> = {
   update_dashboard_layout: "update_widget_layout",
 };
 
-/**
- * Appended to backend widgets.json/apps.json validation failures so agents can
- * self-correct from the shipped specs instead of guessing payload shapes.
- */
 const BACKEND_AUTHORING_HINT =
   "For the expected widgets.json/apps.json shape, read the MCP resources workspace://specs/widgets-json, workspace://specs/apps-json, and workspace://validation/common-errors (index: workspace://app-builder/index).";
 
@@ -332,7 +325,6 @@ function buildWidgetConfigForDashboard(
 ) {
   const normalizedConfig = buildWidgetConfig(config);
   const uiArgs = asRecord(normalizedConfig.uiArgs);
-  // ui_args come from external MCP callers; a non-string innerTab is ignored.
   const rawInnerTab = uiArgs?.innerTab;
   const innerTab = typeof rawInnerTab === "string" ? rawInnerTab.trim() : undefined;
 
@@ -347,23 +339,6 @@ function buildWidgetConfigForDashboard(
   };
 }
 
-// ui_args keys the widget config path understands (updateWidgetState routes
-// these onto the widget itself or well-known storage slots). Anything else is
-// written to raw widget storage and may have no effect.
-const KNOWN_UI_ARG_KEYS = new Set([
-  "name",
-  "description",
-  "source",
-  "innerTab",
-  "gridData",
-  "html",
-]);
-
-/**
- * Widget mutations silently ignore data_args keys the widget does not declare
- * and write unrecognized ui_args keys to raw storage. Surface both so the
- * calling agent learns the real contract instead of assuming success.
- */
 function widgetConfigWarnings(
   paramsDef: WidgetT["params"] | null | undefined,
   config?: WorkspaceWidgetConfig | null,
@@ -386,21 +361,22 @@ function widgetConfigWarnings(
 
   if (invalidDataArgs.length > 0) {
     warnings.push(
-      `data_args values that are not a string, number, boolean or a list of them were ignored: ${invalidDataArgs.join(", ")}.`,
-    );
-  }
-
-  const uiArgs = asRecord(config?.ui_args) ?? {};
-  const unknownUiArgs = Object.keys(uiArgs).filter(
-    (key) => !KNOWN_UI_ARG_KEYS.has(key),
-  );
-  if (unknownUiArgs.length > 0) {
-    warnings.push(
-      `ui_args keys not recognized by the widget config contract were written to raw widget storage and may have no effect: ${unknownUiArgs.join(", ")}.`,
+      `data_args values the widget's data_args_schema does not accept were ignored: ${invalidDataArgs.join(", ")}.`,
     );
   }
 
   return warnings;
+}
+
+function uiArgsProblems(
+  widget: Pick<WidgetT, "type" | "plugin" | "widgetId" | "connectionType">,
+  uiArgs: Record<string, unknown> | undefined,
+): string[] {
+  return workspaceApi.computeWidgetUiUpdates(widget, uiArgs).problems;
+}
+
+function uiArgsRefusal(problems: string[]) {
+  return `ui_args were not applied: ${problems.join("; ")}. Call get_widget_schema for the widget's ui_args_schema.`;
 }
 
 function hasLayoutUiArgs(config?: WorkspaceWidgetConfig | null) {
@@ -463,6 +439,7 @@ function toWidgetCatalogEntry(widget: WidgetT, originOverride?: string) {
     category: widget.category,
     sub_category: widget.subCategory,
     widget_type: widget.type,
+    ...(widget.mcp_tool ? { mcp_tool: widget.mcp_tool } : {}),
   };
 }
 
@@ -475,11 +452,18 @@ function getWidgetSchemaPayload(
     .getAppWidget(widgetId as WidgetId, origin);
   if (!widget || !isAvailableWidget(widget)) return null;
 
+  const endpointUrl = widget.endpoint?.url;
   return {
     ...toWidgetCatalogEntry(widget, origin),
+    method: widget.endpoint?.method ?? "GET",
     params: Array.isArray(widget.params)
-      ? widget.params.map((param) => toWidgetParamPayload(param))
+      ? widget.params.map((param) => ({
+          ...(toWidgetParamPayload(param) as Record<string, unknown>),
+          in: paramPlace(param, endpointUrl),
+        }))
       : [],
+    data_args_schema: dataArgsSchema(widget),
+    ui_args_schema: uiArgsSchema(widget),
     grid_data: toGridDataPayload(widget.gridData),
     metadata:
       widget.metadata && typeof widget.metadata === "object" ? widget.metadata : {},
@@ -651,14 +635,6 @@ function buildSkillPayload(skill: WorkspaceSkill): SkillPayload {
   };
 }
 
-/**
- * `getWidgetData` returns the in-app `CopilotDataT` shape, where each item's
- * `content` is JSON-stringified (a copilot content-block convention). MCP callers
- * want structured rows, so for the bridge response only we parse those strings
- * back into arrays/objects. Only JSON-array/object strings are parsed — plain
- * text content (markdown text, single-column SQL text) is left as-is. The
- * in-app copilot data path is unaffected.
- */
 export function normalizeWidgetDataForBridge(data: unknown): unknown {
   if (!Array.isArray(data)) return data;
   return data.map((entry) => {
@@ -687,6 +663,7 @@ async function handleDataCommand(
     | "get_widget_data"
     | "list_available_widgets"
     | "get_widget_schema"
+    | "get_widgets_schema"
     | "get_params_options"
   >,
   deps: Pick<CommandHandlerDeps, "getSnapshot" | "getWidgetData" | "getParamOptions">,
@@ -747,6 +724,10 @@ async function handleDataCommand(
       }
 
       return successResult("Widget schema loaded.", { widget });
+    }
+    case "get_widgets_schema": {
+      const schema = await widgetsSchemaReady();
+      return successResult("widgets.json schema loaded.", { schema });
     }
     case "get_params_options": {
       const data = await deps.getParamOptions(
@@ -980,9 +961,6 @@ async function handleDashboardCommand(
             );
           }
 
-          // The snapshot serializes the default (tab-less) view as "__no_tab__";
-          // round-trip it back to the plain dashboard route instead of a
-          // phantom ?tab=__no_tab__.
           const storedTabId = deserializeDashboardTabId(command.tab_id);
           const serializedTabId = serializeDashboardTabId(storedTabId);
           if (!dashboardInfo.tabs.some((tab) => tab.tab_id === serializedTabId)) {
@@ -1077,10 +1055,17 @@ async function handleWidgetCommand(
           config.dataArgs,
         );
         const warnings = widgetConfigWarnings(widgetDefinition.params, command.config);
+        const problems = uiArgsProblems(
+          widgetDefinition,
+          asRecord(config.uiArgs) ?? {},
+        );
         return successResult(
-          "Dry run: widget would be created. Nothing was changed.",
+          problems.length
+            ? "Dry run: the widget would not be created. Nothing was changed."
+            : "Dry run: widget would be created. Nothing was changed.",
           {
-            valid: true,
+            valid: problems.length === 0,
+            ...(problems.length ? { problems } : {}),
             dashboard_id: dashboardId,
             effective_params: {
               ...((widgetDefinition.storage?.params ?? {}) as Record<string, unknown>),
@@ -1092,12 +1077,22 @@ async function handleWidgetCommand(
         );
       }
 
+      const definition = useGetWidgetsStore
+        .getState()
+        .getAppWidget(command.widget_id as WidgetId, command.backend_name);
+      const config = buildWidgetConfigForDashboard(dashboardId, command.config);
+      const problems = definition
+        ? uiArgsProblems(definition, asRecord(config.uiArgs) ?? {})
+        : [];
+      if (problems.length)
+        return errorResult("invalid_request", uiArgsRefusal(problems));
+
       try {
         const widgetUuid = await workspaceApi.createWidget(
           dashboardId,
           command.backend_name,
           command.widget_id,
-          buildWidgetConfigForDashboard(dashboardId, command.config),
+          config,
         );
         const widgetDefinition = useGetWidgetsStore
           .getState()
@@ -1163,10 +1158,16 @@ async function handleWidgetCommand(
           config.dataArgs,
         );
         const warnings = widgetConfigWarnings(widget?.params, command.config);
+        const problems = widget
+          ? uiArgsProblems(widget, asRecord(config.uiArgs) ?? {})
+          : [];
         return successResult(
-          "Dry run: widget would be updated. Nothing was changed.",
+          problems.length
+            ? "Dry run: the widget would not be updated. Nothing was changed."
+            : "Dry run: widget would be updated. Nothing was changed.",
           {
-            valid: true,
+            valid: problems.length === 0,
+            ...(problems.length ? { problems } : {}),
             dashboard_id: dashboardId,
             widget_uuid: widgetUuid,
             effective_params: {
@@ -1179,12 +1180,16 @@ async function handleWidgetCommand(
         );
       }
 
+      const target = useAppStore.getState().getTabWidgetById(dashboardId, widgetUuid);
+      const config = buildWidgetConfigForDashboard(dashboardId, command.config);
+      const problems = target
+        ? uiArgsProblems(target, asRecord(config.uiArgs) ?? {})
+        : [];
+      if (problems.length)
+        return errorResult("invalid_request", uiArgsRefusal(problems));
+
       try {
-        await workspaceApi.updateWidget(
-          dashboardId,
-          widgetUuid,
-          buildWidgetConfigForDashboard(dashboardId, command.config),
-        );
+        await workspaceApi.updateWidget(dashboardId, widgetUuid, config);
         const updatedWidget = useAppStore
           .getState()
           .getTabWidgetById(dashboardId, widgetUuid);
@@ -1583,12 +1588,6 @@ type AppEntry =
     }
   | { kind: "saved"; app: UserGeneratedApp };
 
-/**
- * Mirrors the app sources merged by `useAllTemplates` for the Apps page:
- * templates from the user's own backends, templates shared through role
- * permissions, and saved (user-generated) apps owned by or shared with the
- * user. Backends that are both owned and shared only contribute once.
- */
 function collectAppEntries(
   getSharedTemplates: CommandHandlerDeps["getSharedTemplates"],
 ): AppEntry[] {
@@ -1762,7 +1761,6 @@ async function handleManageAppsCommand(
     });
   }
 
-  // instantiate: always create a fresh dashboard (predictable for automated callers)
   const appName = entry.kind === "saved" ? entry.app.name : entry.template.name;
   let dashboardId: string | undefined;
   try {
@@ -1849,6 +1847,7 @@ export function useWorkspaceBridgeCommandHandler() {
           case "get_widget_data":
           case "list_available_widgets":
           case "get_widget_schema":
+          case "get_widgets_schema":
           case "get_params_options":
             return await handleDataCommand(command, {
               getSnapshot,

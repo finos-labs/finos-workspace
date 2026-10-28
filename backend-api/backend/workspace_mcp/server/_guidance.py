@@ -1,15 +1,3 @@
-"""Static guidance strings used in MCP tool descriptions and server instructions.
-
-Kept here so individual tool modules can import only the snippets they need
-without circular imports, and so the long server-level instruction text lives
-in one place.
-
-Structure: cross-cutting rules live in ``SERVER_INSTRUCTIONS`` (sectioned,
-bulleted); param-specific rules live in the shared ``*_PARAM`` descriptions
-below (attached to tool parameters via ``Annotated[..., Field(description=...)]``);
-tool-workflow rules live in each tool's own description.
-"""
-
 SERVER_INSTRUCTIONS = "\n".join(
     [
         "Expose the active FINOS Workspace browser session as MCP tools. "
@@ -85,10 +73,6 @@ SERVER_INSTRUCTIONS = "\n".join(
 )
 
 
-# ---------------------------------------------------------------------------
-# Shared parameter descriptions
-# ---------------------------------------------------------------------------
-
 DASHBOARD_ID_PARAM = (
     "Dashboard UUID. Omit to target the current dashboard route. Never send "
     "placeholder strings such as active_dashboard, current_dashboard, null, or "
@@ -111,6 +95,5 @@ ORIGIN_PARAM = (
 
 
 def describe_tool(summary: str, *notes: str) -> str:
-    """Compose a short MCP tool description from reusable guidance snippets."""
     parts = [summary, *notes]
     return " ".join(part for part in parts if part)

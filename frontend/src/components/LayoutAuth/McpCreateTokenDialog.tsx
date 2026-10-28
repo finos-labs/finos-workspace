@@ -16,7 +16,6 @@ import { useCreateMcpToken } from "./useMcpTokens";
 interface McpCreateTokenDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Hosted MCP endpoint baked into the install snippets. */
   endpoint: string;
 }
 
@@ -30,9 +29,6 @@ export function McpCreateTokenDialog({
   const { reset } = createToken;
   const created = createToken.data ?? null;
 
-  // The dialog stays mounted across open/close, so wipe the mutation state on
-  // both transitions — the raw secret must not linger in the mutation cache
-  // after Done, and a stale secret must not flash when the dialog reopens.
   useEffect(() => {
     setName("");
     reset();

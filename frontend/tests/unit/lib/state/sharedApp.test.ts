@@ -1,13 +1,3 @@
-/**
- * Tests for sharedApp Zustand store
- *
- * Tests the shared app state management including:
- * - Shared items storage
- * - Dashboard retrieval by ID
- * - Widget retrieval within shared dashboards
- * - Updating shared items with both shared and entity-shared data
- */
-
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Item, Widget } from "~/lib/state/app";
@@ -16,7 +6,7 @@ import {
   type SharedItems,
   useSharedAppStore,
 } from "~/lib/state/sharedApp";
-import { makeTicker, makeTickerGroup, makeWidget } from "../../factories";
+import { makeParamGroup, makeWidget } from "../../factories";
 import { malformed } from "../../mocks";
 
 const createMockWidget = (overrides: Partial<Widget> = {}): Widget =>
@@ -25,8 +15,6 @@ const createMockWidget = (overrides: Partial<Widget> = {}): Widget =>
     widgetId: "equity_profile",
     name: "Equity Profile",
     innerTab: "overview",
-    groupId: null,
-    data: { mainTicker: makeTicker() },
     ...overrides,
   });
 
@@ -407,9 +395,7 @@ describe("useSharedAppStore", () => {
     it("should handle dashboard with nested data", () => {
       const widget = createMockWidget({
         id: "complex-widget",
-        // What a widget keeps in its data is not limited to the fields the type names
         data: malformed({
-          mainTicker: makeTicker(),
           params: { startDate: "2024-01-01", endDate: "2024-12-31" },
           nested: {
             level1: {
@@ -427,8 +413,9 @@ describe("useSharedAppStore", () => {
           ...createMockItem().data,
           widgets: [widget],
           groups: [
-            makeTickerGroup({
+            makeParamGroup({
               id: "group-1",
+              groupById: "region",
               name: "Group 1",
               color: "#ff0000",
               value: null,

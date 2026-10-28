@@ -1,5 +1,3 @@
-"""Dashboard CRUD tool."""
-
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -47,7 +45,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ] = None,
     ) -> ToolResponse:
-        """Create, read, or update dashboard metadata and composition."""
         if operation == "create":
             if not name:
                 return invalid_request(

@@ -8,7 +8,6 @@ import { HoverPopover } from "../HoverPopover";
 
 interface AdminUserPermissionsSectionProps {
   userUuid: string;
-  /** A pending invite: no user yet, so no roles to show. */
   invited?: boolean;
 }
 
@@ -22,7 +21,6 @@ interface RolePermissionRow {
   hasAnyAccess: boolean;
 }
 
-// Returns the access value ("access" / "denied" / ...) a role has for a resource.
 function accessFor(access: RoleAccessList | undefined, roleId: string): string | null {
   if (!access) return null;
   const entry = access.find((item) => Object.keys(item).includes(roleId));
@@ -71,8 +69,6 @@ const COUNT_COLUMN = {
   truncate: false,
 } as const;
 
-// Surrounding border per row. `<tr>` borders are ignored in border-separate, so
-// the border lives on the cells: top/bottom on all, left/right on the end cells.
 const BORDERED_ROW =
   "[&>td]:border-y [&>td]:border-general-border-secondary " +
   "[&>td:first-child]:border-l [&>td:last-child]:border-r";
@@ -128,7 +124,6 @@ export default function AdminUserPermissionsSection({
         }
       }
 
-      // "AI Agents" has no field in the current permissions payload yet.
       const agents: string[] = [];
 
       return {
@@ -147,8 +142,6 @@ export default function AdminUserPermissionsSection({
     () => [
       {
         id: "role",
-        // Fill so the role column absorbs the dialog's slack while the count
-        // columns stay fixed; keeps the table filling the (wide) dialog.
         width: "fill",
         minWidth: 150,
         header: "Role",

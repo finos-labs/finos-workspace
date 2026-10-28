@@ -1,11 +1,3 @@
-/**
- * Wire-shape translators for workspace tools.
- *
- * MCP-facing arg names use snapshot vocabulary (origin, widget_id, data_args).
- * Browser-facing wire shape uses Ada vocabulary (id, input_args). These
- * helpers bridge the two — direct port of workspace_mcp/server.py:411-435.
- */
-
 export interface WidgetDataRequestInput {
   origin: string;
   widget_id: string;

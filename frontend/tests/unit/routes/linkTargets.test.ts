@@ -12,7 +12,6 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-/** The fixed segments directly under `/app` that the router defines. */
 function definedAppRoutes(): Set<string> {
   const main = fs.readFileSync(path.join(SRC, "main.tsx"), "utf8");
   const appBlock = main.slice(
@@ -23,15 +22,11 @@ function definedAppRoutes(): Set<string> {
 }
 
 describe("in-app link targets", () => {
-  // When a route is removed, links that still point at it show "Page not found".
-  // A dashboard id is a uuid and never a word, so a literal `/app/<word>` has to be a defined route.
   it("every literal /app/<word> link or navigation target is a route the router defines", () => {
     const defined = definedAppRoutes();
     expect(defined.has("widgets")).toBe(true);
     expect(defined.has("ai")).toBe(true);
 
-    // Link and navigation targets only: `to=`, `href=`, `navigate(` and `setPendingNavigation(`.
-    // Other `/app/...` strings are backend API paths.
     const target =
       /(?:\bto=\{?|\bhref=\{?|\bnavigate\(|\bsetPendingNavigation\()\s*["'`]\/app\/([a-z][a-z-]*)(?=[/?#"'`])/g;
     const broken: string[] = [];

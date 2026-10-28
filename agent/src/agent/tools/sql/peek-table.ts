@@ -1,8 +1,3 @@
-/**
- * peek_table — preview rows + schema from a loaded table.
- * Stateless: fresh in-memory DB per call.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import { buildDb, describeColumns, tableNotFoundMessage } from "./db.ts";

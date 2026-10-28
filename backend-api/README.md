@@ -20,7 +20,7 @@ To run the whole stack, follow the root [README](../README.md). See [DEVELOPMENT
 
 ## Admin CLI
 
-`backend/scripts/workspace_admin.py` manages entities, users and data backends. It runs
+`backend/scripts/workspace_admin.py` manages entities, users, data backends and widget plugins. It runs
 inside the API container and works on the database itself: it sends no request to the API,
 so it needs no sign-in.
 
@@ -36,5 +36,8 @@ docker compose exec api python -m scripts.workspace_admin --help    # the root d
 | `user list [--email <part>]`, `user move --entity-uuid <uuid> --email <email> [--role ...]`, `user delete <email>` | `delete` removes the user from their entity |
 | `data-backend add <entity-uuid> --name <name> --url <url> [--header key:value[:location]]`, `data-backend list <entity-uuid>`, `data-backend delete <entity-uuid> --name <name>` | Data backends of an entity |
 | `provision check --config <file>`, `provision apply --config <file>` | An entity with its admins and users in one go; `provision sample` prints a config |
+| `plugin list`, `plugin rescan`, `plugin show <id>`, `plugin approve <id> <version> [--digest <d>] --acknowledge` | Widget plugins: discovery, the review (without `--acknowledge` it prints the review and approves nothing) and approval |
+| `plugin enable\|disable <id> (--entity <uuid> \| --all)`, `plugin grant\|ungrant <id> --role <uuid> [--widget <id>]` | Enable a plugin for organizations; a role that grants it is the only way to it |
+| `plugin revoke\|restore <id>`, `plugin override <id> ...`, `plugin secret set\|clear <id> <name>`, `plugin check-backend <id>`, `plugin events <id>`, `plugin reports <id>`, `plugin forget <id>` | The kill switch, the policy overrides, secrets (read without echo or from standard input), the backend's identity, the activity and blocked requests, and a plugin whose files are gone (docs/widget-plugins/README.md 7) |
 
 `--json` prints the outcome as JSON. A refused action prints why and exits with 1.

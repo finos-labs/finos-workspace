@@ -25,8 +25,6 @@ vi.mock("~/lib/state/copilot", () => ({
   useShallowCopilotStore: vi.fn(),
 }));
 
-// Text that is still arriving is held by the stream handler (and kept in this store so that stopping
-// can keep it). The message never shows it: it shows the message that is in the chat.
 const HELD_TEXT = "PARTIAL TEXT THAT HAS NOT BEEN PUT IN THE CHAT";
 vi.mock("usehooks-ts", () => ({
   useLocalStorage: vi.fn((key: string, defaultValue: unknown) => [

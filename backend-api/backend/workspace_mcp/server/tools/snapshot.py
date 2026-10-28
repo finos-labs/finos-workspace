@@ -1,5 +1,3 @@
-"""FINOS Workspace snapshot discovery tool."""
-
 from fastmcp import FastMCP
 
 from workspace_mcp.server._guidance import describe_tool
@@ -29,5 +27,4 @@ def register(server: FastMCP, run: CommandRunner) -> None:
         )
     )
     async def get_workspace_snapshot() -> ToolResponse:
-        """Fetch the current workspace snapshot from the connected browser."""
         return await run({"command": "get_workspace_snapshot"})

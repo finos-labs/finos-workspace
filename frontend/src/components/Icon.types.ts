@@ -1,5 +1,3 @@
-// Do not edit manually!
-
 export const allIcons = [
   "add-to-dashboard",
   "airplane",

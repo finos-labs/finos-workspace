@@ -39,7 +39,6 @@ describe("formatSchemaValue", () => {
   it("falls back to String() when JSON.stringify throws", () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
-    // Does not throw; produces some string representation.
     expect(typeof formatSchemaValue(circular)).toBe("string");
   });
 });

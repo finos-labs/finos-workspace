@@ -1,5 +1,3 @@
-/** The child process that reads a spreadsheet (see lib/isolate.ts): a crafted file cannot take the agent with it. */
-
 import { serveOnce } from "../lib/isolate-child.ts";
 import { xlsxToJsonText } from "./xlsx.ts";
 

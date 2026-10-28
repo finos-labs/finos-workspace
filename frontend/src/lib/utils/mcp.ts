@@ -7,7 +7,6 @@ export function getServerName(url: string): string {
   }
 }
 
-/** The API's MCP proxy refuses loopback addresses (SSRF guard), so those servers are called from the browser. */
 export function isLoopbackUrl(url: string | undefined): boolean {
   try {
     const host = new URL(url ?? "").hostname;

@@ -7,7 +7,6 @@ import { useTabContext } from "~/lib/contexts/TabContext";
 import { useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { partial } from "../../mocks";
 
-// Mock the necessary hooks and components
 vi.mock("~/components/Widget.context", () => ({
   useWidgetContext: vi.fn(),
 }));
@@ -70,7 +69,6 @@ describe("DraggableCard", () => {
       }),
     );
 
-    // Reset the useStateReducer mock to default state
     vi.mocked(useStateReducer).mockReturnValue([
       { accessError: null, hasAccess: true },
       vi.fn(),
@@ -129,7 +127,6 @@ describe("DraggableCard", () => {
       }),
     );
 
-    // Mock the state reducer to simulate blocked access
     vi.mocked(useStateReducer).mockReturnValue([
       {
         accessError: "This widget is currently blocked from loading.",
@@ -206,7 +203,6 @@ describe("DraggableCard", () => {
       }),
     );
 
-    // Mock the state reducer to simulate blocked access
     vi.mocked(useStateReducer).mockReturnValue([
       {
         accessError: "This widget is deprecated and cannot be used.",
@@ -249,7 +245,6 @@ describe("DraggableCard", () => {
       }),
     );
 
-    // Mock the state reducer to simulate blocked access
     vi.mocked(useStateReducer).mockReturnValue([
       {
         accessError: "This widget is deprecated and cannot be used.",
@@ -317,8 +312,8 @@ describe("DraggableCard", () => {
         widgetFromJSON: null,
         widget: {
           sourceId: "source-1",
-          widgetId: "yield_curve", // This is in BLOCKED_WIDGET_IDS
-          external: true, // But it's external, so should not be blocked
+          widgetId: "yield_curve",
+          external: true,
           endpoint: { url: "https://external-api.com" },
           sourceName: "External Source",
         },
@@ -331,15 +326,12 @@ describe("DraggableCard", () => {
       </DraggableCard>,
     );
 
-    // The widget should NOT be blocked, so we should NOT see the error message
     expect(
       screen.queryByText("This widget is deprecated and cannot be used."),
     ).not.toBeInTheDocument();
 
-    // We should NOT see the results-not-found component
     expect(screen.queryByTestId("results-not-found")).not.toBeInTheDocument();
 
-    // We should see the navbar
     expect(screen.getByTestId("navbar")).toBeInTheDocument();
   });
 

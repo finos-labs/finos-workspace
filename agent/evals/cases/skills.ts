@@ -1,14 +1,3 @@
-/**
- * Skills cases — autonomous mid-turn skill loading.
- *
- * Verifies the model recognizes when a skill description matches the user's
- * topic and calls `get_skill_content` proactively, without a `/skill:slug`
- * prefix. Also pins the negative case: irrelevant skills must NOT be loaded.
- *
- * The eval runner cuts at the first round-trip emit, so each case grades
- * what the model picked first, not the eventual answer.
- */
-
 import type { EvalCase } from "../runner.ts";
 import type { SkillCatalogEntry } from "../../src/protocol/types.ts";
 import { techWorkspace } from "../fixtures/workspaces.ts";

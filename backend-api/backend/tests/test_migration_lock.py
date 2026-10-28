@@ -1,11 +1,3 @@
-"""
-The lock that lets one process at a time run the database migrations.
-
-A holder that stops before it finishes leaves the lock in Redis to expire. A process that waits for it
-must then take it over: once the key is gone nobody is left to say ``done``, so waiting only for the
-holder's answer is waiting forever (the API of a stack that Docker restarted all at once never started).
-"""
-
 from datetime import timedelta
 from typing import Any
 
@@ -20,8 +12,6 @@ POD = "pod-me"
 
 
 class FakeRedisCache:
-    """``settings.redis_cache`` over a dict: asked with data it takes a key that is free."""
-
     def __init__(self, held: dict[str, Any] | None = None):
         self.keys: dict[str, Any] = dict(held or {})
         self.calls: list[tuple[str, Any, timedelta | None]] = []
@@ -31,7 +21,7 @@ class FakeRedisCache:
         if key in self.keys:
             return self.keys[key]
         if data is None:
-            return False  # as the real one does for a key that is not there
+            return False
         self.keys[key] = data
         return data
 
@@ -90,7 +80,7 @@ def test_takes_the_lock_over_when_the_holder_stopped_and_it_expired():
 
     def lock_expires(sleeps: int):
         if sleeps == 2:
-            del cache.keys[LOCK_KEY]  # the two minutes of a holder that never finished
+            del cache.keys[LOCK_KEY]
 
     result, sleeps, messages = wait(cache, lock_expires)
 

@@ -69,7 +69,6 @@ function sortUsers(
   return [...users].sort((a, b) => {
     const av = userSortValue(a, sortState.id, entityNameMap);
     const bv = userSortValue(b, sortState.id, entityNameMap);
-    // Empty dates always sort last, regardless of direction.
     if (av === null && bv === null) return 0;
     if (av === null) return 1;
     if (bv === null) return -1;

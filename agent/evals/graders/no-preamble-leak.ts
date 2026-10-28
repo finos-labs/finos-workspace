@@ -1,12 +1,6 @@
 import type { Trace } from "../trace.ts";
 import type { GraderSpec } from "./index.ts";
 
-// Index of the first tool-call signal in the ordered event stream. Round-trip
-// tools emit `copilotFunctionCall`; in-process tools (search_widgets,
-// execute_sql, create_artifact) ride `copilotStatusUpdate` with a structured
-// tool_call/details — mirror trace.ts's extractToolCalls so the boundary is
-// detected for BOTH kinds (a grader keyed only on copilotFunctionCall would
-// no-op on the common in-process-tool case).
 function firstToolCallIndex(events: Trace["events"]): number {
   for (let i = 0; i < events.length; i++) {
     const e = events[i];
@@ -41,15 +35,6 @@ function firstVisibleChunkIndex(events: Trace["events"]): number {
   return -1;
 }
 
-/**
- * Invariant: the model must not stream user-visible prose BEFORE its first tool
- * call. Streamed text can't be retracted (the regression this guards), so a
- * preamble like "Let me check…" emitted ahead of a tool call leaks to the user.
- *
- * Purely POSITIONAL — no content/word heuristic — so a legitimate final answer
- * (which always comes AFTER the tools) never false-fails. A turn with no tool
- * call can't leak a preamble, so it passes.
- */
 export function noPreambleLeak(): GraderSpec {
   return {
     name: "noPreambleLeak",

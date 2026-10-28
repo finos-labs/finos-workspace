@@ -1,7 +1,3 @@
-"""Secrets the API keeps are encrypted or hashed at rest and never sent back to a browser:
-users' own provider keys, MCP server headers, authenticator secrets and invitation
-passwords; pre-signed file URLs are short-lived."""
-
 import json
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -35,11 +31,6 @@ async def _scalar(db_session, sql: str, **params):
     return (await db_session.execute(text(sql), params)).scalar_one_or_none()
 
 
-# =============================================================================
-# Users' own provider keys: encrypted, write-only
-# =============================================================================
-
-
 class TestCopilotKeys:
     async def test_keys_are_encrypted_and_never_returned(self, auth_client, db_session):
         response = await auth_client.put(
@@ -70,7 +61,6 @@ class TestCopilotKeys:
         response = await auth_client.put("/app/copilot-keys", json={"openai_api_key": None})
         assert response.json() == {"has_openai_key": False, "has_perplexity_key": True}
 
-        # What the default Copilot gets through /copilot/authorize (section 4)
         keys = await app_helpers.get_copilot_provider_keys(db_session, USER_UUID)
         assert keys == schemas.CopilotProviderKeys(perplexity_api_key="pplx-2")
 
@@ -99,14 +89,9 @@ class TestCopilotKeys:
             uuid=_hex(USER_UUID),
         )
         assert "sk-in-settings" not in stored and "openaiApiKey" not in stored
-        # A JSON document holding the settings' JSON text
         assert json.loads(json.loads(stored))["theme"] == "dark"
         assert "sk-in-settings" not in (await auth_client.get("/app/user")).text
 
-
-# =============================================================================
-# MCP server headers: encrypted apart from the server list, write-only
-# =============================================================================
 
 MCP_URL = "https://mcp.example.org/mcp"
 
@@ -122,7 +107,6 @@ async def _save(auth_client, *servers) -> list[dict]:
 
 
 async def _stored_mcp(db_session) -> tuple[str | None, str | None]:
-    """The server list and the headers as the database holds them: both ciphertexts."""
     row = (
         await db_session.execute(
             text("SELECT servers, headers FROM mcp_servers WHERE user_uuid = UNHEX(:uuid)"),
@@ -152,7 +136,6 @@ class TestMcpServerHeaders:
         for path in ("/app/dash/validate-and-sync", "/app/user"):
             assert "mcp-secret" not in (await auth_client.get(path)).text
 
-        # For the proxy (section 9): the values, server side
         assert await app_helpers.get_mcp_server_headers(db_session, USER_UUID, MCP_URL + "/") == {
             "Authorization": "Bearer mcp-secret",
             "X-Team": "team-1",
@@ -195,8 +178,6 @@ class TestMcpServerHeaders:
     async def test_a_credential_in_a_server_url_is_encrypted_at_rest(
         self, auth_client, db_session
     ):
-        """Hosted MCP services put the key in the URL (path or query): the stored list is
-        a ciphertext, and the URL goes back to its owner only."""
         path_url = "https://mcp.example.org/api/mcp/s/path-secret-value/mcp"
         query_url = "https://tools.example.org/mcp?api_key=query-secret-value"
         servers = await _save(
@@ -218,7 +199,6 @@ class TestMcpServerHeaders:
             {**_server(url=local, customHeaders={"X-Local": "local-value"}), "id": "s2"},
         )
 
-        # The URL goes in the body, never in a query string
         response = await auth_client.post("/app/mcp-servers/local-headers", json={"url": local})
         assert response.status_code == 200
         assert response.json() == {"headers": {"X-Local": "local-value"}}
@@ -247,7 +227,6 @@ class TestMcpServerHeaders:
     async def test_local_server_headers_are_never_served_to_a_bearer_session(
         self, auth_client, db_session
     ):
-        """A session token sent as a bearer never reads stored MCP header values."""
         local = "http://localhost:8123/mcp"
         await _save(auth_client, _server(url=local, customHeaders={"X-Local": "local-value"}))
         session_uuid = uuid4()
@@ -267,11 +246,6 @@ class TestMcpServerHeaders:
         assert "local-value" not in response.text
 
 
-# =============================================================================
-# Authenticator: secret encrypted, a code works once
-# =============================================================================
-
-
 class TestTotp:
     async def test_secret_is_encrypted_and_a_code_works_once(self, auth_client, db_session):
         secret = (await auth_client.post("/totp", json={})).json()["secret"]
@@ -285,7 +259,6 @@ class TestTotp:
         code = int(pyotp.TOTP(secret).now())
         response = await auth_client.post("/totp/activate", json={"totp_token": code})
         assert response.status_code == 200
-        # The same code again is a replay
         response = await auth_client.post("/totp/activate", json={"totp_token": code})
         assert response.status_code == 401
 
@@ -293,7 +266,6 @@ class TestTotp:
         await _create_auth_user(db_session)
         secret = pyotp.random_base32()
         totp = pyotp.TOTP(secret)
-        # A moment whose code starts with 0, which an integer code loses
         moment = datetime(2026, 1, 1, tzinfo=UTC)
         while not totp.at(moment).startswith("0"):
             moment += timedelta(seconds=30)
@@ -311,13 +283,13 @@ class TestTotp:
         async def verify(value) -> bool:
             return await helpers.verify_totp(db_session, USER_UUID, secret, value)
 
-        assert not await verify(code(-2))  # too old
-        assert not await verify(code(2))  # too far ahead
-        assert await verify(code(-1))  # one step of clock drift
-        assert await verify(code(0))  # the current one, with its leading zero
-        assert not await verify(code(0))  # used
-        assert not await verify(code(-1))  # older than the last one used
-        assert await verify(code(1))  # one step ahead
+        assert not await verify(code(-2))
+        assert not await verify(code(2))
+        assert await verify(code(-1))
+        assert await verify(code(0))
+        assert not await verify(code(0))
+        assert not await verify(code(-1))
+        assert await verify(code(1))
         assert not await verify(None)
         assert not await helpers.verify_totp(db_session, USER_UUID, None, code(1))
 
@@ -338,11 +310,6 @@ def _freeze(monkeypatch, moment: datetime):
     monkeypatch.setattr(helpers, "datetime", Frozen)
 
 
-# =============================================================================
-# Sign-in payload: flags and names, never values
-# =============================================================================
-
-
 async def test_login_payload_carries_flags_not_secrets(app_client, db_session):
     email = f"keys_{uuid4().hex[:8]}@example.com"
     password = "KeysTestPassword123!"
@@ -353,7 +320,6 @@ async def test_login_payload_carries_flags_not_secrets(app_client, db_session):
         password=password,
         confirmed=True,
         openai_api_key="sk-login-secret",
-        # A User of the default organization: a user in none signs in no more
         permissions_uuid=_DEFAULT_USER_MAP_UUID,
     )
     db_session.add(user)
@@ -388,11 +354,6 @@ async def test_login_payload_carries_flags_not_secrets(app_client, db_session):
         await db_session.commit()
 
 
-# =============================================================================
-# Invitations hold no password
-# =============================================================================
-
-
 async def test_invitations_store_no_password(client, db_session):
     email = f"invite_{uuid4().hex[:8]}@example.com"
     await _create_auth_user(db_session)
@@ -421,17 +382,11 @@ async def test_invitations_store_no_password(client, db_session):
             "SELECT password FROM `user` WHERE uuid = UNHEX(:uuid)",
             uuid=_hex(user_uuid),
         )
-        # Only a bcrypt hash of a random password nobody was given
         assert password.startswith("$2")
     finally:
         await db_session.execute(delete(models.UserInvite).where(models.UserInvite.email == email))
         await db_session.execute(delete(User).where(User.email == email))
         await db_session.commit()
-
-
-# =============================================================================
-# Pre-signed file URLs live 15 minutes at most
-# =============================================================================
 
 
 @pytest.mark.parametrize(

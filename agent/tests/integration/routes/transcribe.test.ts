@@ -1,8 +1,3 @@
-/**
- * Tier 2 — dictation: POST /v1/transcribe turns a recording into the text of a question, for a signed-in
- * user, within the helper limits, and only when the deployment has a speech-to-text model.
- */
-
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { expect } from "expect";
 import { createApp } from "../../../src/app.ts";
@@ -57,7 +52,6 @@ beforeEach(() => {
   process.env.INES_TRANSCRIBE_MODEL = "groq:whisper-large-v3-turbo";
   process.env.GROQ_API_KEY = "gsk-test";
   asked = 0;
-  // Groq's API, as the AI SDK calls it.
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     if (String(input).startsWith("https://api.groq.com/")) {
       asked++;

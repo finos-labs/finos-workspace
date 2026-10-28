@@ -245,7 +245,6 @@ function TabLink(props: TabLinkProps) {
 }
 
 function LinksNav() {
-  // A User brings no connections, so the page is not theirs
   const mayAddConnections = useShallowAccessStore((s) => canAddConnections(s.access));
   const linksMemo = useMemo(
     () => (
@@ -423,7 +422,6 @@ const calculateHeights = (
     }
 
     dispatch((prev) => {
-      //  only update if values have changed to prevent re-renders
       if (
         prev.myDashboards !== myDashboardsMaxHeight ||
         prev.sharedDashboards !== sharedMaxHeight

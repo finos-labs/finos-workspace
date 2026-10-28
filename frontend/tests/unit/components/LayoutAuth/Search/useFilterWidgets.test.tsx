@@ -12,7 +12,6 @@ const createMockWidget = (overrides = {}) => ({
   description: "A test widget",
   source: "workspace",
   external: false,
-  supportedAssetClasses: [],
   ...overrides,
 });
 
@@ -38,6 +37,25 @@ describe("useFilterWidgets", () => {
       const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
 
       expect(result.current.length).toBe(2);
+    });
+
+    it("lists standalone plugin widgets under All, not under My data or Shared", () => {
+      const widgets = [
+        createMockWidget({
+          widgetId: "plugin:chart-kit:clock",
+          name: "Clock",
+          category: "Chart kit",
+          plugin: { id: "chart-kit", widget: "clock" },
+        }),
+      ];
+      const listed = (selectedOption: SearchDialogState["selectedOption"]) =>
+        renderHook(() =>
+          useFilterWidgets(widgets, { ...defaultState, selectedOption }),
+        ).result.current.map((widget) => widget.name);
+
+      expect(listed("all")).toEqual(["Clock"]);
+      expect(listed("external")).toEqual([]);
+      expect(listed("shared")).toEqual([]);
     });
 
     it("filters widgets by selected category", () => {
@@ -161,38 +179,6 @@ describe("useFilterWidgets", () => {
       expect(
         result.current.some((w) => w.category?.toLowerCase() === "shared backends"),
       ).toBe(true);
-    });
-  });
-
-  describe("Asset Class Handling", () => {
-    it("creates multiple entries for widgets with multiple supported asset classes", () => {
-      const widgets = [
-        createMockWidget({
-          widgetId: "iframe",
-          name: "Multi-Asset Chart",
-          supportedAssetClasses: ["equity", "etf"],
-        }),
-      ];
-
-      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
-
-      expect(result.current.some((w) => w.category === "equity")).toBe(true);
-      expect(result.current.some((w) => w.category === "etf")).toBe(true);
-    });
-
-    it("uses original category for widgets with only all asset class", () => {
-      const widgets = [
-        createMockWidget({
-          widgetId: "iframe",
-          name: "Universal Chart",
-          category: "Equity",
-          supportedAssetClasses: ["all"],
-        }),
-      ];
-
-      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
-
-      expect(result.current[0].category.toLowerCase()).toBe("equity");
     });
   });
 

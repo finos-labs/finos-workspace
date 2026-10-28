@@ -63,8 +63,6 @@ describe("flattenUsage", () => {
     expect(out.cachedInputTokens).toBe(700);
   });
 
-  // A provider reporting more cached tokens than prompt tokens would otherwise
-  // produce a >100% hit rate and a negative uncached-token count.
   it("clamps cache counts into inputTokens", () => {
     const out = flattenUsage({
       inputTokens: 100,
@@ -168,8 +166,6 @@ describe("readTurnUsage", () => {
     });
   });
 
-  // A turn already in flight when the cache-accounting deploy lands echoes the
-  // older four-field shape. Rejecting it would zero a running turn's counter.
   it("accepts the pre-cache-accounting shape and defaults the new fields", () => {
     expect(
       readTurnUsage({ inputTokens: 10, outputTokens: 5, totalTokens: 15, postCount: 2 }),
@@ -183,8 +179,6 @@ describe("readTurnUsage", () => {
     });
   });
 
-  // extra_state round-trips through the browser — every one of these is
-  // reachable from the wire, and a throw here would kill the whole turn.
   for (const [label, input] of [
     ["null", null],
     ["a string", "12"],

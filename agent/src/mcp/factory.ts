@@ -1,5 +1,5 @@
 import { tool, type ToolSet, type StopCondition } from "ai";
-import type { AgentTool } from "../protocol/types.ts";
+import type { AgentTool, WidgetMcpLink } from "../protocol/types.ts";
 import { sanitizeMcpToolName, buildToolInputSchema } from "./schema.ts";
 import {
   WORKSPACE_BRIDGE_COMMAND_NAMES,
@@ -13,38 +13,29 @@ import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server.ts";
 export interface McpToolEntry {
   serverId: string;
   toolName: string;
+  serverToolName?: string;
   sanitizedName: string;
   description: string;
+}
+
+export function linkedToolName(
+  link: WidgetMcpLink | undefined,
+  entries: readonly McpToolEntry[],
+): string | undefined {
+  if (!link) return undefined;
+  return entries.find((entry) => entry.serverId === link.server_id && entry.serverToolName === link.tool_name)
+    ?.sanitizedName;
 }
 
 export interface McpToolsResult {
   toolSet: ToolSet;
   entries: McpToolEntry[];
-  /** The FINOS Workspace's own `get_widget_data` tool, when the request has it: how widgets are read (see workspace-widget-data.ts). */
   widgetDataEntry?: McpToolEntry;
-  /**
-   * Whether the request has tools of the FINOS Workspace's own server. The FINOS Workspace's tools are how the agent reads
-   * and changes the FINOS Workspace then, so it has no function calls of its own for the same (see `workspace-server.ts`).
-   */
   workspaceToolsOffered: boolean;
   stopCondition: StopCondition<ToolSet>;
   isMcpToolName: (name: string) => boolean;
 }
 
-/**
- * Drop user-supplied MCP wrappers whose name collides with a tool the
- * agent owns natively:
- *   - FINOS Workspace bridge commands (Path A native SSE; Path B wrappers exist
- *     only for Claude Desktop and must not double-register). Not `get_widget_data`:
- *     the FINOS Workspace's MCP tool of that name is how widgets are read, and the agent's
- *     own is only for a request that does not have it.
- *   - SQL family (in-process on the agent; closure on pendingTables).
- *
- * Match is suffix-based to tolerate workspace's server-slug prefixes
- * (e.g. "inesmcp_manage_dashboard" → "manage_dashboard").
- *
- * The FINOS Workspace's own tools are not wrappers of these: see `isOffered`.
- */
 function endsWithCanonical(toolName: string, canonical: ReadonlySet<string>): boolean {
   for (const cmd of canonical) {
     if (toolName === cmd || toolName.endsWith(`_${cmd}`)) return true;
@@ -61,13 +52,8 @@ function isAgentOwnedTool(toolName: string): boolean {
   );
 }
 
-/** What the FINOS Workspace's server has that the agent has its own tool for: skills are the agent's, with their catalog and round trip. */
 const AGENT_OWNED_WORKSPACE_TOOLS: ReadonlySet<string> = new Set(["get_skill_content"]);
 
-/**
- * Whether a tool of the request is registered. The FINOS Workspace's tools are, as those of any server, except the
- * agent's own.
- */
 function isOffered(agentTool: AgentTool): boolean {
   if (agentTool.server_id !== WORKSPACE_SERVER_ID) return !isAgentOwnedTool(agentTool.name);
   return !endsWithCanonical(agentTool.name, AGENT_OWNED_WORKSPACE_TOOLS);
@@ -77,7 +63,6 @@ export function makeMcpTools(agentTools: AgentTool[]): McpToolsResult {
   const toolSet: ToolSet = {};
   const entries: McpToolEntry[] = [];
   const usedNames = new Set<string>();
-  // The model reads widgets with the FINOS Workspace's `get_widget_data` (or else the first one of the request), under its own name.
   const widgetDataTool =
     agentTools.find((agentTool) => agentTool.server_id === WORKSPACE_SERVER_ID && isWidgetDataToolName(agentTool.name)) ??
     agentTools.find((agentTool) => isWidgetDataToolName(agentTool.name));
@@ -105,6 +90,7 @@ export function makeMcpTools(agentTools: AgentTool[]): McpToolsResult {
     const entry: McpToolEntry = {
       serverId: agentTool.server_id,
       toolName: agentTool.name,
+      ...(agentTool.tool_name ? { serverToolName: agentTool.tool_name } : {}),
       sanitizedName: sanitized,
       description,
     };

@@ -25,7 +25,6 @@ const formSchema = z.object({
 type TForm = z.infer<typeof formSchema>;
 
 interface Props extends ClosableDialogProps {
-  /** All currently-displayed (filtered) rows — exported when nothing is selected. */
   rows: App[];
   selectedRows: App[];
 }

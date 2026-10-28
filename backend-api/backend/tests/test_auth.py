@@ -1,24 +1,6 @@
-"""
-Integration tests for Authentication endpoints.
-
-Tests the real workspace flows using actual payloads from the frontend.
-No mocking of internal logic - tests hit the real database.
-
-Flow tested:
-1. Login with temp password: POST /app/login (the session is an HttpOnly cookie)
-2. Change password: PUT /user
-3. Logout: POST /logout
-4. Delete account: DELETE /user
-
-Additional tests:
-- 2FA/TOTP activation
-- OAuth error handling
-"""
-
 import os
 import sys
 
-# Add the backend directory to Python path
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
@@ -34,17 +16,9 @@ from api.auth_helpers import SESSION_COOKIE
 from api.models import User, Session as SessionModel, UserInvite
 
 
-# =============================================================================
-# FINOS Workspace Payloads - Exact payloads from the frontend
-# =============================================================================
-
-
 class WorkspacePayloads:
-    """Real payloads that the workspace frontend sends to the backend."""
-
     @staticmethod
     def login(email: str, password: str, version: str = "v3.3.0"):
-        """POST /app/login payload"""
         return {
             "email": email,
             "password": password,
@@ -56,16 +30,10 @@ class WorkspacePayloads:
 
     @staticmethod
     def change_password(old_password: str, new_password: str):
-        """PUT /user payload for password change"""
         return {
             "old_password": old_password,
             "new_password": new_password,
         }
-
-
-# =============================================================================
-# Helper Functions
-# =============================================================================
 
 
 async def cleanup_test_user(
@@ -73,7 +41,6 @@ async def cleanup_test_user(
     user_uuid: str | None = None,
     email: str | None = None,
 ):
-    """Clean up test user and related data"""
     if user_uuid:
         await db_session.execute(delete(SessionModel).where(SessionModel.user_uuid == user_uuid))
         await db_session.execute(delete(User).where(User.uuid == user_uuid))
@@ -83,47 +50,30 @@ async def cleanup_test_user(
     await db_session.commit()
 
 
-# =============================================================================
-# TEST: Login Endpoint
-# =============================================================================
-
-
 class TestAppLogin:
-    """Tests for POST /app/login endpoint (workspace login)"""
-
     @pytest.mark.asyncio
     async def test_login_missing_credentials(self, app_client):
-        """Login with empty payload should return 422"""
         response = await app_client.post("/app/login", json={})
         assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_login_missing_password(self, app_client):
-        """Login without password should return 422"""
         response = await app_client.post("/app/login", json={"email": "test@test.com"})
         assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_login_invalid_credentials(self, app_client):
-        """Login with nonexistent user should return 401"""
         response = await app_client.post(
             "/app/login", json=WorkspacePayloads.login("nonexistent@test.com", "WrongPassword123!")
         )
-        # /app/login returns 401 for nonexistent user
         assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_login_valid_credentials(self, app_client, db_session):
-        """Login with valid credentials should return 200 and set the session cookie,
-        with no token in the body
-
-        The user is a User of an organization: the default one.
-        """
         test_password = "TestPassword123!"
         test_user_uuid = str(uuid4())
         test_email = f"login_test_{uuid4().hex[:8]}@example.com"
 
-        # Create confirmed test user, a User of the default organization
         test_user = User(
             uuid=test_user_uuid,
             email=test_email,
@@ -150,8 +100,6 @@ class TestAppLogin:
 
     @pytest.mark.asyncio
     async def test_login_without_an_organization(self, app_client, db_session):
-        """A user in no organization (removed from theirs) is no user: the right password
-        is answered as an unknown account is, and no session starts."""
         test_password = "TestPassword123!"
         test_user_uuid = str(uuid4())
         test_email = f"login_test_{uuid4().hex[:8]}@example.com"
@@ -176,7 +124,6 @@ class TestAppLogin:
 
     @pytest.mark.asyncio
     async def test_login_unconfirmed_user(self, app_client, db_session):
-        """Login for an unconfirmed user of an organization returns 403"""
         test_password = "TestPassword123!"
         test_user_uuid = str(uuid4())
         test_email = f"unconfirmed_{uuid4().hex[:8]}@example.com"
@@ -200,45 +147,32 @@ class TestAppLogin:
 
     @pytest.mark.asyncio
     async def test_login_empty_email(self, app_client):
-        """Login with empty email should return 422"""
         response = await app_client.post("/app/login", json=WorkspacePayloads.login("", "password123"))
         assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_login_empty_password(self, app_client):
-        """Login with empty password should return 422"""
         response = await app_client.post("/app/login", json=WorkspacePayloads.login("test@test.com", ""))
         assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_login_sql_injection_attempt(self, app_client):
-        """Login should safely handle SQL injection attempts"""
         response = await app_client.post(
             "/app/login", json=WorkspacePayloads.login("test@test.com' OR '1'='1", "password' OR '1'='1")
         )
-        # Should return 404 (not found) or 422 (validation error), not 500
         assert response.status_code in {404, 422}
 
     @pytest.mark.asyncio
     async def test_login_xss_attempt(self, app_client):
-        """Login should safely handle XSS attempts"""
         response = await app_client.post(
             "/app/login", json=WorkspacePayloads.login("<script>alert('xss')</script>@test.com", "password123")
         )
         assert response.status_code in {404, 422}
 
 
-# =============================================================================
-# TEST: Logout Endpoint
-# =============================================================================
-
-
 class TestLogout:
-    """Tests for POST /app/logout endpoint"""
-
     @pytest.mark.asyncio
     async def test_logout_unauthenticated(self, client):
-        """Logout without auth should return 401 or 403"""
         response = await client.post("/app/logout")
         assert response.status_code in {401, 403}
         data = response.json()
@@ -246,7 +180,6 @@ class TestLogout:
 
     @pytest.mark.asyncio
     async def test_logout_authenticated(self, auth_client):
-        """Logout with valid session should return 200 with success=True"""
         response = await auth_client.post("/app/logout")
         assert response.status_code == 200
         data = response.json()
@@ -254,29 +187,19 @@ class TestLogout:
 
     @pytest.mark.asyncio
     async def test_logout_is_not_a_get(self, auth_client):
-        """Signing out changes state, so it is never a GET: there is no such route"""
         response = await auth_client.get("/app/logout")
         assert response.status_code in {404, 405}
         assert (await auth_client.get("/app/user")).status_code == 200
 
 
-# =============================================================================
-# TEST: User Profile Endpoints
-# =============================================================================
-
-
 class TestUserProfile:
-    """Tests for the /app/user endpoint"""
-
     @pytest.mark.asyncio
     async def test_get_user_unauthenticated(self, client):
-        """Getting user without auth should return 401 or 403"""
         response = await client.get("/app/user")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_get_user_authenticated(self, auth_client):
-        """Getting user with auth should return 200 with user data"""
         response = await auth_client.get("/app/user")
         assert response.status_code == 200
 
@@ -285,27 +208,17 @@ class TestUserProfile:
         assert "uuid" in data
         assert data["email"] == "testrunner@example.com"
 
-        # Should not expose sensitive fields
         assert "password" not in str(data).lower() or "password_hash" not in str(data)
 
 
-# =============================================================================
-# TEST: Password Change
-# =============================================================================
-
-
 class TestPasswordChange:
-    """Tests for password change via PUT /user"""
-
     @pytest.mark.asyncio
     async def test_change_password_unauthenticated(self, client):
-        """Password change without auth should return 401 or 403"""
         response = await client.put("/user", json=WorkspacePayloads.change_password("old", "new"))
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_change_password_wrong_old_password(self, app_client, db_session):
-        """Password change with wrong old password should fail"""
         test_password = "CorrectPassword123!"
         test_user_uuid = str(uuid4())
         test_email = f"pwchange_{uuid4().hex[:8]}@example.com"
@@ -322,12 +235,10 @@ class TestPasswordChange:
         await db_session.commit()
 
         try:
-            # Login first
             login_response = await app_client.post("/app/login", json=WorkspacePayloads.login(test_email, test_password))
             if login_response.status_code not in {200, 206}:
                 skip("Could not login for password change test")
 
-            # Try to change with wrong old password
             response = await app_client.put(
                 "/user", json=WorkspacePayloads.change_password("WrongOldPassword!", "NewPassword123!")
             )
@@ -336,42 +247,29 @@ class TestPasswordChange:
             await cleanup_test_user(db_session, user_uuid=test_user_uuid)
 
 
-# =============================================================================
-# TEST: 2FA / TOTP
-# =============================================================================
-
-
 class TestTwoFactorAuth:
-    """Tests for TOTP/2FA endpoints"""
-
     @pytest.mark.asyncio
     async def test_get_2fa_unauthenticated(self, client):
-        """Getting 2FA settings without auth should return 401 or 403"""
         response = await client.get("/app/2fa")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_generate_totp_unauthenticated(self, client):
-        """Generating TOTP without auth should return 401 or 403"""
         response = await client.post("/totp", json={})
         assert response.status_code in {401, 403, 422}
 
     @pytest.mark.asyncio
     async def test_activate_totp_unauthenticated(self, client):
-        """Activating TOTP without auth should return 401 or 403"""
         response = await client.post("/totp/activate", json={"totp_token": 123456})
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_activate_totp_without_secret(self, auth_client):
-        """Activating TOTP without generating secret first should return 400"""
         response = await auth_client.post("/totp/activate", json={"totp_token": 123456})
         assert response.status_code in {400, 401}
 
     @pytest.mark.asyncio
     async def test_activate_totp_wrong_code(self, auth_client):
-        """Activating TOTP with wrong code should return 401"""
-        # First generate a secret
         generate_response = await auth_client.post("/totp", json={})
         if generate_response.status_code == 200:
             response = await auth_client.post("/totp/activate", json={"totp_token": 0})
@@ -379,7 +277,6 @@ class TestTwoFactorAuth:
 
     @pytest.mark.asyncio
     async def test_totp_full_flow(self, app_client, db_session):
-        """Test complete TOTP activation: generate -> activate with valid code"""
         import pyotp
 
         test_user_uuid = str(uuid4())
@@ -398,21 +295,17 @@ class TestTwoFactorAuth:
         await db_session.commit()
 
         try:
-            # Login
             login_response = await app_client.post("/app/login", json=WorkspacePayloads.login(test_email, test_password))
             if login_response.status_code not in {200, 206}:
                 skip("Could not login for TOTP test")
 
-            # Generate TOTP secret
             generate_response = await app_client.post("/totp", json={})
             if generate_response.status_code == 200:
                 secret = generate_response.json()["secret"]
 
-                # Generate valid code
                 totp = pyotp.TOTP(secret)
                 valid_code = int(totp.now())
 
-                # Activate with valid code
                 activate_response = await app_client.post("/totp/activate", json={"totp_token": valid_code})
                 assert activate_response.status_code == 200
                 assert activate_response.json().get("success") is True
@@ -420,23 +313,14 @@ class TestTwoFactorAuth:
             await cleanup_test_user(db_session, user_uuid=test_user_uuid)
 
 
-# =============================================================================
-# TEST: User Deletion
-# =============================================================================
-
-
 class TestUserDeletion:
-    """Tests for DELETE /user endpoint"""
-
     @pytest.mark.asyncio
     async def test_delete_user_unauthenticated(self, client):
-        """Deleting user without auth should return 401 or 403"""
         response = await client.delete("/user")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_delete_user_full_flow(self, app_client, db_session):
-        """Test complete user deletion: create -> delete -> verify can't login"""
         test_user_uuid = str(uuid4())
         test_email = f"delete_{uuid4().hex[:8]}@example.com"
         test_password = "DeleteTestPassword123!"
@@ -453,86 +337,59 @@ class TestUserDeletion:
         await db_session.commit()
 
         try:
-            # Login
             login_response = await app_client.post("/app/login", json=WorkspacePayloads.login(test_email, test_password))
             if login_response.status_code not in {200, 206}:
                 skip("Could not login for delete test")
 
-            # Delete user
             delete_response = await app_client.delete("/user")
             assert delete_response.status_code == 200
             assert delete_response.json().get("success") is True
 
-            # Verify can't login anymore: a deleted account is like one that never existed
             login_again = await app_client.post("/app/login", json=WorkspacePayloads.login(test_email, test_password))
             assert login_again.status_code == 401
         finally:
-            # Cleanup any remaining sessions
             await db_session.execute(delete(SessionModel).where(SessionModel.user_uuid == test_user_uuid))
             await db_session.commit()
 
 
-# =============================================================================
-# TEST: OAuth Error Handling
-# =============================================================================
-
-
 class TestOAuthErrorHandling:
-    """Tests for OAuth endpoints error handling"""
-
     @pytest.mark.asyncio
     async def test_google_auth_missing_token(self, app_client):
-        """Google auth without token should return error"""
         response = await app_client.post("/app/google-auth", json={})
-        # 400/422 for missing token, 401 for auth error
         assert response.status_code in {400, 401, 422}
 
     @pytest.mark.asyncio
     async def test_google_auth_invalid_token(self, app_client):
-        """Google auth with invalid token should return error, not 500"""
         response = await app_client.post("/app/google-auth", json={"token": "invalid_token"})
         assert response.status_code in {400, 401, 422}
         assert response.status_code != 500
 
     @pytest.mark.asyncio
     async def test_microsoft_auth_missing_token(self, app_client):
-        """Microsoft auth without token should return error"""
         response = await app_client.post("/app/microsoft-auth", json={})
-        # 400/422 for missing token, 401 for auth error
         assert response.status_code in {400, 401, 422}
 
     @pytest.mark.asyncio
     async def test_oauth_sql_injection_attempt(self, app_client):
-        """OAuth should handle SQL injection safely"""
         response = await app_client.post("/app/google-auth", json={"token": "'; DROP TABLE users; --"})
         assert response.status_code in {400, 401, 422}
         assert response.status_code != 500
 
     @pytest.mark.asyncio
     async def test_oauth_no_token_leakage(self, app_client):
-        """OAuth error should not echo back the token"""
         test_token = "secret_test_token_12345"
         response = await app_client.post("/app/google-auth", json={"token": test_token})
         assert test_token not in response.text
 
 
-# =============================================================================
-# TEST: Session Validation
-# =============================================================================
-
-
 class TestSessionValidation:
-    """Tests for /app/validate endpoint"""
-
     @pytest.mark.asyncio
     async def test_validate_unauthenticated(self, client):
-        """Without a session, validate answers that there is none"""
         response = await client.get("/app/validate")
         assert response.status_code == 200
         assert response.json()["success"] is False
 
     @pytest.mark.asyncio
     async def test_validate_authenticated(self, auth_client):
-        """Validate with valid session should return 200"""
         response = await auth_client.get("/app/validate")
         assert response.status_code == 200

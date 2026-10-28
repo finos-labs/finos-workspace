@@ -7,16 +7,9 @@ import {
   type SideBarItems,
   useAppStore,
 } from "~/lib/state/app";
-import {
-  appItems,
-  makeTabData,
-  makeTicker,
-  makeTickerGroup,
-  makeWidget,
-} from "../../factories";
+import { appItems, makeParamGroup, makeTabData, makeWidget } from "../../factories";
 import { malformed, partial, required } from "../../mocks";
 
-/** What it takes to add a tab. */
 type NewTab = Parameters<AppState["addTab"]>[0];
 
 const sharedAppMocks = vi.hoisted(() => {
@@ -35,7 +28,6 @@ const sharedAppMocks = vi.hoisted(() => {
   return state;
 });
 
-// Mock all external dependencies
 vi.mock("~/api/dashboard.api", () => ({
   postDashboards: vi.fn().mockResolvedValue({}),
 }));
@@ -86,7 +78,6 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock triggerCustomEvent since it depends on DOM
 vi.mock("~/lib/utils/utils", async () => {
   const actual = await vi.importActual("~/lib/utils/utils");
   return {
@@ -97,7 +88,6 @@ vi.mock("~/lib/utils/utils", async () => {
   };
 });
 
-// Helper to create test items structure
 const createTestItems = (): Items => {
   const rootId = "root-id";
   const tabId = "tab-1";
@@ -126,8 +116,6 @@ const createTestItems = (): Items => {
             widgetId: "equity_profile",
             name: "Equity Profile",
             innerTab: "overview",
-            groupId: null,
-            data: { mainTicker: makeTicker() },
           }),
         ],
         gridLayout: {
@@ -152,7 +140,6 @@ const createTestItems = (): Items => {
 describe("useAppStore", () => {
   beforeEach(() => {
     sharedAppMocks.sharedDashboard = undefined;
-    // Reset store to initial state
     const items = createTestItems();
     useAppStore.setState({
       items,
@@ -240,7 +227,6 @@ describe("useAppStore", () => {
   describe("getRootTabs", () => {
     it("should return all tabs including nested in folders", () => {
       const items = createTestItems();
-      // Add a tab inside the folder
       const nestedTabId = "nested-tab";
       items["nested-tab"] = {
         index: nestedTabId,
@@ -344,9 +330,7 @@ describe("useAppStore", () => {
     });
 
     it("should unlock a tab", () => {
-      // First lock
       useAppStore.getState().setTabLocked("tab-1", true);
-      // Then unlock
       useAppStore.getState().setTabLocked("tab-1", false);
 
       const tab = useAppStore.getState().getTabById("tab-1");
@@ -428,7 +412,7 @@ describe("useAppStore", () => {
 
       const tab = useAppStore.getState().getTabById("tab-1");
       expect(tab?.data?.name).toBe("Updated Name");
-      expect(tab?.data?.templateId).toBe("custom"); // Should preserve other fields
+      expect(tab?.data?.templateId).toBe("custom");
     });
 
     it("should do nothing for non-existent tab", () => {
@@ -546,7 +530,6 @@ describe("useAppStore", () => {
       const items = createTestItems();
       const cloudItems = JSON.parse(JSON.stringify(items));
 
-      // Modify local items
       required(items["tab-1"].data).name = "Modified Name";
 
       useAppStore.setState({
@@ -582,7 +565,9 @@ describe("useAppStore", () => {
   describe("getWidgetsFromGroup", () => {
     it("should return widgets from a specific group", () => {
       const items = createTestItems();
-      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].paramGroups = {
+        region: "group-1",
+      };
       useAppStore.setState({ items });
 
       const widgets = useAppStore.getState().getWidgetsFromGroup("group-1", "tab-1");
@@ -601,8 +586,9 @@ describe("useAppStore", () => {
 
   describe("addGroup", () => {
     it("should add a group to a tab", () => {
-      const group = makeTickerGroup({
+      const group = makeParamGroup({
         id: "new-group",
+        groupById: "region",
         name: "Test Group",
         color: "#ff0000",
       });
@@ -616,10 +602,11 @@ describe("useAppStore", () => {
 
     it("should generate id if not provided", () => {
       const group = partial<Group>({
-        type: "ticker",
+        type: "param",
+        groupById: "region",
         name: "Test Group",
         color: "#ff0000",
-        value: { symbol: "AAPL", id: "AAPL" },
+        value: "north",
       });
 
       useAppStore.getState().addGroup("tab-1", group);
@@ -632,12 +619,12 @@ describe("useAppStore", () => {
 
   describe("deleteGroup", () => {
     it("should delete a group from a tab", () => {
-      // First add a group
       const items = createTestItems();
       required(items["tab-1"].data).groups = [
         partial<Group>({
           id: "group-1",
-          type: "ticker",
+          type: "param",
+          groupById: "region",
           name: "Group 1",
           color: "#ff0000",
           value: null,
@@ -656,47 +643,22 @@ describe("useAppStore", () => {
       required(items["tab-1"].data).groups = [
         partial<Group>({
           id: "group-1",
-          type: "ticker",
+          type: "param",
+          groupById: "region",
           name: "Group 1",
           color: "#ff0000",
           value: null,
         }),
       ];
-      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].paramGroups = {
+        region: "group-1",
+      };
       useAppStore.setState({ items });
 
       useAppStore.getState().deleteGroup("tab-1", "group-1");
 
       const tab = useAppStore.getState().getTabById("tab-1");
-      expect(tab?.data?.widgets?.[0].groupId).toBeNull();
-    });
-  });
-
-  describe("getWidgetGroup", () => {
-    it("should return the group for a widget", () => {
-      const items = createTestItems();
-      required(items["tab-1"].data).groups = [
-        partial<Group>({
-          id: "group-1",
-          type: "ticker",
-          name: "Group 1",
-          color: "#ff0000",
-          value: null,
-        }),
-      ];
-      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
-      useAppStore.setState({ items });
-
-      const group = useAppStore.getState().getWidgetGroup("tab-1", "widget-1");
-
-      expect(group).toBeDefined();
-      expect(group?.name).toBe("Group 1");
-    });
-
-    it("should return undefined when widget has no group", () => {
-      const group = useAppStore.getState().getWidgetGroup("tab-1", "widget-1");
-
-      expect(group).toBeUndefined();
+      expect(tab?.data?.widgets?.[0].paramGroups).toEqual({});
     });
   });
 
@@ -706,20 +668,24 @@ describe("useAppStore", () => {
       required(items["tab-1"].data).groups = [
         partial<Group>({
           id: "group-1",
-          type: "ticker",
+          type: "param",
+          groupById: "region",
           name: "Active Group",
           color: "#ff0000",
           value: null,
         }),
         partial<Group>({
           id: "group-2",
-          type: "ticker",
+          type: "param",
+          groupById: "region",
           name: "Inactive Group",
           color: "#00ff00",
           value: null,
         }),
       ];
-      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].paramGroups = {
+        region: "group-1",
+      };
       useAppStore.setState({ items });
 
       const activeGroups = useAppStore.getState().getAllTabActiveGroups("tab-1");
@@ -757,7 +723,6 @@ describe("useAppStore", () => {
 
   describe("getAllFoldersFlat", () => {
     it("should return all folders in a flat list", () => {
-      // Set up sidebar items
       const items = createTestItems();
       const sideBarItems = Object.entries(items).reduce<SideBarItems>(
         (acc, [key, item]) => {
@@ -831,13 +796,16 @@ describe("useAppStore", () => {
       required(items["tab-1"].data).groups = [
         partial<Group>({
           id: "group-1",
-          type: "ticker",
+          type: "param",
+          groupById: "region",
           name: "Group 1",
           color: "#ff0000",
           value: null,
         }),
       ];
-      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].paramGroups = {
+        region: "group-1",
+      };
       useAppStore.setState({ items });
 
       useAppStore.getState().removeWidget("tab-1", "widget-1");
@@ -854,15 +822,14 @@ describe("useAppStore", () => {
         widgetId: "equity_profile",
         name: "Updated Widget Name",
         innerTab: "overview",
-        groupId: null,
-        data: { mainTicker: { symbol: "MSFT", id: "MSFT" } },
+        data: { dataKey: "rows" },
       };
 
       useAppStore.getState().updateWidget("tab-1", partial(updatedWidget));
 
       const widget = useAppStore.getState().getTabWidgetById("tab-1", "widget-1");
       expect(widget?.name).toBe("Updated Widget Name");
-      expect(widget?.data?.mainTicker?.symbol).toBe("MSFT");
+      expect(widget?.data?.dataKey).toBe("rows");
     });
 
     it("should not fail for non-existent tab", () => {
@@ -902,7 +869,8 @@ describe("useAppStore", () => {
       required(items["tab-1"].data).groups = [
         partial<Group>({
           id: "group-1",
-          type: "ticker",
+          type: "param",
+          groupById: "region",
           name: "Group 1",
           color: "#ff0000",
           value: null,
@@ -910,8 +878,9 @@ describe("useAppStore", () => {
       ];
       useAppStore.setState({ items });
 
-      const group = makeTickerGroup({
+      const group = makeParamGroup({
         id: "group-1",
+        groupById: "region",
         name: "Group 1",
         color: "#ff0000",
         value: null,
@@ -919,7 +888,7 @@ describe("useAppStore", () => {
       useAppStore.getState().setWidgetGroupId("tab-1", "widget-1", group, false);
 
       const widget = useAppStore.getState().getTabWidgetById("tab-1", "widget-1");
-      expect(widget?.groupId).toBe("group-1");
+      expect(widget?.paramGroups).toEqual({ region: "group-1" });
     });
 
     it("should remove group from widget when remove is true", () => {
@@ -927,17 +896,21 @@ describe("useAppStore", () => {
       required(items["tab-1"].data).groups = [
         partial<Group>({
           id: "group-1",
-          type: "ticker",
+          type: "param",
+          groupById: "region",
           name: "Group 1",
           color: "#ff0000",
           value: null,
         }),
       ];
-      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].paramGroups = {
+        region: "group-1",
+      };
       useAppStore.setState({ items });
 
-      const group = makeTickerGroup({
+      const group = makeParamGroup({
         id: "group-1",
+        groupById: "region",
         name: "Group 1",
         color: "#ff0000",
         value: null,
@@ -945,7 +918,7 @@ describe("useAppStore", () => {
       useAppStore.getState().setWidgetGroupId("tab-1", "widget-1", group, true);
 
       const widget = useAppStore.getState().getTabWidgetById("tab-1", "widget-1");
-      expect(widget?.groupId).toBeNull();
+      expect(widget?.paramGroups).toEqual({});
     });
   });
 
@@ -955,7 +928,8 @@ describe("useAppStore", () => {
       required(items["tab-1"].data).groups = [
         partial<Group>({
           id: "group-1",
-          type: "ticker",
+          type: "param",
+          groupById: "region",
           name: "Group 1",
           color: "#ff0000",
           value: null,
@@ -968,8 +942,8 @@ describe("useAppStore", () => {
           value: "test",
         }),
       ];
-      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
       required(required(items["tab-1"].data).widgets)[0].paramGroups = {
+        region: "group-1",
         someParam: "group-2",
       };
       useAppStore.setState({ items });
@@ -989,7 +963,6 @@ describe("useAppStore", () => {
   describe("getMoveToTabs", () => {
     it("should return tabs available to move to", () => {
       const items = createTestItems();
-      // Add another tab
       items["tab-2"] = {
         index: "tab-2",
         children: [],
@@ -1007,7 +980,6 @@ describe("useAppStore", () => {
 
       const moveTabs = useAppStore.getState().getMoveToTabs("tab-1");
 
-      // Should include tab-2 and folder-1, but not tab-1 (current tab)
       expect(moveTabs.length).toBeGreaterThan(0);
     });
   });
@@ -1018,7 +990,8 @@ describe("useAppStore", () => {
       required(items["tab-1"].data).groups = [
         partial<Group>({
           id: "group-1",
-          type: "ticker",
+          type: "param",
+          groupById: "region",
           name: "Original Name",
           color: "#ff0000",
           value: null,
@@ -1026,8 +999,9 @@ describe("useAppStore", () => {
       ];
       useAppStore.setState({ items });
 
-      const updatedGroup = makeTickerGroup({
+      const updatedGroup = makeParamGroup({
         id: "group-1",
+        groupById: "region",
         name: "Updated Name",
         color: "#00ff00",
         value: null,
@@ -1114,10 +1088,8 @@ describe("useAppStore", () => {
     });
 
     it("should move tab to root when folderId is 'root'", () => {
-      // First move to folder
       useAppStore.getState().moveTabToFolder("folder-1", "tab-1", "");
 
-      // Then move to root
       useAppStore.getState().moveTabToFolder("root", "tab-1", "");
 
       const tab = useAppStore.getState().getTabById("tab-1");
@@ -1127,7 +1099,6 @@ describe("useAppStore", () => {
 
   describe("moveFolderToFolder", () => {
     it("should move folder to root", () => {
-      // Add nested folder first
       const items = createTestItems();
       items["nested-folder"] = {
         index: "nested-folder",
@@ -1269,7 +1240,6 @@ describe("useAppStore", () => {
     });
 
     it("should update existing tab if index already exists", () => {
-      // tab-1 already exists from createTestItems
       const updatedTab = {
         index: "tab-1",
         data: {
@@ -1350,7 +1320,6 @@ describe("useAppStore", () => {
         originalTab?.data?.widgets?.length || 0,
       );
 
-      // Widget IDs should be different
       const originalWidgetIds = originalTab?.data?.widgets?.map((w) => w.id) || [];
       const newWidgetIds = newTab?.data?.widgets?.map((w) => w.id) || [];
 
@@ -1367,18 +1336,20 @@ describe("useAppStore", () => {
     });
 
     it("should duplicate groups with new IDs", () => {
-      // Setup tab with a group
       const items = createTestItems();
       required(items["tab-1"].data).groups = [
         partial<Group>({
           id: "group-1",
-          type: "ticker",
+          type: "param",
+          groupById: "region",
           name: "Test Group",
           color: "#ff0000",
           value: null,
         }),
       ];
-      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].paramGroups = {
+        region: "group-1",
+      };
       useAppStore.setState({ items });
 
       const newTabId = useAppStore.getState().duplicateTab("tab-1");
@@ -1436,7 +1407,7 @@ describe("useAppStore", () => {
 
       expect(widgetId).toBeDefined();
       const tab = useAppStore.getState().getTabById("tab-1");
-      expect(tab?.data?.widgets?.length).toBe(2); // Original + new
+      expect(tab?.data?.widgets?.length).toBe(2);
     });
 
     it("should generate widget ID if not provided", async () => {
@@ -1502,7 +1473,7 @@ describe("useAppStore", () => {
       await useAppStore.getState().addWidgets("tab-1", partial(widgets));
 
       const tab = useAppStore.getState().getTabById("tab-1");
-      expect(tab?.data?.widgets?.length).toBe(3); // 1 original + 2 new
+      expect(tab?.data?.widgets?.length).toBe(3);
     });
 
     it("should return ID of last added widget", async () => {

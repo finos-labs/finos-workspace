@@ -14,7 +14,6 @@ import {
 import type { RoleSettings, RoleT } from "~/components/AdminRoles/types";
 import { required } from "../mocks";
 
-/** What a role lets its members do; a null limit is no limit. */
 const SETTINGS: RoleSettings = {
   sharing: "receive",
   copilot_calls_day: 100,
@@ -713,6 +712,31 @@ describe("Entity Roles API", () => {
       const result = await getEntityRoleActivityLog();
 
       expect(result[0].activityType).toBe("Update backend");
+    });
+
+    it("names a plugin grant in words", async () => {
+      vi.spyOn(apiClient, "get").mockResolvedValue({
+        data: [
+          {
+            uuid: "log-1",
+            created_at: "2024-01-15T10:30:00Z",
+            entity_uuid: "entity-uuid",
+            role_uuid: "role-uuid",
+            action: "assign" as const,
+            resource_type: "widget_plugin" as const,
+            resource_uuid: "resource-uuid",
+            performed_by_email: "admin@example.com",
+            details: { name: "test-chart", widget_id: "*" },
+            role_name: "Test Role",
+            details_msg: "Granted every widget of plugin 'test-chart'.",
+          },
+        ],
+      });
+
+      const [entry] = await getEntityRoleActivityLog();
+
+      expect(entry.activityType).toBe("Assign widget plugin");
+      expect(entry.detailsMsg).toBe("Granted every widget of plugin 'test-chart'.");
     });
 
     it("should handle null details_msg by converting to empty string", async () => {

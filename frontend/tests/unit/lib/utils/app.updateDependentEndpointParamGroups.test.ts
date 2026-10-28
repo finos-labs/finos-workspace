@@ -101,7 +101,7 @@ describe("updateDependentEndpointParamGroups", () => {
 
     expect(fetch).toHaveBeenCalledWith(
       "http://127.0.0.1:7779/options?field=market_key&event_ticker=KXPGATOUR-RBBCAN26&include_all=true",
-      { headers: {} },
+      { method: "GET", headers: {} },
     );
     expect(updateGroup).toHaveBeenCalledWith(
       "dashboard-1",
@@ -189,7 +189,7 @@ describe("updateDependentEndpointParamGroups", () => {
 
     expect(fetch).toHaveBeenCalledWith(
       "http://127.0.0.1:7779/options?field=event_ticker&category=Sports",
-      { headers: {} },
+      { method: "GET", headers: {} },
     );
     expect(updateGroup).not.toHaveBeenCalled();
     expect(groups[1].value).toBe("");
@@ -334,7 +334,7 @@ describe("updateDependentEndpointParamGroups", () => {
     expect(fetch).toHaveBeenNthCalledWith(
       2,
       "http://127.0.0.1:7779/options?field=market_key",
-      { headers: {} },
+      { method: "GET", headers: {} },
     );
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(groups[1].value).toBe("");

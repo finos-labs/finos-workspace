@@ -2,8 +2,6 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CodeSnippet from "~/components/CodeSnippet";
 
-// Global mocks
-
 vi.mock("~/components/CopyButton", () => ({
   __esModule: true,
   default: ({ text }: { text: string }) => (
@@ -12,7 +10,6 @@ vi.mock("~/components/CopyButton", () => ({
 }));
 
 describe("CodeSnippet Component", () => {
-  // Scoped mocks
   beforeEach(() => {
     vi.clearAllMocks();
     Object.assign(navigator, {

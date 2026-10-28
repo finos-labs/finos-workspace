@@ -1,15 +1,3 @@
-/**
- * Runs work that user input can make slow, big or endless in a process of its own.
- *
- * This process answers every user, and JavaScript, like the SQLite and the document parsers it calls, cannot
- * be interrupted while it runs: one query that never ends, or one crafted file that takes minutes to read,
- * would stop every other request. A worker thread is no help (stopping one does not stop it while it is
- * inside a native call: it goes on using a core for ever), so the work runs in a child process, which is
- * killed when its time is up and which holds no secrets of the agent's (it is given an empty environment).
- *
- * The child reads one JSON input from stdin and writes one JSON result (see isolate-child.ts).
- */
-
 import { spawn } from "node:child_process";
 import type { Readable } from "node:stream";
 import { getLogger, type Logger } from "@logtape/logtape";
@@ -33,12 +21,10 @@ export class IsolationError extends Error {
 const DEFAULT_MAX_OUTPUT_BYTES = 64 * 1024 * 1024;
 let maxWaiting = 64;
 
-// How many children run at once, and how many wait for their turn: the rest are refused, not queued for ever.
 let concurrency = Math.max(1, Number(process.env.INES_ISOLATED_CONCURRENCY) || 4);
 let running = 0;
 const waiting: Array<() => void> = [];
 
-/** For tests, and for an operator who knows the machine: how many children may run at once, and how many may wait. */
 export function setIsolationConcurrency(n: number, queue = 64): void {
   concurrency = Math.max(1, Math.floor(n));
   maxWaiting = Math.max(0, Math.floor(queue));
@@ -47,7 +33,7 @@ export function setIsolationConcurrency(n: number, queue = 64): void {
 async function takeSlot(): Promise<() => void> {
   const give = () => {
     const next = waiting.shift();
-    if (next) next(); // the slot goes straight to the one that waited
+    if (next) next();
     else running--;
   };
   if (running < concurrency) {
@@ -63,12 +49,9 @@ async function takeSlot(): Promise<() => void> {
 }
 
 export interface RunInChildOptions {
-  /** Longest the child may run, from the moment it starts. */
   timeoutMs: number;
   maxOutputBytes?: number;
-  /** For logs and metrics: what this work is. */
   label: string;
-  /** Where to say that the child died. Default: the agent's. */
   logger?: Logger;
 }
 
@@ -86,21 +69,14 @@ async function readCapped(stream: Readable, max: number, onTooMuch: () => void):
   return Buffer.concat(chunks).toString("utf8");
 }
 
-/**
- * Runs `script` (a file that calls `serveOnce`, see isolate-child.ts) with `input` and returns what it
- * answers. Throws IsolationError when it takes too long, dies, or says too much, and Error with the
- * child's own message when the work itself failed.
- */
 export async function runInChild<I, O>(script: string, input: I, options: RunInChildOptions): Promise<O> {
   const release = await takeSlot();
   const started = Date.now();
   let outcome: IsolationFailure | "ok" | "failed" = "failed";
   const proc = spawn(process.execPath, [script], {
     stdio: "pipe",
-    // Nothing of the agent's environment: not its keys, not its tokens.
     env: { PATH: process.env.PATH ?? "", NODE_ENV: "production", LOG_LEVEL: "error", LOG_FORMAT: "json" },
   });
-  // The exit code, or -1 when a signal ended the child (or it never started).
   const exited = new Promise<number>((resolve) => {
     proc.once("error", () => resolve(-1));
     proc.once("close", (code) => resolve(code ?? -1));
@@ -113,7 +89,6 @@ export async function runInChild<I, O>(script: string, input: I, options: RunInC
   const timer = setTimeout(() => kill("timeout"), options.timeoutMs);
 
   try {
-    // The child may end before it reads its input: its exit says why.
     proc.stdin.on("error", () => {});
     proc.stdin.end(JSON.stringify(input));
     const [stdout, stderr] = await Promise.all([
@@ -148,7 +123,6 @@ export async function runInChild<I, O>(script: string, input: I, options: RunInC
     return parsed.value as O;
   } finally {
     clearTimeout(timer);
-    // Whatever happened, nothing is left running.
     proc.kill(9);
     release();
     metrics.isolated.inc({ kind: outcome });

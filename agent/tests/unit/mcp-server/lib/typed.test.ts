@@ -16,7 +16,6 @@ describe("typed.ts — helpers", () => {
     expect(item.type).toBe("text");
     expect(item.text).toBe("hello");
     expect(JSON.parse(JSON.stringify({ rt: item.text })).rt).toBe("hello");
-    // explicit: text is NOT JSON
     expect(() => JSON.parse(item.text)).toThrow();
   });
 

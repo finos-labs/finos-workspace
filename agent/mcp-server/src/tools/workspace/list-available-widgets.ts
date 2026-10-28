@@ -1,10 +1,3 @@
-/**
- * list_available_widgets — enumerate widgets the user can place.
- *
- * Pure pass-through to the connected browser bridge. Mirrors
- * workspace_mcp/server.py:554.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";

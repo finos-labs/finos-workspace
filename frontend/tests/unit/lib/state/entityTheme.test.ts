@@ -1,13 +1,3 @@
-/**
- * Tests for the entityTheme Zustand store
- *
- * Tests the entity theme state management including:
- * - Light/dark theme settings storage
- * - Theme update operations
- * - Theme save operations with API calls
- * - App theme configuration (grouping palette)
- */
-
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -16,7 +6,6 @@ import {
   useEntityThemeStore,
 } from "~/lib/state/entityTheme";
 
-// Mock external dependencies
 vi.mock("~/api/admin.api", () => ({
   updateEntityThemeSettings: vi.fn().mockResolvedValue({}),
 }));
@@ -49,8 +38,6 @@ const createMockAppTheme = () => ({
 const createMockThemeSettings = (
   overrides: Partial<ThemeSettings> = {},
 ): ThemeSettings => {
-  // Only include keys that are explicitly set in overrides
-  // The implementation uses `in` operator, so we must not include keys we don't want to change
   return overrides as ThemeSettings;
 };
 

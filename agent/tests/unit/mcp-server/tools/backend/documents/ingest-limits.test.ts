@@ -1,8 +1,3 @@
-/**
- * What one document, one chat and one user may cost the document search: a crafted or enormous file is
- * refused with a reason, nothing is paid for it, and the server goes on.
- */
-
 import { describe, it, beforeEach, afterEach } from "node:test";
 import { expect } from "expect";
 import { MockEmbeddingModelV3 } from "ai/test";
@@ -24,7 +19,6 @@ import { makeZip } from "../../../../../helpers/make-zip.ts";
 
 let embedCalls = 0;
 let embeddedValues = 0;
-// What was embedded: the question of a search is one; the text of a document is the rest.
 let embeddedTexts: string[] = [];
 
 beforeEach(() => {
@@ -57,7 +51,6 @@ const ingest = (conversation: string, doc: { id: string; name: string; format: "
   });
 const errorOf = (res: Awaited<ReturnType<typeof ingest>>) => {
   const first = res.content[0].text;
-  // An error item is JSON; what could not be read among documents that could is a line of text.
   return first.startsWith("{") ? (JSON.parse(first).error?.message ?? first) : res.content.map((c) => c.text).join("\n");
 };
 
@@ -111,7 +104,6 @@ describe("what a chat may hold, checked before anything is paid for", () => {
     for (let i = 0; i < MAX_DOCS_PER_CHAT; i++) await upsertDocument("alice:full", tiny(`d${i}`));
     const res = await ingest("alice:full", { id: "one-more", name: "one-more.txt", format: "txt", bytes: "Some text to read." });
     expect(errorOf(res)).toContain("documents");
-    // The only thing embedded is the question of the search: not a word of the document.
     expect(embeddedTexts.some((t) => t.includes("Some text to read"))).toBe(false);
   });
 
@@ -133,17 +125,14 @@ describe("what a chat may hold, checked before anything is paid for", () => {
 describe("what a user may have read in an hour", () => {
   it("is limited, whichever chat the documents are in, and one user's use is not another's", async () => {
     process.env.INES_INGEST_CHUNKS_PER_HOUR = "3";
-    // Paragraphs of about 2,000 characters: each is a chunk of its own.
     const text = (n: number) =>
       Array.from({ length: n }, (_, i) => `${Array.from({ length: 300 }, (_, j) => `word${i}x${j}`).join(" ")}.`).join("\n\n");
     const first = await ingest("alice:c1", { id: "a", name: "a.txt", format: "txt", bytes: text(2) });
     expect(first.content[0].text).toContain("Hit 1");
     const spent = embeddedValues;
-    // Alice's next document, in another chat, goes over her hour's share: refused, and not embedded.
     const second = await ingest("alice:c2", { id: "b", name: "b.txt", format: "txt", bytes: text(12) });
     expect(errorOf(second)).toContain("limit");
     expect(embeddedValues).toBe(spent);
-    // Bob has his own.
     const bob = await ingest("bob:c1", { id: "c", name: "c.txt", format: "txt", bytes: text(1) });
     expect(bob.content[0].text).toContain("Hit 1");
   });

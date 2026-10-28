@@ -32,7 +32,7 @@ function isMultiSelect(selected: unknown): selected is ValueType[] {
 export type TSelectValues = {
   label: string;
   value: ValueType;
-  extraInfo?: { description: string; rightOfDescription: string };
+  extraInfo?: { description?: string; rightOfDescription?: string };
 };
 
 type AdvancedSelectProps<SelectedType = ValueType | ValueType[]> = {
@@ -308,8 +308,6 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
         return;
       }
 
-      // Option refreshes should not publish a cleared value. Dependent endpoint
-      // params are reset by the group cascade logic, not by dropdown loading.
       if (valueSet.isSubsetOf(currentValues)) return;
       valuesRef.current = values;
       elementRefs.current = {};
@@ -367,7 +365,6 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
         return selectedValue?.label || label;
       }
 
-      // For multi-select, show count or all selected labels
       const selectedValues = values.filter((v) => localSelected.includes(v.value));
       if (selectedValues.length > 1) return `${label} (${selectedValues.length})`;
 

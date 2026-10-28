@@ -79,7 +79,6 @@ describe("useWorkspaceBridgeStore", () => {
 
       await expect(useWorkspaceBridgeStore.persist.rehydrate()).resolves.not.toThrow();
 
-      // The store stays usable after the failed hydration.
       useWorkspaceBridgeStore.getState().connect();
       expect(useWorkspaceBridgeStore.getState().status).toBe("attempting");
     });

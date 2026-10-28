@@ -35,7 +35,7 @@ Don't reinvent these — FINOS Workspace handles them natively, no backend code 
 
 - **Layout & sizing** — drag/drop, resize, duplicate dashboards, folder organization.
 - **Auto-refresh** — dashboards refresh data automatically; per-widget `refetchInterval` overrides cadence.
-- **Parameter linking** — widgets in the same parameter Group share a value (one ticker drives all of them). Defined in `apps.json`. See `workspace://specs/apps-json` and `workspace://specs/layout-grid`.
+- **Parameter linking** — widgets in the same parameter Group share a value (one choice drives all of them). Defined in `apps.json`. See `workspace://specs/apps-json` and `workspace://specs/layout-grid`.
 - **Native content embeds** — users can drop PDFs, images, and spreadsheets onto a Dashboard. You don't need a widget for static content.
 - **Sharing & roles** — RBAC, share with team, self-hosted deployment.
 - **AI Agent over the dashboard** — the built-in agent already reads widgets via their metadata. You don't ship an agent to make widgets queryable.

@@ -1,16 +1,7 @@
-"""add microsoft_id
-
-Revision ID: 5c8f2e91d0a3
-Revises: 0003
-Create Date: 2026-07-17
-
-"""
-
 import sqlalchemy as sa
 
 from alembic import op  # type: ignore
 
-# revision identifiers, used by Alembic.
 revision = "5c8f2e91d0a3"
 down_revision = "0003"
 branch_labels = None

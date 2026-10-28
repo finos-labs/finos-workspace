@@ -22,7 +22,6 @@ type MockedAxiosMethod<T = unknown> = {
   mockRejectedValueOnce: (error: unknown) => void;
 };
 
-// Mock the apiClient
 vi.mock("~/api/api", () => ({
   apiClient: {
     get: vi.fn() as MockedAxiosMethod,

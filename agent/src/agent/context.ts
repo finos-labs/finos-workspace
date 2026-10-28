@@ -1,33 +1,7 @@
-/**
- * Request `context` consumption.
- *
- * FINOS Workspace forwards prior chat artifacts + widget snapshots as
- * `request.context: CopilotContextItem[]`. Each item has `{uuid, name,
- * description, metadata?, data?}` where `data.items[i]` carries `content` plus
- * `data_format.parse_as` ("table", "chart", "html", etc.). The agent splits
- * structured rows from free text so:
- *
- *  - Structured tables land in `pendingTables` under a sanitized synthetic
- *    name, giving the SQL family automatic access.
- *  - Free text is summarized into the system prompt so the model can quote
- *    or paraphrase without hallucinating.
- *
- * Detection rules (mirrors Ada's `_is_structured`):
- *  - `data_format.parse_as === "table"` → table
- *  - JSON array of objects in `content` → table
- *  - Anything else → text block
- */
-
 import { getLogger } from "../lib/logger.ts";
 
 const logger = getLogger(["app", "agent", "context"]);
 
-/**
- * Per-block cap on echoed context text. The workspace re-sends every prior
- * artifact's content as `request.context` on each turn — a rendered SVG html
- * artifact can be 15-100KB, which would otherwise land verbatim in the
- * prompt on every subsequent request in the chat.
- */
 export const CONTEXT_TEXT_BLOCK_MAX_CHARS = 8_000;
 
 function capText(text: string): string {
@@ -36,7 +10,6 @@ function capText(text: string): string {
 }
 
 export interface ContextTable {
-  /** Synthetic SQLite-safe table name. */
   name: string;
   rows: Record<string, unknown>[];
 }
@@ -109,7 +82,6 @@ export function splitContext(items: unknown): SplitContext {
             pushedAsTable = true;
           }
         } catch {
-          // not JSON — fall through to text
         }
       }
       if (!pushedAsTable) {

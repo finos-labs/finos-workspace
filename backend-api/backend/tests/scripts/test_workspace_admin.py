@@ -1,14 +1,9 @@
-"""The admin CLI (scripts/workspace_admin.py), run as an operator runs it inside the API
-container: each command through main(), on the database itself, with what it prints and
-its exit status. It sends no request to the API: its database work runs here on the
-test database's session.
-"""
-
 import asyncio
+import io
 import json
 import sys
 from urllib.parse import urlsplit
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import delete, select
@@ -16,14 +11,14 @@ from sqlalchemy import delete, select
 from api import auth_helpers, models
 from scripts import workspace_admin
 from tests.fixtures.base import _set_fk_checks
+from tests.fixtures.plugin_backends import backend_manifest
+from tests.fixtures.widget_plugins import write_package
 from utilities.config import settings
 from utilities.log_helpers import setup_logging, stdoutSink
 
 
 @pytest.fixture
 async def cli(db_session, monkeypatch, capsys):
-    """Runs a command and answers (exit status, stdout, stderr). The command runs in a
-    thread of its own, as on a terminal; its database work runs on the test session."""
     loop = asyncio.get_running_loop()
 
     async def run_on_the_test_session(action):
@@ -32,7 +27,6 @@ async def cli(db_session, monkeypatch, capsys):
         )
 
     monkeypatch.setattr(workspace_admin, "run", run_on_the_test_session)
-    # As when it runs as a command (python -m scripts.workspace_admin)
     workspace_admin.log_to_stderr()
     created: dict[str, list] = {"emails": [], "entities": []}
 
@@ -70,7 +64,6 @@ async def cli(db_session, monkeypatch, capsys):
 
 
 async def _entity(cli, tmp_path, **changes) -> str:
-    """A new entity, made with the CLI; its uuid."""
     config = tmp_path / f"entity-{uuid4().hex[:6]}.json"
     config.write_text(
         json.dumps(
@@ -100,7 +93,6 @@ async def _user(cli, entity_uuid: str, role: str = "user") -> tuple[str, dict]:
 
 
 async def _user_of_link(link: str):
-    """The user a password link was issued for, which uses it up."""
     return await auth_helpers.take_password_reset(urlsplit(link).fragment)
 
 
@@ -201,8 +193,6 @@ class TestUsers:
     async def test_the_link_is_printed_as_it_is_past_the_logs_redaction(
         self, cli, tmp_path, monkeypatch, capsys
     ):
-        # Outside the tests the app's stdout masks the value of every setting, APPURL's
-        # among them, which would hide the link's address
         entity_uuid = await _entity(cli, tmp_path)
         email = f"cli-{uuid4().hex[:8]}@example.com"
         cli.created["emails"].append(email)
@@ -237,7 +227,6 @@ class TestUsers:
         user = (
             await db_session.execute(select(models.User).where(models.User.email == email))
         ).scalar_one()
-        # The newer link replaces the one the user got when they were added
         assert await _user_of_link(created["link"]) is None
         assert await _user_of_link(json.loads(out)["link"]) == user.uuid
 
@@ -361,3 +350,153 @@ class TestProvisioning:
         assert status == 1
         assert "Entity missing required field: admin_email" in out
         assert "User (users #0) missing field: first_name" in out
+
+
+@pytest.fixture
+async def plugin_cli(cli, plugins_dir, db_session):
+    cli.roles = []  # type: ignore[attr-defined]
+    yield cli
+    await db_session.execute(
+        delete(models.RoleWidgetPlugin).where(models.RoleWidgetPlugin.role_uuid.in_(cli.roles))
+    )
+    await db_session.execute(
+        delete(models.AuditEntityRolesPermissions).where(
+            models.AuditEntityRolesPermissions.role_uuid.in_(cli.roles)
+        )
+    )
+    await db_session.execute(delete(models.Role).where(models.Role.uuid.in_(cli.roles)))
+    await db_session.execute(delete(models.WidgetPlugin))
+    await db_session.commit()
+
+
+async def _approved(plugin_cli, plugins_dir, data=None) -> None:
+    write_package(plugins_dir, data)
+    assert (await plugin_cli("plugin", "rescan"))[0] == 0
+    status, _, err = await plugin_cli(
+        "plugin", "approve", "test-chart", "1.0.0", "--acknowledge"
+    )
+    assert status == 0, err
+
+
+class TestWidgetPlugins:
+    @pytest.mark.asyncio
+    async def test_a_version_is_reviewed_then_approved(self, plugin_cli, plugins_dir):
+        write_package(plugins_dir)
+
+        status, out, _ = await plugin_cli("plugin", "rescan", "--json")
+        assert status == 0
+        assert "test-chart" in json.dumps(json.loads(out))
+
+        status, out, err = await plugin_cli("plugin", "approve", "test-chart", "1.0.0")
+        assert status == 1
+        assert "+ " in out and "Nothing approved" in err
+
+        status, out, _ = await plugin_cli(
+            "plugin", "approve", "test-chart", "1.0.0", "--acknowledge"
+        )
+        assert status == 0
+        assert "✓ test-chart 1.0.0 approved and active" in out
+
+        status, out, _ = await plugin_cli("plugin", "list")
+        assert (status, out.split(" | ")[:3]) == (0, ["test-chart", "enabled", "active 1.0.0"])
+
+    @pytest.mark.asyncio
+    async def test_approving_is_one_action(self, plugin_cli, plugins_dir, monkeypatch):
+        write_package(plugins_dir)
+        await plugin_cli("plugin", "rescan")
+        actions = []
+        run = workspace_admin.run
+
+        async def counted(action):
+            actions.append(action)
+            return await run(action)
+
+        monkeypatch.setattr(workspace_admin, "run", counted)
+        status, _, err = await plugin_cli("plugin", "approve", "test-chart", "1.0.0", "--acknowledge")
+
+        assert status == 0, err
+        assert len(actions) == 1
+
+    @pytest.mark.asyncio
+    async def test_a_digest_that_differs_stops_the_approval(self, plugin_cli, plugins_dir):
+        write_package(plugins_dir)
+        await plugin_cli("plugin", "rescan")
+
+        status, _, err = await plugin_cli(
+            "plugin", "approve", "test-chart", "1.0.0", "--acknowledge", "--digest", "sha256-x"
+        )
+
+        assert status == 1
+        assert "not the ones you checked" in err
+
+    @pytest.mark.asyncio
+    async def test_an_entity_enables_it_and_a_role_grants_it(
+        self, plugin_cli, plugins_dir, db_session, tmp_path
+    ):
+        await _approved(plugin_cli, plugins_dir)
+        entity = UUID(await _entity(plugin_cli, tmp_path))
+        role = models.Role(uuid=uuid4(), name="CLI plugin users", description="", entity_uuid=entity)
+        db_session.add(role)
+        await db_session.commit()
+        plugin_cli.roles.append(role.uuid)
+
+        status, out, _ = await plugin_cli("plugin", "enable", "test-chart", "--entity", str(entity))
+        assert (status, out.strip()) == (0, f"✓ test-chart enabled in organization {entity}")
+        status, out, _ = await plugin_cli("plugin", "grant", "test-chart", "--role", str(role.uuid))
+        assert (status, out.strip()) == (
+            0,
+            f"✓ test-chart (every widget) granted to role {role.uuid}",
+        )
+        grants = (
+            await db_session.execute(
+                select(models.RoleWidgetPlugin.widget_id).where(
+                    models.RoleWidgetPlugin.role_uuid == role.uuid
+                )
+            )
+        ).scalars().all()
+        assert grants == ["*"]
+
+        status, out, _ = await plugin_cli("plugin", "show", "test-chart", "--json")
+        shown = json.loads(out)
+        assert [e["entity_uuid"] for e in shown["entities"] if e["enabled"]] == [str(entity)]
+
+        assert (await plugin_cli("plugin", "ungrant", "test-chart", "--role", str(role.uuid)))[0] == 0
+        assert (await plugin_cli("plugin", "disable", "test-chart", "--all"))[0] == 0
+        status, out, _ = await plugin_cli("plugin", "show", "test-chart", "--json")
+        assert [e for e in json.loads(out)["entities"] if e["enabled"]] == []
+
+    @pytest.mark.asyncio
+    async def test_revoke_and_restore(self, plugin_cli, plugins_dir):
+        await _approved(plugin_cli, plugins_dir)
+
+        assert (await plugin_cli("plugin", "revoke", "test-chart"))[1].strip() == "✓ test-chart revoked"
+        status, out, _ = await plugin_cli("plugin", "show", "test-chart", "--json")
+        assert json.loads(out)["status"] == "revoked"
+        assert (await plugin_cli("plugin", "restore", "test-chart"))[1].strip() == "✓ test-chart restored"
+
+    @pytest.mark.asyncio
+    async def test_a_secret_is_read_from_standard_input_and_never_shown(
+        self, plugin_cli, plugins_dir, db_session, monkeypatch
+    ):
+        write_package(plugins_dir, backend_manifest())
+        await plugin_cli("plugin", "rescan")
+        monkeypatch.setattr(sys, "stdin", io.StringIO("cli-secret-value\n"))
+
+        status, out, err = await plugin_cli("plugin", "secret", "set", "test-chart", "api_key")
+
+        assert (status, out.strip()) == (0, "✓ Secret api_key of test-chart set")
+        [row] = (await db_session.execute(select(models.WidgetPluginSecret))).scalars().all()
+        assert row.value == {"value": "cli-secret-value"}
+        status, out, _ = await plugin_cli("plugin", "show", "test-chart")
+        assert "cli-secret-value" not in out + err
+        assert "Secret api_key: set at" in out
+
+        assert (await plugin_cli("plugin", "secret", "clear", "test-chart", "api_key"))[0] == 0
+        assert (await db_session.execute(select(models.WidgetPluginSecret))).scalars().all() == []
+
+    @pytest.mark.asyncio
+    async def test_a_refusal_says_why(self, plugin_cli):
+        status, _, err = await plugin_cli("plugin", "show", "no-such-plugin")
+
+        assert status == 1
+        assert err.startswith("✗ Error (404)")

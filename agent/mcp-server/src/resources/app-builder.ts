@@ -1,15 +1,3 @@
-/**
- * App-builder MCP resource catalog.
- *
- * Direct port of workspace_mcp/app_builder/resources.py:40-220. Each entry
- * binds an `workspace://...` URI to a markdown file shipped under
- * `mcp-server/src/resources/app-builder/`.
- *
- * The 16 markdown files (~84 KB total) are eager-loaded at boot since they
- * are static + small. Each `read` returns the cached body — no per-request
- * IO unless we someday move to dynamic content.
- */
-
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";

@@ -1,5 +1,3 @@
-"""App-builder knowledge resources for FINOS Workspace MCP."""
-
 from workspace_mcp.app_builder.resources import (
     AppBuilderResource,
     app_builder_resources,

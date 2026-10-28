@@ -106,18 +106,15 @@ describe("AddPromptDialog", () => {
   it("clears the form when reopened via Add Prompt after editing", async () => {
     render(<AddPromptDialog />);
 
-    // Open in edit mode
     act(() => {
       usePromptLibraryStore.getState().setEditingPromptId(promptA.id);
       usePromptLibraryStore.getState().setAddPromptDialogOpen(true);
     });
     expect(await screen.findByTestId("prompt-textarea")).toHaveValue("Old prompt text");
 
-    // Close the dialog
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByTestId("base-dialog")).not.toBeInTheDocument();
 
-    // Reopen via "Add Prompt" (no prompt being edited)
     act(() => {
       usePromptLibraryStore.getState().setAddPromptDialogOpen(true);
     });

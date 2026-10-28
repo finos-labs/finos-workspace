@@ -5,8 +5,6 @@ import {
   useSkillSuggestions,
 } from "~/components/AI/hooks/useSkillSuggestions";
 
-// --- Mocks ---
-
 const mockSkills = [
   {
     id: "skill-1",
@@ -41,15 +39,12 @@ vi.mock("~/lib/state/skillsLibrary", () => ({
     mockUseShallowSkillsLibraryStore(selector),
 }));
 
-/** The skills that come with the selected agent, as its /agents.json lists them. */
 let agentSkills: { slug: string; description: string }[] | undefined;
 
 vi.mock("~/lib/state/copilot", () => ({
   useShallowCopilotStore: (selector: (state: unknown) => unknown) =>
     selector({ selectedCopilot: { id: "default-copilot", skills: agentSkills } }),
 }));
-
-// --- Tests ---
 
 describe("useSkillSuggestions", () => {
   beforeEach(() => {
@@ -186,7 +181,6 @@ describe("useSkillSuggestions", () => {
     it("performs fuzzy matching", () => {
       const { result } = renderHook(() => useSkillSuggestions());
 
-      // "finan" should fuzzy match "financial-analysis"
       const suggestions = result.current.searchSkills("/finan");
 
       expect(suggestions.length).toBeGreaterThanOrEqual(1);
@@ -240,7 +234,12 @@ describe("useSkillSuggestions", () => {
 
       const last = result.current.skillOptions.at(-1);
       expect(result.current.skillOptions).toHaveLength(mockSkills.length + 1);
-      expect(last).toMatchObject({ type: "skill", slug: "html-chart", description: "Chart colors", content: "" });
+      expect(last).toMatchObject({
+        type: "skill",
+        slug: "html-chart",
+        description: "Chart colors",
+        content: "",
+      });
       expect(last?.slashText).toBe("/skill:html\u2011chart");
     });
 
@@ -248,20 +247,24 @@ describe("useSkillSuggestions", () => {
       agentSkills = [{ slug: "report-generator", description: "The agent's reports" }];
       const { result } = renderHook(() => useSkillSuggestions());
 
-      const reports = result.current.skillOptions.filter((s) => s.slug === "report-generator");
+      const reports = result.current.skillOptions.filter(
+        (s) => s.slug === "report-generator",
+      );
       expect(reports).toHaveLength(1);
       expect(reports[0].content).toContain("# Report Generator");
     });
 
     it("are there when the user has no skills of their own", () => {
-      mockUseShallowSkillsLibraryStore.mockImplementation((selector: (state: { skills: [] }) => unknown) =>
-        selector({ skills: [] }),
+      mockUseShallowSkillsLibraryStore.mockImplementation(
+        (selector: (state: { skills: [] }) => unknown) => selector({ skills: [] }),
       );
       agentSkills = [{ slug: "html-report", description: "HTML reports" }];
       const { result } = renderHook(() => useSkillSuggestions());
 
       expect(result.current.hasSkills).toBe(true);
-      expect(result.current.searchSkills("/skill:html").map((s) => s.slug)).toEqual(["html-report"]);
+      expect(result.current.searchSkills("/skill:html").map((s) => s.slug)).toEqual([
+        "html-report",
+      ]);
     });
   });
 });

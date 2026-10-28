@@ -1,30 +1,3 @@
-"""Multi-user FINOS Workspace MCP load simulator against the LIVE local stack (http://localhost:8001).
-
-Spins up N simulated users that concurrently:
-  * GET  /app/dash/validate-and-sync      ("validate and sync" — heavy DB read)
-  * POST /app/dash/sync                    (save a dashboard — DB write, round-trips real content)
-  * POST /mcp  get_workspace_snapshot      (command through the MCP bridge -> browser WS)
-  * POST /mcp  update_widget_layout        ("move things around" through the bridge)
-
-A single shared browser WebSocket (the "open FINOS Workspace tab") auto-answers bridge commands.
-Throughout the run it samples /metrics and reports how the DB pool / thread pool / event-loop
-lag move under load, plus per-action throughput and latency.
-
-Usually launched via run_stress.sh (which brings up the stack first). To run directly against an
-already-running stack:
-    BASE_URL=http://localhost:8001 USERS=20 DURATION=20 python tests/stress/load_simulator.py
-
-Config via env: BASE_URL, ORIGIN, USERS, DURATION, RAMP, MCP_USERS, API_MCP, ADMIN_EMAIL,
-ADMIN_PASSWORD, THINK_MIN, THINK_MAX. See tests/stress/README.md.
-
-The simulated users are the web app: they sign in for the session cookie and send it with
-the web app's client header and an origin from the stack's BACKEND_CORS_ORIGINS (ORIGIN).
-
-NOTE: in single-process dev (uvicorn --reload, WORKERS=1) MCP commands take the bridge's
-local fast path; the redis publish/reply path only fires with WORKERS>1. Session/presence
-redis writes and all DB/thread-pool load are exercised either way.
-"""
-
 import asyncio
 import json
 import os
@@ -37,11 +10,8 @@ from collections import defaultdict
 import aiohttp
 
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8001")
-# The web app's origin, one of the stack's BACKEND_CORS_ORIGINS
 ORIGIN = os.environ.get("ORIGIN", "http://localhost:3000")
 SESSION_COOKIE = "__Host-ws_session"
-# The stack's service token: with RATE_LIMIT_EXEMPT_ENABLED (the stress overlay sets it) the
-# simulated users, who share one address, skip rate limiting
 SERVICE_TOKEN = os.environ.get("WORKSPACE_AUTH_TOKEN", "")
 USERS = int(os.environ.get("USERS", "12"))
 DURATION = float(os.environ.get("DURATION", "30"))
@@ -51,20 +21,16 @@ THINK_MIN = float(os.environ.get("THINK_MIN", "0.2"))
 THINK_MAX = float(os.environ.get("THINK_MAX", "1.0"))
 RAMP = float(
     os.environ.get("RAMP", "5")
-)  # stagger user arrivals over this many seconds
-# Experiment knobs: hold API load fixed (USERS) and optionally add a separate pool of MCP-only
-# hammerers (MCP_USERS) to measure MCP's impact on the main API. API_MCP=0 makes the API users
-# pure-API (no MCP in their mix) so the comparison is clean.
+)
 MCP_USERS = int(os.environ.get("MCP_USERS", "0"))
 API_MCP = os.environ.get("API_MCP", "1") != "0"
 MCP_ACTIONS = {"mcp_snapshot", "mcp_move"}
 SAMPLE_INTERVAL = float(os.environ.get("SAMPLE_INTERVAL", "0.25"))
 
 
-# Action mix (weights). Tune to taste.
 ACTIONS = [
     ("validate_and_sync", 4),
-    ("sync_save", 6),  # POST /app/dash/sync — the big "how we save", called often
+    ("sync_save", 6),
     ("api_source", 2),
     ("apps", 2),
     ("shared", 2),
@@ -74,7 +40,6 @@ ACTIONS = [
     ("mcp_move", 2),
 ]
 
-# Authenticated GET reads (the web app's session). action -> path.
 GET_PATHS = {
     "validate_and_sync": "/app/dash/validate-and-sync",
     "api_source": "/app/data-connectors/api-source",
@@ -83,7 +48,6 @@ GET_PATHS = {
     "resource_permissions": "/app/resource-permissions",
 }
 
-# Anchored to line start (re.M) so the `# HELP/# TYPE` comment lines are never matched.
 _GAUGE_PATTERNS = {
     "pool_checked_out": re.compile(
         r'^db_pool_connections\{engine="([^"]+)",state="checked_out"\}\s+([0-9.eE+-]+)$',
@@ -118,7 +82,6 @@ class Stats:
 
 
 def web(session_token: str) -> dict[str, str]:
-    """The headers of a web app request with this session."""
     headers = {
         "Cookie": f"{SESSION_COOKIE}={session_token}",
         "X-Workspace-Client": "web",
@@ -130,7 +93,6 @@ def web(session_token: str) -> dict[str, str]:
 
 
 async def login(session: aiohttp.ClientSession) -> str:
-    """Signs in as the web app and returns the session cookie's value."""
     async with session.post(
         f"{BASE_URL}/app/login",
         headers={"X-Workspace-Client": "web", "Origin": ORIGIN},
@@ -174,7 +136,6 @@ async def fetch_dashboards(
 async def provision_user_dashboards(
     session: aiohttp.ClientSession, access_token: str, base_content: dict, n: int
 ) -> list[str]:
-    """Create one dashboard per user so saves don't contend on the same rows."""
     auth = web(access_token)
     uuids = [str(uuidlib.uuid4()) for _ in range(n)]
 
@@ -206,7 +167,6 @@ async def cleanup_dashboards(
 async def start_bridge_browser(
     session: aiohttp.ClientSession, access_token: str, stop: asyncio.Event
 ):
-    """Open a bridge session + WebSocket and auto-answer command_requests like the FINOS Workspace UI."""
     async with session.post(
         f"{BASE_URL}/app/workspace-mcp/bridge/session/start",
         headers=web(access_token),
@@ -215,7 +175,6 @@ async def start_bridge_browser(
         body = await resp.json()
     ws_url = body["websocket_url"]
 
-    # The socket is admitted by the session cookie and the web app's origin
     ws = await session.ws_connect(
         ws_url,
         heartbeat=20,
@@ -301,9 +260,8 @@ async def user_loop(
     allowed: set[str] | None = None,
     do_validate: bool = True,
 ):
-    await asyncio.sleep(ramp_delay)  # staggered arrival, not a thundering herd
+    await asyncio.sleep(ramp_delay)
     auth = web(access_token)
-    # validate-and-sync is the once-per-session "dashboard open" call; do it once then work.
     rotation = [
         (a, w)
         for a, w in ACTIONS
@@ -371,7 +329,7 @@ async def user_loop(
                     "update_widget_layout",
                     {"x": 0, "y": 2, "w": 20, "h": 8, "widget_id": "sim-widget"},
                 )
-        except Exception as exc:  # noqa: BLE001 - count transport failures, keep the loop alive
+        except Exception as exc:  # noqa: BLE001
             status = type(exc).__name__
         stats.record(action, (time.perf_counter() - start) * 1000, ok, status, detail)
         await asyncio.sleep(random.uniform(THINK_MIN, THINK_MAX))
@@ -437,7 +395,7 @@ async def main():
             start_bridge_browser(session, access_token, stop)
         )
         metrics_task = asyncio.create_task(sample_metrics(session, stop))
-        await asyncio.sleep(0.5)  # let the browser connect + first metrics sample land
+        await asyncio.sleep(0.5)
 
         api_allowed = (
             None if API_MCP else {a for a, _ in ACTIONS if a not in MCP_ACTIONS}

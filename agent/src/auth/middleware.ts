@@ -1,11 +1,3 @@
-/**
- * Signs every caller of /v1/* in with the FINOS Workspace API, and says who they are to the routes.
- *
- * The browser sends the user's session token as a bearer token; the FINOS Workspace API is the only one
- * that can say whose it is. The X-User-Id header the web app also sends is not used: a client could
- * put anything in it.
- */
-
 import { createHash } from "node:crypto";
 import type { MiddlewareHandler } from "hono";
 import { getLogger, withContext } from "../lib/logger.ts";
@@ -17,7 +9,6 @@ import type { WorkspaceClient } from "./workspace-client.ts";
 
 const audit = getLogger(["audit"]);
 
-/** The person making a request. `token` is their session token, kept only to speak for them to the FINOS Workspace API. */
 export interface Principal {
   userId: string;
   token: string;
@@ -25,7 +16,6 @@ export interface Principal {
 
 export interface Services {
   config: ServerConfig;
-  /** Null without workspace auth: nobody to ask, and nothing to count. */
   workspace: WorkspaceClient | null;
   limits: Limits;
   store: Store;
@@ -40,26 +30,13 @@ export const ANONYMOUS: Principal = { userId: "anonymous", token: "" };
 export interface AuthCache {
   get(token: string): Promise<string | null>;
   set(token: string, userId: string): Promise<void>;
-  /** Whether the FINOS Workspace turned this token down a moment ago. */
   rejected(token: string): Promise<boolean>;
-  /** Remembers that the FINOS Workspace turned this token down. */
   reject(token: string): Promise<void>;
 }
 
-/** How long a token the FINOS Workspace turned down is not asked about again. */
 const REJECTED_SECONDS = 10;
-/** The longest bearer token that is asked about: a session token is a few hundred characters. */
 const MAX_TOKEN_CHARS = 4096;
 
-/**
- * Remembers who a token belongs to for a few seconds, so that a chat's tool round trips do not each ask the API,
- * and which tokens were turned down, so that a client that sends the same wrong token over and over does not
- * make the agent ask the API each time.
- *
- * It lives in the store (src/lib/store.ts), so with Redis one replica's answer saves every other replica
- * the same question. The token itself is never a key: what is stored is its SHA-256, so a dump of the
- * store is not a list of session tokens.
- */
 export function createAuthCache(store: Store, ttlSeconds: number): AuthCache {
   const keyOf = (token: string) => createHash("sha256").update(token).digest("base64url");
   const signedIn = (token: string) => `auth:${keyOf(token)}`;
@@ -89,7 +66,6 @@ function bearerToken(header: string | undefined): string | null {
   return match ? match[1] : null;
 }
 
-/** Puts the services on the context for every route. */
 export function servicesMiddleware(services: Services): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
     c.set("services", services);
@@ -99,13 +75,6 @@ export function servicesMiddleware(services: Services): MiddlewareHandler<AppEnv
 
 type SignIn = Awaited<ReturnType<WorkspaceClient["getUser"]>> | { ok: false; reason: "busy" };
 
-/**
- * Asks the FINOS Workspace API who a token belongs to, for callers the cache does not know. Anyone can send a request with
- * any token, so what the API is asked is bounded: one question for the same token however many requests carry it
- * at once, and at most `maxConcurrent` questions under way (some more wait, the rest are told the agent is busy).
- * Without that, a flood of requests with made-up tokens is a flood of requests to the API, which slows the
- * sign-in of everyone else.
- */
 export function createSignIn(
   workspace: WorkspaceClient,
   { maxConcurrent = 32, maxWaiting = 256 }: { maxConcurrent?: number; maxWaiting?: number } = {},
@@ -117,7 +86,7 @@ export function createSignIn(
   async function ask(token: string): Promise<SignIn> {
     if (running >= maxConcurrent) {
       if (waiting.length >= maxWaiting) return { ok: false, reason: "busy" };
-      await new Promise<void>((resolve) => waiting.push(resolve)); // the place of the one that ended is handed over
+      await new Promise<void>((resolve) => waiting.push(resolve));
     } else {
       running++;
     }

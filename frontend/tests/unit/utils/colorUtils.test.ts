@@ -48,7 +48,6 @@ describe("hexToRgb", () => {
 
   describe("3-digit hex colors (shorthand)", () => {
     it("should return null for 3-digit hex (not supported by current implementation)", () => {
-      // The current regex only matches 6-digit hex
       expect(hexToRgb("#fff")).toBe(null);
       expect(hexToRgb("#f00")).toBe(null);
       expect(hexToRgb("abc")).toBe(null);
@@ -148,13 +147,11 @@ describe("rgbToHex", () => {
 
   describe("edge cases with out-of-range values", () => {
     it("should produce unexpected results for negative values (no clamping)", () => {
-      // Note: the function doesn't validate/clamp inputs
       const result = rgbToHex(-1, 0, 0);
       expect(typeof result).toBe("string");
     });
 
     it("should produce unexpected results for values > 255 (no clamping)", () => {
-      // Note: the function doesn't validate/clamp inputs
       const result = rgbToHex(256, 0, 0);
       expect(typeof result).toBe("string");
     });
@@ -188,7 +185,6 @@ describe("adjustBrightness", () => {
 
     it("should lighten colors proportionally", () => {
       const result = adjustBrightness("#808080", 50);
-      // 128 + (255 - 128) * 0.5 = 128 + 63.5 = 191.5 -> 192
       expect(hexToRgb(result)).toEqual({ r: 192, g: 192, b: 192 });
     });
 
@@ -214,7 +210,6 @@ describe("adjustBrightness", () => {
 
     it("should darken colors proportionally", () => {
       const result = adjustBrightness("#808080", -50);
-      // 128 * (1 - 0.5) = 64
       expect(hexToRgb(result)).toEqual({ r: 64, g: 64, b: 64 });
     });
 
@@ -267,7 +262,6 @@ describe("adjustBrightness", () => {
 
   describe("color clamping", () => {
     it("should clamp values between 0 and 255", () => {
-      // Even with extreme values, result should be valid
       const lightened = adjustBrightness("#ffffff", 200);
       const rgb = hexToRgb(lightened);
       expect(rgb?.r).toBeLessThanOrEqual(255);
@@ -300,7 +294,6 @@ describe("createColorVariants", () => {
     it("should create lighter variant with 30% brightness increase", () => {
       const variants = createColorVariants("#808080");
       const lighterRgb = hexToRgb(variants.lighter);
-      // 128 + (255 - 128) * 0.3 = 128 + 38.1 = 166
       expect(lighterRgb?.r).toBe(166);
       expect(lighterRgb?.g).toBe(166);
       expect(lighterRgb?.b).toBe(166);
@@ -309,7 +302,6 @@ describe("createColorVariants", () => {
     it("should create darker variant with 30% brightness decrease", () => {
       const variants = createColorVariants("#808080");
       const darkerRgb = hexToRgb(variants.darker);
-      // 128 * 0.7 = 89.6 -> 90
       expect(darkerRgb?.r).toBe(90);
       expect(darkerRgb?.g).toBe(90);
       expect(darkerRgb?.b).toBe(90);
@@ -431,15 +423,10 @@ describe("applyBrandColors", () => {
 
 describe("getRelativeLuminance", () => {
   it("should calculate luminance correctly for various colors", () => {
-    // Black
     expect(getRelativeLuminance("#000000")).toBeCloseTo(0, 4);
-    // White
     expect(getRelativeLuminance("#ffffff")).toBeCloseTo(1, 4);
-    // Pure Red
     expect(getRelativeLuminance("#ff0000")).toBeCloseTo(0.2126, 4);
-    // Pure Green
     expect(getRelativeLuminance("#00ff00")).toBeCloseTo(0.7152, 4);
-    // Pure Blue
     expect(getRelativeLuminance("#0000ff")).toBeCloseTo(0.0722, 4);
   });
 
@@ -450,20 +437,14 @@ describe("getRelativeLuminance", () => {
 
 describe("getContrastTextColor", () => {
   it("should return var(--color-light-700) for light backgrounds", () => {
-    // Pure white
     expect(getContrastTextColor("#ffffff")).toBe("var(--color-light-700)");
-    // Light yellow
     expect(getContrastTextColor("#ffeb3b")).toBe("var(--color-light-700)");
-    // Very light grey
     expect(getContrastTextColor("#f5f5f5")).toBe("var(--color-light-700)");
   });
 
   it("should return var(--color-light-100) for dark backgrounds", () => {
-    // Pure black
     expect(getContrastTextColor("#000000")).toBe("var(--color-light-100)");
-    // Dark blue
     expect(getContrastTextColor("#1a73e8")).toBe("var(--color-light-100)");
-    // Dark grey
     expect(getContrastTextColor("#333333")).toBe("var(--color-light-100)");
   });
 });
@@ -528,7 +509,6 @@ describe("applyWhiteLabelMeta", () => {
   let appleTouchLink: HTMLLinkElement;
 
   beforeEach(() => {
-    // Set up DOM elements that applyWhiteLabelMeta queries
     ogTitle = document.createElement("meta");
     ogTitle.setAttribute("property", "og:title");
     ogTitle.setAttribute("content", "");

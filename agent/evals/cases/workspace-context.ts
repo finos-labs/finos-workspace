@@ -1,12 +1,3 @@
-/**
- * Workspace-context cases. Verify the model uses workspace_state +
- * SECONDARY widgets to resolve "this dashboard" / "show me earnings" /
- * deictic references.
- *
- * The fixture supplies SECONDARY widgets to mirror what the workspace
- * sends when the user is viewing a dashboard.
- */
-
 import type { EvalCase } from "../runner.ts";
 import {
   techWorkspace,
@@ -134,12 +125,6 @@ function safeSectorUpdate(): GraderSpec {
   };
 }
 
-// User names ONE widget ("on recommendation mix") — the update must hit that
-// widget only, with the exact value. Updating the other sector widget too means
-// the model ignored the user's scope. The prompt also sanctions inspecting the
-// target (get_widget_schema/read_widget) before updating; that round-trips, and
-// this single-turn harness can't follow it, so a first-turn inspection of the
-// NAMED widget counts as correctly engaging the update path.
 function namedWidgetSectorUpdate(expectedValue: string): GraderSpec {
   return {
     name: "namedWidgetSectorUpdate",

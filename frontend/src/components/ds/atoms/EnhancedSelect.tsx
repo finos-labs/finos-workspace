@@ -15,7 +15,6 @@ export interface EnhancedSelectOptionData {
   disabled?: boolean;
   tooltip?: React.ReactNode;
   metadata?: Record<string, unknown>;
-  // Enhanced tooltip data
   tooltipData?: {
     title?: string;
     backend?: string;
@@ -31,7 +30,6 @@ interface EnhancedSelectItemProps {
   option: EnhancedSelectOptionData;
 }
 
-// Compound tooltip component for flexible composition
 export const EnhancedTooltip = {
   Root: function Root({
     children,
@@ -214,7 +212,6 @@ export const EnhancedTooltip = {
 const createEnhancedTooltip = (option: EnhancedSelectOptionData): React.ReactNode => {
   const { tooltipData, description } = option;
 
-  // If tooltipData is provided, create a composed tooltip
   if (tooltipData) {
     return (
       <EnhancedTooltip.Root>
@@ -245,7 +242,6 @@ const createEnhancedTooltip = (option: EnhancedSelectOptionData): React.ReactNod
     );
   }
 
-  // Fallback to simple description tooltip
   if (description) {
     return (
       <div className="space-y-1">
@@ -417,7 +413,6 @@ export const EnhancedSelect = React.forwardRef<
 
 EnhancedSelect.displayName = "EnhancedSelect";
 
-// Convenience components for common use cases
 export interface SimpleEnhancedSelectProps
   extends Omit<EnhancedSelectProps, "options"> {
   options: Array<{

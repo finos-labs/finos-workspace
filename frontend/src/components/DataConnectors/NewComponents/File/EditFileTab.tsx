@@ -210,8 +210,6 @@ export default function EditFileTab() {
                     />
                   </div>
                   <div className="w-full col-span-2 md:col-span-1 md:w-3/5 overflow-hidden max-h-[215px]">
-                    {/* This thing behaves really weird - need to revisit - this helps
-                    for now */}
                     <FormField
                       name="description"
                       control={form.control}

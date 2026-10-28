@@ -1,15 +1,3 @@
-/**
- * Tier 2 — agent-loop decoration for the document-RAG MCP tools.
- *
- * Pinned to:
- *  - `query_documents` and `list_documents` receive both
- *    `x-ines-conversation-id` and `x-ines-documents` (the delta).
- *  - Already-shipped doc ids restored from `extra_state.documents_shipped`
- *    are NOT re-shipped on the next call.
- *  - `x-ines-*` keys are stripped from the model-facing tool schema.
- *  - Unrelated MCP tools do NOT receive the documents decoration.
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
@@ -222,7 +210,6 @@ describe("document RAG — delta shipping on subsequent calls", () => {
     const shipped = p.parameters["x-ines-documents"] as Array<{ id: string }>;
     expect(shipped).toBeDefined();
     expect(shipped.map((d) => d.id)).toEqual(["doc-bar"]);
-    // Cumulative shipped set in extra_state is the union of prior + new.
     expect(p.extra_state?.documents_shipped).toEqual(
       expect.arrayContaining(["doc-foo", "doc-bar"]),
     );
@@ -255,7 +242,6 @@ describe("document RAG — delta shipping on subsequent calls", () => {
     );
     const p = payload(findExecuteAgentTool(events, "query_documents")!);
     expect("x-ines-documents" in p.parameters).toBe(false);
-    // conversation-id always present
     expect(p.parameters["x-ines-conversation-id"]).toBe("conv-doc-4");
   });
 });
@@ -292,10 +278,6 @@ describe("document RAG — x-ines-* never reaches the model", () => {
 
 describe("document RAG — file-tier widget bridge", () => {
   it("PDF bytes from a file-* widget land in pendingDocuments and ship on next query_documents", async () => {
-    // FINOS Workspace ships the file as `widgets.primary` entry. The model then
-    // calls get_widget_data for it; the re-POST tool message arrives with
-    // base64 bytes. `extractFileTierDocs` adds the doc to pendingDocuments,
-    // and the subsequent query_documents call carries it on the wire.
     const fileWidget = {
       uuid: "file-pdf-1",
       origin: "example",

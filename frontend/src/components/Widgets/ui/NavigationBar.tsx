@@ -72,7 +72,6 @@ export default function NavigationBar() {
     (state) => state.showWidgetControlsEllipsis,
   );
 
-  // Get highlighted tab ID from context for cross-tab widget highlighting
   const { hoveredWidgetTabId } = useTabHighlight();
 
   const currentTab = useMemo(

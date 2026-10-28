@@ -1,34 +1,13 @@
-/**
- * Token-aware chunking with sentence-boundary preference.
- *
- * Strategy:
- *  - Target ~500 tokens per chunk, ~50 token overlap, hard cap 800.
- *  - Walk sentence-by-sentence; emit a chunk when token budget would
- *    overflow. Sentence detection is cheap regex on `[.!?]\s+` boundaries.
- *  - Page metadata flows through unchanged so each chunk attributes back
- *    to the correct page when the source format had pages.
- *
- * Token counting uses `gpt-tokenizer` with the `cl100k_base` encoding —
- * matches OpenAI's `text-embedding-3-*` family. We don't ship the chunked
- * text through the embedding API limit; we only use the count to decide
- * boundaries.
- */
-
 import { encode } from "gpt-tokenizer";
 import type { ExtractedPage } from "./extract.ts";
 import { MAX_CHUNK_CHARS } from "./limits.ts";
 
 export interface DocChunk {
-  /** Stable id within the doc — `"<docId>:<chunkIdx>"`. */
   id: string;
-  /** Source doc id. */
   docId: string;
-  /** Index within the doc, 0-based. */
   index: number;
-  /** Page (when source was paginated). */
   page?: number;
   text: string;
-  /** Token count for the chunk text — caller can cap retrieval token budget. */
   tokens: number;
 }
 
@@ -49,7 +28,6 @@ function splitSentences(text: string): string[] {
     .split(SENTENCE_SPLIT_RE)
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
-    // A text with no sentence ends (a table, a minified file) is cut at a length that can be embedded.
     .flatMap((s) => (s.length > MAX_CHUNK_CHARS ? hardSplit(s, MAX_CHUNK_CHARS) : [s]));
 }
 
@@ -63,9 +41,6 @@ function tokensOf(text: string): number {
   return encode(text).length;
 }
 
-/**
- * Split a single page's text into chunks. Returns `[]` for empty input.
- */
 function chunkOnePage(
   pageText: string,
   page: number | undefined,
@@ -99,7 +74,6 @@ function chunkOnePage(
       tokens: tokensOf(text),
     });
     chunkIdx++;
-    // Carry tail of last chunk into the next as overlap context.
     if (opts.overlapTokens > 0 && buf.length > 1) {
       const tail: string[] = [];
       let tailTokens = 0;
@@ -119,8 +93,6 @@ function chunkOnePage(
 
   for (const sentence of sentences) {
     const sTokens = tokensOf(sentence);
-    // Single sentence longer than max — emit alone, oversize. Better to
-    // surface verbatim than to drop. Caller can downweight on retrieval.
     if (sTokens > opts.maxTokens) {
       flush();
       chunks.push({

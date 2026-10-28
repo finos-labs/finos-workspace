@@ -10,7 +10,6 @@ export function isDate(value: dayjs.ConfigType): boolean {
 }
 
 export function formatDate(date: dayjs.ConfigType, template = "YYYY-MM-DD"): string {
-  // Use UTC mode to avoid timezone shifts when formatting dates
   return dayjs.utc(date).format(template);
 }
 

@@ -23,8 +23,6 @@ EXCEPTION_401 = HTTPException(
 
 
 async def set_app_user_data(user, db: AsyncSession) -> schemas.AppUserReturn:
-    # Users who may not bring connections are not served the ones they have; the
-    # backends of their organization they still get
     own_connections = await may_add_connections(db, user.uuid)
     return schemas.AppUserReturn(
         expiration_date=user.expiration_date,
@@ -45,9 +43,6 @@ async def set_app_user_data(user, db: AsyncSession) -> schemas.AppUserReturn:
 
 
 async def get_mcp_servers(db: AsyncSession, user: models.User) -> schemas.MCPServers:
-    """The deployment's default MCP servers, then the user's own, each with the names of its
-    stored headers and never their values. Only a user who may add connections has servers of
-    their own; a default the user saved under the same address is theirs."""
     stored: list[dict] = []
     headers: dict = {}
     if await may_add_connections(db, user.uuid):
@@ -79,13 +74,6 @@ async def get_mcp_servers(db: AsyncSession, user: models.User) -> schemas.MCPSer
 def merge_mcp_server_headers(
     stored: dict[str, dict[str, str]], servers: list[schemas.MCPServer]
 ) -> dict[str, dict[str, str]]:
-    """The headers to store after a client sends its server list.
-
-    Headers are kept per normalized server URL, so they never follow a server to another
-    URL. A value replaces the stored header of that name (in any case), null removes it,
-    a header the client leaves out keeps its stored value. Servers that are no longer in
-    the list lose their headers.
-    """
     merged: dict[str, dict[str, str]] = {}
     for server in servers:
         key = schemas.normalize_mcp_url(server.url)
@@ -102,7 +90,6 @@ def merge_mcp_server_headers(
 async def save_mcp_servers(
     db: AsyncSession, user_uuid: UUID, servers: list[schemas.MCPServer]
 ) -> None:
-    """Store the user's server list, and their custom headers encrypted apart from it."""
     row = (
         await db.execute(
             select(models.MCPServers.uuid, models.MCPServers.headers)
@@ -129,9 +116,6 @@ async def save_mcp_servers(
 async def get_mcp_server_headers(
     db: AsyncSession, user_uuid: UUID, url: str
 ) -> dict[str, str] | None:
-    """The stored custom headers of the user's saved MCP server at this URL (compared in
-    normalized form), or None when the user has saved no server there. For the server
-    side only: the values are credentials and never go back to a browser."""
     row = (
         await db.execute(
             select(models.MCPServers.servers, models.MCPServers.headers)
@@ -152,7 +136,6 @@ async def get_mcp_server_headers(
 async def get_copilot_key_status(
     db: AsyncSession, user_uuid: UUID
 ) -> schemas.CopilotKeysStatus:
-    """Which of the user's own Copilot provider keys are stored (nothing is decrypted)."""
     row = (
         await db.execute(
             select(
@@ -172,9 +155,6 @@ async def get_copilot_key_status(
 async def get_copilot_provider_keys(
     db: AsyncSession, user_uuid: UUID
 ) -> schemas.CopilotProviderKeys:
-    """The user's own Copilot provider keys, decrypted. For the service that serves the
-    Copilot only (the /app/copilot/authorize answer to an agent token); a browser never
-    receives them."""
     row = (
         await db.execute(
             select(models.User.openai_api_key, models.User.perplexity_api_key).where(
@@ -192,7 +172,6 @@ async def get_copilot_provider_keys(
 async def set_copilot_provider_keys(
     db: AsyncSession, user_uuid: UUID, keys: schemas.CopilotProviderKeys
 ) -> None:
-    """Store the keys the client sent (null clears one); keys it left out stay."""
     values = {name: getattr(keys, name) for name in keys.model_fields_set}
     if values:
         await db.execute(
@@ -238,7 +217,6 @@ async def get_copilot_chats(
 
 
 async def get_user_questions_history(db: AsyncSession, user_uuid: UUID) -> list[str]:
-    """Get the history of unique questions asked by the user, ordered by the most recent update date."""
     query = (
         select(models.ChatMessages.searchable_content)
         .where(
@@ -253,7 +231,6 @@ async def get_user_questions_history(db: AsyncSession, user_uuid: UUID) -> list[
 
 
 async def get_entity_theme_settings(db: AsyncSession, entity_uuid: UUID):
-    """Get the theme settings for the entity"""
     query = (
         select(models.EntityThemeSettings.settings)
         .where(models.EntityThemeSettings.entity_uuid == entity_uuid)
@@ -391,7 +368,6 @@ async def get_entity_users(db: AsyncSession, entity_uuid: UUID):
 
 
 async def get_user_type(db: AsyncSession, user_uuid: UUID) -> str | None:
-    """The user's type: the name of their permissions map."""
     query = (
         select(models.PermissionsEntityMap.name)
         .join(
@@ -405,8 +381,6 @@ async def get_user_type(db: AsyncSession, user_uuid: UUID) -> str | None:
 
 
 async def may_add_connections(db: AsyncSession, user_uuid: UUID) -> bool:
-    """Whether the user may bring their own connections: data connectors, MCP servers,
-    custom Copilots and files."""
     return await get_user_type(db, user_uuid) in models.CONNECTION_TYPES
 
 
@@ -416,13 +390,10 @@ async def check_may_add_connections(db: AsyncSession, user_uuid: UUID) -> None:
 
 
 async def shares_need_approval(db: AsyncSession, user_uuid: UUID) -> bool:
-    """Whether the user's shares wait for an admin of their organization to approve them:
-    a developer's do."""
     return await get_user_type(db, user_uuid) == models.DEVELOPER_TYPE
 
 
 def _user_roles(user_uuid: UUID, *columns):
-    "Selects the given columns of the roles a user has in their organization."
     return (
         select(*columns)
         .select_from(models.UserRole)
@@ -441,7 +412,6 @@ def _user_roles(user_uuid: UUID, *columns):
 
 
 async def get_user_access(db: AsyncSession, user_uuid: UUID) -> schemas.UserAccess:
-    """What the user may do: their type, and what the roles an admin assigned them give."""
     return schemas.UserAccess(
         user_type=await get_user_type(db, user_uuid),
         sharing=(await crud.get_users_sharing(db, [user_uuid]))[user_uuid],
@@ -449,9 +419,6 @@ async def get_user_access(db: AsyncSession, user_uuid: UUID) -> schemas.UserAcce
 
 
 async def get_user_limits(db: AsyncSession, user_uuid: UUID) -> schemas.UserLimits:
-    """The user's daily limits: none for a developer; for anyone else the highest of
-    their roles, where a role without a limit lifts it. A user without roles may use
-    nothing."""
     if await get_user_type(db, user_uuid) == models.DEVELOPER_TYPE:
         return schemas.UserLimits(
             copilot_calls_day=None, copilot_tokens_day=None, upload_size_gb=None
@@ -483,21 +450,16 @@ async def get_user_limits(db: AsyncSession, user_uuid: UUID) -> schemas.UserLimi
 
 
 def invalidate_usage_cache(user_uuid: UUID) -> None:
-    """Drop a user's cached usage so the next read loads their current limits."""
     settings.redis_cache(f"usage:{user_uuid}", delete=True)
 
 
 async def roles_changed(db: AsyncSession, user_uuids: list[UUID]) -> None:
-    """After the roles of users, or the settings of their roles, changed: their limits are
-    read again, and the shares their sharing no longer allows are revoked."""
     for user_uuid in user_uuids:
         invalidate_usage_cache(user_uuid)
     await crud.revoke_disallowed_shares(db, user_uuids)
 
 
 async def left_organization(db: AsyncSession, user_uuid: UUID) -> None:
-    """After a user left their organization or moved to another: they are taken out of
-    the roles of organizations they are no longer in, and so is what they brought."""
     await crud.leave_other_organizations(db, user_uuid)
     await roles_changed(db, [user_uuid])
 
@@ -604,9 +566,6 @@ async def _get_user_entity_info(
 
 
 async def delete_user(db: AsyncSession, user_uuid: UUID) -> bool:
-    """This function is used to soft delete a user."""
-
-    # Given the user uuid, gets the email and username
     user_details_query = select(
         models.User.email,
         models.User.username,
@@ -616,10 +575,8 @@ async def delete_user(db: AsyncSession, user_uuid: UUID) -> bool:
     if not user_details:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Delete user sessions
     query = delete(models.Session).where(models.Session.user_uuid == user_uuid)
     await db.execute(query)
-    # Update user
     the_rand = base.random_string(4)
     query2 = (
         update(models.User)
@@ -642,10 +599,6 @@ async def delete_user(db: AsyncSession, user_uuid: UUID) -> bool:
 async def insert_or_update_custom_copilot(
     db: AsyncSession, user_uuid: UUID, custom_copilot: schemas.CustomCopilot
 ):
-    """
-    Update or insert a custom copilot for a user.
-    """
-    # Try to update first
     update_stmt = (
         update(models.CustomCopilot)
         .where(
@@ -659,7 +612,6 @@ async def insert_or_update_custom_copilot(
     )
     result = await db.execute(update_stmt)
 
-    # If no rows were updated, insert new record
     if result.rowcount == 0:
         db_copilot = models.CustomCopilot(
             uuid=custom_copilot.uuid,
@@ -676,9 +628,6 @@ async def insert_or_update_custom_copilot(
 async def get_custom_copilots(
     db: AsyncSession, user_uuid: UUID
 ) -> list[schemas.CustomCopilot]:
-    """
-    Get all custom copilots for a user.
-    """
     if not await may_add_connections(db, user_uuid):
         return []
     query = select(models.CustomCopilot).where(
@@ -693,10 +642,6 @@ async def get_custom_copilots(
 async def delete_custom_copilot(
     db: AsyncSession, user_uuid: UUID, uuid: str | None = None
 ):
-    """
-    Delete a custom copilot(s) for a user.
-    If the uuid is provided, delete only that copilot, otherwise delete all custom copilots for the user.
-    """
     delete_stmt = delete(models.CustomCopilot).where(
         models.CustomCopilot.user_uuid == user_uuid,
     )
@@ -709,7 +654,6 @@ async def delete_custom_copilot(
 async def insert_user_prompt_state(
     db: AsyncSession, user_uuid: UUID, prompts: list[schemas.Prompt]
 ):
-    # Delete prompts that are no longer in the list
     user_prompt_uuids = await _get_user_prompt_uuids(db, user_uuid)
     for prompt_uuid in user_prompt_uuids:
         if prompt_uuid not in [prompt.id for prompt in prompts]:
@@ -831,7 +775,6 @@ async def entity_require_authenticator(db: AsyncSession, entity_uuid: UUID) -> b
 async def require_entity_users_2fa(
     db: AsyncSession, entity_uuid: UUID, require_authenticator: bool
 ) -> bool:
-    """Set the require_authenticator flag to True for all users in the entity."""
     entity_users = await get_entity_users(db, entity_uuid)
     for user_uuid in entity_users:
         update_query = (
@@ -850,16 +793,6 @@ async def require_entity_users_2fa(
 
 
 async def _get_user_uuid_by_email(db: AsyncSession, email: str) -> UUID | None:
-    """
-    Get a user's UUID by their email address.
-
-    Args:
-        db (AsyncSession): The database session.
-        email (str): The email address to look up.
-
-    Returns:
-        UUID | None: The user's UUID if found, None otherwise.
-    """
     query = select(models.User.uuid).where(models.User.email == email)
     result = await db.execute(query)
     return result.scalar_one_or_none()
@@ -875,16 +808,11 @@ async def _convert_emails_to_uuids(db: AsyncSession, users: list[str]) -> list[U
     return [await _get_user_uuid_by_email(db, email) for email in users]
 
 
-# The roles every organization starts with (create_default_roles). They are roles like any
-# other: an admin changes them, takes them from users or deletes them.
 AGENT_USER_ROLE = "Agent User"
 SHARER_ROLE = "Sharer"
-# The id the default agent gives itself in its agents.json (AGENT_ID in agent/src/routes/agents.ts)
 DEFAULT_AGENT_ID = "default_agent"
 
 DEFAULT_ROLES: dict[str, dict] = {
-    # The default agent with every model it offers and every tool of the deployment's default
-    # MCP servers, with no daily limits. Every new user of the organization gets it.
     AGENT_USER_ROLE: {
         "description": "The agent, with every model it offers and the deployment's own tools, "
         "with no daily limits. New users get this role.",
@@ -895,7 +823,6 @@ DEFAULT_ROLES: dict[str, dict] = {
         "search_web": True,
         "fetch_from_web": True,
     },
-    # Sharing and nothing else: no limit is lifted and no web tool switched on by it
     SHARER_ROLE: {
         "description": "Shares dashboards and apps with others; nothing else.",
         "sharing": models.SHARING_SHARE,
@@ -909,7 +836,6 @@ DEFAULT_ROLES: dict[str, dict] = {
 
 
 async def _live_roles(db: AsyncSession, entity_uuid: UUID, names: list[str]) -> dict[str, UUID]:
-    """The organization's roles of these names that are not deleted, by name."""
     rows = await db.execute(
         select(models.Role.name, models.Role.uuid).where(
             models.Role.entity_uuid == entity_uuid,
@@ -921,8 +847,6 @@ async def _live_roles(db: AsyncSession, entity_uuid: UUID, names: list[str]) -> 
 
 
 async def create_default_roles(db: AsyncSession, entity_uuid: UUID) -> dict[str, UUID]:
-    """The organization's Agent User and Sharer roles (DEFAULT_ROLES), by name. A role of
-    that name the organization has already is kept as it is. Commits nothing."""
     roles = await _live_roles(db, entity_uuid, list(DEFAULT_ROLES))
     for name, role_settings in DEFAULT_ROLES.items():
         if name in roles:
@@ -956,8 +880,6 @@ async def create_default_roles(db: AsyncSession, entity_uuid: UUID) -> dict[str,
 async def give_default_roles(
     db: AsyncSession, user_uuid: UUID, permissions_uuid: UUID | None, names: list[str]
 ) -> None:
-    """Give the user these default roles of their organization, those it has and they have
-    not. Commits nothing."""
     if permissions_uuid is None:
         return
     entity_uuid = await crud.get_user_entity_uuid(db, permissions_uuid)
@@ -992,19 +914,15 @@ async def role_exists(db: AsyncSession, role_uuid: UUID, entity_uuid: UUID) -> b
 
 
 async def add_users_to_role(db: AsyncSession, role_uuid: UUID, users: list[str]):
-    # Get the entity_uuid for this role
     entity_uuid = await _get_role_entity_uuid(db, role_uuid)
     if not entity_uuid:
         raise HTTPException(404, detail="Role not found")
 
-    # Get all users in the entity
     entity_users = await get_entity_users(db, entity_uuid)
 
-    # Convert emails to UUIDs and filter to only those in the entity
     valid_users = await _convert_emails_to_uuids(db, users)
     valid_users = [user_uuid for user_uuid in valid_users if user_uuid in entity_users]
 
-    # Add valid users to group
     for user_uuid in valid_users:
         user_role = models.UserRole(role_uuid=role_uuid, user_uuid=user_uuid)
         db.add(user_role)
@@ -1013,7 +931,6 @@ async def add_users_to_role(db: AsyncSession, role_uuid: UUID, users: list[str])
 
 
 async def remove_users_from_role(db: AsyncSession, role_uuid: UUID, users: list[str]):
-    # Get UUIDs for users to remove
     user_uuids_to_remove = await _convert_emails_to_uuids(db, users)
 
     if user_uuids_to_remove:
@@ -1035,7 +952,6 @@ async def remove_users_from_role(db: AsyncSession, role_uuid: UUID, users: list[
 async def get_role_copilot_access(
     db: AsyncSession, role_uuids: list[UUID]
 ) -> schemas.RoleCopilotAccess:
-    """The Copilot models and MCP tools that the given roles grant, together."""
     if not role_uuids:
         return schemas.RoleCopilotAccess()
 
@@ -1072,8 +988,6 @@ async def get_role_copilot_access(
 async def get_user_copilot_access(
     db: AsyncSession, user_uuid: UUID
 ) -> schemas.CopilotAccess:
-    """What a user may use in the Copilot: the models and MCP tools their roles grant, and
-    nothing else. The web tools that none of their roles allows are switched off."""
     role_uuids = list(await _get_user_roles(db, user_uuid))
     granted = await get_role_copilot_access(db, role_uuids)
     return schemas.CopilotAccess(
@@ -1086,8 +1000,6 @@ async def get_user_copilot_access(
 async def get_disabled_copilot_capabilities(
     db: AsyncSession, role_uuids: list[UUID]
 ) -> list[schemas.CopilotCapability]:
-    """The Copilot's web tools that none of the user's roles allows: searching the web
-    (SEARCH_WEB) and reading a page from it (FETCH_FROM_WEB)."""
     flags = (
         await db.execute(
             select(models.Role.search_web, models.Role.fetch_from_web).where(
@@ -1106,7 +1018,6 @@ async def get_disabled_copilot_capabilities(
 async def set_role_copilot_access(
     db: AsyncSession, role_uuid: UUID, access: schemas.RoleCopilotAccess
 ) -> None:
-    """Replace the Copilot models and MCP tools that a role grants."""
     await db.execute(
         delete(models.RoleCopilotModel).where(
             models.RoleCopilotModel.role_uuid == role_uuid
@@ -1131,7 +1042,6 @@ async def set_role_copilot_access(
 
 
 def disabled_mcp_tools(access: schemas.CopilotAccess) -> frozenset[str]:
-    """The names of the MCP tools that are switched off for the user, whichever server has them."""
     return frozenset(
         tool
         for capability in access.disabled_capabilities
@@ -1142,8 +1052,6 @@ def disabled_mcp_tools(access: schemas.CopilotAccess) -> frozenset[str]:
 def is_mcp_tool_allowed(
     access: schemas.CopilotAccess, server_url: str, tool_name: str
 ) -> bool:
-    # Switched off beats what the roles grant. It goes by the tool's name, not its server's address: a user
-    # who adds the same server again under another address must not get the tool back.
     if tool_name in disabled_mcp_tools(access):
         return False
     url = schemas.normalize_mcp_url(server_url)
@@ -1156,12 +1064,6 @@ def is_mcp_tool_allowed(
 def check_copilot_access(
     access: schemas.CopilotAccess, request: schemas.CopilotAuthorize
 ) -> schemas.CopilotAuthorizeResult:
-    """Check a Copilot request against what the user may use.
-
-    A request that names a model must name one granted for its agent, or the agent must be
-    granted every model (`*`). A request without a model leaves the choice to the agent,
-    which the user may use only with a model of it granted.
-    """
     agent_allowed = any(m.agent_id == request.agent_id for m in access.models)
     denied_model = None
     if request.model:
@@ -1201,32 +1103,18 @@ async def get_role_user_uuids(db: AsyncSession, role_uuid: UUID) -> list[UUID]:
 
 
 async def update_role_users(db: AsyncSession, role_uuid: UUID, new_users: list[str]):
-    """
-    Update the users in a role by comparing the new list with existing users.
-    Will add new users and remove users that are no longer in the list.
-
-    Args:
-        db (AsyncSession): The database session
-        role_uuid (UUID): The UUID of the role to update
-        new_users (list[str]): List of email addresses for the desired role members
-    """
-    # Get the entity_uuid for this role
     entity_uuid = await _get_role_entity_uuid(db, role_uuid)
     if not entity_uuid:
         raise HTTPException(404, detail="Role not found")
 
-    # Get current role users
     current_users = await get_role_users(db, role_uuid)
 
-    # Determine users to add and remove
     users_to_add = [email for email in new_users if email not in current_users]
     users_to_remove = [email for email in current_users if email not in new_users]
 
-    # Add new users
     if users_to_add:
         await add_users_to_role(db, role_uuid, users_to_add)
 
-    # Remove users no longer in the list
     if users_to_remove:
         await remove_users_from_role(db, role_uuid, users_to_remove)
 
@@ -1265,7 +1153,6 @@ async def insert_or_update_backend_permissions(
                 for w in value
                 if w.get("widgetId") and w.get("access")
             }
-            # Check if the widgets list has changed
             for widget in result.widgets or []:
                 if has_changes:
                     break
@@ -1291,7 +1178,6 @@ async def insert_or_update_backend_permissions(
                 }
                 new_access[template_id] = t.get("access")
 
-            # Check if the templates list has changed
             for template in result.templates or []:
                 if has_changes:
                     break
@@ -1299,7 +1185,6 @@ async def insert_or_update_backend_permissions(
                 prompts: list[dict] = template.get("prompts", [])
                 new_prompts_access: dict = new_prompts.get(template_id, {})
 
-                # Check if the prompts list has changed
                 prompts_change = [
                     p.get("promptId")
                     for p in prompts
@@ -1372,20 +1257,17 @@ async def insert_or_update_prompt_template_permissions(
     ]
     template_id = permissions.templates[0].templateId
 
-    # Check if template exists
     template_exists = any(
         t["templateId"] == template_id for t in result.templates or []
     )
 
     if template_exists:
-        # Update existing template
         templates = result.templates or []
         for i, template in enumerate(templates):
             if template["templateId"] == template_id:
                 templates[i] = permissions_templates_json[0]
         result.templates = templates
     else:
-        # Add new template
         templates = result.templates or []
         templates.extend(permissions_templates_json)
         result.templates = templates
@@ -1538,19 +1420,13 @@ async def _get_role_prompt_permissions(
 async def get_user_role_permissions(
     db: AsyncSession, user_uuid: UUID
 ) -> schemas.UserRolesPermissions:
-    """
-    Get the permissions for a user's roles.
-    """
     permissions = {}
 
-    # Get all roles for the user
     roles = await _get_user_roles(db, user_uuid)
 
     for role_uuid in roles:
-        # Initialize the dictionary structure for this role
         permissions[str(role_uuid)] = {"backends": [], "files": [], "prompts": []}
 
-        # Get and assign permissions
         backend_permissions = await _get_role_backend_permissions(db, role_uuid)
         file_permissions = await _get_role_file_permissions(db, role_uuid)
         prompt_permissions = await _get_role_prompt_permissions(db, role_uuid)
@@ -1592,11 +1468,9 @@ def flatten_permissions(
                         existing["access"], resource["access"]
                     )
 
-                    # Handle special merging for backends
                     if merge_fn:
                         merge_fn(existing, resource)
 
-                    # Handle URL nullification
                     if existing["access"] == "no-access" and "url" in existing:
                         existing["url"] = None
                         if "endpointHeaders" in existing:
@@ -1622,9 +1496,6 @@ def flatten_permissions(
 
 
 def create_details_message(action: str, resource_type: str, details: dict) -> str:
-    """Create a human readable message from audit log details"""
-
-    # Handle updates with old/new values
     if action == "update":
         changed_fields = []
         for field, value in details.items():
@@ -1633,7 +1504,6 @@ def create_details_message(action: str, resource_type: str, details: dict) -> st
         if changed_fields:
             return f"Changed {', '.join(changed_fields)}."
 
-    # Handle role creation ,deletion and restoration
     if action in {"create", "delete", "restore"} and resource_type == "role":
         message_map = {
             "create": f"Created role '{details.get('name', '')}'.",
@@ -1642,7 +1512,6 @@ def create_details_message(action: str, resource_type: str, details: dict) -> st
         }
         return message_map[action]
 
-    # Handle permission assignments
     if action == "assign" and resource_type in {"backend", "file", "prompt"}:
         prefix_map = {
             "backend": "Assigned backend",
@@ -1653,7 +1522,12 @@ def create_details_message(action: str, resource_type: str, details: dict) -> st
 
         return f"{prefix_map[resource_type]} {suffix}"
 
-    # Handle user role assignments
+    if action in {"assign", "remove"} and resource_type == "widget_plugin":
+        widget = details.get("widget_id")
+        what = "every widget" if widget in {None, "*"} else f"widget '{widget}'"
+        verb = "Granted" if action == "assign" else "Stopped granting"
+        return f"{verb} {what} of plugin '{details.get('name', '')}'."
+
     if action in {"add", "remove"} and resource_type == "user":
         message_map = {
             "add": "Added user to role.",
@@ -1661,11 +1535,10 @@ def create_details_message(action: str, resource_type: str, details: dict) -> st
         }
         return message_map[action]
 
-    return "Action performed."  # Default message
+    return "Action performed."
 
 
 async def _process_backend_widgets(backend_entry, role_uuid, backend):
-    """Process widgets for a backend entry."""
     for widget in backend.get("widgets", []):
         widget_entry = {
             "widgetId": widget.get("widgetId"),
@@ -1675,7 +1548,6 @@ async def _process_backend_widgets(backend_entry, role_uuid, backend):
 
 
 async def _update_backend_widgets(dc, role_uuid, backend):
-    """Update widgets for an existing backend."""
     existing_widget_ids = {w.get("widgetId") for w in dc["widgets"]}
     for widget in backend.get("widgets", []):
         widget_id = widget.get("widgetId")
@@ -1696,7 +1568,6 @@ async def _add_or_update_template_prompt(
     prompts_list: list,
     processed_prompts: set,
 ):
-    """Add or update a template prompt."""
     prompt_uuid = prompt.get("promptId")
     if prompt_uuid not in processed_prompts:
         prompts_list.append(
@@ -1722,7 +1593,6 @@ async def process_templates(  # noqa: PLR0913, PLR0917
     prompts_list: list,
     processed_prompts: set,
 ):
-    """Process templates for a backend."""
     for template in backend.get("templates", []):
         template_id = template.get("templateId")
         if template_id not in processed_templates:
@@ -1756,7 +1626,6 @@ async def process_templates(  # noqa: PLR0913, PLR0917
 async def process_backend(
     role_uuid: UUID, backend, data_connectors: list, processed_backends: set
 ):
-    """Process a single backend."""
     backend_uuid = backend.get("uuid")
     if backend_uuid not in processed_backends:
         backend_entry = {
@@ -1779,7 +1648,6 @@ async def process_backend(
 async def process_file(
     role_uuid: UUID, file, data_connectors: list, processed_files: set
 ):
-    """Process a single file."""
     file_uuid = file.get("uuid")
     if file_uuid not in processed_files:
         data_connectors.append(
@@ -1801,7 +1669,6 @@ async def process_file(
 async def process_prompts(
     role_uuid: UUID, prompts_data: list, processed_prompts: set, prompts_list: list
 ):
-    """Process standalone prompts."""
     for prompt in prompts_data:
         prompt_uuid = prompt.get("uuid")
         if prompt_uuid not in processed_prompts:
@@ -1820,24 +1687,12 @@ async def process_prompts(
 
 
 async def get_role_name(db: AsyncSession, role_uuid: UUID) -> str:
-    """Get the name of a role."""
     query = select(models.Role.name).where(models.Role.uuid == role_uuid)
     result = (await db.execute(query)).scalar_one_or_none()
     return result
 
 
 async def compute_final_permission(permissions_dict):
-    """
-    Compute the final permission based on all role permissions.
-    If any role has 'access', the final permission is 'access'.
-    Otherwise, the final permission is 'no-access'.
-
-    Args:
-        permissions_dict (dict): Dictionary of {role_name: access_value}
-
-    Returns:
-        str: 'access' or 'no-access'
-    """
     if not permissions_dict:
         return "no-access"
 
@@ -1851,15 +1706,6 @@ async def compute_final_permission(permissions_dict):
 async def add_final_permissions_to_resources(  # noqa: PLR0912
     data_connectors, templates, prompts
 ):
-    """
-    Add final_permission field to each resource based on role permissions.
-
-    Args:
-        data_connectors (list): List of data connector resources
-        templates (list): List of template resources
-        prompts (list): List of prompt resources
-    """
-    # Process data connectors
     for connector in data_connectors:
         role_permissions = {}
         for access_entry in connector.get("access", []):
@@ -1867,7 +1713,6 @@ async def add_final_permissions_to_resources(  # noqa: PLR0912
                 role_permissions[role] = access
         connector["final_permission"] = await compute_final_permission(role_permissions)
 
-        # Process widgets for backends
         if connector.get("type") == "backend" and "widgets" in connector:
             for widget in connector.get("widgets", []):
                 widget_role_permissions = {}
@@ -1878,7 +1723,6 @@ async def add_final_permissions_to_resources(  # noqa: PLR0912
                     widget_role_permissions
                 )
 
-    # Process templates
     for template in templates:
         role_permissions = {}
         for access_entry in template.get("access", []):
@@ -1886,7 +1730,6 @@ async def add_final_permissions_to_resources(  # noqa: PLR0912
                 role_permissions[role] = access
         template["final_permission"] = await compute_final_permission(role_permissions)
 
-    # Process prompts
     for prompt in prompts:
         role_permissions = {}
         for access_entry in prompt.get("access", []):

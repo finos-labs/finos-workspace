@@ -42,9 +42,9 @@ export default function AddWidgetMenu() {
         message={
           <p className="body-xs-regular max-w-md break-words whitespace-normal">
             <strong>{"This dashboard is shared — "}</strong>
-            You're allowed to change tickers and switch tabs. You don’t have permission
-            to add, remove or resize widgets. Duplicate the template first before
-            applying any modifications.
+            You're allowed to change parameters and switch tabs. You don’t have
+            permission to add, remove or resize widgets. Duplicate the template first
+            before applying any modifications.
           </p>
         }
       >
@@ -83,7 +83,6 @@ export default function AddWidgetMenu() {
                 "transition-opacity",
                 "focus:outline-hidden",
               )}
-              //onClick={handleClick}
             >
               <Icon id="plus-icon" className="h-[17px] w-[17px] text-white" />
             </button>

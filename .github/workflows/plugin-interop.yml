@@ -1,0 +1,113 @@
+name: Widget plugin interop
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    uses: ./.github/workflows/agent-node.yml
+
+  interop:
+    name: Public modules in plugin frames
+    needs: node
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure the stack
+        working-directory: backend-api/backend
+        run: |
+          EMAIL="e2e-admin@example.com"
+          python3 -m scripts.create_local_env --admin-email "$EMAIL" --entity-name "End-to-end"
+          echo "E2E_USER_EMAIL=$EMAIL" >> "$GITHUB_ENV"
+
+      - name: Mount a widget plugins directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/widget-plugins"
+          cat > "$RUNNER_TEMP/compose.plugins.yml" <<EOF
+          services:
+            api:
+              environment:
+                WIDGET_PLUGINS_DIR: /opt/widget-plugins
+              volumes:
+                - $RUNNER_TEMP/widget-plugins:/opt/widget-plugins:ro
+          EOF
+          echo "E2E_PLUGINS_DIR=$RUNNER_TEMP/widget-plugins" >> "$GITHUB_ENV"
+          echo "E2E_INTEROP=1" >> "$GITHUB_ENV"
+
+      - name: Make the stack's certificate
+        run: frontend/tests/e2e/make-tls.sh frontend/tests/e2e/tls/certs localhost
+
+      - uses: actions/cache/restore@v6
+        with:
+          path: agent-node
+          key: ${{ needs.node.outputs.key }}
+          fail-on-cache-miss: true
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487
+      - name: Build the stack's images
+        run: >-
+          docker buildx bake -f docker-compose.yml -f docker-compose.e2e.yml --load
+          --set init.cache-from=type=gha,scope=fastapi.Dockerfile
+          --set worker.cache-from=type=gha,scope=rqworker.Dockerfile
+          --set "ines.contexts.node=$GITHUB_WORKSPACE/agent-node"
+          --set "ines-mcp.contexts.node=$GITHUB_WORKSPACE/agent-node"
+
+      - name: Start the stack
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" up -d
+
+      - name: Wait for the stack
+        run: |
+          for url in https://localhost:8000/health https://localhost:3000/; do
+            for _ in $(seq 1 60); do
+              curl -fsS --cacert frontend/tests/e2e/tls/certs/ca.pem -o /dev/null "$url" && break
+              sleep 5
+            done
+            curl -fsS --cacert frontend/tests/e2e/tls/certs/ca.pem -o /dev/null "$url"
+          done
+
+      - name: Set the administrator's password
+        run: |
+          PASSWORD="$(python3 -c 'import secrets; print("E2e-" + secrets.token_urlsafe(24) + "!1a")')"
+          echo "::add-mask::$PASSWORD"
+          printf '%s\n' "$PASSWORD" | docker compose run --rm -T init python -m scripts.init_users --new-password "$E2E_USER_EMAIL"
+          echo "E2E_USER_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium firefox webkit
+
+      - name: Interop smoke tests
+        working-directory: frontend
+        run: npx playwright test plugin-interop.spec.ts --project=chromium --project=firefox --project=webkit
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-interop-report
+          path: frontend/playwright-report/
+
+      - name: Show the stack's logs
+        if: failure()
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" logs --no-color --tail=200
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" down -v

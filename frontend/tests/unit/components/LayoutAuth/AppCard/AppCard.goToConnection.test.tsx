@@ -90,9 +90,6 @@ vi.mock("~/components/Apps/McpAppPopover", () => ({
   McpAppPopover: () => null,
 }));
 
-// Render the dropdown items as plain buttons so we can assert on the items
-// array (the unit under test) without driving Radix portal/pointer internals.
-// Paths use the ~ alias so they resolve to the same module AppCard.tsx imports.
 vi.mock("~/components/LayoutAuth/AppCard/AppCardDropdown", () => ({
   AppCardDropdown: ({ items }: { items: { label: string; onClick: () => void }[] }) => (
     <div data-testid="dropdown">

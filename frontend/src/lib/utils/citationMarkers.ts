@@ -57,19 +57,6 @@ function replaceAiMarkers(
     });
 }
 
-/**
- * Replaces AI citation/artifact markers (both the `<|start_..._id|>` wire format
- * and legacy `<citation>`/`<artifact>` tag forms) with opaque placeholders so
- * they survive DOMPurify sanitization unchanged, and returns a restore function
- * that swaps the placeholders back into `<citation className="id"/>` /
- * `<artifact className="id"/>` tags for markdown-to-jsx overrides.
- *
- * The placeholder prefix is randomized per call so untrusted content cannot
- * forge a placeholder, and only ids matching SAFE_AI_MARKER_ID_REGEX are kept
- * (unsafe ids are dropped entirely), so restored tags can never carry markup.
- * Restoring must happen after sanitization: DOMPurify would strip the custom
- * tags if they were present during the sanitize pass.
- */
 export function protectAiMarkers(text: string) {
   const markers: { type: AiMarkerType; id: string }[] = [];
   const placeholderPrefix = `__AI_MARKER_${Math.random().toString(36).slice(2)}_`;

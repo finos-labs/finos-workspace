@@ -118,7 +118,6 @@ export function SkillsTab() {
     [skills, state.selectedSkills],
   );
 
-  // The skills that come with the agent, listed read-only; a user's skill with the same slug takes the place of one.
   const agentSkills = useMemo(() => {
     const ownSlugs = new Set(skills.map((skill) => skill.slug));
     return (agent?.skills ?? []).filter((skill) => !ownSlugs.has(skill.slug));

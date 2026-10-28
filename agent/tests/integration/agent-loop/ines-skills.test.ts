@@ -1,8 +1,3 @@
-/**
- * Ines's own skills (src/skills/) are read by the agent; the user's skills
- * come from the FINOS Workspace with a `get_skill_content` round trip.
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";

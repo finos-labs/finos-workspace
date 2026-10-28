@@ -28,10 +28,6 @@ describe("messageChunk", () => {
   });
 
   it("regression: strips hallucinated placeholder tags (`<artifact_id:…>` / `<copilot_table:…>`)", () => {
-    // Ines's protocol does not use inline artifact tags. If the model
-    // hallucinates one from training data — or a future refactor leaks a
-    // template placeholder into the streamed text — it must not reach the
-    // user. ada catches the same regression in test_context.py.
     const cases = [
       ["see this <artifact_id:abcd-ef12>", "see this "],
       ["<artifact:1234>before<copilot_table:7> after", "before after"],
@@ -286,9 +282,6 @@ describe("workspaceCommand", () => {
   }
 
   it("emits update_widget verbatim with the native bridge config shape (no legacy remap)", () => {
-    // The frontend's useWorkspaceBridgeCommandHandler consumes the bridge
-    // command shape directly; the old update_widget_in_dashboard remap
-    // dropped ui_args and forked the wire contract per command.
     const args = {
       widget_uuid: "w-1",
       config: {
@@ -332,10 +325,8 @@ describe("neutralizeImages", () => {
     ["!![x](https://a.example/x)", `!${Z}[x](https://a.example/x)`],
     ["![![x](u)](v)", `${Z}[${Z}[x](u)](v)`],
     ["![a ![b](u) c](v)", `${Z}[a ${Z}[b](u) c](v)`],
-    // a `]` before and a `[` after the `!` must not join into an image
     ["![a]![b](u)", `![a]${Z}[b](u)`],
     ["a ![x](u) b ![y](v) c", `a ${Z}[x](u) b ${Z}[y](v) c`],
-    // not images from outside, or not images at all
     ["a link [x](https://a.example) and wow! [x](u)", "a link [x](https://a.example) and wow! [x](u)"],
     ["a shortcut ![x] and ![x]y and a bang !", "a shortcut ![x] and ![x]y and a bang !"],
     ["no close ![ at all", "no close ![ at all"],
@@ -355,7 +346,6 @@ describe("neutralizeImages", () => {
       expect(out).not.toMatch(/!\[[^\]]*\][([]/);
       expect(out.replaceAll(Z, "!")).toHaveLength(text.length);
       expect(out.replace(/[!\u200B]/g, "")).toBe(text.replace(/!/g, ""));
-      // Applied again, it finds nothing more.
       expect(neutralizeImages(out)).toBe(out);
     }
   });
@@ -373,8 +363,6 @@ describe("neutralizeImages", () => {
   });
 });
 
-// The strip was six patterns, some of which take time with the square of the text. It is scanned now, and
-// must still do what the patterns did: these are the patterns, as they were, to compare it with.
 describe("stripPlaceholderTags is what the patterns it replaced were", () => {
   const tag = new RegExp(`<\\/?(${PLACEHOLDER_TAG_NAMES.join("|")})\\b[^>]*>`, "gi");
   const paired = new RegExp(`<\\|start_(${PAIRED_PIPE_PLACEHOLDER_NAMES.join("|")})\\|>[\\s\\S]*?<\\|end_\\1\\|>`, "gi");

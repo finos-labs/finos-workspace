@@ -1,109 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
   _GridDataSchema,
+  backendTemplateSchema,
   ExternalWidgetSchema,
   InternalWidgetSchema,
-  isWidgetVizType,
+  isBuiltInVizType,
   ParamDefSchema,
   ParamsSchema,
   StorageSchema,
-  TickerSchema,
   WidgetSchemaBase,
   WidgetVizTypes,
   widgetTypesSchema,
 } from "~/lib/types/app";
 
 describe("Zod Schemas from app.ts", () => {
-  describe("TickerSchema", () => {
-    it("should have a consistent shape", () => {
-      const shapeKeys = Object.keys(TickerSchema.shape).sort();
-      expect(shapeKeys).toMatchInlineSnapshot(`
-        [
-          "category",
-          "cik",
-          "color",
-          "country",
-          "currency",
-          "cusip",
-          "exchange",
-          "has_options",
-          "id",
-          "industry",
-          "isin",
-          "name",
-          "sector",
-          "symbol",
-          "type",
-        ]
-      `);
-    });
-
-    it("should validate a valid ticker object", () => {
-      const validTicker = {
-        id: "123",
-        symbol: "AAPL",
-        category: "equity",
-        color: "#FF0000",
-        type: "Common Stock",
-        name: "Apple Inc.",
-        exchange: "NASDAQ",
-        currency: "USD",
-        industry: "Technology",
-        sector: "Information Technology",
-        country: "USA",
-        cik: "0000320193",
-        isin: "US0378331005",
-        cusip: "037833100",
-        has_options: true,
-      };
-      expect(TickerSchema.safeParse(validTicker).success).toBe(true);
-    });
-
-    it("should validate with minimal required fields (id, symbol, category)", () => {
-      const minimalTicker = {
-        id: "456",
-        symbol: "GOOG",
-        category: "equity",
-      };
-      const result = TickerSchema.safeParse(minimalTicker);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data).toEqual({
-          ...minimalTicker,
-        });
-      }
-    });
-
-    it("should invalidate if required fields are missing", () => {
-      const invalidTicker = { id: "123", symbol: "TSLA" };
-      const result = TickerSchema.safeParse(invalidTicker);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(
-          result.error.issues.some((issue) => issue.path.includes("category")),
-        ).toBe(true);
-      }
-    });
-
-    it("should invalidate with incorrect category enum", () => {
-      const invalidTicker = {
-        id: "789",
-        symbol: "MSFT",
-        category: "invalidCategory",
-      };
-      const result = TickerSchema.safeParse(invalidTicker);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(
-          result.error.issues.find((issue) => issue.path.includes("category"))?.message,
-        ).toContain("Invalid input");
-      }
-    });
-  });
-
   describe("ParamDefSchema (and base/form variants)", () => {
     it("ParamDefSchemaBase: should have a consistent shape", () => {
-      // Create a valid base param definition that will pass schema validation
       const validBaseParam = {
         paramName: "testParam",
         type: "text",
@@ -111,11 +23,9 @@ describe("Zod Schemas from app.ts", () => {
         show: true,
       };
 
-      // Parse it through the schema to get the expected shape
       const result = ParamDefSchema.safeParse(validBaseParam);
       expect(result.success).toBe(true);
 
-      // Check the shape by examining what fields are accepted
       const baseParamKeys = [
         "paramName",
         "type",
@@ -132,14 +42,12 @@ describe("Zod Schemas from app.ts", () => {
         "roles",
       ];
 
-      // Compare with expected keys
       expect(Object.keys(validBaseParam)).toEqual(
         expect.arrayContaining(baseParamKeys.slice(0, 4)),
       );
     });
 
     it("FormParamDefSchema: should have a consistent shape", () => {
-      // Create a valid form param definition that will pass schema validation
       const validFormParam = {
         type: "form",
         paramName: "testFormParam",
@@ -155,11 +63,9 @@ describe("Zod Schemas from app.ts", () => {
         ],
       };
 
-      // Parse it through the schema to get the expected shape
       const result = ParamDefSchema.safeParse(validFormParam);
       expect(result.success).toBe(true);
 
-      // Check the shape by examining what fields are accepted
       const formParamKeys = [
         "paramName",
         "label",
@@ -179,7 +85,6 @@ describe("Zod Schemas from app.ts", () => {
         "inputParams",
       ].sort();
 
-      // Compare with expected keys
       expect(Object.keys(validFormParam).sort()).toEqual(
         expect.arrayContaining([
           "type",
@@ -197,14 +102,14 @@ describe("Zod Schemas from app.ts", () => {
       const result = ParamDefSchema.safeParse(validParam);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.show).toBe(true); // Default
-        expect(result.data.options).toEqual([]); // Default
+        expect(result.data.show).toBe(true);
+        expect(result.data.options).toEqual([]);
       }
     });
 
     it("should validate a FormParamDefSchema", () => {
       const validFormParam = {
-        type: "form", // paramName is optional for form
+        type: "form",
         label: "My Form",
         endpoint: "/submit",
         method: "POST",
@@ -282,11 +187,9 @@ describe("Zod Schemas from app.ts", () => {
       }
     });
 
-    it("should reject widget types this FINOS Workspace does not render", () => {
-      expect(widgetTypesSchema.safeParse("table").success).toBe(false);
-      expect(widgetTypesSchema.safeParse("chart").success).toBe(false);
-      expect(widgetTypesSchema.safeParse("note").success).toBe(false);
-      expect(widgetTypesSchema.safeParse("rich_note").success).toBe(false);
+    it("should accept other well-formed types, which widget plugins may render", () => {
+      for (const type of ["table", "chart", "note", "rich_note"])
+        expect(widgetTypesSchema.safeParse(type).success).toBe(true);
     });
 
     it("should be nullish", () => {
@@ -294,11 +197,13 @@ describe("Zod Schemas from app.ts", () => {
       expect(widgetTypesSchema.safeParse(undefined).success).toBe(true);
     });
 
-    it("should invalidate unknown types", () => {
-      const result = widgetTypesSchema.safeParse("invalidWidgetType");
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toContain("Supported types are");
+    it("should invalidate malformed types", () => {
+      for (const type of ["invalidWidgetType", "a", "has space", "9lives", ""]) {
+        const result = widgetTypesSchema.safeParse(type);
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.issues[0].message).toContain("Built-in types are");
+        }
       }
     });
   });
@@ -308,7 +213,6 @@ describe("Zod Schemas from app.ts", () => {
       const shapeKeys = Object.keys(InternalWidgetSchema.shape).sort();
       expect(shapeKeys).toMatchInlineSnapshot(`
         [
-          "copilotParseAs",
           "data",
           "dataUpdateDisplay",
           "description",
@@ -316,11 +220,11 @@ describe("Zod Schemas from app.ts", () => {
           "exportable",
           "external",
           "groupById",
-          "groupId",
           "id",
           "innerTab",
           "name",
           "params",
+          "plugin",
           "raw",
           "refetchInterval",
           "runButton",
@@ -350,15 +254,13 @@ describe("Zod Schemas from app.ts", () => {
         id: "widget2",
         widgetId: "internal2",
         type: "html",
-        data: {
-          mainTicker: { id: "t1", symbol: "AAPL", category: "equity" },
-        },
+        data: { html: "<p>Report</p>" },
       };
       const result = InternalWidgetSchema.safeParse(widget);
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.type).toBe("html");
-        expect(result.data.data?.mainTicker?.symbol).toBe("AAPL");
+        expect(result.data.data?.html).toBe("<p>Report</p>");
       }
     });
 
@@ -383,14 +285,12 @@ describe("Zod Schemas from app.ts", () => {
 
   describe("ExternalWidgetSchema", () => {
     it("should have a consistent shape", () => {
-      // Access the underlying object schema through the effects chain
       const underlyingSchema = ExternalWidgetSchema.def.in._zod.def;
       const shapeKeys = Object.keys(underlyingSchema.shape).sort();
       expect(shapeKeys).toMatchInlineSnapshot(`
         [
           "category",
           "connectionType",
-          "copilotParseAs",
           "data",
           "dataUpdateDisplay",
           "description",
@@ -399,7 +299,6 @@ describe("Zod Schemas from app.ts", () => {
           "exportable",
           "external",
           "groupById",
-          "groupId",
           "id",
           "innerTab",
           "isSharedWidget",
@@ -426,9 +325,8 @@ describe("Zod Schemas from app.ts", () => {
       const result = ExternalWidgetSchema.safeParse(minimalWidget);
       expect(result.success).toBe(true);
       if (result.success) {
-        // Check defaults from base and transform
         expect(result.data.staleTime).toBe(1000 * 60 * 5);
-        expect(result.data.refetchInterval).toBe(1000 * 60 * 15); // Default from transform when runButton is undefined
+        expect(result.data.refetchInterval).toBe(1000 * 60 * 15);
         expect(result.data.data).toEqual({});
       }
     });
@@ -457,12 +355,12 @@ describe("Zod Schemas from app.ts", () => {
     });
 
     it("transform logic: runButton=false (or undefined), refetchInterval=undefined -> refetchInterval=default", () => {
-      const widget = { id: "w", widgetId: "w", runButton: false }; // refetchInterval undefined
+      const widget = { id: "w", widgetId: "w", runButton: false };
       const result = ExternalWidgetSchema.safeParse(widget);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.staleTime).toBe(1000 * 60 * 5); // default staleTime
-        expect(result.data.refetchInterval).toBe(1000 * 60 * 15); // default refetchInterval
+        expect(result.data.staleTime).toBe(1000 * 60 * 5);
+        expect(result.data.refetchInterval).toBe(1000 * 60 * 15);
       }
     });
 
@@ -481,29 +379,29 @@ describe("Zod Schemas from app.ts", () => {
       const invalidWidget = {
         id: "w",
         widgetId: "w",
-        endpoint: { url: "/api/data", method: "PATCH" }, // Invalid method
+        endpoint: { url: "/api/data", method: "PATCH" },
       };
       const resultInvalid = ExternalWidgetSchema.safeParse(invalidWidget);
       expect(resultInvalid.success).toBe(false);
     });
   });
 
-  describe("isWidgetVizType utility function", () => {
+  describe("isBuiltInVizType utility function", () => {
     it("should return true for valid WidgetVizTypes", () => {
-      expect(isWidgetVizType("html")).toBe(true);
-      expect(isWidgetVizType("markdown")).toBe(true);
-      expect(isWidgetVizType("pdf")).toBe(true);
+      expect(isBuiltInVizType("html")).toBe(true);
+      expect(isBuiltInVizType("markdown")).toBe(true);
+      expect(isBuiltInVizType("pdf")).toBe(true);
     });
 
-    it("should return false for invalid types", () => {
-      expect(isWidgetVizType("unknown_type")).toBe(false);
-      expect(isWidgetVizType("Note")).toBe(false); // Case-sensitive
-      expect(isWidgetVizType("")).toBe(false);
+    it("should return false for other types", () => {
+      expect(isBuiltInVizType("unknown_type")).toBe(false);
+      expect(isBuiltInVizType("Note")).toBe(false);
+      expect(isBuiltInVizType("")).toBe(false);
     });
 
     it("should correctly identify all known WidgetVizTypes", () => {
       WidgetVizTypes.forEach((type) => {
-        expect(isWidgetVizType(type)).toBe(true);
+        expect(isBuiltInVizType(type)).toBe(true);
       });
     });
   });
@@ -551,8 +449,7 @@ describe("Zod Schemas from app.ts", () => {
       const result = _GridDataSchema.safeParse(minimalGridData);
       expect(result.success).toBe(true);
       if (result.success) {
-        // Check that optional fields are undefined or null if parsed as such
-        expect(result.data.minH).toBeUndefined(); // or null if parsed from `null`
+        expect(result.data.minH).toBeUndefined();
         expect(result.data.static).toBeUndefined();
       }
     });
@@ -575,7 +472,7 @@ describe("Zod Schemas from app.ts", () => {
     });
 
     it("should invalidate if a required field is missing", () => {
-      const invalidGridData = { y: 0, w: 6, h: 4 }; // Missing x
+      const invalidGridData = { y: 0, w: 6, h: 4 };
       const result = _GridDataSchema.safeParse(invalidGridData);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -589,7 +486,7 @@ describe("Zod Schemas from app.ts", () => {
     });
 
     it("should invalidate if a field has an incorrect type", () => {
-      const invalidGridData = { x: "0", y: 0, w: 6, h: 4 }; // x is string
+      const invalidGridData = { x: "0", y: 0, w: 6, h: 4 };
       const result = _GridDataSchema.safeParse(invalidGridData);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -604,7 +501,6 @@ describe("Zod Schemas from app.ts", () => {
 
   describe("StorageSchema", () => {
     it("should have a consistent shape (empty by definition, but check behavior)", () => {
-      // The defined shape is empty, passthrough is the key characteristic.
       const innerSchema = StorageSchema._def.innerType;
       const shapeKeys = Object.keys(innerSchema.shape).sort();
       expect(shapeKeys).toMatchInlineSnapshot("[]");
@@ -641,14 +537,12 @@ describe("Zod Schemas from app.ts", () => {
       const shapeKeys = Object.keys(WidgetSchemaBase.shape).sort();
       expect(shapeKeys).toMatchInlineSnapshot(`
         [
-          "copilotParseAs",
           "dataUpdateDisplay",
           "description",
           "disableRetrievalForCopilot",
           "exportable",
           "external",
           "groupById",
-          "groupId",
           "id",
           "innerTab",
           "name",
@@ -670,9 +564,9 @@ describe("Zod Schemas from app.ts", () => {
       const result = WidgetSchemaBase.safeParse(minimalWidget);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.staleTime).toBe(1000 * 60 * 5); // Default
-        expect(result.data.params).toEqual([]); // Default
-        expect(result.data.refetchInterval).toBeUndefined(); // Nullish
+        expect(result.data.staleTime).toBe(1000 * 60 * 5);
+        expect(result.data.params).toEqual([]);
+        expect(result.data.refetchInterval).toBeUndefined();
       }
     });
 
@@ -694,7 +588,6 @@ describe("Zod Schemas from app.ts", () => {
         staleTime: 10000,
         refetchInterval: 5000,
         runButton: true,
-        copilotParseAs: "structured" as const,
       };
       const result = WidgetSchemaBase.safeParse(fullWidget);
       expect(result.success).toBe(true);
@@ -722,7 +615,7 @@ describe("Zod Schemas from app.ts", () => {
     });
 
     it("should validate staleTime minimum", () => {
-      const invalidStaleTime = { id: "w", widgetId: "w", staleTime: 500 }; // Min is 1000
+      const invalidStaleTime = { id: "w", widgetId: "w", staleTime: 500 };
       const result = WidgetSchemaBase.safeParse(invalidStaleTime);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -737,7 +630,7 @@ describe("Zod Schemas from app.ts", () => {
     });
 
     it("should validate refetchInterval minimum if number", () => {
-      const invalidRefetch = { id: "w", widgetId: "w", refetchInterval: 500 }; // Min is 1000
+      const invalidRefetch = { id: "w", widgetId: "w", refetchInterval: 500 };
       const result = WidgetSchemaBase.safeParse(invalidRefetch);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -771,5 +664,21 @@ describe("Zod Schemas from app.ts", () => {
         expect(result.data.showTitle).toBeNull();
       }
     });
+  });
+});
+
+describe("backendTemplateSchema groups", () => {
+  const app = (type: string) => ({
+    name: "Demo",
+    tabs: {},
+    groups: [{ name: "Group 1", type, paramName: "region", widgetIds: [] }],
+  });
+
+  it.each(["param", "endpointParam"])("accepts a %s group", (type) => {
+    expect(backendTemplateSchema.safeParse(app(type)).success).toBe(true);
+  });
+
+  it("refuses any other group type", () => {
+    expect(backendTemplateSchema.safeParse(app("other")).success).toBe(false);
   });
 });

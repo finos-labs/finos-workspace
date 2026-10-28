@@ -1,10 +1,6 @@
 import type { ReactNode } from "react";
 
-// Matches either a markdown link `[label](https://url)` or a bare http(s) URL.
-// Markdown is listed first so its inner URL isn't also matched as a bare URL.
-//   group 1 = markdown label, group 2 = markdown url, group 3 = bare url
 const LINK_REGEX = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+)/gi;
-// Trailing punctuation that is unlikely to be part of a bare URL.
 const TRAILING_PUNCTUATION = /[.,;:!?)\]]+$/;
 
 function ExternalLink({
@@ -30,12 +26,6 @@ function ExternalLink({
   );
 }
 
-/**
- * Splits `text` into plain strings and clickable external links. Supports both
- * markdown link syntax `[label](https://url)` and bare http(s) URLs. Any other
- * markdown (bold, headings, etc.) is left as-is. Returns an array of ReactNode
- * that can be rendered inline (e.g. inside a widget description tooltip).
- */
 export function linkifyText(text: string): ReactNode[] {
   if (!text) return [];
 
@@ -61,7 +51,6 @@ export function linkifyText(text: string): ReactNode[] {
       const trailing = bareUrl.match(TRAILING_PUNCTUATION)?.[0] ?? "";
       href = trailing ? bareUrl.slice(0, bareUrl.length - trailing.length) : bareUrl;
       label = href;
-      // Leave trailing punctuation for the next plain-text slice.
       consumedEnd = start + href.length;
     }
 

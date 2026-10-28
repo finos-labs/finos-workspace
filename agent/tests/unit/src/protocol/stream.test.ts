@@ -86,7 +86,6 @@ describe("sseResponse — cancellation", () => {
     const reader = res.body!.getReader();
     await reader.read();
     await reader.cancel();
-    // Yield a tick so the cancel callback runs the generator's finally.
     await new Promise((r) => setTimeout(r, 0));
     expect(returned).toBe(true);
   });
@@ -97,7 +96,7 @@ describe("sseResponse — a client that goes away in the middle of a model call"
     let release!: () => void;
     const model = new Promise<void>((resolve) => (release = resolve));
     async function* waitingForTheModel(): AsyncGenerator<SSEEvent> {
-      await model; // the model call: nothing else happens until it is over
+      await model;
       yield { event: "copilotMessageChunk", data: { delta: "late" } };
     }
     const calls: string[] = [];
@@ -107,7 +106,6 @@ describe("sseResponse — a client that goes away in the middle of a model call"
     await new Promise((r) => setTimeout(r, 20));
     await reader.cancel();
     expect(calls).toEqual(["cancel"]);
-    // The cut-short call ends, and then the stream is closed.
     release();
     await new Promise((r) => setTimeout(r, 20));
     expect(calls).toEqual(["cancel", "close"]);

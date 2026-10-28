@@ -59,7 +59,6 @@ describe("ParametersDialog", () => {
         <ParametersDialog open={false} setOpen={mockSetOpen} />,
       );
 
-      // Dialog should not be visible when closed
       expect(container.querySelector('[role="dialog"]')).not.toBeInTheDocument();
     });
 
@@ -160,7 +159,7 @@ describe("ParametersDialog", () => {
           label: "Param 2",
           show: false,
         },
-        { type: "text", paramName: "param3", value: "value3", label: "Param 3" }, // undefined show should default to true
+        { type: "text", paramName: "param3", value: "value3", label: "Param 3" },
       ];
 
       const widget = makeWidget({
@@ -174,9 +173,9 @@ describe("ParametersDialog", () => {
 
       const switches = screen.getAllByRole("switch");
       expect(switches).toHaveLength(3);
-      expect(switches[0]).toBeChecked(); // param1: show: true
-      expect(switches[1]).not.toBeChecked(); // param2: show: false
-      expect(switches[2]).toBeChecked(); // param3: undefined defaults to true
+      expect(switches[0]).toBeChecked();
+      expect(switches[1]).not.toBeChecked();
+      expect(switches[2]).toBeChecked();
     });
 
     it("should toggle parameter visibility when switch is clicked", async () => {
@@ -244,7 +243,7 @@ describe("ParametersDialog", () => {
 
       await waitFor(() => {
         expect(switches[0]).not.toBeChecked();
-        expect(switches[1]).toBeChecked(); // Should remain unchanged
+        expect(switches[1]).toBeChecked();
       });
     });
   });
@@ -278,11 +277,9 @@ describe("ParametersDialog", () => {
 
       render(<ParametersDialog open={true} setOpen={mockSetOpen} />);
 
-      // Toggle first parameter off
       const switches = screen.getAllByRole("switch");
       await user.click(switches[0]);
 
-      // Click Save
       const saveButton = screen.getByRole("button", { name: /save/i });
       await user.click(saveButton);
 
@@ -290,15 +287,14 @@ describe("ParametersDialog", () => {
         expect(mockUpdateWidget).toHaveBeenCalledTimes(1);
       });
 
-      // Verify the update function was called with the correct params
       const updateFn = mockUpdateWidget.mock.calls[0][0];
       const updatedWidget = updateFn({ ...widget });
 
       expect(updatedWidget.params).toHaveLength(2);
-      expect(updatedWidget.params[0].show).toBe(false); // param1 was toggled off
-      expect(updatedWidget.params[1].show).toBe(true); // param2 remains on
-      expect(updatedWidget.params[0].hidden).toBe(true); // param1 was toggled off
-      expect(updatedWidget.params[1].hidden).toBe(false); // param2 remains on
+      expect(updatedWidget.params[0].show).toBe(false);
+      expect(updatedWidget.params[1].show).toBe(true);
+      expect(updatedWidget.params[0].hidden).toBe(true);
+      expect(updatedWidget.params[1].hidden).toBe(false);
     });
 
     it("should close dialog after saving", async () => {
@@ -386,11 +382,9 @@ describe("ParametersDialog", () => {
 
       render(<ParametersDialog open={true} setOpen={mockSetOpen} />);
 
-      // Toggle parameter
       const switchElement = screen.getByRole("switch");
       await user.click(switchElement);
 
-      // Click Cancel
       const cancelButton = screen.getByRole("button", { name: /cancel/i });
       await user.click(cancelButton);
 
@@ -398,7 +392,6 @@ describe("ParametersDialog", () => {
         expect(mockSetOpen).toHaveBeenCalledWith(false);
       });
 
-      // updateWidget should not have been called
       expect(mockUpdateWidget).not.toHaveBeenCalled();
     });
 
@@ -427,7 +420,6 @@ describe("ParametersDialog", () => {
 
       const { rerender } = render(<TestDialog open={true} />);
 
-      // Toggle parameter
       const switchElement = screen.getByRole("switch");
       await user.click(switchElement);
 
@@ -435,17 +427,14 @@ describe("ParametersDialog", () => {
         expect(switchElement).not.toBeChecked();
       });
 
-      // Close dialog by unmounting component
       rerender(<TestDialog open={false} />);
 
       await waitFor(() => {
         expect(screen.queryByRole("switch")).not.toBeInTheDocument();
       });
 
-      // Reopen dialog
       rerender(<TestDialog open={true} />);
 
-      // Switch should be back to original state
       const reopenedSwitch = await screen.findByRole("switch");
       expect(reopenedSwitch).toBeChecked();
     });
@@ -513,10 +502,7 @@ describe("ParametersDialog", () => {
 
       render(<ParametersDialog open={true} setOpen={mockSetOpen} />);
 
-      // Each parameter row should have a drag handle button
       const dragHandles = screen.getAllByRole("button", { name: "" });
-      // We expect 2 drag handles + 2 action buttons (Save/Cancel) = 4 total buttons
-      // Filter for only the drag handles (they have tabIndex -1)
       const dragHandleButtons = dragHandles.filter(
         (button) => button.getAttribute("tabindex") === "-1",
       );

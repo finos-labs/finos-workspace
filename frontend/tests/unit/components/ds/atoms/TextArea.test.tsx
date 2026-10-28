@@ -35,12 +35,9 @@ describe("Textarea", () => {
   });
 
   it("adjusts height automatically when autoheight is true", () => {
-    // We can't easily test scrollHeight/height in JSDOM, but we can verify it doesn't crash
-    // and correctly applies logic in useEffect if we mock scrollHeight
     const { container } = render(<Textarea autoheight={true} />);
     const textarea = required(container.querySelector("textarea"));
 
-    // Manually trigger effect by rerendering (standard behavior)
     expect(textarea.style.height).toBeDefined();
   });
 });

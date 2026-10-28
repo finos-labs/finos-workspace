@@ -6,9 +6,15 @@ import {
   validateSource,
   validateWidgetItems,
 } from "~/lib/utils/validateBackend";
+import {
+  installWidgetsSchemaFixture,
+  widgetsSchema,
+} from "../../../mocks/widgetsSchema";
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
+installWidgetsSchemaFixture();
+const context = { schema: widgetsSchema };
 
 const source: Source = {
   url: "https://test-backend.com",
@@ -25,7 +31,6 @@ const goodWidget = {
   params: [],
 };
 
-// A widget needs a name
 const badWidget = { name: "", endpoint: "/bad", type: "html", params: [] };
 
 const goodApp = {
@@ -34,7 +39,6 @@ const goodApp = {
   tabs: { main: { id: "main", name: "Main", layout: [] } },
 };
 
-// An app needs its tabs
 const badApp = { name: "Broken App" };
 
 function respond(widgets: unknown, apps: unknown = []) {
@@ -59,23 +63,27 @@ function respond(widgets: unknown, apps: unknown = []) {
 
 describe("validateWidgetItems", () => {
   it("keeps the valid widgets and reports each invalid one on its own", () => {
-    const { fileError, valid, invalid } = validateWidgetItems({
-      good: { ...goodWidget },
-      bad: { ...badWidget, params: [{ paramName: "x", type: "text" }] },
-    });
+    const { fileError, valid, invalid } = validateWidgetItems(
+      {
+        good: { ...goodWidget },
+        bad: { ...badWidget, params: [{ paramName: "x", type: "text" }] },
+      },
+      context,
+    );
 
     expect(fileError).toBeNull();
     expect(Object.keys(valid)).toEqual(["good"]);
     expect(invalid).toHaveLength(1);
     expect(invalid[0]).toMatchObject({ file: "widgets.json", id: "bad" });
-    expect(invalid[0].errors).toContain("[description]");
+    expect(invalid[0].errors).toContain("[widget]: missing `description`");
   });
 
   it("shows the invalid widget as the backend sent it", () => {
     const sentParams = [{ paramName: "x", type: "text" }];
-    const { invalid } = validateWidgetItems({
-      bad: { ...badWidget, params: sentParams },
-    });
+    const { invalid } = validateWidgetItems(
+      { bad: { ...badWidget, params: sentParams } },
+      context,
+    );
 
     const sent = JSON.parse(invalid[0].json);
     expect(sent.endpoint).toBe("/bad");
@@ -83,22 +91,94 @@ describe("validateWidgetItems", () => {
   });
 
   it("reports an entry that is not an object", () => {
-    const { valid, invalid } = validateWidgetItems({
-      good: { ...goodWidget },
-      nothing: null,
-      text: "just a string",
-    });
+    const { valid, invalid } = validateWidgetItems(
+      { good: { ...goodWidget }, nothing: null, text: "just a string" },
+      context,
+    );
 
     expect(Object.keys(valid)).toEqual(["good"]);
     expect(invalid.map((item) => item.id)).toEqual(["nothing", "text"]);
-    expect(invalid[0].errors).toContain("Expected an object");
+    expect(invalid[0].errors).toContain("must be an object");
   });
 
   it("reports a file that is not a map of widgets as a file error", () => {
-    const { fileError, invalid } = validateWidgetItems([{ name: "widget" }]);
+    for (const file of [[{ name: "widget" }], { ...goodWidget }]) {
+      const { fileError, invalid } = validateWidgetItems(file, context);
+      expect(fileError).toContain("Invalid format");
+      expect(invalid).toEqual([]);
+    }
+  });
 
-    expect(fileError).toContain("Invalid format");
+  it("accepts the schema's own keys beside the widgets", () => {
+    const { valid, invalid } = validateWidgetItems(
+      { $schema: "https://json-schema.org/draft-07/schema", good: { ...goodWidget } },
+      context,
+    );
+    expect(Object.keys(valid)).toEqual(["good"]);
     expect(invalid).toEqual([]);
+  });
+
+  it("loads a widget without the keys the contract does not define, and lists them", () => {
+    const { valid, invalid, unrecognized } = validateWidgetItems(
+      {
+        good: {
+          ...goodWidget,
+          defaultViz: "html",
+          params: [{ paramName: "region", type: "text", color: "red" }],
+        },
+      },
+      context,
+    );
+
+    expect(invalid).toEqual([]);
+    expect(valid.good).not.toHaveProperty("defaultViz");
+    expect(valid.good.params?.[0]).not.toHaveProperty("color");
+    expect(unrecognized).toEqual([
+      { name: "Stock Price (good)", keys: ["defaultViz", "params/0/color"] },
+    ]);
+  });
+
+  it("lists the unknown keys of a widget it leaves out, and keeps them in what it shows", () => {
+    const { valid, invalid, unrecognized } = validateWidgetItems(
+      { bad: { ...badWidget, defaultViz: "html" } },
+      context,
+    );
+
+    expect(valid).toEqual({});
+    expect(JSON.parse(invalid[0].json).defaultViz).toBe("html");
+    expect(invalid[0].errors).not.toContain("defaultViz");
+    expect(unrecognized).toEqual([{ name: "bad", keys: ["defaultViz"] }]);
+  });
+
+  it("checks what the schema cannot state, once the schema accepts the widget", () => {
+    const { invalid } = validateWidgetItems(
+      {
+        path: {
+          ...goodWidget,
+          endpoint: "/stock/{symbol}/{period}",
+          params: [{ paramName: "symbol", type: "text", value: "A" }],
+        },
+      },
+      context,
+    );
+    expect(invalid[0].errors).toContain(
+      "[endpoint]: `{period}` names no param of this widget",
+    );
+  });
+
+  it("refuses a header param that stands in for the connection's credentials", () => {
+    const { invalid } = validateWidgetItems(
+      {
+        keyed: {
+          ...goodWidget,
+          params: [{ paramName: "X-Api-Key", type: "text", in: "header" }],
+        },
+      },
+      { ...context, credentialHeaders: ["x-api-key"] },
+    );
+    expect(invalid[0].errors).toContain(
+      "the backend connection sets for its credentials",
+    );
   });
 });
 
@@ -118,7 +198,6 @@ describe("validateBackend with invalid items", () => {
       "widgets.json:bad",
       "apps.json:Broken App",
     ]);
-    // Nothing that is invalid leaves the backend unusable
     expect(result.fatalErrorMessage).toBeNull();
   });
 
@@ -168,6 +247,21 @@ describe("validateBackend with invalid items", () => {
     expect(result.fatalErrorMessage).toContain("Invalid format");
   });
 
+  it("warns about the keys the contract does not define", async () => {
+    respond({ good: { ...goodWidget, defaultViz: "html" } }, [goodApp]);
+
+    const result = await validateBackend(source, false);
+
+    expect(Object.keys(result.validWidgets ?? {})).toEqual(["good"]);
+    expect(result.invalidItems).toEqual([]);
+    expect(result.unrecognizedKeysMessage).toEqual([
+      {
+        label: "[widgets.json]",
+        entries: [{ name: "Stock Price (good)", keys: ["defaultViz"] }],
+      },
+    ]);
+  });
+
   it("reports nothing for a backend that is all valid", async () => {
     respond({ good: { ...goodWidget } }, [goodApp]);
 
@@ -188,17 +282,44 @@ describe("the warning about widget types that are not rendered", () => {
     respond({
       good: { ...goodWidget },
       prices: { name: "Prices", description: "A table", endpoint: "/p", type: "table" },
+      chart: {
+        name: "Chart",
+        description: "A chart",
+        endpoint: "/c",
+        type: "test_chart",
+      },
       untyped: { name: "Untyped", description: "No type", endpoint: "/u" },
     });
 
     const result = await validateSource(source, false);
 
     const message = result.templateWarningMessage ?? "";
-    expect(message).toContain("does not render their widget type: `prices`, `untyped`");
     expect(message).toContain(
-      "Supported widget types: `html`, `iframe`, `markdown`, `newsfeed`, `pdf`",
+      "no widget plugin enabled for your organization renders their type: `prices`",
     );
-    expect(message).toContain("A widget with no `type` is a table");
+    expect(message).toContain(
+      "no widget plugin available to you renders their type: `chart`",
+    );
+    expect(message).toContain(
+      "Widget types you can use: `html`, `iframe`, `markdown`, `newsfeed`, `pdf`",
+    );
+    expect(result.invalidItems?.map((item) => item.id)).toEqual(["untyped"]);
+  });
+
+  it("counts the types an available widget plugin renders as usable", async () => {
+    respond({
+      good: { ...goodWidget },
+      chart: {
+        name: "Chart",
+        description: "A chart",
+        endpoint: "/c",
+        type: "test_chart",
+      },
+    });
+
+    const result = await validateSource(source, { pluginVizTypes: ["test_chart"] });
+
+    expect(result.templateWarningMessage).toBeUndefined();
   });
 
   it("has no warning when every widget is rendered", async () => {

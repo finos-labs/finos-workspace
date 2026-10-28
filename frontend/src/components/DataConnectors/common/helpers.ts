@@ -5,7 +5,7 @@ import type { ParamDef, WidgetT } from "~/components/types";
 import { useAppStore, type Widget } from "~/lib/state/app";
 import type { Source } from "~/lib/state/backendConnector";
 import { useCopilotStore } from "~/lib/state/copilot";
-import { isWidgetVizType } from "~/lib/types/app";
+import { isBuiltInVizType, isWellFormedVizType } from "~/lib/types/app";
 import {
   createParamDefs,
   createURLString,
@@ -15,7 +15,7 @@ import {
   dispatchUpdateWidget,
   generateRandomName,
 } from "~/lib/utils";
-import type { WidgetsType, WidgetType } from "~/utils/zodForms";
+import type { WidgetsType } from "~/utils/zodForms";
 
 export function listToSortedSet(list: string[]): string[] {
   return [...new Set(list)].sort();
@@ -36,7 +36,6 @@ export function addNewDataConnector(
         {
           ...widgetToAdd,
           id: uuidv4(),
-          groupId: "",
           innerTab: "",
           external: true,
         } as Widget,
@@ -62,7 +61,6 @@ export function addMultipleNewDataConnector(
           ({
             ...widget,
             id: uuidv4(),
-            groupId: "",
             innerTab: "",
             external: true,
             name: Array.isArray(widget.name) ? widget.name.join(" ") : widget.name,
@@ -74,7 +72,7 @@ export function addMultipleNewDataConnector(
 }
 
 export function createSourceWidget(
-  widget: WidgetType,
+  widget: WidgetsType[string],
   source: Source,
   withAccess = true,
 ): WidgetT {
@@ -83,14 +81,17 @@ export function createSourceWidget(
 
   const endpoint =
     typeof widget.endpoint === "string"
-      ? { url: createURLString(widget.endpoint, source.url), method: "GET" }
+      ? {
+          url: createURLString(widget.endpoint, source.url),
+          method: widget.method ?? "GET",
+        }
       : widget.endpoint;
 
   const newWidget = {
     ...widget,
     groupById,
     id: uuidv4(),
-    type: widget.type ?? widget.defaultViz,
+    type: widget.type,
     endpoint,
     params,
     external: true,
@@ -216,13 +217,12 @@ export function updateWidgetEndpoints(
     updateWidget(dashId, widget);
   };
 
-  // The widgets keep the URL and method; the source's credentials are looked up when they fetch
   for (const [dashId, widgets] of Object.entries(selectedWidgets)) {
     for (const w of widgets) {
       const widgetId = (w.widgetId ?? "").replace(`${sourceName}-`, "");
       const widgetJson = source.widgets?.[widgetId];
       if (!widgetJson) {
-        const { url, method } = createWidgetEndpoint(w.endpoint?.url);
+        const { url, method } = createWidgetEndpoint(w.endpoint);
         const updatedWidget = {
           ...w,
           sourceName: source.name,
@@ -239,20 +239,25 @@ export function updateWidgetEndpoints(
       );
       const groupById = params?.find((p) => p?.type === "endpoint")?.groupById;
 
-      const { url, method } = createWidgetEndpoint(
-        createURLString(widgetJson.endpoint, source.url),
-      );
+      const { url, method } = createWidgetEndpoint({
+        url: createURLString(widgetJson.endpoint, source.url),
+        method: widgetJson.method ?? "GET",
+      });
 
-      const subCategory = widgetJson.sub_category ?? widgetJson.subCategory;
-      const widgetType = widgetJson.type ?? widgetJson.defaultViz;
+      const subCategory = widgetJson.subCategory;
       const dataKey = widgetJson.data?.dataKey ?? w.data?.dataKey;
+      const type = isWellFormedVizType(widgetJson.type) ? widgetJson.type : w.type;
+      const typeConfig =
+        type && !isBuiltInVizType(type)
+          ? { [type]: (widgetJson.data as Record<string, unknown> | undefined)?.[type] }
+          : {};
 
       const updatedWidget = {
         ...w,
         name: widgetJson.name ?? w.name,
         description: widgetJson.description ?? "",
         groupById,
-        type: isWidgetVizType(widgetType) ? widgetType : w.type,
+        type,
         sourceName: source.name,
         category: widgetJson.category ?? "",
         subCategory,
@@ -261,6 +266,9 @@ export function updateWidgetEndpoints(
         data: {
           ...(w.data ?? {}),
           dataKey,
+          rawDataKey: widgetJson.data?.rawDataKey,
+          rawType: widgetJson.data?.rawType,
+          ...typeConfig,
         },
         endpoint: { url, method },
         staleTime: widgetJson.staleTime ?? w.staleTime,
@@ -278,7 +286,7 @@ export function updateWidgetEndpoints(
 
       if (isSharedSource) updatedWidget.isSharedWidget = true;
 
-      const initialParams = createWidgetInitParams(updatedWidget, w?.data?.mainTicker);
+      const initialParams = createWidgetInitParams(updatedWidget);
       updatedWidget.storage = { ...updatedWidget.storage, params: initialParams };
 
       onUpdatedWidget(dashId, updatedWidget, w.innerTab);

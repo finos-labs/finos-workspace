@@ -11,7 +11,6 @@ const COPILOT_KEYS_QUERY_KEY = ["copilot-keys"];
 
 const NO_KEYS: CopilotKeysStatus = { has_openai_key: false, has_perplexity_key: false };
 
-/** Which of the user's own provider keys the API holds. The page never sees the keys. */
 export function useCopilotKeys(): CopilotKeysStatus {
   const signedIn = useShallowAuthStore((s) => s.user !== null);
   const { data } = useQuery({
@@ -23,7 +22,6 @@ export function useCopilotKeys(): CopilotKeysStatus {
   return data ?? NO_KEYS;
 }
 
-/** Sends the user's own provider keys to the API, which stores them encrypted. */
 export function useSaveCopilotKeys() {
   const queryClient = useQueryClient();
   return useMutation({

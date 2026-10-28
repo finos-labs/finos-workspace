@@ -1,9 +1,3 @@
-/**
- * get_skill_content — load one skill body from the FINOS Workspace skill library.
- *
- * Mirrors workspace_mcp/server.py:1026-1037.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";

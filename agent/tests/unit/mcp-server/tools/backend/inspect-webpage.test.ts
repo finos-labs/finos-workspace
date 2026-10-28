@@ -10,16 +10,12 @@ import { logicalUrl } from "../../../../helpers/logical-url.ts";
 
 const realFetch = globalThis.fetch;
 const CHAT = "u1:chat1";
-// These tools hold and read what belongs to one chat, so they act only on a scope the agent signed.
-// The tests run as a deployment with users does: a secret is set, and the chat is signed with it.
 const SECRET = "0123456789abcdef0123";
 process.env.INES_SCOPE_SECRET = SECRET;
-/** The chat, as the agent hands it to a tool. */
 const scoped = (chat: string = CHAT) => ({
   "x-ines-conversation-id": chat,
   "x-ines-scope-sig": signScope(SECRET, chat),
 });
-/** A fetch as the agent makes it: the address was given in the conversation, and the chat is signed. */
 const call = (url: string, chat: string = CHAT) => ({
   url,
   "x-ines-url-sig": signUrl(SECRET, url),
@@ -96,13 +92,11 @@ describe("inspect_webpage — find", () => {
 
   it("returns a few matches at a time and counts them all", async () => {
     const id = await fetched();
-    // "region 3" is in every seventh sentence (57 of 400), each far enough from the last to be a match of its own.
     const found = textOf(await inspect(id, { view: "find", query: "region 3", limit: 3 }));
     expect(found).toContain("Matches 1–3 of 57");
     expect(found.split("\n")).toHaveLength(4);
     expect(textOf(await inspect(id, { view: "find", query: "region 3", limit: 3, offset: 55 }))).toContain("Matches 56–57 of 57");
     expect(textOf(await inspect(id, { view: "find", query: "region 3", limit: 3, offset: 60 }))).toBe("57 matches in the text, none from 61.");
-    // Matches that share one passage are one match.
     expect(textOf(await inspect(id, { view: "find", query: "revenue" }))).toContain("of 134,");
   });
 

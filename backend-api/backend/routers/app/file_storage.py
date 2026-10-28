@@ -1,5 +1,3 @@
-"""File storage endpoints."""
-
 import asyncio
 import contextlib
 import io
@@ -34,17 +32,12 @@ router = APIRouter(
     prefix="/app",
     tags=["app-file-storage"],
 )
-# The pre-signed downloads: the URL's signature is their whole credential, with no session
-# or client header. Agents fetch them server to server; like every request, they name an
-# allowed Origin (an agent sends its WORKSPACE_ORIGIN), or the API refuses them with 403.
 signed_router = APIRouter(prefix="/app", tags=["app-file-storage"])
 
 
 async def check_upload_limit(
     db: AsyncSession, user_uuid: UUID, files: list[UploadFile]
 ) -> None:
-    """Refuse an upload that would take the user's files over the upload limit of their
-    roles."""
     limit = (await get_user_limits(db, user_uuid)).upload_size_gb
     if limit is None:
         return
@@ -72,14 +65,6 @@ async def post_files(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Upload multiple files to the file storage bucket.
-
-    The files will be stored in S3 and a reference to them will be
-    created in the database to be later linked to a file widget.
-
-    If the file is not used in a file widget within 24 hours,
-    it will be automatically deleted from the S3 bucket.
-    """
     await check_may_add_connections(db, user.uuid)
     await check_upload_limit(db, user.uuid, files)
 
@@ -150,9 +135,6 @@ async def get_user_stored_file(
     query = select(StoredFile).where(or_(*checks))
 
     if user is not None:
-        # Authenticated request — enforce ownership / global / share-table access.
-        # Unauthenticated callers (presigned URL flow) have already proven access
-        # via signature verification before getting here.
         shared_file_uuids = await get_shared_file_uuids(db, user)
         query = query.where(
             or_(
@@ -182,7 +164,6 @@ async def get_file(
     user=Depends(auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
 ):
-    """Get a file from the file storage bucket."""
     stored_file = await get_user_stored_file(file_name, user, db)
 
     return FileStorage.get_stream(stored_file)
@@ -195,12 +176,6 @@ async def get_signed_file(
     Signature: str,
     db: AsyncSession = Depends(aget_read_db),
 ):
-    """Get a file from the local file storage bucket using a pre-signed URL.
-
-    This endpoint is used for local storage pre-signed URLs, which are validated
-    using the signature and expiration time.
-    """
-
     if (
         storage_info := FileStorage.validate_presigned_url(
             file_name, Expires, Signature
@@ -212,7 +187,6 @@ async def get_signed_file(
     return FileStorage.get_stream(stored_file)
 
 
-# A pre-signed URL opens the file without a session: it lives 15 minutes at most
 PRESIGNED_URL_MAX_SECONDS = 900
 
 
@@ -225,8 +199,6 @@ async def get_presigned_url(
     user=Depends(auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
 ):
-    """Get a pre-signed URL for a file in the file storage bucket. A longer expiration
-    than 15 minutes is cut to 15 minutes."""
     stored_file = await get_user_stored_file(file_name, user, db)
     presign_url = await FileStorage.create_presigned_url(
         stored_file.bucket,
@@ -314,8 +286,6 @@ async def get_files(
     user=Depends(auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
 ):
-    """Get a zip file of multiple files from the file storage bucket based on the file UUIDs or filenames provided."""
-
     shared_file_uuids = await get_shared_file_uuids(db, user)
 
     stored_file_query = (

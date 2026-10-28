@@ -58,8 +58,6 @@ export function useGetCopilotWidgets() {
 
   const getSideBarItem = useShallowAppStore((state) => state.getSideBarItem);
 
-  // What the widgets show follows the dashboard's parameter groups, so a change of a group is a change of
-  // what the Copilot is told about them.
   const dashboardGroups = useShallowAppStore(
     (state) => state.getTabById(currentDashboardId)?.data?.groups,
   );
@@ -73,7 +71,6 @@ export function useGetCopilotWidgets() {
     [lastInnerTab, searchParams.get("tab")],
   );
 
-  // Determine current page context
   const pageContext = useMemo(() => {
     if (currentDashboardId) return "dashboard";
     const pathName = lastVisitedPage?.replace(/(\/app\/).*?|(\/)/, "");
@@ -90,8 +87,6 @@ export function useGetCopilotWidgets() {
     }
   }, [lastVisitedPage, currentDashboardId]);
 
-  // widgets are the selected widgets when adding to copilot
-  // getDashboardWidgetData contain all the widgets with data filled in a dashboard
   const {
     selectedWidgetIDs: selectedWidgetUUIDs,
     getDashboardWidgetData,
@@ -150,18 +145,14 @@ export function useGetCopilotWidgets() {
         const dashboardWidgetData = getDashboardWidgetData(uuid);
         if (!dashboardWidgetData) return null;
 
-        // Check if this is a tab widget (pseudo-widget)
         const metadataWidgetId = dashboardWidgetData.metadata?.widgetId;
         if (
           typeof metadataWidgetId === "string" &&
           metadataWidgetId.startsWith("tab_")
         ) {
-          // For tab widgets, we need to populate the tabWidgets metadata properly
           const metadata = dashboardWidgetData.metadata || {};
           const widgetIds = (metadata.widgetIds || []) as string[];
 
-          // Get the actual dashboard widgets for this tab
-          // Convert dashboard widgets to CopilotWidget format
           const tabWidgets = widgetIds
             .map((widgetId: string) => {
               const widget = getDashboardWidgetByUuid(widgetId);
@@ -176,7 +167,6 @@ export function useGetCopilotWidgets() {
             })
             .filter(Boolean);
 
-          // TODO: This should use the createCopilotWidget function
           return {
             origin: "Workspace",
             widget_id: metadataWidgetId,
@@ -195,12 +185,9 @@ export function useGetCopilotWidgets() {
           };
         }
 
-        // For regular widgets, use the existing logic
         const widget = getDashboardWidgetByUuid(uuid);
         if (!widget) return null;
-        // Skip navigation_bar widgets as they shouldn't be available for @ mentions
         if (widget?.widgetId === "navigation_bar") return null;
-        // Skip widgets without proper identification
         if (!(widget?.widgetId || widget?.id)) return null;
         return createCopilotWidget(
           uuid,
@@ -212,14 +199,12 @@ export function useGetCopilotWidgets() {
       })
       .filter(Boolean) as CopilotWidget[];
 
-    // Find temporary text mention tabs that aren't in selectedWidgetIDs
     const temporaryTabs = currentSelectedWidgets.filter(
       (widget) =>
         widget?.widget_id?.startsWith("tab_") &&
         !(widget.uuid && selectedWidgetUUIDs.includes(widget.uuid)),
     );
 
-    // Merge persistent widgets with temporary tabs
     return [...persistentWidgets, ...temporaryTabs];
   }, [
     selectedCopilot,
@@ -245,7 +230,6 @@ export function useGetCopilotWidgets() {
             id: agent.id,
             name: agent.name,
             description: agent.description,
-            // Convert record of booleans/objects into a list of feature keys
             features: toFeatureKeys(agent.features),
           };
           if (
@@ -255,7 +239,7 @@ export function useGetCopilotWidgets() {
             return data;
         });
       })
-      .filter(Boolean) as NonNullable<WorkspaceStateT["agents"]>; // Filter out any undefined values
+      .filter(Boolean) as NonNullable<WorkspaceStateT["agents"]>;
   }, [
     externalCopilotHolders,
     agentOrchestrationMap,
@@ -289,18 +273,6 @@ export function useGetCopilotWidgets() {
 
       let widgetData = dashboardWidgetsData[uuid];
 
-      // If widget is not in the copilot data, create a basic entry.
-      //
-      // Deliberately NOT skipped for the current tab. The `|| w.innerTab ===
-      // innerTab` short-circuit that used to live here assumed a visible widget
-      // always has data by now, so synthesizing one would be wasted work. That
-      // holds in steady state and fails during load: until a current-tab widget
-      // populates `dashboardWidgetsData`, it has no entry, and the
-      // `if (!widgetData) return acc;` below then drops it from the payload
-      // entirely — while the SAME widget on a background tab survives, because
-      // it got a placeholder. The agent's `workspace_state` is built separately
-      // and still advertises the dropped widget's uuid, so the model asks for a
-      // widget the payload cannot resolve.
       if (!widgetData) {
         widgetData = createCopilotDataWidget({
           widget: w,
@@ -315,11 +287,8 @@ export function useGetCopilotWidgets() {
       )
         return acc;
 
-      // Get widget data if available, otherwise use empty metadata
       if (!widgetData) return acc;
 
-      // Built-in widgets will have the most updated widget params schema
-      // Stored widgets will have the schema from when they were created
       const builtInWidget = w?.widgetId ? getAppWidget(w?.widgetId) : null;
       const finalWidget = { ...w, ...(builtInWidget?.params ?? {}) } as WidgetT;
       const copilotWidget = createCopilotWidget(
@@ -332,11 +301,6 @@ export function useGetCopilotWidgets() {
 
       if (!copilotWidget) return acc;
 
-      // Expand iframe sub-widgets: if the parent has a bridge with a manifest,
-      // create synthetic CopilotWidgets for each sub-widget. The widget itself is sent as well, whatever its
-      // page has published: it is the one the agent acts on, by the uuid that the FINOS Workspace gave it (the same
-      // after any refresh), with its type and the parameters it shows. Whether the page has connected yet must
-      // not change what the agent is sent. The sub-widgets are what the page publishes, under ids it makes up.
       const bridge = getIframeWidget(uuid);
       if (bridge && bridge.manifest.length > 0) {
         acc.allDashboardWidgets.push(copilotWidget);
@@ -402,8 +366,6 @@ export function useGetCopilotWidgets() {
   const temporaryWidgets = useMemo((): CopilotWidget[] => {
     if (!selectedCopilot?.features?.["file-upload"]) return [];
 
-    // Files still in the composer, plus files already sent with a message in this chat,
-    // so an attachment stays available for the rest of the conversation.
     const messageFiles =
       chatMessages?.flatMap((message) =>
         message.role === "human" ? (message.files ?? []) : [],
@@ -456,12 +418,12 @@ export function useGetCopilotWidgets() {
 }
 
 const getOptionsParams = (
-  optionsParams: Record<string, string>,
+  optionsParams: Record<string, string | number | boolean>,
   widgetParams: ParamDef[],
 ): Record<string, string>[] => {
   return Object.entries(optionsParams)
     .map(([key, value]) => {
-      if (value?.toString()?.startsWith("$")) {
+      if (typeof value === "string" && value.startsWith("$")) {
         const queryKey = value.slice(1);
         const param = widgetParams.find((p) => p.paramName === queryKey);
         if (param) {
@@ -477,17 +439,12 @@ const getOptionsParams = (
     .filter(Boolean) as Record<string, string>[];
 };
 
-/**
- * What a widget's grouped parameters are: it shows the value of the dashboard's group that they are in, whatever
- * value it stored (the widget keeps the one it had when it joined the group, and the group's overrides it).
- */
 export function groupedParamValues(
   groups: readonly Group[],
   paramDefs: ParamDef[],
 ): Record<string, StoredParamValue> {
   const values: Record<string, StoredParamValue> = {};
   for (const group of groups) {
-    if (group.type !== "param" && group.type !== "endpointParam") continue;
     if (group.value === null || group.value === undefined) continue;
     const paramName = getGroupParamName(group, paramDefs);
     if (paramName) values[paramName] = group.value;
@@ -503,7 +460,6 @@ export function createCopilotWidget(
   groups: readonly Group[] = [],
 ): CopilotWidget | null {
   try {
-    // Early validation - ensure widget has basic required properties
     if (!widget) throw new Error("Widget is null or undefined");
     if (!(widget.widgetId || widget.id || uuid)) {
       throw new Error(
@@ -513,8 +469,6 @@ export function createCopilotWidget(
 
     const origin = getWidgetOrigin(widget);
     if (!origin) throw new Error(`Widget origin not found: ${widget}`);
-    // For some reason the widgetId doesn't contain a uuid for widgets from the workspace
-    // such as the navigation bar
     const widgetId = origin === "Workspace" && uuid ? uuid : widget.widgetId;
     if (!widgetId)
       throw new Error(
@@ -547,7 +501,6 @@ export function createCopilotWidget(
       : widgetInfo.source;
 
     const params = defaultParams
-      // Temporarily remove form params from copilot
       .filter((param: ParamDef) => param.type !== "form")
       .map((param: ParamDef) => {
         const defaultValue = param.value;

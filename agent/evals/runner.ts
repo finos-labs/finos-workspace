@@ -1,24 +1,4 @@
 #!/usr/bin/env node
-/**
- * Tier 3 eval runner.
- *
- * Loads cases from evals/cases/, runs each N times against a real LLM,
- * applies graders, and writes per-trial traces + a summary report.
- *
- * Usage:
- *   npm run evals                           # run all cases
- *   npm run evals -- --filter=widget        # filter case ids
- *   npm run evals -- --group=widget-selection
- *   EVAL_MODEL=<provider>:<model> npm run evals
- *
- * Env:
- *   EVAL_MODEL        — model id passed to resolveModel (default: DEFAULT_MODEL)
- *   EVAL_JUDGE_MODEL  — judge model for llmJudge graders (default: EVAL_MODEL)
- *   EVAL_TRIALS       — overrides per-case trials
- *   EVAL_OUT_DIR      — output dir for trace JSONs (default evals/runs)
- *
- * The runner is idempotent: each run lands under evals/runs/<ISO-date>/.
- */
 
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
@@ -70,7 +50,6 @@ interface RunSummary {
   cases: CaseReport[];
 }
 
-// The model under test comes from EVAL_MODEL, else DEFAULT_MODEL; none is baked in.
 const configuredModel = process.env.EVAL_MODEL || process.env.DEFAULT_MODEL;
 if (!configuredModel) {
   console.error("Set EVAL_MODEL (or DEFAULT_MODEL) to the model to evaluate.");

@@ -1,23 +1,7 @@
 # syntax=docker/dockerfile:1
 
-###############################################
-# Backend: the API
-###############################################
-# Built from scratch, without GCC's runtime libraries (libgcc_s, libstdc++),
-# which are GPL: CPython for musl from python-build-standalone, the
-# dependencies, those with native code built from source with clang, and the
-# libraries they link, from Chimera Linux, which builds everything with LLVM:
-# musl, LLVM's libunwind and libc++, OpenSSL and libffi. Then the virtual
-# environment, the code and the time zones. No glibc, shell, package manager,
-# pip, setuptools or compiler. The image is for the platform it is
-# built for (docker build --platform, or the service's platform in compose).
-
-###############################################
-# Builder Image
-###############################################
 FROM chimeralinux/chimera@sha256:29102d7e12a1f464707d7aba19ce53e652d277861838ed4129178d0655444b1a AS builder-base
 
-# CPython for musl. Bump the release, the version and both SHA-256s together.
 ARG PYTHON_RELEASE=20261021
 ARG PYTHON_VERSION=3.13.17
 ARG PYTHON_SHA256_X86_64=089e64ce3a7969382e4782e2051c12d6de143e9f7d102c89a8c8d54e7c554b90
@@ -37,8 +21,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     CXX=clang++ \
     LDSHARED="clang -shared"
 
-# Chimera is a rolling release: the image is where the build starts, and the
-# packages are the current ones.
 RUN apk upgrade --no-cache --available \
     && apk add --no-cache clang musl-devel linux-headers pkgconf rust cargo git curl bsdtar llvm-binutils \
       openssl3-devel libffi8-devel libcxx-devel tzdb
@@ -55,15 +37,11 @@ RUN arch="$(uname -m)" \
     && mkdir -p /opt && bsdtar -xzf "$tarball" -C /opt \
     && rm "$tarball"
 
-# Poetry runs from an environment of its own, which stays in this stage.
 RUN /opt/python/bin/python3 -m venv /opt/poetry && /opt/poetry/bin/pip install "poetry==$POETRY_VERSION"
 
 WORKDIR $PYSETUP_PATH
 COPY ./pyproject.toml ./poetry.lock ./
 
-# Every locked package that publishes compiled wheels is built from its sdist
-# instead, with clang: some wheels bring copies of GCC's runtime (libgcc_s,
-# libstdc++), and Chimera's Rust and C++ link LLVM's libunwind and libc++.
 RUN /opt/python/bin/python3 - <<'EOF'
 import subprocess, tomllib
 lock = tomllib.load(open("poetry.lock", "rb"))
@@ -72,16 +50,10 @@ compiled = [p["name"] for p in lock["package"]
 subprocess.run(["/opt/poetry/bin/poetry", "config", "installer.no-binary", ",".join(compiled)], check=True)
 EOF
 
-# The runtime dependencies into $VENV_PATH, without pip.
 RUN /opt/poetry/bin/poetry env use /opt/python/bin/python3 && /opt/poetry/bin/poetry install --only main
 
-# remove slowapi poetry.lock/requirements.txt
 RUN rm -rf $VENV_PATH/src/slowapi/poetry.lock $VENV_PATH/src/slowapi/docs/requirements.txt
 
-# The image's filesystem but for the virtual environment and the code: CPython
-# without pip, Tk, IDLE, its tests and _dbm (Berkeley DB, Sleepycat); the CA
-# certificates, which are certifi's (Mozilla's, MPL-2.0); the time zones; the
-# users; and what appuser writes: the code directory and the uploaded files.
 RUN set -e; \
     arch="$(uname -m)"; \
     mkdir -p /rootfs/usr/lib /rootfs/opt /rootfs/etc/ssl/certs /rootfs/usr/share /rootfs/tmp \
@@ -105,13 +77,6 @@ RUN set -e; \
       'appuser:x:1000:1000:appuser:/home/appuser:/sbin/nologin' > /rootfs/etc/passwd; \
     printf '%s\n' 'root:x:0:' 'nobody:x:65534:' 'appuser:x:1000:' > /rootfs/etc/group
 
-# The shared libraries CPython and the dependencies link, from Chimera, and
-# what the image holds that SBOM scanners cannot find without a package
-# database: those libraries' packages, CPython and the libraries compiled into
-# it, and the time zones (.github/actions/image-sbom reads this file). The
-# build fails if the image would hold one of GCC's runtime libraries or a file
-# linked to one, or if CPython's line editing is GNU readline (GPL) rather
-# than libedit.
 RUN mkdir -p /rootfs/usr/share/sbom && /opt/python/bin/python3 - <<'EOF'
 import curses, decimal, json, os, pathlib, platform, pyexpat, re, readline, shutil, sqlite3, ssl, subprocess, sys, zlib
 
@@ -146,7 +111,6 @@ def link(queue):
         queue += needed(real)
 
 link([name for p in elfs for name in needed(p)])
-# OpenSSL loads its providers (cryptography asks for the legacy one) when it runs, so nothing names them.
 modules = []
 if "libcrypto.so.3" in copied:
     (lib / "ossl-modules").mkdir()
@@ -208,9 +172,6 @@ sbom = {"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1, "component
 (root / "usr/share/sbom/runtime.cdx.json").write_text(json.dumps(sbom, indent=2) + "\n")
 EOF
 
-###############################################
-# Production Image
-###############################################
 FROM scratch AS production-stage
 
 ENV PYTHONUNBUFFERED=1 \
@@ -225,7 +186,6 @@ COPY --from=builder-base --chown=1000:1000 /writable/ /
 COPY --from=builder-base $VENV_PATH $VENV_PATH
 
 WORKDIR /opt/code
-# Uploaded files live in local_storage (a volume in docker-compose.yml)
 COPY --chown=1000:1000 ./ ./
 
 USER 1000:1000

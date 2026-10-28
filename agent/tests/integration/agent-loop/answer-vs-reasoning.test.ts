@@ -1,15 +1,3 @@
-/**
- * Tier 2 — what the chat is shown token by token: nothing.
- *
- * The answer is the step in which the model calls no more tools, and it reaches the chat whole, in one
- * message chunk. Text written in a step that also calls a tool is reasoning: one status, shown as
- * reasoning, never part of the answer. Neither is ever streamed in pieces, however the model's text
- * arrives (one block, many deltas, a tag split across deltas).
- *
- * A model that writes its tool calls into its text (`<tool_call>{...}</tool_call>`) gets the same
- * treatment: the marker becomes a tool call, the text around it is reasoning, and no marker is shown.
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
@@ -55,7 +43,6 @@ const reasoning = (events: SSEEvent[]): string[] =>
     .filter((d) => d.group === "reasoning")
     .map((d) => d.message);
 
-/** Everything the chat is given as text, from any event. The status events have a `tool_call` field of their own, so a marker is looked for by its tags. */
 const everything = (events: SSEEvent[]): string => JSON.stringify(events);
 const MARKERS = /<\/?tool_?calls?>|<function=|\[TOOL_CALLS\]/i;
 
@@ -188,12 +175,10 @@ describe("a model that writes its tool calls into its text", () => {
       "avr-inline",
       inline([llmEmitsTextInDeltas(splitEvery(text, 4)), llmEmitsTextInDeltas(["Top close ", "is 200."])]),
     );
-    // The tool ran: its status is in the trace, and the answer is the next step's text, whole.
     expect(JSON.stringify(events)).toContain("execute_sql");
     expect(chunks(events)).toEqual(["Top close is 200."]);
     expect(reasoning(events)).toContain("I will look at the highest close first.");
     expect(everything(events)).not.toMatch(MARKERS);
-    // The SQL is in the tool's own status (its trace), and not in the model's text shown as reasoning or answer.
     expect([...reasoning(events), ...chunks(events)].join("\n")).not.toContain("SELECT");
   });
 

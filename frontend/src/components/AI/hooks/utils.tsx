@@ -15,10 +15,6 @@ import { createURLString, currentDateModifier } from "~/lib/utils/widgetParams";
 import type { CreateWidgetParams } from "./useCreateWidgetFromArtifact";
 import type { CopilotSubmitParams } from "./useStreamResponse";
 
-/**
- * The citations of an AI message as the backend sends them, with the id and signature
- * they miss filled in. What cannot be rendered, as it names no source, is dropped.
- */
 export function normalizeCitations(citations: unknown): Citation[] {
   if (!Array.isArray(citations)) return [];
   return citations.flatMap((raw): Citation[] => {
@@ -38,9 +34,6 @@ export function normalizeCitations(citations: unknown): Citation[] {
   });
 }
 
-/**
- * Dispatches an event update Copilot question
- */
 export async function dispatchCopilotCommand(
   command: string | ((prev: string) => string),
 ) {
@@ -51,10 +44,6 @@ export async function dispatchCopilotCommand(
   );
 }
 
-/**
- * Uploaded files travel with the message they were attached to, failed ones stay
- * in the composer so the user can see the error, and a pending upload blocks the send.
- */
 export function partitionFilesOnSend(files: CopilotFile[]) {
   const sent: CopilotFile[] = [];
   let hasPending = false;
@@ -76,8 +65,6 @@ export function dispatchCreate(detail: CreateWidgetParams) {
 }
 
 export function getWidgetOrigin(widget: WidgetT): string {
-  // TODO: We should have an explicit field for this
-
   if (widget.connectionType === "file") return "the backend";
   if (widget.external) return widget.sourceName ?? "Unknown";
   return "Workspace";
@@ -137,7 +124,6 @@ export function normalizeWidgetId(
   return widgetId?.replace(`${origin}-`, "");
 }
 
-/** Resolves an agent's endpoints against the base URL of the holder that registered it. */
 export function resolveAgentEndpoints(
   endpoints: Copilot["endpoints"],
   baseUrl: string,
@@ -150,18 +136,12 @@ export function resolveAgentEndpoints(
   return resolved;
 }
 
-// Helper function to normalize argument values for comparison
 function normalizeArgValue(value: unknown): unknown {
-  // Convert single-element arrays to their first element for comparison
-  // This handles the case where backend sends ["UNRATE"] but widget has "UNRATE"
   if (Array.isArray(value) && value.length === 1) {
     value = value[0];
   }
 
-  // Normalize string numbers to numbers for comparison
-  // This handles cases where one source has "20" and another has 20
   if (typeof value === "string" && !Number.isNaN(Number(value)) && value !== "") {
-    // Check if it's a pure number (not something like "20abc")
     const numValue = Number(value);
     if (numValue.toString() === value.trim()) {
       return numValue;
@@ -171,7 +151,6 @@ function normalizeArgValue(value: unknown): unknown {
   return value;
 }
 
-// Compare args with normalization
 function compareNormalizedArgs(
   args1: Record<string, unknown> | undefined,
   args2: Record<string, unknown> | undefined,
@@ -179,14 +158,10 @@ function compareNormalizedArgs(
   if (!(args1 || args2)) return true;
   if (!(args1 && args2)) return false;
 
-  // Only compare keys that exist in args2 (the citation signature)
-  // This means we only check if the citation's specified params match
-  // We don't care about extra params in the widget that aren't in the citation
   for (const key of Object.keys(args2)) {
     const val1 = normalizeArgValue(args1[key]);
     const val2 = normalizeArgValue(args2[key]);
 
-    // If widget doesn't have this param but citation specifies it, no match
     if (val1 === undefined || val1 === null) {
       if (val2 !== undefined && val2 !== null) {
         return false;
@@ -230,10 +205,6 @@ export function createSignatureMap(
           : {};
       const currentParams = (widget.params ?? []).reduce<Record<string, unknown>>(
         (paramAcc, param) => {
-          // Check for params in multiple places:
-          // 1. dashboardWidgetsData (when widget has been used with AI)
-          // 2. widget.storage.params (actual stored params)
-          // 3. param.value (default value)
           const paramValue =
             widgetParams?.[param.paramName] ??
             widget.storage?.params?.[param.paramName] ??
@@ -261,7 +232,6 @@ export function createSignatureMap(
   );
 }
 
-/** Returns true when a citation carries a SQL query that differs from the matched widget's query. */
 export function detectQueryMismatch(
   citationQuery: unknown,
   widgetQuery: unknown,

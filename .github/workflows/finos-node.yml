@@ -1,19 +1,5 @@
 name: finos-node
 
-# The Node the agent's images run on, released as ghcr.io/<owner>/finos-node:<Node version>-<build>.
-# A tag finos-node-v<Node version>-<build> (finos-node-v26.12.1-1) builds the stage `node` of
-# agent/Dockerfile once, pushes it as that image (a tag that exists is never replaced), attests its
-# SBOM and build provenance, and publishes a GitHub release with the image's filesystem as a tarball,
-# its SHA-256 and the SBOM. The jobs that build the agent's images take the release from there, pinned
-# by digest (agent-node.yml), so none of them compiles Node; a local build compiles the stage itself.
-#
-# A new Node version is a change to agent/Dockerfile and build 1 of that version. A new build of the
-# same Node (-2, -3, ...) is for a fix in what Chimera supplies (musl, libc++, OpenSSL, ICU, the time
-# zones) or a change to the stage. finos-node-check.yml says every week whether one is due.
-#
-# The attestations, and the storage records that tie them to the image (artifact metadata), are
-# written by the finos-node-bot GitHub App (secrets NODE_APP_ID and NODE_APP_PRIVATE_KEY);
-# this workflow's own token pushes the image, signs (OIDC) and publishes the release.
 on:
   push:
     tags:
@@ -28,7 +14,6 @@ jobs:
   release:
     name: Release finos-node
     runs-on: ubuntu-latest
-    # Node is compiled here, which takes hours on a hosted runner.
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v7
@@ -52,8 +37,6 @@ jobs:
             echo "sbom=finos-node-$release.cdx.json"
           } >> "$GITHUB_OUTPUT"
 
-      # The App writes the attestations hours from now, after the build: a release it could not attest
-      # would keep its tag, so a missing variable or a key the App refuses stops the run here instead.
       - name: Check that the App gives a token
         uses: actions/create-github-app-token@v3
         with:
@@ -62,13 +45,12 @@ jobs:
           permission-attestations: write
           permission-artifact-metadata: write
 
-      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # A rerun for a tag that was released stops here.
       - name: Check that the release is new
         env:
           IMAGE: ${{ steps.release.outputs.image }}
@@ -82,7 +64,6 @@ jobs:
       - name: Build the stage
         run: docker build --target node --output type=local,dest=finos-node agent
 
-      # The image is the stage's filesystem, and the tarball is the same files.
       - name: Push the image
         id: push
         env:
@@ -103,7 +84,6 @@ jobs:
 
       - uses: ./.github/actions/install-syft
 
-      # Keep syft's serialNumber: actions/attest takes a CycloneDX file as an SBOM only with one.
       - name: SBOM of the image
         env:
           IMAGE: ${{ steps.release.outputs.image }}
@@ -113,7 +93,6 @@ jobs:
           SYFT_FILE_METADATA_SELECTION: none
         run: syft scan "docker:$IMAGE:$RELEASE" --quiet --select-catalogers +sbom-cataloger --output "cyclonedx-json=$SBOM"
 
-      # Asked for after the build: an App's token lasts an hour, and compiling Node takes longer.
       - name: Get the App's token for the attestations
         id: token
         uses: actions/create-github-app-token@v3
@@ -143,7 +122,6 @@ jobs:
           subject-path: ${{ steps.release.outputs.tarball }}
           github-token: ${{ steps.token.outputs.token }}
 
-      # The notes: what the image is, what it holds (from the SBOM it carries), how to use and verify it.
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}

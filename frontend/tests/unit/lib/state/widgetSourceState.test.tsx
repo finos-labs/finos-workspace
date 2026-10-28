@@ -13,6 +13,7 @@ import {
   useBackendConnectorStore,
 } from "~/lib/state/backendConnector";
 import { usePermissionsStore } from "~/lib/state/permissions";
+import { plainRequest } from "~/lib/utils/widgetRequest";
 import { HttpResponse, http, server, setupMSW } from "../../../mocks/msw-utils";
 import { partial } from "../../mocks";
 
@@ -115,7 +116,7 @@ describe("useJsonData and the widget's data backend", () => {
     return renderHook(
       () =>
         useJsonData(
-          { url: "https://data.example.test/prices", endpointHeaders: undefined },
+          { request: plainRequest("https://data.example.test/prices", undefined) },
           { retry: false },
         ),
       { wrapper: createWrapper() },

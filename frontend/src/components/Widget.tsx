@@ -1,4 +1,4 @@
-import { Suspense, useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import DraggableCard from "~/components/DraggableCard";
 import { Button } from "~/components/ds/atoms/Button";
@@ -6,12 +6,23 @@ import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams"
 import { FILE_EXTENSIONS } from "~/lib/constants";
 import { useTabContext } from "~/lib/contexts/TabContext";
 import { useAppStore } from "~/lib/state/app";
+import { isBuiltInVizType, isWellFormedVizType } from "~/lib/types/app";
 import { getCleanWidgetId } from "~/lib/utils";
 import EmptyDashboardCTA from "./General/EmptyDashboardCTA";
 import SearchResultsNotFound from "./General/SearchResultsNotFound";
 import RenderIfVisible from "./RenderIfVisible";
 import { useWidgetContext, WidgetProvider } from "./Widget.context";
 import Widgets, { getWidgetComponent, type WidgetId } from "./Widgets";
+
+const PluginWidget = lazy(() => import("~/plugins/PluginWidget"));
+
+export function isPluginRendered(
+  widget: { plugin?: unknown; type?: string | null } | undefined,
+) {
+  if (!widget) return false;
+  if (widget.plugin) return true;
+  return isWellFormedVizType(widget.type) && !isBuiltInVizType(widget.type);
+}
 
 const WidgetFallback = () => {
   const { renderRow0Params, renderBelowNavbarRows } = useWidgetParamsPositions(false);
@@ -30,12 +41,13 @@ export function WidgetWrapper(props: { uuid: string; activeDashboardId: string }
   const { uuid, activeDashboardId } = props;
 
   const { getWidget, isShared } = useTabContext();
-  const { widgetId, ...value } = useMemo(
+  const { widgetId, pluginRendered, ...value } = useMemo(
     () => ({
       uuid,
       isShared,
       activeDashboardId,
       widgetId: getWidget(uuid)?.widgetId,
+      pluginRendered: isPluginRendered(getWidget(uuid)),
     }),
     [uuid, activeDashboardId],
   );
@@ -43,14 +55,14 @@ export function WidgetWrapper(props: { uuid: string; activeDashboardId: string }
   const element = useMemo(
     () => (
       <WidgetProvider {...value}>
-        <RenderIfVisible>
+        <RenderIfVisible stayRendered={!pluginRendered}>
           <Suspense fallback={<WidgetFallback key={`widget-fallback-${uuid}`} />}>
             <WidgetComponent />
           </Suspense>
         </RenderIfVisible>
       </WidgetProvider>
     ),
-    [value],
+    [value, pluginRendered],
   );
 
   const errorBoundaryProps = useMemo(
@@ -80,7 +92,6 @@ export function WidgetWrapper(props: { uuid: string; activeDashboardId: string }
     [uuid, widgetId, activeDashboardId],
   );
 
-  // empty dashboard cta widget
   if (uuid === "empty-dashboard-cta") return <EmptyDashboardCTA />;
 
   return <ErrorBoundary {...errorBoundaryProps}>{element}</ErrorBoundary>;
@@ -96,6 +107,8 @@ export function WidgetComponent() {
   if (!widget?.widgetId) {
     return null;
   }
+
+  if (widget.plugin) return <PluginWidget />;
 
   const endpointUrl = widget?.endpoint?.url;
   const cleanWidgetId = getCleanWidgetId(widget.widgetId, widget.connectionType);
@@ -122,6 +135,8 @@ export function WidgetComponent() {
   const widgetTypeComponent = loadWidgetComponent(widgetType as WidgetId);
 
   if (widgetTypeComponent) return widgetTypeComponent;
+
+  if (isPluginRendered({ type: widgetType })) return <PluginWidget />;
 
   return (
     <DraggableCard>

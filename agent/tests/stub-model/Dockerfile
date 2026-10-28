@@ -1,7 +1,5 @@
 # syntax=docker/dockerfile:1
 
-# The model the end-to-end stack runs instead of a provider (see server.ts). It has no dependencies
-# beyond Node itself, so there is nothing to install and the image is the base plus one file.
 FROM node:26.12.1-alpine3.24
 
 ENV NODE_ENV=production

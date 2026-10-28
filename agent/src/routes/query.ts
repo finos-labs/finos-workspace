@@ -18,13 +18,8 @@ import { AGENT_ID } from "./agents.ts";
 const logger = getLogger(["app", "routes", "query"]);
 const audit = getLogger(["audit"]);
 
-// Every list and string a client sends has a limit that no real request comes near: a request is a long
-// chat, a dashboard of a few thousand widgets, a few dozen tools. What is far past that is not one, and is
-// refused before anything is done with it (the body limit alone allows tens of megabytes of tiny items).
 const LIMITS = { messages: 20_000, widgets: 20_000, tools: 500, skills: 500, documents: 50 } as const;
 
-// What the code reads of a message and of a widget has the type it has in protocol/types.ts: an entry that is not
-// an object, or that has a field of another type, is refused here, not found by the code that reads it.
 const MessageSchema = z.object({ role: z.enum(["human", "ai", "tool"]) }).passthrough();
 const WidgetSchema = z
   .object({
@@ -38,6 +33,16 @@ const WidgetSchema = z
     sub_category: z.string().max(500).optional(),
     source: z.string().max(500).nullish(),
     metadata: z.record(z.string(), z.unknown()).optional(),
+    mcp_tool: z
+      .object({
+        server_id: z.string().max(500),
+        tool_name: z.string().max(500),
+        args: z
+          .record(z.string().max(200), z.union([z.string().max(256), z.number(), z.boolean()]))
+          .refine((args) => Object.keys(args).length <= 32, "Too many arguments")
+          .optional(),
+      })
+      .optional(),
   })
   .passthrough();
 
@@ -67,7 +72,6 @@ const QueryRequestSchema = z.object({
     .array(z.object({
       slug: z.string().max(200),
       description: z.string().max(4_000),
-      // Absent for one of Ines's own skills: she has its instructions.
       contentMarkdown: z.string().max(500_000).optional(),
       source: z.enum(["forced_slash", "model_selected"]),
     }))
@@ -96,7 +100,6 @@ const QueryRequestSchema = z.object({
         id: z.string().max(200),
         name: z.string().max(500),
         format: z.enum(["pdf", "docx", "txt", "md", "html"]),
-        // A file of 25 MB, as base64.
         content_b64: z.string().max(35_000_000).optional(),
         url: z.string().max(4_000).optional(),
       }).refine((d) => !!d.content_b64 || !!d.url, {
@@ -130,7 +133,6 @@ function parseWorkspaceState(raw: unknown): WorkspaceState | null {
   return result.success ? result.data : null;
 }
 
-/** A turn that cannot start because no usable model exists: one readable error in the chat, not a 500. */
 function modelFailure(message: string): Response {
   logger.error("No usable model for this request", { message });
   return sseResponse(
@@ -141,10 +143,6 @@ function modelFailure(message: string): Response {
   );
 }
 
-/**
- * A refusal the user should read: a message in the chat. An HTTP error would reach them as "An error
- * has occurred", which says nothing about a limit or a missing permission.
- */
 function chatNotice(message: string): Response {
   return sseResponse(
     (async function* () {
@@ -153,7 +151,6 @@ function chatNotice(message: string): Response {
   );
 }
 
-/** The raw MCP name of a tool: the web app names each `<server>_<tool>` and sends the tool's own name too. */
 function toolRef(tool: AgentTool): ToolRef {
   return { url: tool.url, toolName: tool.tool_name ?? tool.name.split("_").slice(1).join("_") };
 }
@@ -170,20 +167,12 @@ function refusal(c: Context<AppEnv>, failure: Failure): Response {
 
 interface QueryRun {
   context: Record<string, unknown>;
-  /** The scope key of the chat, "" when the request names none. */
   chatKey: string;
   services: Services | undefined;
   release: () => void;
   tokens: () => number;
 }
 
-/**
- * What the deployment needs to see of a query: the user's slot is freed and the turn forgotten when it
- * ends (however it ends), and its outcome, duration and tokens are counted and written to the audit log.
- * `events` runs the loop inside the request's logging context, which a stream that is read after the
- * handler returned would otherwise lose. `end` is for the stream to call when it closes: it does nothing
- * a second time, and it covers a stream that closed before `events` ever started.
- */
 function trackQuery(run: QueryRun) {
   const started = performance.now();
   metrics.activeQueries.inc();
@@ -195,7 +184,6 @@ function trackQuery(run: QueryRun) {
     if (ended) return;
     ended = true;
     const result = outcome ?? fallback;
-    // A turn that is waiting for the browser to run a tool goes on; any other ending ends it.
     if (result !== "continued" && run.chatKey) void run.services?.limits.endTurn(run.chatKey);
     const seconds = (performance.now() - started) / 1000;
     metrics.activeQueries.dec();
@@ -220,7 +208,6 @@ function trackQuery(run: QueryRun) {
       outcome = "error";
       throw error;
     } finally {
-      // Lets the loop's own cleanup (it reports the tokens used) run when the client went away.
       await withContext(run.context, () => inner.return(undefined)).catch(() => undefined);
       end("aborted");
     }
@@ -235,16 +222,12 @@ queryRouter.post("/v1/query", async (c) => {
   const services = c.get("services") as Services | undefined;
   const principal = c.get("principal") ?? ANONYMOUS;
 
-  // A user who keeps sending what is not a question is turned away before anything is read.
   if (services && (await services.limits.struck(principal.userId))) {
     metrics.queries.inc({ outcome: "limit" });
     audit.info("Refused a query unread: the user has sent too many requests that were not questions");
     return c.json({ error: "Too many invalid requests. Try again in a minute." }, 429, { "Retry-After": "60" });
   }
 
-  // One user can have only so many queries running at once, and the agent only so many in all. The place is
-  // taken before the body is read: a body can be tens of megabytes, which takes the whole agent a moment to
-  // parse, and a refused request must not cost that.
   const admission = services ? await services.limits.admit(principal.userId) : ({ ok: true, release: () => undefined } as const);
   if (!admission.ok) {
     metrics.queries.inc({ outcome: "busy" });
@@ -257,8 +240,6 @@ queryRouter.post("/v1/query", async (c) => {
     return c.json({ error: "Too many of your queries are running. Wait for one to finish." }, 429);
   }
 
-  // The place is given back when the request is turned down. Once the answer is under way (`handOver`), the
-  // stream gives it back when it ends, however it ends.
   let streaming = false;
   try {
     return await answerQuery(c, { services, principal, release: admission.release, handOver: () => void (streaming = true) });
@@ -297,14 +278,10 @@ async function answerQuery(
     return typeof v === "string" ? v : undefined;
   };
 
-  // The model comes from the request's picker or from DEFAULT_MODEL; no model id
-  // is baked into this server, so with neither it says so instead of guessing.
   const rawModelId = getOption("model") || process.env.DEFAULT_MODEL;
   if (!rawModelId) {
     return modelFailure("No model is configured. Set DEFAULT_MODEL on the agent (for example <provider>:<model>) or pick a model in the FINOS Workspace.");
   }
-  // A deployment offers the models it lists, and a client can ask for no other: the provider keys are
-  // the operator's, so a user must not be able to spend them on any model a provider serves.
   if (services && !services.config.models.includes(rawModelId)) {
     metrics.queries.inc({ outcome: "denied" });
     audit.info("Refused the model {model}: this deployment does not offer it", { model: rawModelId });
@@ -318,16 +295,9 @@ async function answerQuery(
   }
   const workspaceState = parseWorkspaceState(body.workspace_state);
 
-  // X-Trace-Id is the workspace-managed per-chat identifier (set in
-  // useGetCopilotRequestHeaders.tsx), stable across re-POSTs in the same chat.
-  // With users, everything kept for a chat is filed under the user as well (see lib/scope.ts), so that
-  // no chat id a client sends can reach the state of another user's chat.
-  // Header lookups are case-insensitive in Hono — try both casings to be safe.
   const chatId = c.req.header("X-Trace-Id") ?? c.req.header("x-trace-id") ?? "";
   const conversationId = workspace ? scopeKey(principal.userId, chatId) : chatId;
 
-  // The user's roles decide the model and the tools, and the first request of a turn counts against their
-  // daily limit. All of it is asked of the FINOS Workspace API before any work is done for the request.
   let disabledCapabilities: Capability[] = [];
   if (workspace && services) {
     try {
@@ -377,7 +347,6 @@ async function answerQuery(
   const tieredWidgets = getTieredWidgets(body);
   const allWidgets = tieredWidgets.map((t) => t.widget);
 
-  // Pre-cache widget data from re-POST so the agent can re-fetch from cache if needed
   if (lastMessage?.role === "tool") {
     const toolMsg = lastMessage as ToolMessage;
     if (
@@ -396,9 +365,6 @@ async function answerQuery(
   }
 
   const roles = body.messages.map((m) => m.role);
-  // Surface where the model came from: body.model (workspace picker) wins over
-  // DEFAULT_MODEL (server fallback). Makes "why this model" answerable from one
-  // log line.
   const optionsModel = getOption("model");
   const modelSource = optionsModel ? "workspace_options.model" : "env.DEFAULT_MODEL";
   const context = {
@@ -431,7 +397,6 @@ async function answerQuery(
 
   const query = trackQuery({ context, chatKey: conversationId, services, release, tokens: () => tokens });
   handOver();
-  // The client closing the stream stops the model call too: otherwise it runs on, and is paid for, unread.
   const clientGone = new AbortController();
   return sseResponse(
     query.events(

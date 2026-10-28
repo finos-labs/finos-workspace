@@ -1,0 +1,31 @@
+{
+  "manifestVersion": 1,
+  "id": "plotly-charts",
+  "name": "Plotly charts",
+  "description": "Renders the plotly widget type with plotly.js: any backend's Plotly figure, drawn as its author made it.",
+  "publisher": { "name": "dlee-bq" },
+  "icon": "assets/icon.svg",
+  "host": { "api": 1, "afm": "0.11" },
+  "entry": { "module": "entry.js", "styles": ["entry.css"] },
+  "contributes": {
+    "widgets": [
+      {
+        "id": "chart",
+        "name": "Plotly chart",
+        "description": "A backend's Plotly figure, drawn with plotly.js",
+        "category": "Charts",
+        "handles": [
+          {
+            "type": "plotly",
+            "response": {
+              "accepts": "json",
+              "description": "A Plotly figure as JSON, {\"data\": [traces], \"layout\": {...}, \"frames\": [...]}, as plotly.py's fig.to_json() writes it. The endpoint gets theme=dark or theme=light."
+            }
+          }
+        ],
+        "permissions": ["core:data:read", "core:export:provide", "core:copilot:context"],
+        "grid": { "w": 20, "h": 12, "minW": 8, "minH": 6 }
+      }
+    ]
+  }
+}

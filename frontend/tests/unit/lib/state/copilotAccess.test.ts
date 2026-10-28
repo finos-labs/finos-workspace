@@ -16,7 +16,6 @@ const none: CopilotAccess = { models: [], mcp: [] };
 
 const granted: CopilotAccess = {
   models: [
-    // The default agent's grants carry the id its agents.json gives it
     { agent_id: "default_agent", model_id: "fast" },
     { agent_id: "custom", model_id: "smart" },
   ],
@@ -40,7 +39,6 @@ describe("normalizeMcpUrl", () => {
 
 describe("grantAgentId", () => {
   it("files grants under the id the agent gives itself in its agents.json", () => {
-    // The web app knows the default agent as default-copilot
     expect(grantAgentId("default-copilot")).toBe("default_agent");
     expect(grantAgentId("custom")).toBe("custom");
   });
@@ -126,7 +124,6 @@ describe("allowedModels and selectModelId", () => {
 });
 
 describe("what an administrator switched off", () => {
-  // Every tool of both servers granted, as a role can grant them
   const all: CopilotAccess = {
     models: [],
     mcp: [

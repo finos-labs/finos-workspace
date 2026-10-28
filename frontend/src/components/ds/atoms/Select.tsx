@@ -188,8 +188,6 @@ const SelectSeparator = React.forwardRef<
 ));
 SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
 
-// Composed Select
-
 export interface SelectOptionObject {
   label: string;
   value: string;
@@ -205,36 +203,28 @@ export interface SelectOptionGroup {
 export interface SelectProps<T extends string = string>
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>,
     VariantProps<typeof SelectTriggerVariants> {
-  // Model
   options: CanBeImmutable<SelectOption[] | SelectOptionGroup[]>;
   value?: T;
   onChange?: (value: Exclude<T, "">) => void;
-  // Trigger
   className?: string;
   placeholder?: string;
   autoFocus?: boolean;
-  // Other components
   label?: React.ReactNode;
   message?: React.ReactNode;
   error?: boolean;
-  /** Force light mode styling regardless of theme */
   forceLight?: boolean;
 }
-/** Plain select component, can be used in form or outside it */
 const SelectBase = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Root>,
   SelectProps
 >((props, ref) => {
   const {
-    // Model
     options,
     onChange,
-    // Trigger
     className,
     placeholder,
     size,
     autoFocus,
-    // Other components
     label,
     message,
     error,
@@ -298,11 +288,8 @@ const Select = SelectBase as <T extends string = string>(
   props: SelectProps<T> & { ref?: React.ForwardedRef<HTMLInputElement> },
 ) => React.ReactElement;
 
-/* Form */
-
 type FormSelectProps = Omit<SelectProps, "error">;
 
-/** Select field used inside <Form> only. */
 const FormSelect = React.forwardRef<HTMLInputElement, FormSelectProps>((props, ref) => {
   const { label, message, ...rest } = props;
 

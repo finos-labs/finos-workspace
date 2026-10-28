@@ -18,7 +18,6 @@ export function useTabHighlight(): TabHighlightContextType {
   );
 
   const hoveredWidgetTabId = useMemo(() => {
-    // Prioritize direct tab hovering over widget-derived tab hovering
     if (hoveredTabId) {
       return hoveredTabId;
     }

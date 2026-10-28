@@ -107,10 +107,7 @@ export default function AddToDashboardDropdownMenu({
           </button>
           <div className="h-[1px] bg-light-300 dark:bg-dark-400 my-2" />
           <div className="space-y-2">
-            <p
-              // TODO: ds replace this with tw class, replace also the filter and category from widget menu
-              className="truncate text-2xs uppercase tracking-widest text-light-500 dark:text-light-600 whitespace-nowrap"
-            >
+            <p className="truncate text-2xs uppercase tracking-widest text-light-500 dark:text-light-600 whitespace-nowrap">
               DASHBOARDS
             </p>
             <div ref={listRef} className="space-y-2 overflow-y-auto max-h-[200px] mb-2">

@@ -1,10 +1,3 @@
-/**
- * Helpers for turning an MCP tool's JSON-Schema `inputSchema` into a flat,
- * render-ready list of parameters for the tool hover tooltip. All functions are
- * pure and defensive: malformed or partial schemas degrade to readable fallbacks
- * rather than throwing.
- */
-
 export type JsonSchemaObject = Record<string, unknown>;
 
 export type SchemaParameter = {

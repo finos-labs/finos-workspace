@@ -1,11 +1,3 @@
-/**
- * Hand-authored widget fixture sets for evals.
- *
- * These mimic the shape of widgets that would arrive via /v1/query but
- * are intentionally tiny and stable so eval results are reproducible.
- * Refresh quarterly or when widget metadata shape changes upstream.
- */
-
 import type { Widget } from "../../src/protocol/types.ts";
 
 export const techWorkspace: { primary: Widget[]; secondary: Widget[] } = {
@@ -129,9 +121,6 @@ export const FIXTURES = {
 
 export type FixtureKey = keyof typeof FIXTURES;
 
-// Workspace-state fixtures — describe where the user currently is. Used
-// to test whether the model resolves ambiguous "this", "the dashboard"
-// references against the visible context.
 import type { WorkspaceState } from "../../src/protocol/types.ts";
 
 export const aaplDashboardState: WorkspaceState = {

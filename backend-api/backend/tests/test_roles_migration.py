@@ -1,12 +1,3 @@
-"""The roles migration (revision 4f1c8a2d9e63) on the Copilot's web tools.
-
-Before it, an organization's entitlement switched SEARCH_WEB and FETCH_FROM_WEB off for its
-users; after it, they are settings of a role. A role keeps off what its organization had off.
-
-As in test_secrets_migration, alembic runs in a subprocess against a SQLite file: the database
-is brought to the revision before, filled, upgraded, checked, and downgraded.
-"""
-
 import os
 import subprocess
 import sys
@@ -19,7 +10,6 @@ import sqlalchemy_utils
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BEFORE = "b6dd1da576b6"
 REVISION = "4f1c8a2d9e63"
-# The head before develop was merged in, which a database that ran this branch is at
 BRANCH_HEAD = "8b5e2d7c1f40"
 FULL_TIER_ID = 1
 
@@ -35,7 +25,7 @@ def _alembic(db_path: str, *args: str) -> None:
         "REDIS_HOST": "127.0.0.1",
         "STORAGE_PROVIDER": "aws",
     }
-    result = subprocess.run(  # noqa: S603 (the test's own alembic arguments)
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "alembic", *args],
         cwd=BACKEND_DIR,
         env=env,
@@ -57,8 +47,6 @@ def database(tmp_path):
 
 
 def _seed(engine: sa.Engine) -> dict[str, object]:
-    """Three organizations, each with a role: one whose entitlement has web search off, one
-    with reading pages off, and one without an entitlement."""
     entity = sa.table(
         "entity",
         sa.column("uuid", UUID),
@@ -140,7 +128,6 @@ def test_a_role_keeps_off_what_its_organization_had_off(database):
     _alembic(db_path, "upgrade", REVISION)
 
     assert _web_switches(engine, roles["no_search"]) == (False, True)
-    # A switch that was never set was on
     assert _web_switches(engine, roles["no_fetch"]) == (True, False)
     assert _web_switches(engine, roles["plain"]) == (True, True)
 
@@ -181,16 +168,12 @@ def test_downgrade_gives_the_switches_back_to_the_entitlement_tables(database):
 
 
 def test_a_database_from_before_the_merge_gets_the_switches_and_loses_the_marketplace(tmp_path):
-    """A database that reached 8b5e2d7c1f40 before develop's revisions were under 4f1c8a2d9e63
-    has neither web switch on its roles and still has what the marketplace left (revision
-    1ded5470241f)."""
     db_path = str(tmp_path / "branch.db")
     _alembic(db_path, "upgrade", BRANCH_HEAD)
     engine = sa.create_engine(f"sqlite:///{db_path}")
     with engine.begin() as conn:
         conn.execute(sa.text("ALTER TABLE role DROP COLUMN search_web"))
         conn.execute(sa.text("ALTER TABLE role DROP COLUMN fetch_from_web"))
-        # As the earlier 0001 made them: api_source.vendor_app_uuid has an index and points at vendor_app
         conn.execute(sa.text("CREATE TABLE vendor (uuid CHAR(32) PRIMARY KEY)"))
         conn.execute(
             sa.text(
@@ -217,8 +200,6 @@ def test_a_database_from_before_the_merge_gets_the_switches_and_loses_the_market
 
 
 def test_a_database_that_ran_this_branch_loses_the_excel_add_ins_role_switch(tmp_path):
-    """A database that reached 4f1c8a2d9e63 while it still added role.excel_add_in has the
-    column; revision f11377401858 drops it."""
     db_path = str(tmp_path / "excel.db")
     _alembic(db_path, "upgrade", "1ded5470241f")
     engine = sa.create_engine(f"sqlite:///{db_path}")

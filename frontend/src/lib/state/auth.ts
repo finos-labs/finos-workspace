@@ -36,7 +36,6 @@ interface Name {
   last: string;
 }
 
-/** What a sign-in (POST /app/login and the identity providers) or GET /app/session says about the user. */
 type SignedInProfile = Pick<
   LoginResponse | SessionResponse,
   "uuid" | "email" | "entity_name" | "role" | "user"
@@ -46,9 +45,7 @@ export interface AuthState {
   lastVisitedPage: string;
   updateLastVisitedPage: (value: string) => void;
   login: (data: SignedInProfile) => void;
-  /** Takes the session GET /app/session describes into the page. */
   startSession: (session: SessionResponse) => void;
-  /** Restores the signed-in user from the session cookie; true when there is one. */
   restoreSession: () => Promise<boolean>;
   logout: () => Promise<void>;
   showChangelog: boolean;
@@ -57,7 +54,6 @@ export interface AuthState {
   name: Name;
 }
 
-// Empties every persisted store, awaited so the page reloads only once they are gone
 async function clearPersistedStores() {
   const stores = [
     useBackendConnectorStore,
@@ -78,18 +74,12 @@ async function clearPersistedStores() {
   );
 }
 
-// MSAL keeps its cache in page memory; clear it too, in case anything outlives the reload
 async function clearMicrosoftCache() {
   if (!getEnabledIdentityProviders().includes("microsoft")) return;
   const { getMsalInstance } = await import("~/lib/microsoft-auth-config");
   await getMsalInstance().clearCache();
 }
 
-/**
- * Ends the session (when the page has one) and wipes what the page kept: in-memory
- * credentials, the persisted stores, sessionStorage and the MSAL cache. Then reloads on
- * the login page, which drops everything else held in memory.
- */
 async function signOut(signedIn: boolean) {
   if (signedIn) {
     const data = await logout();
@@ -120,10 +110,6 @@ async function signOut(signedIn: boolean) {
 let restoring: Promise<boolean> | null = null;
 let signingOut: Promise<void> | null = null;
 
-/**
- * Who is signed in. The session itself is an HttpOnly cookie the page never sees, so this
- * holds the profile only, in memory: after a reload restoreSession asks the API again.
- */
 export const useAuthStore = createWithEqualityFn<AuthState>()(
   subscribeWithSelector((set, get) => ({
     lastVisitedPage: "/app",
@@ -154,7 +140,6 @@ export const useAuthStore = createWithEqualityFn<AuthState>()(
       useAccessStore
         .getState()
         .setAccessAndUsage(session.access, session.usage ?? null);
-      // The custom agents' headers are never persisted: load them again
       refreshExternalCopilotHolders().catch((error) =>
         console.error("Could not load the custom agents:", error),
       );
@@ -173,7 +158,6 @@ export const useAuthStore = createWithEqualityFn<AuthState>()(
       return restoring;
     },
     logout: () => {
-      // Concurrent calls (several refused requests at once) share one sign-out
       signingOut ??= signOut(get().user !== null).finally(() => {
         signingOut = null;
       });
@@ -184,8 +168,6 @@ export const useAuthStore = createWithEqualityFn<AuthState>()(
   shallow,
 );
 
-// The API refused the session: sign out the user in memory. While no user is in memory a
-// 401 says nothing about a session.
 setOnSessionRefused(() => {
   const { user, logout } = useAuthStore.getState();
   if (user) logout();

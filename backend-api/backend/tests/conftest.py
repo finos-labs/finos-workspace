@@ -1,5 +1,3 @@
-"""Test fixture registration for backend tests."""
-
 from os import environ
 
 pytest_plugins = [
@@ -10,6 +8,9 @@ pytest_plugins = [
     "tests.fixtures.clients",
     "tests.fixtures.mocks",
     "tests.fixtures.organization",
+    "tests.fixtures.widget_plugins",
+    "tests.fixtures.plugin_proxies",
+    "tests.fixtures.plugin_backends",
 ]
 
 

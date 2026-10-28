@@ -1,26 +1,11 @@
-/**
- * File-widget cases. Exercises the vision / file-attachment path:
- *   1. A widget surfaces a PNG image to the model via `get_widget_data`
- *      tool result; the model should be able to read it and answer
- *      questions grounded in the image content.
- *   2. The system prompt tags file widgets with `[FILE: <ext>]` — covered
- *      in Tier 1 prompt tests; here we verify the model uses the tag to
- *      know it's working with a file rather than tabular data.
- */
-
 import { readFileSync } from "fs";
 import { join } from "path";
 import type { EvalCase } from "../runner.ts";
 import type { ToolMessage, Widget } from "../../src/protocol/types.ts";
 import { llmJudge, noBadState, toolCalled, toolNeverCalled } from "../graders/index.ts";
-// Use the REAL MCP tool descriptions so the routing decision the model faces
-// matches production. If someone reverts the description to one that forbids
-// get_widget_data, the cold-pdf case below goes red.
 import { queryDocumentsDescription } from "../../mcp-server/src/tools/backend/documents/query-documents.ts";
 import { listDocumentsDescription } from "../../mcp-server/src/tools/backend/documents/list-documents.ts";
 
-// Tesla revenue-table image. Real
-// content the vision model can recognize as a financial table.
 const IMAGE_PATH = join(import.meta.dirname, "..", "fixtures", "files", "table.png");
 const TABLE_PNG_B64 = readFileSync(IMAGE_PATH).toString("base64");
 
@@ -81,10 +66,6 @@ const CSV_LOADED: ToolMessage = {
   ],
 };
 
-// A PDF file widget whose bytes are NOT yet loaded (cold doc store). The
-// agent only feeds the `query_documents` RAG store by first round-tripping
-// through `get_widget_data` (→ extractFileTierDocs → pendingDocuments →
-// x-ines-documents decoration). Until then the store is empty.
 const pdfWidget: Widget = {
   uuid: "file-sso-setup-guide",
   origin: "example",
@@ -95,8 +76,6 @@ const pdfWidget: Widget = {
   metadata: { extension: "pdf" },
 };
 
-// Doc-RAG MCP tools surfaced so the model CAN be tempted to call
-// query_documents on a cold store. Descriptions are the REAL prod strings.
 const QUERY_DOCS_TOOL = {
   name: "query_documents",
   server_id: "ines",

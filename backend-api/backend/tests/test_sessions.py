@@ -1,12 +1,3 @@
-"""Sessions: hashed tokens, cookies, the client header, CSRF and CORS.
-
-A session is a random token that only its client holds; the session table stores its
-SHA-256 hash, and a session ends when its time is up. The web app rides an HttpOnly
-cookie with its X-Workspace-Client header, and changes nothing from an origin outside
-BACKEND_CORS_ORIGINS. No session is a bearer token. A pending two-factor
-enrollment is a cookie of its own that only POST /totp and POST /totp/activate accept.
-"""
-
 import hashlib
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
@@ -33,7 +24,6 @@ from tests.fixtures.organization import ADMIN_ENTITY
 from utilities.config import GeneralSettings
 
 PASSWORD = "TestPassword123!"  # noqa: S105
-# A local origin that is not one of BACKEND_CORS_ORIGINS
 OTHER_ORIGIN = "http://localhost:9999"
 WEEK = 7 * 24 * 3600
 
@@ -50,7 +40,6 @@ def _login(email: str, source: str = "app", remember: bool = False, code=None) -
 
 
 def _set_cookies(response) -> dict[str, str]:
-    """The response's Set-Cookie headers by cookie name, lower-cased."""
     return {
         header.split("=", 1)[0]: header.lower()
         for header in response.headers.get_list("set-cookie")
@@ -63,7 +52,6 @@ def _token_of(web_client) -> str:
 
 @asynccontextmanager
 async def _browser(headers: dict[str, str] | None = None):
-    """A client of its own, with exactly these headers and an empty cookie jar."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url=TEST_BASE_URL, headers=headers or {}
     ) as browser:
@@ -71,7 +59,6 @@ async def _browser(headers: dict[str, str] | None = None):
 
 
 async def _sessions(db_session, user_uuid) -> list:
-    """The user's session rows, every column."""
     return list(
         await db_session.execute(
             select(*models.Session.__table__.columns).where(
@@ -90,7 +77,6 @@ class TestHashedSessions:
         response = await app_client.post("/app/login", json=_login(user.email))
         assert response.status_code == 200, response.text
         token = app_client.cookies[auth_helpers.SESSION_COOKIE]
-        # 256 random bits
         assert len(token) >= 43
 
         (session,) = await _sessions(db_session, user.uuid)
@@ -102,7 +88,6 @@ class TestHashedSessions:
     async def test_an_expired_session_is_refused_and_deleted_without_grace(
         self, auth_client, db_session
     ):
-        # Within the five minutes the old grace period extended
         await db_session.execute(
             update(models.Session)
             .where(models.Session.uuid == _AUTH_USER["session_uuid"])
@@ -193,7 +178,6 @@ class TestTheWebAppsCookie:
     async def test_every_request_needs_an_allowed_origin(self, auth_client):
         headers = web_session_headers(_token_of(auth_client))
         del headers["Origin"]
-        # A change or a read, under /app or elsewhere: another origin, or none, is refused
         for method, path in (("put", "/app/copilot-keys"), ("put", "/user"), ("get", "/app/user")):
             for origin, status in ((None, 403), (OTHER_ORIGIN, 403), (TEST_ORIGIN, 200)):
                 sent = headers if origin is None else {**headers, "Origin": origin}
@@ -208,7 +192,6 @@ class TestTheWebAppsCookie:
             assert (await bearer.get("/app/user")).status_code == 401
             assert (await bearer.get("/admin/role")).status_code == 401
             assert (await bearer.post("/app/logout")).status_code == 401
-        # And it still works as the cookie it is
         assert (await auth_client.get("/app/user")).status_code == 200
 
     @pytest.mark.asyncio
@@ -240,7 +223,6 @@ class TestTheWebAppsCookie:
 
         async with _browser(web_session_headers(token)) as stale:
             assert (await stale.get("/app/user")).status_code == 401
-            # Signing out again only clears the cookie
             response = await stale.post("/app/logout")
             assert response.status_code == 200
             assert auth_helpers.SESSION_COOKIE in _set_cookies(response)
@@ -249,7 +231,6 @@ class TestTheWebAppsCookie:
 class TestClientsThatAreNotBrowsers:
     @pytest.mark.asyncio
     async def test_the_admin_cli_does_not_sign_in(self, organization, db_session):
-        # It runs inside the API container and works on the database (scripts.workspace_admin)
         user = await organization.add_user(password=PASSWORD)
         async with _browser({"Origin": TEST_ORIGIN}) as cli:
             response = await cli.post("/app/login", json=_login(user.email, source="cli"))
@@ -296,7 +277,6 @@ class TestCORS:
 
 @pytest.fixture
 async def authenticator_required(organization, db_session):
-    """The admin's organization requires an authenticator."""
     await db_session.execute(
         update(models.Entity)
         .where(models.Entity.uuid == ADMIN_ENTITY)
@@ -332,7 +312,6 @@ class TestTwoFactorEnrollment:
         (pending,) = await _sessions(db_session, user.uuid)
         assert (pending.source, pending.app_session) == ("totp-enroll", False)
 
-        # Accepted by the two enrollment routes only
         enrollment = app_client.cookies[auth_helpers.TOTP_COOKIE]
         assert (await app_client.get("/app/user")).status_code == 401
         assert (await app_client.get("/app/session")).status_code == 401
@@ -349,8 +328,6 @@ class TestTwoFactorEnrollment:
             "/totp/activate",
             json={"totp_token": int(totp.now()), "remember": True, "version": "v1.0.0"},
         )
-        # Activating the authenticator finishes the sign-in as POST /app/login does: the
-        # web app does not send the code again
         assert response.status_code == 200, response.text
         assert response.json()["uuid"] == str(user.uuid)
         assert response.json()["force_2fa"] is False
@@ -366,7 +343,6 @@ class TestTwoFactorEnrollment:
         ) as stale:
             assert (await stale.post("/totp")).status_code == 401
 
-        # The next sign-in takes the authenticator's code; a code counts once
         code = int(totp.at(datetime.now(UTC) + timedelta(seconds=30)))
         response = await app_client.post("/app/login", json=_login(user.email, code=code))
         assert response.status_code == 200, response.text
@@ -402,7 +378,6 @@ class TestTwoFactorEnrollment:
         )
         assert response.status_code == 200, response.text
         assert response.json()["uuid"] == str(user.uuid)
-        # The session is a provider's: there is no password to change
         assert response.json()["temporary_password"] is False
         (session,) = await _sessions(db_session, user.uuid)
         assert session.source == "oauth-app"

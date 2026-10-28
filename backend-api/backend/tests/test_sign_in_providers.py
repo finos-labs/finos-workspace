@@ -1,14 +1,3 @@
-"""Sign-in providers accept only tokens issued to this deployment's own client.
-
-Google's access token must name our client in tokeninfo and a verified email; Microsoft's
-and Okta's ID tokens must carry the issuer's signature, our client as audience, the
-configured issuer, an expiry in the future and the nonce the API issued to the browser
-for this sign-in, which works once. A provider that is not configured refuses every
-sign-in. A Microsoft email finds an account that is not linked yet, or makes a new one,
-only when Microsoft verified it. The providers' endpoints are replaced by documents the
-tests serve.
-"""
-
 import hashlib
 import json
 import time
@@ -60,8 +49,6 @@ def _serve_issuer(served: dict, authority: str, issuer: str) -> None:
 
 @pytest.fixture
 def providers(monkeypatch):
-    """Configured providers whose discovery documents, keys, tokeninfo and userinfo the
-    test serves; `served` maps URLs to documents (None: the provider answers an error)."""
     for name, value in (
         ("AZURE_CLIENT_ID", AZURE_CLIENT),
         ("AZURE_TENANT_ID", TENANT),
@@ -148,25 +135,17 @@ class TestMicrosoft:
     @pytest.mark.parametrize(
         "token",
         [
-            # Issued to another application
             lambda: _id_token(MICROSOFT_ISSUER, str(uuid4()), tid=TENANT, oid="o"),
-            # By another tenant
             lambda: _microsoft(tenant=str(uuid4())),
-            # With the issuer of one tenant and the tenant id of another
             lambda: _microsoft(tid=str(uuid4())),
-            # Expired
             lambda: _microsoft(exp=int(time.time()) - 3600, iat=int(time.time()) - 7200),
-            # Signed with a key that is not the issuer's
             lambda: _id_token(MICROSOFT_ISSUER, AZURE_CLIENT, key=OTHER_KEY, tid=TENANT, oid="o"),
-            # Signed with a key the issuer does not publish
             lambda: _microsoft(kid="unknown-key"),
-            # Not signed with the issuer's algorithm
             lambda: jwt.encode(
                 {"iss": MICROSOFT_ISSUER, "aud": AZURE_CLIENT, "tid": TENANT, "oid": "o"},
                 AZURE_CLIENT * 2,
                 algorithm="HS256",
             ),
-            # Another sign-in's nonce, or none
             lambda: _microsoft(nonce="the-nonce-of-another-sign-in"),
             lambda: _microsoft(nonce=None),
             lambda: "not-a-token",
@@ -194,10 +173,8 @@ class TestMicrosoft:
         ("claims", "verified"),
         [
             ({"email": "person@tenant.test", "xms_edov": True}, True),
-            # Microsoft does not say the domain's owner verified it
             ({"email": "person@tenant.test"}, False),
             ({"email": "person@tenant.test", "xms_edov": False}, False),
-            # The user principal name is no email Microsoft verified
             ({"xms_edov": True}, False),
         ],
     )
@@ -215,8 +192,6 @@ class TestMicrosoft:
     async def test_a_multi_tenant_authority_takes_the_tokens_own_tenant(
         self, providers, monkeypatch, authority
     ):
-        """Microsoft names the issuer of "organizations" and "common" with a {tenantid}
-        template, which the token's tenant fills."""
         monkeypatch.setattr(settings, "AZURE_TENANT_ID", authority)
         _serve_issuer(
             providers, f"https://login.microsoftonline.com/{authority}/v2.0", MICROSOFT_TEMPLATE
@@ -226,7 +201,6 @@ class TestMicrosoft:
             _microsoft(tenant=tenant), NONCE_HASH
         )
         assert identity.microsoft_id == "object-id-1"
-        # The issuer must be the token's own tenant's
         await _refused(
             sign_in_providers.microsoft_identity(
                 _microsoft(tenant=tenant, tid=str(uuid4())), NONCE_HASH
@@ -244,7 +218,6 @@ class TestMicrosoft:
 
     @pytest.mark.asyncio
     async def test_a_tenant_named_by_its_domain(self, providers, monkeypatch):
-        """The configuration of a domain names the tenant's id in its issuer."""
         monkeypatch.setattr(settings, "AZURE_TENANT_ID", "Contoso.onmicrosoft.com")
         _serve_issuer(
             providers, "https://login.microsoftonline.com/contoso.onmicrosoft.com/v2.0",
@@ -325,16 +298,12 @@ class TestGoogle:
     @pytest.mark.parametrize(
         ("tokeninfo", "userinfo"),
         [
-            # Issued to another client
             ({"aud": "other", "azp": "other", "sub": "google-subject",
               "email": "person@gmail.test", "email_verified": "true"}, None),
-            # An email Google has not verified
             ({"aud": GOOGLE_CLIENT, "sub": "google-subject", "email": "person@gmail.test",
               "email_verified": "false"}, None),
-            # The profile of someone else
             ({"aud": GOOGLE_CLIENT, "sub": "google-subject", "email": "person@gmail.test",
               "email_verified": "true"}, {"sub": "another-subject"}),
-            # Google does not know the token
             (None, None),
         ],
     )
@@ -344,7 +313,6 @@ class TestGoogle:
 
     @pytest.mark.asyncio
     async def test_the_access_token_is_never_part_of_a_url(self, monkeypatch):
-        """tokeninfo gets it in a POST body and userinfo in the Authorization header."""
         monkeypatch.setattr(settings, "GOOGLE_OAUTH_CLIENT_ID", GOOGLE_CLIENT)
         sent: list[httpx.Request] = []
 
@@ -372,7 +340,6 @@ class TestGoogle:
 
 
 def _set_cookies(response) -> dict[str, str]:
-    """The response's Set-Cookie headers by cookie name, lower-cased."""
     return {
         header.split("=", 1)[0]: header.lower()
         for header in response.headers.get_list("set-cookie")
@@ -471,7 +438,6 @@ class TestSignInWithAProvider:
         )
         assert response.status_code == 401
         assert auth_helpers.SESSION_COOKIE not in app_client.cookies
-        # No new account under the address, and the user is put nowhere
         accounts = (
             await db_session.execute(
                 select(models.User.uuid, models.User.permissions_uuid).where(
@@ -496,8 +462,6 @@ class TestSignInWithAProvider:
     async def test_an_id_token_signs_in_once_and_only_the_browser_it_was_issued_to(
         self, providers, organization, app_client, db_session
     ):
-        """A forwarded or replayed ID token creates no session: its nonce was issued to
-        another browser, and is used up."""
         user = await organization.add_user()
         await db_session.execute(
             update(models.User)
@@ -513,18 +477,15 @@ class TestSignInWithAProvider:
         assert "max-age=0" in _set_cookies(response)[sign_in_providers.SIGN_IN_COOKIE]
         assert sign_in_providers.SIGN_IN_COOKIE not in app_client.cookies
 
-        # Someone the token was forwarded to: no nonce of theirs
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url=TEST_BASE_URL, headers=WEB_HEADERS
         ) as attacker:
             response = await attacker.post("/app/microsoft-auth", json={"id_token": id_token})
             assert response.status_code == 400
-            # A nonce of their own is not the token's
             await _nonce(attacker)
             response = await attacker.post("/app/microsoft-auth", json={"id_token": id_token})
             assert response.status_code == 400
             assert auth_helpers.SESSION_COOKIE not in attacker.cookies
-        # The same browser again: its nonce is used up
         response = await app_client.post("/app/microsoft-auth", json={"id_token": id_token})
         assert response.status_code == 400
 
@@ -542,8 +503,6 @@ class TestSignInWithAProvider:
     async def test_an_unverified_microsoft_email_takes_over_no_account(
         self, providers, organization, app_client, db_session
     ):
-        """An account with a password, not linked to a Microsoft user, is not signed in
-        to, or linked, by an email Microsoft did not verify."""
         victim = await organization.add_user(password=PASSWORD)
         for claims in ({"email": victim.email}, {"preferred_username": victim.email}):
             id_token = _microsoft(oid="attacker-object-id", **claims, nonce=await _nonce(app_client))
@@ -556,7 +515,6 @@ class TestSignInWithAProvider:
         assert (await _account(db_session, victim.uuid)).microsoft_id is None
         assert await _session_sources(db_session, victim.uuid) == []
 
-        # Verified by the owner of its domain, the email links the account
         id_token = _microsoft(
             oid="owner-object-id", email=victim.email, xms_edov=True,
             nonce=await _nonce(app_client),
@@ -599,8 +557,6 @@ class TestSignInWithAProvider:
     async def test_an_unverified_microsoft_email_makes_no_new_account(
         self, providers, app_client, db_session
     ):
-        """No account is made under an address Microsoft did not verify: its owner's later
-        sign-in (with Google, or a Microsoft account that does verify it) would land in it."""
         email = f"newcomer_{uuid4().hex[:8]}@example.com"
         id_token = _microsoft(
             oid=f"object-id-{uuid4()}", email=email, nonce=await _nonce(app_client)
@@ -620,7 +576,6 @@ class TestSignInWithAProvider:
 
     @pytest.mark.asyncio
     async def test_a_refused_sign_in_clears_the_nonce_cookie(self, providers, app_client):
-        """A refused attempt uses the browser's nonce up too, and its cookie goes with it."""
         await _nonce(app_client)
         assert sign_in_providers.SIGN_IN_COOKIE in app_client.cookies
         response = await app_client.post(
@@ -645,7 +600,6 @@ class TestSignInWithAProvider:
             )
 
         monkeypatch.setattr(sign_in_providers, "microsoft_identity", identity)
-        # The email changed at Microsoft: the object id still finds the account
         response = await app_client.post(
             "/app/microsoft-auth", json={"token": "graph", "id_token": "renamed@tenant.test"}
         )
@@ -658,7 +612,6 @@ class TestSignInWithAProvider:
             )
 
         monkeypatch.setattr(sign_in_providers, "microsoft_identity", impostor)
-        # Another Microsoft user with the same email does not get the linked account
         response = await app_client.post(
             "/app/microsoft-auth", json={"token": "graph", "id_token": "x"}
         )
@@ -668,8 +621,6 @@ class TestSignInWithAProvider:
     async def test_the_link_waits_for_the_second_factor(
         self, organization, app_client, db_session, monkeypatch
     ):
-        """An account whose authenticator is active is not linked by a sign-in that did
-        not pass it."""
         user = await organization.add_user()
         await db_session.execute(
             update(models.User)

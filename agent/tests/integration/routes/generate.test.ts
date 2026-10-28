@@ -1,15 +1,3 @@
-/**
- * Tier 2 — /v1/generate/* routes (chat-title, dashboard-title,
- * enhance_prompt, widget_info, widget_info/file, code).
- *
- * Subsumes the prior plans/generate-tests.md scope.
- *
- * Strategy: mock ../../../src/lib/llm at module load to control
- * singleShotLlm responses without hitting a real provider. Real impls of
- * parseJsonResponse + truncate are reimplemented here (they're a few
- * lines and used by the routes).
- */
-
 import { describe, it, beforeEach, mock } from "node:test";
 import { expect } from "expect";
 

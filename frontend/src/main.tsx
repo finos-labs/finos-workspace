@@ -31,12 +31,10 @@ import {
   applyWhiteLabelMeta,
 } from "./utils/colorUtils";
 
-// Auth provider lazy loading — only loads SDK when the provider is enabled
 const LazyMsalProvider = lazy(() => import("./providers/MsalProviderWrapper"));
 const LazyOktaProvider = lazy(() => import("./providers/OktaProviderWrapper"));
 const LazyGoogleProvider = lazy(() => import("./providers/GoogleProviderWrapper"));
 
-// Route-level lazy loading
 const Setup2FA = lazy(() => import("./routes/2fa"));
 const AppsPage = lazy(() => import("./routes/Apps"));
 const AuthedAppNotFound = lazy(() => import("./routes/AuthedAppNotFound"));
@@ -48,6 +46,7 @@ const AdminGroups = lazy(() => import("./routes/admin/roles"));
 
 const AdminThemeSettings = lazy(() => import("./routes/admin/themeSettings"));
 const AdminUsers = lazy(() => import("./routes/admin/users"));
+const AdminWidgets = lazy(() => import("./routes/admin/widgets"));
 const AILibrary = lazy(() => import("./routes/aiLibrary"));
 const MenuHomePage = lazy(() => import("./routes/appHome"));
 const ConnectionsPage = lazy(() => import("./routes/Connections"));
@@ -69,7 +68,6 @@ const TooltipProvider = lazy(() =>
 const MsalTokenRefresh = lazy(() => import("./components/MsalTokenRefresh"));
 const OktaTokenRestore = lazy(() => import("./components/OktaTokenRestore"));
 
-// Conditionally load react-scan for render scanning (stays build-time: dev-only tool)
 if (
   typeof window !== "undefined" &&
   import.meta.env.VITE_ENABLE_RENDER_SCANNING === "true"
@@ -255,6 +253,11 @@ const router = createBrowserRouter([
             id: "admin-roles",
           },
           {
+            path: "widgets",
+            element: <S children={<AdminWidgets />} />,
+            id: "admin-widgets",
+          },
+          {
             path: "apps",
             element: <S children={<AdminApps />} />,
 
@@ -324,7 +327,6 @@ function bootstrap() {
   removeRetiredBrowserSecrets();
   const config = getConfig();
 
-  // Apply branding from runtime config
   if (config.whiteLabel.mainColor) {
     applyBrandColors(config.whiteLabel.mainColor);
   }
@@ -332,7 +334,6 @@ function bootstrap() {
     applyFontFamily(config.whiteLabel.fontFamily);
   }
 
-  // Override HTML meta tags from runtime config
   applyWhiteLabelMeta(config.whiteLabel);
 
   const root = createRoot(document.getElementById("root") as HTMLElement);

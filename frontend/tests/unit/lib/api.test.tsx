@@ -3,16 +3,15 @@ import { renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { describe, expect, it } from "vitest";
 import { fetchBackend, useJsonData } from "~/lib/api";
+import { type BuiltRequest, plainRequest } from "~/lib/utils/widgetRequest";
 import { HttpResponse, http, server, setupMSW } from "../../mocks/msw-utils";
 import "../../mocks/runtimeConfig";
 
-// Matches mockConfig.urls.backend from tests/mocks/runtimeConfig
 const BACKEND_URL = "http://localhost:3000";
 const CSV_BODY = "a,b\n1,2";
 
 type Seen = { client: string | null; credentials: string | null; auth: string | null };
 
-/** Answers like the API: only a request that names the web client is let through. */
 function apiHandler(url: string, seen: Seen[]) {
   return http.all(url, ({ request }) => {
     seen.push({
@@ -44,7 +43,10 @@ describe("useJsonData and the FINOS Workspace session", () => {
     const { result } = renderHook(
       () =>
         useJsonData(
-          { url: `${BACKEND_URL}/app/files/some-file.csv`, asText: true },
+          {
+            request: plainRequest(`${BACKEND_URL}/app/files/some-file.csv`, undefined),
+            asText: true,
+          },
           { retry: false },
         ),
       { wrapper: createWrapper() },
@@ -69,7 +71,11 @@ describe("useJsonData and the FINOS Workspace session", () => {
     );
 
     const { result } = renderHook(
-      () => useJsonData({ url: "https://example.com/data" }, { retry: false }),
+      () =>
+        useJsonData(
+          { request: plainRequest("https://example.com/data", undefined) },
+          { retry: false },
+        ),
       { wrapper: createWrapper() },
     );
 
@@ -93,7 +99,12 @@ describe("useJsonData and the FINOS Workspace session", () => {
     const { result } = renderHook(
       () =>
         useJsonData(
-          { url: "https://example.com/data?next=http://localhost:3000/app" },
+          {
+            request: plainRequest(
+              "https://example.com/data?next=http://localhost:3000/app",
+              undefined,
+            ),
+          },
           { retry: false },
         ),
       { wrapper: createWrapper() },
@@ -111,10 +122,13 @@ describe("useJsonData and the FINOS Workspace session", () => {
     const seen: Seen[] = [];
     server.use(apiHandler(url, seen));
 
-    const { result } = renderHook(
-      () => useJsonData({ url, method }, { retry: false }),
-      { wrapper: createWrapper() },
-    );
+    const request: BuiltRequest = {
+      ok: true,
+      request: { url, method, credentials: {}, paramHeaders: {} },
+    };
+    const { result } = renderHook(() => useJsonData({ request }, { retry: false }), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(seen).toEqual([{ client: null, credentials: "omit", auth: null }]);
@@ -145,7 +159,9 @@ describe("fetchBackend", () => {
     const seen: Seen[] = [];
     server.use(apiHandler(url, seen));
 
-    await expect(fetchBackend(url)).rejects.toThrow("only calls the FINOS Workspace API");
+    await expect(fetchBackend(url)).rejects.toThrow(
+      "only calls the FINOS Workspace API",
+    );
     expect(seen).toEqual([]);
   });
 });

@@ -1,10 +1,3 @@
-"""Every request and websocket names an allowed origin in its Origin header, on every path
-but the health checks: one of BACKEND_CORS_ORIGINS, or one that matches
-BACKEND_CORS_ORIGIN_REGEX. A browser sends its page's origin; a service that is not a browser
-sends the origin it is configured with (WORKSPACE_ORIGIN). Anything else is refused before a
-route sees it.
-"""
-
 from unittest.mock import patch
 
 import pytest
@@ -16,8 +9,6 @@ from api import auth_helpers
 from tests.fixtures.base import TEST_BASE_URL, TEST_ORIGIN, app
 
 REFUSED = {"detail": "Requests must come from an allowed origin"}
-# A path of every kind: sign-in, an agent's route, the admin routes, a presigned file, the
-# hosted MCP server, and "/", which answers as the health checks do
 PATHS = [
     ("get", "/"),
     ("post", "/app/login"),
@@ -47,7 +38,6 @@ class TestTheRule:
             {},
             {"Origin": "https://elsewhere.example"},
             {"Origin": "null"},
-            # A credential does not stand in for the origin
             {"Authorization": "Bearer anything", "X-Workspace-Client": "web"},
         ],
     )

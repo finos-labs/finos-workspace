@@ -1,12 +1,3 @@
-/**
- * Tier 2 — the FINOS Workspace's own tools.
- *
- * The FINOS Workspace gives the agent in its web app the tools it has for itself, as the tools of a request: the model
- * is given them as the FINOS Workspace describes them, a call is made like a call of any MCP tool (the browser runs it,
- * as the signed-in user), and the agent has no function calls of its own for the same things then. The browser
- * runs one call per round trip, so the calls the model makes together are made one by one.
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
@@ -65,7 +56,6 @@ const functionCalls = (events: SSEEvent[]): FunctionCall[] =>
 const toolNamesOf = (tools: unknown): string[] =>
   Array.isArray(tools) ? tools.map((t) => (t as { name?: string }).name).filter((n): n is string => typeof n === "string") : Object.keys((tools as Record<string, unknown>) ?? {});
 
-/** The step of a model that calls the tool for each of these widgets at once. */
 const updates = (...uuids: string[]) => ({
   toolCalls: uuids.map((uuid) => ({
     toolName: "Workspace_update_widget",
@@ -74,7 +64,6 @@ const updates = (...uuids: string[]) => ({
   finishReason: "tool-calls" as const,
 });
 
-/** What the browser re-POSTs after it ran a call of the FINOS Workspace's tool, with the extra state it was sent. */
 function result(extraState?: Record<string, unknown>): ToolMessage {
   return {
     role: "tool",
@@ -94,8 +83,6 @@ describe("the model is given the FINOS Workspace's tools", () => {
     const spy = makeSpyMockLlm(llmEmitsText("ok"));
     await ask({ messages: [{ role: "human", content: "set the symbol to MSFT" }], model: spy.model, chat: "wt-tools" });
 
-    // Its tools are in the model's tool list from the first step, with the description the FINOS Workspace gave
-    // them: the model reads them before it acts, and does not have to load them.
     const offered = toolNamesOf(spy.calls[0].tools);
     expect(offered).toContain("Workspace_update_widget");
     expect(offered).toContain("Workspace_create_widget");
@@ -210,7 +197,6 @@ describe("the calls that wait", () => {
       parameters: { widget_uuid: "w-2", data_args: { symbol: "MSFT" } },
     });
     expect(calls[0].extra_state?.pending_workspace_calls).toEqual([queued[1]]);
-    // The model is not asked while calls are still owed to the browser.
     expect(events.some((e) => e.event === "copilotMessageChunk")).toBe(false);
   });
 

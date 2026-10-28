@@ -22,7 +22,6 @@ export default {
           200: "var(--color-main-200)",
         },
 
-        // Backward compat — remove after full migration
         brand: {
           main: "var(--brand-main)",
           lighter: "var(--brand-lighter)",
@@ -66,7 +65,6 @@ export default {
           foreground: "var(--card-foreground)",
         },
 
-        // Layer 2: Semantic tokens
         general: {
           border: {
             primary: { DEFAULT: "var(--general-border-primary)" },
@@ -332,7 +330,6 @@ export default {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
-        // Tooltip
         "slide-up-fade": {
           "0%": { opacity: "0", transform: "translateY(2px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
@@ -349,7 +346,6 @@ export default {
           "0%": { opacity: "0", transform: "translateX(2px)" },
           "100%": { opacity: "1", transform: "translateX(0)" },
         },
-        // Navigation menu
         "enter-from-right": {
           "0%": { transform: "translateX(200px)", opacity: "0" },
           "100%": { transform: "translateX(0)", opacity: "1" },
@@ -382,7 +378,6 @@ export default {
           "0%": { opacity: "1" },
           "100%": { opacity: "0" },
         },
-        // Toast
         "toast-hide": {
           "0%": { opacity: "1" },
           "100%": { opacity: "0" },
@@ -401,7 +396,6 @@ export default {
             transform: "translateX(calc(100% + 1rem))",
           },
         },
-        // Accordion, Collapsible
         collapse: {
           "0%": { height: "var(--radix-collapsible-content-height)" },
           "100%": { height: "0" },
@@ -447,16 +441,13 @@ export default {
         slideDownAndFade: "slideDownAndFade 300ms cubic-bezier(0.16, 0, 0.13, 1)",
         slideRightAndFade: "slideRightAndFade 300ms cubic-bezier(0.16, 0, 0.13, 1)",
         slideLeftAndFade: "slideLeftAndFade 300ms cubic-bezier(0.16, 0, 0.13, 1)",
-        // Dropdown menu
         "scale-in": "scale-in 0.2s ease-in-out",
         "slide-down": "slide-down 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
         "slide-up": "slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
-        // Tooltip
         "slide-up-fade": "slide-up-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
         "slide-right-fade": "slide-right-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
         "slide-down-fade": "slide-down-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
         "slide-left-fade": "slide-left-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-        // Navigation menu
         "enter-from-right": "enter-from-right 0.25s ease",
         "enter-from-left": "enter-from-left 0.25s ease",
         "exit-to-right": "exit-to-right 0.25s ease",
@@ -465,17 +456,14 @@ export default {
         "scale-out-content": "scale-out-content 0.2s ease",
         "fade-in": "fade-in 0.2s ease",
         "fade-out": "fade-out 0.2s ease",
-        // Toast
         "toast-hide": "toast-hide 100ms ease-in forwards",
         "toast-slide-in-right":
           "toast-slide-in-right 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         "toast-slide-in-bottom":
           "toast-slide-in-bottom 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         "toast-swipe-out": "toast-swipe-out 100ms ease-out forwards",
-        // Accordion, Collapsible
         collapse: "collapse 200ms ease-in-out",
         expand: "expand 75ms ease-in-out",
-        // Lanyard, fade and fall in
         "fade-in-down": "fade-in-down 2s cubic-bezier(0.16, 1, 0.3, 1)",
       },
     },

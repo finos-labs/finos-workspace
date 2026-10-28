@@ -1,8 +1,3 @@
-/**
- * The child process that reads a document and cuts it into chunks (see lib/isolate.ts in the agent): a crafted
- * file, or one that is just very large, cannot stop the tool server or exhaust its memory.
- */
-
 import { serveOnce } from "../../../../../src/lib/isolate-child.ts";
 import { chunkDocument, type DocChunk } from "./chunk.ts";
 import { extractDocument } from "./extract.ts";

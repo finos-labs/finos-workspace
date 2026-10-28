@@ -114,7 +114,6 @@ export function useStreamingHooks() {
 
   const [debouncedCommand] = useDebounce(commandRef.current, 500);
 
-  // Use useEffect to save the 'command' field to local storage whenever it changes
   useEffect(() => {
     localStorage.setItem("command", debouncedCommand);
   }, [debouncedCommand]);

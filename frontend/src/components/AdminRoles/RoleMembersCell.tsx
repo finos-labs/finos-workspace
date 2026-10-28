@@ -25,7 +25,7 @@ export default function RoleMembersCell({ role }: Props) {
   const handleClose = useCallback(() => {
     closeTimeoutRef.current = window.setTimeout(() => {
       setOpen(false);
-    }, 150); // Small delay to allow mouse movement between trigger and content
+    }, 150);
   }, [closeTimeoutRef]);
 
   const { formattedUsers, displayUsers, remainingCount } = useMemo(() => {

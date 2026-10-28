@@ -30,8 +30,6 @@ describe("parseTraceparent", () => {
     expect(ctx!.traceFlags).toBe(0);
   });
 
-  // extra_state round-trips through the browser, so every one of these is a
-  // value an attacker (or a buggy frontend) can actually put on the wire.
   for (const [label, input] of [
     ["undefined", undefined],
     ["null", null],
@@ -80,10 +78,6 @@ describe("formatTraceparent", () => {
 });
 
 describe("resolveTracesUrl", () => {
-  // OTLP spec: the generic endpoint is a BASE that gets the signal path
-  // appended; the signal-specific one is used verbatim. Collapsing the two
-  // silently 404s against any backend whose base path is not itself a
-  // trace-ingestion route (Langfuse self-hosted, for one).
   it("appends /v1/traces to the generic base endpoint", () => {
     expect(resolveTracesUrl("http://localhost:3000/api/public/otel", undefined)).toBe(
       "http://localhost:3000/api/public/otel/v1/traces",
@@ -127,17 +121,11 @@ describe("traceIdForLogs", () => {
   });
 
   it("returns undefined for the all-zero id a no-op tracer produces", () => {
-    // Otherwise every log line in the default (telemetry-off) deployment
-    // carries a meaningless 32-zero string.
     expect(traceIdForLogs({ traceId: "0".repeat(32) })).toBeUndefined();
   });
 });
 
 describe("aiTelemetry", () => {
-  // These assertions are about configuration, so the configuration is set
-  // explicitly rather than inherited. Reading ambient env made the suite pass
-  // or fail based on whether the developer happened to have an exporter
-  // configured in .env.
   const OTEL_KEYS = [
     "OTEL_EXPORTER_OTLP_ENDPOINT",
     "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",

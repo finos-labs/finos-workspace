@@ -8,10 +8,8 @@ export function useGlobalTitleManager(): void {
   const location = useLocation();
   const matches = useMatches();
 
-  // Find the active tab ID parameter from matches
   const tabId = matches.find((m) => m.params?.id)?.params?.id;
 
-  // Retrieve tab names from Zustand stores if we are on a tab route
   const tabName = useShallowAppStore((state) =>
     tabId ? state?.items?.[tabId]?.data?.name : undefined,
   );

@@ -2,8 +2,6 @@ import * as cheerio from "cheerio";
 import { z } from "zod";
 import { textItem, webCitationItem, type ContentItem } from "../../lib/typed.ts";
 
-// DuckDuckGo's HTML endpoint needs no account or key. It answers a GET with the
-// results page; a POST gets an anti-bot challenge.
 const SEARCH_URL = "https://html.duckduckgo.com/html/";
 const USER_AGENT = "Mozilla/5.0 (compatible; Ines/1.0)";
 const DEFAULT_RESULTS = 5;
@@ -24,7 +22,6 @@ export const webSearchSchema = {
     .describe(`Maximum number of results to return (default: ${DEFAULT_RESULTS}, max: ${MAX_RESULTS})`),
 };
 
-/** DuckDuckGo links each result through a redirect; the real address is its `uddg` parameter. */
 function resultUrl(href: string): string | null {
   let link: URL;
   try {
@@ -75,7 +72,6 @@ export async function webSearchHandler({
       signal: AbortSignal.timeout(15_000),
     });
 
-    // 202 is the anti-bot challenge page, not a results page.
     if (response.status === 202) {
       return {
         content: [textItem("DuckDuckGo asked for a human check and returned no results. Try again in a moment.")],

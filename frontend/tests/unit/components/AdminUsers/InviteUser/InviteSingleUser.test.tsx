@@ -84,7 +84,6 @@ describe("InviteSingleUser", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/temporary password/i)).not.toBeInTheDocument();
     expect(toast.success).not.toHaveBeenCalled();
-    // The admin closes the dialog once the link is copied
     expect(onClose).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Done" }));

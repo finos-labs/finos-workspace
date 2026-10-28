@@ -61,8 +61,6 @@ vi.mock("~/api/auth.api", () => ({
   postMCPServers: vi.fn().mockResolvedValue({ status: 200 }),
 }));
 
-// Stable references: useMcp memoizes on the options object identity, so a new
-// object each render would re-trigger the connect effect in an infinite loop.
 const tokenOptions: UseMcpOptionsT = {
   url: "https://token-server.example.com/mcp",
   serverName: "Demo Token MCP",

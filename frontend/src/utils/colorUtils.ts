@@ -48,11 +48,6 @@ export function createColorVariants(baseColor: string) {
   };
 }
 
-/**
- * WCAG 2.1 relative luminance calculation.
- * Returns a value between 0 (darkest) and 1 (lightest).
- * https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
- */
 export function getRelativeLuminance(hex: string): number {
   const rgb = hexToRgb(hex);
   if (!rgb) return 0;
@@ -64,12 +59,6 @@ export function getRelativeLuminance(hex: string): number {
   return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
 }
 
-/**
- * Returns the CSS variable for the best-contrast text color against the given
- * background. Uses design-system primitives (light-700 for dark text on light
- * backgrounds, light-100 for light text on dark backgrounds) instead of raw
- * black/white so the result stays consistent with the neutral palette.
- */
 export function getContrastTextColor(bgHex: string): string {
   const luminance = getRelativeLuminance(bgHex);
   return luminance > 0.22 ? "var(--color-light-700)" : "var(--color-light-100)";
@@ -86,7 +75,6 @@ export function applyBrandColors(mainColor: string) {
   const contrastColor = getContrastTextColor(mainColor);
   root.style.setProperty("--color-main-contrast", contrastColor);
 
-  // TODO(token-migration): remove --brand-* aliases once all consumers use --color-main-*
   root.style.setProperty("--brand-main", colors.main);
   root.style.setProperty("--brand-lighter", colors.lighter);
   root.style.setProperty("--brand-darker", colors.darker);
@@ -132,8 +120,6 @@ export function applyWhiteLabelMeta(whiteLabel: {
     document
       .querySelector('link[rel="icon"]')
       ?.setAttribute("href", whiteLabel.favicon);
-    // iOS ignores SVG touch icons, so keep the shipped PNG unless a deployment
-    // provides its own raster favicon.
     if (!whiteLabel.favicon.endsWith(".svg")) {
       document
         .querySelector('link[rel="apple-touch-icon"]')

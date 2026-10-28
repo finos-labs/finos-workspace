@@ -43,10 +43,7 @@ export const useWorkspaceBridgeStore = createWithEqualityFn<WorkspaceBridgeState
       }),
       {
         name: "workspace-bridge-store",
-        // Hydration is synchronous at store creation, so mutating the drafted
-        // state in place here is safe — no subscriber exists yet.
         onRehydrateStorage: () => (state) => {
-          // state is undefined when hydration fails (e.g. corrupt storage).
           if (!state) return;
           state.isModalOpen = false;
           state.lastError = null;

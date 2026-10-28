@@ -1,12 +1,3 @@
-/**
- * Bridge protocol envelopes — Zod source of truth.
- *
- * Mirrors backend-api/backend/workspace_mcp/models.py. Wire format is byte-compat
- * with the frontend's bridge (frontend/src/components/AI/workspaceBridgeProtocol.ts).
- *
- * Discriminator unions match Pydantic's `Field(discriminator=...)` behavior.
- */
-
 import { z } from "zod";
 
 export const BridgeErrorCode = z.enum([
@@ -59,14 +50,6 @@ export type BrowserSessionStartResponse = z.infer<
   typeof BrowserSessionStartResponseSchema
 >;
 
-/**
- * Browser → Server messages (over WebSocket).
- *
- * `command_result` carries a WorkspaceCommandResult; the discriminator is the
- * outer `type` so we can union with `ping` and `session_context_changed`.
- * The result body is left as `unknown()` here and re-validated by the
- * pending-command resolver in state.ts to avoid an import cycle with wire.ts.
- */
 export const BrowserPingSchema = z.object({
   type: z.literal("ping"),
 });
@@ -88,13 +71,6 @@ export const BrowserMessageSchema = z.discriminatedUnion("type", [
 ]);
 export type BrowserMessage = z.infer<typeof BrowserMessageSchema>;
 
-/**
- * Server → Browser events (over WebSocket).
- *
- * `command_request` carries a WorkspaceCommand; same import-cycle rationale
- * as above. Outgoing payloads are constructed from typed wire.ts schemas
- * before being JSON-stringified into ws.send.
- */
 export const SessionReadyEventSchema = z.object({
   type: z.literal("session_ready"),
   session: BrowserSessionSchema,

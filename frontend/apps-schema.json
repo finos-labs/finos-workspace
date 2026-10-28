@@ -207,6 +207,19 @@
             },
             "html": {
               "type": "string"
+            },
+            "plugin": {
+              "type": "object",
+              "properties": {
+                "config": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": {}

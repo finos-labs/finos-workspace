@@ -1,11 +1,3 @@
-/**
- * update_widget_layout — move/resize one widget on the active dashboard.
- *
- * Mirrors workspace_mcp/server.py:816-851. Note: tool name is
- * `update_widget_layout` but the wire command is `update_dashboard_layout`
- * (models.py:259) — preserved for byte-compat.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";

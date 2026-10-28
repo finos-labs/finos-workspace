@@ -12,7 +12,6 @@ import { renderWidget, WidgetTestWrapper } from "./WidgetTestWrapper";
 type IframeProtocol = ReturnType<typeof UseIframeProtocol>;
 
 const iframeProtocolMock = vi.hoisted(() => ({
-  // Only what the Iframe widget reads of the protocol
   state: {
     manifest: [],
     paramDefs: null,

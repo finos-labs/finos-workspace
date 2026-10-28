@@ -1,14 +1,3 @@
-/**
- * MCP prompts for the workspace tool surface.
- *
- * Mirrors workspace_mcp/server.py:462-479 + 438-450.
- *
- * Multi-session note: Python uses a single bridge state, so prompts read its
- * single session_context directly. Our manager is multi-session — for PoC we
- * read from the first connected session. Future: pass an explicit session id
- * via prompt argsSchema.
- */
-
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { bridgeManager } from "../bridge/singleton.ts";

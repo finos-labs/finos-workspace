@@ -74,7 +74,7 @@ export default function ExportWidgetModal() {
                   key={type.value}
                   value={type.value}
                   id={`export-type-${type.value}`}
-                  label={type.value.toUpperCase()}
+                  label={type.label ?? type.value.toUpperCase()}
                 />
               ))}
             </RadioGroup>

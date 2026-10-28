@@ -1,5 +1,3 @@
-"""Docker container fixtures (MySQL/Redis)."""
-
 import pytest
 
 from .base import _configure_test_settings, _reinitialize_rq_queue, logger
@@ -8,7 +6,6 @@ from .utils import skip
 
 @pytest.fixture(scope="session")
 def db_containers():
-    """Spin up MySQL and Redis containers for the test session."""
     from docker.errors import DockerException
     from testcontainers.community.mysql import MySqlContainer
     from testcontainers.community.redis import RedisContainer

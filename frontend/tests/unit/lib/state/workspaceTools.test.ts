@@ -1,9 +1,3 @@
-/**
- * The FINOS Workspace's own tools, which the agent in the app is given with the tools of the MCP servers the user
- * connected. They come from the FINOS Workspace, once for each signed-in session, and what the user's roles grant
- * applies to them as it does to any tool.
- */
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getWorkspaceTools } from "~/api/workspaceTools.api";
 import { useAuthStore } from "~/lib/state/auth";
@@ -147,7 +141,9 @@ describe("the tools of the agent request", () => {
   });
 
   it("have the FINOS Workspace's tools for a user who connected no server", async () => {
-    useCopilotAccessStore.getState().setAccess(grants([{ server_url: URL, tool_name: "*" }]));
+    useCopilotAccessStore
+      .getState()
+      .setAccess(grants([{ server_url: URL, tool_name: "*" }]));
     const tools = await useMcpToolsStore.getState().getEnabledToolsForAgent();
     expect(tools.map((t) => t.name)).toEqual([
       "Workspace_get_widget_data",

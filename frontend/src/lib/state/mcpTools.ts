@@ -17,7 +17,6 @@ import type { Selector } from "./app";
 import { getCopilotAccess, isMcpToolAllowed } from "./copilotAccess";
 import { getWorkspaceAgentTools } from "./workspaceTools";
 
-// Connection states that indicate a pending/in-progress connection
 export const PENDING_CONNECTION_STATES = [
   "loading",
   "connecting",
@@ -25,7 +24,6 @@ export const PENDING_CONNECTION_STATES = [
   "authenticating",
 ] as const;
 
-/** The JSON Schema of the arguments of a tool, as its MCP server describes them. */
 export type McpInputSchema = {
   type?: string;
   properties?: Record<string, unknown>;
@@ -33,11 +31,10 @@ export type McpInputSchema = {
   [key: string]: unknown;
 };
 
-// Type for AI agent tool configuration
 export interface AgentToolConfig {
   server_id: string;
-  name: string; // Format: "serverName_toolName"
-  tool_name: string; // The tool's own name on the server
+  name: string;
+  tool_name: string;
   description?: string;
   url: string;
   input_schema?: McpInputSchema;
@@ -48,7 +45,7 @@ export interface McpTool {
   name: string;
   description?: string;
   enabled: boolean;
-  inputSchema?: McpInputSchema; // Preserve input schema from MCP server
+  inputSchema?: McpInputSchema;
   annotations?: ToolAnnotations;
   lastExecuted?: number;
   executionCount?: number;
@@ -59,26 +56,21 @@ export interface McpServer {
   id: string;
   name: string;
   clientName?: string;
-  isLocal?: boolean; // Indicates if the server is local
+  isLocal?: boolean;
   url: string;
-  enabled: boolean; // Controls connection (used by MCP Server config)
-  toolsEnabled?: boolean; // Controls bulk tool availability (used by MCP Tools dialog, not persisted)
+  enabled: boolean;
+  toolsEnabled?: boolean;
   tools: McpTool[];
-  connected?: boolean; // Connection status (read-only from connection manager)
+  connected?: boolean;
   autoReconnect?: boolean;
-  /**
-   * Header values for the next save, dropped from memory once it lands. The API keeps
-   * them encrypted and never returns a value; null removes a stored header.
-   */
   customHeaders?: Record<string, string | null>;
-  /** Names of the headers the API stores for this server, as the API sends them. */
   customHeaderNames?: string[];
-  /** Whether the API stores a token (an Authorization header) for this server. */
   hasToken?: boolean;
-  iframeWidgetId?: string; // Links this server to an iframe widget
-  iframeParams?: Record<string, string>; // Current iframe widget param values
-  sourceId?: string; // Backend source id the server was declared by
-  authType?: "oauth" | "token"; // Static-token auth suppresses the OAuth flow when "token"
+  iframeWidgetId?: string;
+  iframeParams?: Record<string, string>;
+  sourceId?: string;
+  declaredName?: string;
+  authType?: "oauth" | "token";
 }
 
 export interface McpConnection {
@@ -118,25 +110,15 @@ interface McpToolsState {
   debouncedSaveServers: DebouncedFunc<() => Promise<void>>;
   updateServers: (servers: McpServer[]) => void;
   removeSourceServer: (sourceId: string) => void;
-  /** Signs the page out of MCP: disconnects every server and forgets them all. */
   clearAllStorage: () => void;
 }
 
-// Saves run one after another, so a connection can wait for the credentials it needs
 let serversSaved: Promise<void> = Promise.resolve();
 
-/**
- * Resolves once every save of the server list started so far has landed. A connection
- * waits for it, so the API proxies with the credentials the user just entered.
- */
 export function mcpServersSaved() {
   return serversSaved;
 }
 
-/**
- * The server as it stands once the API stores `written`: the values leave the page, the
- * names stay. A name replaces or removes a stored one in any case, as in the API.
- */
 function withHeadersSaved(server: McpServer, written: Record<string, string | null>) {
   let names = server.customHeaderNames ?? [];
   for (const [name, value] of Object.entries(written)) {
@@ -151,18 +133,6 @@ function withHeadersSaved(server: McpServer, written: Record<string, string | nu
   };
 }
 
-/**
- * Duplicate copies of the same iframe widget register one server per widget
- * instance, all pointing at the same MCP url. Collapse them to a single entry
- * so the same tools are not surfaced twice.
- *
- * Connection-blind: keeps the first same-url server regardless of connection
- * state, so callers must filter to connected servers BEFORE calling this —
- * otherwise a disconnected copy can shadow a connected one. The store methods
- * (`getEnabledToolCount`, `getEnabledToolsForAgent`) keep their own inline
- * connection-aware seen-sets for the same reason; don't "simplify" them to
- * use this helper.
- */
 export const dedupeIframeServersByUrl = <T extends McpServer>(servers: T[]): T[] => {
   const seenUrls = new Set<string>();
   return servers.filter((server) => {
@@ -198,7 +168,6 @@ const upsertServer = (servers: McpServer[], server: McpServer) => {
   return next;
 };
 
-// Helper function to check and show warning toast for too many tools
 const checkToolCountWarning = (previousCount: number, newCount: number) => {
   if (previousCount < 100 && newCount >= 100) {
     toast.warning("Too many MCP tools available", {
@@ -213,9 +182,7 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
     servers: [],
     mcpConnectionRegistry: {},
     clearAllStorage: () => {
-      // The OAuth grants stay with the API: signing out of the page does not revoke them
       const { mcpConnectionRegistry, debouncedSaveServers } = get();
-      // A save still waiting would send the emptied list
       debouncedSaveServers.cancel();
       for (const serverId in mcpConnectionRegistry) {
         mcpConnectionRegistry[serverId].disconnect?.();
@@ -225,7 +192,6 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
     updateServers: (servers) => {
       const mcpConnectionRegistry = { ...get().mcpConnectionRegistry };
       const iframeServers = get().servers.filter((server) => server.iframeWidgetId);
-      // The list the API stores: header names, never values to write
       const nextServers = servers
         .filter((server) => !server.iframeWidgetId)
         .map(({ customHeaders: _, ...server }) => server);
@@ -257,12 +223,10 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
       set({ servers: nextServers, mcpConnectionRegistry });
     },
     saveMCPServers: () => {
-      // The list as it is now: a save that runs after a sign-out still sends it
       const sent = get().servers.filter((server) => !server.iframeWidgetId);
       const save = async () => {
         const { status } = await postMCPServers(sent);
         if (status >= 400) throw new Error(`status ${status}`);
-        // The API holds the header values now: keep only their names in the page
         set((state) => ({
           servers: state.servers.map((server) => {
             const written = sent.find((s) => s.id === server.id)?.customHeaders;
@@ -282,7 +246,6 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
     updateMCPConnectionRegistry: (serverId, connection, remove = false) =>
       set((state) => {
         const newRegistry = { ...state.mcpConnectionRegistry };
-        // If remove is true, delete the connection
         if (remove) delete newRegistry[serverId];
         else if (connection) newRegistry[serverId] = connection;
 
@@ -307,7 +270,6 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         }),
       }));
       if (server.iframeWidgetId) return;
-      // New credentials are saved at once: the connection waits for them
       if (server.customHeaders) get().saveMCPServers();
       else get().debouncedSaveServers();
     },
@@ -317,14 +279,11 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
       const shouldClearStorage = options?.clearStorage ?? true;
 
       set((state) => {
-        // Find the server being removed to clean up its connection
         const serverToRemove = state.servers.find((s) => s.id === serverId);
         if (serverToRemove) {
           const connection = get().getMCPConnection(serverToRemove.id);
-          // Disconnect the MCP connection if it exists
           connection?.disconnect?.();
           if (shouldClearStorage) connection?.clearStorage?.();
-          // Remove from the registry
           get().updateMCPConnectionRegistry(serverId, connection, true);
         }
 
@@ -338,13 +297,11 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
 
     updateServer: (serverId, updates, refresh = false) => {
       const connection = get().getMCPConnection(serverId);
-      // If enabling a server that previously failed, retry connection
       if (connection?.state === "failed" && updates.enabled) connection?.retry?.();
 
       set((state) => {
         const servers = state.servers.map((s) => {
           if (s.id !== serverId) return s;
-          // The API keeps headers per server URL: a server that moves keeps none of them
           const moved =
             updates.url !== undefined && !sameMcpServerUrl(updates.url, s.url);
           return {
@@ -355,19 +312,16 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         });
 
         if (updates.enabled !== undefined) {
-          // If server is being disabled, disconnect it
           const connection = get().getMCPConnection(serverId);
           if (connection && !updates.enabled) {
             const state = connection.state;
             connection.disconnect?.();
-            // Update state to disconnected or failed based on current state
             connection.state = state === "failed" ? "failed" : "disconnected";
             get().updateMCPConnectionRegistry(serverId, connection);
           }
         }
 
         const serverToUpdate = servers.find((s) => s.id === serverId);
-        // If refresh is true, retry connection for enabled servers
         if (refresh && serverToUpdate?.enabled) {
           queueMicrotask(() => {
             const connection = get().getMCPConnection(serverId);
@@ -380,14 +334,13 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
 
       const server = get().servers.find((server) => server.id === serverId);
       if (server?.iframeWidgetId) return;
-      // New credentials are saved at once: the connection waits for them
       if (updates.customHeaders) get().saveMCPServers();
       else get().debouncedSaveServers();
     },
 
     disableServerAfterAuthCancel: (serverId) => {
       const server = get().getServerById(serverId);
-      if (!server?.enabled) return; // already disabled, nothing to do
+      if (!server?.enabled) return;
       get().updateServer(serverId, { enabled: false });
 
       toast.error(`${server.name} authentication cancelled`, {
@@ -413,7 +366,6 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         servers: state.servers.map((s) => {
           if (s.id !== serverId) return s;
 
-          // If enableAll is explicitly provided, use that value
           if (enableAll !== undefined) {
             return {
               ...s,
@@ -422,16 +374,13 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
             };
           }
 
-          // Otherwise, toggle the toolsEnabled state
           return { ...s, toolsEnabled: !s.toolsEnabled };
         }),
       }));
 
-      // Check for warning after state update
       const newEnabledCount = get().getEnabledToolCount();
       checkToolCountWarning(previousEnabledCount, newEnabledCount);
 
-      // Save if we're changing individual tool states
       const server = get().servers.find((server) => server.id === serverId);
       if (enableAll !== undefined && !server?.iframeWidgetId) {
         get().debouncedSaveServers();
@@ -440,7 +389,6 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
 
     toggleTool: (serverId, toolId, enable) => {
       const previousEnabledCount = get().getEnabledToolCount();
-      // Handle array of tool IDs for bulk toggling
       const toolIds = Array.isArray(toolId) ? toolId : [toolId];
 
       set((state) => ({
@@ -459,7 +407,6 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         }),
       }));
 
-      // Check for warning after state update
       const newEnabledCount = get().getEnabledToolCount();
       checkToolCountWarning(previousEnabledCount, newEnabledCount);
 
@@ -472,33 +419,24 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         const { serverChanged, servers } = state.servers.reduce(
           (acc, server) => {
             if (server.id === serverId) {
-              // Create a map of new tools by ID for easy lookup. Some MCP servers can
-              // return duplicate tool entries across reconnects; keep one store entry.
               const newToolsMap = new Map(tools.map((tool) => [tool.id, tool]));
 
-              // Update existing tools and collect truly new ones
               const updatedExistingTools: McpTool[] = [];
               const actuallyNewTools: McpTool[] = [];
 
-              // Process existing tools - update them if we have new data, otherwise keep as-is
               for (const existingTool of server.tools) {
                 const newTool = newToolsMap.get(existingTool.id);
                 if (newTool) {
-                  // Update existing tool with new data (especially schema)
                   updatedExistingTools.push({
                     ...existingTool,
                     ...newTool,
-                    // Preserve some existing properties like enabled state
                     enabled: existingTool.enabled,
                   });
-                  newToolsMap.delete(existingTool.id); // Remove from new tools map
+                  newToolsMap.delete(existingTool.id);
                 }
               }
 
-              // Remaining tools in newToolsMap are actually new
               actuallyNewTools.push(...Array.from(newToolsMap.values()));
-
-              // Create new server object if there are changes
 
               acc.serverChanged = true;
               acc.servers.push({
@@ -518,7 +456,6 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
           },
         );
 
-        // Only update state if there were actual changes
         return serverChanged ? { servers } : state;
       }),
 
@@ -530,8 +467,6 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         const connection = getMCPConnection(server.id);
         const isConnected = connection?.state === "ready" && server.enabled;
 
-        // Duplicate copies of the same iframe widget: only the first connected
-        // copy is counted — it is the one the MCP Tools dropdown represents.
         if (server.iframeWidgetId) {
           if (!isConnected || seenIframeUrls.has(server.url)) return count;
           seenIframeUrls.add(server.url);
@@ -545,17 +480,6 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
       }, 0);
     },
 
-    /**
-     * Builds the MCP tool list sent with each agent request. Runs outside
-     * React at request time, hence the imperative store access. Iframe-bound
-     * servers are deduped by url — duplicate copies of the same widget emit
-     * one tool entry, attributed to the first connected copy. Param values are
-     * merged across the copies: keys every copy agrees on become schema
-     * defaults, while diverging keys drop their default and the description
-     * lists each copy's value so the agent asks instead of silently using the
-     * first copy's. Regular servers wait for pending connections before their
-     * enabled tools are included.
-     */
     getEnabledToolsForAgent: async () => {
       const { servers, getMCPConnection } = get();
       const enabledTools: AgentToolConfig[] = [];
@@ -567,8 +491,6 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         enabledTools.push(tool);
       };
 
-      // Current param values per iframe url, merged across duplicate widget
-      // copies; each key maps to the distinct values the copies are showing.
       const iframeParamValues = new Map<string, Map<string, string[]>>();
       for (const server of servers) {
         if (!server.iframeWidgetId) continue;
@@ -597,9 +519,6 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
             connection?.state === "ready" &&
             !seenIframeUrls.has(server.url)
           ) {
-            // Claim the url slot before the toolsEnabled check so a duplicate
-            // copy with different toggle state cannot re-emit tools the
-            // dropdown's representative (first connected) copy has disabled.
             seenIframeUrls.add(server.url);
             if (!server.toolsEnabled) continue;
             const agreedParams: [string, string][] = [];
@@ -650,11 +569,9 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
           continue;
         }
 
-        // Original logic for regular servers (unchanged)
         if (!(server.enabled && server.toolsEnabled)) continue;
         connection?.retry?.();
 
-        // wait till state is finished connecting/loading
         while (connection?.state === "connecting" || connection?.state === "loading") {
           connection = getMCPConnection(server.id);
 
@@ -675,10 +592,8 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         }
       }
 
-      // The FINOS Workspace's own tools, which this tab runs when the agent calls one
       for (const tool of await getWorkspaceAgentTools()) pushEnabledTool(tool);
 
-      // Only the tools the user's roles grant go to the agent
       const access = getCopilotAccess();
       return enabledTools.filter((tool) =>
         isMcpToolAllowed(access, tool.url, tool.tool_name),
@@ -716,7 +631,6 @@ function removeServersBy(
   get().debouncedSaveServers();
 }
 
-// Shallow selector hook for better performance
 export function useShallowMcpToolsStore<T>(selector: Selector<McpToolsState, T>): T {
   return useMcpToolsStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }

@@ -39,6 +39,8 @@ export type GetWidgetSchemaCommand = CommandBase<"get_widget_schema"> & {
   widget_id?: string | null;
 };
 
+export type GetWidgetsSchemaCommand = CommandBase<"get_widgets_schema">;
+
 export type GetParamsOptionsCommand = CommandBase<"get_params_options"> & {
   param_options_queries?:
     | GetParamOptionsInputArgumentsT["param_options_queries"]
@@ -155,6 +157,7 @@ export type WorkspaceBridgeCommand =
   | GetWidgetDataCommand
   | ListAvailableWidgetsCommand
   | GetWidgetSchemaCommand
+  | GetWidgetsSchemaCommand
   | GetParamsOptionsCommand
   | ManageDashboardCommand
   | UpdateDashboardLayoutCommand
@@ -189,7 +192,6 @@ export interface WorkspaceBridgeCommandResult {
   };
 }
 
-/** The page's bridge session. The websocket authenticates with the session cookie. */
 export interface BrowserSession {
   session_id: string;
   client_name: string;

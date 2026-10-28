@@ -9,9 +9,7 @@ import {
   useState,
 } from "react";
 
-/** All elements that visible on intersection observer */
 const DATA_VISIBLE = "data-scrollspy-visible";
-/** Active trigger(s) */
 const DATA_ACTIVE = "data-scrollspy-active";
 
 interface IScrollspyContext {
@@ -30,19 +28,11 @@ function useScrollspy() {
 
 interface ScrollspyRootProps {
   children: ReactNode;
-  /**
-   * A data attribute of active trigger when observable element is intersecting
-   * @default data-scrollspy-active
-   */
   dataAttrActive?: string;
 }
 
-/**
- * ScrollSpyRoot must wrap ScrollSpy and ScrollTrigger, as providing context
- */
 export function ScrollspyRoot(props: ScrollspyRootProps) {
   const { dataAttrActive = DATA_ACTIVE, children } = props;
-  // Add context with activeId variable
   const [activeId, setActiveId] = useState<string | null>(null);
   return (
     <ScrollspyContext.Provider value={{ activeId, setActiveId, dataAttrActive }}>
@@ -68,10 +58,8 @@ export function ScrollSpy(props: SpyProps) {
         entries.forEach((entry) => {
           const { id } = entry.target;
           if (entry.isIntersecting) {
-            // Element appears on screen
             setVisibleElements((prev) => [...prev, entry.target]);
           } else {
-            // Element goes off screen
             setVisibleElements((prev) => prev.filter((el) => el.id !== id));
           }
         });
@@ -81,7 +69,6 @@ export function ScrollSpy(props: SpyProps) {
   );
 
   function updateActiveId() {
-    // Sort visible elements by top position from top to bottom
     const visibleElements = Array.from(
       ref.current?.querySelectorAll(`[${DATA_VISIBLE}]`) || [],
     );
@@ -121,7 +108,6 @@ export function ScrollSpy(props: SpyProps) {
     }
 
     if (sorted.length > 1) {
-      // Calculate if the highest element is slightly scrolled up and takes less than 30% of the screen
       const highestBB = sorted[0].getBoundingClientRect();
       const rootBB = root.getBoundingClientRect();
       const isHighestOut =
@@ -141,7 +127,6 @@ export function ScrollSpy(props: SpyProps) {
     if (root) {
       root.addEventListener("scroll", updateActiveId, { passive: true });
     }
-    // Fist time update hack
     setTimeout(updateActiveId, 100);
 
     return () => {
@@ -177,17 +162,11 @@ export function ScrollSpy(props: SpyProps) {
 
 interface TriggerProps {
   children: ReactNode;
-  /** An id this element will spy for */
   id: string;
   className?: string;
   onClick?: MouseEventHandler<HTMLButtonElement>;
 }
 
-/**
- * ScrollSpy will observe the element with id from data-scrollspy-id attribute and add
- * @param props
- * @returns
- */
 export function ScrollTrigger(props: TriggerProps) {
   const { children, onClick, id, ...rest } = props;
   const { activeId, setActiveId, dataAttrActive = DATA_ACTIVE } = useScrollspy();
@@ -196,9 +175,6 @@ export function ScrollTrigger(props: TriggerProps) {
   function handleClick(e: ReactMouseEvent<HTMLButtonElement>) {
     const el = document.getElementById(id || "");
     if (el) {
-      //! When scroll behavior is instant, the scroll event triggers before scrolling,
-      //! so we need this hack to render the active state on the next tick.
-      //! 50 ms hack is for Safari
       setTimeout(() => {
         setActiveId(id ?? null);
       }, 50);

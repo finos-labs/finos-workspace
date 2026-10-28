@@ -1,32 +1,3 @@
-"""MCP OAuth, and the network access of the API's MCP traffic.
-
-The API signs users in to remote MCP servers, and the browser never holds what it gets:
-
-- POST /app/mcp-oauth/start finds the server's authorization server (RFC 9728, RFC 8414),
-  registers a client with it (RFC 7591) and answers the address the user signs in at, with
-  PKCE (RFC 7636). What completing the sign-in needs is kept in Redis, encrypted, under
-  the hash of the state, for one use within 10 minutes.
-- The web app's /oauth/callback page hands the answer to POST /app/mcp-oauth/complete,
-  which exchanges the code and stores the grant encrypted, per user and server
-  (mcp_oauth_grant). A server's URL may carry a credential, so the row names the server
-  by the SHA-256 of its normalized URL; the URL and the user are inside the encrypted
-  grant, which is refused when they are not the row's.
-- The MCP proxy (routers/app/index.py) attaches the grant's access token. A token that has
-  expired, or that the server refused, is refreshed by one request at a time (a Redis lock).
-- POST /app/mcp-oauth/disconnect forgets the grant.
-
-Every route here is the web app's own: its session cookie, its client header and an
-allowed Origin; a bearer session is refused. No server URL goes in a query string, where
-access logs would keep it.
-
-The discovery, registration and token requests use the official MCP SDK's OAuth models
-and discovery rules (mcp.shared.auth, mcp.client.auth). Every request the API sends for
-MCP, to a server or to an address its metadata names, goes through `mcp_http`: it
-connects only to public addresses (or to the hosts of ALLOWED_MCP_HOSTNAMES, and to the
-host and port of each of DEFAULT_MCP_SERVERS), resolving the host once and connecting to
-the address it checked, follows no redirect and keeps no cookie.
-"""
-
 import asyncio
 import base64
 import ipaddress
@@ -82,20 +53,14 @@ router = APIRouter(
     tags=["app"],
 )
 
-# --- Network access ---------------------------------------------------------------------
-
-# IPv6 addresses that carry an IPv4 address to a NAT64 gateway (RFC 6052)
 _NAT64 = ipaddress.ip_network("64:ff9b::/96")
 
 
 class BlockedAddressError(Exception):
-    """A host the API may not connect to for a user: it is not on the public internet."""
+    ...
 
 
 def is_public_address(address: str) -> bool:
-    """Whether an address is on the public internet: not private, loopback, link-local (the
-    cloud metadata services among them), shared, reserved or multicast. An IPv6 address
-    that carries an IPv4 one (IPv4-mapped, NAT64) is judged by the IPv4 address."""
     ip = ipaddress.ip_address(address)
     if isinstance(ip, ipaddress.IPv6Address):
         if ip.ipv4_mapped is not None:
@@ -106,9 +71,6 @@ def is_public_address(address: str) -> bool:
 
 
 def may_reach_any_address(host: str, port: int) -> bool:
-    """Whether a host is one of the MCP servers this deployment names, which may be on a
-    private network: any port of a host of ALLOWED_MCP_HOSTNAMES, and the host and port of
-    each of DEFAULT_MCP_SERVERS (the servers every user has, such as the agent's tools)."""
     host = host.lower()
     if host in {name.lower() for name in settings.ALLOWED_MCP_HOSTNAMES}:
         return True
@@ -121,7 +83,6 @@ def _host_and_port(url: str) -> tuple[str, int]:
 
 
 async def resolve_host(host: str, port: int) -> list[str]:
-    """The addresses of a host; an address resolves to itself."""
     infos = await asyncio.get_running_loop().getaddrinfo(
         host, port, type=socket.SOCK_STREAM
     )
@@ -129,7 +90,6 @@ async def resolve_host(host: str, port: int) -> list[str]:
 
 
 async def public_address(host: str, port: int) -> str:
-    """The address to connect to for a host, when every address it resolves to is public."""
     try:
         addresses = await resolve_host(host, port)
     except OSError as exc:
@@ -142,10 +102,6 @@ async def public_address(host: str, port: int) -> str:
 
 
 class _PublicNetwork(httpcore.AsyncNetworkBackend):
-    """Connects to public addresses only. The host is resolved here, and the connection goes
-    to the address that was checked, so that a second lookup cannot lead elsewhere (DNS
-    rebinding); TLS still verifies the certificate for the host."""
-
     def __init__(self, network: httpcore.AsyncNetworkBackend):
         self._network = network
 
@@ -181,11 +137,8 @@ class _PublicNetwork(httpcore.AsyncNetworkBackend):
 
 
 class PublicAddressTransport(httpx.AsyncHTTPTransport):
-    """httpx's HTTP transport on a connection pool that connects to public addresses only."""
-
     def __init__(self, network: httpcore.AsyncNetworkBackend | None = None):
         super().__init__()
-        # httpx builds its pool with the default network backend; this one checks addresses
         self._pool = httpcore.AsyncConnectionPool(
             ssl_context=httpx.create_ssl_context(),
             max_connections=100,
@@ -198,9 +151,6 @@ class PublicAddressTransport(httpx.AsyncHTTPTransport):
 def create_mcp_http_client(
     network: httpcore.AsyncNetworkBackend | None = None,
 ) -> httpx.AsyncClient:
-    """The client of the API's MCP traffic: public addresses only, no redirects, no proxy
-    from the environment, and a cookie jar that keeps nothing, since one client serves every
-    user."""
     return httpx.AsyncClient(
         transport=PublicAddressTransport(network),
         timeout=httpx.Timeout(10.0, read=300.0, connect=5.0),
@@ -212,16 +162,11 @@ def create_mcp_http_client(
 
 mcp_http = create_mcp_http_client()
 
-# --- The OAuth flow ---------------------------------------------------------------------
-
-# The web app's page that the authorization server sends the browser back to
 CALLBACK_PATH = "/oauth/callback"
 CLIENT_NAME = "FINOS Workspace"
 GRANT_TYPES = ["authorization_code", "refresh_token"]
 STATE_LIFETIME = timedelta(minutes=10)
-# How long a refresh may hold the lock, and how long another request waits for it
 REFRESH_LOCK_SECONDS = 30
-# A token is refreshed this long before it expires
 EXPIRY_MARGIN_SECONDS = 60
 OAUTH_TIMEOUT = httpx.Timeout(10.0)
 MAX_ANSWER_BYTES = 256 * 1024
@@ -229,13 +174,10 @@ _METADATA_HEADERS = {
     "Accept": "application/json",
     "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
 }
-# Redirect URIs on the user's own machine make a native client (OIDC application_type)
 _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
 class TokenEndpointError(OAuthTokenError):
-    """The authorization server refused a token request."""
-
     def __init__(self, status_code: int, error: str | None):
         super().__init__(f"the authorization server refused it ({error or status_code})")
         self.status_code = status_code
@@ -243,8 +185,6 @@ class TokenEndpointError(OAuthTokenError):
 
 @dataclass(frozen=True, slots=True)
 class _SignIn:
-    """What a sign-in to one MCP server needs, from its discovery and registration."""
-
     metadata: OAuthMetadata
     client: OAuthClientInformationFull
     resource: str
@@ -255,23 +195,16 @@ async def web_user(
     request: Request,
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """The signed-in user of the web app, by its session cookie (with the web client
-    header, and an allowed Origin): for the routes that handle MCP credentials, which a
-    bearer session never reaches."""
     if request.headers.get(auth_helpers.CLIENT_HEADER) != auth_helpers.WEB_CLIENT:
         raise auth_helpers.credentials_exception
     return user
 
 
 def _callback_uri(request: Request) -> str:
-    # The origin of the web app's request, which the session cookie's Origin check allowed
     return f"{request.headers['Origin']}{CALLBACK_PATH}"
 
 
 async def _fetch(method: str, url: str, **kwargs: Any) -> tuple[httpx.Response, bytes]:
-    """Sends one request of the OAuth flow and reads its answer, up to MAX_ANSWER_BYTES.
-    Its errors name no URL: one built from the server's may carry the server's credential,
-    and an error's text reaches the log."""
     request = mcp_http.build_request(method, url, timeout=OAUTH_TIMEOUT, **kwargs)
     response = await mcp_http.send(request, stream=True)
     body = bytearray()
@@ -286,8 +219,6 @@ async def _fetch(method: str, url: str, **kwargs: Any) -> tuple[httpx.Response, 
 
 
 async def _challenge(server: str) -> httpx.Response:
-    """The server's answer to a request without credentials, whose WWW-Authenticate
-    challenge names its resource metadata and scope (RFC 9728 section 5.1)."""
     request = mcp_http.build_request(
         "POST",
         server,
@@ -303,8 +234,6 @@ async def _challenge(server: str) -> httpx.Response:
 async def _protected_resource(
     server: str, challenge: httpx.Response
 ) -> ProtectedResourceMetadata | None:
-    """The server's protected resource metadata (RFC 9728), or None for a server of the
-    2025-03-26 specification, which publishes none."""
     failed: int | None = None
     urls = build_protected_resource_metadata_discovery_urls(
         extract_resource_metadata_from_www_auth(challenge), server
@@ -335,8 +264,6 @@ async def _protected_resource(
 async def _authorization_server(
     server: str, resource: ProtectedResourceMetadata | None
 ) -> OAuthMetadata:
-    """The metadata of the server's authorization server (RFC 8414, OpenID Connect
-    Discovery), whose issuer must be the one the resource names."""
     authorization_server = str(resource.authorization_servers[0]) if resource else None
     parts = urlsplit(server)
     expected_issuer = authorization_server or f"{parts.scheme}://{parts.netloc}"
@@ -361,7 +288,6 @@ async def _authorization_server(
         return metadata
     if authorization_server is not None:
         raise OAuthFlowError("its authorization server publishes no metadata")
-    # A server of the 2025-03-26 specification without metadata: the default endpoints
     return OAuthMetadata(
         issuer=expected_issuer,
         authorization_endpoint=f"{expected_issuer}/authorize",
@@ -373,7 +299,6 @@ async def _authorization_server(
 async def _register(
     metadata: OAuthMetadata, redirect_uri: str, scope: str | None
 ) -> OAuthClientInformationFull:
-    """A client registered with the authorization server for this sign-in (RFC 7591)."""
     if metadata.registration_endpoint is None:
         raise OAuthFlowError("its authorization server does not register clients")
     loopback = urlsplit(redirect_uri).hostname in _LOOPBACK_HOSTS
@@ -394,7 +319,6 @@ async def _register(
         raise OAuthFlowError(f"its client registration failed (HTTP {response.status_code})")
     registration = json.loads(body)
     if isinstance(registration, dict):
-        # The SDK's binding of a client to an issuer, never taken from the server
         registration.pop("issuer", None)
     registered = OAuthClientInformationFull.model_validate(registration)
     check_registration_usable(registered)
@@ -434,7 +358,6 @@ def _authorization_url(
     }
     if sign_in.scope:
         params["scope"] = sign_in.scope
-        # OpenID Connect asks for consent to a refresh token (offline access)
         if "offline_access" in sign_in.scope.split():
             params["prompt"] = "consent"
     endpoint = urlsplit(str(sign_in.metadata.authorization_endpoint))
@@ -445,7 +368,6 @@ def _authorization_url(
 
 
 def _oauth_error(body: bytes) -> str | None:
-    """The `error` code of an OAuth error answer (RFC 6749 section 5.2)."""
     try:
         error = json.loads(body).get("error")
     except (ValueError, AttributeError):
@@ -456,8 +378,6 @@ def _oauth_error(body: bytes) -> str | None:
 async def _token_request(
     endpoint: str, client: OAuthClientInformationFull, form: dict[str, str]
 ) -> OAuthToken:
-    """A token from the authorization server's token endpoint, the client authenticating
-    the way it was registered (RFC 6749 section 2.3.1)."""
     headers = {"Accept": "application/json"}
     form = {**form, "client_id": client.client_id}
     method = client.token_endpoint_auth_method
@@ -480,8 +400,6 @@ def _credentials(
     token_endpoint: str,
     resource: str,
 ) -> dict[str, Any]:
-    """What mcp_oauth_grant stores of a sign-in, encrypted: with the user and the server
-    it is for, which _load_grant checks against the row."""
     return {
         "user_uuid": str(user_uuid),
         "server_url": server,
@@ -495,7 +413,6 @@ def _credentials(
 
 @asynccontextmanager
 async def _outbound(action: str) -> AsyncIterator[None]:
-    """Answers what can go wrong with the requests of the OAuth flow."""
     try:
         yield
     except BlockedAddressError as exc:
@@ -508,7 +425,6 @@ async def _outbound(action: str) -> AsyncIterator[None]:
             detail=f"Could not {action}: the server did not answer in time",
         ) from exc
     except (httpx.HTTPError, ValueError) as exc:
-        # ValidationError and JSON errors are ValueErrors: an answer that is not valid
         logger.info(f"MCP sign-in: could not {action}: {type(exc).__name__}")
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY,
@@ -518,9 +434,6 @@ async def _outbound(action: str) -> AsyncIterator[None]:
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY, detail=f"Could not {action}: {exc}"
         ) from exc
-
-
-# --- Redis: the state of a sign-in, and the refresh lock -------------------------------
 
 
 def _state_key(state: str) -> str:
@@ -538,14 +451,12 @@ async def _keep_state(state: str, record: dict[str, Any]) -> None:
     async with auth_helpers.app_redis() as redis:
         await redis.set(
             key,
-            # Encrypted for its key: it decrypts under no other
             crypto.encrypt_json(record, key),
             ex=int(STATE_LIFETIME.total_seconds()),
         )
 
 
 async def _take_state(state: str) -> dict[str, Any] | None:
-    """The record of a sign-in in progress, which a state names once."""
     key = _state_key(state)
     async with auth_helpers.app_redis() as redis:
         sealed = await redis.getdel(key)
@@ -559,11 +470,7 @@ async def _take_state(state: str) -> dict[str, Any] | None:
         return None
 
 
-# --- Grants -------------------------------------------------------------------------------
-
-
 def server_hash(server: str) -> str:
-    """What mcp_oauth_grant names a server by: the SHA-256 of its normalized URL."""
     return crypto.hash_token(server)
 
 
@@ -575,8 +482,6 @@ def _grant_filter(user_uuid: UUID, server: str):
 
 
 async def _load_grant(db: AsyncSession, user_uuid: UUID, server: str) -> dict | None:
-    """The user's grant for a server (by its normalized URL), when its encrypted content
-    is for that user and server: credentials moved to another row are not used."""
     query = select(models.MCPOAuthGrant.credentials).where(*_grant_filter(user_uuid, server))
     credentials = (await db.execute(query)).scalar_one_or_none()
     if credentials is None:
@@ -597,9 +502,6 @@ def _expired(credentials: dict) -> bool:
 
 
 async def _refreshed(db: AsyncSession, user_uuid: UUID, server: str) -> dict | None:
-    """The grant with a new access token from its refresh token, or None. A grant without
-    a refresh token, or whose refresh token the authorization server refuses, is forgotten:
-    the user signs in again. One whose authorization server cannot answer now stays."""
     credentials = await _load_grant(db, user_uuid, server)
     if credentials is None:
         return None
@@ -615,7 +517,6 @@ async def _refreshed(db: AsyncSession, user_uuid: UUID, server: str) -> dict | N
         try:
             fresh = await _token_request(credentials["token_endpoint"], client, form)
         except TokenEndpointError as exc:
-            # A server that cannot answer now (down, overloaded, timed out) has refused nothing
             if httpx.codes.is_server_error(exc.status_code) or exc.status_code in {
                 status.HTTP_408_REQUEST_TIMEOUT,
                 status.HTTP_429_TOO_MANY_REQUESTS,
@@ -628,7 +529,6 @@ async def _refreshed(db: AsyncSession, user_uuid: UUID, server: str) -> dict | N
         await db.execute(delete(models.MCPOAuthGrant).where(*_grant_filter(user_uuid, server)))
         await db.commit()
         return None
-    # A refresh answer may leave out the scope and the refresh token: they stay (RFC 6749)
     fresh.scope = fresh.scope or token.scope
     fresh.refresh_token = fresh.refresh_token or token.refresh_token
     credentials = _credentials(
@@ -646,13 +546,6 @@ async def _refreshed(db: AsyncSession, user_uuid: UUID, server: str) -> dict | N
 async def grant_authorization(
     user_uuid: UUID, server: str, *, refused: str | None = None
 ) -> str | None:
-    """The Authorization header of the user's grant for an MCP server (by its normalized
-    URL), or None without a usable grant.
-
-    A token that has expired, or that the server has just refused (`refused`, the header it
-    was sent), is refreshed first. One request refreshes at a time; one that waited for it
-    takes the token the other one got.
-    """
     async with database.AsyncWriteSessionLocal.session() as db:
         credentials = await _load_grant(db, user_uuid, server)
     if credentials is None:
@@ -681,9 +574,6 @@ async def grant_authorization(
     return _bearer(credentials) if credentials else None
 
 
-# --- Routes -------------------------------------------------------------------------------
-
-
 @router.post("/start", response_model=schemas.MCPOAuthAuthorization)
 @limiter.limit(LIMIT_DEFAULT)
 async def start_mcp_oauth(
@@ -691,9 +581,6 @@ async def start_mcp_oauth(
     payload: schemas.MCPOAuthServer,
     user=Depends(web_user),
 ):
-    """Prepare a sign-in to an MCP server: discover its authorization server, register a
-    client with it, and answer the address the user signs in at. The authorization server
-    sends the browser back to the web app's /oauth/callback with a code and the state."""
     redirect_uri = _callback_uri(request)
     async with _outbound("prepare the sign-in"):
         sign_in = await _prepare(payload.server_url, redirect_uri)
@@ -725,9 +612,6 @@ async def complete_mcp_oauth(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(web_user),
 ):
-    """Complete a sign-in with the authorization server's answer: exchange the code and
-    keep the grant, encrypted. A state completes one sign-in, of the session that started
-    it, within 10 minutes."""
     record = await _take_state(payload.state)
     if (
         record is None
@@ -749,7 +633,6 @@ async def complete_mcp_oauth(
     }
     async with _outbound("complete the sign-in"):
         token = await _token_request(record["token_endpoint"], client, form)
-    # No scope in the answer means the scope that was asked for (RFC 6749 section 5.1)
     token.scope = token.scope or record["scope"]
 
     server = record["server_url"]
@@ -773,7 +656,6 @@ async def disconnect_mcp_oauth(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(web_user),
 ):
-    """Forget the user's sign-in to an MCP server. The server's URL comes in the body."""
     await db.execute(
         delete(models.MCPOAuthGrant).where(*_grant_filter(user.uuid, payload.server_url))
     )

@@ -10,7 +10,6 @@ import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { useWidgetContext } from "~/components/Widget.context";
 
-// Initialize PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export type Highlight = {
@@ -98,8 +97,6 @@ export function PdfViewerCore({
     ({ numPages }: { numPages: number }) => {
       setNumPages(numPages);
       props.onLoadSuccess?.({ numPages });
-      // Preserve the current (persisted) page across document (re)loads, only
-      // clamping it into range when it falls outside the document length.
       const clampedPage = Math.min(Math.max(currentPage, 1), numPages);
       if (clampedPage !== currentPage) onPageChange(clampedPage);
     },
@@ -274,7 +271,6 @@ export function PdfViewerCore({
   );
 }
 
-// Helper function to search PDF text
 export function usePdfTextSearch(
   file: string | { data: Uint8Array } | null,
   searchString: string,
@@ -295,7 +291,6 @@ export function usePdfTextSearch(
     if (typeof file === "string") {
       loadingTask = pdfjs.getDocument({ url: file });
     } else {
-      // create a copy of the Uint8Array to prevent detachment
       const dataCopy = new Uint8Array(file.data);
       loadingTask = pdfjs.getDocument({ data: dataCopy });
     }
@@ -323,7 +318,6 @@ export function usePdfTextSearch(
       });
 
     return () => {
-      // prevent memory leaks
       loadingTask.destroy();
     };
   }, [file]);

@@ -1,11 +1,3 @@
-/**
- * Tier 2 — what the model writes as SQL cannot stop the agent.
- *
- * The SQL tools run in a child process that is killed when its time is up (src/agent/tools/sql/isolated.ts).
- * These tests send the queries that used to freeze the whole process, and check that the agent goes on
- * answering and that the model is told what happened.
- */
-
 import { describe, it, beforeEach, afterEach } from "node:test";
 import { expect } from "expect";
 import { makeSqlTools } from "../../src/agent/tools/sql/index.ts";
@@ -52,7 +44,6 @@ describe("a query that never ends", () => {
     expect(result).toContain("was stopped");
     expect(result).toContain("Make it cheaper");
     expect(ms).toBeLessThan(6_000);
-    // A process that was blocked would have beaten a few times at most; 1.5 s is ~30 beats.
     expect(beats).toBeGreaterThan(10);
   });
 
@@ -86,13 +77,6 @@ describe("a query that never ends", () => {
 });
 
 describe("a query that wants more memory than there is", () => {
-  /**
-   * What ends these queries has to be the limit on a value (`SQL_MAX_VALUE_BYTES`, 64 MB), not the
-   * clock. The 1.5 s the other tests here use is enough time to reach that limit on a fast machine and
-   * not on a slow one, so with it these tests would assert the limit's error on one machine and read
-   * the timeout message on another. The time limit has its own tests above; here it is set out of the
-   * way so that only the limit can end the query.
-   */
   beforeEach(() => {
     process.env.INES_SQL_TIMEOUT_MS = "30000";
   });

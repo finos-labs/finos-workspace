@@ -1,24 +1,9 @@
-"""share requests
-
-A developer's shares of dashboards and apps wait in share_request until an admin of their
-organization approves or declines them. A row without a recipient shares a dashboard with
-the whole organization.
-
-downgrade() drops the table with the waiting requests.
-
-Revision ID: 8b5e2d7c1f40
-Revises: 4c1d2e8f9a3b
-Create Date: 2026-10-16
-
-"""
-
 import sqlalchemy as sa
 import sqlalchemy_utils
 
 import api.models.model_helpers
 from alembic import op  # type: ignore
 
-# revision identifiers, used by Alembic.
 revision = "8b5e2d7c1f40"
 down_revision = "4c1d2e8f9a3b"
 branch_labels = None

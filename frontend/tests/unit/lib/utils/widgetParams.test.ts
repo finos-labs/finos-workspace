@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Ticker, WidgetT } from "~/components/types";
+import type { WidgetT } from "~/components/types";
 
 import {
   cleanURL,
@@ -15,6 +15,23 @@ type CreateParamDefsInput = Parameters<typeof createParamDefs>[0];
 
 describe("Widget Params Utility Functions", () => {
   describe("createParamDefs", () => {
+    it("keeps the extraInfo of a choice", () => {
+      const extraInfo = { description: "Sites", rightOfDescription: "12" };
+      const [param] = createParamDefs(
+        partial<CreateParamDefsInput>({
+          params: [
+            {
+              paramName: "region",
+              type: "text",
+              multiSelect: true,
+              options: [{ label: "North", value: "north", extraInfo }],
+            },
+          ],
+        }),
+      );
+      expect(param.options).toEqual([{ label: "North", value: "north", extraInfo }]);
+    });
+
     it("keeps a form's endpoint input options, on the backend's URL", () => {
       const widget = partial<CreateParamDefsInput>({
         params: [
@@ -97,7 +114,6 @@ describe("Widget Params Utility Functions", () => {
         params: "invalid_params",
       };
       const result = createParamDefs(malformed(widget));
-      // ParamsSchema preprocess converts non-arrays to []
       expect(result).toEqual([]);
     });
 
@@ -120,11 +136,11 @@ describe("Widget Params Utility Functions", () => {
       expect(result).toEqual({ url: "https://api.example.com/data", method: "GET" });
     });
 
-    it("should create endpoint from URL object", () => {
+    it("keeps the method the widget declares", () => {
       const urlObj = { url: "https://api.example.com/data", method: "POST" } as const;
       const result = createWidgetEndpoint(urlObj);
       expect(result.url).toBe("https://api.example.com/data");
-      expect(result.method).toBe("GET");
+      expect(result.method).toBe("POST");
     });
 
     it("should clean duplicate slashes in URL", () => {
@@ -157,21 +173,11 @@ describe("Widget Params Utility Functions", () => {
       expect(result.symbol).toBe("MSFT");
     });
 
-    it("should use mainTicker symbol for ticker type params", () => {
-      const widget = {
-        params: [{ paramName: "ticker", type: "ticker", value: null }],
-      } as unknown as WidgetT;
-      const mainTicker = { symbol: "GOOGL" } as Ticker;
-      const result = createWidgetInitParams(widget, mainTicker);
-      expect(result.ticker).toBe("GOOGL");
-    });
-
     it("should handle params without values (newParamDef defaults to null)", () => {
       const widget = {
         params: [{ paramName: "empty", type: "text" }],
       } as unknown as WidgetT;
       const result = createWidgetInitParams(widget);
-      // newParamDef sets value to null when undefined, so null is included in result
       expect(result).toEqual({ empty: null });
     });
   });

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockConfig } from "../../mocks/runtimeConfig";
 
-// Mock OktaAuth constructor since we don't want to actually initialize the SDK
 vi.mock("@okta/okta-auth-js", () => ({
   OktaAuth: vi.fn().mockImplementation((config) => ({
     _config: config,
@@ -12,7 +11,6 @@ describe("getOktaAuth", () => {
   let getOktaAuth: typeof import("~/lib/okta-auth-config").getOktaAuth;
 
   beforeEach(async () => {
-    // Reset modules to bust the _oktaAuth / _initialized cache
     vi.resetModules();
     vi.doMock("~/lib/runtimeConfig", () => ({
       getConfig: () => mockConfig,
@@ -51,7 +49,6 @@ describe("getOktaAuth", () => {
         redirectUri: window.location.origin,
         scopes: ["openid", "profile", "email"],
         pkce: true,
-        // Okta's tokens stay in page memory, never in browser storage
         tokenManager: { storage: "memory" },
       }),
     );
@@ -72,7 +69,6 @@ describe("getOktaAuth", () => {
     const first = getOktaAuth();
     expect(first).toBeNull();
 
-    // Even if we change the config, the cached null persists
     mockConfig.authProviders.oktaDomain = "https://dev-123.okta.com/oauth2/default";
     const second = getOktaAuth();
     expect(second).toBeNull();

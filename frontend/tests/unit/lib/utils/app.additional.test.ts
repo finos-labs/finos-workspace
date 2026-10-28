@@ -11,7 +11,6 @@ import {
   getGroupLabel,
   getInnerTabsGridLayout,
   getStoredFileUUIDs,
-  getTickerParamName,
   getWidgetGroupValue,
   needsGroupValuesUpdate,
   needsGroupValueUpdate,
@@ -19,16 +18,8 @@ import {
   updateWidgetGroupValues,
   updateWidgetInItem,
 } from "~/lib/utils/app";
-import {
-  makeParamGroup,
-  makeTabData,
-  makeTicker,
-  makeTickerGroup,
-  makeWidget,
-} from "../../factories";
+import { makeParamGroup, makeTabData } from "../../factories";
 import { malformed, partial } from "../../mocks";
-
-// Mock external dependencies
 
 vi.mock("~/lib/state/copilotData", () => ({
   useCopilotDataStore: {
@@ -164,15 +155,7 @@ describe("lib/utils/app - Additional Tests", () => {
   });
 
   describe("getGroupLabel", () => {
-    it("returns symbol for ticker group", () => {
-      const group = makeTickerGroup({
-        id: "g1",
-        value: makeTicker({ name: "Apple" }),
-      });
-      expect(getGroupLabel(group)).toBe("AAPL");
-    });
-
-    it("returns value for non-ticker group", () => {
+    it("returns the group value", () => {
       const group = makeParamGroup({ id: "g1", groupById: "period", value: "annual" });
       expect(getGroupLabel(group)).toBe("annual");
     });
@@ -181,7 +164,7 @@ describe("lib/utils/app - Additional Tests", () => {
   describe("getEndpointParamDef", () => {
     const params = partial<ParamDef[]>([
       { paramName: "date", type: "date" },
-      { paramName: "ticker", type: "ticker" },
+      { paramName: "region", type: "text" },
       { paramName: "endpoint1", type: "endpoint", groupById: "ep1" },
     ]);
 
@@ -227,44 +210,12 @@ describe("lib/utils/app - Additional Tests", () => {
       expect(getWidgetGroupValue(widget, group)).toBeNull();
     });
 
-    it("returns mainTicker for ticker group", () => {
-      const widget = makeWidget({ data: { mainTicker: makeTicker() } });
-      const group = makeTickerGroup({ id: "g1", value: makeTicker() });
-      expect(getWidgetGroupValue(widget, group)).toEqual(makeTicker());
-    });
-
     it("returns param value for param group", () => {
       const widget = partial<WidgetT>({
         storage: { params: { period: "annual" } },
       });
       const group = makeParamGroup({ id: "g1", groupById: "period", value: "annual" });
       expect(getWidgetGroupValue(widget, group)).toBe("annual");
-    });
-  });
-
-  describe("getTickerParamName", () => {
-    it("returns paramName from ticker param", () => {
-      const widget = partial<WidgetT>({
-        params: [{ type: "ticker", paramName: "symbol" }],
-        data: { mainTicker: { category: "equity" } },
-      });
-      expect(getTickerParamName(widget)).toBe("symbol");
-    });
-
-    it("returns 'country' for economy group without ticker param", () => {
-      const widget = partial<WidgetT>({
-        params: [],
-        data: { mainTicker: { category: "country" } },
-      });
-      expect(getTickerParamName(widget)).toBe("country");
-    });
-
-    it("returns null when no ticker param and not economy group", () => {
-      const widget = partial<WidgetT>({
-        params: [],
-        data: { mainTicker: { category: "equity" } },
-      });
-      expect(getTickerParamName(widget)).toBeNull();
     });
   });
 
@@ -374,7 +325,7 @@ describe("lib/utils/app - Additional Tests", () => {
       const lastWidget = { x: 0, y: 0, w: 20, h: 10 };
       const result = getGridData(lastWidget, { w: 20, h: 10 });
 
-      expect(result.x).toBe(20); // Next to last widget
+      expect(result.x).toBe(20);
     });
 
     it("wraps to next row when exceeding tabCols", () => {
@@ -382,7 +333,7 @@ describe("lib/utils/app - Additional Tests", () => {
       const result = getGridData(lastWidget, { w: 20, h: 10 }, { tabCols: 40 });
 
       expect(result.x).toBe(0);
-      expect(result.y).toBe(10); // Next row
+      expect(result.y).toBe(10);
     });
   });
 
@@ -444,7 +395,7 @@ describe("lib/utils/app - Additional Tests", () => {
   describe("needsGroupValueUpdate", () => {
     it("returns true when widget param differs from group value", () => {
       const widget = partial<WidgetT>({
-        groupId: "g1",
+        paramGroups: { period: "g1" },
         storage: { params: { period: "quarterly" } },
       });
       const group = makeParamGroup({ id: "g1", groupById: "period", value: "annual" });
@@ -454,7 +405,7 @@ describe("lib/utils/app - Additional Tests", () => {
 
     it("returns false when values match", () => {
       const widget = partial<WidgetT>({
-        groupId: "g1",
+        paramGroups: { period: "g1" },
         storage: { params: { period: "annual" } },
       });
       const group = makeParamGroup({ id: "g1", groupById: "period", value: "annual" });
@@ -465,7 +416,6 @@ describe("lib/utils/app - Additional Tests", () => {
 
   describe("updateWidgetGroupValues", () => {
     it("updates param group values when widget params are row-grouped", () => {
-      // Widgets saved before their params were flat group them in rows
       const widget = malformed<WidgetT>({
         widgetId: "muni_stats_filters",
         storage: { params: { use_categories: "" } },
@@ -506,7 +456,7 @@ describe("lib/utils/app - Additional Tests", () => {
   describe("needsGroupValuesUpdate", () => {
     it("returns true if any group needs update", () => {
       const widget = partial<WidgetT>({
-        groupId: "g1",
+        paramGroups: { period: "g1" },
         storage: { params: { period: "quarterly" } },
       });
       const groups = [
@@ -565,13 +515,12 @@ describe("lib/utils/app - Additional Tests", () => {
             }),
           ],
           gridLayout: {
-            overview: [], // Widget not in overview either
+            overview: [],
           },
           groups: [],
         },
       };
 
-      // Should not throw "Cannot read properties of undefined"
       expect(() => duplicateTabItem(item, "root-id")).not.toThrow();
     });
 
@@ -590,12 +539,11 @@ describe("lib/utils/app - Additional Tests", () => {
               innerTab: "tab-that-doesnt-exist",
             }),
           ],
-          gridLayout: {}, // No tabs at all
+          gridLayout: {},
           groups: [],
         },
       };
 
-      // Should not throw "Cannot read properties of undefined"
       expect(() => duplicateTabItem(item, "root-id")).not.toThrow();
     });
 

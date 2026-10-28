@@ -102,11 +102,9 @@ function useLastVisitedPage() {
     updateLastVisitedPage(pathname);
     updateSettings();
 
-    // Auto-close copilot when navigating away from dashboard context while maximized
     const currentIsDashboardPage = isTabPath(pathname);
     const previousWasDashboardPage = isTabPath(previousPathRef.current);
 
-    // Close if maximized and navigating between different pages, but keep open when going TO a dashboard
     if (
       isFullscreen &&
       previousPathRef.current &&
@@ -115,18 +113,15 @@ function useLastVisitedPage() {
       const shouldClose = !currentIsDashboardPage;
 
       if (shouldClose) {
-        // User navigated away from dashboard context while copilot is maximized
         setIsIntentionallyCollapsed(true);
         toggleFullscreen();
       }
     }
 
-    // Update previous path reference for next navigation
     previousPathRef.current = pathname;
   }, [location.pathname, previousPathRef]);
 
   useLayoutEffect(() => {
-    // Scroll to top of center panel when the route changes
     const workarea = document.getElementById("workarea");
     workarea?.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [location.pathname]);

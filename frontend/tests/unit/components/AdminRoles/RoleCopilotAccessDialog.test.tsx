@@ -163,7 +163,6 @@ describe("RoleCopilotAccessDialog", () => {
   });
 
   it("offers the models the default agent lists in its model setting", async () => {
-    // The admin page has the default agent as the store keeps it, without its descriptor
     useCopilotStore.setState({
       selectedCopilot: {
         id: "default-copilot",

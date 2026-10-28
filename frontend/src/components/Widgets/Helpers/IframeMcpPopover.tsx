@@ -63,7 +63,6 @@ export const IframeMcpPopover = memo(
     const urlInitialized = useRef(false);
     const lockedMcpUrl = mcpUrl?.trim() ?? "";
 
-    // Single subscription with fast field-level equality
     const {
       serverId,
       serverUrl,
@@ -89,12 +88,10 @@ export const IframeMcpPopover = memo(
       };
     }, mcpStateEqual);
 
-    // Stable action refs
     const addServer = useMcpToolsStore((s) => s.addServer);
     const removeServer = useMcpToolsStore((s) => s.removeServer);
     const updateServer = useMcpToolsStore((s) => s.updateServer);
 
-    // Initialize URL input from persisted server on mount
     useEffect(() => {
       const configuredUrl = serverUrl || lockedMcpUrl;
       if (configuredUrl && (!urlInitialized.current || lockedMcpUrl)) {

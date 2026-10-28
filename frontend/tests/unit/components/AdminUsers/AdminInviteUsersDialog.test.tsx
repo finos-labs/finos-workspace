@@ -78,7 +78,6 @@ describe("AdminInviteUsersDialog", () => {
     renderComponent([{ name: "User", uuid: "user-uuid" }]);
     expect(screen.getByText("Add a single user")).toBeInTheDocument();
     expect(screen.getByText("Import users")).toBeInTheDocument();
-    // Further checks can be added here to verify props passed to InviteSingleUser and ImportUsers
   });
 
   it("displays error message when the organization has no User map", () => {
@@ -88,7 +87,6 @@ describe("AdminInviteUsersDialog", () => {
     ).toBeInTheDocument();
   });
 
-  // TODO: The conditions for this test are not clear.
   it("switches tabs correctly", () => {
     renderComponent([{ name: "User", uuid: "user-uuid" }]);
     const singleTab = screen.getByText("Add a single user");

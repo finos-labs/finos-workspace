@@ -21,7 +21,6 @@ export function RenderNoData(props: {
   isLoading: boolean;
   children: React.ReactNode;
 }) {
-  // The data shows when it is there: nothing in between, no loading animation
   if (props.isLoading) return null;
   if (props.isError) {
     return (

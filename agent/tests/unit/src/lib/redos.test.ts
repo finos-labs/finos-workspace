@@ -1,10 +1,3 @@
-/**
- * Text that is made to be slow for a pattern. A model (talked into it by a page), a provider's error (which
- * repeats what the user sent) and the user themselves can all put text into these functions, and each
- * pattern that takes time that grows with the square of the text blocks the whole agent while it runs:
- * every query, the health check and the metrics wait for it.
- */
-
 import { describe, it } from "node:test";
 import { expect } from "expect";
 import { redactString, redactValue } from "../../../../src/lib/redact.ts";
@@ -17,7 +10,6 @@ import { clipForModel } from "../../../../src/agent/clip.ts";
 const BUDGET_MS = 1000;
 const SIZE = 1_000_000;
 
-/** Pieces that a pattern may start to match again and again. */
 const RUNS = [" ", "\n", ":", " :", "\t"];
 const UNITS = [
   "a.", "a@", "a@b.", "a.b@", ".", "@", "-", "_", " ", "\n", "\t ", "0", "1 ", "1-", "1,", "1 and ",

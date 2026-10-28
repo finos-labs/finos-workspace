@@ -12,12 +12,6 @@ function sources(dir: string): string[] {
   });
 }
 
-/**
- * Whatever markdown the chat shows is written by a model, a page or a tool, and markdown-to-jsx renders an
- * `<img>` for `![](address)` unless it is told not to, which asks a server for it with nothing clicked. A
- * file of the chat that renders markdown must say how images are handled: this fails for a new surface that
- * forgets to.
- */
 describe("the markdown of the chat", () => {
   const INERT = [
     "inertImageOverride",
@@ -34,7 +28,6 @@ describe("the markdown of the chat", () => {
   );
 
   it("is rendered by files that this test knows about", () => {
-    // If this list is empty, the check below checks nothing.
     expect(renderers.length).toBeGreaterThanOrEqual(6);
   });
 
@@ -42,7 +35,6 @@ describe("the markdown of the chat", () => {
     it(`handles images in ${relative(CHAT, path)}`, () => {
       const source = readFileSync(path, "utf8");
       expect(INERT.some((name) => source.includes(name))).toBe(true);
-      // And it does not turn raw HTML on.
       expect(source).not.toMatch(/disableParsingRawHTML:\s*false/);
     });
   }

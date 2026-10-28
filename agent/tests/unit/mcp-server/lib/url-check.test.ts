@@ -35,14 +35,11 @@ describe("urlProblem", () => {
     expect(problem).not.toContain("my-holdings");
   });
 
-  // A deployment with no users has no user whose data an address could carry out.
   it("lets every address through where there are no users, and where every address is allowed by name", () => {
     expect(urlProblem(URL_A, undefined, undefined, false, { INES_AUTH: "none" })).toBeNull();
     expect(urlProblem(URL_A, undefined, SECRET, true)).toBeNull();
   });
 
-  // The fail-open this used to have: with users and no secret, any address the model named was fetched,
-  // which is the way out that signing addresses exists to close.
   it("fetches no address at all when there are users and no secret", () => {
     for (const env of [{}, { INES_AUTH: "workspace" }]) {
       const problem = urlProblem(URL_A, undefined, undefined, false, env);

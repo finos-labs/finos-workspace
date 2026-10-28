@@ -78,7 +78,6 @@ export default function DashboardToolbar() {
       const widgetsInGroup = getWidgetsFromGroup(groupId, id);
 
       if (widgetsInGroup?.length > 0) {
-        // If there are, show a warning message
         return showNotificationWithRememberMe({
           id: NotificationId.GroupNotEmpty,
           message: "Group not empty",
@@ -96,7 +95,6 @@ export default function DashboardToolbar() {
         });
       }
 
-      // If there are no widgets in the group, delete the group
       deleteGroup(id, groupId);
     },
     [id, deleteGroup, getWidgetsFromGroup],
@@ -112,9 +110,9 @@ export default function DashboardToolbar() {
     return (
       <div className="max-w-[457px]">
         <p className="body-xs-regular max-w-md break-words whitespace-normal">
-          <strong>This dashboard is shared</strong> — You're allowed to change tickers
-          and switch tabs. You don't have permission to add, remove or resizing widgets.
-          Duplicate the template first before applying any modifications.
+          <strong>This dashboard is shared</strong> — You're allowed to change
+          parameters and switch tabs. You don't have permission to add, remove or resize
+          widgets. Duplicate the template first before applying any modifications.
         </p>
         <Button
           variant="primary"
@@ -141,7 +139,6 @@ export default function DashboardToolbar() {
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    // Check if mouse is over dropdown content or tooltip content - we need a delay to allow for the mouse to enter the dropdown content
     setTimeout(() => {
       const dropdownContent = document.querySelector("._dropdown-menu-content");
       const tooltipContent = document.querySelector(".TooltipContent");

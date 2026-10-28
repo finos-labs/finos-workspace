@@ -240,8 +240,6 @@ describe("buildMessages — earlier tool results rendered into history", () => {
     expect(hist).toBeDefined();
     expect(hist).toContain('[Artifact "Diagram" (html) delivered to the user');
     expect(hist).toContain("Parse error on line 2");
-    // The live (last) tool result is injected by the loop with full fidelity,
-    // not by buildMessages — no double injection.
     expect(userContents.join("\n")).not.toContain("LIVE RESULT MARKER");
   });
 
@@ -302,8 +300,6 @@ describe("buildMessages — earlier workspace bridge results rendered into histo
     expect(hist).toBeDefined();
     expect(hist).toContain("w-1");
     expect(hist).toContain("success: Widget updated.");
-    // The live (last) bridge result is injected by the loop via injectFromReboot,
-    // not by buildMessages — w-2 must NOT be double-rendered here.
     expect(userContents.some((c) => c.includes("w-2"))).toBe(false);
   });
 

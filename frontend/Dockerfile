@@ -1,41 +1,16 @@
 # syntax=docker/dockerfile:1
 
-###############################################
-# FINOS Workspace frontend, served by nginx
-###############################################
-# The bundle is built once in runtime mode, so one image runs in every
-# environment: nginx renders config.js from environment variables
-# (app-config.js). The image is built from scratch: an nginx compiled here,
-# its configuration and the bundle. It has no shell, no package manager and no
-# shared libraries. The nginx it compiles is for the platform the image is
-# built for (docker build --platform, or the service's platform in compose).
-
-###############################################
-# Builder Image
-###############################################
-# The build output is static files, so this stage runs on the build host's
-# own platform.
 FROM --platform=$BUILDPLATFORM node:22 AS builder
 
 ENV NODE_OPTIONS="--max-old-space-size=4608"
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-# The packages' own install scripts are not run: the build needs none of them.
 RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY . .
 RUN node scripts/check-runtime-config.ts
-# nginx renders config.js, so the one the build writes is left out.
 RUN npm run build:runtime && rm dist/config.js
 
-###############################################
-# nginx
-###############################################
-# nginx, njs, PCRE2 and zlib from their releases, linked with musl into one
-# static binary. It serves plain HTTP behind the load balancer, so it has no
-# TLS and no OpenSSL, and njs leaves out the modules that need more libraries.
-# Each tarball is checked against its SHA-256; nginx's is a release signed by
-# its developers (nginx.org/en/pgp_keys.html).
 FROM alpine:3.24.2 AS nginx
 
 ARG NGINX_VERSION=1.31.8
@@ -62,8 +37,6 @@ RUN wget -q "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" \
       | sha256sum -c - \
     && for tarball in *.tar.gz; do tar -xzf "$tarball"; done
 
-# The pid, lock and temporary files go to /tmp, which the unprivileged user can
-# write, and the logs to the container's output.
 RUN cd "nginx-${NGINX_VERSION}" \
     && NJS_QUICKJS=NO NJS_OPENSSL=NO NJS_LIBXSLT=NO NJS_ZLIB=NO ./configure \
       --prefix=/etc/nginx \
@@ -101,9 +74,6 @@ RUN cd "nginx-${NGINX_VERSION}" \
       --with-ld-opt="-static" \
     && make -j"$(nproc)"
 
-# The image's whole filesystem, but for the configuration and the bundle. The
-# CycloneDX file names what is compiled into the binary: the image has no
-# package database, and SBOM scanners read the file (.github/actions/image-sbom).
 RUN set -e; \
     mkdir -p /rootfs/usr/sbin /rootfs/etc/nginx /rootfs/usr/share/sbom /rootfs/tmp; \
     cp "nginx-${NGINX_VERSION}/objs/nginx" /rootfs/usr/sbin/nginx; \
@@ -125,9 +95,6 @@ RUN set -e; \
       "$(component library musl "$musl" musl-libc MIT)" \
       > /rootfs/usr/share/sbom/nginx.cdx.json
 
-###############################################
-# Production Image
-###############################################
 FROM scratch AS production-stage
 
 COPY --from=nginx /rootfs/ /
@@ -135,7 +102,6 @@ COPY nginx.conf /etc/nginx/nginx.conf
 COPY app-config.js /etc/nginx/njs/app-config.js
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# The image's unprivileged nginx user (/etc/passwd above).
 USER 101:101
 
 EXPOSE 8080

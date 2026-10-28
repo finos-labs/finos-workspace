@@ -1,13 +1,3 @@
-/**
- * Tests for useRefHooks utilities
- *
- * Tests custom ref hooks:
- * - useRecordRef: Record-based ref management
- * - useCreateRef: Simple ref creation with auto-update
- * - useCallbackRef: Stable callback refs
- * - useComposeRefs: Compose multiple refs into one
- */
-
 import { renderHook } from "@testing-library/react";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -160,7 +150,6 @@ describe("useCallbackRef", () => {
   it("should handle undefined callback", () => {
     const { result } = renderHook(() => useCallbackRef(undefined));
 
-    // Should not throw when called
     expect(() => result.current()).not.toThrow();
     expect(result.current()).toBeUndefined();
   });
@@ -198,10 +187,8 @@ describe("useComposeRefs", () => {
 
     const { result } = renderHook(() => useComposeRefs(ref1, ref2));
 
-    // Should return a function
     expect(typeof result.current).toBe("function");
 
-    // Mock DOM element
     const mockElement = document.createElement("div");
     result.current?.(mockElement);
 
@@ -276,7 +263,6 @@ describe("useComposeRefs", () => {
     rerender({ refs: [ref1, ref2] as const });
     const secondResult = result.current;
 
-    // Same refs should give same composed function
     expect(firstResult).toBe(secondResult);
   });
 });

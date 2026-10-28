@@ -13,10 +13,6 @@ const HEADERS = [
   "Last Log in",
 ] as const;
 
-/**
- * Builds plain-text export rows mirroring the visible Users table columns.
- * Values are the raw field/derived values (matching the previous AG Grid export).
- */
 export function buildUserExportRows(
   users: User[],
   entityNameMap: Map<string, string>,

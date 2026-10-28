@@ -1,17 +1,3 @@
-/**
- * `create_app` — assemble connected widgets into a dashboard app
- * (apps.json template shape). The workspace renders the resulting `app`
- * artifact with Open-as-dashboard and Save-to-apps actions.
- *
- * State-bound — closes over the live widget catalog (`allWidgets`) to validate
- * and resolve every `(origin, widget_id)` reference, and over `artifactQueue`
- * to push the artifact. Validation runs in-process: an unknown reference is
- * returned as the tool result so the model self-corrects without a round-trip.
- *
- * Mirrors `create_html_artifact` (./html-artifact.ts): local `execute`, returns
- * text, pushes one artifact. No round-trip, no stopWhen entry.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import { messageArtifact } from "../../protocol/events.ts";
@@ -19,7 +5,6 @@ import type {
   AppArtifact,
   AppArtifactWidgetRef,
   AppsJsonDef,
-  AppsJsonGroup,
   AppsJsonTab,
   SSEEvent,
   Widget,
@@ -56,7 +41,7 @@ const layoutItemSchema = z.object({
       params: z
         .record(z.string(), z.unknown())
         .optional()
-        .describe("Pre-set parameter values for this widget instance, e.g. { symbol: 'AAPL' }."),
+        .describe("Pre-set parameter values for this widget instance, by param name."),
       chartView: z
         .object({
           enabled: z.boolean(),
@@ -107,8 +92,7 @@ export const createAppDescription =
   "Lay widgets out on a 40-column grid: w out of 40 (40=full, 20=half, 13=third, 10=quarter, " +
   "min 10); h in 25px rows (min 4; 8-12 for charts/tables; 20+ for content-heavy). " +
   "Walk y downward and avoid overlaps. " +
-  "Tabs: 1 for small apps, 2-4 typical, max 6; tab ids are lowercase kebab-case and unique. " +
-  "Ticker/symbol parameter sync across widgets is detected automatically — do not specify groups. ";
+  "Tabs: 1 for small apps, 2-4 typical, max 6; tab ids are lowercase kebab-case and unique.";
 
 export interface CreateAppToolContext {
   allWidgets: Widget[];
@@ -116,41 +100,6 @@ export interface CreateAppToolContext {
 }
 
 const widgetKey = (origin: string, widgetId: string): string => `${origin}::${widgetId}`;
-
-/**
- * One ticker group spanning every widget that exposes a ticker/symbol param —
- * the workspace's universal ticker registry is a single group. Other shared
- * params are left to the workspace's implicit param auto-sync.
- */
-function detectTickerGroups(
-  widgetRefs: AppArtifactWidgetRef[],
-  resolved: Map<string, Widget>,
-): AppsJsonGroup[] {
-  const widgetIds: string[] = [];
-  const seen = new Set<string>();
-  let defaultValue: string | undefined;
-
-  for (const ref of widgetRefs) {
-    const widget = resolved.get(widgetKey(ref.origin, ref.widget_id));
-    if (!widget) continue;
-    const tickerParam = widget.params.find((p) => {
-      const name = p.name.toLowerCase();
-      return name === "symbol" || name === "ticker" || p.type === "ticker";
-    });
-    if (!tickerParam) continue;
-    if (!seen.has(ref.widget_id)) {
-      seen.add(ref.widget_id);
-      widgetIds.push(ref.widget_id);
-    }
-    if (defaultValue === undefined) {
-      const value = tickerParam.current_value ?? tickerParam.default_value;
-      if (typeof value === "string" && value.length > 0) defaultValue = value;
-    }
-  }
-
-  if (widgetIds.length < 2) return [];
-  return [{ name: "Group 1", type: "ticker", widgetIds, defaultValue: defaultValue ?? "AAPL" }];
-}
 
 export function runCreateApp(args: CreateAppArgs, ctx: CreateAppToolContext): string {
   const tabIds = new Set<string>();
@@ -161,8 +110,6 @@ export function runCreateApp(args: CreateAppArgs, ctx: CreateAppToolContext): st
     tabIds.add(t.id);
   }
 
-  // Resolve every (origin, widget_id) against the live catalog; flag misses and
-  // within-tab duplicates (a tab's layout keys must be unique).
   const resolved = new Map<string, Widget>();
   const errors: string[] = [];
   for (const t of args.tabs) {
@@ -228,14 +175,12 @@ export function runCreateApp(args: CreateAppArgs, ctx: CreateAppToolContext): st
     }
   }
 
-  const groups = detectTickerGroups(widgetRefs, resolved);
-
   const app: AppsJsonDef = {
     name: args.name,
     description: args.description,
     allowCustomization: true,
     tabs,
-    groups,
+    groups: [],
     ...(args.prompts && args.prompts.length > 0 ? { prompts: args.prompts } : {}),
   };
   const artifact: AppArtifact = {
@@ -252,7 +197,6 @@ export function runCreateApp(args: CreateAppArgs, ctx: CreateAppToolContext): st
     name: args.name,
     tabs: args.tabs.length,
     widgets: widgetRefs.length,
-    groups: groups.length,
   });
 
   const widgetCount = widgetRefs.length;
@@ -260,7 +204,6 @@ export function runCreateApp(args: CreateAppArgs, ctx: CreateAppToolContext): st
   return (
     `Created app "${args.name}" with ${widgetCount} widget${widgetCount === 1 ? "" : "s"} across ` +
     `${tabCount} tab${tabCount === 1 ? "" : "s"}` +
-    (groups.length > 0 ? " and an auto-synced ticker group" : "") +
     ". The app is rendered in the workspace with Open-as-dashboard and Save-to-apps actions. " +
     "Summarize what the app contains; do NOT repeat the layout JSON in your reply."
   );

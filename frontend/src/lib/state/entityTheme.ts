@@ -8,7 +8,6 @@ import { updateEntityThemeSettings } from "~/api/admin.api";
 import { getEntityThemeSettings } from "~/api/auth.api";
 import type { Selector } from "./app";
 
-// Application-level theming (e.g., grouping colors)
 type AppTheme = {
   grouping: {
     palette: string[];

@@ -46,8 +46,6 @@ describe("runPeekColumnValues — happy path", () => {
   });
 
   it("caps results at the documented MAX_VALUES (50)", () => {
-    // The cap is intentional context-budget protection (LLM consumer).
-    // A column with 200 distinct values should surface the cap, not return all.
     const big = Array.from({ length: 200 }, (_, i) => ({ id: `v_${i}` }));
     const text = runPeekColumnValues({ column: "id" }, ctx({ data: big }));
     expect(text).toContain("50 unique values");

@@ -2,10 +2,6 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useShallowAuthStore } from "~/lib/state/auth";
 
-/**
- * Sends a visitor who is not signed in to the login page. After a reload the page knows
- * nobody yet, so it first asks the API whether the session cookie still holds a session.
- */
 export default function AuthRedirect() {
   const navigate = useNavigate();
   const { isAuthenticated, restoreSession } = useShallowAuthStore((state) => ({

@@ -33,7 +33,7 @@ export default function SharedDashboardsSidebar() {
             "flex flex-col overflow-y-auto overflow-x-hidden @max-[100px]:items-center",
             {
               "max-h-[35vh] min-h-[48px] @max-[100px]:min-h-[32px] my-1":
-                expandedShared, // we need my-1 to match the rct-root margin for my dashboards
+                expandedShared,
             },
           )}
         >
@@ -105,15 +105,6 @@ export function SharedDashboardItem({ item }: { item: Item }) {
             >
               {item.data?.name || "Unnamed Item"}
             </span>
-            {/*tabGroups.length > 0 && (
-                <span className="flex gap-1 overflow-x-auto pb-0.5">
-                  {tabGroups.map((group) => (
-                    <span key={group.id} className={clsx("ws-tag")}>
-                      {getGroupLabel(group)}
-                    </span>
-                  ))}
-                </span>
-                  )*/}
           </span>
           <span className="absolute right-1 flex gap-1 z-50 @max-[100px]:hidden">
             <DropdownMenuPrimitive.Root modal={true} open={open} onOpenChange={setOpen}>

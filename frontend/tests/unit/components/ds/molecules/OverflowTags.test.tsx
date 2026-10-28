@@ -3,8 +3,6 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OverflowTags } from "~/components/ds/molecules/OverflowTags";
 
-// Render the DS Popover content inline so overflow items are assertable
-// without driving Radix's portal/open state.
 vi.mock("~/components/ds/atoms/Popover", () => ({
   Popover: ({ children, content }: { children: ReactNode; content: ReactNode }) => (
     <div>
@@ -14,11 +12,6 @@ vi.mock("~/components/ds/atoms/Popover", () => ({
   ),
 }));
 
-/**
- * jsdom has no layout engine, so width measurement returns 0 by default. These
- * getters give the container a width and each tag a fixed width so the
- * width-based fitting logic can be exercised deterministically.
- */
 function mockSizes({ container, tag }: { container: number; tag: number }) {
   const prevClient = Object.getOwnPropertyDescriptor(
     HTMLElement.prototype,
@@ -85,7 +78,6 @@ describe("OverflowTags", () => {
     restore = mockSizes({ container: 20, tag: 40 });
     render(<OverflowTags items={["Analyst", "Trader"]} />);
 
-    // First tag stays inline (it will ellipsize), only the remainder folds.
     expect(screen.getByRole("button", { name: "1 more" })).toBeInTheDocument();
   });
 
@@ -101,8 +93,6 @@ describe("OverflowTags", () => {
     const longRole = "Senior Quantitative Research Analyst, Equities";
     render(<OverflowTags items={[longRole]} />);
 
-    // The visible (non-measure) layer renders the label wrapped in a truncating
-    // span; the measure layer renders the raw string for width measurement.
     const labels = screen.getAllByText(longRole);
     const truncated = labels.find((el) => el.className.includes("truncate"));
     expect(truncated).toBeDefined();
@@ -112,7 +102,6 @@ describe("OverflowTags", () => {
     restore = mockSizes({ container: 1000, tag: 40 });
     render(<OverflowTags items={["Analyst", "", "   "]} />);
 
-    // Only "Analyst" survives, so it shows alone with no overflow chip.
     expect(screen.queryByRole("button", { name: /more/ })).not.toBeInTheDocument();
     expect(screen.getAllByText("Analyst").length).toBeGreaterThan(0);
   });

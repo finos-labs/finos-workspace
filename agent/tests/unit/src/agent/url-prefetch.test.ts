@@ -18,7 +18,6 @@ function mockFetch(handler: (url: string) => { status?: number; body?: string })
     const url = logicalUrl(input, init);
     const { status = 200, body = "<html><head><title>OK</title></head><body><p>hi</p></body></html>" } =
       handler(url);
-    // Labelled as a server labels a page: a Response of a string is text/plain.
     return new Response(body, { status, statusText: status === 200 ? "OK" : "ERR", headers: { "content-type": "text/html; charset=utf-8" } });
   }) as unknown as typeof fetch;
 }
@@ -39,7 +38,6 @@ describe("prefetchUrls", () => {
     expect(out[0].overview).toContain("Title: Tesla Q4");
     expect(out[0].overview).toContain("Revenue");
     expect(out[0].overview).toContain("21.3B");
-    // The page is not held for the agent, so there is no page_id to read it by.
     expect(out[0].overview).not.toContain("page_id");
   });
 
@@ -106,10 +104,8 @@ describe("prefetchUrls — a page the user's link leads to that is built to caus
   });
 
   it("does not stop the agent while it is read: the reading is in a process of its own", { timeout: 40_000 }, async () => {
-    // A hundred thousand levels deep to read, and a run of unclosed titles, in one page.
     const deep = `<html><head>${"<title".repeat(200_000)}</head><body>${"<div>".repeat(100_000)}text${"</div>".repeat(100_000)}</body></html>`;
     mockFetch(() => ({ body: deep }));
-    // Something else in the agent's thread that must keep running while the page is converted.
     let ticks = 0;
     const timer = setInterval(() => ticks++, 20);
     const started = Date.now();

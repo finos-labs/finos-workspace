@@ -1,13 +1,3 @@
-/**
- * Tests for mcpTools Zustand store
- *
- * Tests the MCP tools state management including:
- * - Server management (add, remove, update, toggle)
- * - Tool management (toggle, bulk toggle)
- * - Connection registry management
- * - Enabled tool count tracking
- */
-
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { postMCPServers } from "~/api/auth.api";
@@ -21,17 +11,14 @@ import {
   useMcpToolsStore,
 } from "~/lib/state/mcpTools";
 
-/** The default an agent tool declares for one of its arguments. */
 const defaultOf = (tool: AgentToolConfig, argument: string) =>
   (tool.input_schema?.properties?.[argument] as { default?: unknown } | undefined)
     ?.default;
 
-// Mock the API calls
 vi.mock("~/api/auth.api", () => ({
   postMCPServers: vi.fn().mockResolvedValue({}),
 }));
 
-// Mock sonner toast
 vi.mock("sonner", () => ({
   toast: {
     warning: vi.fn(),
@@ -62,7 +49,6 @@ const createMockConnection = (
   ...overrides,
 });
 
-/** Every server these tests use, with all its tools granted to the user by a role. */
 const grantedServerUrls = [
   "https://test.example.com",
   "https://widget.example.com/mcp",
@@ -79,7 +65,6 @@ describe("useMcpToolsStore", () => {
       models: [],
       mcp: grantedServerUrls.map((server_url) => ({ server_url, tool_name: "*" })),
     });
-    // Reset store to initial state
     act(() => {
       useMcpToolsStore.setState({
         servers: [],
@@ -639,7 +624,7 @@ describe("useMcpToolsStore", () => {
       const tools = useMcpToolsStore.getState().servers[0].tools;
       expect(tools[0].enabled).toBe(true);
       expect(tools[1].enabled).toBe(true);
-      expect(tools[2].enabled).toBe(true); // unchanged
+      expect(tools[2].enabled).toBe(true);
     });
 
     it("should set specific enable state when provided", () => {
@@ -760,7 +745,7 @@ describe("useMcpToolsStore", () => {
       const tool = useMcpToolsStore.getState().servers[0].tools[0];
       expect(tool.name).toBe("Tool 1 Updated");
       expect(tool.description).toBe("new description");
-      expect(tool.enabled).toBe(true); // preserved
+      expect(tool.enabled).toBe(true);
     });
 
     it("should preserve toolsEnabled for regular servers when adding tools", () => {
@@ -963,19 +948,18 @@ describe("useMcpToolsStore", () => {
         }),
         createMockServer({
           id: "server-2",
-          enabled: false, // disabled server
+          enabled: false,
           toolsEnabled: true,
           tools: [{ id: "tool-3", name: "Tool 3", enabled: true }],
         }),
         createMockServer({
           id: "server-3",
           enabled: true,
-          toolsEnabled: false, // toolsEnabled is false
+          toolsEnabled: false,
           tools: [{ id: "tool-4", name: "Tool 4", enabled: true }],
         }),
       ];
 
-      // Set up connection registry with "ready" state for server-1 only
       const mcpConnectionRegistry = {
         "server-1": createMockConnection({ state: "ready" }),
         "server-2": createMockConnection({ state: "disconnected" }),
@@ -1011,7 +995,6 @@ describe("useMcpToolsStore", () => {
         }),
       ];
 
-      // Set up connection registry with "ready" state for both servers
       const mcpConnectionRegistry = {
         "server-1": createMockConnection({ state: "ready" }),
         "server-2": createMockConnection({ state: "ready" }),
@@ -1329,9 +1312,7 @@ describe("useMcpToolsStore", () => {
 
       expect(tools).toHaveLength(1);
       expect(tools[0].server_id).toBe("iframe-server-1");
-      // Diverging key must not silently inherit the first copy's value
       expect(defaultOf(tools[0], "symbol")).toBeUndefined();
-      // Agreeing key keeps its default
       expect(defaultOf(tools[0], "interval")).toBe("1d");
       expect(tools[0].description).toContain("multiple copies");
       expect(tools[0].description).toContain("symbol=A / B");
@@ -1501,14 +1482,12 @@ describe("useMcpToolsStore", () => {
 
   describe("complex interactions", () => {
     it("should handle full server lifecycle", () => {
-      // Add server
       const server = createMockServer({ id: "server-1", name: "Test Server" });
       act(() => {
         useMcpToolsStore.getState().addServer(server);
       });
       expect(useMcpToolsStore.getState().servers).toHaveLength(1);
 
-      // Add tools
       act(() => {
         useMcpToolsStore.getState().addToolsToServer("server-1", [
           { id: "tool-1", name: "Tool 1", enabled: true },
@@ -1517,13 +1496,11 @@ describe("useMcpToolsStore", () => {
       });
       expect(useMcpToolsStore.getState().servers[0].tools).toHaveLength(2);
 
-      // Toggle tool
       act(() => {
         useMcpToolsStore.getState().toggleTool("server-1", "tool-2");
       });
       expect(useMcpToolsStore.getState().servers[0].tools[1].enabled).toBe(true);
 
-      // Update server
       act(() => {
         useMcpToolsStore
           .getState()
@@ -1531,7 +1508,6 @@ describe("useMcpToolsStore", () => {
       });
       expect(useMcpToolsStore.getState().servers[0].name).toBe("Updated Server");
 
-      // Remove server
       act(() => {
         useMcpToolsStore.getState().removeServer("server-1");
       });

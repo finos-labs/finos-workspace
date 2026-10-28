@@ -84,7 +84,6 @@ describe("ImportUsers Component", () => {
       { type: "text/csv" },
     );
 
-    // We need to use fireEvent.change for the hidden input
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await waitFor(() => {
@@ -144,7 +143,6 @@ describe("ImportUsers Component", () => {
   });
 
   it("shows error when CSV is invalid", async () => {
-    // Re-mock Papa.parse for this specific test
     const Papa = (await import("papaparse")).default;
     (Papa.parse as Mock).mockImplementationOnce((_file, options) => {
       if (options.complete) {

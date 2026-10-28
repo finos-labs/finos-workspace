@@ -1,12 +1,3 @@
-/**
- * Tier 2 — widgets read through the FINOS Workspace's MCP tool.
- *
- * The FINOS Workspace serves its own MCP server, and its `get_widget_data` is how Ines reads a widget when the
- * request has it: the model sees the tool as the server describes it, the call goes to the browser as any MCP
- * call does, and the result is taken in as the data of the widget (tables the model queries). A request
- * without the tool still has the agent's own `get_widget_data`.
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
@@ -42,7 +33,6 @@ const ROWS = [
   { symbol: "MSFT", price: 521.1 },
 ];
 
-/** What the browser re-POSTs after it has run the FINOS Workspace's tool. */
 function result(content: unknown): ToolMessage {
   return {
     role: "tool",
@@ -95,7 +85,6 @@ describe("the model reads widgets with the FINOS Workspace's MCP tool", () => {
     const widgetData = tools.filter((t) => t.name === "get_widget_data");
     expect(widgetData).toHaveLength(1);
     expect(widgetData[0].description).toBe("Fetch current data for one FINOS Workspace data source.");
-    // The server's arguments, not the agent's own `widgets` list.
     expect(Object.keys(widgetData[0].inputSchema?.properties ?? {})).toEqual(expect.arrayContaining(["origin", "widget_id", "data_args", "widget_uuid"]));
     expect(Object.keys(widgetData[0].inputSchema?.properties ?? {})).not.toContain("widgets");
   });

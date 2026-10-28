@@ -1,13 +1,3 @@
-"""
-Integration tests for share requests.
-
-A developer's shares of dashboards and apps reach nobody until an admin of their
-organization approves them: they wait as share requests, which the organization's admins
-list, approve or decline. A developer may ask only while their roles let them share, and
-only for recipients whose roles let them receive. Everyone else shares directly
-(tests/test_sharing.py).
-"""
-
 import os
 import sys
 
@@ -43,7 +33,6 @@ async def _item(organization, kind: str, owner_uuid: UUID = MEMBER_UUID) -> UUID
 
 
 async def _recipients(db_session, kind: str, item: UUID) -> dict[UUID, str]:
-    """The users an item is actively shared with, and their permissions."""
     if kind == "dash":
         table, item_column = models.DashboardShare, models.DashboardShare.dashboard_item_uuid
     else:
@@ -71,8 +60,6 @@ async def _entity_share(db_session, dashboard: UUID) -> bool:
 
 
 async def _developer_who_may_share(organization) -> None:
-    """The test user as a developer whose role lets them share, and the admin as one
-    who may receive."""
     await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
     await organization.role(MEMBER_UUID, sharing="share")
     await organization.role(ADMIN_UUID, sharing="receive")
@@ -96,7 +83,6 @@ class TestADevelopersShareWaits:
         assert response.status_code == 200, response.text
         assert response.json() == PENDING
         assert await _recipients(db_session, kind, item) == {}
-        # The developer sees it waiting
         shares = (await auth_client.get(f"/app/{kind}/{item}/shares")).json()
         assert shares[ADMIN_EMAIL]["pending"] is True
         assert shares[ADMIN_EMAIL]["permissions"] == "view"
@@ -137,7 +123,6 @@ class TestADevelopersShareWaits:
     ):
         await _developer_who_may_share(organization)
         item = await _item(organization, kind)
-        # A share the developer made before they were a developer
         if kind == "dash":
             db_session.add(
                 models.DashboardShare(
@@ -344,7 +329,6 @@ class TestAdminsApprove:
     async def test_admins_decide_for_their_own_organization_only(
         self, organization, second_user_client, admin_client, db_session
     ):
-        # A request of the second test user, who is in another organization
         dashboard = await organization.dashboard(OTHER_USER)
         request = models.ShareRequest(
             requester_uuid=OTHER_USER,
@@ -371,7 +355,6 @@ class TestAdminsApprove:
         item = await _item(organization, "dash")
         await _ask(auth_client, "dash", item, **{ADMIN_EMAIL: "view"})
         [request] = await _requests(db_session)
-        # The organization switched sharing off, which no role change records
         await organization.set_sharing_enabled(False)
 
         response = await admin_client.post(f"/admin/share-requests/{request.uuid}/approve")

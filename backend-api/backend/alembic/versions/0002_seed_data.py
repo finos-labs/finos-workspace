@@ -1,13 +1,3 @@
-"""seed data - tiers, tier defaults, and data bundles
-
-Inserts reference/configuration data required for the application.
-
-Revision ID: 0002
-Revises: 0001
-Create Date: 2026-02-23
-
-"""
-
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -26,7 +16,6 @@ depends_on = None
 def upgrade():
     now = datetime.now(UTC).replace(tzinfo=None)
 
-    # --- tier ---
     tier = sa.table(
         "tier",
         sa.column("id", sa.Integer),
@@ -52,7 +41,6 @@ def upgrade():
         ],
     )
 
-    # --- default_tier ---
     default_tier = sa.table(
         "default_tier",
         sa.column("uuid", sqlalchemy_utils.types.uuid.UUIDType()),
@@ -108,7 +96,6 @@ def upgrade():
         ],
     )
 
-    # --- data_bundle (2 bundles: Default, Equity Research) ---
     data_bundle = sa.table(
         "data_bundle",
         sa.column("uuid", sqlalchemy_utils.types.uuid.UUIDType()),
@@ -131,7 +118,6 @@ def upgrade():
     op.bulk_insert(
         data_bundle,
         [
-            # Default bundle (free tier)
             {
                 "uuid": uuid4(),
                 "bundle_name": "Default",
@@ -149,7 +135,6 @@ def upgrade():
                 "created_date": now,
                 "updated_date": now,
             },
-            # Equity Research bundle (paid tier)
             {
                 "uuid": uuid4(),
                 "bundle_name": "Equity Research",
@@ -172,7 +157,6 @@ def upgrade():
 
 
 def downgrade():
-    # Seed data removal is handled by the baseline's drop_all
     op.execute(sa.text("DELETE FROM data_bundle"))
     op.execute(sa.text("DELETE FROM default_tier"))
     op.execute(sa.text("DELETE FROM tier"))

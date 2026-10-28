@@ -81,7 +81,6 @@ FormItem.displayName = "FormItem";
 
 export interface FormLabelProps
   extends React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> {}
-/** A label form field. Use inside <Form> component only. */
 const FormLabel = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
   FormLabelProps
@@ -133,7 +132,6 @@ const FormDescription = React.forwardRef<HTMLParagraphElement, FormDescriptionPr
 FormDescription.displayName = "FormDescription";
 
 export interface FormMessageProps extends React.HTMLAttributes<HTMLParagraphElement> {}
-/** Shows validation error or children content by default. Use inside <Form> component only. */
 const FormMessage = React.forwardRef<HTMLParagraphElement, FormMessageProps>(
   (props, ref) => {
     const { children, ...rest } = props;

@@ -122,7 +122,7 @@ export function SidebarSection({
           initial={{ height: 0, opacity: 0 }}
           transition={{
             duration: 0.3,
-            ease: [0.87, 0, 0.13, 1], // cubic-bezier easing
+            ease: [0.87, 0, 0.13, 1],
           }}
           style={{ overflow: "hidden" }}
           className={cn({

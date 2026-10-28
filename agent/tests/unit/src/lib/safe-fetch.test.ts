@@ -8,7 +8,6 @@ import { logicalUrl } from "../../../helpers/logical-url.ts";
 const realFetch = globalThis.fetch;
 const PUBLIC_IP = "93.184.216.34";
 
-/** What the stub network answers, by URL; everything fetched is recorded. */
 function network(routes: Record<string, () => Response>) {
   const fetched: string[] = [];
   globalThis.fetch = fn(async (input: string | URL | Request, init?: RequestInit) => {
@@ -179,7 +178,6 @@ describe("fetchClientUrl — what it fetches", () => {
     const controller = new AbortController();
     await fetchClientUrl("https://docs.example.org/a", { signal: controller.signal });
     expect(signal?.aborted).toBe(false);
-    // The caller's signal still stops the request.
     controller.abort();
     expect(signal?.aborted).toBe(true);
   });
@@ -305,7 +303,6 @@ describe("fetchClientUrl — the address that was checked is the address that is
       return new Response("ok");
     }) as unknown as typeof fetch;
     await fetchClientUrl("https://rebind.example.org/");
-    // Looked up once, and connected to what was checked: the second answer was never asked for.
     expect(lookups).toBe(1);
     expect(connectedTo).toEqual([PUBLIC_IP]);
   });

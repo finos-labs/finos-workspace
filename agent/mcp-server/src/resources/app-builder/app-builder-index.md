@@ -26,6 +26,7 @@ If this is your first time touching FINOS Workspace, read the two **overview** d
 | **Make widgets the AI Agent can actually use** | `workspace://overview/ai-agent-contract` |
 | Understand what a backend must expose | `workspace://contract/backend` |
 | Author or edit `widgets.json` | `workspace://specs/widgets-json` + `workspace://specs/widget-types` + `workspace://specs/widget-parameters` |
+| Check a `widgets.json` against what this FINOS Workspace accepts | `workspace://specs/widgets-json-schema`, the JSON Schema for the signed-in user (needs the browser connected) |
 | Author or edit `apps.json` | `workspace://specs/apps-json` + `workspace://specs/layout-grid` |
 | Build a brand-new app | `workspace://guides/build-an-app` |
 | Review someone else's app | `workspace://guides/review-app` + `workspace://validation/common-errors` |
@@ -37,7 +38,7 @@ If this is your first time touching FINOS Workspace, read the two **overview** d
 ## Reminders
 
 - The backend is HTTP-only. FINOS Workspace never imports your code.
-- `widgets.json` is a JSON **object** keyed by widget id. Not an array.
+- `widgets.json` is a JSON **object** keyed by widget id. Not an array. Its keys are the contract's: a key it does not define is ignored and named under the backend's unrecognized fields.
 - `apps.json` is a JSON **array** of app objects. Not an object.
 - Layout uses `i` for the widget id, not `id`.
 - Prefer `Group 1`, `Group 2`, ... names for parameter groups; put human-readable meaning in descriptions/categories.

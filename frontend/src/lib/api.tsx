@@ -7,7 +7,12 @@ import {
   WORKSPACE_CLIENT,
   WORKSPACE_CLIENT_HEADER,
 } from "~/lib/utils/fetch";
-import { cleanSearchParams, convertHeadersToRecord } from "~/lib/utils/widgetParams";
+import {
+  type BuiltRequest,
+  RequestProblemsError,
+  requestInit,
+  requestKey,
+} from "~/lib/utils/widgetRequest";
 import { REFRESH_WIDGET_INTERVAL } from "./constants";
 import {
   canFetchFromSource,
@@ -18,12 +23,8 @@ import {
 import { useShallowPermissionsStore } from "./state/permissions";
 import { resolveCronRefetchInterval } from "./utils/cronSchedule";
 
-export {
-  cleanSearchParams,
-  convertHeadersToRecord,
-} from "~/lib/utils/widgetParams";
+export { convertHeadersToRecord } from "~/lib/utils/widgetParams";
 
-/** What a failed request's JSON body may carry. */
 type ApiErrorBody = {
   warnings?: string[];
   detail?: unknown;
@@ -40,12 +41,9 @@ export type TResponseCb<TData> = (
 ) => Promise<void>;
 
 export interface QueryOptions<TQueryFnData = unknown> {
-  url: string;
-  endpointHeaders?: Record<string, string>;
-  params?: { [key: string]: unknown };
-  method?: "GET" | "POST";
-  asText?: boolean; // If asText is true, the response will be returned as text instead of JSON
-  responseCb?: TResponseCb<TQueryFnData>; // Custom resolve callback to handle the response before resolving the promise
+  request: BuiltRequest | null;
+  asText?: boolean;
+  responseCb?: TResponseCb<TQueryFnData>;
   queryKey?: unknown[];
 }
 
@@ -58,17 +56,7 @@ export function useJsonData<
   queryOptions: T,
   options?: Omit<UseQueryOptions<TQueryFnData, TError, TData>, "queryKey">,
 ) {
-  const {
-    url,
-    endpointHeaders,
-    params = {},
-    method = "GET",
-    asText = false,
-    responseCb,
-    queryKey,
-  } = queryOptions;
-  // Convert endpointHeaders to Record format if necessary
-  const { headers, newParams } = convertHeadersToRecord(endpointHeaders, params);
+  const { request, asText = false, responseCb, queryKey } = queryOptions;
   const {
     widget: {
       id: uuId,
@@ -84,8 +72,6 @@ export function useJsonData<
     activeDashboardId,
   } = useWidgetContext(true);
 
-  // A widget whose data backend is not the viewer's waits, or never fetches: it would
-  // go out without the backend's credentials
   const sourceState = useWidgetSourceState({
     sourceId,
     connectionType,
@@ -93,13 +79,13 @@ export function useJsonData<
   });
   const sourceReady = canFetchFromSource(sourceState);
 
-  // Check if the widget has permission before making the API call
   const hasAccess = useShallowPermissionsStore((state) =>
     isSharedWidget
       ? state.hasAccess(sourceId ?? "", (widgetId ?? "").replace(`${sourceName}-`, ""))
       : true,
   );
-
+  const sent = request?.ok ? request.request : null;
+  const withAuth = !!sent && sent.method === "GET" && isApiFileUrl(sent.url);
   const updateQueuedRefreshId = useShallowBackendConnectorStore(
     (state) => state.updateQueuedRefreshId,
   );
@@ -114,7 +100,6 @@ export function useJsonData<
         }
         return;
       }
-      // Read the response once and use it for both logging and refresh logic
       try {
         const data = asText ? await response.text() : await response.json();
 
@@ -123,7 +108,6 @@ export function useJsonData<
           data?.refreshBackend !== undefined &&
           sourceId
         ) {
-          // Add or remove the sourceId from the queued refresh ids
           updateQueuedRefreshId(sourceId, data?.refreshBackend);
         }
 
@@ -135,20 +119,10 @@ export function useJsonData<
     [asText, responseCb, sourceId],
   );
 
-  // Clean the URL and add any query parameters
-  const cleanUrl = cleanSearchParams(url, newParams);
-  const headerKeys = Object.keys(headers || {});
-  // The URL comes from a widget: saved or shared content, a data backend, the AI. Only a
-  // GET of the API's own file routes gets the FINOS Workspace session; nothing else a widget
-  // names is called with it, so a widget cannot act as the viewer on the API.
-  const withAuth = method === "GET" && !!cleanUrl && isApiFileUrl(cleanUrl);
-
   const finalQueryKey = queryKey ?? [
     "json",
     activeDashboardId ?? "",
-    cleanUrl || uuId,
-    method,
-    JSON.stringify(headerKeys),
+    ...(request ? requestKey(request) : [uuId ?? ""]),
     refreshQuery ?? 0,
     hasAccess,
     sourceReady,
@@ -165,16 +139,17 @@ export function useJsonData<
         if (!sourceReady) {
           return reject(new Error(SOURCE_UNAVAILABLE_MESSAGE));
         }
+        if (!request) return reject(new Error("Nothing to request"));
+        if (!request.ok) return reject(new RequestProblemsError(request.problems));
 
-        fetch(cleanUrl, {
-          headers: {
-            ...headers,
-            ...(withAuth ? { [WORKSPACE_CLIENT_HEADER]: WORKSPACE_CLIENT } : {}),
-          },
-          credentials: withAuth ? "include" : "omit",
-          method,
-          signal,
-        })
+        fetch(
+          request.request.url,
+          requestInit(request.request, {
+            signal,
+            credentials: withAuth ? "include" : "omit",
+            headers: withAuth ? { [WORKSPACE_CLIENT_HEADER]: WORKSPACE_CLIENT } : {},
+          }),
+        )
           .then(async (r) => {
             const noContent = r.status === 204;
             if (!r.ok || noContent) {
@@ -211,12 +186,12 @@ export function useJsonData<
           .catch((error) => reject(error));
       }),
     staleTime: staleTime ?? 1000 * 60 * 5,
-    retry: 1,
+    retry: (failures, error) =>
+      !(error instanceof RequestProblemsError) && failures < 1,
     retryDelay: 1000,
     ...(options ?? {}),
-    // A caller may hold the request back, never let one through these checks
     enabled: (query) =>
-      !!cleanUrl &&
+      !!request &&
       hasAccess &&
       sourceReady &&
       (typeof optionEnabled === "function"
@@ -229,11 +204,6 @@ export function useJsonData<
   });
 }
 
-/**
- * fetch to the FINOS Workspace API with the web session cookie and the client header. It
- * refuses any URL that is not on the API's exact origin, so FINOS Workspace credentials never
- * reach another host.
- */
 export function fetchBackend(
   url: string | URL,
   options: RequestInit = {},

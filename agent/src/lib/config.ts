@@ -1,37 +1,3 @@
-/**
- * What the agent needs to run for more than one user, read from the environment and checked at
- * start, so that a deployment with something missing says what instead of running open.
- *
- *   INES_AUTH                    workspace (default) | none. `workspace` signs every caller in with the
- *                                FINOS Workspace API; `none` runs without users, for a development machine.
- *   WORKSPACE_API_URL            The FINOS Workspace API as this agent can reach it (not the browser's address).
- *   WORKSPACE_ORIGIN             The Origin header of every call the agent makes to the FINOS Workspace API: the web app's
- *                                origin, one the API allows (BACKEND_CORS_ORIGINS), since the API refuses the calls of
- *                                an origin it does not allow. Required with INES_AUTH=workspace or WORKSPACE_PUBLIC_URL.
- *   INES_METERING_TOKEN          The service token the FINOS Workspace API checks usage reports and access
- *                                checks with: `python -m scripts.create_metering_token` in backend-api/backend.
- *   INES_SCOPE_SECRET            Signs the scope of each chat that the MCP tools receive, so that a user
- *                                cannot name another user's chat. Shared with the MCP server.
- *   WORKSPACE_PUBLIC_URL         The FINOS Workspace API as the browser addresses it. The links the FINOS Workspace gives
- *                                out to its users' files are on this address; the agent fetches them from
- *                                WORKSPACE_API_URL instead (see lib/safe-fetch.ts). Without it such links
- *                                are fetched as they are, which only works where the browser's address is
- *                                also the agent's.
- *   INES_CORS_ORIGINS            Comma-separated origins of the web app; `*` allows every origin.
- *                                Required with INES_AUTH=workspace, `*` otherwise.
- *   INES_MODELS                  Comma-separated <provider>:<model> that users may pick, besides DEFAULT_MODEL.
- *   INES_TRANSCRIBE_MODEL        <provider>:<model> for dictation in the chat (groq, openai or nvidia; see
- *                                lib/transcribe.ts). Unset, there is no dictation.
- *   INES_AUTH_CACHE_SECONDS      How long a signed-in user is remembered (default 30).
- *   INES_MAX_BODY_MB             Largest request accepted (default 64).
- *   INES_MAX_CONCURRENT_QUERIES  Queries one user may have running at once (default 4).
- *   INES_MAX_TOTAL_QUERIES       Queries the whole agent runs at once; past it a query is refused with 503 (default 200).
- *   INES_MAX_TURN_REQUESTS       Requests one question may be made of, counting every return from a tool (default 60).
- *   INES_HELPER_CALLS_PER_MINUTE Helper calls (titles, rewritten prompts, widget descriptions, dictation) one user may make in a minute; past it they get 429 (default 60).
- *   INES_INVALID_REQUESTS_PER_MINUTE  Questions that are not questions (not JSON, wrong shape) one user may send in a minute; past it their questions are turned away unread (default 20).
- *   INES_METRICS_PORT            Port of the /metrics listener (default 9464, 0 turns it off).
- */
-
 import { transcribeModelProblem } from "./transcribe.ts";
 
 export type AuthConfig =
@@ -41,11 +7,8 @@ export type AuthConfig =
 export interface ServerConfig {
   auth: AuthConfig;
   corsOrigins: string[] | "*";
-  /** Needed with workspace auth; unset with none, in which case the tools do not check scopes. */
   scopeSecret: string | null;
-  /** The models a user may pick: INES_MODELS and DEFAULT_MODEL. Empty when none is configured. */
   models: string[];
-  /** Where the FINOS Workspace's file links point, where the agent fetches them from and with which Origin; null when not set. */
   workspaceFiles: { publicUrl: string; internalUrl: string; origin: string } | null;
   maxBodyBytes: number;
   maxConcurrentQueries: number;
@@ -65,7 +28,6 @@ function list(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
-/** The models users may pick: DEFAULT_MODEL first, then INES_MODELS, without repeats. */
 export function configuredModels(env: Env = process.env): string[] {
   return [...new Set([env.DEFAULT_MODEL?.trim(), ...list(env.INES_MODELS)].filter((m): m is string => !!m))];
 }
@@ -98,7 +60,6 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     problems.push(`INES_AUTH must be workspace or none; got "${mode}".`);
   }
 
-  // The Origin of every call the agent makes to the FINOS Workspace API: with workspace auth, and for its file links.
   const origin = (env.WORKSPACE_ORIGIN ?? "").trim().replace(/\/+$/, "");
   const publicUrl = (env.WORKSPACE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
   if (mode === "workspace" || publicUrl) {

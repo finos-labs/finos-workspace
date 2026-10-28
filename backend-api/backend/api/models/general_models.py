@@ -1,13 +1,9 @@
-"""General models"""
-
 from sqlalchemy import Column, Integer, Text
 
 from api.models.model_helpers import Base, DateMixin, UUIDMixin
 
 
 class Log(Base, UUIDMixin, DateMixin):
-    """Logs errors in our requests"""
-
     __tablename__ = "log"
 
     request = Column(Text(), default=None)

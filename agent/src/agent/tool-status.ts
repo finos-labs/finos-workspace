@@ -836,9 +836,6 @@ export function formatWidgetDataLoadedStatuses(
       );
       return artifacts ? artifacts.map((artifact) => ({ tableName: table.tableName, artifact })) : [];
     });
-    // Only rows are shown as an artifact. What a widget holds as text is never put in the chat as an artifact:
-    // it can be a whole page (an iframe widget's page is hundreds of kilobytes of markup), and the model is
-    // given the content, the user the status.
     const artifacts = tableArtifactEntries.map(({ artifact }) => artifact);
     const artifactedTables = new Set(tableArtifactEntries.map(({ tableName }) => tableName));
     const allTablesRenderedAsArtifacts =
@@ -907,7 +904,6 @@ function structuredWidgetTables(
         });
       }
     } catch {
-      // Non-tabular widget content is still useful to the model but has no table artifact.
     }
   }
   return out;

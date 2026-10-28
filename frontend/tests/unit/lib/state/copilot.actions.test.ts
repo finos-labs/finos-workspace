@@ -11,18 +11,15 @@ import {
   useCopilotStore,
 } from "~/lib/state/copilot";
 
-// Mock uuid
 vi.mock("uuid", () => ({
   v4: () => "test-uuid-1234",
 }));
 
-// Mock the external API call
 vi.mock("~/api/auth.api", () => ({
   getExternalCopilotHolders: vi.fn((_, callback) => callback([])),
   getCopilotChat: vi.fn(),
 }));
 
-// Mock deprecated flags toast
 vi.mock("~/components/AI/hooks/utils", () => ({
   showDeprecatedFlagsToast: vi.fn(),
 }));
@@ -240,7 +237,6 @@ describe("useCopilotStore - Actions", () => {
       vi.mocked(getCopilotChat).mockResolvedValue(fetchedChat);
 
       useCopilotStore.setState({
-        // simulating a chat list entry that hasn't loaded its messages yet
         chats: [{ ...mockChat, messages: undefined as unknown as Message[] }],
       });
 
@@ -275,7 +271,6 @@ describe("useCopilotStore - Actions", () => {
       vi.mocked(getCopilotChat).mockResolvedValue(null);
 
       useCopilotStore.setState({
-        // simulating a chat list entry that hasn't loaded its messages yet
         chats: [{ ...mockChat, messages: undefined as unknown as Message[] }],
         currentChat: 0,
       });

@@ -76,11 +76,9 @@ describe("Form Molecule", () => {
 
     const input = screen.getByPlaceholderText("Enter username");
 
-    // Initial state
     expect(input).toHaveAttribute("aria-describedby");
     expect(input).toHaveAttribute("aria-invalid", "false");
 
-    // After error
     await user.type(input, "ab");
     await user.click(screen.getByText("Submit"));
 

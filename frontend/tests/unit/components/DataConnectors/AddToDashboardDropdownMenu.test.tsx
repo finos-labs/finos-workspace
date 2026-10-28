@@ -74,11 +74,9 @@ describe("AddToDashboardDropdownMenu", () => {
       );
 
       const trigger = screen.getByRole("button");
-      // Open
       await user.click(trigger);
       expect(onOpenChange).toHaveBeenCalledWith(true);
 
-      // Close by pressing Escape
       await user.keyboard("{Escape}");
       expect(onOpenChange).toHaveBeenCalledWith(false);
     });
@@ -90,7 +88,6 @@ describe("AddToDashboardDropdownMenu", () => {
 
       const trigger = screen.getByRole("button");
 
-      // Should not throw when onOpenChange is not provided
       await expect(user.click(trigger)).resolves.not.toThrow();
 
       expect(screen.getByText("Create New Dashboard")).toBeInTheDocument();

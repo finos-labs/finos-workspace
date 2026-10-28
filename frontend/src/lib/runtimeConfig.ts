@@ -1,17 +1,3 @@
-/**
- * Runtime Configuration
- *
- * Provides app-wide configuration that can be swapped at deploy time without
- * rebuilding. A runtime build (`npm run build:runtime`) writes `dist/config.js`, which sets
- * `window.__APP_CONFIG__` before the bundle loads (synchronous <script> tag). Without it,
- * as in local dev, the same values are read from the `VITE_*` env vars.
- *
- * Usage: `import { getConfig } from "~/lib/runtimeConfig";`
- *
- * Module-scope calls like `const flag = getConfig().ui.showX` are fine — config.js
- * is a synchronous script that executes before any ES module code. Prefer a single
- * `getConfig()` call + destructuring when reading multiple values in the same scope.
- */
 import {
   configFromEnv,
   type RuntimeConfig,
@@ -19,7 +5,6 @@ import {
 } from "./runtimeConfigSchema";
 
 export type { RuntimeConfig } from "./runtimeConfigSchema";
-// Re-export schema utilities so existing imports keep working.
 export { parseBool, parseStringArray } from "./runtimeConfigSchema";
 
 declare global {
@@ -76,7 +61,6 @@ export function getConfig(): RuntimeConfig {
   return _config;
 }
 
-/** Reset cached config — only for use in tests. */
 export function _resetConfig(): void {
   _config = null;
 }

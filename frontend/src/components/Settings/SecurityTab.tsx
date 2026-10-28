@@ -15,7 +15,6 @@ import { BaseDialog, type ClosableDialogProps } from "../ds/dialogs/BaseDialog";
 import { DialogClose, DialogFooter, DialogTitle } from "../ds/dialogs/Dialog";
 
 interface Props extends ClosableDialogProps {
-  // setUp: the user turned 2FA on and sets up the authenticator next
   onConfirm: (setUp: boolean) => void;
   checked: boolean;
 }
@@ -147,7 +146,6 @@ const SecurityTab = () => {
 
   const handleTOTPCancel = useCallback(async () => {
     try {
-      // Turn off 2FA since user cancelled the setup
       await putUser2FA({ two_factor_auth: false });
       dispatch({ showQR: false, is2FAEnabled: false });
 

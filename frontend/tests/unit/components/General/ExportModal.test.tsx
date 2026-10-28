@@ -1,4 +1,3 @@
-// tests/unit/components/General/ExportModal.test.tsx
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import ExportModal from "~/components/General/ExportModal";
@@ -8,7 +7,6 @@ import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { generateMultiTabReport } from "~/lib/utils";
 
-// Mock the necessary hooks and modules
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: vi.fn(() => ({
     exportPopup: true,
@@ -38,7 +36,6 @@ vi.mock("~/lib/utils", async () => {
   const actual = await vi.importActual("~/lib/utils");
   return {
     ...actual,
-    getWidgetsWithSupportedAssetClass: vi.fn(() => []),
     cn: vi.fn(),
     generateMultiTabReport: vi.fn(),
     generateReportImage: vi.fn(),
@@ -52,10 +49,8 @@ vi.mock("@tanstack/react-query", () => ({
 
 describe("ExportModal", () => {
   beforeEach(() => {
-    // Reset mocks before each test
     vi.clearAllMocks();
 
-    // Mock the return values of the hooks
     (useShallowThemeStore as Mock).mockReturnValue({
       exportPopup: true,
       setExportPopup: vi.fn(),
@@ -67,14 +62,12 @@ describe("ExportModal", () => {
       data: {
         name: "Test Dashboard",
         widgets: [{ id: 1 }],
-        groups: [{ ticker: { symbol: "AAPL" } }, { ticker: { symbol: "GOOGL" } }],
+        groups: [{ value: "north" }, { value: "south" }],
       },
     });
 
-    // Return just the function (selector is ignored by mock)
     (useShallowCopilotDataStore as Mock).mockReturnValue(vi.fn());
 
-    // Return null so isShared is false (selector is ignored by mock)
     (useShallowSharedAppStore as Mock).mockReturnValue(null);
   });
 
@@ -89,7 +82,6 @@ describe("ExportModal", () => {
   it("displays PDF option on the screen", () => {
     render(<ExportModal />);
 
-    // Check for the presence of PDF and PNG text
     expect(screen.getByText("PDF")).toBeInTheDocument();
   });
 
@@ -118,7 +110,6 @@ describe("ExportModal", () => {
 
   describe("multi-tab detection", () => {
     it('shows "Export scope" select when dashboard has multiple tabs with content', () => {
-      // Mock returns the dashboard directly (what the selector would return)
       (useShallowAppStore as Mock).mockReturnValue({
         data: {
           name: "Test Dashboard",
@@ -174,7 +165,7 @@ describe("ExportModal", () => {
           widgets: [],
           gridLayout: {
             tab1: [{ i: "widget1" }],
-            tab2: [], // Empty - should not count as a tab
+            tab2: [],
             tab3: [{ i: "widget2" }],
           },
           groups: [],
@@ -183,11 +174,9 @@ describe("ExportModal", () => {
 
       render(<ExportModal />);
 
-      // Should show export scope since we have 2 valid tabs
       const scopeSelect = screen.getByRole("combobox", { name: /export scope/i });
       expect(scopeSelect).toBeInTheDocument();
 
-      // Open dropdown to see options
       fireEvent.click(scopeSelect);
       expect(screen.getByText(/All tabs \(2\)/)).toBeInTheDocument();
     });
@@ -219,11 +208,9 @@ describe("ExportModal", () => {
 
       render(<ExportModal />);
 
-      // Switch to all-tabs scope to trigger the export
       const scopeSelect = screen.getByRole("combobox", { name: /export scope/i });
       fireEvent.click(scopeSelect);
 
-      // Should show tab count in the option
       expect(screen.getByText(/All tabs \(2\)/)).toBeInTheDocument();
     });
 
@@ -231,7 +218,7 @@ describe("ExportModal", () => {
       (useShallowAppStore as Mock).mockReturnValue({
         data: {
           name: "Test Dashboard",
-          widgets: [], // No navigation_bar widget
+          widgets: [],
           gridLayout: {
             "custom-tab-1": [{ i: "widget1" }],
             "custom-tab-2": [{ i: "widget2" }],
@@ -242,7 +229,6 @@ describe("ExportModal", () => {
 
       render(<ExportModal />);
 
-      // Should still detect multiple tabs
       expect(
         screen.getByRole("combobox", { name: /export scope/i }),
       ).toBeInTheDocument();
@@ -292,13 +278,11 @@ describe("ExportModal", () => {
 
       render(<ExportModal />);
 
-      // Select all-tabs scope
       const scopeSelect = screen.getByRole("combobox", { name: /export scope/i });
       fireEvent.click(scopeSelect);
       const allTabsOption = screen.getByText(/All tabs/);
       fireEvent.click(allTabsOption);
 
-      // Click export
       const exportButton = screen.getByRole("button", { name: /^export$/i });
       fireEvent.click(exportButton);
 
@@ -339,13 +323,11 @@ describe("ExportModal", () => {
 
       render(<ExportModal />);
 
-      // Select all-tabs scope
       const scopeSelect = screen.getByRole("combobox", { name: /export scope/i });
       fireEvent.click(scopeSelect);
       const allTabsOption = screen.getByText(/All tabs/);
       fireEvent.click(allTabsOption);
 
-      // Click export
       const exportButton = screen.getByRole("button", { name: /^export$/i });
       fireEvent.click(exportButton);
 
@@ -387,19 +369,17 @@ describe("ExportModal", () => {
       (generateMultiTabReport as Mock).mockImplementation(
         (_checkData, _tabs, _title, _slug, _type, _dark, onProgress) => {
           onProgress?.(1, 2, "Tab 1");
-          return new Promise(() => {}); // Never resolve to keep progress visible
+          return new Promise(() => {});
         },
       );
 
       render(<ExportModal />);
 
-      // Select all-tabs scope
       const scopeSelect = screen.getByRole("combobox", { name: /export scope/i });
       fireEvent.click(scopeSelect);
       const allTabsOption = screen.getByText(/All tabs/);
       fireEvent.click(allTabsOption);
 
-      // Click export
       const exportButton = screen.getByRole("button", { name: /^export$/i });
       fireEvent.click(exportButton);
 
@@ -450,13 +430,11 @@ describe("ExportModal", () => {
 
       render(<ExportModal />);
 
-      // Select all-tabs scope
       const scopeSelect = screen.getByRole("combobox", { name: /export scope/i });
       fireEvent.click(scopeSelect);
       const allTabsOption = screen.getByText(/All tabs/);
       fireEvent.click(allTabsOption);
 
-      // Click export
       const exportButton = screen.getByRole("button", { name: /^export$/i });
       fireEvent.click(exportButton);
 
@@ -510,13 +488,11 @@ describe("ExportModal", () => {
 
       render(<ExportModal />);
 
-      // Select all-tabs scope
       const scopeSelect = screen.getByRole("combobox", { name: /export scope/i });
       fireEvent.click(scopeSelect);
       const allTabsOption = screen.getByText(/All tabs/);
       fireEvent.click(allTabsOption);
 
-      // Click export
       const exportButton = screen.getByRole("button", { name: /^export$/i });
       fireEvent.click(exportButton);
 

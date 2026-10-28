@@ -75,10 +75,8 @@ describe("queryDocumentsHandler — happy path", () => {
     });
 
     expect(res.content.length).toBeGreaterThanOrEqual(2);
-    // first item is markdown text containing the chunks
     expect(res.content[0].text).toContain("Hit 1");
     expect(res.content[0].text).toContain("FooDoc.txt");
-    // last item should be a document citation
     const last = JSON.parse(res.content[res.content.length - 1].text);
     expect(last.$ines_kind).toBe("citation");
     expect(last.citation.type).toBe("document");
@@ -86,7 +84,6 @@ describe("queryDocumentsHandler — happy path", () => {
   });
 
   it("filters by doc_ids when provided", async () => {
-    // Ingest two docs across two calls; the second call filters to the first.
     await queryDocumentsHandler({
       query: "warmup",
       "x-ines-conversation-id": "c-2",
@@ -110,7 +107,6 @@ describe("queryDocumentsHandler — happy path", () => {
       doc_ids: ["doc-foo"],
       "x-ines-conversation-id": "c-2",
     });
-    // Only Foo.txt should appear in the formatted hits/citations
     const allText = filtered.content.map((c) => c.text).join("\n");
     expect(allText).toContain("Foo.txt");
     expect(allText).not.toContain("Bar.txt");
@@ -135,10 +131,9 @@ describe("queryDocumentsHandler — happy path", () => {
     const r2 = await queryDocumentsHandler({
       query: "second call",
       "x-ines-conversation-id": "c-3",
-      "x-ines-documents": decoration, // re-shipped — should be ignored
+      "x-ines-documents": decoration,
     });
     expect(r2.content.length).toBeGreaterThan(0);
-    // No "could not be ingested" prefix should appear (decoration was a no-op)
     expect(r2.content[0].text).not.toContain("could not be ingested");
   });
 });

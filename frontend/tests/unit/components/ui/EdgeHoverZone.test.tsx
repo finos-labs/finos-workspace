@@ -6,7 +6,6 @@ describe("EdgeHoverZone", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    // Default to pointer: fine (mouse)
     window.matchMedia = vi.fn().mockImplementation((query) => ({
       matches: query === "(pointer: fine)",
       media: query,

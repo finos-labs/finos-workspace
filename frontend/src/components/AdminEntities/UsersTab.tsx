@@ -5,7 +5,6 @@ import type { EntityUser } from "~/types/entity.type";
 import { AdminEntityTable } from "./AdminEntityTable";
 import { UserMoveDialog } from "./UserMoveDialog";
 
-/** What a user without an organization shows for its entity and user type. */
 const NONE = "None";
 
 const COLUMNS: DataTableColumn<EntityUser>[] = [
@@ -45,7 +44,6 @@ const searchText = (user: EntityUser) =>
   `${user.email} ${user.permissions?.entity.name ?? ""} ${user.permissions?.name ?? ""}`;
 const getUserId = (user: EntityUser) => user.uuid;
 
-/** Every user of every entity, for a superuser to find and move to another one. */
 export function UsersTab() {
   const usersQuery = useEntityUsers();
   const mapsQuery = useEntityMaps();

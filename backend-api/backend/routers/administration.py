@@ -1,8 +1,3 @@
-"""What the superuser's routes (/entity, /admin) and the admin CLI (scripts/workspace_admin.py)
-do to entities, users and data backends. The routes check who may do it; these
-functions do it. A refusal is an HTTPException: the routes answer with it, the CLI prints it.
-"""
-
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -17,17 +12,12 @@ from api.notifications import notify_admins
 from routers import app_helpers
 from utilities.config import settings
 
-# --- Entities -------------------------------------------------------------------------
-
-
-# An entity's name is unique
 NAME_TAKEN = HTTPException(409, detail="An entity with this name already exists")
 
 
 async def create_entity(
     db: AsyncSession, entity: schemas.EntityPost
 ) -> schemas.AddEntityReturn:
-    """The entity, with its three user types, the admin's first, and its default roles."""
     try:
         response = await db.execute(
             insert(Entity).values(name=entity.name, sharing_enabled=entity.sharing_enabled)
@@ -65,7 +55,6 @@ async def notify_entity_created(entity: schemas.EntityPost) -> None:
 async def update_entity(
     db: AsyncSession, entity_uuid: UUID, entity: schemas.EntityBase
 ) -> None:
-    """Switching sharing off revokes the shares of the entity's users."""
     sharing_query = select(Entity.sharing_enabled).where(Entity.uuid == entity_uuid)
     sharing_was_enabled = (await db.execute(sharing_query)).scalar_one_or_none()
     query = (
@@ -92,14 +81,12 @@ def entities_query() -> Select:
 
 
 def entity_return(item) -> schemas.EntityReturn:
-    """An entity as entities_query() selects it."""
     return schemas.EntityReturn(
         uuid=item.uuid, name=item.name, sharing_enabled=item.sharing_enabled
     )
 
 
 async def delete_entity(db: AsyncSession, entity_uuid: UUID) -> None:
-    """Only an entity without users."""
     if await app_helpers.get_entity_users(db, entity_uuid):
         raise HTTPException(
             status_code=400, detail="Cannot delete entity with existing users"
@@ -112,12 +99,7 @@ async def delete_entity(db: AsyncSession, entity_uuid: UUID) -> None:
     await db.commit()
 
 
-# --- Users ----------------------------------------------------------------------------
-
-
 async def password_reset_link(user_uuid: UUID) -> schemas.PasswordResetLink:
-    """The link the administrator gives the user to set their password with, at the web
-    app's address. It works once, within a day; a newer link replaces it."""
     token = await auth_helpers.issue_password_reset(user_uuid)
     return schemas.PasswordResetLink(
         success=True,
@@ -129,9 +111,6 @@ async def password_reset_link(user_uuid: UUID) -> schemas.PasswordResetLink:
 async def create_user(
     db: AsyncSession, user: schemas.UserCreateAdmin, entity_uuid: UUID
 ) -> schemas.PasswordResetLink:
-    """A user of the entity whose map `user.permissions_uuid` is, if they are not registered
-    or invited yet, with a random password nobody knows, and its Agent User role; the answer
-    is the link with which they set theirs."""
     if user.role and not await app_helpers.role_exists(db, user.role, entity_uuid):
         raise HTTPException(404, detail="Role not found")
 
@@ -168,9 +147,6 @@ async def create_user(
 
 
 async def reset_password(db: AsyncSession, user_uuid: UUID) -> schemas.PasswordResetLink:
-    """The password stops working, every session of the user ends, and the answer is the
-    link with which the user sets a new one."""
-    # A random password nobody knows, until the user sets theirs with the link
     update_query = (
         update(User)
         .where(User.uuid == user_uuid, User.deleted.is_(False))
@@ -186,13 +162,9 @@ async def reset_password(db: AsyncSession, user_uuid: UUID) -> schemas.PasswordR
 async def remove_from_entity(
     db: AsyncSession, user_uuid: UUID, maps: list[UUID] | None = None
 ) -> None:
-    """The user leaves their entity, of the given maps only when `maps` is given: their
-    shares and the dashboards' entity go with it, and they leave its roles. They are no
-    user any more: every session of theirs ends, and they cannot sign in."""
     query = update(User).where(User.uuid == user_uuid).values(permissions_uuid=None)
     if maps is not None:
         query = query.where(User.permissions_uuid.in_(maps))
-    # Nothing of a user outside the organization is touched
     if (await db.execute(query)).rowcount == 0:
         raise HTTPException(404, detail="Matching user not found")
 
@@ -204,9 +176,6 @@ async def remove_from_entity(
 
 
 async def move_user(db: AsyncSession, user_uuid: UUID, permissions_uuid: UUID) -> None:
-    """The user takes the user type `permissions_uuid` is, of its entity. Leaving an entity
-    takes their shares and roles with it, and they get the new entity's Agent User, as a
-    new user of it does; every web session of the user ends."""
     old_entity_query = (
         select(PermissionsEntityMap.entity_uuid)
         .join(User, User.permissions_uuid == PermissionsEntityMap.uuid)
@@ -227,7 +196,6 @@ async def move_user(db: AsyncSession, user_uuid: UUID, permissions_uuid: UUID) -
     await db.commit()
     if response.rowcount == 0:  # type: ignore
         raise HTTPException(404, detail="User not found")
-    # A user's type sets their limits (a developer has none)
     app_helpers.invalidate_usage_cache(user_uuid)
 
     if old_entity_uuid != new_entity_uuid:
@@ -244,7 +212,6 @@ async def move_user(db: AsyncSession, user_uuid: UUID, permissions_uuid: UUID) -
 
 
 def users_query(email: str = "") -> Select:
-    """The users that are not deleted, by email; those whose email contains `email`."""
     query = (
         select(User.uuid, User.email, User.permissions_uuid)
         .where(User.deleted.is_(False))
@@ -254,7 +221,6 @@ def users_query(email: str = "") -> Select:
 
 
 async def user_return(db: AsyncSession, item) -> schemas.EntityUserReturn:
-    """A user as users_query() selects them, with their user type and its entity."""
     permissions_query = (
         select(PermissionsEntityMap)
         .where(PermissionsEntityMap.uuid == item.permissions_uuid)
@@ -264,9 +230,6 @@ async def user_return(db: AsyncSession, item) -> schemas.EntityUserReturn:
     return schemas.EntityUserReturn(
         uuid=item.uuid, email=item.email, permissions=permissions
     )
-
-
-# --- Data backends --------------------------------------------------------------------
 
 
 async def add_data_backend(

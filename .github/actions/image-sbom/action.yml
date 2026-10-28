@@ -23,8 +23,6 @@ inputs:
 runs:
   using: composite
   steps:
-    # A rerun finds the image pushed by an earlier run, which may have stopped
-    # before it attested it.
     - name: Find the image's digest and its attestations
       id: image
       shell: bash
@@ -36,7 +34,6 @@ runs:
         repository="${name#*/}"
         digest=$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$tag" \
           --query 'imageDetails[0].imageDigest' --output text)
-        # GitHub answers 404 for a digest with no attestations.
         sboms=$(gh api "repos/$GITHUB_REPOSITORY/attestations/$digest?predicate_type=sbom" --jq '.attestations | length' 2>/dev/null) || sboms=0
         provenances=$(gh api "repos/$GITHUB_REPOSITORY/attestations/$digest?predicate_type=provenance" --jq '.attestations | length' 2>/dev/null) || provenances=0
         {
@@ -62,8 +59,6 @@ runs:
       run: |
         mkdir -p "$(dirname "$SBOM")"
         docker image inspect "$IMAGE" > /dev/null 2>&1 || docker pull --quiet "$IMAGE"
-        # Keep syft's serialNumber: actions/attest takes a CycloneDX file as an SBOM only with one.
-        # The SBOM files an image carries go in too: the frontend's names what its static nginx is built from.
         syft scan "docker:$IMAGE" --quiet --select-catalogers +sbom-cataloger --output "cyclonedx-json=$SBOM"
         if [ -n "$PROJECT" ]; then
           SYFT_ENRICH=javascript,python SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES=false \

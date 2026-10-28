@@ -40,7 +40,6 @@ type ShareData = {
     last_name?: string;
     created_date?: string;
     permissions?: "view" | "edit";
-    /** A developer's share that waits for an admin's approval */
     pending?: boolean;
   };
 };
@@ -80,13 +79,13 @@ export function ShareAppDialog({
     queryKey: ["userAppShares", shareUserAppsPopupId],
     queryFn: () => getUserAppShares(shareUserAppsPopupId ?? ""),
     enabled: !!shareUserAppsPopupId,
-  }); // user app shared info e.g., users that this user app is shared with and their permissions and when it was shared
+  });
 
   const { data: shareableUsers } = useQuery<ShareableUser>({
     queryKey: ["getUserAppShareUsers", shareUserAppsPopupId],
     queryFn: () => getUserAppShareUsers(shareUserAppsPopupId ?? ""),
     enabled: !!shareUserAppsPopupId,
-  }); // users that can be shared with
+  });
 
   const tabHasBYODWidgets = useMemo(() => {
     return userApp?.widgets.some((widget) => widget.external);
@@ -157,7 +156,6 @@ export function ShareAppDialog({
         await deleteUserAppShare(shareUserAppsPopupId, deletedEmails);
       }
 
-      // A developer's shares wait for an admin's approval
       let pendingApproval = false;
       if (sharedEmails.length > 0) {
         const data = await shareUserApp(shareUserAppsPopupId, sharedEmails.join(","));
@@ -345,7 +343,7 @@ export function ShareAppDialog({
               <hr className="border-surface-divider" />
 
               <div
-                className="flex flex-col gap-2.5 max-h-[200px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-scrollbar-handle scrollbar-track-transparent" // add pr-1 to prevent scrollbar cutting off the elements
+                className="flex flex-col gap-2.5 max-h-[200px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-scrollbar-handle scrollbar-track-transparent"
                 onWheel={(e) => e.stopPropagation()}
               >
                 {filteredUsers.length > 0 ? (

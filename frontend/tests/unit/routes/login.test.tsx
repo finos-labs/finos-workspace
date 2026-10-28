@@ -13,7 +13,6 @@ const mockRestoreSession = vi.fn<() => Promise<boolean>>();
 const mockStartSession = vi.fn();
 const mockProviders = vi.fn(() => ["google"]);
 
-// Mock many things
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return {
@@ -48,8 +47,6 @@ vi.mock("~/components/LayoutUnauth/OktaLogin", () => ({
 const mockMsalInstance = { loginPopup: vi.fn(), setActiveAccount: vi.fn() };
 const mockOktaAuth = { token: { getWithPopup: vi.fn() } };
 
-// The code entry (input-otp) needs layout APIs jsdom lacks; this one submits a code
-// and closes on success, as the real form does
 vi.mock("~/components/Auth/TOTPEnterForm", () => ({
   default: ({
     handleSubmit,
@@ -69,7 +66,6 @@ vi.mock("~/components/Auth/TOTPEnterForm", () => ({
   ),
 }));
 
-// The code entry (input-otp) needs layout APIs jsdom lacks
 vi.mock("~/components/Auth/TOTPEnterDialog", () => ({
   default: ({ open }: { open: boolean }) =>
     open ? <div>Enter your authenticator code</div> : null,
@@ -86,7 +82,6 @@ vi.mock("~/api/auth.api", async (importOriginal) => {
     microsoftLogin: vi.fn(),
     oktaLogin: vi.fn(),
     googleLogin: vi.fn(),
-    // The nonce comes from the (mocked) API client
     SIGN_IN_EXPIRED: actual.SIGN_IN_EXPIRED,
     withSignInNonce: actual.withSignInNonce,
   };
@@ -100,7 +95,6 @@ vi.mock("~/api/api", () => ({
   },
 }));
 
-/** The API's answers to POST /app/sign-in/nonce, in order. */
 function nonces(...values: string[]) {
   for (const nonce of values) {
     vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { nonce } });
@@ -115,7 +109,6 @@ vi.mock("~/lib/identityProviders", async (importOriginal) => {
   };
 });
 
-// Mock all internal stores to avoid state issues
 vi.mock("~/lib/state/auth", () => ({
   useShallowAuthStore: vi.fn((cb) =>
     cb({
@@ -236,10 +229,8 @@ describe("LoginPage", () => {
     await user.click(await screen.findByRole("button", { name: "Submit code" }));
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/app/last"));
-    // The activation started the session; the page reads it, as after a reload
     expect(authApi.activateTotp).toHaveBeenCalledWith(123456, { remember: false });
     expect(mockStartSession).toHaveBeenCalledWith(session);
-    // The single-use code never goes to /app/login, which would refuse it as replayed
     expect(authApi.login).toHaveBeenCalledTimes(1);
     expect(authApi.login).toHaveBeenCalledWith("test@test.com", "Password123!", false);
   });

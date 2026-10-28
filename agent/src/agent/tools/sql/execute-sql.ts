@@ -1,12 +1,3 @@
-/**
- * execute_sql — runs SQLite SELECT/WITH against widget data already
- * loaded into the agent's request-scoped `pendingTables`. Stateless: a
- * fresh in-memory DB is built per call and dropped on return.
- *
- * Local execute: agent runs this in-process. No MCP detour, no
- * decoration.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import { buildDb } from "./db.ts";
@@ -88,7 +79,6 @@ export function makeExecuteSqlTool(ctx: ExecuteSqlContext) {
   return tool({
     description: executeSqlDescription,
     inputSchema: executeSqlSchema,
-    // A query the safety checks refuse is answered here, without starting a process for it.
     execute: async (args) => rejectUnsafeSql(args.sql) ?? runSqlIsolated("execute_sql", args, { ...ctx, artifactQueue: [] }),
   });
 }

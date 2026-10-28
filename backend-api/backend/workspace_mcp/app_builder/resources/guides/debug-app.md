@@ -46,19 +46,20 @@ Walk these checks before debugging individual widgets:
 - `widgets.json` is an object. Every entry has `name`, `type`, `endpoint`.
 - `apps.json` is an array. Every layout item uses `i`, not `id`. Every `i` matches a `widgets.json` key.
 - Layout coordinates are on the 40-column grid; widgets don't overlap.
-- Every `type` is one of `markdown`, `html`, `newsfeed`, `pdf`, `iframe`. A widget of another type is left out of the catalog; FINOS Workspace names it in a warning.
+- Every `type` is one of `markdown`, `html`, `newsfeed`, `pdf`, `iframe`, or a plugin type enabled for the organization. A widget of another type is left out of the catalog; FINOS Workspace names it in a warning.
+- Every key is one the contract defines (`workspace://specs/widgets-json`). A key it does not define is ignored and named under the backend's unrecognized fields; a value out of bounds leaves the widget out, named with the path of each problem.
 
 See `workspace://validation/common-errors`.
 
 ## 4. Hit each widget endpoint with default params
 
-For each widget in `widgets.json`, request:
+For each widget in `widgets.json`, send the request FINOS Workspace would send (`workspace://specs/widgets-json`, "The request"):
 
 ```text
-GET <backend-url><widget.endpoint>
+<widget.method, GET by default> <backend-url><widget.endpoint, placeholders filled>?<query params>
 ```
 
-(plus the default values of any required params). What you should see depends on the widget `type`:
+with the default values of its params, its header params as headers and its body params as a JSON body. What you should see depends on the widget `type`:
 
 - `markdown` → a markdown string.
 - `html` → an HTML document; if the widget sets `raw`, `?raw=true` should return the underlying rows as JSON.
@@ -88,7 +89,7 @@ Symptoms: changing a synced param in one widget doesn't update the others; the w
 Walk through:
 
 - Group `name` is `Group 1`, `Group 2`, ... literally — not `"team-group"` or anything custom. Custom names validate but never link.
-- Group `type` matches the widget param shape: `param` for `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for FINOS Workspace's universal ticker registry. The wrong type silently disables sync.
+- Group `type` matches the widget param shape: `param` for `text+options`, `endpointParam` for `endpoint+optionsEndpoint`. The wrong type silently disables sync.
 - The group's `widgetIds` array, every layout item's `groups: [...]`, and the widget's own param config all agree on the same `paramName`.
 - For dynamic dropdowns: every widget shares the same `optionsEndpoint`. If they differ, FINOS Workspace can't link them.
 

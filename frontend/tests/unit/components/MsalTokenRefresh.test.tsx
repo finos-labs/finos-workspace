@@ -56,7 +56,6 @@ describe("MsalTokenRefresh", () => {
     mockAcquireTokenSilent.mockResolvedValue(
       tokenResult("fresh-id-token", Date.now() + ONE_HOUR_MS),
     );
-    // No Microsoft session in the browser: a user who signed in some other way
     mockSsoSilent.mockRejectedValue(new InteractionRequiredAuthError("login_required"));
     useAuthStore.setState({ user: mockUser, logout: mockLogout });
     clearIdpTokens();
@@ -144,8 +143,6 @@ describe("MsalTokenRefresh", () => {
   });
 
   it("refreshes the token for the active MSAL account even when its username differs from the backend email", async () => {
-    // UPN (e.g. jdoe@corp.onmicrosoft.com) routinely differs from the Graph
-    // `mail` attribute the backend stores as the user's email
     const activeAccount = { username: "jdoe@corp.onmicrosoft.com" };
     mockGetActiveAccount.mockReturnValue(activeAccount);
     mockAccounts = [activeAccount];
@@ -174,8 +171,6 @@ describe("MsalTokenRefresh", () => {
     );
     await waitFor(() => expect(getIdpTokens().microsoftIdToken).toBe("fresh-id-token"));
     expect(mockLogout).not.toHaveBeenCalled();
-    // The refreshed account becomes the active account so future refreshes
-    // no longer depend on the email match
     expect(mockSetActiveAccount).toHaveBeenCalledWith(
       expect.objectContaining({ username: "user@example.com" }),
     );
@@ -193,7 +188,6 @@ describe("MsalTokenRefresh", () => {
     await flushEffects();
     expect(mockAcquireTokenSilent).toHaveBeenCalledTimes(1);
 
-    // Refresh is scheduled at 90% of the token lifetime
     await act(async () => {
       await vi.advanceTimersByTimeAsync(expiresInMs * 0.9 + 1);
     });

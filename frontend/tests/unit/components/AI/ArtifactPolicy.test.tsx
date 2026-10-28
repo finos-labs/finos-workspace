@@ -19,7 +19,6 @@ describe("artifactContentSecurityPolicy", () => {
     expect(policy).toContain("form-action 'none'");
     expect(policy).toContain("base-uri 'none'");
     expect(policy).not.toMatch(/script-src/);
-    // No source is a host, a scheme that reaches the network, or a wildcard.
     expect(policy).not.toMatch(/https?:|\*|connect-src|frame-src/);
   });
 
@@ -93,7 +92,6 @@ describe("an HTML artifact in the chat", () => {
     expect(policyAt).toBeLessThan(srcDoc.indexOf("<style>"));
     expect(policyAt).toBeLessThan(srcDoc.indexOf("attacker.example"));
     expect(srcDoc).toContain("default-src 'none'");
-    // No script: the one the model wrote is sanitized away, and the app adds none when scripts are off.
     expect(srcDoc).not.toContain("<script");
     expect(srcDoc).not.toMatch(/script-src/);
   });

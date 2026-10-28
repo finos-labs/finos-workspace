@@ -43,7 +43,6 @@ export default function CopilotHumanMessage(props: CopilotHumanMessageProps) {
       if (!question) return;
       setEditEnabled(false);
       copilot.setTitleNeedsUpdate(copilot.currentChat, true);
-      // TODO: This needs a fix, the function should either clear or update, not both
       copilot.clearMessagesAfter(message?.timestamp, question);
       copilot.removeUnreachableArtifacts();
       copilot.updateLastMessageError(false);
@@ -100,7 +99,6 @@ export default function CopilotHumanMessage(props: CopilotHumanMessageProps) {
           </div>
         ) : null}
 
-        {/* Datetime tooltip - positioned above the bubble */}
         <div
           className="absolute -top-5 right-1 opacity-0 group-hover:opacity-100
           transition-opacity duration-200 z-10 pointer-events-none"

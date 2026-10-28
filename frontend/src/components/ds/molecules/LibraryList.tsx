@@ -4,25 +4,13 @@ import { CollapsibleSection } from "~/components/ds/atoms/CollapsibleSection";
 import Tooltip from "~/components/Tooltip";
 import { cn } from "~/lib/utils";
 
-// ---------------------------------------------------------------------------
-// LibraryRow – flat-row chrome (bottom divider + padding) shared by every
-// library list. Wrap each top-level item so all tabs (Agents, Skills, Prompts,
-// MCP, Widgets, Packaged) get identical spacing instead of ad-hoc cards/gaps.
-// ---------------------------------------------------------------------------
-
 interface LibraryRowProps {
   children: ReactNode;
   className?: string;
 }
 
-// Shared so non-div row wrappers (e.g. a framer-motion Reorder.Item that must be
-// the direct sibling for `last:border-b-0` to work) can opt into the same chrome.
 export const LIBRARY_ROW_CLASS = "border-b border-surface-divider last:border-b-0 py-2";
 
-// Shared chrome for the leaf cards revealed when a row is expanded (MCP tools,
-// My-Widgets widget cards, Packaged/Sandbox widget items). One definition keeps
-// their bg/border/rounding/padding identical; `min-h-6` on the LibraryItem
-// header (below) keeps their height identical too.
 export const LIBRARY_CARD_CLASS =
   "rounded-md border border-general-border-secondary bg-general-bg-primary px-3.5";
 
@@ -35,10 +23,6 @@ export const LibraryRow = forwardRef<HTMLDivElement, LibraryRowProps>(
     );
   },
 );
-
-// ---------------------------------------------------------------------------
-// LibrarySection – expandable group header backed by CollapsibleSection
-// ---------------------------------------------------------------------------
 
 interface LibrarySectionProps {
   title: string;
@@ -54,7 +38,6 @@ interface LibrarySectionProps {
   children: ReactNode;
   className?: string;
   contentClassName?: string;
-  /** Nested/sub-expand sections: 18px hug header instead of the 40px top-level row. */
   compact?: boolean;
 }
 
@@ -137,10 +120,6 @@ export function LibrarySection({
     </CollapsibleSection>
   );
 }
-
-// ---------------------------------------------------------------------------
-// LibraryItem – leaf item, optionally expandable
-// ---------------------------------------------------------------------------
 
 interface LibraryItemProps {
   title?: string;

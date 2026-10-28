@@ -7,26 +7,20 @@ import { _resetPageStore, getPage } from "../../../../../mcp-server/src/lib/page
 import { signScope, signUrl } from "../../../../../src/lib/scope.ts";
 
 const realFetch = globalThis.fetch;
-// A page is held for one chat, so the tool holds it only for a scope the agent signed. The tests run
-// as a deployment with users does: a secret is set, and the chat is signed with it.
 const CHAT = "u1:chat1";
 const SECRET = "0123456789abcdef0123";
 process.env.INES_SCOPE_SECRET = SECRET;
-/** The chat, as the agent hands it to a tool. */
 const scoped = (chat: string = CHAT) => ({
   "x-ines-conversation-id": chat,
   "x-ines-scope-sig": signScope(SECRET, chat),
 });
-/** A call as the agent makes it: the address was given in the conversation, and the chat is signed. */
 const call = (url: string, chat: string = CHAT) => ({
   url,
   "x-ines-url-sig": signUrl(SECRET, url),
   ...scoped(chat),
 });
-/** The same, for a tool call that belongs to no chat (nothing is held for it). */
 const callWithoutChat = (url: string) => ({ url, "x-ines-url-sig": signUrl(SECRET, url) });
 
-/** An HTML page as a server sends one: labelled text/html (a Response of a string is text/plain). */
 const page = (body: string, init: ResponseInit = {}) =>
   new Response(body, { ...init, headers: { "content-type": "text/html; charset=utf-8", ...init.headers } });
 
@@ -170,12 +164,10 @@ describe("fetchWebpageHandler — failure paths", () => {
 
 describe("fetchWebpageHandler — turndown isolation", () => {
   it("does not leak `.remove()` state across calls", async () => {
-    // Call once with a script tag to verify it's stripped.
     mockFetch(() => page("<html><body><p>visible</p><script>secret</script></body></html>"));
     const a = await fetchWebpageHandler(call("https://x"));
     expect(a.content[0].text).not.toContain("secret");
 
-    // Call again — state must remain fresh, scripts still stripped.
     const b = await fetchWebpageHandler(call("https://x"));
     expect(b.content[0].text).not.toContain("secret");
   });

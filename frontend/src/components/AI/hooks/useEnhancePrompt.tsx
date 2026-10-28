@@ -43,18 +43,14 @@ export function useEnhancePrompt() {
   );
   const getEnabledToolCount = useShallowMcpToolsStore((s) => s.getEnabledToolCount);
 
-  // Get workspace options (including web search)
-  // Always use getDefaultCopilot() features for prompt enhancement
   const workspaceOptions = useMemo(() => {
     const options: Record<string, boolean | string> = {};
     const features = getDefaultCopilot().features || {};
 
-    // Built-in options controlled by UI toggles and agent capability
     if (features?.["widget-global-search"]) options["widget-global-search"] = true;
     if (features?.["mcp-tools"] && getEnabledToolCount() > 0)
       options["mcp-tools"] = true;
 
-    // Custom features like workspace-web-search - respect UI toggle state
     for (const [key, val] of Object.entries(features)) {
       if (ALL_AI_FEATURES.has(key)) continue;
       if (val && typeof val === "object") {
@@ -90,7 +86,6 @@ export function useEnhancePrompt() {
         const { selectedWidgets, temporaryWidgets, allWidgets, workspaceState } =
           getCopilotWidgets();
 
-        // Always use getDefaultCopilot() features for prompt enhancement
         const features = getDefaultCopilot().features;
         const extraWidgetsCap = Boolean(features?.["widget-global-search"]);
         const mcpToolsEnabled = Boolean(
@@ -109,7 +104,6 @@ export function useEnhancePrompt() {
             finalDashboardWidgets,
           );
 
-        // Check if there's sufficient context for prompt enhancement
         const hasWidgets =
           expandedPrimaryWidgets.length > 0 || expandedSecondaryWidgets.length > 0;
         const hasMcpTools = mcpToolsEnabled;
@@ -132,7 +126,6 @@ export function useEnhancePrompt() {
           ...(widgetSubsetData || []),
         ];
 
-        // Get enabled tools if MCP is enabled
         const enabledTools = mcpToolsEnabled ? await getEnabledToolsForAgent() : [];
 
         const payload = {
@@ -170,7 +163,6 @@ export function useEnhancePrompt() {
 
         let enhancedText = await response.text();
 
-        // Strip surrounding quotes if present
         enhancedText = enhancedText.trim();
         if (
           (enhancedText.startsWith('"') && enhancedText.endsWith('"')) ||

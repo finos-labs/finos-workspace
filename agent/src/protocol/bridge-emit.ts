@@ -1,25 +1,3 @@
-/**
- * SSE emit adapter for the workspace bridge commands.
- *
- * The agent registers its workspace tools under the FINOS Workspace's function names
- * (the registry entries in bridge-commands.ts are named for the SSE wire), so
- * `workspaceCommand(toolName, …)` already emits a contract-valid `function`.
- * What still differs is the argument SHAPE: the LLM-facing tool input is the
- * clean "bridge config" shape, while the frontend's copilotFunctionCall schema
- * (frontend/src/lib/utils/ai.ts) expects the `data_sources` /
- * field-renamed shapes. `normalizeBridgeArgs` reshapes the payload at emit.
- */
-
-/**
- * The bridge commands that have an SSE function-call equivalent, and
- * therefore the ONLY workspace tools the SSE agent registers. The remaining
- * entries in WORKSPACE_BRIDGE_COMMANDS (get_workspace_snapshot,
- * list_available_widgets, get_widget_schema, read_widget, delete_widget,
- * manage_dashboard, update_dashboard_layout, navigate_workspace,
- * manage_backends, manage_apps) have no SSE function and exist for the
- * WebSocket companion only — registering them would let the model emit a
- * copilotFunctionCall the frontend rejects with a ZodError.
- */
 export const SSE_BRIDGE_COMMANDS: ReadonlySet<string> = new Set([
   "update_widget_in_dashboard",
   "add_widget_to_dashboard",
@@ -35,21 +13,6 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-/**
- * Reshape a bridge tool's LLM-facing input into the FINOS Workspace wire
- * `input_arguments`. The `function` name is already correct; this only
- * normalizes the payload so it passes the frontend's Zod schema.
- *
- * - update_widget_in_dashboard / add_widget_to_dashboard: bridge `config` →
- *   `data_sources[]`. (The frontend does not validate these, but it
- *   reads `data_sources[].widget_uuid` / `.origin` / `.id` / `.input_args`.)
- * - get_params_options: field renames (widget_id→id, param_name→param,
- *   data_args→options_endpoint_input_args) — strictly validated by the frontend.
- * - manage_navigation_bar / add_generative_widget / assign_tasks_to_agents: the
- *   LLM shape already validates (the frontend strips unknown keys such as
- *   dashboard_id); pass through, with a defensive `name` default for the
- *   generative widget (the frontend requires a string name).
- */
 export function normalizeBridgeArgs(
   fn: string,
   input: Record<string, unknown>,

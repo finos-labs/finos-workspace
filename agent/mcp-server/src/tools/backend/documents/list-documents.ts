@@ -1,14 +1,3 @@
-/**
- * `list_documents` MCP tool — read-only inventory of what's loaded in the
- * conversation's doc store. The model can call this to decide whether to
- * search at all, or to filter `query_documents` by `doc_ids`.
- *
- * Like `query_documents`, accepts the conversation id + uploaded-docs
- * decoration so a fresh upload arriving on the same call gets ingested
- * before the listing is generated. That way the user can ask "what files
- * have I attached?" on the same turn the upload happened.
- */
-
 import { z } from "zod";
 import { textItem, type ContentItem } from "../../../lib/typed.ts";
 import { ensureHydrated, listDocuments } from "./store.ts";
@@ -54,8 +43,6 @@ export async function listDocumentsHandler(args: {
 
   await ensureHydrated(conversationId);
 
-  // Same-turn ingest path: if the user attached docs and the model called
-  // list_documents first, do the ingest now so the listing reflects them.
   const newDocs = args["x-ines-documents"] ?? [];
   for (const d of newDocs) {
     if (hasDocument(conversationId, d.id)) continue;

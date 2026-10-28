@@ -8,8 +8,6 @@ import {
 
 const realFetch = globalThis.fetch;
 
-// The markup of html.duckduckgo.com/html/ as it was returned for a GET: each result's link is a
-// redirect whose `uddg` parameter holds the real address, and sponsored rows carry `result--ad`.
 function resultRow(href: string, title: string, snippet: string, extraClass = ""): string {
   return `
     <div class="result results_links results_links_deep web-result ${extraClass}">

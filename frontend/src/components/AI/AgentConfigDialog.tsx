@@ -154,10 +154,6 @@ function CopilotApiKeyInput({
   );
 }
 
-/**
- * The user's own OpenAI key for the default Copilot. The API stores it encrypted and only
- * says whether one is saved; the typed key stays in this dialog until it is sent.
- */
 function CopilotApiKeyDialog() {
   const { apiKeyDialogOpen, onClose } = useShallowThemeStore((state) => ({
     apiKeyDialogOpen: state.apiKeyDialogOpen,
@@ -177,7 +173,6 @@ function CopilotApiKeyDialog() {
     [openaiApiKey],
   );
 
-  // A key saves it; null removes the saved one
   const handleSave = useCallback(
     async (key: string | null) => {
       try {
@@ -307,7 +302,6 @@ export function AgentConfigDialog() {
       } else {
         const holder = { ...holderToUpdate, ...partialHolder };
 
-        // Ensure each agent has the latest headers and valid URLs
         holder.copilots = (holder.copilots || []).map((agent) => ({
           ...agent,
           endpoints: resolveAgentEndpoints(agent.endpoints, holder.url),
@@ -353,7 +347,6 @@ export function AgentConfigDialog() {
         .filter((a) => a.holderUuid !== holder.uuid);
 
       try {
-        // Add minimum delay to show loading state
         const startTime = Date.now();
 
         const copilots = await fetchAgentsData(holder as CustomCopilot);
@@ -361,7 +354,6 @@ export function AgentConfigDialog() {
 
         await updateHolder(groupIndex, { ...holder, copilots, status: "success" });
 
-        // Ensure minimum loading time of 800ms
         const elapsedTime = Date.now() - startTime;
         const remainingTime = Math.max(0, 800 - elapsedTime);
 
@@ -409,7 +401,6 @@ export function AgentConfigDialog() {
       await updateHolder(groupToDelete, "delete");
       toast.success("Group deleted successfully", { id: "delete-group" });
 
-      // If the selected copilot belongs to this group, clear the selection
       if (
         selectedCopilot &&
         holderToDelete?.copilots?.some((copilot) => copilot.id === selectedCopilot.id)
@@ -440,12 +431,10 @@ export function AgentConfigDialog() {
     (groupIndex: number) => {
       const holder = externalCopilotHolders[groupIndex];
       const headers = holder?.headers || {};
-      // Convert headers object to array of key-value pairs
       const headerPairs = Object.entries(headers).map(([key, value]) => ({
         key,
         value,
       }));
-      // If no headers exist, add a default empty pair for user convenience
       if (headerPairs.length === 0) {
         headerPairs.push({ key: "", value: "" });
       }
@@ -465,7 +454,6 @@ export function AgentConfigDialog() {
       const holder = state.groups[authEditGroup.index];
       if (!holder) return;
 
-      // Check for duplicate keys before saving
       const { index: groupIndex, headerPairs } = authEditGroup;
       const allKeys = headerPairs.map((pair) => pair.key);
       const uniqueKeys = new Set(allKeys);
@@ -478,7 +466,6 @@ export function AgentConfigDialog() {
         return;
       }
 
-      // Check for empty keys
       const hasEmptyKeys = headerPairs.some((pair) => !pair.key.trim());
       if (hasEmptyKeys) {
         toast.error("Header keys cannot be empty. Please provide valid header names.", {
@@ -487,7 +474,6 @@ export function AgentConfigDialog() {
         return;
       }
 
-      // Convert headerPairs back to headers object
       const headers = headerPairs.reduce(
         (acc, pair) => {
           acc[pair.key] = pair.value;
@@ -665,7 +651,6 @@ export function AgentConfigDialog() {
 
       <CopilotApiKeyDialog />
 
-      {/* Delete Confirmation Dialog */}
       {state.groupToDelete !== null && (
         <AgentDeleteConfirmDialog
           cancelDeleteGroup={cancelDeleteGroup}
@@ -673,7 +658,6 @@ export function AgentConfigDialog() {
         />
       )}
 
-      {/* Authentication Settings Dialog */}
       {state.authEditGroup !== null && (
         <AgentAuthEditor
           authEditGroup={state.authEditGroup}
@@ -816,7 +800,6 @@ const AgentGroupItem = memo((props: AgentGroupItemProps) => {
           )}
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          {/* Auth status indicator */}
           <div className="flex items-center gap-1 mr-2">
             <span
               className={cn("text-2xs", {

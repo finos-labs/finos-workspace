@@ -1,12 +1,3 @@
-/**
- * Tier 2 — agent-loop round-trip scenarios.
- *
- * Pinned to CLAUDE.md gotchas:
- * - FINOS Workspace bridge calls are terminal (no re-POST data injection expected)
- * - Cache-resolved widget re-fetch within MAX_LOOPS=3 without HTTP round-trip
- * - Citations forwarded across round-trips (commit 63272c8)
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
@@ -48,7 +39,6 @@ describe("a FINOS Workspace bridge call is terminal — emits SSE then returns, 
         (e.data as { function?: string }).function === "add_generative_widget",
     );
     expect(fnCall).toBeDefined();
-    // Terminal: no execute_agent_tool follow-on emitted.
     expect(
       events.find(
         (e) =>

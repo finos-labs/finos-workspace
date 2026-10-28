@@ -375,14 +375,6 @@ function queryablePreviewRows(
   );
 }
 
-/**
- * Read (without removing) the artifacts queued from `startIdx` on. The events
- * stay in the queue so the agent loop emits them as `copilotMessageArtifact`
- * in the message stream — the status update only references them by name.
- * (An earlier version spliced them out and embedded them in the status
- * `reasoningStep`, which buried charts in the collapsed timeline instead of
- * the chat message.)
- */
 function peekQueuedArtifacts(queue: SSEEvent[], startIdx: number): CopilotArtifact[] {
   return queue.slice(startIdx)
     .filter((event) => event.event === "copilotMessageArtifact")
@@ -508,30 +500,9 @@ export interface RoundTripContext {
   mcpCitations: McpCitation[];
   artifactQueue: SSEEvent[];
   intermediateCitations: Citation[];
-  /**
-   * Tables the SQL family queries. Populated by injectWidgetData and
-   * processMcpResult; the SQL tools read it through their factory closure.
-   */
   pendingTables: Map<string, Record<string, unknown>[]>;
-  /**
-   * Per-chat identifier from X-Trace-Id. Used as the key for the cross-
-   * request row cache so a follow-up message can query the tables without
-   * re-fetching widget data.
-   */
   conversationId: string;
-  /**
-   * Uploaded documents pending ingestion at the MCP doc store. Seeded at
-   * loop start from `request.documents` (legacy) and grown by
-   * `extractFileTierDocs` whenever a `get_widget_data` round-trip returns
-   * bytes for a `file-*` widget in a RAG-eligible format (pdf/docx/txt/md/
-   * html). The loop's decoration step ships the delta on each
-   * `query_documents` / `list_documents` call.
-   */
   pendingDocuments?: Map<string, PendingDocument>;
-  /**
-   * True when the query_documents tool is among this request's tools. A document (PDF, DOCX) is not shown
-   * to the model: it is told how to search it, or, when it cannot, that it cannot read it.
-   */
   documentSearchAvailable?: boolean;
 }
 
@@ -594,12 +565,6 @@ function djb2(input: string): string {
   return h.toString(36);
 }
 
-/**
- * A short, deterministic, readable token derived from a widget's input args,
- * used to disambiguate table names when the same widget is fetched with
- * different params (e.g. symbol AAPL vs MSFT). Prefers the scalar param values
- * ("aapl"); falls back to a hash only when no readable value is available.
- */
 function tableNameToken(inputArgs: Record<string, unknown>): string {
   const parts: string[] = [];
   for (const [key, value] of Object.entries(inputArgs)) {
@@ -609,14 +574,6 @@ function tableNameToken(inputArgs: Record<string, unknown>): string {
   return sanitizeName(parts.join("_")) || djb2(stableInputArgsKey(inputArgs));
 }
 
-/**
- * Map each item to the table name it should load under. Plain naming uses the
- * widget name; when several items in this batch share a base name but carry
- * different params (a multi-symbol comparison), each distinct dataset gets a
- * param-derived suffix so they stay independently queryable instead of
- * clobbering one table. Same (name, params) keeps one name — a refresh, not a
- * new dataset.
- */
 function resolveTableNames(widgetItems: WidgetItem[]): Map<WidgetItem, string> {
   const datasetKeysByBase = new Map<string, Set<string>>();
   for (const item of widgetItems) {
@@ -778,7 +735,6 @@ export function injectWidgetData(
           });
         }
       } catch {
-        // Not valid JSON — fall through.
       }
     }
 
@@ -791,7 +747,6 @@ export function injectWidgetData(
         text: `--- ${item.name} (uuid: ${item.uuid}) [HTML — brief] ---\n${inputArgsLine}${summary}`,
       });
     } else if (!loadedAsTable && route.asText && item.content.trim()) {
-      // A file that is searchable is read further with the document search; anything else is only cut.
       const searchable = ctx.documentSearchAvailable && (ctx.pendingDocuments?.has(item.uuid) ?? false);
       const content = clipForModel(
         item.content,
@@ -832,7 +787,6 @@ export function injectWidgetData(
   });
 }
 
-/** Gives the model a skill's instructions, whether the FINOS Workspace or Ines supplied them. */
 export function injectSkill(slug: string, content: string, ctx: RoundTripContext): SSEEvent {
   ctx.messages.push({
     role: "user" as const,
@@ -859,11 +813,6 @@ export function extractSkillContent(toolMsg: ToolMessage): { slug: string; conte
   return { slug, content: `Skill "${slug}" could not be loaded: ${err}` };
 }
 
-/**
- * Side-channel data returned alongside the yielded events (read via
- * `const out = yield* injectFromReboot(...)`). `terminal` marks bridge
- * results that should not start another model turn.
- */
 export interface InjectFromRebootResult {
   terminal?: boolean;
   terminalMessage?: string;
@@ -875,10 +824,8 @@ export async function* injectFromReboot(
   toolMsg: ToolMessage,
   ctx: RoundTripContext,
 ): AsyncGenerator<SSEEvent, InjectFromRebootResult> {
-  // The result of the FINOS Workspace's MCP `get_widget_data` is taken in as the data of a widget round trip.
   toolMsg = asWidgetDataMessage(toolMsg, ctx.allWidgets) ?? toolMsg;
 
-  // Restore intermediate citations from extra_state, if any
   const extra = readExtraState(toolMsg);
   if (extra.intermediate_citations?.length) {
     for (const c of extra.intermediate_citations) {
@@ -974,7 +921,6 @@ export async function* injectFromReboot(
         };
       }
 
-      // Default: assume widget data
       const widgetItems = await extractWidgetItems(toolMsg, ctx.allWidgets);
       let fileDocs: PendingDocument[] = [];
       if (ctx.pendingDocuments) {

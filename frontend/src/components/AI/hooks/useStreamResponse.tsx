@@ -161,33 +161,24 @@ function useStreamResponse(stopSubmit: () => void) {
   } = useFunctionCall();
   const manageNavigationBar = useManageNavigationBar();
 
-  // MCP tool execution; the FINOS Workspace's own tools are run by this tab
   const executeAgentTool = useMcpExecutor();
   const executeWorkspaceTool = useWorkspaceToolExecutor();
 
-  // Skills store access for get_skill_content function call
   const getSkillBySlug = useShallowSkillsLibraryStore((s) => s.getSkillBySlug);
 
-  // Save the current conversation as a skill (save_skill function call)
   const createSkillFromConversation = useCreateSkillFromConversation();
 
-  // Add a new ref to store the resolution function
   const resolveStreamRef = useRef<(() => void) | null>(null);
   const handleEventRef =
     useRef<(props: HandleEventProps) => Promise<StreamAccumulator>>();
 
-  // Store pending MCP citations across streaming lifecycle (accumulates across multiple tool calls)
   const pendingMcpCitationsRef = useRef<CitationT[]>([]);
 
-  // Follow-up suggestions that arrive before the answer they belong to is put in the chat.
   const pendingSuggestionsRef = useRef<string[] | null>(null);
-  /** The pending "put the cursor back in the question box" timer, so it can be cancelled. */
   const focusInputRef = useRef<ReturnType<typeof setTimeout>>();
 
   const autoOpenAppArtifact = useCallback(
     async (artifact: AppArtifactT) => {
-      // Read items imperatively: back-to-back artifacts in one stream must see the dashboard
-      // state left by the previous auto-open, which the render closure would not reflect.
       const items = useAppStore.getState().items;
       const currentDashboardItem = currentDashboard ? items?.[currentDashboard] : null;
       if (!shouldAutoOpenAppArtifact({ currentDashboardItem })) return;
@@ -217,12 +208,6 @@ function useStreamResponse(stopSubmit: () => void) {
 
   const updateCopilotTitle = useCallback(
     async (xTraceId: string) => {
-      // only update the title if the title needs to be updated, i.e.
-      //   1. the title is "New Chat" because it hasn't been manually updated by the user
-      //   2. one of the messages has been edited and so we re-update the title in case it changes topic of conversation
-      //   3. the title has never been updated and we need to generate a title
-      // Note: if the user manually updates the title, we don't want to overwrite it
-
       const { titleManuallyUpdated, titleNeedsUpdate, messages } =
         copilot.getCurrentChat();
       if (!(!titleManuallyUpdated && titleNeedsUpdate && messages.length > 1)) return;
@@ -246,7 +231,7 @@ function useStreamResponse(stopSubmit: () => void) {
       reader: ReadableStreamDefaultReader,
       abortSignal: AbortSignal,
       question: string,
-      keepAlive = false, // Whether to keep the streaming state alive after processing the stream
+      keepAlive = false,
       targetAgent?: Copilot,
     ) => {
       const decoder = new TextDecoder("utf-8");
@@ -270,27 +255,14 @@ function useStreamResponse(stopSubmit: () => void) {
             });
           break;
         }
-        /*
-          each chunk is the following:
-          event: message_chunk
-          data: {'delta': '...'}
-
-          event: message_chunk
-          data: {'delta': '...'}
-
-          etc
-      */
         const chunk = decoder.decode(value, { stream: true });
         streamBuffer += chunk;
         const events = streamBuffer.split(/\r\n\r\n|\r\r|\n\n/g);
 
-        // The leftover text to remain in the buffer is whatever doesn't have two newlines after it. If the buffer ended
-        // with two newlines, this will be an empty string.
         streamBuffer = events.pop() ?? "";
         let event = "";
 
         for (const eventChunk of events) {
-          // Split up by single newlines.
           const lines = eventChunk.split(/\n|\r|\r\n/g);
           let data = "";
           for (const line of lines) {
@@ -309,22 +281,18 @@ function useStreamResponse(stopSubmit: () => void) {
                     data += "\n";
                     break;
                   }
-                  // other types are explicitly ignored
                 }
               }
             } catch (e) {
               console.error(e);
             }
           }
-          // Skip the event if the data buffer is the empty string.
           if (data === "") continue;
 
-          // Remove the last newline character if it exists
           if (data[data.length - 1] === "\n") {
             data = data.slice(0, -1);
           }
 
-          // Parse the data as JSON
           const parsedData: unknown = JSON.parse(data);
 
           if (handleEventRef.current)
@@ -378,7 +346,6 @@ function useStreamResponse(stopSubmit: () => void) {
         functionCallSpec,
       );
 
-      // Extract MCP extra_citations (if any) and accumulate for injection at 'done'
       if (
         functionCallSpec.function === "execute_agent_tool" &&
         Array.isArray(dataOrResults)
@@ -389,7 +356,6 @@ function useStreamResponse(stopSubmit: () => void) {
         });
         if (citations.length > 0) {
           const normalized = normalizeCitations(citations);
-          // Deduplicate by id while accumulating
           const existingIds = new Set(pendingMcpCitationsRef.current.map((c) => c.id));
           const toAdd = normalized.filter((c) => !existingIds.has(c.id));
           pendingMcpCitationsRef.current.push(...toAdd);
@@ -454,16 +420,12 @@ function useStreamResponse(stopSubmit: () => void) {
 
         if (!response.ok) throw new Error(response.statusText);
 
-        // Check if this is a streaming response
         const contentType = response.headers.get("content-type");
 
         if (targetAgent && !contentType?.includes("text/event-stream")) {
-          // Handle non-streaming response from external agent
           try {
             const jsonResponse = await response.json();
 
-            // Convert to streaming format for compatibility
-            // This is a simplified approach - you may need to adjust based on the actual response format
             copilot.addMessage({
               role: "ai",
               content: JSON.stringify(jsonResponse),
@@ -492,7 +454,6 @@ function useStreamResponse(stopSubmit: () => void) {
       };
 
       switch (functionCallSpec.function) {
-        // We handle both LLM functions in the same way
         case "get_widget_data":
         case "get_extra_widget_data": {
           const data = await getWidgetData(
@@ -523,9 +484,6 @@ function useStreamResponse(stopSubmit: () => void) {
             functionCallSpec.input_arguments.task_requests || [],
             forwardMessageToAi,
           );
-          // If we expect a direct response from the agent, don't show the tool results
-          // The agent's response will be displayed directly
-          // if any of the tasks failed, we show the results as normal
           const expectDirectResponse =
             functionCallSpec.extra_state?.expect_direct_response &&
             results.every((val) => val.status === "success");
@@ -639,8 +597,6 @@ function useStreamResponse(stopSubmit: () => void) {
       }
       const copilotId = targetAgent?.id || copilot.selectedCopilot.id;
 
-      // The answer is held until it is complete and put in the chat whole. Text is never shown token by
-      // token, whatever the agent sends: a chunk is only added to the buffer, never rendered by itself.
       const commitAnswer = (extra: Partial<AIMessage> = {}) => {
         if (!aiMessageBuffer) return false;
         const suggestions = pendingSuggestionsRef.current;
@@ -652,7 +608,7 @@ function useStreamResponse(stopSubmit: () => void) {
           ...(suggestions ? { suggestions } : {}),
           ...extra,
           copilotId,
-          timestamp: Date.now() + 1, // adding 1 to avoid timestamp collision with the human message
+          timestamp: Date.now() + 1,
         });
         aiMessageBuffer = "";
         citationBuffer = [];
@@ -660,8 +616,6 @@ function useStreamResponse(stopSubmit: () => void) {
       };
 
       const flushBuffers = () => {
-        // Used when there is text held for the answer
-        // but there is an incoming FunctionCall or StatusUpdate
         if (!commitAnswer()) return;
         dispatch(
           { ...ResetState, ...StreamingStatus.READY, loading: true },
@@ -674,15 +628,10 @@ function useStreamResponse(stopSubmit: () => void) {
         case "copilotStatusUpdate": {
           flushBuffers();
           const content = data as SystemSSEContent;
-          // Hidden updates are not shown in the chat, but
-          // the state is still loading until the next message
           if (content.hidden) break;
           if (content.eventType === "WARNING") {
           }
           if (content.eventType === "ERROR") {
-            // Usually this will be a context exceeded error.
-            // By removing the last AI and tool messages we remove
-            // the function call result that is exceeding the context.
             const { messages } = copilot.getCurrentChat();
             const timestamps = getLatestAiToolPairTimestamps(messages);
             if (timestamps) copilot.removeMessages(timestamps);
@@ -693,7 +642,7 @@ function useStreamResponse(stopSubmit: () => void) {
             copilotId,
             orchestrationModeEnabled:
               useCopilotStore.getState().orchestrationModeEnabled,
-            timestamp: Date.now() + 1, // adding 1 to avoid timestamp collision with the human message
+            timestamp: Date.now() + 1,
           });
           break;
         }
@@ -750,7 +699,6 @@ function useStreamResponse(stopSubmit: () => void) {
           const suggestions = (data as { suggestions?: unknown } | undefined)
             ?.suggestions;
           if (Array.isArray(suggestions) && suggestions.length > 0) {
-            // They belong to the answer: with it when it is put in the chat, else to the last message.
             if (aiMessageBuffer) pendingSuggestionsRef.current = suggestions;
             else copilot.updateLastMessage({ suggestions });
           }
@@ -765,7 +713,6 @@ function useStreamResponse(stopSubmit: () => void) {
             );
           const updateMessage = {} as Partial<AIMessage>;
 
-          // Merge any pending MCP citations into the buffer and append markers
           const pending = pendingMcpCitationsRef.current;
           if (pending.length) {
             const idsInContent = new Set(
@@ -782,10 +729,8 @@ function useStreamResponse(stopSubmit: () => void) {
               aiMessageBuffer +=
                 (aiMessageBuffer?.endsWith("| ") ? "\n" : "") + newMarkers;
             }
-            // Merge into citationBuffer with deduplication
             const bufferIds = new Set(citationBuffer.map((c) => c.id));
             for (const c of pending) if (!bufferIds.has(c.id)) citationBuffer.push(c);
-            // Clear accumulated pending citations
             pendingMcpCitationsRef.current = [];
           }
 
@@ -797,10 +742,7 @@ function useStreamResponse(stopSubmit: () => void) {
           }
 
           if (aiMessageBuffer) {
-            // The answer is put in the chat whole, with what belongs to it.
             commitAnswer(updateMessage);
-            // Only update title if there is actual AI message content
-            // Title generation is a FINOS Workspace backend feature available for all agents
             if (aiEnhancements && aiCopilotAiEnhancementsFF) {
               updateCopilotTitle(xHeaders?.traceId || "");
             }
@@ -808,10 +750,6 @@ function useStreamResponse(stopSubmit: () => void) {
             copilot.updateLastMessage(updateMessage);
           }
 
-          // The cursor goes back to the question box once the answer is in the chat. The wait is for
-          // the chat to have rendered it. Kept so it can be cancelled: a timer that nobody owns runs
-          // after the component is gone, and then there is no document to look in — which is what
-          // ended the unit tests when a stream finished within 100 ms of the test file finishing.
           clearTimeout(focusInputRef.current);
           focusInputRef.current = setTimeout(() => {
             document.getElementById("copilot-input")?.focus();
@@ -842,7 +780,6 @@ function useStreamResponse(stopSubmit: () => void) {
     handleEventRef.current = handleEvent;
   }, [handleEvent]);
 
-  // Nothing to focus once this is unmounted, and the page it would look in may be gone.
   useEffect(() => () => clearTimeout(focusInputRef.current), []);
 
   const startStreamCb = useCallback(
@@ -860,7 +797,6 @@ function useStreamResponse(stopSubmit: () => void) {
         return;
       }
 
-      // Attached files move onto the message they are sent with.
       const sentFiles = addHumanMessage ? sent : [];
       const clearSentFiles = sentFiles.length
         ? {
@@ -870,7 +806,6 @@ function useStreamResponse(stopSubmit: () => void) {
         : {};
 
       if (mockResponse) {
-        // Add the human message if needed
         if (addHumanMessage) {
           copilot.addMessage({
             role: "human",
@@ -884,16 +819,13 @@ function useStreamResponse(stopSubmit: () => void) {
         let content =
           typeof mockResponse === "string" ? mockResponse : mockResponse.messageContent;
 
-        // Add the artifact if it exists
         if (typeof mockResponse === "object" && mockResponse.artifact) {
           copilot.addArtifactToCurrentChat(mockResponse.artifact);
-          // Add artifact marker to content
           const artifactName = mockResponse.artifact.name || mockResponse.artifact.uuid;
           const artifactMarker = `<artifact className="${artifactName}"/>`;
           content = `${content}\n${artifactMarker}`;
         }
 
-        // Add the mock AI response
         copilot.addMessage({
           role: "ai",
           content: content,
@@ -903,7 +835,6 @@ function useStreamResponse(stopSubmit: () => void) {
             typeof mockResponse === "object" ? mockResponse.citations : undefined,
         });
 
-        // Reset state
         dispatch(
           { ...ResetState, ...StreamingStatus.NOT_STARTED, ...clearSentFiles },
           setStreamedData,
@@ -911,7 +842,6 @@ function useStreamResponse(stopSubmit: () => void) {
         );
         dispatchCopilotCommand("");
 
-        // Resolve the promise for mock responses
         if (resolveStreamRef.current) {
           resolveStreamRef.current();
           resolveStreamRef.current = null;
@@ -926,7 +856,6 @@ function useStreamResponse(stopSubmit: () => void) {
       }
 
       if (streamingStatus === "streaming-ready") {
-        // Ensure that previous requests are aborted and state is reset
         const newState = { ...ResetState } as Partial<StreamingState>;
         if (abortController) {
           abortController.abort();
@@ -951,7 +880,6 @@ function useStreamResponse(stopSubmit: () => void) {
 
       pendingSuggestionsRef.current = null;
 
-      // Clear previous data
       dispatch(
         {
           ...ResetState,
@@ -965,7 +893,6 @@ function useStreamResponse(stopSubmit: () => void) {
       dispatchCopilotCommand("");
 
       const { queryUrl, init } = await getQueryFetchParams({
-        // Reverse non-breaking space/hyphen from message
         incomingMessage: incomingMessage
           .replace(/\u00A0/g, " ")
           .replace(/\u2011/g, "-"),
@@ -1017,7 +944,6 @@ function useStreamResponse(stopSubmit: () => void) {
     (error: unknown) => {
       const err = typeof error === "string" ? new Error(error) : error;
       if (err instanceof Error && err.name === "AbortError") {
-        // Ignore errors related to user aborting the request
         return;
       }
       console.error("Error:", err);
@@ -1040,11 +966,8 @@ function useStreamResponse(stopSubmit: () => void) {
 
   const handleSubmit = useCallback(
     async ({ question, addHumanMessage, mockResponse }: CopilotSubmitParams = {}) => {
-      // makes sure all widgets are visible before sending the question
-      // otherwise dashboard data might be incomplete
       useThemeStore.getState().setPendingExport(true);
 
-      // Create a promise that resolves when streaming is complete
       const streamComplete = new Promise<void>((resolve) => {
         resolveStreamRef.current = resolve;
       });
@@ -1092,8 +1015,6 @@ export function useHandleStreaming() {
     const lastMessage = messages[messages.length - 1];
 
     if (streamedData && selectedCopilot) {
-      // Case 1: Text was received and is not in the chat yet (it is put there whole when it is complete):
-      // add what there is as a cancelled AI message
       const newMessage: AIMessage = {
         role: "ai",
         content: streamedData,
@@ -1101,21 +1022,17 @@ export function useHandleStreaming() {
         copilotId: selectedCopilot.id,
         timestamp: Date.now() + 1,
       };
-      // Include citations if they exist
       if (streamedCitations && streamedCitations.length > 0) {
         newMessage.citations = streamedCitations;
       }
       addMessage(newMessage);
     } else if (lastMessage && lastMessage.role === "ai") {
-      // Case 2: AI message exists and nothing is held - mark as cancelled
       const updateData: Partial<AIMessage> = { isCancelled: true };
-      // Still include citations if they exist in localStorage
       if (streamedCitations && streamedCitations.length > 0) {
         updateData.citations = streamedCitations;
       }
       updateLastMessage(updateData);
     } else if (selectedCopilot) {
-      // Case 3: No AI message exists yet, only system messages - create cancelled AI message
       const newMessage: AIMessage = {
         role: "ai",
         content: "",
@@ -1123,7 +1040,6 @@ export function useHandleStreaming() {
         copilotId: selectedCopilot.id,
         timestamp: Date.now() + 1,
       };
-      // Include citations if they exist
       if (streamedCitations && streamedCitations.length > 0) {
         newMessage.citations = streamedCitations;
       }
@@ -1183,7 +1099,6 @@ function getLatestAiToolPairTimestamps(messages: Message[]): number[] | null {
   const previousMessage = messages[lastToolIndex - 1];
   if (previousMessage?.role === "ai") {
     try {
-      // Check if the ai message is a function call
       const content = JSON.parse(previousMessage.content);
       if (content.function) return [previousMessage.timestamp, toolMessage.timestamp];
     } catch (_) {

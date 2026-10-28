@@ -1,20 +1,3 @@
-/**
- * `suggest_followups` — SPIKE tool (measure, don't migrate).
- *
- * Records the 2-3 follow-up suggestions the model proposes. Registered ONLY
- * when `suggestionsVia === "tool"` (default is "inline", which keeps the trained
- * `<suggestions>` block path untouched). When registered, the loop emits the
- * captured list as the existing `copilotPromptSuggestions` SSE at final
- * dispatch — zero frontend change. The point of the spike is to measure how
- * reliably real models CALL this vs. the always-on inline block, before
- * committing to a full migration (which would also have to handle the
- * silent-drop-on-round-trip and unclosed-block edges — see the plan's Part C).
- *
- * Local `execute`, no round-trip, no `stopWhen` — like `_llm_think`. Suggestions
- * are a TERMINAL event, not an ordered artifact, so this records into a request
- * closure (the loop emits at the end) rather than pushing onto `artifactQueue`.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import { getLogger } from "../../lib/logger.ts";
@@ -44,7 +27,6 @@ export const suggestFollowupsDescription =
 export type SuggestFollowupsArgs = z.infer<typeof suggestFollowupsSchema>;
 
 export interface SuggestFollowupsContext {
-  /** Record the proposed suggestions; the loop emits them at final dispatch. */
   setSuggestions: (suggestions: string[]) => void;
 }
 

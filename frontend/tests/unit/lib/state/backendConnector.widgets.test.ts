@@ -1,15 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Source } from "~/lib/state/backendConnector";
-import {
-  validateBackend,
-  validateBackendEndpoints,
-  validateObject,
-} from "~/lib/utils/validateBackend";
+import { validateBackend, validateBackendEndpoints } from "~/lib/utils/validateBackend";
 import type { WidgetsType } from "~/utils/zodForms";
+import { installWidgetsSchemaFixture } from "../../../mocks/widgetsSchema";
 
-// Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
+installWidgetsSchemaFixture();
 
 describe("validateBackend - widgets.json endpoint behavior", () => {
   const mockSource: Source = {
@@ -34,20 +31,17 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
 
   describe("widgets.json response handling", () => {
     it("should handle jsonify({}) for widgets.json - returns empty widgets, no error message", async () => {
-      // Mock widgets.json response with empty object
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({}),
           headers: new Headers(),
         })
-        // Mock apps.json response (empty for this test)
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
           headers: new Headers(),
         })
-        // Mock agents.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
@@ -56,26 +50,22 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
 
       const result = await validateBackend(mockSource, false);
 
-      // Empty object {} is a valid widgets.json format (just means no widgets)
       expect(result.widgets).toEqual({});
       expect(result.errorMessage).toBeNull();
     });
 
     it("should handle jsonify([]) for widgets.json - shows appropriate error message", async () => {
-      // Mock widgets.json response with empty array
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
           headers: new Headers(),
         })
-        // Mock apps.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
           headers: new Headers(),
         })
-        // Mock agents.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
@@ -115,20 +105,17 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         },
       };
 
-      // Mock widgets.json response with valid widgets
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(validWidgets),
           headers: new Headers(),
         })
-        // Mock apps.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
           headers: new Headers(),
         })
-        // Mock agents.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
@@ -148,7 +135,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       expect(result.errorMessage).toBeNull();
     });
 
-    it("should leave out widgets whose type this FINOS Workspace does not render", async () => {
+    it("should report untyped widgets, leave out unhandled types and keep enabled plugin types", async () => {
       const mixedWidgets = {
         report: {
           name: "Report",
@@ -159,15 +146,22 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         },
         prices: {
           name: "Prices",
-          description: "A table (the protocol default type)",
+          description: "No type: the contract requires one",
           endpoint: "/prices",
           params: [],
         },
         trend: {
           name: "Trend",
-          description: "A chart",
+          description: "A type no plugin enabled for the entity handles",
           endpoint: "/trend",
           type: "chart",
+          params: [],
+        },
+        chart: {
+          name: "Chart",
+          description: "A type an enabled plugin handles",
+          endpoint: "/chart",
+          type: "test_chart",
           params: [],
         },
       };
@@ -191,12 +185,13 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
 
       const result = await validateBackend(mockSource, false);
 
-      expect(result.errorMessage).toBeNull();
-      expect(Object.keys(result.widgets)).toEqual(["report"]);
-      expect(result.unsupportedWidgets).toEqual(["prices", "trend"]);
+      expect(Object.keys(result.validWidgets ?? {})).toEqual(["report", "chart"]);
+      expect(result.invalidItems?.map((item) => item.id)).toEqual(["prices"]);
+      expect(result.unsupportedWidgets).toEqual(["trend"]);
+      expect(result.unrenderedWidgets).toEqual(["chart"]);
     });
 
-    it("should report unrecognized widget keys when widget schema is otherwise valid", async () => {
+    it("should load a widget without a key the contract does not define, and name the key", async () => {
       const widgetWithExtraKey = {
         stock_price: {
           name: "Stock Price",
@@ -227,15 +222,16 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
 
       const result = await validateBackend(mockSource, false);
 
+      expect(Object.keys(result.validWidgets ?? {})).toEqual(["stock_price"]);
+      expect(result.validWidgets?.stock_price).not.toHaveProperty(
+        "unsupported_widget_option",
+      );
       expect(result.errorMessage).toBeNull();
       expect(result.unrecognizedKeysMessage).toEqual([
         {
           label: "[widgets.json]",
           entries: [
-            {
-              name: "Stock Price",
-              keys: ["unsupported_widget_option"],
-            },
+            { name: "Stock Price (stock_price)", keys: ["unsupported_widget_option"] },
           ],
         },
       ]);
@@ -246,31 +242,26 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         invalid_widget: {
           name: "Invalid Widget",
           type: "html",
-          // Missing required fields like endpoint
           description: "This widget is missing required fields",
         },
         another_invalid: {
-          // Missing name field
           type: "html",
           endpoint: "/test",
-          params: "invalid_params_format", // Should be object not string
+          params: "invalid_params_format",
         },
       };
 
-      // Mock widgets.json response with invalid widgets
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(invalidWidgets),
           headers: new Headers(),
         })
-        // Mock apps.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
           headers: new Headers(),
         })
-        // Mock agents.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
@@ -285,7 +276,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
     });
 
     it("should handle widgets.json fetch failure with appropriate error", async () => {
-      // Mock widgets.json fetch failure
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
@@ -300,7 +290,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
     });
 
     it("should handle widgets.json with authentication errors", async () => {
-      // Mock widgets.json fetch with 401 error
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
@@ -315,7 +304,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
     });
 
     it("should handle widgets.json network timeout", async () => {
-      // Mock widgets.json fetch with timeout error
       mockFetch.mockRejectedValueOnce({
         code: 23,
         message: "Request timed out",
@@ -325,236 +313,162 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
     });
   });
 
-  describe("validateObject function", () => {
-    it("should return error for array input", () => {
-      const arrayInput = [{ name: "widget1" }];
-      const result = validateObject(arrayInput);
-
-      expect(result).not.toBeNull();
-      expect(result).toContain("Invalid format");
-      expect(result).toContain("Expected:");
-      expect(result).toContain("Received:");
+  describe("validateBackendEndpoints: the route probe (WIDGETS-JSON 4.8)", () => {
+    const widget = (endpoint: string, params: unknown[] = []) => ({
+      name: "Widget",
+      description: "A widget",
+      endpoint,
+      type: "html" as const,
+      params,
     });
 
-    it("should return error for single widget object", () => {
-      const singleWidget = { name: "widget1", description: "test", endpoint: "/test" };
-      const result = validateObject(singleWidget);
-
-      expect(result).not.toBeNull();
-      expect(result).toContain("Invalid format");
-    });
-
-    it("should return null for valid widgets object", () => {
-      const validWidgets = {
-        widget1: {
-          name: "Widget 1",
-          description: "Test widget 1",
-          endpoint: "/test1",
-          params: [],
-        },
-        widget2: {
-          name: "Widget 2",
-          description: "Test widget 2",
-          endpoint: "/test2",
-          params: [],
-        },
-      };
-
-      const result = validateObject(validWidgets);
-      expect(result).toBeNull();
-    });
-
-    it("should return detailed validation errors for invalid widgets", () => {
-      const invalidWidgets = {
-        invalid_widget: {
-          name: "", // Invalid: empty name
-          description: "Invalid widget",
-          endpoint: "/test2",
-          params: "invalid", // Invalid: should be array
-        },
-        missing_fields: {
-          // Missing required name and endpoint
-          description: "Missing required fields",
-        },
-      };
-
-      const result = validateObject(invalidWidgets);
-
-      expect(result).not.toBeNull();
-      // Should contain validation details for required fields
-      expect(result).toContain("received undefined");
-    });
-  });
-
-  describe("validateBackendEndpoints function", () => {
-    it("should validate widget endpoints successfully", async () => {
-      const widgets: WidgetsType = {
-        test_widget: {
-          name: "Test Widget",
-          description: "A test widget",
-          endpoint: "/test",
-          sub_category: "test",
-          subCategory: "test",
-          type: "html",
-          defaultViz: "html",
-          params: [
-            {
-              paramName: "symbol",
-              type: "text",
-              value: "AAPL",
-              show: true,
-            },
-          ],
-        },
-      };
-
-      // Mock successful endpoint response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ data: [] }),
-        headers: new Headers(),
+    function answer(
+      statuses: Record<string, number | "unreachable">,
+      fallback: number | "unreachable" = 404,
+    ) {
+      mockFetch.mockImplementation(async (url: string) => {
+        const status = statuses[new URL(url).pathname] ?? fallback;
+        if (status === "unreachable") throw new TypeError("Failed to fetch");
+        return { ok: status < 400, status, headers: new Headers() };
       });
-      const failedEndpoints = await validateBackendEndpoints(
-        widgets,
+    }
+
+    const probedPaths = () =>
+      mockFetch.mock.calls.map(([url]) => new URL(url as string).pathname);
+
+    it("sends one plain OPTIONS per distinct route, with no credentials", async () => {
+      answer({ "/a": 405, "/teams/eu": 405, "/rows/1": 405, "/items/7": 200 });
+      const widgets = {
+        first: widget("/a"),
+        same_route: widget("/a?view=compact"),
+        with_path: widget("/items/{id}", [
+          { paramName: "id", type: "number", value: 7 },
+        ]),
+        with_lookups: widget("/a", [
+          { paramName: "region", type: "text", value: "eu" },
+          {
+            paramName: "team",
+            type: "endpoint",
+            optionsEndpoint: "/teams/{region}",
+            optionsParams: { region: "$region" },
+          },
+          {
+            paramName: "edit",
+            type: "form",
+            endpoint: "/rows/{row}",
+            method: "POST",
+            inputParams: [{ paramName: "row", type: "text", value: "1" }],
+          },
+        ]),
+      } as unknown as WidgetsType;
+
+      const report = await validateBackendEndpoints(widgets, mockBackendUrl);
+
+      expect(report).toEqual({ failed: [], unchecked: [] });
+      const [canary, ...routes] = probedPaths();
+      expect(canary).toMatch(/^\/__workspace_route_probe_\w+$/);
+      expect(routes.sort()).toEqual(["/a", "/items/7", "/rows/1", "/teams/eu"]);
+      for (const [url, init] of mockFetch.mock.calls) {
+        expect(new URL(url as string).search).toBe("");
+        expect(init).toMatchObject({ method: "OPTIONS", credentials: "omit" });
+        expect(init).not.toHaveProperty("headers");
+        expect(init).not.toHaveProperty("body");
+      }
+    });
+
+    it("reports a route the backend does not have, with what refers to it", async () => {
+      answer({ "/a": 405 });
+      const widgets = {
+        present: widget("/a"),
+        missing: widget("/gone"),
+        also_missing: widget("/gone"),
+      } as unknown as WidgetsType;
+
+      const report = await validateBackendEndpoints(widgets, mockBackendUrl);
+
+      expect(report.failed).toEqual([
+        "Widget: missing; Widget: also_missing - `/gone`: no such route (404)",
+      ]);
+    });
+
+    it("says a backend that answers every OPTIONS cannot be checked, not that it is valid", async () => {
+      answer({}, 200);
+      const report = await validateBackendEndpoints(
+        { a: widget("/gone") } as unknown as WidgetsType,
         mockBackendUrl,
-        mockHeaders,
-        {},
       );
 
-      expect(failedEndpoints).toEqual([]);
+      expect(report.failed).toEqual([]);
+      expect(report.unchecked[0]).toContain(
+        "answers OPTIONS for a path that does not exist",
+      );
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
-    it("should detect failed widget endpoints", async () => {
-      const widgets = {
-        failing_widget: {
-          name: "Failing Widget",
-          description: "A failing widget",
-          endpoint: "/failing",
-          sub_category: "test",
-          subCategory: "test",
-          type: "html" as const,
-          defaultViz: "html" as const,
-          params: [],
-        },
-      };
-
-      // Mock failing endpoint response
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({ error: "Internal server error" }),
-        headers: new Headers(),
-      });
-
-      const failedEndpoints = await validateBackendEndpoints(
-        widgets,
+    it("says routes were not checked when the backend does not answer OPTIONS", async () => {
+      answer({}, "unreachable");
+      const report = await validateBackendEndpoints(
+        { a: widget("/a") } as unknown as WidgetsType,
         mockBackendUrl,
-        mockHeaders,
-        {},
       );
 
-      expect(failedEndpoints).toHaveLength(1);
-      expect(failedEndpoints[0]).toContain("failing_widget");
-      expect(failedEndpoints[0]).toContain("Internal server error");
+      expect(report.failed).toEqual([]);
+      expect(report.unchecked[0]).toContain("did not answer OPTIONS");
     });
 
-    it("should handle network errors for widget endpoints", async () => {
+    it("skips a route whose placeholder has no default, and routes on other origins", async () => {
+      answer({});
       const widgets = {
-        network_error_widget: {
-          name: "Network Error Widget",
-          description: "A widget that causes network errors",
-          endpoint: "/network-error",
-          sub_category: "test",
-          subCategory: "test",
-          type: "html" as const,
-          defaultViz: "html" as const,
-          params: [],
-        },
-      };
+        no_default: widget("/items/{id}", [{ paramName: "id", type: "text" }]),
+        elsewhere: widget("https://elsewhere.invalid/page"),
+      } as unknown as WidgetsType;
 
-      // Mock network error
-      mockFetch.mockRejectedValueOnce(new Error("Network timeout"));
+      const report = await validateBackendEndpoints(widgets, mockBackendUrl);
 
-      const failedEndpoints = await validateBackendEndpoints(
-        widgets,
+      expect(report.failed).toEqual([]);
+      expect(report.unchecked).toEqual([
+        "Widget: no_default - `/items/{id}`: a placeholder has no default value",
+        "Widget: elsewhere - `https://elsewhere.invalid/page`: not on the backend's origin",
+      ]);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("encodes a placeholder value as one path segment", async () => {
+      answer({ "/files/a%2Fb%20c": 405 });
+      const report = await validateBackendEndpoints(
+        {
+          a: widget("/files/{name}", [
+            { paramName: "name", type: "text", value: "a/b c" },
+          ]),
+        } as unknown as WidgetsType,
         mockBackendUrl,
-        mockHeaders,
-        {},
       );
 
-      expect(failedEndpoints).toHaveLength(1);
-      expect(failedEndpoints[0]).toContain("network_error_widget");
-      expect(failedEndpoints[0]).toContain("Network timeout");
+      expect(report.failed).toEqual([]);
+      expect(probedPaths()).toContain("/files/a%2Fb%20c");
     });
 
-    it("passes the abort signal through to endpoint fetches", async () => {
-      const widgets = {
-        signal_widget: {
-          name: "Signal Widget",
-          description: "A widget for signal threading",
-          endpoint: "/signal",
-          sub_category: "test",
-          subCategory: "test",
-          type: "html" as const,
-          defaultViz: "html" as const,
-          params: [],
-        },
-      };
+    it("reports a route that does not answer once the canary has", async () => {
+      answer({ "/slow": "unreachable" });
+      const report = await validateBackendEndpoints(
+        { slow: widget("/slow") } as unknown as WidgetsType,
+        mockBackendUrl,
+      );
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ data: [] }),
-        headers: new Headers(),
-      });
+      expect(report.failed).toEqual(["Widget: slow - `/slow`: no response"]);
+    });
 
+    it("passes the abort signal to every request", async () => {
+      answer({ "/a": 405 });
       const signal = new AbortController().signal;
-      await validateBackendEndpoints(widgets, mockBackendUrl, mockHeaders, {}, signal);
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({ signal }),
-      );
-    });
-
-    it("should skip 422 validation errors (expected for missing params)", async () => {
-      const widgets = {
-        param_required_widget: {
-          name: "Param Required Widget",
-          description: "Widget requiring parameters",
-          endpoint: "/requires-params",
-          sub_category: "test",
-          subCategory: "test",
-          type: "html" as const,
-          defaultViz: "html" as const,
-          params: [
-            {
-              paramName: "required_param",
-              type: "text" as const,
-              value: "test",
-              label: "Required Param",
-              show: true,
-            },
-          ],
-        },
-      };
-
-      // Mock 422 response (validation error for missing params)
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 422,
-        json: () => Promise.resolve({ detail: "field required" }),
-        headers: new Headers(),
-      });
-
-      const failedEndpoints = await validateBackendEndpoints(
-        widgets,
+      await validateBackendEndpoints(
+        { a: widget("/a") } as unknown as WidgetsType,
         mockBackendUrl,
-        mockHeaders,
-        {},
+        signal,
       );
 
-      // Should skip 422 errors as they're expected for widgets with required params
-      expect(failedEndpoints).toEqual([]);
+      for (const [, init] of mockFetch.mock.calls)
+        expect(init).toMatchObject({ signal });
     });
   });
 
@@ -584,7 +498,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         },
       ];
 
-      // Mock both responses as successful
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
@@ -597,7 +510,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
           url: `${mockSource.url}/apps.json`,
           headers: new Headers(),
         })
-        // Mock agents.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
@@ -623,7 +535,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
     it("should handle widgets validation errors alongside template errors", async () => {
       const invalidWidgets = {
         invalid_widget: {
-          name: "", // Invalid empty name
+          name: "",
           endpoint: "/test",
           type: "html",
         },
@@ -632,11 +544,9 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       const invalidApps = [
         {
           name: "Invalid App",
-          // Missing required tabs field
         },
       ];
 
-      // Mock both responses with invalid data
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
@@ -649,7 +559,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
           url: `${mockSource.url}/apps.json`,
           headers: new Headers(),
         })
-        // Mock agents.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),

@@ -1,15 +1,3 @@
-/**
- * Test helpers for the Vercel AI SDK v6 MockLanguageModelV3.
- *
- * The agent loop calls `streamText` (→ `doStream`); the `/generate` routes
- * and `singleShotLlm` call `generateText` (→ `doGenerate`). Each factory
- * implements BOTH from the same scripted spec so a test driving either path
- * gets identical behavior without a real provider.
- *
- * Tool-call inputs MUST be JSON-stringified per V3 spec — pass plain
- * objects to the helpers and they're serialized for you.
- */
-
 import { MockLanguageModelV3 } from "ai/test";
 import { simulateReadableStream, type LanguageModel } from "ai";
 import type {
@@ -28,12 +16,6 @@ export type ToolCallSpec = {
 
 export type LlmStep = {
   text?: string;
-  /**
-   * Emit the assistant text as a SEQUENCE of provider-level `text-delta` parts
-   * (one text block, many deltas) so the loop's incremental tag-strip / sink
-   * state machine is exercised with the same tag split across delta boundaries.
-   * `doGenerate` joins them; takes precedence over `text` when present.
-   */
   textDeltas?: string[];
   toolCalls?: ToolCallSpec[];
   finishReason?: "stop" | "tool-calls" | "length" | "content-filter" | "error";
@@ -79,12 +61,6 @@ function buildResult(step: LlmStep): LanguageModelV3GenerateResult {
   } as unknown as LanguageModelV3GenerateResult;
 }
 
-/**
- * Provider-level stream form of a step, for `doStream` (consumed by the loop's
- * `streamText`). Text rides one text-start/delta/end segment so the loop's
- * per-block buffering + whole-segment tag strip is exercised faithfully; tool
- * calls follow, then a single finish part.
- */
 function buildStream(step: LlmStep): { stream: ReadableStream<LanguageModelV3StreamPart> } {
   const chunks: LanguageModelV3StreamPart[] = [{ type: "stream-start", warnings: [] }];
   const textParts = step.textDeltas ?? (step.text != null ? [step.text] : null);
@@ -133,15 +109,7 @@ export function makeErroringStreamMockLlm(error: unknown): LanguageModel {
   } as unknown as ConstructorParameters<typeof MockLanguageModelV3>[0]) as unknown as LanguageModel;
 }
 
-/**
- * Sequenced mock: each call to doGenerate returns the next step. After the
- * sequence is exhausted the last step is replayed (matches a model that has
- * "made up its mind" and stops emitting fresh tool calls).
- */
 export function makeSequencedMockLlm(steps: LlmStep[]): LanguageModel {
-  // Independent cursors: the loop drives `doStream`, /generate paths drive
-  // `doGenerate`. Each call (one streamText / one generateText) advances its
-  // own cursor; after exhaustion the last step replays.
   let genIdx = 0;
   let streamIdx = 0;
   return new MockLanguageModelV3({
@@ -150,10 +118,6 @@ export function makeSequencedMockLlm(steps: LlmStep[]): LanguageModel {
   } as unknown as ConstructorParameters<typeof MockLanguageModelV3>[0]) as unknown as LanguageModel;
 }
 
-/**
- * Capture the inputs passed to doGenerate. Useful for asserting that the
- * tools surfaced to the model never contain `x-ines-*` keys, etc.
- */
 export interface SpyMockLlm {
   model: LanguageModel;
   calls: Array<{ tools?: Record<string, unknown>; messages?: unknown }>;
@@ -195,18 +159,11 @@ export function makeSequencedSpyMockLlm(steps: LlmStep[]): SpyMockLlm {
   return { model, calls };
 }
 
-// ----- presets -----
 
 export function llmEmitsText(text: string): LlmStep {
   return { text, finishReason: "stop" };
 }
 
-/**
- * Like `llmEmitsText` but streams the text across multiple provider `text-delta`
- * parts. Drives the split-tag case for the streaming sink: a placeholder tag (or
- * `<suggestions>` block, or base64 image) split across delta boundaries must
- * still be stripped/held correctly. `doGenerate` sees the joined text.
- */
 export function llmEmitsTextInDeltas(parts: string[]): LlmStep {
   return { textDeltas: parts, finishReason: "stop" };
 }
@@ -223,6 +180,4 @@ export function llmCallsToolWithText(
   return { text, toolCalls: [{ toolName, input }], finishReason: "tool-calls" };
 }
 
-// Suppress unused import warning — the V3 type is used implicitly by the
-// MockLanguageModelV3 constructor signature, but TS may flag it as unused.
 export type _LanguageModelV3 = LanguageModelV3;

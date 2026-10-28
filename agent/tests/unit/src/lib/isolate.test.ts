@@ -83,7 +83,6 @@ describe("runInChild", () => {
     const timer = setInterval(() => beats++, 50);
     await run("spin-js", { pidFile: pidFile() }, 1_000).catch(() => undefined);
     clearInterval(timer);
-    // A blocked process would have beaten a handful of times at most.
     expect(beats).toBeGreaterThan(10);
   });
 
@@ -95,7 +94,6 @@ describe("runInChild", () => {
   it("reports work that dies", async () => {
     const error = (await run("crash", {}).catch((e) => e)) as Error;
     expect((error as IsolationError).kind).toBe("crash");
-    // ...without passing on what the child wrote to its stderr.
     expect(String(error.message)).not.toContain("about to die");
   });
 

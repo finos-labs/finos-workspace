@@ -2,7 +2,6 @@ import { expect, type Page } from "@playwright/test";
 
 export const authFile = "playwright/.auth/user.json";
 
-/** The account the tests sign in as; it has to exist in the stack under test. */
 export function userInfo(): { email: string; password: string } {
   const email = process.env.E2E_USER_EMAIL;
   const password = process.env.E2E_USER_PASSWORD;
@@ -14,11 +13,9 @@ export function userInfo(): { email: string; password: string } {
   return { email, password };
 }
 
-/** Submits the login form with the given credentials. */
 export async function submitLogin(page: Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  // exact: the show-password button is labelled "Show password"
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Login" }).click();
 }
@@ -28,7 +25,25 @@ export async function login(page: Page) {
   await submitLogin(page, email, password);
 }
 
-/** The link the open dialog gives, once the dialog is closed with Done. */
+export async function deleteDashboard(page: Page, id: string) {
+  await page.keyboard.press("Escape");
+  const deleted = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/app/dash/sync") &&
+      response.request().method() === "POST" &&
+      response.request().postData()?.includes(`"${id}":"DELETE"`) === true,
+  );
+  const tab = page.locator(`#tab-${id}`);
+  await tab.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  const confirm = page.getByRole("button", { name: "Yes, delete" });
+  await expect(async () => {
+    if (await confirm.isVisible()) await confirm.click();
+    await expect(tab).toHaveCount(0, { timeout: 500 });
+  }).toPass({ timeout: 10000 });
+  expect((await deleted).ok()).toBe(true);
+}
+
 export async function takeLink(page: Page) {
   const link = await page.getByLabel("Password link").inputValue();
   expect(link).toMatch(/\/reset-password#[\w-]{40,}$/);
@@ -36,17 +51,14 @@ export async function takeLink(page: Page) {
   return link;
 }
 
-/** Sets a password with a link from the admin. */
 export async function setPassword(page: Page, link: string, password: string) {
   await page.goto(link);
-  // The token is off the address once the page has it
   await expect(page).toHaveURL(/\/reset-password$/);
   await page.getByLabel("New Password", { exact: true }).fill(password);
   await page.getByLabel("Confirm Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Set password" }).click();
 }
 
-/** Adds a user (of the User type) to the admin's organization; the answer is their link. */
 export async function addUser(page: Page, email: string, lastName: string) {
   await page.goto("/admin/users");
   await page.getByRole("button", { name: "Add users" }).click();
@@ -60,7 +72,6 @@ export async function addUser(page: Page, email: string, lastName: string) {
   return link;
 }
 
-/** Deletes a user of the admin's organization, as the admin. */
 export async function deleteUser(page: Page, email: string) {
   await page.goto("/admin/users");
   await page.getByPlaceholder("Search for users").fill(email);

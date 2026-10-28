@@ -2,10 +2,6 @@ import { describe, expect, it } from "vitest";
 import { resolveInnerTabParams } from "~/lib/utils/app";
 
 describe("resolveInnerTabParams", () => {
-  // Regression guard: an empty dashboard has no inner-tab layout to select, so the
-  // dashboard route used to fire a navigation on every render pass with an unchanged
-  // URL. Each one was a history push, which is what tripped Chrome's navigation
-  // throttling and left the sidebar links dead.
   it("returns null when the URL would not change", () => {
     const next = resolveInnerTabParams({
       gridLayout: {},

@@ -8,7 +8,6 @@ type UseStore = <T>(
 function promisifyRequest<T = undefined>(
   request: IDBRequest<T> | IDBTransaction,
 ): Promise<T> {
-  // A transaction completes where a request succeeds, and both are settled the same way
   const settled = request as IDBRequest<T> & IDBTransaction;
   return new Promise<T>((resolve, reject) => {
     settled.oncomplete = settled.onsuccess = () => resolve(settled.result);
@@ -26,8 +25,6 @@ function createStore(dbName: string, storeName: string): UseStore {
 
     DBP.then(
       (db) => {
-        // It seems like Safari sometimes likes to just close the connection.
-        // It's supposed to fire this event when that happens. Let's hope it does!
         db.onclose = () => (DBP = undefined);
       },
       () => {},
@@ -41,12 +38,6 @@ function createStore(dbName: string, storeName: string): UseStore {
     );
 }
 
-/**
- * Get a value by its key.
- *
- * @param key
- * @param store Method to get a custom store. Use with caution (see the docs).
- */
 export function get<T = unknown>(
   key: IDBValidKey,
   store: UseStore,
@@ -54,13 +45,6 @@ export function get<T = unknown>(
   return store("readonly", (store) => promisifyRequest(store.get(key)));
 }
 
-/**
- * Set a value with a key.
- *
- * @param key
- * @param value
- * @param store Method to get a custom store. Use with caution (see the docs).
- */
 export function set(key: IDBValidKey, value: unknown, store: UseStore): Promise<void> {
   return store("readwrite", (store) => {
     store.put(value, key);
@@ -68,12 +52,6 @@ export function set(key: IDBValidKey, value: unknown, store: UseStore): Promise<
   });
 }
 
-/**
- * Delete a particular key from the store.
- *
- * @param key
- * @param store Method to get a custom store. Use with caution (see the docs).
- */
 export function del(key: IDBValidKey, store: UseStore): Promise<void> {
   return store("readwrite", (store) => {
     store.delete(key);
@@ -81,18 +59,6 @@ export function del(key: IDBValidKey, store: UseStore): Promise<void> {
   });
 }
 
-/**
- * Create a persist storage using `IndexedDB`.
- *
- * @example
- * createStore(
- *   persist(initialState, {
- *     version: 0.1,
- *     name: 'row-key',
- *     storage: createIndexedDBStorage()
- *   })
- * )
- */
 export function createIndexedDBStorage() {
   return createJSONStorage(() => {
     const store = createStore("Workspace", "workspace");

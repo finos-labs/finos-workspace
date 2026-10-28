@@ -5,7 +5,6 @@ describe("getMsalConfig", () => {
   let getMsalConfig: typeof import("~/lib/microsoft-auth-config").getMsalConfig;
 
   beforeEach(async () => {
-    // Reset modules to bust the _msalConfig cache
     vi.resetModules();
     vi.doMock("~/lib/runtimeConfig", () => ({
       getConfig: () => mockConfig,

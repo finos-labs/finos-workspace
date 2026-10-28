@@ -28,7 +28,6 @@ function toolMsg(items: Array<{ text?: string; content?: string }>, fn = "tool-1
 }
 
 beforeEach(() => {
-  // Each test starts with no kept rows.
   clearAllModuleState();
 });
 
@@ -266,8 +265,6 @@ describe("processMcpResult — $ines_kind: sqlite_table", () => {
 
   it("overwrites an existing pendingTables entry with the new rows", () => {
     const ctx = freshCtx();
-    // Seed pendingTables via a first sqlite_table dispatch so the key
-    // matches whatever analyzeTable produces (sanitization-aware).
     processMcpResult(
       toolMsg([
         {
@@ -281,7 +278,6 @@ describe("processMcpResult — $ines_kind: sqlite_table", () => {
       ctx,
     );
     const tableName = ctx.tables[0].tableName;
-    // Second dispatch overwrites the same name with fresh rows.
     processMcpResult(
       toolMsg([
         {
@@ -401,11 +397,6 @@ describe("processMcpResult — $ines_kind: model_context", () => {
 });
 
 describe("processMcpResult — payload normalization regressions (ada normalize_jsonish parity)", () => {
-  // Ada's `normalize_jsonish` covers a 12-case parametrized matrix for
-  // plain-text vs double-stringified vs single-element-list payloads. The
-  // mirror here ensures workspace's quirks (flattening content[] into a
-  // single JSON-stringified text item, etc.) never throw and route to the
-  // correct dispatch.
 
   type Case = { name: string; text: string; assert: (ctx: McpResultContext) => void };
 
@@ -429,8 +420,6 @@ describe("processMcpResult — payload normalization regressions (ada normalize_
       name: "whitespace-only string passes through (workspace may inject it)",
       text: "   ",
       assert: (ctx) => {
-        // Skipped earlier than dispatch — readItemText returns the string but
-        // tryParseJson fails and textParts gets the literal whitespace.
         expect(ctx.messages.at(0)?.content).toContain("   ");
       },
     },
@@ -499,8 +488,6 @@ describe("processMcpResult — payload normalization regressions (ada normalize_
   }
 
   it("regression: multi-item response processes each item independently (no stale state)", () => {
-    // Mirrors ada's `parsed_content` reuse bug — looping over data[].items[]
-    // must not leak parser state across items.
     const ctx = freshCtx();
     processMcpResult(
       toolMsg([
@@ -611,7 +598,6 @@ describe("processMcpResult — what the model is given of a long result", () => 
     expect(content).toContain("START");
     expect(content).not.toContain("END");
     expect(content).toMatch(/more characters are not shown/);
-    // The summary still says how long the result was.
     expect(summary.textChars).toBeGreaterThan(500_000);
   });
 

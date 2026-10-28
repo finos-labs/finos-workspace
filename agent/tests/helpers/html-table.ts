@@ -1,5 +1,3 @@
-// The FINOS Workspace has no table artifact: a table is an html artifact. These read one back.
-
 function unescapeHtml(s: string): string {
   return s
     .replace(/&lt;/g, "<")
@@ -9,7 +7,6 @@ function unescapeHtml(s: string): string {
     .replace(/&amp;/g, "&");
 }
 
-/** The table's rows as header -> cell text, in order. */
 export function tableRows(artifact: unknown): Record<string, string>[] {
   const html = String((artifact as { content?: unknown })?.content ?? "");
   const headers = [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => unescapeHtml(m[1]));
@@ -20,7 +17,6 @@ export function tableRows(artifact: unknown): Record<string, string>[] {
   });
 }
 
-/** What a row's values look like once rendered into cells: null is blank, the rest is text. */
 export function asCells(rows: Record<string, unknown>[]): Record<string, string>[] {
   return rows.map((r) =>
     Object.fromEntries(

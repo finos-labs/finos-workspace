@@ -1,14 +1,3 @@
-/**
- * Tests for sidebar Zustand store
- *
- * Tests the sidebar state management including:
- * - Hamburger menu toggling
- * - Section expansion (shared, my dashboards, library)
- * - Tree navigation (focus, selection, expansion)
- * - Scroll position tracking
- * - Width management
- */
-
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useSidebarStore } from "~/lib/state/sidebar";
@@ -16,7 +5,6 @@ import { malformed } from "../../mocks";
 
 describe("useSidebarStore", () => {
   beforeEach(() => {
-    // Reset store to initial state
     act(() => {
       useSidebarStore.setState({
         scrollY: 0,

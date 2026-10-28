@@ -2,7 +2,6 @@ import type { UserType } from "~/lib/state/access";
 import type { Entity, EntityMapItem, EntityUser } from "~/types/entity.type";
 import { apiClient } from "./api";
 
-/** What the entity endpoints answer lists with. */
 interface Page<T> {
   items: T[];
   page: number;
@@ -22,7 +21,6 @@ export interface EntityRelationship {
   supreme: Entity;
 }
 
-/** The fields that make an entity, as the backend takes them. */
 export interface EntityBody {
   name: string;
   sharing_enabled: boolean;
@@ -37,7 +35,6 @@ export interface EntityAdminBody {
 
 const PAGE_SIZE = 1000;
 
-/** Every item of a paginated list. */
 async function getAllPages<T>(path: string): Promise<T[]> {
   const items: T[] = [];
   let page = 1;
@@ -53,7 +50,6 @@ async function getAllPages<T>(path: string): Promise<T[]> {
   return items;
 }
 
-/** Succeeds for a superuser, who manages entities; anyone else is refused. */
 export async function validateEntityAdmin() {
   const { data } = await apiClient.get<SuccessResponse>("/entity/validate");
   return data;
@@ -63,10 +59,8 @@ export const getEntities = () => getAllPages<Entity>("/entity/entity");
 export const getEntityRelationships = () =>
   getAllPages<EntityRelationship>("/entity/entity-relationship");
 export const getEntityMaps = () => getAllPages<EntityMapItem>("/entity/entity-map");
-/** Every user of every entity, but the deleted ones. */
 export const getEntityUsers = () => getAllPages<EntityUser>("/entity/user");
 
-/** Moves the user to the permission map: a user type of an entity. */
 export async function moveEntityUser(uuid: string, permissionsUuid: string) {
   const { data } = await apiClient.put<SuccessResponse>(`/entity/user/${uuid}`, {
     permissions_uuid: permissionsUuid,
@@ -74,7 +68,6 @@ export async function moveEntityUser(uuid: string, permissionsUuid: string) {
   return data;
 }
 
-/** The entity, with the permission map that its administrator is placed in. */
 export async function createEntity(body: EntityBody & { admin_email: string }) {
   const { data } = await apiClient.post<{
     entity_uuid: string;

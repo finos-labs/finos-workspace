@@ -168,7 +168,6 @@ export default function AdminApps() {
     [apps, state.selectedIds],
   );
 
-  // Every user record sharing the selected app's (name, url).
   const detailApps = useMemo(() => {
     const target = state.detailApp;
     if (!target) return [];

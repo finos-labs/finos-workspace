@@ -1,6 +1,5 @@
 import type { Login2FAResponse } from "~/types/auth.type";
 
-/** What a failed request came back with, if the error carries a response. */
 export function getErrorResponse(error: unknown): {
   status?: number;
   data: Record<string, unknown>;
@@ -15,7 +14,6 @@ export function getErrorResponse(error: unknown): {
   };
 }
 
-/** What a failed request says went wrong, in words the user can read. */
 export function errorMessage(error: unknown, fallback: string): string {
   const { data } = getErrorResponse(error);
   const { detail, message } = data;
@@ -28,7 +26,6 @@ export function errorMessage(error: unknown, fallback: string): string {
   return String(detail || message || fallback);
 }
 
-/** The result of a failed login request: what the server said, or a 500 if it never answered. */
 export function loginFailure(error: unknown): Login2FAResponse {
   const { status, data } = getErrorResponse(error);
   const { message, detail, ...rest } = data;

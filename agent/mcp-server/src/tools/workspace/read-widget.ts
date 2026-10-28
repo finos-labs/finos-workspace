@@ -1,10 +1,3 @@
-/**
- * read_widget — read one widget's current payload from the active dashboard.
- *
- * Pure pass-through to the connected browser bridge. Mirrors
- * workspace_mcp/server.py:694.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";

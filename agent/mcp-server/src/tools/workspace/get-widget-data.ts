@@ -1,11 +1,3 @@
-/**
- * get_widget_data — fetch one widget's runtime data via the browser bridge.
- *
- * Mirrors workspace_mcp/server.py:507-539. data_args_json arrives as a
- * JSON-string arg; the wire shape uses Ada vocabulary
- * (origin, id, input_args) so we translate via dataSourcePayloads.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";

@@ -48,7 +48,6 @@ import { McpToolsButton } from "./McpToolsButton";
 export function CopilotContext() {
   const isMobile = useIsMobile();
 
-  // MCP Tools state
   const {
     contextEnabled,
     selectedCopilot,
@@ -70,9 +69,7 @@ export function CopilotContext() {
     };
   });
 
-  // @ Dropdown state
   const [popoverOpen, setPopoverOpen] = useState(false);
-  // Settings dropdown state
   const [settingsPopoverOpen, setSettingsPopoverOpen] = useState(false);
 
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -92,30 +89,23 @@ export function CopilotContext() {
     setIsDropdownOpen: setPopoverOpen,
   });
 
-  // Ensure custom features default state is initialized globally (not only when settings open)
-
   useEffect(() => {
     initializeCustomFeatures?.(selectedCopilot?.features || {});
   }, [selectedCopilot?.features]);
 
-  // Merge backend custom features from agents.json into default copilot (global)
   useEffect(() => {
     const ctrl = new AbortController();
 
     async function hydrateDefaultAgentFeatures() {
       try {
-        // agents.json is public: no agent token, no FINOS Workspace credential
         const ada = await fetchDefaultAgent(ctrl.signal);
         if (!ada) return;
-        ada.id = "default-copilot"; // Ensure id matches default copilot id
+        ada.id = "default-copilot";
 
         setSelectedCopilot?.({ ...selectedCopilot, ...ada });
-      } catch (_) {
-        // ignore
-      }
+      } catch (_) {}
     }
 
-    // default-copilot is the only copilot without a holderUuid
     if (!selectedCopilot?.holderUuid) hydrateDefaultAgentFeatures();
 
     return () => ctrl.abort();
@@ -128,7 +118,7 @@ export function CopilotContext() {
       setPopoverOpen((prev) => {
         const isDropdownOpen = !prev;
         if (isDropdownOpen) {
-          searchSuggestions(""); // Clear search on open
+          searchSuggestions("");
         }
 
         return isDropdownOpen;
@@ -157,7 +147,7 @@ export function CopilotContext() {
   const handleOnOpenChange = useCallback(
     (isOpen: boolean) => {
       if (!isOpen) {
-        searchSuggestions(""); // Clear search suggestions
+        searchSuggestions("");
         if (inputRef.current) inputRef.current.value = "";
       }
       setPopoverOpen(isOpen);
@@ -295,7 +285,6 @@ const SelectedWidgetBadges = memo(
       removePreSelectedWidget: state.removePreSelectedWidget,
     }));
 
-    // Get the tab highlighting function to highlight tabs on hover
     const { setHovered, setHoveredTabId, hoveredTabId } = useShallowCopilotStore(
       (state) => ({
         setHovered: state.setHovered,
@@ -348,7 +337,6 @@ const SelectedWidgetBadges = memo(
                     "dark:bg-dark-500 bg-light-50 dark:border-dark-400 border-light-300",
                     {
                       "opacity-25": !contextEnabled,
-                      // Mention-tracked widgets get blue background
                       "!text-light-500 !dark:text-light-400": isMentionTracked,
                     },
                   )}
@@ -358,7 +346,6 @@ const SelectedWidgetBadges = memo(
                       widgetUuid: string | null;
                     } = { tabId: null, widgetUuid: null };
 
-                    // Handle different highlighting for tabs vs widgets in context
                     if (widget.widget_id?.startsWith("tab_")) {
                       hoveredUpdate.tabId = widget.metadata?.innerTabId ?? null;
                     } else if (widget.uuid) {
@@ -382,7 +369,6 @@ const SelectedWidgetBadges = memo(
                         e.stopPropagation();
                         if (!widget.uuid) return;
 
-                        // Clear any active highlights when the widget is removed
                         setHovered();
 
                         const isMentionTracked = copilot.isMentionTrackedWidget(
@@ -412,13 +398,10 @@ const SelectedWidgetBadges = memo(
 
                           copilot.removeDataFromDashboardWidget(widget.uuid);
 
-                          // Remove from pre-selected tracking since it was removed via CopilotContext
                           copilot.removePreSelectedWidget(widget.uuid);
                         } else {
-                          // Ensure widget highlight is cleared for non-tab widgets
                           copilot.toggleSelectedWidget(widget.uuid);
 
-                          // Remove from pre-selected tracking since it was removed via CopilotContext
                           copilot.removePreSelectedWidget(widget.uuid);
                         }
                       }}
@@ -533,7 +516,6 @@ function SettingsContent() {
           );
         }
 
-        // An agent's model setting offers only the models the user's roles grant
         if (key === MODEL_SETTING && settingModels.length) {
           const agentId = copilot.selectedCopilot?.id ?? "";
           const granted = allowedModels(access, agentId, settingModels);

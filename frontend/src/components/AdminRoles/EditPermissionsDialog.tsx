@@ -75,7 +75,6 @@ export type ElementTypeT = Omit<ElementType, "type"> & {
   type: PermissionItem["category"];
 };
 
-/* TODO: convert this later to ds/molecules/Tabs */
 function MenuTab({
   value,
   label,
@@ -119,7 +118,6 @@ export const formatElements = (
       continue;
     }
 
-    // Handle data connectors
     const dataConnectors = category.items.map((item) => {
       const baseItem: PermissionItem = {
         uuid: item.uuid || item.id,
@@ -133,10 +131,8 @@ export const formatElements = (
 
       if ("status" in item) baseItem.status = item.status;
 
-      // Add widgets if they exist (for both file and backend types)
       if ("widgets" in item && Array.isArray(item.widgets) && item.widgets.length > 0) {
         baseItem.widgets = item.widgets.map((widget) => ({
-          // Create a composite UUID that includes both parent and widget IDs
           uuid: buildItemUuid(
             baseItem.uuid,
             widget.widgetId || ("id" in widget ? widget.id : undefined),
@@ -150,7 +146,6 @@ export const formatElements = (
         }));
       }
 
-      // Add templates if they exist (backend only)
       if (
         "templates" in item &&
         Array.isArray(item.templates) &&
@@ -230,11 +225,6 @@ export const formatElements = (
   return result;
 };
 
-/**
- * Build the editor tree: the full item universe (`formatElements`) with the given
- * role's access overlaid. Pure — switching role just re-runs it, so an empty role
- * yields a clean base instead of the previous role's access. Exported for tests.
- */
 export function buildPermissionsData(
   elemsDc: ElementType[],
   prompts: Prompt[],
@@ -246,7 +236,6 @@ export function buildPermissionsData(
     const tab = perm.category as PossibleTabValues;
     if (!updatedPermissions[tab]) continue;
 
-    // Handle standalone prompts
     if (tab === "prompts" && !perm.uuid.includes(":::")) {
       const promptItem = updatedPermissions[tab].find(
         (item) => item.uuid === perm.uuid,
@@ -257,19 +246,15 @@ export function buildPermissionsData(
       continue;
     }
 
-    // Handle backend items and their nested structures
     const dcItem = updatedPermissions["data-connectors"].find(
       (item) => item.uuid === perm.uuid && item.category === perm.type,
     );
 
-    // If the item is not found, skip to the next one
     if (!dcItem) continue;
 
-    // Set backend access
     dcItem.access = perm.access;
     let hasAccess = false;
 
-    // Update widgets if they exist
     if (
       perm.widgets &&
       ((dcItem.widgets?.length ?? 0) > 0 || dcItem.status === "success")
@@ -278,7 +263,6 @@ export function buildPermissionsData(
         const widget = dcItem.widgets?.find(
           (w) => w.uuid === buildItemUuid(dcItem.uuid, widgetPerm.widgetId),
         );
-        // If the widget is not found, skip to the next one
         if (!widget) continue;
 
         widget.access = widgetPerm.access;
@@ -287,7 +271,6 @@ export function buildPermissionsData(
         }
       }
     } else if (perm.widgets && perm.widgets.length > 0) {
-      // If the backend is offline we populate from permissions
       dcItem.widgets = perm.widgets.map((widget) => ({
         uuid: buildItemUuid(dcItem.uuid, widget.widgetId),
         name: "",
@@ -347,10 +330,8 @@ export function buildPermissionsData(
       dcItem.access = "access";
     }
 
-    // Skip Update templates and their prompts if not present
     if (!(Array.isArray(perm.templates) && perm.templates.length > 0)) continue;
 
-    // Find corresponding template backend in templates tab
     const templateBackend = updatedPermissions.templates.find(
       (t) => t.uuid === perm.uuid,
     );
@@ -359,18 +340,15 @@ export function buildPermissionsData(
     templateBackend.access = perm.access;
 
     for (const templatePerm of perm.templates) {
-      // Update template access
       const template = templateBackend.templates?.find(
         (t) => t.uuid === buildItemUuid(templateBackend.uuid, templatePerm.templateId),
       );
       if (!template) continue;
       template.access = templatePerm.access;
 
-      // Update prompts within template
       if (!templatePerm?.prompts) continue;
 
       for (const promptPerm of templatePerm.prompts) {
-        // Update in prompts tab
         const composedUUID = buildItemUuid(
           perm.uuid,
           templatePerm.templateId,
@@ -435,7 +413,6 @@ export function EditPermissionsDialog({
 
   const [debouncedSearch] = useDebounceValue(state.searchTerm, 300);
 
-  // If there's a search term and matches in other tabs, show the first tab with matches
   useEffect(() => {
     if (!debouncedSearch) return;
     queueMicrotask(() => {
@@ -460,27 +437,19 @@ export function EditPermissionsDialog({
     }
   }, [open, elemsDc, prompts]);
 
-  // Get filtered items for current tab
   const { checked, currentItems, dcTabItems } = useMemo(() => {
     const allItems = state.permissionsData[state.activeTab].filter((item) => {
       if (!item?.name) return false;
 
       const nameMatch = item.name.toLowerCase().includes(debouncedSearch.toLowerCase());
 
-      // Check for widget matches
       const hasMatchingWidgets = item.widgets?.some((widget) =>
         widget.name.toLowerCase().includes(debouncedSearch.toLowerCase()),
       );
 
-      // Check for template matches
       const hasMatchingTemplates = item.templates?.some((template) =>
         template.name.toLowerCase().includes(debouncedSearch.toLowerCase()),
       );
-
-      // // If there are matching children, automatically expand the parent
-      // if ((hasMatchingWidgets || hasMatchingTemplates) && state.searchTerm) {
-      //   item.isOpen = true;
-      // }
 
       return nameMatch || hasMatchingWidgets || hasMatchingTemplates;
     });
@@ -589,35 +558,29 @@ export function EditPermissionsDialog({
     [dispatch],
   );
 
-  // Update the handleAccessChange function to use synchronizeBackendPermissions
   const handleAccessChange = useCallback(
     (
       itemId: string,
       newAccess: PermissionItem["access"],
       category: PermissionItem["category"],
     ) => {
-      // Check if this is a backend item that might exist in multiple tabs
       const isBackendItem = category === "backend";
 
-      // Handle regular permission change for non-backend items
       dispatch((prev) => {
         const newState = { ...prev };
 
         if (isBackendItem) {
-          // Synchronize this backend's permissions across all tabs
           synchronizeBackendPermissions(newState, itemId, newAccess);
         }
 
         const updatedData = [...newState.permissionsData[prev.activeTab]];
         const [parentUuid, childUuid] = itemId.split(":::");
         for (const item of updatedData) {
-          // If this is the item being updated
           if (item.uuid === itemId) {
             item.access = newAccess;
             continue;
           }
 
-          // If this item has widgets, check if we need to update any of them
           if (prev.activeTab === "data-connectors" && Array.isArray(item.widgets)) {
             if (item.uuid !== parentUuid) continue;
             item.widgets = item.widgets.map((widget) =>
@@ -691,10 +654,8 @@ export function EditPermissionsDialog({
     }));
   }, [checked.allChecked, dispatch]);
 
-  // Also update handleBulkAccessChange to handle backend synchronization
   const handleBulkAccessChange = useCallback(
     (access: PermissionItem["access"]) => {
-      // First, collect all backend UUIDs that are checked
       const checkedBackendUuids = state.permissionsData[state.activeTab]
         .filter(
           (item) =>
@@ -702,7 +663,6 @@ export function EditPermissionsDialog({
         )
         .map((item) => item.uuid);
 
-      // Apply regular bulk changes
       dispatch((prev) => {
         const newState = { ...prev };
         const updatedData = [...newState.permissionsData[prev.activeTab]];
@@ -726,7 +686,6 @@ export function EditPermissionsDialog({
         }
 
         for (const uuid of checkedBackendUuids) {
-          // Then synchronize each backend's permissions across tabs
           synchronizeBackendPermissions(newState, uuid, access);
         }
 
@@ -746,7 +705,6 @@ export function EditPermissionsDialog({
     if (!role) return;
 
     try {
-      // Collect permissions to update from ALL tabs, not just the active one
       const permissionsToUpdate: PermissionPayload[] = [];
 
       const promptPermissions = state.permissionsData.prompts
@@ -754,7 +712,6 @@ export function EditPermissionsDialog({
           if (!item.access) return null;
           if (item.category === "prompt") {
             if (item.uuid.includes(":::")) {
-              // Handle backend prompts (format: backendUuid:templateId:promptId)
               if (item.uuid.split(":::").length === 3) {
                 const [backendUuid, templateId, promptId] = item.uuid.split(":::");
                 const templateAccess = state.permissionsData.templates
@@ -782,7 +739,6 @@ export function EditPermissionsDialog({
                 };
               }
             } else {
-              // Handle standalone prompts
               return {
                 uuid: item.uuid,
                 access: item.access,
@@ -793,7 +749,7 @@ export function EditPermissionsDialog({
           }
           return null;
         })
-        .filter(isPayload); // Remove any null values
+        .filter(isPayload);
 
       const templatePermissions = state.permissionsData.templates
         .map((item): PermissionPayload | null => {
@@ -829,9 +785,8 @@ export function EditPermissionsDialog({
             type: item.category,
           };
         })
-        .filter(isPayload); // Remove any null values
+        .filter(isPayload);
 
-      // Process data connectors tab
       permissionsToUpdate.push(
         ...state.permissionsData["data-connectors"]
           .map((item): PermissionPayload | null => {
@@ -858,7 +813,7 @@ export function EditPermissionsDialog({
                     widgetId: widget.uuid.split(":::")[1],
                     access: widget.access,
                   }))
-                  .filter((widget) => widget.access), // Filter out widgets with no access
+                  .filter((widget) => widget.access),
               };
 
               if (templates) {
@@ -869,17 +824,15 @@ export function EditPermissionsDialog({
 
             return basePermission;
           })
-          .filter(isPayload), // Remove any null values
+          .filter(isPayload),
       );
 
-      // Process templates tab
       permissionsToUpdate.push(
         ...templatePermissions.filter(
           (item) => item.type !== "backend" && !item.templates,
         ),
       );
 
-      // Process prompts tab
       permissionsToUpdate.push(...promptPermissions.filter((item) => !item.templates));
       const response = await putEntityRolePermissions(role.uuid, permissionsToUpdate);
 
@@ -902,19 +855,14 @@ export function EditPermissionsDialog({
   }, [role, dispatch, queryClient, state.permissionsData]);
 
   useEffect(() => {
-    // Rebuild the tree from scratch and overlay the selected role's permissions.
-    // Re-runs whenever `permissions` changes (e.g. switching role in the header), so
-    // an empty role resets the tree instead of keeping the previous role's access.
     const updatedPermissions = buildPermissionsData(elemsDc, prompts, permissions);
 
     dispatch({
       permissionsData: updatedPermissions,
-      // Store a deep copy of the original permissions for comparison
       originalPermissionsData: cloneDeep(updatedPermissions),
     });
   }, [open, permissions, elemsDc, prompts]);
 
-  // Calculate permission changes summary with details
   const getPermissionChangesSummary = useCallback(() => {
     const appChanges: Record<string, AppChanges> = {};
     const libraryChanges: Changes = {
@@ -922,13 +870,11 @@ export function EditPermissionsDialog({
       prompts: { added: 0, removed: 0 },
     };
 
-    // Check each tab for changes
     for (const tab of PERMISSION_TABS) {
       const tabValue = tab.value;
       const originalItems = state.originalPermissionsData[tabValue] || [];
       const currentItems = state.permissionsData[tabValue];
 
-      // Compare each item in the tab
       for (const currentItem of currentItems) {
         const originalItem = originalItems.find(
           (item) => item.uuid === currentItem.uuid,
@@ -944,13 +890,11 @@ export function EditPermissionsDialog({
         const appChangeOf = () => (appUuid ? appChanges[appUuid] : undefined);
 
         const isNew = originalItem?.access === undefined;
-        // Check if access has changed for main items
         if (originalItem?.access !== currentItem.access && tabValue === "prompts") {
           if (currentItem.parentUuid && currentItem.parentTemplate) {
             appUuid = buildItemUuid(currentItem.parentUuid, currentItem.parentTemplate);
           }
 
-          // Update counts
           const appChange = appChangeOf();
           if (currentItem.access === "access") {
             if (appChange) {
@@ -963,7 +907,6 @@ export function EditPermissionsDialog({
           }
         }
 
-        // Check widgets if they exist
         for (const widget of currentItem.widgets || []) {
           const originalWidget = originalItem?.widgets?.find(
             (w) => w.uuid === widget.uuid,
@@ -979,7 +922,6 @@ export function EditPermissionsDialog({
           }
         }
 
-        // Check templates if they exist
         for (const template of currentItem.templates || []) {
           const originalTemplate = originalItem?.templates?.find(
             (t) => t.uuid === template.uuid,
@@ -1022,7 +964,6 @@ export function EditPermissionsDialog({
               }
             }
 
-            // if widget access didn't change, set to total appWidgetsIds
             if (
               originalTemplate?.access !== template.access &&
               Object.values(appChange?.widgets || {}).every((v) => v === 0)
@@ -1239,7 +1180,6 @@ export function EditPermissionsDialog({
                 </div>
               </div>
 
-              {/* Data Connectors Tab */}
               <TabsPrimitive.Content
                 value="data-connectors"
                 className="flex-1 flex flex-col min-h-0"
@@ -1278,7 +1218,6 @@ export function EditPermissionsDialog({
                 </div>
               </TabsPrimitive.Content>
 
-              {/* Apps Tab */}
               <TabsPrimitive.Content
                 value="templates"
                 className="flex-1 flex flex-col min-h-0"
@@ -1305,7 +1244,6 @@ export function EditPermissionsDialog({
                 </div>
               </TabsPrimitive.Content>
 
-              {/* Prompts Tab */}
               <TabsPrimitive.Content
                 value="prompts"
                 className="flex-1 flex flex-col min-h-0"
@@ -1438,20 +1376,13 @@ function synchronizeBackendPermissions(
   backendUuid: string,
   newAccess: PermissionItem["access"],
 ) {
-  // If setting a backend to "no-access", cascade to all related items
-  // If setting to "access", only update the backend items themselves
-  // (not cascading to children, as they might have individual permissions)
-
-  // Update in data-connectors tab
   const dataConnector = state.permissionsData["data-connectors"].find(
     (item) => item.uuid === backendUuid,
   );
 
   if (dataConnector) {
-    // Update the backend itself
     dataConnector.access = newAccess;
 
-    // Update its widgets if they exist
     if (dataConnector.widgets && newAccess === "no-access") {
       dataConnector.widgets = dataConnector.widgets?.map((widget) => ({
         ...widget,
@@ -1460,16 +1391,13 @@ function synchronizeBackendPermissions(
     }
   }
 
-  // Update in templates tab
   const templateBackend = state.permissionsData.templates.find(
     (item) => item.uuid === backendUuid,
   );
 
   if (templateBackend) {
-    // Update the backend in templates tab
     templateBackend.access = newAccess;
 
-    // Update its templates if they exist
     if (templateBackend.templates && newAccess === "no-access") {
       templateBackend.templates = templateBackend.templates?.map((template) => ({
         ...template,
@@ -1484,7 +1412,6 @@ function synchronizeBackendPermissions(
 
   if (newAccess !== "no-access") return;
 
-  // Update related prompts
   state.permissionsData.prompts = state.permissionsData.prompts.map((prompt) => {
     if (prompt.parentUuid === backendUuid) {
       return { ...prompt, access: newAccess };
@@ -1523,7 +1450,6 @@ function handleTemplatesAccessChange(
   itemId: string,
   newAccess: PermissionItem["access"],
 ) {
-  // Update the template access
   const [parentId, childId] = itemId.split(":::");
   const backendItem = newState.permissionsData["data-connectors"].find(
     (backend) => backend.uuid === parentId,

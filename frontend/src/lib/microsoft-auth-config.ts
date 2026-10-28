@@ -1,8 +1,3 @@
-/*
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License.
- */
-
 import {
   BrowserCacheLocation,
   type Configuration,
@@ -24,7 +19,6 @@ export function getMsalConfig(): Configuration {
         authority: `https://login.microsoftonline.com/${cfg.authProviders.azureTenantId ?? ""}`,
         redirectUri: window.location.origin,
       },
-      // MSAL's tokens and its sign-in state stay in page memory, never in browser storage
       cache: {
         cacheLocation: BrowserCacheLocation.MemoryStorage,
         temporaryCacheLocation: BrowserCacheLocation.MemoryStorage,
@@ -63,29 +57,18 @@ export function getMsalConfig(): Configuration {
   return _msalConfig;
 }
 
-/** The page's one MSAL client: the provider uses it, and signing out clears its cache. */
 export function getMsalInstance(): PublicClientApplication {
   _msalInstance ??= new PublicClientApplication(getMsalConfig());
   return _msalInstance;
 }
 
-/**
- * Scopes that are requested during sign-in.
- * By default, MSAL.js will add OIDC scopes (openid, profile, email) to any login request.
- */
 export const loginRequest: PopupRequest = {
   scopes: ["User.Read"],
   prompt: "select_account",
 };
 
-/**
- * Configuration for Microsoft Graph API endpoints.
- */
 export const graphConfig = {
   graphMeEndpoint: "https://graph.microsoft.com/v1.0/me" as const,
 } as const;
 
-/**
- * Add additional scopes here for Microsoft Graph API access.
- */
 export const graphScopes = ["User.Read"] as const;

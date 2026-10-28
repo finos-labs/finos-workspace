@@ -23,8 +23,6 @@ services:
         "--character-set-server=utf8mb4",
         "--collation-server=utf8mb4_unicode_ci",
       ]
-    # Pinged over TCP: on a first start the entrypoint runs a temporary server on the socket only,
-    # while it creates the database, and a socket ping would call that healthy too early.
     healthcheck:
       test:
         ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -P 3306 -u root -proot --silent"]
@@ -58,7 +56,6 @@ services:
     build:
       context: backend
       dockerfile: fastapi.Dockerfile
-    # The images are built from scratch, so they are built for, and run on, this platform.
     platform: ${PLATFORM:-linux/amd64}
     container_name: fastapi
     env_file:
@@ -90,13 +87,11 @@ services:
     build:
       context: backend
       dockerfile: rqworker.Dockerfile
-    # The images are built from scratch, so they are built for, and run on, this platform.
     platform: ${PLATFORM:-linux/amd64}
     container_name: rq_worker
     env_file:
       - ./backend/envs/.env
     environment:
-      # Override .env values: inside Docker network, use container names not localhost
       DB_HOST: mysql
       REDIS_HOST: valkey
     networks:

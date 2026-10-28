@@ -15,17 +15,21 @@ related:
 
 ## Catalog
 
-This FINOS Workspace renders five types:
+The types FINOS Workspace renders itself:
 
-| Type | Use case | Endpoint returns |
-|------|----------|------------------|
-| `markdown` | Prose, generated commentary, formatted text | A markdown string (as text, or JSON with the string at `data.dataKey`) |
-| `html` | A rendered report, page or visualization the backend builds itself | An HTML document as text |
-| `newsfeed` | Lists of articles and updates, each with a title, a short excerpt and a full text | A JSON array of articles (see below), or JSON with the array at `data.dataKey` |
-| `pdf` | A document the user reads page by page | The PDF bytes (`Content-Type: application/pdf`), or JSON with a base64 `content` or a `url` (see below) |
-| `iframe` | An existing web page | The `endpoint` is the URL of the page to embed; the widget's params are sent to it as query parameters |
+<!-- generated:types -->
+| Type | Use case | Endpoint returns | Method | Params go in |
+|---|---|---|---|---|
+| `markdown` | Prose, generated commentary, formatted text | A markdown string, as text or as JSON with the string at `data.dataKey` | GET or POST | query, header, body, or the path |
+| `html` | A report, page or visualization the backend renders itself | An HTML document as text | GET or POST | query, header, body, or the path |
+| `newsfeed` | Articles and updates, each with a title, an excerpt and a full text | A JSON array of articles, or JSON with the array at `data.dataKey` | GET or POST | query, header, body, or the path |
+| `pdf` | A document the user reads page by page | The PDF (`application/pdf`), or JSON with its `data_format` and a base64 `content` or a `url` | GET or POST | query, header, body, or the path |
+| `iframe` | An existing web page | Nothing: the endpoint is the page's URL, which the browser opens | GET | query, or the path |
+<!-- /generated:types -->
 
-> Use the exact type string. Don't invent aliases. The protocol has more types than this FINOS Workspace renders (tables, charts, metrics and others): a widget of another type, or with no `type`, is left out of the catalog, and FINOS Workspace names it in a warning when the backend is connected. Give every widget one of the five types above.
+A widget plugin can add types. A plugin is installed for the deployment and enabled per organization by its administrators, so the types a user can use depend on their organization: `workspace://specs/widgets-json-schema` is the schema in force for the signed-in user, with those types. A widget of a type nothing renders for the user is left out of their catalog, and FINOS Workspace names it in a warning when the backend is connected.
+
+> Use the exact type string. Don't invent aliases.
 
 ## Use-case → type quick selector
 

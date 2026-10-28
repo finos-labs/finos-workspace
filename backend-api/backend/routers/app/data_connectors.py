@@ -1,5 +1,3 @@
-"""Data connectors API endpoints"""
-
 from typing import Annotated
 from uuid import UUID
 
@@ -28,7 +26,6 @@ async def get_user_file_widgets(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
 ):
-    """Get all file widgets for a user"""
     if not await app_helpers.may_add_connections(db, user.uuid):
         return []
     select_query = select(FileWidget).where(FileWidget.user_uuid == user.uuid)
@@ -44,7 +41,6 @@ async def post_user_file_widget(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Add or update a file widget for a user"""
     await app_helpers.check_may_add_connections(db, user.uuid)
     cache = settings.redis_cache(payload.stored_file_uuid)
     query = await db.execute(
@@ -97,7 +93,6 @@ async def delete_user_file_widget(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Delete a file widget and its associated file"""
     stored_file_query = select(StoredFile).where(
         StoredFile.file_widget_uuid == widget_uuid
     )
@@ -122,7 +117,6 @@ async def get_stored_files(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
 ):
-    """Get all stored files for a user."""
     if not await app_helpers.may_add_connections(db, user.uuid):
         return []
     select_query = select(StoredFile).where(StoredFile.creater_uuid == user.uuid)
@@ -134,10 +128,7 @@ async def get_user_api_sources(
     user=Depends(auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
 ):
-    """Get all API sources for a user: their own, if they may bring connections, and the
-    backends of their organization"""
     filters = ()
-    # Never compared with None: that would match every user's own backends
     if (entity_uuid := await crud.get_user_entity_uuid(db, user.permissions_uuid)) is not None:
         filters += (ApiSource.entity_uuid == entity_uuid,)
     if await app_helpers.may_add_connections(db, user.uuid):
@@ -160,7 +151,6 @@ async def post_user_api_source(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Create or update an Data Connector API Source"""
     await app_helpers.check_may_add_connections(db, user.uuid)
     insert_query = insert(ApiSource).values(
         uuid=source_uuid, user_uuid=user.uuid, **payload.model_dump()
@@ -188,7 +178,6 @@ async def delete_user_api_source(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Delete an Data Connector API Source"""
     query = delete(ApiSource).where(
         ApiSource.uuid == source_uuid, ApiSource.user_uuid == user.uuid
     )

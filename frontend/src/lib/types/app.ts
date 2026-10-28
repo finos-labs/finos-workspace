@@ -1,5 +1,12 @@
 import { z } from "zod";
 import type { FormInputParamDef, ParamDef } from "~/components/types";
+import { PLUGIN_ID_PATTERN } from "~/plugins/types";
+import {
+  EditorLanguages,
+  HTTP_METHODS,
+  PARAM_LOCATIONS,
+  VIZ_TYPE_PATTERN,
+} from "./widgetsContract";
 
 function unionErrorMap(message: string) {
   return {
@@ -36,38 +43,6 @@ export const RefetchIntervalSchema = z.union([
   CronExpressionSchema,
 ]);
 
-export const TickerSchema = z.object({
-  id: z.string(),
-  symbol: z.string(),
-  category: z.enum(
-    ["crypto", "equity", "forex", "index", "futures", "derivative", "etf", "country"],
-    unionErrorMap("Invalid input"),
-  ),
-  color: z.string().nullish(),
-  type: z.string().nullish(),
-  name: z.string().nullish(),
-  exchange: z.string().nullish(),
-  currency: z.string().nullish(),
-  industry: z.string().nullish(),
-  sector: z.string().nullish(),
-  country: z.string().nullish(),
-  cik: z.string().nullish(),
-  isin: z.string().nullish(),
-  cusip: z.string().nullish(),
-  has_options: z.boolean().nullish(),
-});
-
-export const EditorLanguages = [
-  "sql",
-  "javascript",
-  "python",
-  "json",
-  "html",
-  "css",
-  "markdown",
-  "xml",
-  "text",
-] as const;
 export type EditorLanguage = (typeof EditorLanguages)[number];
 
 const ParamDefSchemaBase = z
@@ -80,9 +55,9 @@ const ParamDefSchemaBase = z
     row: z.number().optional(),
     type: z
       .enum(
-        ["text", "date", "ticker", "number", "boolean", "endpoint", "button", "tabs"],
+        ["text", "date", "number", "boolean", "endpoint", "button", "tabs"],
         unionErrorMap(
-          "Supported types are text, date, ticker, number, boolean, endpoint, tabs",
+          "Supported types are text, date, number, boolean, endpoint, tabs",
         ),
       )
       .default("text")
@@ -91,7 +66,7 @@ const ParamDefSchemaBase = z
     hidden: z.boolean().optional().default(false),
     style: z
       .object({
-        popupWidth: z.number().min(100).max(1000).optional(), // value in px for <AdvancedSelect /> popup width
+        popupWidth: z.number().min(100).max(1000).optional(),
       })
       .optional(),
     options: z
@@ -100,6 +75,12 @@ const ParamDefSchemaBase = z
           .object({
             label: z.string(),
             value: z.union([z.string(), z.number(), z.boolean(), z.null()]).nullish(),
+            extraInfo: z
+              .object({
+                description: z.string().optional(),
+                rightOfDescription: z.string().optional(),
+              })
+              .optional(),
           })
           .optional(),
       )
@@ -108,6 +89,7 @@ const ParamDefSchemaBase = z
     multiSelect: z.boolean().default(false).optional(),
     roles: z.array(z.string()).optional(),
     placeholder: z.string().optional(),
+    in: z.enum(PARAM_LOCATIONS).optional(),
   })
   .partial({
     options: true,
@@ -122,6 +104,14 @@ const ParamDefSchemaBase = z
     hidden: true,
   })
   .meta({ id: "ParamDef" });
+
+const OptionsLookup = {
+  optionsEndpoint: z.string().optional(),
+  optionsMethod: z.enum(HTTP_METHODS).optional(),
+  optionsParams: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+    .optional(),
+};
 
 const ParamValueSchema = z.discriminatedUnion("type", [
   ParamDefSchemaBase.extend({
@@ -141,10 +131,6 @@ const ParamValueSchema = z.discriminatedUnion("type", [
       )
       .optional(),
   }).meta({ id: "TabsParamDef" }),
-  ParamDefSchemaBase.extend({
-    type: z.literal("ticker"),
-    value: z.string().nullish(),
-  }).meta({ id: "TickerParamDef" }),
   ParamDefSchemaBase.extend({
     type: z.literal("date"),
     value: z.string().nullish(),
@@ -168,8 +154,7 @@ const ParamValueSchema = z.discriminatedUnion("type", [
   ParamDefSchemaBase.extend({
     type: z.literal("endpoint"),
     value: z.unknown().nullish(),
-    optionsEndpoint: z.string().optional(),
-    optionsParams: z.record(z.string(), z.unknown()).optional(),
+    ...OptionsLookup,
     groupById: z.string().optional(),
   }).meta({ id: "EndpointParamDef" }),
   ParamDefSchemaBase.extend({
@@ -188,10 +173,7 @@ const ParamValueSchema = z.discriminatedUnion("type", [
               ),
             )
             .optional(),
-          // An endpoint input lists its options from the backend, as an endpoint
-          // parameter does
-          optionsEndpoint: z.string().optional(),
-          optionsParams: z.record(z.string(), z.unknown()).optional(),
+          ...OptionsLookup,
         }),
       )
       .optional(),
@@ -310,10 +292,16 @@ const supportedTypesError = WidgetVizTypes.filter((v) => v !== "iframe")
   .map((v) => `\`${v}\``)
   .join(", ");
 
-export type WidgetVizType = (typeof WidgetVizTypes)[number] | "custom";
+export type PluginVizType = string & { readonly __pluginVizType?: never };
+export type BuiltInVizType = (typeof WidgetVizTypes)[number];
+export type WidgetVizType = BuiltInVizType | "custom" | PluginVizType;
 
 export const widgetTypesSchema = z
-  .enum(WidgetVizTypes, unionErrorMap(`Supported types are ${supportedTypesError}.`))
+  .string()
+  .regex(
+    VIZ_TYPE_PATTERN,
+    `A widget type is a lowercase name. Built-in types are ${supportedTypesError}; widget plugins add others.`,
+  )
   .nullish()
   .meta({ id: "WidgetType" });
 
@@ -325,6 +313,9 @@ export const WidgetStateSchema = z
       .looseObject({
         text: z.string().optional(),
         html: z.string().optional(),
+        plugin: z
+          .strictObject({ config: z.record(z.string(), z.unknown()).optional() })
+          .optional(),
       })
       .optional(),
   })
@@ -378,7 +369,7 @@ const templateShapeDefinition = {
         .object({
           name: z.string(),
           paramName: z.string().optional(),
-          type: z.string(),
+          type: z.enum(["param", "endpointParam"]),
           widgetIds: z.array(z.string()).optional(),
           defaultValue: z.unknown().nullish(),
         })
@@ -397,7 +388,6 @@ const templateShapeDefinition = {
       }),
     )
     .optional(),
-  // Included in the schema so unrecognized-keys detection does not flag it as unknown.
   allowCustomization: z.boolean().optional(),
 };
 
@@ -429,7 +419,6 @@ export const templateSpecificationSchema = z.array(
   z.object(templateShapeDefinition).meta({ id: "AppsJson" }),
 );
 
-// Derived from the Zod schema shape so it stays in sync automatically
 export const KNOWN_TEMPLATE_KEYS = new Set(Object.keys(templateShapeDefinition));
 
 export const WidgetSchemaBase = z.object({
@@ -439,7 +428,6 @@ export const WidgetSchemaBase = z.object({
   name: z.string().optional(),
   showTitle: z.boolean().default(true).nullish(),
   description: z.string().optional(),
-  groupId: z.string().nullish(),
   groupById: z.string().nullish(),
   innerTab: z.string().optional(),
   disableRetrievalForCopilot: z.boolean().optional(),
@@ -454,18 +442,19 @@ export const WidgetSchemaBase = z.object({
   refetchInterval: RefetchIntervalSchema.nullish(),
   dataUpdateDisplay: CronExpressionSchema.optional(),
   runButton: z.boolean().optional(),
-  copilotParseAs: z
-    .union([z.literal("structured"), z.literal("unstructured")])
-    .optional(),
   raw: z.boolean().optional(),
   exportable: z.boolean().default(true).optional(),
 });
 
 export const InternalWidgetSchema = WidgetSchemaBase.extend({
+  plugin: z
+    .strictObject({
+      id: z.string().regex(PLUGIN_ID_PATTERN),
+      widget: z.string().max(48),
+    })
+    .optional(),
   data: z
     .object({
-      mainTicker: TickerSchema.optional(),
-      secondaryTickers: z.array(TickerSchema).optional(),
       html: z.string().optional(),
     })
     .optional()
@@ -486,12 +475,7 @@ export const ExternalWidgetSchema = WidgetSchemaBase.extend({
       method: z.enum(["GET", "POST"]),
     })
     .optional(),
-  data: z
-    .looseObject({
-      mainTicker: TickerSchema.optional(),
-    })
-    .optional()
-    .default({}),
+  data: z.looseObject({}).optional().default({}),
   source: z.union([z.array(z.string()), z.string()]).nullish(),
   sourceId: z.string().nullish(),
   sourceName: z.string().nullish(),
@@ -506,8 +490,21 @@ export const ExternalWidgetSchema = WidgetSchemaBase.extend({
   return val;
 });
 
-export function isWidgetVizType(
+export function isBuiltInVizType(
+  type: string | null | undefined,
+): type is BuiltInVizType {
+  return WidgetVizTypes.some((vizType) => vizType === type);
+}
+
+export function isWellFormedVizType(
   type: string | null | undefined,
 ): type is WidgetVizType {
-  return WidgetVizTypes.some((vizType) => vizType === type);
+  return typeof type === "string" && VIZ_TYPE_PATTERN.test(type);
+}
+
+export function isRenderableVizType(
+  type: string | null | undefined,
+  pluginTypes: ReadonlySet<string> = new Set(),
+): type is WidgetVizType {
+  return isBuiltInVizType(type) || (typeof type === "string" && pluginTypes.has(type));
 }

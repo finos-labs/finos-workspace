@@ -131,7 +131,6 @@ export default function ManageAppDialog() {
   }, [manageAppDialog.data]);
 
   const closeDialog = useCallback(() => {
-    // If editing an active backend and test failed, mark it as inactive
     const wasActive = manageAppDialog.data?.status === "success";
     const testFailed =
       state.errorMessage !== null || state.templateErrorMessage !== null;
@@ -164,7 +163,6 @@ export default function ManageAppDialog() {
       endpointHeaders: [],
       validateWidgets: "false",
     });
-    // Reset the state when closing the dialog
     dispatch(getInitialState());
   }, [
     setManageAppDialog,
@@ -224,18 +222,10 @@ export default function ManageAppDialog() {
         } = await validateSource(source, validateWidgets === "true");
 
         const widgetsCount = Object.keys(widgets).length;
-        /*if (
-          (errorMessage || templateErrorMessage) &&
-          widgetsCount === 0 &&
-          templates.length === 0
-        ) {
-          throw new Error(errorMessage || templateErrorMessage);
-        }*/
 
         const appsCount = templates?.length || 0;
         const failed = totalFailed > 0 ? `, ${totalFailed} failed` : "";
 
-        // Count prompts and MCP servers across all templates
         const { promptsCount, mcpCount } = templates?.reduce(
           (acc, template) => {
             acc.promptsCount += template.prompts?.length || 0;
@@ -245,7 +235,6 @@ export default function ManageAppDialog() {
           { promptsCount: 0, mcpCount: 0 },
         ) ?? { promptsCount: 0, mcpCount: 0 };
 
-        // Create a more detailed success message
         const messageParts = [
           `${widgetsCount} ${widgetsCount === 1 ? "Widget" : "Widgets"} found${failed}`,
           `${appsCount} ${appsCount === 1 ? "App" : "Apps"} found`,
@@ -291,8 +280,6 @@ export default function ManageAppDialog() {
     if (!(state.backendToAdd || form.formState.isDirty)) return;
     const { id, name: prevName } = manageAppDialog.data ?? {};
 
-    // Use current form values if form is dirty, otherwise use cached backendToAdd
-    // Preserve backendPlatform when using form values
     const source = form.formState.isDirty ? form.getValues() : state.backendToAdd;
     if (!source) return;
 
@@ -333,7 +320,6 @@ export default function ManageAppDialog() {
         updateWidgetEndpoints({ ...data, widgets, id, prevName });
         dispatchSaveState();
 
-        // Show activation toast if backend was previously inactive
         const wasInactive = manageAppDialog.data?.status === "error";
         const isNowActive = !errorMessage;
         if (wasInactive && isNowActive) {
@@ -345,7 +331,6 @@ export default function ManageAppDialog() {
         return;
       }
 
-      // Create a more detailed success message
       const widgetsCount = Object.keys(widgets).length;
       const appsCount = templates?.length || 0;
       const promptsCount = templates?.reduce(
@@ -595,7 +580,7 @@ export function TroubleshootMessage() {
 
   useEffect(() => {
     if (isOpen) {
-      const duration = 300; // Scroll duration
+      const duration = 300;
       let startTime: number | null = null;
       const element = document.getElementById("manage-app-form");
 
@@ -603,7 +588,6 @@ export function TroubleshootMessage() {
         if (!startTime) startTime = timestamp;
         const progress = Math.min((timestamp - startTime) / duration, 1);
 
-        // Easing function for smoother motion
         const easeOutCubic = 1 - (1 - progress) ** 3;
 
         if (element) {

@@ -1,0 +1,453 @@
+{
+  "author": [
+    { "name": "nothing", "policy": {}, "ok": true },
+    {
+      "name": "data and blob images",
+      "policy": { "img-src": ["data:", "blob:"] },
+      "ok": true
+    },
+    {
+      "name": "an https host",
+      "policy": { "connect-src": ["https://api.example.com"] },
+      "ok": true
+    },
+    {
+      "name": "an https host with port and path",
+      "policy": { "connect-src": ["https://api.example.com:8443/v1/"] },
+      "ok": true
+    },
+    {
+      "name": "a wildcard host",
+      "policy": { "img-src": ["https://*.tiles.example.com"] },
+      "ok": true
+    },
+    {
+      "name": "wss in connect-src",
+      "policy": { "connect-src": ["wss://stream.example.com"] },
+      "ok": true
+    },
+    {
+      "name": "wss outside connect-src",
+      "policy": { "img-src": ["wss://stream.example.com"] },
+      "ok": false
+    },
+    { "name": "wasm", "policy": { "script-src": ["'wasm-unsafe-eval'"] }, "ok": true },
+    { "name": "eval", "policy": { "script-src": ["'unsafe-eval'"] }, "ok": true },
+    {
+      "name": "eval outside script-src",
+      "policy": { "style-src": ["'unsafe-eval'"] },
+      "ok": false
+    },
+    {
+      "name": "inline styles",
+      "policy": { "style-src": ["'unsafe-inline'"] },
+      "ok": true
+    },
+    {
+      "name": "inline scripts",
+      "policy": { "script-src": ["'unsafe-inline'"] },
+      "ok": false
+    },
+    {
+      "name": "a script hash",
+      "policy": {
+        "script-src": ["'sha256-B2yPHKaXnvFWtRChIbabYmUBFZdVfKKXHbWtWidDVF8='"]
+      },
+      "ok": true
+    },
+    {
+      "name": "a hash in img-src",
+      "policy": {
+        "img-src": ["'sha256-B2yPHKaXnvFWtRChIbabYmUBFZdVfKKXHbWtWidDVF8='"]
+      },
+      "ok": false
+    },
+    { "name": "none alone", "policy": { "connect-src": ["'none'"] }, "ok": true },
+    {
+      "name": "none with a source",
+      "policy": { "connect-src": ["'none'", "https://api.example.com"] },
+      "ok": false
+    },
+    { "name": "self", "policy": { "connect-src": ["'self'"] }, "ok": false },
+    { "name": "star", "policy": { "connect-src": ["*"] }, "ok": false },
+    { "name": "a scheme only", "policy": { "img-src": ["https:"] }, "ok": false },
+    {
+      "name": "strict-dynamic",
+      "policy": { "script-src": ["'strict-dynamic'"] },
+      "ok": false
+    },
+    {
+      "name": "unsafe-hashes",
+      "policy": { "script-src": ["'unsafe-hashes'"] },
+      "ok": false
+    },
+    { "name": "a nonce", "policy": { "script-src": ["'nonce-abc'"] }, "ok": false },
+    {
+      "name": "http",
+      "policy": { "connect-src": ["http://api.example.com"] },
+      "ok": false,
+      "needs": ["insecure-scheme"]
+    },
+    {
+      "name": "an IP literal",
+      "policy": { "connect-src": ["https://10.0.0.5"] },
+      "ok": false,
+      "needs": ["private-host"]
+    },
+    {
+      "name": "localhost",
+      "policy": { "connect-src": ["https://localhost:8443"] },
+      "ok": false,
+      "needs": ["private-host"]
+    },
+    {
+      "name": "a single label",
+      "policy": { "connect-src": ["https://intranet"] },
+      "ok": false,
+      "needs": ["private-host"]
+    },
+    {
+      "name": "an internal name",
+      "policy": { "img-src": ["https://files.corp.internal"] },
+      "ok": false,
+      "needs": ["private-host"]
+    },
+    {
+      "name": "a remote script",
+      "policy": { "script-src": ["https://cdn.example.com"] },
+      "ok": false,
+      "needs": ["remote-script"]
+    },
+    {
+      "name": "credentials in a url",
+      "policy": { "connect-src": ["https://user:pass@api.example.com"] },
+      "ok": false
+    },
+    {
+      "name": "a query",
+      "policy": { "connect-src": ["https://api.example.com/?a=1"] },
+      "ok": false
+    },
+    {
+      "name": "a fragment",
+      "policy": { "connect-src": ["https://api.example.com/#x"] },
+      "ok": false
+    },
+    {
+      "name": "a semicolon",
+      "policy": { "connect-src": ["https://api.example.com;script-src *"] },
+      "ok": false
+    },
+    {
+      "name": "whitespace",
+      "policy": { "connect-src": ["https://a.example.com https://b.example.com"] },
+      "ok": false
+    },
+    {
+      "name": "a quote",
+      "policy": { "connect-src": ["https://api.example.com\""] },
+      "ok": false
+    },
+    {
+      "name": "an angle bracket",
+      "policy": { "connect-src": ["https://api.example.com/<x>"] },
+      "ok": false
+    },
+    {
+      "name": "uppercase host",
+      "policy": { "connect-src": ["https://API.example.com"] },
+      "ok": false
+    },
+    {
+      "name": "non-ascii host",
+      "policy": { "connect-src": ["https://bücher.example.com"] },
+      "ok": false
+    },
+    {
+      "name": "punycode host",
+      "policy": { "connect-src": ["https://xn--bcher-kva.example.com"] },
+      "ok": true
+    },
+    {
+      "name": "a wildcard on one label",
+      "policy": { "img-src": ["https://*.com"] },
+      "ok": false
+    },
+    {
+      "name": "a platform-owned directive",
+      "policy": { "default-src": ["https://api.example.com"] },
+      "ok": false
+    },
+    { "name": "sandbox", "policy": { "sandbox": ["allow-same-origin"] }, "ok": false },
+    {
+      "name": "not a list",
+      "policy": { "connect-src": "https://api.example.com" },
+      "ok": false
+    },
+    {
+      "name": "too many sources",
+      "policy": {
+        "img-src": [
+          "https://a1.example.com",
+          "https://a2.example.com",
+          "https://a3.example.com",
+          "https://a4.example.com",
+          "https://a5.example.com",
+          "https://a6.example.com",
+          "https://a7.example.com",
+          "https://a8.example.com",
+          "https://a9.example.com",
+          "https://a10.example.com",
+          "https://a11.example.com",
+          "https://a12.example.com",
+          "https://a13.example.com",
+          "https://a14.example.com",
+          "https://a15.example.com",
+          "https://a16.example.com",
+          "https://a17.example.com",
+          "https://a18.example.com",
+          "https://a19.example.com",
+          "https://a20.example.com",
+          "https://a21.example.com",
+          "https://a22.example.com",
+          "https://a23.example.com",
+          "https://a24.example.com",
+          "https://a25.example.com",
+          "https://a26.example.com",
+          "https://a27.example.com",
+          "https://a28.example.com",
+          "https://a29.example.com",
+          "https://a30.example.com",
+          "https://a31.example.com",
+          "https://a32.example.com",
+          "https://a33.example.com"
+        ]
+      },
+      "ok": false
+    }
+  ],
+  "override": [
+    {
+      "name": "http with its confirmation",
+      "policy": { "connect-src": ["http://api.example.com"] },
+      "confirmations": ["insecure-scheme"],
+      "ok": true
+    },
+    {
+      "name": "http without it",
+      "policy": { "connect-src": ["http://api.example.com"] },
+      "confirmations": [],
+      "ok": false
+    },
+    {
+      "name": "a private host with its confirmation",
+      "policy": { "connect-src": ["https://10.0.0.5"] },
+      "confirmations": ["private-host"],
+      "ok": true
+    },
+    {
+      "name": "a remote script with its confirmation",
+      "policy": { "script-src": ["https://cdn.example.com"] },
+      "confirmations": ["remote-script"],
+      "ok": true
+    },
+    {
+      "name": "http to a private host needs both",
+      "policy": { "connect-src": ["http://localhost:8080"] },
+      "confirmations": ["insecure-scheme"],
+      "ok": false
+    },
+    {
+      "name": "both given",
+      "policy": { "connect-src": ["http://localhost:8080"] },
+      "confirmations": ["insecure-scheme", "private-host"],
+      "ok": true
+    },
+    {
+      "name": "self is never allowed",
+      "policy": { "connect-src": ["'self'"] },
+      "confirmations": ["insecure-scheme", "private-host", "remote-script"],
+      "ok": false
+    },
+    {
+      "name": "an empty list closes a directive",
+      "policy": { "connect-src": [] },
+      "confirmations": [],
+      "ok": true
+    }
+  ],
+  "compose": [
+    {
+      "name": "the floor",
+      "policy": {},
+      "effective": {
+        "default-src": ["'none'"],
+        "base-uri": ["'none'"],
+        "object-src": ["'none'"],
+        "form-action": ["'none'"],
+        "script-src": ["blob:"],
+        "style-src": ["'unsafe-inline'", "blob:"],
+        "img-src": ["data:", "blob:"],
+        "font-src": ["data:", "blob:"],
+        "media-src": ["data:", "blob:"],
+        "worker-src": ["blob:"],
+        "connect-src": ["'none'"],
+        "frame-src": ["'none'"]
+      }
+    },
+    {
+      "name": "a host replaces none and adds to the floor",
+      "policy": {
+        "connect-src": ["https://api.example.com"],
+        "img-src": ["https://tiles.example.com"]
+      },
+      "effective": {
+        "default-src": ["'none'"],
+        "base-uri": ["'none'"],
+        "object-src": ["'none'"],
+        "form-action": ["'none'"],
+        "script-src": ["blob:"],
+        "style-src": ["'unsafe-inline'", "blob:"],
+        "img-src": ["data:", "blob:", "https://tiles.example.com"],
+        "font-src": ["data:", "blob:"],
+        "media-src": ["data:", "blob:"],
+        "worker-src": ["blob:"],
+        "connect-src": ["https://api.example.com"],
+        "frame-src": ["'none'"]
+      }
+    }
+  ],
+  "network": [
+    {
+      "name": "an https origin",
+      "network": ["https://api.example.com"],
+      "ok": true
+    },
+    {
+      "name": "an https origin with a port",
+      "network": ["https://api.example.com:8443"],
+      "ok": true
+    },
+    {
+      "name": "a wildcard of two labels",
+      "network": ["https://*.example.com"],
+      "ok": true
+    },
+    {
+      "name": "a path",
+      "network": ["https://api.example.com/v1"],
+      "ok": false
+    },
+    {
+      "name": "plain http",
+      "network": ["http://api.example.com"],
+      "ok": false
+    },
+    {
+      "name": "a websocket",
+      "network": ["wss://api.example.com"],
+      "ok": false
+    },
+    {
+      "name": "a bare scheme",
+      "network": ["https:"],
+      "ok": false
+    },
+    {
+      "name": "a wildcard too broad",
+      "network": ["https://*.com"],
+      "ok": false
+    },
+    {
+      "name": "a trailing line break",
+      "network": ["https://api.example.com\n"],
+      "ok": false
+    },
+    {
+      "name": "a private name from an author",
+      "network": ["https://db.internal"],
+      "ok": false
+    },
+    {
+      "name": "an IP address from an author",
+      "network": ["https://10.0.0.8"],
+      "ok": false
+    },
+    {
+      "name": "an IP address with the confirmation",
+      "network": ["https://10.0.0.8"],
+      "override": true,
+      "confirmations": ["private-host"],
+      "ok": true
+    },
+    {
+      "name": "an IP address without it",
+      "network": ["https://10.0.0.8"],
+      "override": true,
+      "confirmations": [],
+      "ok": false
+    },
+    {
+      "name": "localhost with the confirmation",
+      "network": ["https://localhost:8443"],
+      "override": true,
+      "confirmations": ["private-host"],
+      "ok": true
+    },
+    {
+      "name": "a tcp endpoint of a backend",
+      "network": ["tcp://db.example.com:5432"],
+      "backend": true,
+      "ok": true
+    },
+    {
+      "name": "a tcp endpoint without a backend",
+      "network": ["tcp://db.example.com:5432"],
+      "ok": false
+    },
+    {
+      "name": "a tcp endpoint without a port",
+      "network": ["tcp://db.example.com"],
+      "backend": true,
+      "ok": false
+    },
+    {
+      "name": "a tcp endpoint with a path",
+      "network": ["tcp://db.example.com:5432/app"],
+      "backend": true,
+      "ok": false
+    },
+    {
+      "name": "a tcp wildcard",
+      "network": ["tcp://*.example.com:5432"],
+      "backend": true,
+      "ok": false
+    },
+    {
+      "name": "a tcp port out of range",
+      "network": ["tcp://db.example.com:70000"],
+      "backend": true,
+      "ok": false
+    },
+    {
+      "name": "a private tcp host from an author",
+      "network": ["tcp://postgres:5432"],
+      "backend": true,
+      "ok": false
+    },
+    {
+      "name": "a private tcp host with the confirmation",
+      "network": ["tcp://postgres:5432"],
+      "backend": true,
+      "override": true,
+      "confirmations": ["private-host"],
+      "ok": true
+    },
+    {
+      "name": "a tcp address with a trailing line break",
+      "network": ["tcp://db.example.com:5432\n"],
+      "backend": true,
+      "ok": false
+    }
+  ]
+}

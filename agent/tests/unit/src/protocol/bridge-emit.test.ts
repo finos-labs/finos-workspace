@@ -1,12 +1,3 @@
-/**
- * SSE emit adapter — bridge tool input → FINOS Workspace wire input_arguments.
- *
- * Verifies:
- *   - SSE_BRIDGE_COMMANDS are all real bridge commands (rename guard)
- *   - normalizeBridgeArgs reshapes each command to the FINOS Workspace wire shape
- *     that the frontend's copilotFunctionCall schema expects
- */
-
 import { describe, it } from "node:test";
 import { expect } from "expect";
 import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../../../../src/protocol/bridge-commands.ts";

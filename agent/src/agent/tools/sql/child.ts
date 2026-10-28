@@ -1,8 +1,3 @@
-/**
- * The SQL tools' child process (see lib/isolate.ts): builds the database from the tables it is given, runs
- * one tool, and answers with the text for the model and the events the tool queued.
- */
-
 import { serveOnce } from "../../../lib/isolate-child.ts";
 import type { SSEEvent } from "../../../protocol/types.ts";
 import { runCreateArtifact, type CreateArtifactArgs } from "./create-artifact.ts";
@@ -40,5 +35,4 @@ export function runSqlOp(input: SqlChildInput): SqlChildOutput {
   }
 }
 
-// Only when this file is the entry point of the child: importing it (for runSqlOp) starts nothing.
 if (import.meta.main) await serveOnce(runSqlOp);

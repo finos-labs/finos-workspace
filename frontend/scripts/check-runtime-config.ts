@@ -1,11 +1,3 @@
-// Checks app-config.js, which renders config.js in the nginx image, against
-// RuntimeConfigSchema and nginx.conf, so they cannot drift apart. The image build
-// runs it from frontend/:
-//   node scripts/check-runtime-config.ts
-// It fails when a schema field is missing from the module's FIELDS table (or the
-// table names a field the schema does not have), when nginx.conf does not pass
-// exactly the table's variables to nginx's workers, when the config.js the module
-// renders is rejected by the schema, or when the module accepts an invalid value.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
@@ -17,7 +9,6 @@ type AppConfig = {
   render(env: Record<string, string>): string;
 };
 
-// A plain JavaScript module for nginx's njs, so it is imported without types.
 const appConfig: AppConfig = (await import(resolve(process.cwd(), "app-config.js"))).default;
 const rows = appConfig.FIELDS.map(([group, field, variable, type]) => ({
   path: `${group}.${field}`,
@@ -27,7 +18,6 @@ const rows = appConfig.FIELDS.map(([group, field, variable, type]) => ({
   type,
 }));
 
-// For each type: a value to set in the environment and the value config.js must then hold.
 const samples: Record<string, [string, unknown]> = {
   string: ['a "quoted" \\ value', 'a "quoted" \\ value'],
   bool: ["false", false],
@@ -62,7 +52,6 @@ for (const path of new Set(tablePaths)) {
 for (const row of rows) {
   if (!(row.type in samples)) errors.push(`${row.path} has unknown type ${row.type}`);
 }
-// The container takes the variable names of ENV_NAMES without their VITE_ prefix.
 for (const row of rows) {
   const name = (ENV_NAMES as Record<string, Record<string, string>>)[row.group]?.[row.field];
   if (name?.replace(/^VITE_/, "") !== row.variable) {
@@ -70,7 +59,6 @@ for (const row of rows) {
   }
 }
 
-// nginx passes its workers only the variables its env directives name.
 const nginxConf = readFileSync(resolve(process.cwd(), "nginx.conf"), "utf8");
 const passed = [...nginxConf.matchAll(/^env ([A-Z0-9_]+);$/gm)].map((match) => match[1]);
 for (const row of rows) {
@@ -106,7 +94,6 @@ if (!parsed.success) {
   }
 }
 
-// Invalid values make the module throw, so config.js and the health checks answer 500.
 for (const [variable, value, what] of [
   ["AUTHENTICATION_ALLOW_EMAIL_LOGIN", "yes", "boolean"],
   ["UI_DEFAULT_THEME", "blue", "theme"],
@@ -115,7 +102,6 @@ for (const [variable, value, what] of [
     render({ [variable]: value });
     errors.push(`app-config.js accepted an invalid ${what}`);
   } catch {
-    // Expected.
   }
 }
 

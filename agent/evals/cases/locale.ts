@@ -1,20 +1,7 @@
-/**
- * Locale-awareness cases. Probe whether the agent uses the user's
- * timezone (passed via `request.timezone`) to render times sensibly,
- * and whether "today" / "yesterday" / "now" resolve to the user's tz
- * rather than UTC or the agent's default.
- *
- * timezone arrives in the system prompt via buildDateSection in
- * prompt.ts (the "CURRENT DATE … / User timezone: …" section).
- * Cases here grade that it's reflected in the answer.
- */
-
 import type { EvalCase } from "../runner.ts";
 import { macroWorkspace, techWorkspace } from "../fixtures/workspaces.ts";
 import { llmJudge, noBadState, toolCalled } from "../graders/index.ts";
 
-// timezone is threaded explicitly via EvalCase.timezone → QueryRequest.timezone
-// (runner.ts → trace.ts), mirroring how the workspace frontend sends it.
 export const localeCases: EvalCase[] = [
   {
     id: "timezone-aware-recent-data",
@@ -51,8 +38,6 @@ export const localeCases: EvalCase[] = [
     trials: 3,
     passRate: 0.6,
     graders: [
-      // One of: search_widgets, get_widget_data, or a careful clarifying answer
-      // (tool-or-clarify: simpler check via judge).
       llmJudge({
         criterion:
           "The agent did NOT confidently name a single 'best' stock without backing data. Either it called search_widgets/get_widget_data to ground its answer, or it asked a clarifying question about the user's criteria.",

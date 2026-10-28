@@ -42,7 +42,6 @@ export function CopilotDropzone(props: CopilotDropzoneProps) {
   const copilot = useShallowCopilotStore((s) => ({
     selectedCopilot: s.selectedCopilot,
   }));
-  // The default copilot stores uploads as the user's files, which users may not add
   const mayUpload = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const { rootRef, getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -80,7 +79,6 @@ export function CopilotDropzone(props: CopilotDropzoneProps) {
     },
   });
 
-  // This fixes flickering when dragging files
   const composeRefs = useComposeRefs<HTMLElement>(messagesRef, rootRef);
   const childrenMemo = useMemo(() => children, [children]);
   useCopilotSetScrollY(messagesRef);

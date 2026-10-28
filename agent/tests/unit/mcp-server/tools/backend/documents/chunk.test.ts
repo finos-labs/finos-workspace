@@ -85,7 +85,6 @@ describe("chunkDocument — boundary behavior", () => {
       maxTokens: 60,
     });
     expect(out.length).toBeGreaterThan(1);
-    // Some sentence from the tail of chunk[0] should appear inside chunk[1].
     const lastTail = out[0].text.split(/\.\s+/).slice(-2)[0];
     if (lastTail) expect(out[1].text).toContain(lastTail);
   });

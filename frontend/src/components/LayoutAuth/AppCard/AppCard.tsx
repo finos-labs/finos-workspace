@@ -203,9 +203,6 @@ const AppCard = memo<AppCardProps>((props) => {
       });
     }
 
-    // Backends the user connected themselves (type "user") map 1:1 to a row on
-    // the Connections page; link there and highlight it. Excludes shared/listed
-    // backends, whose connection row id wouldn't match this source id.
     const connectionId = template.source?.id;
     if (template.type === "user" && connectionId && mayAddConnections) {
       elements.unshift({

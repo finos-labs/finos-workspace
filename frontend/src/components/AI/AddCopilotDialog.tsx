@@ -78,7 +78,6 @@ export function AddCopilotDialog() {
   const [isTesting, setIsTesting] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
-  // Holder validated by the last successful test, reused on Add to avoid re-fetching.
   const testedHolderRef = useRef<CustomCopilot | null>(null);
 
   const resetTest = useCallback(() => {
@@ -96,7 +95,6 @@ export function AddCopilotDialog() {
     }
   }, [showAddAgentsDialog, form, resetTest]);
 
-  // A successful test only stays valid for the exact url/headers it ran against.
   useEffect(() => {
     const subscription = form.watch((_, { name }) => {
       if (name === "url" || name?.startsWith("endpointHeaders")) {
@@ -134,7 +132,6 @@ export function AddCopilotDialog() {
       return;
     }
 
-    // Only the agent's own headers are saved; identity headers are added per request
     const headers = (values.endpointHeaders || [])
       .filter((header) => header.key && header.value)
       .reduce(
@@ -191,7 +188,6 @@ export function AddCopilotDialog() {
       const selectedCopilot = newHolder.copilots[0];
       setSelectedCopilot(selectedCopilot);
 
-      // Show success toast including enabled features summary
       try {
         const features = selectedCopilot?.features || {};
         const enabledFeatureKeys = Object.entries(features)
@@ -214,7 +210,6 @@ export function AddCopilotDialog() {
         toast.success("AI Agent successfully added");
       }
 
-      // Warn about unexpected feature types/names (integrator guidance)
       try {
         const invalidStringKeys: string[] = [];
         const invalidBooleanCustomKeys: string[] = [];
@@ -224,10 +219,7 @@ export function AddCopilotDialog() {
           for (const [k, v] of Object.entries(feats)) {
             if (typeof v === "string" && !AGENT_ENABLED_FEATURES.has(k)) {
               invalidStringKeys.push(k);
-            }
-            // If it's not one of our recognized boolean features,
-            // warn integrators to use object metadata
-            else if (typeof v === "boolean" && !ALL_AI_FEATURES.has(k)) {
+            } else if (typeof v === "boolean" && !ALL_AI_FEATURES.has(k)) {
               invalidBooleanCustomKeys.push(k);
             }
           }

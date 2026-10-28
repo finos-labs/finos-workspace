@@ -1,13 +1,3 @@
-/**
- * Helper for workspace tool handlers: dispatch a WorkspaceCommand through
- * the bridge to the connected browser, await the result, and shape it into
- * an MCP ContentItem envelope.
- *
- * PoC default: when no `sessionId` is passed, route to the first connected
- * browser. Production: agent-side decoration injects `x-ines-bridge-session-id`
- * (deferred — see plan unresolved questions).
- */
-
 import { errorItem, textItem, type ContentItem } from "../lib/typed.ts";
 import {
   BrowserUnavailableError,

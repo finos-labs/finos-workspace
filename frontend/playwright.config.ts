@@ -1,10 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-/**
- * End-to-end tests against a running stack (`docker compose up` serves the web app on
- * port 3000). They sign in as an account that exists there, which they name through
- * E2E_USER_EMAIL and E2E_USER_PASSWORD; see TESTING.md.
- */
+const CROSS_ENGINE_SPECS = [/plugins?[-.][^/]*spec\.ts$/, /dashboard-persistence\.spec\.ts$/];
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: ["**/*.spec.ts", "**/global.setup.ts"],
@@ -14,7 +10,8 @@ export default defineConfig({
   workers: 1,
   reporter: "html",
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
+    baseURL: process.env.E2E_BASE_URL ?? "https://localhost:3000",
+    ignoreHTTPSErrors: true,
     trace: "on-first-retry",
   },
   projects: [
@@ -36,6 +33,18 @@ export default defineConfig({
       name: "chromium",
       testIgnore: /global\.setup\.ts/,
       use: { ...devices["Desktop Chrome"], storageState: "playwright/.auth/user.json" },
+      dependencies: ["setup"],
+    },
+    {
+      name: "firefox",
+      testMatch: CROSS_ENGINE_SPECS,
+      use: { ...devices["Desktop Firefox"], storageState: "playwright/.auth/user.json" },
+      dependencies: ["setup"],
+    },
+    {
+      name: "webkit",
+      testMatch: CROSS_ENGINE_SPECS,
+      use: { ...devices["Desktop Safari"], storageState: "playwright/.auth/user.json" },
       dependencies: ["setup"],
     },
   ],

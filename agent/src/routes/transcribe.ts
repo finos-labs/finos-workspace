@@ -5,15 +5,10 @@ import { readWav, transcribe, transcribeModel } from "../lib/transcribe.ts";
 
 const logger = getLogger(["app", "transcribe"]);
 
-/**
- * The largest recording taken: two minutes of 16 kHz mono 16-bit audio, the most the web app records for
- * one question, with room for the WAV header.
- */
 export const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 
 export const transcribeRouter = new Hono<AppEnv>();
 
-/** Dictation: a WAV recording in the form field `audio`, answered with `{ text }`. */
 transcribeRouter.post("/v1/transcribe", async (c) => {
   if (!transcribeModel()) return c.json({ error: "Speech to text is not set up for this agent." }, 404);
 
@@ -28,7 +23,6 @@ transcribeRouter.post("/v1/transcribe", async (c) => {
   const started = performance.now();
   try {
     const text = await transcribe(audio, c.req.raw.signal);
-    // What was said is the user's: only its size and how long it took are logged.
     logger.info("Transcribed a recording", {
       bytes: audio.bytes.length,
       ms: Math.round(performance.now() - started),

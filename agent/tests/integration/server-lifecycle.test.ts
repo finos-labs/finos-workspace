@@ -1,7 +1,3 @@
-/**
- * Tier 2 — the real server process: it starts, answers, and stops politely when it is told to.
- */
-
 import { describe, it } from "node:test";
 import { expect } from "expect";
 import { spawn, type ChildProcess } from "node:child_process";
@@ -11,7 +7,6 @@ import { setTimeout as sleep } from "node:timers/promises";
 const SERVER = join(import.meta.dirname, "../../src/server.ts");
 const MCP_SERVER = join(import.meta.dirname, "../../mcp-server/src/server.ts");
 
-/** A server process, its exit code once it ends, and everything it wrote. */
 function run(script: string, env: Record<string, string>) {
   const proc = spawn(process.execPath, [script], { stdio: ["ignore", "pipe", "pipe"], env });
   let output = "";
@@ -31,7 +26,6 @@ async function startServer(extraEnv: Record<string, string> = {}): Promise<{ pro
     try {
       if ((await fetch(`${base}/status`)).ok) return { proc, exited, base };
     } catch {
-      /* not up yet */
     }
     await sleep(100);
   }

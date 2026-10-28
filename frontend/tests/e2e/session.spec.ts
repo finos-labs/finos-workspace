@@ -1,7 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-// The web session is an HttpOnly cookie: scripts never see it and nothing secret is
-// written to browser storage, yet a reload keeps the user signed in.
 test("the session survives a reload and stays out of the page's reach", async ({
   page,
   context,

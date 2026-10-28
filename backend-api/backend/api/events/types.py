@@ -17,3 +17,4 @@ class RoleResourceType(StrEnum):
     FILE = "file"
     PROMPT = "prompt"
     USER = "user"
+    WIDGET_PLUGIN = "widget_plugin"

@@ -130,8 +130,6 @@ describe("McpCreateTokenDialog", () => {
       <McpCreateTokenDialog open={false} onClose={vi.fn()} endpoint={ENDPOINT} />,
     );
 
-    // Closing must also reset, so the raw token does not linger in the
-    // mutation cache while the dialog is hidden.
     expect(mutationRef.current.reset).toHaveBeenCalledTimes(2);
   });
 

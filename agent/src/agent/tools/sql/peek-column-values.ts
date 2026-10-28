@@ -1,7 +1,3 @@
-/**
- * peek_column_values — show unique values for a column. Stateless.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import { buildDb, tableNotFoundMessage } from "./db.ts";

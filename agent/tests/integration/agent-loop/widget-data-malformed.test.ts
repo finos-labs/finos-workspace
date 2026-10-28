@@ -1,12 +1,3 @@
-/**
- * Tier 2 — pre-call schema validation for `get_widget_data` and
- * `get_skill_content`.
- *
- * If the model emits an input that the Vercel AI SDK accepts but our
- * stricter schema rejects (or schemas drift), the loop must NOT crash
- * and must NOT emit a `copilotFunctionCall`.
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
@@ -53,7 +44,6 @@ describe("get_widget_data — malformed input is rejected without emit", () => {
         request: { messages: [{ role: "human", content: "go" }] } as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeSequencedMockLlm([
-          // missing required `widgets` key
           llmCallsTool("get_widget_data", { foo: "bar" }),
           llmEmitsText("ok, asking again with widgets next time"),
         ]),

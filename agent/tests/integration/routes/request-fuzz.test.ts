@@ -1,9 +1,3 @@
-/**
- * Tier 2 — the question route against requests that are made to be wrong: random shapes, types, depths, sizes
- * and text in every field of a real request. Whatever is sent, the answer is a refusal or a stream, never a
- * crash (500), never a hang, and nothing unhandled is left in the process.
- */
-
 import { describe, it, beforeEach, afterEach, mock } from "node:test";
 import { expect } from "expect";
 import { llmEmitsText, makeMockLlm } from "../../helpers/mock-llm.ts";
@@ -64,7 +58,11 @@ const valid = () => ({
     { role: "ai", content: "hi there" },
     { role: "human", content: "what do I have?" },
   ],
-  widgets: { primary: [widget(1)], secondary: [widget(2)], extra: [] },
+  widgets: {
+    primary: [{ ...widget(1), mcp_tool: { server_id: "s", tool_name: "web_search", args: { query: "$q", region: "eu" } } }],
+    secondary: [widget(2)],
+    extra: [],
+  },
   context: [{ type: "text", text: "notes" }],
   urls: [],
   timezone: "Europe/Madrid",
@@ -95,7 +93,6 @@ function oddValue(random: () => number, depth = 0): unknown {
   }
 }
 
-/** Every path of an object that can be replaced (objects and arrays are walked, a few levels down). */
 function paths(value: unknown, prefix: (string | number)[] = [], depth = 0): (string | number)[][] {
   if (depth > 3 || value === null || typeof value !== "object") return [prefix];
   const entries = Array.isArray(value) ? value.map((_, i) => i) : Object.keys(value);
@@ -127,7 +124,6 @@ const send = (body: string, token = "alice-token", chat = "fuzz-chat") =>
     body,
   });
 
-// The route reads DEFAULT_MODEL from the environment, as the deployment's config does.
 const savedDefaultModel = process.env.DEFAULT_MODEL;
 beforeEach(() => {
   clearAllModuleState();
@@ -140,7 +136,6 @@ afterEach(() => {
 
 describe("questions that are made to be wrong", () => {
   it("are refused or answered, never a crash, never a hang, whatever is wrong in them", { timeout: 600_000 }, async () => {
-    // FUZZ_SEED and FUZZ_ITERATIONS run it longer, with other numbers, by hand.
     const random = seeded(Number(process.env.FUZZ_SEED ?? 2026));
     const iterations = Number(process.env.FUZZ_ITERATIONS ?? 400);
     const unhandledBefore = unhandledCount();
@@ -149,7 +144,7 @@ describe("questions that are made to be wrong", () => {
       const body = mutate(random);
       const started = performance.now();
       const res = await send(body, "alice-token", `fuzz-${i}`);
-      const text = await res.text(); // a stream is read to its end
+      const text = await res.text();
       const took = performance.now() - started;
       statuses.set(res.status, (statuses.get(res.status) ?? 0) + 1);
       if (res.status >= 500 || took > 5000) {
@@ -157,7 +152,6 @@ describe("questions that are made to be wrong", () => {
       }
     }
     expect([...statuses.keys()].every((s) => [200, 400, 413, 429].includes(s))).toBe(true);
-    // Some were still questions (the mutation hit something the route does not look at), and many were not.
     expect(statuses.get(200) ?? 0).toBeGreaterThan(10);
     expect(statuses.get(400) ?? 0).toBeGreaterThan(10);
     expect(unhandledCount()).toBe(unhandledBefore);

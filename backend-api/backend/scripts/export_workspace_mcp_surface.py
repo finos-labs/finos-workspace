@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from workspace_mcp.server import SERVER_INSTRUCTIONS, create_mcp_server
+from workspace_mcp.server import LIVE_RESOURCE_TAG, SERVER_INSTRUCTIONS, create_mcp_server
 from workspace_mcp.state import BridgeSessionManager
 
 FIXTURE_NOTE = (
@@ -71,6 +71,8 @@ async def _collect_workspace_mcp_surface() -> dict[str, Any]:
                 "tags": sorted(getattr(resource, "tags", []) or []),
             }
         )
+        if LIVE_RESOURCE_TAG in (getattr(resource, "tags", None) or set()):
+            continue
         result = await server.read_resource(uri)
         resource_bodies[uri] = [
             {"mime_type": content.mime_type, "content": content.content}

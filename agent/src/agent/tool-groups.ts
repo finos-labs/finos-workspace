@@ -1,30 +1,8 @@
-/**
- * Which tools the model is given, and when.
- *
- * Every model call used to carry all of the tools' definitions and all of their instructions: ~10k tokens
- * before the user's question, for a question that needed none of them. The model now knows that tools exist
- * (a short catalog in the system prompt, grouped by what they are for) and is given the definitions and the
- * instructions of the groups it uses:
- *
- *  - the tools that every question can need are always there (`CORE_TOOLS`);
- *  - the tools that the FINOS Workspace supplies are always there, each with its description and its parameters,
- *    because that metadata is what says how a tool is used: those of the servers the user has connected (they
- *    belong to no group), and the FINOS Workspace's own (an `always` group, whose instructions are always in the
- *    prompt). The model reads them before it acts; a one-line catalog would have it call them blind;
- *  - any other group is loaded by the model with `load_tools`, or by the agent when the state makes it certain
- *    (the SQL tools once tables are loaded, the document tools when there is a PDF to read);
- *  - a tool the model calls although its group is not loaded is not refused: it loads its group.
- *
- * A group's instructions (`notes`) are in the system prompt for as long as the group is loaded, so they ride
- * with the tools they are about, and cost nothing when the tools are not used.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import type { McpToolEntry } from "../mcp/factory.ts";
 import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server.ts";
 
-/** Always given: what a question about the user's data, files or conversation starts with. */
 export const CORE_TOOLS: ReadonlySet<string> = new Set([
   "search_widgets",
   "get_widget_data",
@@ -35,21 +13,15 @@ export const CORE_TOOLS: ReadonlySet<string> = new Set([
 ]);
 
 export interface ToolGroup {
-  /** What the model passes to `load_tools`. */
   id: string;
-  /** One line for the catalog: what the group is for. */
   summary: string;
-  /** The tools of the group, as they are registered (an MCP tool by its prefixed name). */
   tools: string[];
-  /** Instructions for using them, in the system prompt while the group is loaded. */
   notes: string;
-  /** The tools are given to the model whether or not it asked: the group is never in the catalog of what can be loaded. */
   always?: true;
 }
 
 export interface ToolCatalog {
   groups: ToolGroup[];
-  /** The group a tool belongs to; a tool in none of them is a core tool. */
   groupOf: ReadonlyMap<string, string>;
 }
 
@@ -79,7 +51,7 @@ const WORKSPACE_NOTES =
   "A result says ok: false and why when a call did not work: read it, fix the call or say that it cannot be done, and never say that something changed unless a result says it did.";
 
 const APPS_NOTES =
-  "- create_app assembles connected widgets into a multi-tab dashboard app the user can open or save. Call search_widgets first and pass each widget's (origin, widget_id) with grid x/y/w/h; ticker/symbol sync is detected automatically.";
+  "- create_app assembles connected widgets into a multi-tab dashboard app the user can open or save. Call search_widgets first and pass each widget's (origin, widget_id) with grid x/y/w/h.";
 
 const RENDER_NOTES =
   "- create_html_artifact: render a small inline HTML report or chart (max 50 KB) for a one-off layout; after create_artifact-style rendering succeeds, do not repeat the markup in the answer. For flowchart-like renders prefer a Mermaid diagram tool when one is listed, with `flowchart TD`.\n" +
@@ -98,10 +70,6 @@ const WEB_FETCH_NOTE =
   "fetch_webpage returns an overview of a page and a page_id, not the page; read only what you need with inspect_webpage (text from an offset, a phrase, a CSS selector, links, tables that load for SQL, embedded JSON, the source)";
 const WEB_NOTES = `- ${WEB_SEARCH_NOTE}; ${WEB_FETCH_NOTE}. Cite what you take from them.`;
 
-/**
- * The web group as the user has it: an administrator can switch off searching or reading for a user, and the
- * group is then made of the one tool that is left, which must not be described as having the other.
- */
 function describeWebGroup(tools: readonly string[]): { summary: string; notes: string } {
   const search = tools.some((name) => endsWithCanonical(name, "web_search"));
   const fetch = tools.some((name) => endsWithCanonical(name, "fetch_webpage"));
@@ -118,14 +86,10 @@ interface StaticGroup {
   id: string;
   summary: string;
   notes: string;
-  /** Registered tool names that belong to it (in-process tools), or canonical MCP names matched as a suffix. */
   names: readonly string[];
   mcp?: true;
-  /** For a group whose description depends on which of its tools exist for the user. */
   describe?: (tools: readonly string[]) => { summary: string; notes: string };
-  /** The group is the tools of this MCP server, whatever they are called (`names` are then not used). */
   server?: string;
-  /** See `ToolGroup.always`. */
   always?: true;
 }
 
@@ -197,11 +161,6 @@ function endsWithCanonical(name: string, canonical: string): boolean {
   return name === canonical || name.endsWith(`_${canonical}`);
 }
 
-/**
- * The groups of the tools registered for a request. `toolNames` are the registered names of every tool that
- * could be offered (the core ones too); the entries describe the MCP ones. A tool that belongs to no group (a
- * core tool, or a tool of a server the user connected) is not deferred: its definition is always given.
- */
 export function buildToolCatalog(toolNames: readonly string[], mcpEntries: readonly McpToolEntry[]): ToolCatalog {
   const mcpByName = new Map(mcpEntries.map((entry) => [entry.sanitizedName, entry]));
   const groups: ToolGroup[] = [];
@@ -228,7 +187,6 @@ export function buildToolCatalog(toolNames: readonly string[], mcpEntries: reado
 }
 
 
-/** The tools whose definitions go to the model: the core ones that exist, and those of the groups that are loaded. */
 export function activeToolNames(catalog: ToolCatalog, toolNames: readonly string[], loaded: ReadonlySet<string>): string[] {
   const always = new Set(catalog.groups.filter((g) => g.always).map((g) => g.id));
   return toolNames.filter((name) => {
@@ -237,7 +195,6 @@ export function activeToolNames(catalog: ToolCatalog, toolNames: readonly string
   });
 }
 
-/** The groups that a tool call proves the model needs: it used a tool of the group. */
 export function groupsOfCalledTools(catalog: ToolCatalog, calledTools: Iterable<string>): string[] {
   const groups = new Set<string>();
   for (const name of calledTools) {
@@ -247,7 +204,6 @@ export function groupsOfCalledTools(catalog: ToolCatalog, calledTools: Iterable<
   return [...groups];
 }
 
-/** The part of the system prompt that says which tools exist and which are loaded. */
 export function renderToolCatalog(catalog: ToolCatalog, loaded: ReadonlySet<string>): string {
   const deferred = catalog.groups.filter((g) => !g.always);
   if (deferred.length === 0) return "";
@@ -263,7 +219,6 @@ export function renderToolCatalog(catalog: ToolCatalog, loaded: ReadonlySet<stri
   );
 }
 
-/** Instructions for the groups that are loaded; empty when none of them has any. */
 export function renderToolNotes(catalog: ToolCatalog, loaded: ReadonlySet<string>): string {
   const parts = catalog.groups
     .filter((g) => (g.always || loaded.has(g.id)) && g.notes)
@@ -273,11 +228,9 @@ export function renderToolNotes(catalog: ToolCatalog, loaded: ReadonlySet<string
 
 export interface LoadToolsOptions {
   catalog: ToolCatalog;
-  /** The groups loaded so far: `load_tools` adds to it. */
   loaded: Set<string>;
 }
 
-/** `load_tools`: the way the model asks for the groups it needs. */
 export function makeLoadToolsTool({ catalog, loaded }: LoadToolsOptions) {
   const ids = catalog.groups.filter((g) => !g.always).map((g) => g.id);
   return tool({

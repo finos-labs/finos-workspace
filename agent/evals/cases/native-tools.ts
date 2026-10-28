@@ -1,15 +1,3 @@
-/**
- * Native-tool selection cases.
- *
- * Verifies the model picks the right Phase-4 helper for each prompt shape:
- *   - Pasted unstructured text + "make a table" → create_table_from_text.
- *   - "Build an HTML report / dashboard" with structured rows already loaded
- *     → create_html_artifact (or create_artifact). We accept either to give
- *     the model latitude in picking the most appropriate artifact tool.
- *
- * No mock LLM here — uses the real eval model, single-shot.
- */
-
 import type { EvalCase } from "../runner.ts";
 import type { ToolMessage } from "../../src/protocol/types.ts";
 import {
@@ -82,10 +70,6 @@ export const nativeToolsCases: EvalCase[] = [
     trials: 3,
     passRate: 0.5,
     graders: [
-      // Accept either tool — the goal is "produces an artifact", not the
-      // exact one. `toolCalled` is OR-ed by case-level pass count if we
-      // duplicate the case; here we accept by listing both with a permissive
-      // grader: one of the two must fire.
       {
         name: 'toolCalled("create_html_artifact" OR "create_artifact")',
         grader: (trace) => {

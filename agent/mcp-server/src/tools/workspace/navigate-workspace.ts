@@ -1,10 +1,3 @@
-/**
- * navigate_workspace — push the FINOS Workspace router to a dashboard or inner tab.
- *
- * Mirrors workspace_mcp/server.py:1186-1227 with operation-specific required
- * fields enforced inline.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";
@@ -24,7 +17,7 @@ export const navigateWorkspaceSchema = {
     .string()
     .optional()
     .describe(
-      "Tab id (slug-form, e.g. 'aapl-analysis'). Required when operation='tab'.",
+      "Tab id (slug-form, e.g. 'quarterly-review'). Required when operation='tab'.",
     ),
 } as const;
 
@@ -59,7 +52,6 @@ export async function navigateWorkspaceHandler(args: {
     return { content };
   }
 
-  // tab
   if (!args.tab_id) {
     return {
       content: [

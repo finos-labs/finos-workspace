@@ -1,11 +1,3 @@
-/**
- * App-builder resource catalog smoke test.
- *
- * Asserts that all 16 markdown files declared in resources/app-builder.ts
- * exist on disk and resolve via the same import.meta.dirname path the server
- * uses at boot.
- */
-
 import { describe, test } from "node:test";
 import { expect } from "expect";
 import { existsSync } from "node:fs";
@@ -54,7 +46,6 @@ describe("app-builder resources", () => {
       expect(text.length).toBeGreaterThan(0);
       totalBytes += text.length;
     }
-    // Sanity: the guides are shipped whole, not as stubs.
     expect(totalBytes).toBeGreaterThan(30_000);
   });
 });

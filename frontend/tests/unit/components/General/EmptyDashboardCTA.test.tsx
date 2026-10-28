@@ -9,7 +9,6 @@ import { TabProvider } from "~/lib/contexts/TabContext";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { setAccess } from "../../factories";
 
-// Mock dependencies
 vi.mock("~/components/DataConnectors/Providers/DataConnectorContext", () => ({
   useDataConnectorContext: vi.fn(),
 }));
@@ -82,7 +81,6 @@ describe("EmptyDashboardCTA Component", () => {
       name: "Browse apps",
     });
     const addTemplateButton = addTemplateButtons[0];
-    // Expect the button to be in the document
     expect(addTemplateButton).toBeInTheDocument();
   });
 });

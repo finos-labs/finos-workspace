@@ -28,6 +28,7 @@
     "vitest.setup.ts",
     "playwright.config.ts",
     "scripts/check-runtime-config.ts",
+    "scripts/generate-widgets-schema.ts",
     "tailwind.config.ts"
   ]
 }

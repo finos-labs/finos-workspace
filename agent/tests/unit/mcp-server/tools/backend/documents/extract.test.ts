@@ -23,7 +23,7 @@ describe("extractDocument — text + markdown", () => {
   });
 
   it("rejects unknown formats with a clear error", async () => {
-    // @ts-expect-error — testing the runtime guard for unknown formats
+    // @ts-expect-error
     await expect(extractDocument("xls", new Uint8Array())).rejects.toThrow(
       /Unsupported document format/,
     );

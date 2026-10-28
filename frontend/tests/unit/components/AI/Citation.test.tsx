@@ -247,7 +247,6 @@ describe("Citation", () => {
     );
 
     expect(screen.getByText("Open a dashboard to add this widget")).toBeInTheDocument();
-    // The reason is a caption, not a dead CTA the user could try to press.
     expect(
       screen.queryByRole("button", { name: "Open a dashboard to add this widget" }),
     ).toBeNull();

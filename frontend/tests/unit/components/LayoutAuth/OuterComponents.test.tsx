@@ -4,7 +4,6 @@ import OuterComponents from "~/components/LayoutAuth/OuterComponents";
 import type { SharingLevel } from "~/lib/state/access";
 import { setAccess } from "../../factories";
 
-// The share dialogs have been asked for
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({

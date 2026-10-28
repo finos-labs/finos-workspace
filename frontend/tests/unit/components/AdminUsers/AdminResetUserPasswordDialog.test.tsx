@@ -69,7 +69,6 @@ describe("AdminResetUserPasswordDialog", () => {
       ),
     ).toBeInTheDocument();
     expect(defaultProps.onConfirm).toHaveBeenCalled();
-    // The admin closes the dialog once the link is copied
     expect(defaultProps.onClose).not.toHaveBeenCalled();
     expect(screen.queryByText("Yes, reset password")).not.toBeInTheDocument();
 

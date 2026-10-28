@@ -1,22 +1,3 @@
-"""hashed sessions
-
-Sessions are looked up by the SHA-256 hash of a random token that only the client holds
-(session.token_hash); the row's uuid is no longer the token. The sessions that exist were
-issued under the old scheme and are deleted: everybody signs in again.
-
-The content of saved dashboards and apps loses the data backend credentials that widgets
-carried in it (endpoint headers and query values, and backend header rows): widgets look
-them up in the data backend when they fetch.
-
-downgrade() drops the column, again with every session. It does not put back the copies of
-the credentials it removed from saved dashboards and apps.
-
-Revision ID: 7002053173be
-Revises: ff59d563599c
-Create Date: 2026-10-15
-
-"""
-
 import gzip
 import json
 import logging
@@ -27,7 +8,6 @@ import sqlalchemy_utils
 from alembic import op  # type: ignore
 from api.schemas import strip_endpoint_credentials
 
-# revision identifiers, used by Alembic.
 revision = "7002053173be"
 down_revision = "ff59d563599c"
 branch_labels = None
@@ -36,7 +16,6 @@ depends_on = None
 log = logging.getLogger("alembic.runtime.migration")
 
 UUID_TYPE = sqlalchemy_utils.types.uuid.UUIDType()
-# Tables whose gzipped JSON content holds saved widgets
 CONTENT_TABLES = ("dashboard_item", "dashboard_save", "user_app")
 BATCH_SIZE = 200
 

@@ -1,18 +1,8 @@
-/**
- * Keeps secrets and what users wrote out of the logs.
- *
- * A model provider's error carries the whole request (every message of the conversation, a file's
- * bytes), and a presigned file URL is a working download link for an hour, so anything that is
- * logged goes through here first. Pure and free of imports, so the agent and the MCP server share it.
- */
-
 const MAX_STRING = 2000;
-/** How much of a string is looked through for secrets: what is kept, with room for what a redaction shortens. */
 const MAX_SCAN = 4000;
 const MAX_ARRAY = 20;
 const MAX_DEPTH = 6;
 
-// Fields that hold what a user sent or a provider received, in full. Never worth a log line.
 const PAYLOAD_KEYS = new Set([
   "requestbodyvalues",
   "messages",
@@ -22,7 +12,6 @@ const PAYLOAD_KEYS = new Set([
   "base64",
 ]);
 
-// A string under a key like these is a credential.
 const SECRET_KEY = /authorization|cookie|password|passwd|secret|token|api[-_]?key|signature|credential/i;
 
 const BEARER = /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi;
@@ -34,7 +23,6 @@ const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g;
 const DATA_URL = /data:[\w/+.-]+;base64,[A-Za-z0-9+/=_-]{100,}/g;
 const BASE64_BLOB = /^[A-Za-z0-9+/=_-]+$/;
 
-/** A cut piece of text without the word the cut went through: half a secret is not a secret that a pattern finds. */
 function whole(piece: string): string {
   for (let i = piece.length - 1; i >= piece.length - 300 && i > 0; i--) {
     const c = piece.charCodeAt(i);
@@ -45,9 +33,6 @@ function whole(piece: string): string {
 
 export function redactString(value: string): string {
   if (value.length > 200 && BASE64_BLOB.test(value)) return `[base64 ${value.length} chars]`;
-  // Only the start of a string is ever kept (MAX_STRING), so only that much is looked through: a provider's
-  // error repeats what the user sent, and a megabyte made to be slow for the patterns below (the e-mail
-  // one starts again at every character of "a.a.a.a.") would stop the whole agent while it was redacted.
   const head = value.length > MAX_SCAN ? whole(value.slice(0, MAX_SCAN)) : value;
   let out = head
     .replace(DATA_URL, (m) => `data:[base64 ${m.length} chars]`)
@@ -105,13 +90,11 @@ export function redactValue(value: unknown, depth = 0, seen: WeakSet<object> = n
   }
 }
 
-/** The shape of a LogTape record, which is all this needs of it. */
 interface RecordLike {
   readonly message: readonly unknown[];
   readonly properties: Record<string, unknown>;
 }
 
-/** The same record with its message and properties redacted. */
 export function redactRecord<T extends RecordLike>(record: T): T {
   return {
     ...record,

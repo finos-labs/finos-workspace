@@ -88,7 +88,6 @@ describe("McpConnectSnippets", () => {
     expect(screen.getByRole("tab", { name: "Claude Code" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Codex" })).toBeInTheDocument();
 
-    // Prompt is the default tab; Radix only mounts the active panel.
     const panel = screen.getByTestId("mcp-connect-snippets");
     expect(panel.textContent).toContain(ENDPOINT);
     expect(panel.textContent).toContain(`Authorization: Bearer ${TOKEN}`);

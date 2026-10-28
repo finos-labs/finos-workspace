@@ -1,9 +1,3 @@
-"""Shared utilities for FINOS Workspace MCP tool handlers.
-
-Response builders, command-payload translators, and small predicates used by
-more than one tool module.
-"""
-
 from __future__ import annotations
 
 import json
@@ -25,17 +19,11 @@ RESULT_REF_URI_TEMPLATE = "workspace://results/{result_id}"
 
 
 class ResultOffloadStore:
-    """Keep the last few offloaded full tool results, FIFO-evicted.
-
-    Stored per sidecar process for the session's lifetime; no TTL.
-    """
-
     def __init__(self, max_entries: int = 15):
         self._max_entries = max_entries
         self._entries: dict[str, Any] = {}
 
     def put(self, data: Any) -> str:
-        """Store one full result payload and return its result_id."""
         result_id = uuid4().hex
         self._entries[result_id] = data
         while len(self._entries) > self._max_entries:
@@ -43,7 +31,6 @@ class ResultOffloadStore:
         return result_id
 
     def get(self, result_id: str) -> Any:
-        """Return the stored payload; raises KeyError when missing or evicted."""
         return self._entries[result_id]
 
 
@@ -55,14 +42,6 @@ def maybe_offload_result(
     summarize: Callable[[Any], dict[str, Any]],
     message_template: str,
 ) -> ToolResponse:
-    """Offload a large successful result's data behind an MCP resource.
-
-    Returns the result unchanged when it failed, has no data, or its serialized
-    data fits within ``threshold`` chars. Otherwise stores the full data in
-    ``store``, replaces ``data`` with ``summarize(data)`` plus ``truncated`` and
-    ``result_ref``, and appends ``message_template`` (formatted with ``uri``) to
-    the result message.
-    """
     data = result.get("data")
     if not result.get("ok") or data is None:
         return result
@@ -80,13 +59,7 @@ def maybe_offload_result(
 
 
 def literal_values(alias: Any) -> list[str]:
-    """Return the string members of a ``type X = Literal[...]`` alias."""
     return list(get_args(alias.__value__))
-
-
-# ---------------------------------------------------------------------------
-# Widget config builders
-# ---------------------------------------------------------------------------
 
 
 def widget_config(
@@ -94,7 +67,6 @@ def widget_config(
     data_args: dict[str, Any] | None,
     ui_args: dict[str, Any] | None,
 ):
-    """Build widget config only when the caller supplied config values."""
     if data_args is None and ui_args is None:
         return None
     return WorkspaceWidgetConfig(data_args=data_args, ui_args=ui_args)
@@ -103,19 +75,16 @@ def widget_config(
 def required_widget_config(
     *, data_args: dict[str, Any] | None, ui_args: dict[str, Any] | None
 ):
-    """Build widget config for commands that always expect the field."""
     return (
         widget_config(data_args=data_args, ui_args=ui_args) or WorkspaceWidgetConfig()
     )
 
 
 def payload_list(items: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
-    """Normalize list payloads so MCP callers can omit optional arrays."""
     return items or []
 
 
 def has_layout_ui_args(ui_args: dict[str, Any] | None) -> bool:
-    """Detect layout-oriented widget UI args that need the layout tool instead."""
     if not isinstance(ui_args, dict):
         return False
 
@@ -142,15 +111,9 @@ def has_layout_ui_args(ui_args: dict[str, Any] | None) -> bool:
     )
 
 
-# ---------------------------------------------------------------------------
-# Tool error envelopes
-# ---------------------------------------------------------------------------
-
-
 def invalid_request(
     command: str, message: str, *, details: dict[str, Any] | None = None
 ) -> ToolResponse:
-    """Build a standard invalid-request tool response."""
     return {
         "ok": False,
         "command": command,
@@ -170,7 +133,6 @@ def invalid_request(
 def require_widget_identifier(
     command: str, *, widget_uuid: str | None, widget_id: str | None
 ) -> ToolResponse | None:
-    """Reject widget-instance commands that carry no usable identifier."""
     if widget_uuid or widget_id:
         return None
     return invalid_request(
@@ -182,16 +144,11 @@ def require_widget_identifier(
     )
 
 
-# ---------------------------------------------------------------------------
-# Validators
-# ---------------------------------------------------------------------------
-
 def validate_add_generative_widget_request(
     *,
     widget_type: str,
     data: str | None,
 ) -> str | None:
-    """Validate the generative widget payload: note and html widgets take a string."""
     if not isinstance(data, str):
         return (
             f"add_generative_widget with widget_type='{widget_type}' "
@@ -200,13 +157,7 @@ def validate_add_generative_widget_request(
     return None
 
 
-# ---------------------------------------------------------------------------
-# Browser-bridge payload translators
-# ---------------------------------------------------------------------------
-
-
 def data_source_payloads(items: list[WidgetDataRequest]) -> list[dict[str, Any]]:
-    """Translate MCP-facing widget data items into the browser command shape."""
     return [
         {
             "origin": item.origin,
@@ -219,7 +170,6 @@ def data_source_payloads(items: list[WidgetDataRequest]) -> list[dict[str, Any]]
 
 
 def param_options_payloads(items: list[ParamOptionsRequest]) -> list[dict[str, Any]]:
-    """Translate MCP-facing option-query items into the browser command shape."""
     return [
         {
             "origin": item.origin,
@@ -231,13 +181,7 @@ def param_options_payloads(items: list[ParamOptionsRequest]) -> list[dict[str, A
     ]
 
 
-# ---------------------------------------------------------------------------
-# Prompt content builders
-# ---------------------------------------------------------------------------
-
-
 def session_context_prompt_content(state: BridgeSessionManager) -> str:
-    """Describe the currently tracked dashboard and tab session context."""
     session = state.get_session_context()
     if session is None:
         return "No FINOS Workspace browser session context is currently available."

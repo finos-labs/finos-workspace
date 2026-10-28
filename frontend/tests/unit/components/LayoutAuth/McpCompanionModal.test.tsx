@@ -210,10 +210,6 @@ describe("McpCompanionModal", () => {
   });
 
   it("surfaces a success toast when the bridge connects", async () => {
-    // React.memo skips re-renders when props are unchanged; the store
-    // subscription drives the re-render in production. Pass a changing prop
-    // (ignored by the component) to force a re-render without remounting (which
-    // would reset the previous-status ref the transition check relies on).
     const Modal = McpCompanionModal as unknown as (props: {
       _tick?: number;
     }) => ReactNode;

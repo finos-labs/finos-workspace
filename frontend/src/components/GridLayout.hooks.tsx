@@ -436,7 +436,6 @@ export function useDragAndDropFiles(locked: boolean) {
 
       const toUpload = await prepareFiles(acceptedFiles);
 
-      // check if all files are valid
       if (toUpload.length === 0) {
         return toast.error("Invalid file(s)", {
           description: fileToLarge

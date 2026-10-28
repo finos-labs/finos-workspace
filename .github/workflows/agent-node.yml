@@ -1,10 +1,5 @@
 name: Agent Node
 
-# The Node the agent's images run on: the finos-node release (finos-node.yml) that every job building
-# those images, or running the agent's tests, uses in place of the stage `node` of agent/Dockerfile
-# (docker build --build-context node=docker-image://<image>). No job compiles Node. A new release is
-# used by changing RELEASE below, by tag and digest.
-
 on:
   workflow_call:
     outputs:
@@ -25,7 +20,7 @@ jobs:
     outputs:
       image: ${{ steps.image.outputs.image }}
     steps:
-      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

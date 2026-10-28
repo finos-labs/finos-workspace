@@ -1,11 +1,3 @@
-"""No cache keeps an answer to a request that carried a credential.
-
-Such answers hold the user's data and the secrets the browser itself must send (the data
-backends' headers, the custom agents' headers), and a browser writes a cacheable answer to
-its disk cache, where it would outlive the page and the session. Every answer to a request
-with a cookie or a token is `Cache-Control: no-store`, unless the route set its own.
-"""
-
 import pytest
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse

@@ -155,9 +155,6 @@ describe("useWorkspaceBridgeSnapshot", () => {
     expect(snapshot).not.toHaveProperty("tools");
   });
 
-  // Regression: workspace-mcp's WorkspaceSnapshot.workspace_options is list[str].
-  // Sending {} fails Pydantic validation and the sidecar returns
-  // "Browser returned an invalid workspace snapshot payload."
   it("emits workspace_options as a string[] (not an object)", () => {
     const { result } = renderHook(() => useWorkspaceBridgeSnapshot());
 

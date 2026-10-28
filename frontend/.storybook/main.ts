@@ -1,6 +1,5 @@
 import type { StorybookConfig } from "@storybook/react-vite";
 
-// The `~` alias comes from vite.config.ts, which Storybook's Vite builder loads.
 const config: StorybookConfig = {
   framework: "@storybook/react-vite",
   stories: [

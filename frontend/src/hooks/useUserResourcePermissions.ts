@@ -12,7 +12,6 @@ import {
 import type { Extension } from "~/lib/constants";
 import { useShallowPermissionsStore } from "~/lib/state/permissions";
 
-/** A file that is shared with the user. */
 export type SharedFilePermissionsT = FilePermissionsT & { shared: true };
 
 export type UserResourcePermissionsT = {
@@ -58,7 +57,7 @@ export function useUserResourcePermissions(
         throw error;
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     ...options,
   });

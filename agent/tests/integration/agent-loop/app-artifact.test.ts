@@ -1,13 +1,3 @@
-/**
- * Tier 2 — create_app in-process execution through the agent loop.
- *
- * Asserts the harness wiring (NOT model behavior — that's a Tier 3 eval):
- *   - Model calls create_app with valid refs → an `app` artifact lands on the
- *     answer stream as a copilotMessageArtifact; no executeAgentTool round-trip.
- *   - Model calls create_app with an unknown ref → no artifact emitted, the loop
- *     continues from the returned error tool-result and still produces text.
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
@@ -30,10 +20,10 @@ function findFunctionCall(events: SSEEvent[], fn: string): SSEEvent | undefined 
   );
 }
 
-const tickerParam = { name: "symbol", type: "string", description: "" };
+const symbolParam = { name: "symbol", type: "string", description: "" };
 const widgets: Widget[] = [
-  { uuid: "u-price", origin: "example", widget_id: "price", name: "Price", description: "", params: [tickerParam] },
-  { uuid: "u-news", origin: "example", widget_id: "news", name: "News", description: "", params: [tickerParam] },
+  { uuid: "u-price", origin: "example", widget_id: "price", name: "Price", description: "", params: [symbolParam] },
+  { uuid: "u-news", origin: "example", widget_id: "news", name: "News", description: "", params: [symbolParam] },
 ];
 
 describe("create_app — in-process execution", () => {

@@ -116,7 +116,6 @@ describe("BottomTabBar", () => {
     const cnMock = cn as Mock;
     const calls = cnMock.mock.calls;
 
-    // Find the call for the Apps button (isActive: true when pathname === "/app")
     const activeCall = calls.find((args) => args.includes("text-tab-action-active"));
     expect(activeCall).toBeDefined();
   });
@@ -131,7 +130,6 @@ describe("BottomTabBar", () => {
       args.includes("text-ds-text-caption"),
     );
 
-    // Menu, Search, Copilot are all inactive — 3 calls with caption class
     expect(captionCalls.length).toBe(3);
   });
 
@@ -165,7 +163,6 @@ describe("BottomTabBar - inactive Apps tab when not on /app", () => {
     const reactRouterDom = await import("react-router-dom");
     const { cn } = await import("~/lib/utils");
 
-    // Override useLocation to return a different pathname
     const spy = vi.spyOn(reactRouterDom, "useLocation").mockReturnValue({
       pathname: "/some-other-path",
       search: "",

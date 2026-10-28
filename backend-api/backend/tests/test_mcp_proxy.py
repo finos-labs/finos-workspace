@@ -1,15 +1,3 @@
-"""The MCP proxy's requests, and the network access of the API's MCP traffic.
-
-A proxied request names its MCP server and goes to that server only: the same scheme, host
-and port, and the server's path or a path under it (the messages endpoint an SSE server
-announces is the one exception, tested in test_mcp_oauth). The API's MCP client resolves
-every host itself, refuses addresses that are not on the public internet (private,
-loopback, link-local and the cloud metadata services, shared, reserved, multicast, and IPv6
-addresses carrying any of them) unless the host is one of ALLOWED_MCP_HOSTNAMES, or the
-host and port of one of DEFAULT_MCP_SERVERS, and connects to the address it checked. It
-follows no redirect and keeps no cookie. No test here uses a network.
-"""
-
 import httpx
 import pytest
 from pydantic import ValidationError
@@ -65,17 +53,13 @@ class TestTheRequestGoesToTheServerItNames:
     @pytest.mark.parametrize(
         ("server_url", "url"),
         [
-            # The common form https://host/mcp: the host's other paths are not the server's
             (SERVER, "https://mcp.example.com/admin/mcp"),
             (SERVER, "https://mcp.example.com/"),
             (SERVER, "https://mcp.example.com/mcpx"),
-            # Gateways that serve one server per path
             ("https://gw.example.com/v1/alice", "https://gw.example.com/v1/mallory"),
             ("https://tools.example.com/api/mcp", "https://tools.example.com/apis/mcp"),
-            # Dot segments are resolved first, as the request is sent
             ("https://tools.example.com/api/mcp", "https://tools.example.com/api/mcp/../../admin"),
             ("https://tools.example.com/api/mcp", "https://tools.example.com/api/../admin"),
-            # An SSE server's messages endpoint, until the server announces it
             ("https://mcp.example.com/sse", "https://mcp.example.com/messages/?session_id=1"),
             ("https://h.example.com/a/b/sse", "https://h.example.com/a/b/messages/"),
         ],
@@ -120,7 +104,6 @@ class TestTheSseAnnouncement:
                 {"event": "endpoint", "data": "/messages/?session_id=1"},
             ),
             (b"event:endpoint\ndata:/m\n\n", {"event": "endpoint", "data": "/m"}),
-            # A comment and an empty block dispatch nothing
             (b": ping\n\nevent: endpoint\ndata: /m\n\n", {"event": "endpoint", "data": "/m"}),
             (b'data: {"jsonrpc": "2.0"}\n\n', {"data": '{"jsonrpc": "2.0"}'}),
             (b"event: endpoint\ndata: /m\n", None),
@@ -137,7 +120,6 @@ class TestTheSseAnnouncement:
         async def chunks():
             yield b"event: endp"
             yield b"oint\r\ndata: /messages/?session_id=abc\r"
-            # The announcement is complete with this chunk: it is recorded before it passes
             assert seen == []
             yield b"\n\r\n"
             assert seen == ["/messages/?session_id=abc"]
@@ -178,19 +160,19 @@ class TestPublicAddresses:
             "10.0.0.1",
             "172.16.0.1",
             "192.168.1.1",
-            "169.254.169.254",  # AWS, GCP and Azure metadata
-            "100.100.100.200",  # Alibaba Cloud metadata (shared address space)
+            "169.254.169.254",
+            "100.100.100.200",
             "100.64.0.1",
-            "0.0.0.0",  # noqa: S104 - an address to refuse, not to bind
+            "0.0.0.0",  # noqa: S104
             "224.0.0.1",
             "255.255.255.255",
             "::1",
             "::",
             "fe80::1",
-            "fd00:ec2::254",  # AWS metadata over IPv6
+            "fd00:ec2::254",
             "::ffff:127.0.0.1",
             "::ffff:169.254.169.254",
-            "64:ff9b::a9fe:a9fe",  # NAT64 of 169.254.169.254
+            "64:ff9b::a9fe:a9fe",
             "ff02::1",
         ],
     )
@@ -207,7 +189,6 @@ class TestTheMcpClient:
 
         assert response.status_code == 200
         assert hosts.connections == [(PUBLIC, 443)]
-        # TLS is for the host's name, and the request names the host
         assert hosts.tls_names == ["mcp.example.com"]
         assert hosts.requests[0].headers["host"] == "mcp.example.com"
 
@@ -234,7 +215,6 @@ class TestTheMcpClient:
     @pytest.mark.asyncio
     async def test_it_refuses_names_of_such_addresses(self, hosts, mcp_client):
         hosts.add("intranet.example.com", "10.0.0.7", handler=_ok)
-        # One private address among public ones is enough to refuse the host
         hosts.add("mixed.example.com", PUBLIC, "127.0.0.1", handler=_ok)
 
         for url in ("http://intranet.example.com/mcp", "https://mixed.example.com/mcp"):
@@ -258,7 +238,6 @@ class TestTheMcpClient:
     async def test_the_default_servers_may_be_private_on_their_own_port(
         self, hosts, mcp_client, monkeypatch
     ):
-        """The servers every user has, such as the agent's tools in the compose stack"""
         monkeypatch.setattr(
             settings,
             "DEFAULT_MCP_SERVERS",
@@ -270,7 +249,6 @@ class TestTheMcpClient:
 
         assert response.status_code == 200
         assert hosts.connections == [("ines-mcp", 8787)]
-        # Any other port of the host is the public-address check's, as for any server
         with pytest.raises(mcp_oauth.BlockedAddressError):
             await mcp_client.get("http://ines-mcp:9000/")
         assert hosts.connections == [("ines-mcp", 8787)]

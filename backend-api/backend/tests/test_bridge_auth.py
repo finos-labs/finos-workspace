@@ -1,11 +1,3 @@
-"""The FINOS Workspace bridge websocket carries no token.
-
-The web app starts a bridge session with its session cookie and opens the socket at a URL
-with the session's id only. Before the handshake is accepted the socket must come from an
-allowed origin with a valid web session cookie, for that user's active bridge session;
-anything else is refused. The standalone sidecar admits its page by origin the same way.
-"""
-
 import importlib
 from uuid import UUID, uuid4
 
@@ -22,14 +14,11 @@ from tests.test_workspace_mcp_bridge import FakeAsyncRedis
 from workspace_mcp.app import create_app
 from workspace_mcp.config import Settings as SidecarSettings
 
-# The module: the package exports its APIRouter under the same name
 bridge_router = importlib.import_module("routers.app.workspace_mcp.router")
 AUTH_USER = UUID(_AUTH_USER["user_uuid"])
 
 
 class FakeWebSocket:
-    """A handshake as Starlette hands it to the route."""
-
     def __init__(self, *, origin: str | None, cookie: str | None, session_id: str):
         self.headers = {"origin": origin} if origin else {}
         self.cookies = {auth_helpers.SESSION_COOKIE: cookie} if cookie else {}
@@ -102,8 +91,6 @@ class TestTheBridgeSocket:
 
     @pytest.mark.asyncio
     async def test_refused_before_the_handshake_is_accepted(self, auth_client, bridge):
-        # Without a session cookie. A socket without an allowed origin never gets here:
-        # AllowedOriginMiddleware closes it first (test_allowed_origin.py)
         session_id = await _start(bridge, AUTH_USER)
         socket = FakeWebSocket(origin=TEST_ORIGIN, cookie=None, session_id=session_id)
         await bridge_router.bridge_websocket(socket)

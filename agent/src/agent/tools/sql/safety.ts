@@ -1,22 +1,3 @@
-/**
- * SQL safety gates shared by the in-process SQL family.
- *
- * Defense in depth: node:sqlite already runs against a fresh per-call
- * `:memory:` DB seeded only from `pendingTables`, so write paths can't
- * touch user-visible state. These checks reject queries that betray
- * adversarial or buggy intent before they reach `db.prepare`:
- *
- *   - non-SELECT/WITH prefix (UPDATE, DROP, etc).
- *   - SQLite internals (`sqlite_master` and friends — information disclosure).
- *   - `PRAGMA` (config + schema disclosure).
- *   - `ATTACH DATABASE` / `DETACH DATABASE` (escapes the in-memory DB).
- *
- * Multi-statement input (`SELECT 1; DROP TABLE x`) is rejected by
- * node:sqlite's `prepare` (one prepared statement per call). A regression
- * test pins that behavior so a later runtime change can't silently
- * widen the attack surface.
- */
-
 const SAFE_PREFIX = /^(select|with)\b/i;
 
 const DENY_PATTERNS: ReadonlyArray<{ name: string; pattern: RegExp }> = [
@@ -25,10 +6,6 @@ const DENY_PATTERNS: ReadonlyArray<{ name: string; pattern: RegExp }> = [
   { name: "ATTACH DATABASE", pattern: /\battach\s+database\b/i },
   { name: "DETACH DATABASE", pattern: /\bdetach\s+database\b/i },
   { name: "PRAGMA", pattern: /\bpragma\s+\w/i },
-  // Multi-statement smuggling: node:sqlite's `db.prepare(sql).all()` only
-  // executes the first prepared statement, but if that contract ever
-  // changes a trailing destructive stmt could land. Block any `;` that's
-  // followed by a SQL keyword we wouldn't otherwise allow at the start.
   {
     name: "multi-statement",
     pattern: /;\s*(select|with|insert|update|delete|drop|create|alter|attach|detach|pragma|vacuum|replace)\b/i,

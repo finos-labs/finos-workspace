@@ -119,7 +119,7 @@ function initialExpandedSubCategories(
       const key = `${widget.category}-${widget.subCategory}`.toLowerCase();
 
       if (initialState[key] === undefined) {
-        initialState[key] = true; // Set to true if not already set
+        initialState[key] = true;
       }
     }
   }
@@ -491,17 +491,12 @@ const WidgetItem = memo(
 
     const handleCheckboxChange = useCallback(
       (checked: boolean) => {
-        const updatedWidget = {
-          ...widgetItem,
-          defaultAssetClass: widgetItem?.category?.toLowerCase(),
-        };
-
         if (multiSelectState?.isShiftPressed) {
           multiSelectState.onShiftClick(displayId);
           return;
         }
 
-        onWidgetChange(checked, updatedWidget);
+        onWidgetChange(checked, { ...widgetItem });
       },
       [widgetItem, onWidgetChange, multiSelectState, displayId],
     );
@@ -679,7 +674,6 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
       );
       const widgetsToAdd = selectedWidgets.map((widget) => {
         widget.innerTab = currentTab;
-        // If navigation_bar is present, add innerTab: "overview" to all widgets
         if (hasNavigationBar) {
           widget.innerTab = "overview";
         }
@@ -748,12 +742,10 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
     return widgets.filter((widget) => widgetUniqueIds.has(widget.uniqueId));
   }, [recentlyAddedWidgets, widgets]);
 
-  // Memoize selected widget IDs for faster lookups
   const selectedWidgetIds = useMemo(() => {
     return new Set(state.selectedWidgets.map((w) => w.uniqueId));
   }, [state.selectedWidgets]);
 
-  // Refs for values used inside callbacks to prevent callback chain rebuilds on selection change
   const selectedWidgetIdsRef = useRef(selectedWidgetIds);
   selectedWidgetIdsRef.current = selectedWidgetIds;
   const anchorWidgetIdRef = useRef<string | null>(state.anchorWidgetId);
@@ -798,7 +790,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
             ...widgetItem,
             id: uuidv4(),
             innerTab,
-            type: widgetItem.type ?? widgetItem.defaultViz,
+            type: widgetItem.type,
             data: {
               dataKey: widgetItem.dataKey,
               ...widgetItem.data,
@@ -828,7 +820,6 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
   const enableLocalExpanded = state.selectedCategory !== "All" || isFiltered;
 
   useEffect(() => {
-    // Only reset local expanded state when not in filtered mode or when switching away from widgets tab
     if (!enableLocalExpanded) {
       setLocalExpanded({});
     }
@@ -918,7 +909,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
               .map((w) => ({
                 ...w,
                 id: uuidv4(),
-                type: w.type ?? w.defaultViz,
+                type: w.type,
                 data: {
                   dataKey: w.dataKey,
                   ...w.data,
@@ -947,7 +938,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
               .map((w) => ({
                 ...w,
                 id: uuidv4(),
-                type: w.type ?? w.defaultViz,
+                type: w.type,
                 data: {
                   dataKey: w.dataKey,
                   ...w.data,
@@ -965,7 +956,6 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
     [filteredRecentlyAddedWidgets, widgets, dispatch],
   );
 
-  // Build flattened virtualized items list — decoupled from selection state for O(1) selection updates
   const virtualizedItems = useMemo(() => {
     const items: VirtualizedItem[] = [];
     let currCategory = "";
@@ -1109,13 +1099,6 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
   ]);
   virtualizedItemsRef.current = virtualizedItems;
 
-  /**
-   * Shift+click range selection: selects or deselects all widgets between the
-   * last-clicked anchor and the newly clicked widget. Direction (select vs deselect)
-   * is determined by the anchor's current selection state — if the anchor is selected
-   * the range is added, otherwise the range is removed. Widget IDs are cleaned of the
-   * "-recent" suffix so that Recently Added duplicates map to the same underlying widget.
-   */
   const handleRangeSelection = useCallback(
     (clickedWidgetId: string) => {
       const anchorId = anchorWidgetIdRef.current;
@@ -1173,7 +1156,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
               ...widget,
               uniqueId: widget.cleanId,
               id: uuidv4(),
-              type: widget.type ?? widget.defaultViz,
+              type: widget.type,
               data: {
                 dataKey: widget.dataKey,
                 ...widget.data,

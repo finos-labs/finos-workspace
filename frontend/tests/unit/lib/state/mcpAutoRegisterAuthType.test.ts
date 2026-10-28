@@ -40,14 +40,42 @@ describe("autoRegisterMcpForSource authType propagation", () => {
     expect(servers[0].authType).toBe("token");
     expect(servers[0].sourceId).toBe("source-1");
   });
+
+  it("registers every declared server once, under the name a widget's mcp_tool names", () => {
+    const source = {
+      id: "source-1",
+      name: "Custom Backend",
+      url: "https://custom.example.com",
+      uuid: "u-1",
+      endpointHeaders: null,
+      templates: [
+        {
+          name: "One",
+          tabs: {},
+          mcpServers: [
+            { name: "Reports", url: "https://custom.example.com/mcp" },
+            { name: "Admin", url: "https://custom.example.com/mcp" },
+          ],
+        },
+        {
+          name: "Two",
+          tabs: {},
+          mcpServers: [{ name: "Reports", url: "https://custom.example.com/mcp" }],
+        },
+      ],
+    } as unknown as Source;
+
+    autoRegisterMcpForSource(source);
+    autoRegisterMcpForSource(source);
+
+    const servers = useMcpToolsStore.getState().servers;
+    expect(servers.map((s) => [s.declaredName, s.sourceId])).toEqual([
+      ["Reports", "source-1"],
+      ["Admin", "source-1"],
+    ]);
+  });
 });
 
-/**
- * A token-auth server has no OAuth fallback: `useMcp` fails the connection
- * outright on a 401 instead of prompting. Auto-connecting one before the user
- * has supplied a token therefore guarantees a failed server in the AI tab, so
- * registration has to leave it disabled until a token exists.
- */
 describe("token-auth servers are not auto-connected without a token", () => {
   function makeSource(
     authType: "oauth" | "token" | undefined,

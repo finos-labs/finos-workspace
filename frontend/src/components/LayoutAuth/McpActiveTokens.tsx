@@ -16,9 +16,7 @@ function formatDate(iso?: string | null): string {
 }
 
 interface McpActiveTokensProps {
-  /** Token creation is only allowed once the bridge is connected. */
   isConnected: boolean;
-  /** Hosted MCP endpoint passed to the create dialog's snippets. */
   endpoint: string;
 }
 

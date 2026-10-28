@@ -3,14 +3,6 @@
 
 @config "../tailwind.config.ts";
 
-/*
-  The default border color has changed to `currentColor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
 @layer base {
   :root {
     --text-scale: 1;
@@ -302,7 +294,6 @@
     @apply rounded border border-general-border-primary/40 bg-general-bg-secondary p-px text-xs text-ds-text-heading;
   }
 
-  /* AI code block styling */
   pre[data-ai-pre="true"] {
     background-color: rgba(107, 114, 128, 0.1) !important;
     border: 1px solid rgba(107, 114, 128, 0.4) !important;
@@ -403,8 +394,6 @@
   }
 }
 
-/* Components */
-
 @layer base {
   :root {
     font-family: var(--font-family), "system-ui";
@@ -442,8 +431,6 @@
   }
 }
 
-/* Montserrat variable, weights 100–900, roman and italic.
-   From @fontsource-variable/montserrat 5.3.0. */
 @font-face {
   font-family: "Montserrat";
   font-style: normal;
@@ -668,7 +655,7 @@ body {
   right: 0;
   bottom: 0;
   width: 100%;
-  /* Adjust the color to match your background */
+
   background: linear-gradient(to right, transparent, #c1c3c5b4);
   pointer-events: none;
 }
@@ -690,12 +677,9 @@ input[type="color"]::-webkit-color-swatch-wrapper {
   z-index: 10;
 }
 
-/* Stops flying in effect of widgets */
 .react-grid-item {
   transition: none;
 }
-
-/* SCROLLBAR */
 
 ::-webkit-scrollbar {
   width: 4px;
@@ -728,10 +712,6 @@ input[type="color"]::-webkit-color-swatch-wrapper {
 ._capitalize-phrase::first-line {
   text-transform: capitalize;
 }
-
-/*.dark .react-grid-item > .react-resizable-handle::after {
-  border-color: var(--color-dark-50) !important;
-}*/
 
 .react-grid-item > .react-resizable-handler {
   opacity: 0;
@@ -869,32 +849,26 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
   scrollbar-width: 3px !important;
 
-  /* Always reserve space for scrollbar to prevent any layout shift */
   scrollbar-gutter: stable both-edges;
 
-  /* Force consistent height by always accounting for scrollbar space */
   padding-bottom: 3px !important;
   margin-bottom: -3px !important;
-  min-height: calc(1rem + 3px); /* Ensure minimum height includes scrollbar space */
+  min-height: calc(1rem + 3px);
 }
 
 .no-password-save {
-  /* Hide password save prompt in browsers */
   -webkit-text-security: disc;
   -moz-text-security: disc;
   -ms-text-security: disc;
 }
 
 .hide-scrollbars {
-  /* Hide scrollbar for Chrome, Safari and Opera */
   ::-webkit-scrollbar {
     display: none;
   }
 
-  /* Hide scrollbar for Firefox */
   scrollbar-width: none;
 
-  /* Hide scrollbar for IE and Edge */
   -ms-overflow-style: none;
 }
 
@@ -971,12 +945,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .drag-over {
-  border: 2px dashed #0086bf; /* Example style for drag-over indicator */
-  background-color: rgba(0, 134, 191, 0.1); /* Slight background color change */
+  border: 2px dashed #0086bf;
+  background-color: rgba(0, 134, 191, 0.1);
   top: -5px;
 }
 
-/* CSS for extending the drop target area */
 .folder-drop-target {
   position: relative;
 }
@@ -991,7 +964,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background: transparent;
 }
 
-/* THIS IS NEEDED BECAUSE PROSE MAKES OVERRIDES NOTE FONT COLOR */
 ._note strong,
 ._note h1,
 ._note h2,
@@ -1002,7 +974,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   color: inherit !important;
 }
 
-/* Animated gradient for step-by-step reasoning */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -1032,7 +1003,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   will-change: background-position;
 }
 
-/* Spinning animation for reasoning icon */
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -1079,7 +1049,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   margin-bottom: 2px !important;
 }
 
-/* Loader: wings stay hinged to the head and fold out toward the viewer. */
 .logo-stage {
   position: relative;
   aspect-ratio: 277.167 / 139.248;
@@ -1142,7 +1111,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
-/* Loader: white-label marks fade gently; a deeper dip reads grey, not brand. */
 .logo-fade {
   animation: logo-fade 1.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
 }

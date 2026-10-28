@@ -38,6 +38,7 @@ function AdminSidebar({
         {isEntityAdmin && (
           <SidebarNavButton to="/admin/entities" title="Entities" icon="building-06" />
         )}
+        <SidebarNavButton to="/admin/widgets" title="Widgets" icon="cube-01" />
         <SidebarNavButton to="/admin/apps" title="Apps" icon="chart-icon" />
         <SidebarNavButton
           to="/admin/theme-settings"

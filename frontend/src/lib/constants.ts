@@ -4,28 +4,19 @@ import type { Copilot } from "./state/copilot";
 
 export const VERSION = import.meta.env.VITE_RELEASE_VERSION;
 
-export const REFRESH_WIDGET_INTERVAL = 1000 * 60 * 15; // 15 minutes
+export const REFRESH_WIDGET_INTERVAL = 1000 * 60 * 15;
 
 export const ENABLE_SHARING = "true";
 export const MAX_COPILOT_LINKS = 4;
 
-// Save-conversation-as-skill (save_skill copilot function call).
-// Payload budget for the skill generation request; the backend enforces the
-// model context budget and is the authority on what actually reaches the LLM.
 export const MAX_SKILL_CONVERSATION_TOTAL_CHARS = 400_000;
 export const MAX_SKILL_CONVERSATION_MESSAGE_CHARS = 20_000;
-// Mirror the limits enforced by the skill form schema in AddSkillDialog.
 export const MAX_SKILL_SLUG_LENGTH = 50;
 export const MAX_SKILL_DESCRIPTION_LENGTH = 500;
 
-// Global hover-reveal delay (ms) shared by the Radix TooltipProvider and
-// HoverPopover. skip = window after one closes where the next opens instantly.
 export const TOOLTIP_OPEN_DELAY_MS = 700;
 export const TOOLTIP_SKIP_DELAY_MS = 300;
 
-// File types the File connector turns into widgets: each one opens in the PDF, HTML or
-// Markdown viewer. The backend accepts these options too (it accepts more, for Copilot
-// uploads).
 // biome-ignore format: off
 export const ExtensionOptions = ["pdf","txt","md","docx","html"] as const;
 
@@ -35,15 +26,12 @@ export function validExtension(value: string): value is Extension {
   return ExtensionOptions.includes(value as Extension);
 }
 
-/** The viewer widget type for an uploaded file. */
 export function getFileWidgetType(extension: string): "pdf" | "html" | "markdown" {
   if (extension === "pdf") return "pdf";
   if (extension === "html") return "html";
   return "markdown";
 }
 
-// Accept list for Copilot's file upload. Wider than ExtensionOptions: the Copilot
-// also reads spreadsheets and images it is given as context.
 export const COPILOT_ACCEPTED_MIME_TYPES = {
   "application/pdf": [".pdf"],
   "text/plain": [".txt"],
@@ -60,7 +48,6 @@ export const COPILOT_ACCEPTED_EXTENSIONS = Array.from(
   new Set(Object.values(COPILOT_ACCEPTED_MIME_TYPES).flat()),
 );
 
-// Runtime config accessors — safe to call at any point (falls back to import.meta.env)
 export function getApiUrl() {
   return getConfig().urls.backend;
 }
@@ -68,11 +55,6 @@ export function getAiApiUrl() {
   return getConfig().urls.ai;
 }
 
-/**
- * Copilot feature constants shared across components
- */
-
-// All AI features that are available
 export const ALL_AI_FEATURES = new Set([
   "streaming",
   "file-upload",
@@ -85,7 +67,6 @@ export const ALL_AI_FEATURES = new Set([
   "speech-to-text",
 ]);
 
-// Features that can be enabled by agents (user-specified in agent configs)
 export const AGENT_ENABLED_FEATURES = new Set([
   "widget-dashboard-select",
   "widget-dashboard-search",
@@ -94,25 +75,22 @@ export const AGENT_ENABLED_FEATURES = new Set([
 export const FILE_EXTENSIONS = [".pdf", ".txt", ".docx", ".md", ".html"];
 
 export const UNIQUE_AVATAR_COLORS = [
-  "#3174ad", // Blue
-  "#c75d5d", // Red
-  "#8e5e9a", // Purple
-  "#4a9e6c", // Green
-  "#a89132", // Olive/gold
-  "#a55353", // Darker red
-  "#9e6c4a", // Brown/orange
-  "#7a5a9e", // Different purple
-  "#7a7a7a", // Gray
-  "#6c8e4a", // Green-olive
+  "#3174ad",
+  "#c75d5d",
+  "#8e5e9a",
+  "#4a9e6c",
+  "#a89132",
+  "#a55353",
+  "#9e6c4a",
+  "#7a5a9e",
+  "#7a7a7a",
+  "#6c8e4a",
 ];
 
-// max file size for file upload in bytes
-export const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+export const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
-// total storage capacity for user in bytes
-export const MAX_STORAGE_CAPACITY = 5 * 1024 * 1024 * 1024; // 5GB
+export const MAX_STORAGE_CAPACITY = 5 * 1024 * 1024 * 1024;
 
-// threshold for storage usage in percentage
 export const STORAGE_THRESHOLD = 0.9;
 
 const SUPPORTED_TLDs = tlds.join("|");
@@ -122,7 +100,6 @@ export const LINK_REGEX = new RegExp(
   "g",
 );
 
-// Email regex to identify and filter out email addresses
 export const EMAIL_REGEX = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
 
 export const AI_SUPPORTED_FILE_TYPES = [
@@ -130,7 +107,6 @@ export const AI_SUPPORTED_FILE_TYPES = [
   "jpg",
   "jpeg",
   "png",
-  // "application/json", // not supported yet by endpoint
   "csv",
   "md",
   "txt",
@@ -247,7 +223,6 @@ export const AI_PROMPTS = {
     ["Global News"],
 };
 
-// Default copilot configuration, does not call backend for agents.json
 let _defaultCopilot: Copilot | null = null;
 export function getDefaultCopilot(): Copilot {
   if (!_defaultCopilot) {
@@ -545,26 +520,11 @@ export const butterflyTypes = [
   "Obsidian Daggerwing",
 ];
 
-// For srcDoc= iframes holding a file a user put there (HtmlViewer) that run scripts
-// (allowHtmlJsExecution). No allow-same-origin: with it the content would run as this app's
-// origin, reach the page's memory and make requests with its session cookie. Without it the
-// content runs in an opaque origin, so its own requests carry `Origin: null`.
 export const IFRAME_SRCDOC_SANDBOX_ATTRIBUTES =
   "allow-scripts allow-forms allow-downloads allow-popups";
 
-// For srcDoc= iframes holding what a model wrote (Artifact.tsx). A model's output is shaped by
-// whatever it has read — a fetched page, an uploaded document, a widget's rows — so it is not
-// content the deployment has decided to trust, and it does not get this app's origin. Without
-// `allow-same-origin` the document is on an opaque origin: script in it can still run and still
-// post its height to the parent, but it cannot reach this app's storage, session or DOM.
-// No `allow-forms` either: the artifact's own CSP sets `form-action 'none'`.
 export const ARTIFACT_SANDBOX_ATTRIBUTES = "allow-scripts allow-downloads allow-popups";
 
-// For an artifact whose scripts are off: nothing can run, so sharing the origin costs nothing and
-// lets the app measure the document's height by reading it directly.
 export const ARTIFACT_SANDBOX_ATTRIBUTES_NO_SCRIPTS = "allow-same-origin";
 
-// For src= iframes (Iframe.tsx) — external URL origin, NOT parent origin.
-// allow-same-origin lets external site use its own cookies/storage.
-// SAFE: a different origin cannot access this app's localStorage.
 export const IFRAME_SANDBOX_ATTRIBUTES = `${IFRAME_SRCDOC_SANDBOX_ATTRIBUTES} allow-same-origin`;

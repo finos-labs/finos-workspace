@@ -1,10 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
-import { FormProvider, useForm, useFormContext } from "react-hook-form";
+import { FormProvider, useForm, useFormContext, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { ToggleSelect } from "~/components/ToggleSelect";
-import { cleanSearchParams, convertHeadersToRecord, useJsonData } from "~/lib/api";
+import { useJsonData } from "~/lib/api";
 import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { beautifySlug, cn, currentDateModifier } from "~/lib/utils";
+import {
+  buildFormRequest,
+  buildOptionsRequest,
+  formScope,
+  requestInit,
+} from "~/lib/utils/widgetRequest";
 import { Button } from "../ds/atoms/Button";
 import { FormInput } from "../ds/atoms/Input";
 import { FormField } from "../ds/molecules/Form";
@@ -18,7 +24,6 @@ type ParamsForm = {
   [key: string]: string | number | boolean | undefined;
 };
 
-/** One of a widget's forms: a widget may have several, each its own form. */
 export function FormParamElement({
   formParamDef,
 }: {
@@ -61,19 +66,19 @@ export function FormParamElement({
     async (data: ParamsForm) => {
       try {
         if (!formParamDef) return;
+        const built = buildFormRequest(formParamDef, data, widget, credentials);
+        if (!built.ok) {
+          toast.error("Error", {
+            description: built.problems.map((p) => p.message).join(". "),
+            id: "form-param",
+          });
+          return;
+        }
         setIsLoading(true);
-        const { headers } = convertHeadersToRecord(credentials.headers);
 
         const response = await fetch(
-          cleanSearchParams(formParamDef.endpoint, credentials.query),
-          {
-            method: formParamDef.method ?? "POST",
-            headers: {
-              ...headers,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(data),
-          },
+          built.request.url,
+          requestInit(built.request, { credentials: "omit" }),
         );
 
         const json = await response.json();
@@ -105,7 +110,7 @@ export function FormParamElement({
 
       setIsLoading(false);
     },
-    [formParamDef?.endpoint, formParamDef?.method, credentials, updateWidget],
+    [formParamDef, widget, credentials, updateWidget],
   );
 
   return (
@@ -125,7 +130,11 @@ export function FormParamElement({
               {formParamDef?.inputParams?.map((inputParam) => {
                 if (inputParam.type === "endpoint") {
                   return (
-                    <EndpointType key={inputParam.paramName} inputParam={inputParam} />
+                    <EndpointType
+                      key={inputParam.paramName}
+                      form={formParamDef}
+                      inputParam={inputParam}
+                    />
                   );
                 }
                 return (
@@ -144,12 +153,17 @@ export function FormParamElement({
   );
 }
 
-function EndpointType(props: { inputParam: FormInputParamDefT<"endpoint"> }) {
+function EndpointType(props: {
+  form: ParamDefT<"form">;
+  inputParam: FormInputParamDefT<"endpoint">;
+}) {
   const { inputParam } = props;
   const form = useFormContext<ParamsForm>();
+  const inputValues = useWatch({ control: form.control });
 
+  const { widget } = useWidgetContext();
   const credentials = useSourceCredentials(
-    useWidgetContext()?.widget?.sourceId,
+    widget?.sourceId,
     inputParam.optionsEndpoint,
   );
 
@@ -157,24 +171,23 @@ function EndpointType(props: { inputParam: FormInputParamDefT<"endpoint"> }) {
 
   const title = beautifySlug(label ?? paramName);
 
-  const options = useMemo(() => {
-    const { headers, newParams } = convertHeadersToRecord(credentials.headers, {
-      ...credentials.query,
-    });
-    const url = cleanSearchParams(inputParam.optionsEndpoint, newParams);
+  const request = useMemo(
+    () =>
+      buildOptionsRequest(
+        inputParam,
+        formScope(props.form, inputValues, widget),
+        credentials,
+      ),
+    [inputParam, props.form, inputValues, widget, credentials],
+  );
 
-    return {
-      url: url,
-      endpointHeaders: headers,
-      params: newParams,
-    };
-  }, [credentials, inputParam.optionsEndpoint]);
-
-  const { data, isLoading, error, dataUpdatedAt } = useJsonData(options, {
-    enabled: true,
-    staleTime: 1000 * 60 * 15,
-    refetchInterval: 1000 * 60 * 15,
-  });
+  const { data, isLoading, error, dataUpdatedAt } = useJsonData(
+    { request },
+    {
+      staleTime: 1000 * 60 * 15,
+      refetchInterval: 1000 * 60 * 15,
+    },
+  );
 
   const { selectOptions, forceExtraInfo } = useMemo(() => {
     const paramOptions = data ?? ["Loading..."];
@@ -232,7 +245,6 @@ function EndpointType(props: { inputParam: FormInputParamDefT<"endpoint"> }) {
       {typeof description === "string" && (
         <div className="body-xs-regular pt-2 break-words max-h-[296px] overflow-y-auto">
           {description.split(/\n|\\\n/).map((line, idx) => {
-            // Count leading spaces for indentation
             const spaces = line.match(/^ */)?.[0].length ?? 0;
             return (
               <div

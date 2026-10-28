@@ -1,18 +1,3 @@
-/**
- * Embedding + similarity retrieval.
- *
- * Uses Vercel AI SDK's `embedMany` for batch ingest and `embed` for the
- * query, with `cosineSimilarity` for ranking. The embedding model is named by
- * the `INES_EMBED_MODEL` env var, written "<provider>:<model>" like
- * `DEFAULT_MODEL`; no model id is baked in, so without it document search is
- * off. The provider needs its credentials, as it does for chat.
- *
- * Retrieval contract:
- *  - Top-k after filtering by `docIds` (when provided).
- *  - Score is raw cosine [0,1] — no normalization or thresholding here.
- *    Callers (or eval graders) decide thresholds.
- */
-
 import { embed, embedMany, cosineSimilarity, type EmbeddingModel } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
@@ -23,16 +8,10 @@ import { getLogger } from "../../../lib/logger.ts";
 
 const logger = getLogger(["mcp", "documents", "retrieve"]);
 
-/** What a call embeds: the stored text of a document, or the user's question. */
 type EmbedKind = "query" | "passage";
 
-// NVIDIA NIM refuses more than 256 inputs in one request; the SDK's own default for the
-// OpenAI client is 2048, so ingest sends batches of this size itself.
 const EMBED_BATCH_SIZE = 256;
 
-// NVIDIA retrieval models are asymmetric: each request must say whether it embeds a "query" or a
-// "passage", and without it the scores between the two blur (and some models reject the request).
-// The SDK's OpenAI client has no field for that, so the request body is completed on its way out.
 function withInputType(kind: EmbedKind): typeof fetch {
   return ((input: string | URL | Request, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body));
@@ -44,12 +23,10 @@ function withInputType(kind: EmbedKind): typeof fetch {
 }
 
 interface EmbeddingProvider {
-  /** Credential the provider needs, if any. */
   keyEnv?: string;
   model: (modelId: string, kind: EmbedKind, apiKey: string) => EmbeddingModel;
 }
 
-// The providers chat can use, less Groq, which has no embeddings API.
 const EMBEDDING_PROVIDERS: Record<string, EmbeddingProvider> = {
   openai: {
     keyEnv: "OPENAI_API_KEY",
@@ -80,10 +57,6 @@ function splitModelId(raw: string): { provider: string; modelId: string } | null
   return { provider: raw.slice(0, colon), modelId: raw.slice(colon + 1) };
 }
 
-/**
- * Why document search cannot run, or null when it can: `INES_EMBED_MODEL` is unset, names no
- * provider that embeds, or the provider's credential is missing.
- */
 export function embeddingProblem(): string | null {
   const raw = process.env.INES_EMBED_MODEL;
   if (!raw) return "INES_EMBED_MODEL is not set: document search needs an embedding model, written <provider>:<model>.";
@@ -110,22 +83,16 @@ export function getEmbeddingModel(kind: EmbedKind): EmbeddingModel {
   return (_embedModels[kind] = model(modelId, kind, keyEnv ? process.env[keyEnv]! : ""));
 }
 
-/** Test-only — reset memoized embedding models. */
 export function _resetEmbeddingModel(): void {
   delete _embedModels.query;
   delete _embedModels.passage;
 }
 
-/** Test-only — inject a fake embedding model so tests don't hit the network. */
 export function _setEmbeddingModelForTest(model: EmbeddingModel): void {
   _embedModels.query = model;
   _embedModels.passage = model;
 }
 
-/**
- * Embed every chunk in a freshly-extracted doc. Returns a vector array
- * aligned 1:1 with the input chunks.
- */
 export async function embedChunks(chunks: DocChunk[]): Promise<number[][]> {
   if (chunks.length === 0) return [];
   const model = getEmbeddingModel("passage");

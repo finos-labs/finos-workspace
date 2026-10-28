@@ -1,10 +1,3 @@
-"""The hashed-sessions migration (revision 7002053173be) on data stored the old way.
-
-As in test_secrets_migration, alembic runs in a subprocess against a SQLite file: the
-database is brought to the revision before, filled with rows as the old code wrote them,
-upgraded, checked, downgraded and checked again.
-"""
-
 import gzip
 import json
 from uuid import uuid4
@@ -111,7 +104,6 @@ def test_sessions_are_hashed_and_saved_content_loses_its_credentials(database):
                 "totp_active": False,
             },
         )
-        # A session whose uuid was the token
         conn.execute(
             session.insert(),
             {"uuid": uuid4(), "user_uuid": user_uuid, "app_session": True, "source": "app"},

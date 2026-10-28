@@ -243,8 +243,6 @@ function isConnected(connection: ConnectionRow): boolean {
   return connection.status === "success";
 }
 
-// "pending" sources are still being validated by the worker; "rehydrated" ones
-// were restored from cache and are awaiting revalidation.
 function isValidating(connection: ConnectionRow): boolean {
   return connection.status === "pending" || connection.status === "rehydrated";
 }
@@ -614,10 +612,6 @@ const initialState: ConnectionsState = {
   userClosed: { active: false, inactive: false },
 };
 
-/**
- * The connections of an Admin or a Developer, who bring their own. A User brings none: the page
- * is not theirs, and sends them to Apps once the session says who they are.
- */
 export default function ConnectionsPage() {
   const access = useShallowAccessStore((s) => s.access);
   if (!access) return null;
@@ -629,8 +623,6 @@ function Connections() {
   const [state, dispatch] = useStateReducer(initialState);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Deep-link target from a backend card's "Go to connection" action: scroll to
-  // and flash the matching row (see ConnectionRowComponent).
   const [searchParams, setSearchParams] = useSearchParams();
   const connectionId = searchParams.get("connectionId");
 
@@ -686,7 +678,6 @@ function Connections() {
       const hostname = getHostname(backend.url);
       myBackendHostnames.add(hostname);
       const matchedAgents = agentsByHostname.get(hostname) || [];
-      // Use agents from backend.agents (fetched from agents.json), fall back to hostname-matched agents
       const agentCount =
         backend.agents?.length ??
         matchedAgents.reduce((acc, h) => acc + (h.copilots?.length || 0), 0);
@@ -774,10 +765,6 @@ function Connections() {
     return { connectionRows, agentOnlyRows };
   }, [apiSources, externalCopilotHolders, permissions.backends]);
 
-  /**
-   * Checks connectivity status for agent-only connections (those without a backend).
-   * Performs a simple HTTP GET to each agent URL to determine if it's reachable.
-   */
   const agentQueries = useQueries({
     queries: Object.entries(agentOnlyRows).map(([hostname, url]) => ({
       queryKey: ["agentStatus", hostname, url],
@@ -825,12 +812,6 @@ function Connections() {
     }
   }, [refetch, agentQueries]);
 
-  /**
-   * Deletes a single connection after user confirmation.
-   * Handles both backend deletion (via API) and associated agent holders.
-   * For "mixed" connections, deletes both the backend and all linked agents.
-   * Updates local state after successful API calls to keep UI in sync.
-   */
   const handleConfirmDelete = useCallback(async () => {
     const { connectionToDelete } = state;
     if (!connectionToDelete) return;
@@ -865,12 +846,6 @@ function Connections() {
     setExternalCopilotHolders,
   ]);
 
-  /**
-   * Bulk deletes all selected connections after user confirmation.
-   * Processes backends and agent holders separately to handle mixed connection types.
-   * Backends are deleted via API first, then associated agent holders are removed.
-   * Clears selection state after successful deletion.
-   */
   const handleConfirmDeleteSelected = useCallback(async () => {
     dispatch({ isDeleting: true });
     try {
@@ -956,9 +931,6 @@ function Connections() {
     return { connections, hasConnections, noResults };
   }, [connectionRows, state.search, state.filterBy, state.sortBy, agentOnlyStatuses]);
 
-  // In addition to highlighting the row, open the edit modal for the
-  // deep-linked connection when its backend is editable (skips entity backends,
-  // which can't be edited).
   const openedEditFor = useRef<string | null>(null);
   useEffect(() => {
     if (!connectionId) {

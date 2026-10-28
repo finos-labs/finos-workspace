@@ -28,7 +28,6 @@ describe("TabsParam", () => {
       );
 
       const selectedOption = screen.getByText("Option 2");
-      // Radix UI uses data-state="on" for selected items
       expect(selectedOption.closest('[data-state="on"]')).toBeInTheDocument();
     });
   });
@@ -64,10 +63,8 @@ describe("TabsParam", () => {
         />,
       );
 
-      // Click the already selected option - Radix ToggleGroup returns undefined for this
       await user.click(screen.getByText("Option 1"));
 
-      // Should not call onValueChange because the guard (v && onValueChange(v)) prevents it
       expect(handleValueChange).not.toHaveBeenCalled();
     });
   });
@@ -91,15 +88,11 @@ describe("TabsParam", () => {
         />,
       );
 
-      // Find the toggle group (Radix UI uses role="group")
       const toggleGroup = screen.getByRole("group");
       expect(toggleGroup).toBeInTheDocument();
 
-      // Hover over the toggle group to trigger tooltip
       await user.hover(toggleGroup);
 
-      // Wait for tooltip to appear (with delay)
-      // Note: Radix renders tooltip content twice (once visible, once for a11y)
       await waitFor(
         () => {
           const tooltipElements = screen.getAllByText("Ratio Category");
@@ -114,7 +107,6 @@ describe("TabsParam", () => {
         <TabsParam value="option1" options={mockOptions} onValueChange={vi.fn()} />,
       );
 
-      // The component should still render without tooltip
       expect(screen.getByText("Option 1")).toBeInTheDocument();
     });
   });
@@ -123,7 +115,6 @@ describe("TabsParam", () => {
     it("handles empty options array", () => {
       render(<TabsParam value="" options={[]} onValueChange={vi.fn()} />);
 
-      // Should render without crashing
       const toggleGroup = screen.getByRole("group");
       expect(toggleGroup).toBeInTheDocument();
       expect(toggleGroup.children).toHaveLength(0);
@@ -134,10 +125,8 @@ describe("TabsParam", () => {
         <TabsParam value="nonexistent" options={mockOptions} onValueChange={vi.fn()} />,
       );
 
-      // Should render all options
       expect(screen.getByText("Option 1")).toBeInTheDocument();
 
-      // No option should be selected
       const selectedItems = screen.queryAllByRole("radio", { checked: true });
       expect(selectedItems).toHaveLength(0);
     });
@@ -149,11 +138,9 @@ describe("TabsParam", () => {
         <TabsParam value="option1" options={mockOptions} onValueChange={vi.fn()} />,
       );
 
-      // Radix UI ToggleGroup uses role="group"
       const toggleGroup = screen.getByRole("group");
       expect(toggleGroup).toBeInTheDocument();
 
-      // Each option should be a radio button
       const radios = screen.getAllByRole("radio");
       expect(radios).toHaveLength(3);
     });
@@ -170,16 +157,13 @@ describe("TabsParam", () => {
         />,
       );
 
-      // Get the second radio button
       const secondRadio = await screen.findByRole("radio", { name: "Option 2" });
 
-      // Focus and activate with Space key
       await act(async () => {
         secondRadio.focus();
         await user.keyboard(" ");
       });
 
-      // Should call onValueChange with the selected option
       expect(handleValueChange).toHaveBeenCalledWith("option2");
     });
   });
