@@ -15,7 +15,7 @@ related:
 
 ## Catalog
 
-This Workspace renders five types:
+This FINOS Workspace renders five types:
 
 | Type | Use case | Endpoint returns |
 |------|----------|------------------|
@@ -25,7 +25,7 @@ This Workspace renders five types:
 | `pdf` | A document the user reads page by page | The PDF bytes (`Content-Type: application/pdf`), or JSON with a base64 `content` or a `url` (see below) |
 | `iframe` | An existing web page | The `endpoint` is the URL of the page to embed; the widget's params are sent to it as query parameters |
 
-> Use the exact type string. Don't invent aliases. The protocol has more types than this Workspace renders (tables, charts, metrics and others): a widget of another type, or with no `type`, is left out of the catalog, and Workspace names it in a warning when the backend is connected. Give every widget one of the five types above.
+> Use the exact type string. Don't invent aliases. The protocol has more types than this FINOS Workspace renders (tables, charts, metrics and others): a widget of another type, or with no `type`, is left out of the catalog, and FINOS Workspace names it in a warning when the backend is connected. Give every widget one of the five types above.
 
 ## Use-case → type quick selector
 
@@ -39,7 +39,7 @@ This Workspace renders five types:
 
 ## Choose this, not that
 
-- **Prose goes to `markdown`, not `html`.** Markdown picks up the Workspace's theme and typography; use `html` only when you need layout or graphics markdown cannot express.
+- **Prose goes to `markdown`, not `html`.** Markdown picks up the FINOS Workspace's theme and typography; use `html` only when you need layout or graphics markdown cannot express.
 - **Articles go to `newsfeed`, not `markdown`.** `newsfeed` shows the list with title, date and author, a search box and each article's full text on demand; a `markdown` widget would be one long page.
 - **A document that exists as a file goes to `pdf`, not a link inside `markdown`.**
 - **A page you do not control goes to `iframe`, not a copy of its HTML.** Some sites refuse to be embedded; if the page stays blank, serve it from your own backend as `html` instead.
@@ -47,9 +47,9 @@ This Workspace renders five types:
 
 ## `html` widgets
 
-The endpoint's response is shown in a sandboxed frame. Scripts run only when the deployment enables HTML script execution, so a report should read correctly without them. The widget follows the Workspace theme only if the endpoint honors a `theme` query parameter (`dark` or `light`), which Workspace sends.
+The endpoint's response is shown in a sandboxed frame. Scripts run only when the deployment enables HTML script execution, so a report should read correctly without them. The widget follows the FINOS Workspace theme only if the endpoint honors a `theme` query parameter (`dark` or `light`), which FINOS Workspace sends.
 
-If the HTML is generated from data rows, set `"raw": true` on the widget and have the endpoint return those rows as JSON when it is called with `raw=true`. Workspace then shows a toggle between the report and its data, and the AI Agent reads the rows instead of parsing the HTML (see `workspace://overview/ai-agent-contract`).
+If the HTML is generated from data rows, set `"raw": true` on the widget and have the endpoint return those rows as JSON when it is called with `raw=true`. FINOS Workspace then shows a toggle between the report and its data, and the AI Agent reads the rows instead of parsing the HTML (see `workspace://overview/ai-agent-contract`).
 
 ## `newsfeed` widgets
 

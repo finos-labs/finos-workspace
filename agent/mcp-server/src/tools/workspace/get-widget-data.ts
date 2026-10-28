@@ -28,7 +28,7 @@ export const getWidgetDataSchema = {
 } as const;
 
 export const getWidgetDataDescription = describeTool(
-  "Fetch current data for one or more Workspace data sources.",
+  "Fetch current data for one or more FINOS Workspace data sources.",
   DATA_SOURCE_SHAPE,
   "Only use this after selecting an exact widget identity and explicit data_args.",
 );

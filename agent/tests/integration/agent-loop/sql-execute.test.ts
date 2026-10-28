@@ -90,7 +90,7 @@ describe("SQL family — in-process execution", () => {
     expect(status).toBeDefined();
     const artifact = events.find((e) => e.event === "copilotMessageArtifact");
     expect(artifact).toBeDefined();
-    // The Workspace has no table artifact: the table is an html artifact.
+    // The FINOS Workspace has no table artifact: the table is an html artifact.
     const data = artifact!.data as { type: string; name: string; content: string };
     expect(data.type).toBe("html");
     expect(data.name).toBe("Prices");

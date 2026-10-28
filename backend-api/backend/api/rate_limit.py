@@ -29,7 +29,7 @@ def exempt_service_token(request: Request) -> bool:
     """Exempt the Copilot service from rate limiting.
 
     Only exempts requests that:
-    1. Have a valid Workspace Authorization token
+    1. Have a valid FINOS Workspace Authorization token
     2. Reach a deployment with RATE_LIMIT_EXEMPT_ENABLED set (development only)
 
     Returns

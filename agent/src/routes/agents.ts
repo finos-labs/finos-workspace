@@ -6,7 +6,7 @@ import { inesSkills } from "../skills/index.ts";
 
 const logger = getLogger(["app", "routes", "agents"]);
 
-/** The id the Workspace knows this agent by, and the one its role grants of models are filed under. */
+/** The id the FINOS Workspace knows this agent by, and the one its role grants of models are filed under. */
 export const AGENT_ID = "default_agent";
 
 export const agentsRouter = new Hono();
@@ -26,9 +26,9 @@ agentsRouter.get("/agents.json", (c) => {
     [AGENT_ID]: {
       name: "Ines",
       description:
-        "An open-source, model-agnostic agent for the Workspace",
+        "An open-source, model-agnostic agent for the FINOS Workspace",
       endpoints: { query: "/v1/query" },
-      // The skills that come with Ines: the Workspace shows them, and a user can pick one with /skill:<slug>.
+      // The skills that come with Ines: the FINOS Workspace shows them, and a user can pick one with /skill:<slug>.
       skills: inesSkills(),
       features: {
         streaming: true,

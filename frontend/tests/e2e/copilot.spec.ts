@@ -7,7 +7,7 @@ import { expect, test } from "@playwright/test";
  * `docker-compose.e2e.yml`), which says the same sentence to everything. So this does not test what
  * an answer says — nothing here could, and a test that tried would be asserting on a model. It tests
  * that an answer arrives at all, which is the whole path between the browser and the model: the web
- * app reaching Ines, Ines recognising the signed-in user, the Workspace allowing the question and
+ * app reaching Ines, Ines recognising the signed-in user, the FINOS Workspace allowing the question and
  * counting it, the agent loop, the text sink, the SSE protocol, and the chat rendering what came back.
  *
  * The account the tests sign in as is the administrator init creates, who gets the organization's
@@ -23,7 +23,7 @@ const STUB_ANSWER =
   "This answer came from the stubbed model that the end-to-end stack runs instead of a provider";
 
 test.describe("the Copilot", () => {
-  // A cold agent signs the user in with the Workspace, asks what their roles allow and counts the
+  // A cold agent signs the user in with the FINOS Workspace, asks what their roles allow and counts the
   // question before it answers, so this is slower than the default per-test budget.
   test.setTimeout(120_000);
 
@@ -56,7 +56,7 @@ test.describe("the Copilot", () => {
     });
 
     // ...and an answer comes back that was not there before. The model is a stub but every other
-    // step is the real one, and a cold agent signs the user in and asks the Workspace first.
+    // step is the real one, and a cold agent signs the user in and asks the FINOS Workspace first.
     await expect
       .poll(() => answers.count(), {
         timeout: 90_000,

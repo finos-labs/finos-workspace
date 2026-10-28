@@ -1,6 +1,6 @@
 /**
  * BridgeSessionManager — multi-session WebSocket bridge between MCP tool
- * handlers and connected Workspace browser tabs.
+ * handlers and connected FINOS Workspace browser tabs.
  *
  * Each session = one browser tab (auth'd via session_id + token UUID pair).
  * Each session owns its own pending-command map. Tool handlers call
@@ -228,7 +228,7 @@ export function makeBridgeSessionManager(opts: {
       failPending(
         browser,
         "unavailable",
-        "Workspace browser disconnected before the command completed.",
+        "FINOS Workspace browser disconnected before the command completed.",
       );
       browsers.delete(sessionId);
       logger.info("Browser disconnected", {
@@ -256,7 +256,7 @@ export function makeBridgeSessionManager(opts: {
         failPending(
           browser,
           "invalid_request",
-          "Workspace browser sent an invalid websocket payload. " +
+          "FINOS Workspace browser sent an invalid websocket payload. " +
             "This can happen when the connected browser build does not " +
             "implement the requested bridge command.",
           { errors: parsed.error.issues },
@@ -293,7 +293,7 @@ export function makeBridgeSessionManager(opts: {
             failPending(
               browser,
               "invalid_request",
-              "Workspace browser sent an invalid command_result body.",
+              "FINOS Workspace browser sent an invalid command_result body.",
               { errors: resultParsed.error.issues },
             );
             return;
@@ -328,7 +328,7 @@ export function makeBridgeSessionManager(opts: {
       }
       if (!browser.socket) {
         throw new BrowserUnavailableError(
-          "Workspace browser is not connected to this session.",
+          "FINOS Workspace browser is not connected to this session.",
         );
       }
 
@@ -347,7 +347,7 @@ export function makeBridgeSessionManager(opts: {
             ok: false,
             command: command.command,
             request_id: requestId,
-            message: "Workspace command timed out waiting for the browser.",
+            message: "FINOS Workspace command timed out waiting for the browser.",
             data: null,
             error: {
               code: "timeout",

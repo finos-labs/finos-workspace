@@ -374,7 +374,7 @@ class TestSignIn:
                 "redirect_uris": [CALLBACK],
                 "response_types": ["code"],
                 "scope": "mcp offline_access",
-                "client_name": "Workspace",
+                "client_name": "FINOS Workspace",
                 "grant_types": ["authorization_code", "refresh_token"],
                 "application_type": "web",
             }

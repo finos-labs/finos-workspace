@@ -334,7 +334,7 @@ export function useGetCopilotWidgets() {
 
       // Expand iframe sub-widgets: if the parent has a bridge with a manifest,
       // create synthetic CopilotWidgets for each sub-widget. The widget itself is sent as well, whatever its
-      // page has published: it is the one the agent acts on, by the uuid that the Workspace gave it (the same
+      // page has published: it is the one the agent acts on, by the uuid that the FINOS Workspace gave it (the same
       // after any refresh), with its type and the parameters it shows. Whether the page has connected yet must
       // not change what the agent is sent. The sub-widgets are what the page publishes, under ids it makes up.
       const bridge = getIframeWidget(uuid);

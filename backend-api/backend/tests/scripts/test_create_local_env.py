@@ -164,7 +164,7 @@ def test_the_seed_config_names_the_administrator_and_no_password(tmp_path, monke
     seed = tomllib.loads(config.read_text())
     assert seed["entity"]["name"] == "Acme"
     assert seed["admins"] == [
-        {"email": "admin@mail.test", "first_name": "Workspace", "last_name": "Administrator"}
+        {"email": "admin@mail.test", "first_name": "FINOS Workspace", "last_name": "Administrator"}
     ]
     # init_users makes the password up when it creates the account; no file holds it
     assert "password" not in config.read_text()

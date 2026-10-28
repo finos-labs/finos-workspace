@@ -131,7 +131,7 @@ describe("the model of a helper", () => {
     const t = setup();
     await post(t.app, TITLE, titleBody("openai:an-expensive-model"));
     expect(modelsUsed()).toEqual(["test-provider:test-model"]);
-    // The Workspace is not even asked about a model that is not offered here.
+    // The FINOS Workspace is not even asked about a model that is not offered here.
     expect(t.authorized).toHaveLength(0);
   });
 

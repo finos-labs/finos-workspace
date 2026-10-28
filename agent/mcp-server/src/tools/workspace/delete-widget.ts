@@ -23,12 +23,12 @@ export const deleteWidgetSchema = {
     .string()
     .optional()
     .describe(
-      "Target dashboard UUID. Omit to target the current Workspace route.",
+      "Target dashboard UUID. Omit to target the current FINOS Workspace route.",
     ),
 } as const;
 
 export const deleteWidgetDescription =
-  "Delete a Workspace widget from a dashboard. " +
+  "Delete a FINOS Workspace widget from a dashboard. " +
   "Provide widget_uuid (preferred) or widget_id. dashboard_id defaults to the current route.";
 
 export async function deleteWidgetHandler(args: {

@@ -418,7 +418,7 @@ const AppCard = memo<AppCardProps>((props) => {
                       ? whiteLabel.leftSidebarLogoDark
                       : whiteLabel.leftSidebarLogo
                   }
-                  alt={whiteLabel.name || "Workspace"}
+                  alt={whiteLabel.name || "FINOS Workspace"}
                 />
               ) : (
                 <Icon

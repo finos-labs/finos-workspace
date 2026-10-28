@@ -103,8 +103,8 @@ export async function validateBackendEndpoints(
 }
 
 /**
- * Splits a widgets.json into the widgets this Workspace renders and the IDs of the
- * rest. The Workspace protocol has more widget types (tables, charts and others)
+ * Splits a widgets.json into the widgets this FINOS Workspace renders and the IDs of the
+ * rest. The FINOS Workspace protocol has more widget types (tables, charts and others)
  * than this build displays; a widget of another type, or with no type (the
  * protocol's default is a table), is left out instead of failing the whole backend.
  */
@@ -617,7 +617,7 @@ export async function validateSource(
   const unsupportedWidgets = validated.unsupportedWidgets ?? [];
   if (unsupportedWidgets.length > 0) {
     validated.templateWarningMessage = [
-      `[widgets.json]: Not shown, this Workspace does not render their widget type: \`${unsupportedWidgets.join("`, `")}\``,
+      `[widgets.json]: Not shown, this FINOS Workspace does not render their widget type: \`${unsupportedWidgets.join("`, `")}\``,
       `[widgets.json]: Supported widget types: \`${WidgetVizTypes.join("`, `")}\`. A widget with no \`type\` is a table, which is not supported.`,
     ].join("\n\n");
   }

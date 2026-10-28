@@ -227,7 +227,7 @@ describe("McpCompanionModal", () => {
 
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith(
-        "Workspace MCP companion connected",
+        "FINOS Workspace MCP companion connected",
         expect.objectContaining({ description: expect.any(String) }),
       );
     });

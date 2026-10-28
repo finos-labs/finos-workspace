@@ -203,7 +203,7 @@ export async function extractWidgetItems(
         }
       } else if (url) {
         if (kind === "image") {
-          // Fetched here and handed over as bytes: the link is the Workspace's, signed, and the model
+          // Fetched here and handed over as bytes: the link is the FINOS Workspace's, signed, and the model
           // provider can neither reach it nor should it be given it.
           logger.debug("Fetching image URL");
           try {

@@ -23,7 +23,7 @@ function routeLabel(pattern: string, status: number): string {
 /**
  * The agent's HTTP application.
  *
- * Public: /agents.json (the Workspace reads it before anyone is signed in), /status and /ready.
+ * Public: /agents.json (the FINOS Workspace reads it before anyone is signed in), /status and /ready.
  * Everything under /v1 needs a signed-in user when the deployment has users.
  */
 const helperGate: MiddlewareHandler<AppEnv> = async (c, next) => {
@@ -66,7 +66,7 @@ export function createApp(services: Services): Hono<AppEnv> {
   // Ready when what the agent depends on answers; /status only says that the process is up.
   app.get("/ready", async (c) => {
     if (workspace && !(await workspace.ready())) {
-      return c.json({ status: "not ready", reason: "the Workspace API does not answer" }, 503);
+      return c.json({ status: "not ready", reason: "the FINOS Workspace API does not answer" }, 503);
     }
     return c.json({ status: "ready" });
   });

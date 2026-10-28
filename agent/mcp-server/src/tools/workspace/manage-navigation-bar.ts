@@ -31,7 +31,7 @@ export const manageNavigationBarSchema = {
     .enum(["create", "add_tabs", "remove_tabs", "rename_tabs"])
     .describe("Operation: create | add_tabs | remove_tabs | rename_tabs."),
   dashboard_id: z.string().optional().describe(
-    "Dashboard UUID. Omit to target the current Workspace route.",
+    "Dashboard UUID. Omit to target the current FINOS Workspace route.",
   ),
   tabs_json: z.string().optional().describe(
     'JSON array of tab objects, e.g. [{"name":"AAPL Analysis"}]. ' +
@@ -44,7 +44,7 @@ export const manageNavigationBarSchema = {
 } as const;
 
 export const manageNavigationBarDescription = describeTool(
-  "Create or mutate the Workspace navigation bar.",
+  "Create or mutate the FINOS Workspace navigation bar.",
   "Requires operation from {create, add_tabs, remove_tabs, rename_tabs}.",
   'For add_tabs, pass tabs_json as a JSON array of objects, for example [{"name":"AAPL Analysis"}].',
   "The only tab object field for create/add/remove is name; do not send tab_id or tab_name. The tab_id is generated as the slug of name.",

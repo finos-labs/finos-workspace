@@ -1,7 +1,7 @@
 ---
 title: Minimal Backend (Generic HTTP)
 uri: workspace://examples/generic-http/minimal
-use_when: You want a framework-neutral picture of what a Workspace backend looks like, before committing to a specific language.
+use_when: You want a framework-neutral picture of what a FINOS Workspace backend looks like, before committing to a specific language.
 language_specific: false
 related:
   - workspace://contract/backend
@@ -12,7 +12,7 @@ related:
 
 # Minimal Backend — Generic HTTP
 
-Workspace doesn't care which language or framework you use. This example shows the **HTTP shape** of a minimal backend so you can implement it in whatever stack you already have.
+FINOS Workspace doesn't care which language or framework you use. This example shows the **HTTP shape** of a minimal backend so you can implement it in whatever stack you already have.
 
 If you're already on Python and want a runnable starting point, see `workspace://examples/python-fastapi/minimal` instead.
 
@@ -98,10 +98,10 @@ That's it. Add more data routes for each widget you expose.
 
 ## CORS
 
-Allow the origin the Workspace is served from, and `http://localhost:1420` for local development, on every route:
+Allow the origin the FINOS Workspace is served from, and `http://localhost:1420` for local development, on every route:
 
 ```text
-Access-Control-Allow-Origin: <the origin of your Workspace>
+Access-Control-Allow-Origin: <the origin of your FINOS Workspace>
 Access-Control-Allow-Methods: GET, POST, OPTIONS
 Access-Control-Allow-Headers: *
 ```
@@ -115,7 +115,7 @@ If the backend requires auth, accept either:
 - A custom header (e.g. `X-API-KEY: <key>`), or
 - A query string parameter (e.g. `?api_key=<key>`).
 
-Workspace lets users register the backend connection with header or query-string credentials, which it then attaches to every widget request. Header is preferred — keys stay out of URLs and access logs.
+FINOS Workspace lets users register the backend connection with header or query-string credentials, which it then attaches to every widget request. Header is preferred — keys stay out of URLs and access logs.
 
 ## Encoding
 

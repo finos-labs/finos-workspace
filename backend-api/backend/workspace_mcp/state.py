@@ -1,4 +1,4 @@
-"""Request-scoped browser bridge runtime for the Workspace MCP sidecar."""
+"""Request-scoped browser bridge runtime for the FINOS Workspace MCP sidecar."""
 
 import asyncio
 from dataclasses import dataclass
@@ -33,7 +33,7 @@ class BrowserSocket(Protocol):
 
 
 class BrowserUnavailableError(RuntimeError):
-    """Raised when the sidecar cannot reach the Workspace browser."""
+    """Raised when the sidecar cannot reach the FINOS Workspace browser."""
 
 
 @dataclass(slots=True)
@@ -128,7 +128,7 @@ class BridgeSessionManager:
             self._fail_pending_commands(
                 self._error(
                     code="unavailable",
-                    message="Workspace browser disconnected from the sidecar.",
+                    message="FINOS Workspace browser disconnected from the sidecar.",
                 )
             )
 
@@ -143,7 +143,7 @@ class BridgeSessionManager:
                     self._error(
                         code="invalid_request",
                         message=(
-                            "Workspace browser sent an invalid websocket payload. "
+                            "FINOS Workspace browser sent an invalid websocket payload. "
                             "This can happen when the connected browser build does "
                             "not implement the requested bridge command."
                         ),
@@ -192,7 +192,7 @@ class BridgeSessionManager:
         async with self._lock:
             browser = self._require_browser()
             if browser.socket is None:
-                raise BrowserUnavailableError("No active Workspace browser connected.")
+                raise BrowserUnavailableError("No active FINOS Workspace browser connected.")
             request_id = command.request_id or new_request_id()
             command = command.model_copy(update={"request_id": request_id})
             loop = asyncio.get_running_loop()
@@ -253,7 +253,7 @@ class BridgeSessionManager:
                 request_id=request_id,
                 code="timeout",
                 message=(
-                    "Workspace command timed out waiting for the browser. "
+                    "FINOS Workspace command timed out waiting for the browser. "
                     "If retries keep timing out, verify identifiers exist via "
                     "get_workspace_snapshot."
                 ),
@@ -286,7 +286,7 @@ class BridgeSessionManager:
     def _require_browser(self) -> ConnectedBrowser:
         browser = self._require_session()
         if browser.socket is None:
-            raise BrowserUnavailableError("No Workspace browser is connected.")
+            raise BrowserUnavailableError("No FINOS Workspace browser is connected.")
         return browser
 
     async def _normalize_result(

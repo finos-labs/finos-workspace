@@ -5,26 +5,26 @@ import type { QueryRequest, SkillCatalogEntry } from "../protocol/types.ts";
 export type CatalogSkill = Pick<SkillCatalogEntry, "slug" | "description">;
 
 /**
- * Ines's own skills. Each one's instructions are the markdown file in this folder named by its slug. The Workspace
+ * Ines's own skills. Each one's instructions are the markdown file in this folder named by its slug. The FINOS Workspace
  * lists them as the agent's (`skills` in /agents.json), and the model loads them like the user's.
  */
 const INES_SKILLS: readonly CatalogSkill[] = [
   {
     slug: "html-report",
-    description: "Generate an HTML report using Workspace's reporting capabilities.",
+    description: "Generate an HTML report using FINOS Workspace's reporting capabilities.",
   },
   {
     slug: "html-table",
-    description: "When creating or styling a table widget for Workspace, follow these rules.",
+    description: "When creating or styling a table widget for FINOS Workspace, follow these rules.",
   },
   {
     slug: "html-chart",
-    description: "When creating or styling a chart widget (line/area/scatter) for Workspace, follow these rules.",
+    description: "When creating or styling a chart widget (line/area/scatter) for FINOS Workspace, follow these rules.",
   },
 ];
 
 /**
- * The skills the model may load: the user's own, which the Workspace lists, and Ines's.
+ * The skills the model may load: the user's own, which the FINOS Workspace lists, and Ines's.
  * A user's skill with the slug of one of Ines's takes its place.
  */
 export function skillsCatalog(request: QueryRequest): CatalogSkill[] {
@@ -33,7 +33,7 @@ export function skillsCatalog(request: QueryRequest): CatalogSkill[] {
   return [...workspaceSkills, ...INES_SKILLS.filter((skill) => !workspaceSlugs.has(skill.slug))];
 }
 
-/** Whether Ines supplies this skill for this request; the Workspace supplies every other one. */
+/** Whether Ines supplies this skill for this request; the FINOS Workspace supplies every other one. */
 export function isInesSkill(request: QueryRequest, slug: string): boolean {
   return (
     INES_SKILLS.some((skill) => skill.slug === slug) &&

@@ -1,7 +1,7 @@
 ---
 title: Backend Contract
 uri: workspace://contract/backend
-use_when: You need to understand what a Workspace backend must expose, regardless of language or framework.
+use_when: You need to understand what a FINOS Workspace backend must expose, regardless of language or framework.
 language_specific: false
 related:
   - workspace://specs/widgets-json
@@ -12,7 +12,7 @@ related:
 
 # Backend Contract
 
-A Workspace backend is an **HTTP service** that returns JSON. Workspace fetches metadata and data from your backend over HTTP; it does not import your code, run your runtime, or care which language you use.
+A FINOS Workspace backend is an **HTTP service** that returns JSON. FINOS Workspace fetches metadata and data from your backend over HTTP; it does not import your code, run your runtime, or care which language you use.
 
 Any framework that can serve JSON over HTTP works: FastAPI, Flask, Django, Express, Fastify, Hono, Spring, Actix, ASP.NET, Go's `net/http`, etc. The contract below is identical for all of them.
 
@@ -28,7 +28,7 @@ The widget data endpoint URL is whatever each widget declares in `widgets.json` 
 
 ## Data endpoint response expectations
 
-The shape Workspace expects is determined by the widget's `type`:
+The shape FINOS Workspace expects is determined by the widget's `type`:
 
 | Widget `type` | Endpoint should return |
 |---------------|-------------------------|
@@ -42,25 +42,25 @@ See `workspace://specs/widget-types` for type guidance and `workspace://specs/wi
 
 ## CORS
 
-Workspace runs in a browser. Your backend MUST allow CORS from the origin the Workspace is served from: the address in the browser's address bar, for example `https://<your-workspace-host>`, and `http://localhost:1420` for a local development server.
+FINOS Workspace runs in a browser. Your backend MUST allow CORS from the origin the FINOS Workspace is served from: the address in the browser's address bar, for example `https://<your-workspace-host>`, and `http://localhost:1420` for a local development server.
 
-Production browsers also block mixed content, so a backend used from an HTTPS Workspace must serve over HTTPS. Local development over HTTP is fine for `http://localhost`.
+Production browsers also block mixed content, so a backend used from an HTTPS FINOS Workspace must serve over HTTPS. Local development over HTTP is fine for `http://localhost`.
 
 ## Authentication
 
-Auth is the backend's responsibility, not Workspace's. Common patterns:
+Auth is the backend's responsibility, not FINOS Workspace's. Common patterns:
 
-- Custom request header (e.g. `X-API-KEY`) configured on the backend connection in Workspace.
-- Query parameter (e.g. `?api_key=...`) configured on the backend connection in Workspace.
+- Custom request header (e.g. `X-API-KEY`) configured on the backend connection in FINOS Workspace.
+- Query parameter (e.g. `?api_key=...`) configured on the backend connection in FINOS Workspace.
 - No auth at all (local dev, internal trusted network).
 
-Header-based auth is preferred — keys stay out of URLs and access logs. Workspace lets users register backend connections with header or query-string credentials.
+Header-based auth is preferred — keys stay out of URLs and access logs. FINOS Workspace lets users register backend connections with header or query-string credentials.
 
 ## Optional endpoints and behaviors
 
 - `GET /` — A friendly root response. Helpful for sanity checks but not required.
 - `GET /thumbnails/{name}` — A simple way to serve app gallery SVG/PNG thumbnails referenced by `apps.json` `img`, `img_dark`, and `img_light`.
-- A `theme` query parameter — Workspace sends `theme=dark|light` with `markdown` and `html` requests, so the response can match the user's UI theme.
+- A `theme` query parameter — FINOS Workspace sends `theme=dark|light` with `markdown` and `html` requests, so the response can match the user's UI theme.
 - A `raw` query parameter — Endpoints of `html` widgets that set `raw` can accept `raw=true` to return the underlying rows as JSON instead of the HTML, so AI agents can work with the data.
 
 ## Encoding

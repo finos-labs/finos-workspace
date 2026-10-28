@@ -2,7 +2,7 @@
  * Tier 2 — agent-loop round-trip scenarios.
  *
  * Pinned to CLAUDE.md gotchas:
- * - Workspace bridge calls are terminal (no re-POST data injection expected)
+ * - FINOS Workspace bridge calls are terminal (no re-POST data injection expected)
  * - Cache-resolved widget re-fetch within MAX_LOOPS=3 without HTTP round-trip
  * - Citations forwarded across round-trips (commit 63272c8)
  */
@@ -21,7 +21,7 @@ import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 
-describe("a Workspace bridge call is terminal — emits SSE then returns, no continuing loop", () => {
+describe("a FINOS Workspace bridge call is terminal — emits SSE then returns, no continuing loop", () => {
   it("add_generative_widget emits a function call and ends the turn", async () => {
     const events = await collectGenerator(
       runAgentLoop({

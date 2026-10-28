@@ -1,7 +1,7 @@
 """
-Tests for the Workspace's tools as the agent in the web app is given them.
+Tests for the FINOS Workspace's tools as the agent in the web app is given them.
 
-The tools are those of the Workspace MCP server that external hosts use, with the same
+The tools are those of the FINOS Workspace MCP server that external hosts use, with the same
 descriptions and schemas. The user is signed in, so the endpoints are asked with the session token,
 and a call is turned into the command that the user's tab runs. As with any MCP tool, a user has
 only the tools their roles grant.
@@ -31,7 +31,7 @@ def external_tools() -> dict[str, dict]:
 
 
 def restricted_to(url: str, *names: str) -> schemas.CopilotAccess:
-    """The access of a user whose roles grant only these tools of the Workspace's server."""
+    """The access of a user whose roles grant only these tools of the FINOS Workspace's server."""
     return schemas.CopilotAccess(
         models=[],
         mcp=[schemas.McpGrant(server_url=url, tool_name=name) for name in names],
@@ -41,7 +41,7 @@ def restricted_to(url: str, *names: str) -> schemas.CopilotAccess:
 
 @pytest.fixture
 def every_tool_granted():
-    """A user whose roles grant every tool of the Workspace's server."""
+    """A user whose roles grant every tool of the FINOS Workspace's server."""
     with patch(ACCESS, return_value=restricted_to(URL, schemas.ALL_MCP_TOOLS)):
         yield
 

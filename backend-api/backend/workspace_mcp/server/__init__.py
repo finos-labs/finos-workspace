@@ -1,4 +1,4 @@
-"""FastMCP tool surface for the Workspace sidecar.
+"""FastMCP tool surface for the FINOS Workspace sidecar.
 
 This package wires the per-domain tool modules into a single ``FastMCP``
 instance. The public entry point is ``create_mcp_server``; the rest of the
@@ -65,13 +65,13 @@ def create_mcp_server(
     lifespan: Lifespan | None = None,
     auth: AuthProvider | None = None,
 ) -> FastMCP:
-    """Create the Workspace MCP server with the full v1 tool list.
+    """Create the FINOS Workspace MCP server with the full v1 tool list.
 
     ``auth`` makes the HTTP transport require a bearer token that the provider accepts;
     without it the server is open, which is only right for the local sidecar.
     """
     server = FastMCP(
-        name="Workspace MCP",
+        name="FINOS Workspace MCP",
         instructions=SERVER_INSTRUCTIONS,
         lifespan=lifespan,
         auth=auth,
@@ -104,7 +104,7 @@ def create_mcp_server(
 
     @server.prompt(
         name="workspace_tool_usage",
-        description="Generic guidance for using the Workspace MCP tool surface.",
+        description="Generic guidance for using the FINOS Workspace MCP tool surface.",
     )
     def workspace_tool_usage() -> list[Message]:
         """Return a compact, generic usage prompt for MCP agents."""
@@ -115,10 +115,10 @@ def create_mcp_server(
 
     @server.prompt(
         name="workspace_session_context",
-        description="Current tracked Workspace dashboard and tab context.",
+        description="Current tracked FINOS Workspace dashboard and tab context.",
     )
     def workspace_session_context() -> list[Message]:
-        """Return the current tracked Workspace dashboard and tab context."""
+        """Return the current tracked FINOS Workspace dashboard and tab context."""
         return [Message(session_context_prompt_content(state), role="user")]
 
     async def run(command: Any) -> ToolResponse:

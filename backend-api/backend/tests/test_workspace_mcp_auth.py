@@ -86,7 +86,7 @@ async def test_unknown_path_returns_404_not_credential_error(client):
     )
 
     assert response.status_code == 404
-    assert "Could not validate Workspace MCP credentials" not in response.text
+    assert "Could not validate FINOS Workspace MCP credentials" not in response.text
 
 
 @pytest.mark.asyncio

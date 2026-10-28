@@ -420,7 +420,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
     await waitFor(() => {
       expect(useWorkspaceBridgeStore.getState().status).toBe("reconnecting");
       expect(toast.warning).toHaveBeenCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.objectContaining({
           id: "workspace-bridge-reconnecting",
           description: expect.stringContaining("Retrying in 1 second"),
@@ -608,7 +608,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
 
     await waitFor(() => {
       expect(toast.warning).toHaveBeenCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.objectContaining({
           description: expect.stringContaining("Retrying in 1 second"),
         }),
@@ -629,7 +629,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
 
     await waitFor(() => {
       expect(toast.warning).toHaveBeenLastCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.objectContaining({
           description: expect.stringContaining("Retrying in 2 seconds"),
         }),
@@ -650,7 +650,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
 
     await waitFor(() => {
       expect(toast.warning).toHaveBeenLastCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.objectContaining({
           description: expect.stringContaining("Retrying in 4 seconds"),
         }),
@@ -676,7 +676,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
         "Failed to reconnect after 3 attempts",
       );
       expect(toast.error).toHaveBeenCalledWith(
-        "Workspace MCP companion disconnected",
+        "FINOS Workspace MCP companion disconnected",
         expect.objectContaining({
           description: expect.stringContaining("Failed to reconnect after 3 attempts"),
         }),
@@ -702,7 +702,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
     await waitFor(() => {
       expect(useWorkspaceBridgeStore.getState().status).toBe("reconnecting");
       expect(toast.warning).toHaveBeenCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.anything(),
       );
     });
@@ -730,7 +730,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
     await waitFor(() => {
       expect(useWorkspaceBridgeStore.getState().status).toBe("reconnecting");
       expect(toast.warning).toHaveBeenCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.anything(),
       );
     });
@@ -1125,7 +1125,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
     });
     await waitFor(() => {
       expect(toast.warning).toHaveBeenLastCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.objectContaining({
           description: expect.stringContaining("Retrying in 1 second"),
         }),
@@ -1151,7 +1151,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
     });
     await waitFor(() => {
       expect(toast.warning).toHaveBeenLastCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.objectContaining({
           description: expect.stringContaining("Retrying in 1 second"),
         }),

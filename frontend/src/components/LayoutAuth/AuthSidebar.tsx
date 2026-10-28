@@ -94,7 +94,7 @@ function McpStatusIndicator() {
     if (status === "disabled") return null;
     const { color = "text-yellow-500", messageSuffix } = MCP_STATUS_MAP[status];
     return (
-      <Tooltip message={`Workspace MCP Companion is ${messageSuffix}`}>
+      <Tooltip message={`FINOS Workspace MCP Companion is ${messageSuffix}`}>
         <div className="flex items-center justify-center size-6 p-1">
           <Icon
             id="mcp"

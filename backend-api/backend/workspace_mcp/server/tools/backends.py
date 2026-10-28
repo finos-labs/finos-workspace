@@ -24,7 +24,7 @@ from workspace_mcp.server._helpers import (
 def register(server: FastMCP, run: CommandRunner) -> None:
     @server.tool(
         description=describe_tool(
-            "Manage Workspace data backends (the connections that power widgets).",
+            "Manage FINOS Workspace data backends (the connections that power widgets).",
             "For list, returns each backend with id, name, url, status, and widget/app/agent counts.",
             "For add, requires name and url.",
             "For update, requires backend_id and at least one of name, url, endpoint_headers.",
@@ -69,7 +69,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ] = None,
     ) -> ToolResponse:
-        """List, add, update, refresh, or remove Workspace data backends."""
+        """List, add, update, refresh, or remove FINOS Workspace data backends."""
         allowed_operations = literal_values(BackendsOperation)
         if operation not in allowed_operations:
             return invalid_request(
@@ -114,7 +114,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
 
     @server.tool(
         description=describe_tool(
-            "List, read, or instantiate Workspace apps (dashboard templates).",
+            "List, read, or instantiate FINOS Workspace apps (dashboard templates).",
             "There is no app update or delete through this MCP surface.",
             "Apps bundle tabs, widget layouts, parameter groups, and suggested prompts. "
             "Instantiating one is the programmatic equivalent of clicking an app in the gallery.",
@@ -172,7 +172,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ] = None,
     ) -> ToolResponse:
-        """List, read, or instantiate Workspace apps across all app sources."""
+        """List, read, or instantiate FINOS Workspace apps across all app sources."""
         allowed_operations = literal_values(AppsOperation)
         if operation not in allowed_operations:
             return invalid_request(

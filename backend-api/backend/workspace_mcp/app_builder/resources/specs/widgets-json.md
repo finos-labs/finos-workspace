@@ -12,7 +12,7 @@ related:
 
 # `widgets.json` Spec
 
-`widgets.json` is the metadata contract that tells Workspace which widgets your backend offers, what type each one is, and which endpoint serves its data.
+`widgets.json` is the metadata contract that tells FINOS Workspace which widgets your backend offers, what type each one is, and which endpoint serves its data.
 
 ## Top-level shape
 
@@ -25,7 +25,7 @@ related:
 }
 ```
 
-Returning a JSON array is the most common mistake here — Workspace will reject it. Widget ids are referenced by app layouts (the `i` field in `apps.json` layout items), so they must be stable.
+Returning a JSON array is the most common mistake here — FINOS Workspace will reject it. Widget ids are referenced by app layouts (the `i` field in `apps.json` layout items), so they must be stable.
 
 ## Widget definition fields
 
@@ -42,11 +42,11 @@ Each value is an object. The high-leverage fields:
 | `params` | Optional | Array of parameter definitions. See `workspace://specs/widget-parameters`. |
 | `data` | Optional | Type-specific config. For `markdown`, `data.dataKey` names the path of the string inside a JSON response; for `newsfeed`, the path of the array of articles. |
 | `source` | Optional | Array of source labels, e.g. `["API"]`. |
-| `raw` | Optional | `true` when the endpoint also answers `raw=true` with the underlying rows as JSON (`html` widgets): Workspace then offers a toggle to the data. |
+| `raw` | Optional | `true` when the endpoint also answers `raw=true` with the underlying rows as JSON (`html` widgets): FINOS Workspace then offers a toggle to the data. |
 | `runButton` | Optional | When `true`, the widget waits for the user to click Run before fetching. Default `false`. Only set `true` for heavy work (>5 s). |
 | `refetchInterval` | Optional | Auto-refresh interval in milliseconds. |
 
-Unknown keys are tolerated by some Workspace builds and ignored by others — don't author speculative fields.
+Unknown keys are tolerated by some FINOS Workspace builds and ignored by others — don't author speculative fields.
 
 ## `gridData` is a hint, not the layout
 
@@ -60,7 +60,7 @@ Common mistakes:
 
 ## Endpoint path
 
-`endpoint` is the path the widget calls. It can be any HTTP path on the backend; it does not have to match the widget id. Workspace will issue a `GET` (or, when configured, `POST`) to `<backend-url><endpoint>` and pass the widget's parameters as query string entries (or in the body, depending on backend connection setup). It also adds a `theme` query parameter (`dark` or `light`) to `markdown` and `html` requests.
+`endpoint` is the path the widget calls. It can be any HTTP path on the backend; it does not have to match the widget id. FINOS Workspace will issue a `GET` (or, when configured, `POST`) to `<backend-url><endpoint>` and pass the widget's parameters as query string entries (or in the body, depending on backend connection setup). It also adds a `theme` query parameter (`dark` or `light`) to `markdown` and `html` requests.
 
 ## Example shape
 

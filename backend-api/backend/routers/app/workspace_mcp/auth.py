@@ -17,7 +17,7 @@ DISPLAY_TOKEN_PREFIX_LENGTH = 20
 
 workspace_mcp_credentials_exception = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Could not validate Workspace MCP credentials",
+    detail="Could not validate FINOS Workspace MCP credentials",
 )
 
 

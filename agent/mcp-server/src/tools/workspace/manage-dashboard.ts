@@ -1,5 +1,5 @@
 /**
- * manage_dashboard — create / read / update one Workspace dashboard.
+ * manage_dashboard — create / read / update one FINOS Workspace dashboard.
  *
  * Mirrors workspace_mcp/server.py:639-686 with operation-specific required
  * fields enforced inline.
@@ -17,7 +17,7 @@ export const manageDashboardSchema = {
     .enum(["create", "read", "update"])
     .describe("Operation to perform on the dashboard."),
   dashboard_id: z.string().optional().describe(
-    "Dashboard UUID. Omit on read to target the current Workspace route. " +
+    "Dashboard UUID. Omit on read to target the current FINOS Workspace route. " +
       "Required for update.",
   ),
   name: z.string().optional().describe(
@@ -29,7 +29,7 @@ export const manageDashboardSchema = {
 } as const;
 
 export const manageDashboardDescription = describeTool(
-  "Create, read, or update one Workspace dashboard.",
+  "Create, read, or update one FINOS Workspace dashboard.",
   "Requires operation from {create, read, update}.",
   "For create, pass name and optional dashboard_id and activate.",
   "For read, pass optional dashboard_id; omitted dashboard_id targets the current dashboard route.",

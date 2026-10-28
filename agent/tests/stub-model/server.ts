@@ -37,7 +37,7 @@ function chunk(content: string, done: boolean) {
     ...(done
       ? {
           done_reason: "stop",
-          // The agent reports these to the Workspace as the tokens a question used, so they are
+          // The agent reports these to the FINOS Workspace as the tokens a question used, so they are
           // numbers rather than nothing; they are not meant to be accurate.
           prompt_eval_count: 1,
           eval_count: 1,

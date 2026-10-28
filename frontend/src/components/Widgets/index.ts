@@ -31,7 +31,7 @@ export default Widgets;
 export type WidgetComponentName = keyof typeof Widgets;
 export type WidgetComponent<T extends WidgetComponentName> = (typeof Widgets)[T];
 
-/** The ids the Workspace knows, and any other id a backend declares. */
+/** The ids the FINOS Workspace knows, and any other id a backend declares. */
 export type WidgetId = keyof typeof WidgetComponentMap | WidgetsIds | (string & {});
 
 export const getWidgetComponent = (

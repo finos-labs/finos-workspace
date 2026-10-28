@@ -1,6 +1,6 @@
-"""The Workspace's tools for the agent that runs in the web app.
+"""The FINOS Workspace's tools for the agent that runs in the web app.
 
-External hosts use the Workspace MCP server (``workspace_mcp``): they sign in with a personal
+External hosts use the FINOS Workspace MCP server (``workspace_mcp``): they sign in with a personal
 access token, and the server reaches the user's browser through a bridge session that the user
 opens. The agent that is built into the web app needs neither. The user is signed in, and the tab
 the user chats in is the one that runs what the agent asks for.
@@ -10,7 +10,7 @@ schemas (they come from the same server), and the tab runs a tool when the agent
 is the backend half: it says which tools there are, and turns a call into the command that the
 tab runs.
 
-Both are asked with the user's session token, which the Workspace recognises the way it does
+Both are asked with the user's session token, which the FINOS Workspace recognises the way it does
 for the chats and the access of the user, and what the user's roles grant applies as it does to
 any MCP tool (the tools are those of the server at this endpoint's address).
 """
@@ -81,7 +81,7 @@ class _CommandCapture:
         model = workspace_command_adapter.validate_python(command)
         commands = _commands.get()
         if commands is None:
-            raise RuntimeError("A Workspace tool ran outside of a call.")
+            raise RuntimeError("A FINOS Workspace tool ran outside of a call.")
         commands.append(model.model_dump(mode="json"))
         return WorkspaceCommandResult(ok=True, command=model.command, message="")
 
@@ -110,7 +110,7 @@ async def get_workspace_tools(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """The tools of the Workspace that the user may use, as the agent in the web app is given them."""
+    """The tools of the FINOS Workspace that the user may use, as the agent in the web app is given them."""
     url = server_url(request)
     access = await app_helpers.get_user_copilot_access(db, user.uuid)
     tools = []

@@ -199,7 +199,7 @@ describe("WORKSPACE_BRIDGE_COMMANDS — common shape errors are rejected", () =>
     expect(spec.inputSchema.safeParse({ widget_type: "tree" }).success).toBe(false);
   });
 
-  // The Workspace has no table or chart widget; those are drawn as html.
+  // The FINOS Workspace has no table or chart widget; those are drawn as html.
   it("add_generative_widget offers only note and html", () => {
     const spec = WORKSPACE_BRIDGE_COMMANDS.find(
       (c) => c.name === "add_generative_widget",

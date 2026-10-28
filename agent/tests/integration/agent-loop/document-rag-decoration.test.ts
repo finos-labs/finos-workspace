@@ -292,7 +292,7 @@ describe("document RAG — x-ines-* never reaches the model", () => {
 
 describe("document RAG — file-tier widget bridge", () => {
   it("PDF bytes from a file-* widget land in pendingDocuments and ship on next query_documents", async () => {
-    // Workspace ships the file as `widgets.primary` entry. The model then
+    // FINOS Workspace ships the file as `widgets.primary` entry. The model then
     // calls get_widget_data for it; the re-POST tool message arrives with
     // base64 bytes. `extractFileTierDocs` adds the doc to pendingDocuments,
     // and the subsequent query_documents call carries it on the wire.

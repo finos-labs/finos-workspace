@@ -139,7 +139,7 @@ describe("agent token", () => {
       "https://agent.example.test/v1/query",
       "http://localhost:3000/app/user",
       "http://localhost:3000.evil.test/ai/v1/query",
-    ])("sends no Workspace credential to any other URL: %s", async (url) => {
+    ])("sends no FINOS Workspace credential to any other URL: %s", async (url) => {
       const init = { method: "POST", headers: { "X-Agent-Key": "agent-key" } };
 
       await fetchAgent(url, init);

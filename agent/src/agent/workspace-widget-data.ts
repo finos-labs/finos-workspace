@@ -1,9 +1,9 @@
 /**
- * Widget data through the Workspace's MCP tool.
+ * Widget data through the FINOS Workspace's MCP tool.
  *
- * The Workspace serves its own MCP server (`get_widget_data`, among its tools). When that tool is in the
+ * The FINOS Workspace serves its own MCP server (`get_widget_data`, among its tools). When that tool is in the
  * request's tools, it is how Ines reads a widget (see `makeMcpTools`): the model calls the tool with the
- * schema and the description that the server gives it, the browser runs it through the Workspace's bridge
+ * schema and the description that the server gives it, the browser runs it through the FINOS Workspace's bridge
  * (and through the iframe bridge, for the page of an iframe widget), and the result comes back as the result
  * of any MCP tool. This reads that result as what the rest of the agent knows how to take in: the tool
  * message of a `get_widget_data` round trip, whose data is turned into queryable tables.
@@ -14,15 +14,15 @@ import { getLogger } from "../lib/logger.ts";
 
 const logger = getLogger(["app", "agent", "workspace-widget-data"]);
 
-/** The name the model knows the tool by, and the canonical name on the Workspace's server. */
+/** The name the model knows the tool by, and the canonical name on the FINOS Workspace's server. */
 export const WIDGET_DATA_TOOL = "get_widget_data";
 
-/** A tool by its canonical name, whichever the Workspace calls it by (it may put the server in front: `Workspace_get_widget_data`). */
+/** A tool by its canonical name, whichever the FINOS Workspace calls it by (it may put the server in front: `Workspace_get_widget_data`). */
 export function isWidgetDataToolName(name: unknown): boolean {
   return typeof name === "string" && (name === WIDGET_DATA_TOOL || name.endsWith(`_${WIDGET_DATA_TOOL}`));
 }
 
-/** Whether a tool message is the result of the Workspace's MCP `get_widget_data` (as an `execute_agent_tool` round trip). */
+/** Whether a tool message is the result of the FINOS Workspace's MCP `get_widget_data` (as an `execute_agent_tool` round trip). */
 export function isWidgetDataMcpResult(toolMsg: ToolMessage): boolean {
   return toolMsg.function === "execute_agent_tool" && isWidgetDataToolName(toolMsg.input_arguments?.tool_name);
 }

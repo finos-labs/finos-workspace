@@ -3,7 +3,7 @@
  *
  * The model is served the current turn only (see ../history.ts); everything said before is here, for it
  * to fetch when the question needs it. In-process and stateless: it reads the messages of this request,
- * which the Workspace sends in full every time, so nothing has to be kept between requests.
+ * which the FINOS Workspace sends in full every time, so nothing has to be kept between requests.
  */
 
 import { tool } from "ai";

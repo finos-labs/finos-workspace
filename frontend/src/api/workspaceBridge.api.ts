@@ -37,7 +37,7 @@ export function getWorkspaceMcpEndpoint() {
 function catchError(error: AxiosError): never {
   throw new Error(
     error?.message ||
-      `Workspace MCP request failed with status ${error?.response?.status}.`,
+      `FINOS Workspace MCP request failed with status ${error?.response?.status}.`,
   );
 }
 function parseJsonResponse<T extends AxiosResponse, U = T["data"]>(
@@ -46,7 +46,8 @@ function parseJsonResponse<T extends AxiosResponse, U = T["data"]>(
 ): U {
   if (resp.status !== successStatus) {
     throw new Error(
-      resp.statusText || `Workspace MCP request failed with status ${resp.status}.`,
+      resp.statusText ||
+        `FINOS Workspace MCP request failed with status ${resp.status}.`,
     );
   }
   return resp.data;

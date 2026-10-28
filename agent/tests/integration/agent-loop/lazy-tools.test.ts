@@ -110,7 +110,7 @@ describe("a question that needs no tool", () => {
     await run(spy.model, { tools: [] });
     const catalog = catalogToolNamesOf(spy.calls[0]);
     // The agent's own tools are there, its dashboard tools among them (the request has none of the
-    // Workspace's); the MCP tools are not.
+    // FINOS Workspace's); the MCP tools are not.
     expect(catalog).toContain("execute_sql");
     expect(catalog).toContain("create_app");
     expect(catalog).toContain("update_widget_in_dashboard");

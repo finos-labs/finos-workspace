@@ -102,7 +102,7 @@ function asNonEmptyString(value: unknown): string | undefined {
  * internal ArtifactT shape. Accepts two shapes: an already-normalized artifact
  * ({type, content}), forwarded as-is with uuid/name backfilled, and the raw
  * copilot wire format ({source_info, data_format, content}). Returns null for
- * anything else (including artifact types Workspace does not render) so malformed
+ * anything else (including artifact types FINOS Workspace does not render) so malformed
  * tool-call payloads are dropped instead of stored in widget storage.
  */
 function normalizeGenerativeWidgetArtifact(artifact: unknown): ArtifactT | null {
@@ -214,7 +214,7 @@ async function responseToCopilotError(
     case 404:
       return new CopilotError(
         CopilotErrorType.GATEWAY_ERROR,
-        `${context} hit '${endpoint}' and returned HTTP 404. Re-check the resource identifier or query arguments, and confirm this data source is available in Workspace.${bodySuffix}`,
+        `${context} hit '${endpoint}' and returned HTTP 404. Re-check the resource identifier or query arguments, and confirm this data source is available in FINOS Workspace.${bodySuffix}`,
       );
     case 422:
       return new CopilotError(

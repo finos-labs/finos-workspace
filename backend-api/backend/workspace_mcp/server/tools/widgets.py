@@ -87,7 +87,7 @@ def register(
 ) -> None:
     @server.tool(
         description=describe_tool(
-            "Fetch current data for one Workspace data source.",
+            "Fetch current data for one FINOS Workspace data source.",
             "Only use this after selecting an exact widget identity and explicit data_args.",
         )
     )
@@ -134,7 +134,7 @@ def register(
 
     @server.tool(
         description=describe_tool(
-            "List widgets available to the current Workspace session.",
+            "List widgets available to the current FINOS Workspace session.",
             "Returns deterministic widget identities for later get_widget_schema and create_widget calls.",
             (
                 "Each returned widget includes origin; pass origin to other widget "
@@ -178,7 +178,7 @@ def register(
             ),
         ] = None,
     ) -> ToolResponse:
-        """List widgets that can be created in the current Workspace session."""
+        """List widgets that can be created in the current FINOS Workspace session."""
         result = await run(
             ListAvailableWidgetsCommand(
                 command="list_available_widgets",
@@ -216,7 +216,7 @@ def register(
             ),
         ],
     ) -> ToolResponse:
-        """Fetch one deterministic widget schema from the Workspace widget library."""
+        """Fetch one deterministic widget schema from the FINOS Workspace widget library."""
         if not origin or not widget_id:
             return invalid_request(
                 "get_widget_schema",
@@ -293,7 +293,7 @@ def register(
         widget_id: WidgetIdFallback = None,
         dashboard_id: DashboardId = None,
     ) -> ToolResponse:
-        """Load one widget's current payload from Workspace."""
+        """Load one widget's current payload from FINOS Workspace."""
         guard = require_widget_identifier(
             "read_widget", widget_uuid=widget_uuid, widget_id=widget_id
         )
@@ -353,7 +353,7 @@ def register(
             ),
         ] = None,
     ) -> ToolResponse:
-        """Create a new Workspace widget."""
+        """Create a new FINOS Workspace widget."""
         if not origin or not widget_id:
             return invalid_request(
                 "create_widget",
@@ -418,7 +418,7 @@ def register(
             ),
         ] = None,
     ) -> ToolResponse:
-        """Update an existing Workspace widget."""
+        """Update an existing FINOS Workspace widget."""
         guard = require_widget_identifier(
             "update_widget", widget_uuid=widget_uuid, widget_id=widget_id
         )
@@ -520,7 +520,7 @@ def register(
         widget_id: WidgetIdFallback = None,
         dashboard_id: DashboardId = None,
     ) -> ToolResponse:
-        """Delete a Workspace widget."""
+        """Delete a FINOS Workspace widget."""
         guard = require_widget_identifier(
             "delete_widget", widget_uuid=widget_uuid, widget_id=widget_id
         )

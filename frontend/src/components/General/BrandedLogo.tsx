@@ -30,7 +30,7 @@ export default function BrandedLogo({ className, animate = true }: BrandedLogoPr
             ? leftSidebarLogoDark
             : leftSidebarLogo
         }
-        alt={name || "Workspace"}
+        alt={name || "FINOS Workspace"}
       />
     );
   }

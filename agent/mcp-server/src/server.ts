@@ -149,7 +149,7 @@ if (import.meta.main) {
   }
 }
 
-// The Workspace's links to its users' files are on the address the browser uses; these tools fetch them from
+// The FINOS Workspace's links to its users' files are on the address the browser uses; these tools fetch them from
 // the API's address inside the deployment (see src/lib/safe-fetch.ts), with WORKSPACE_ORIGIN as their Origin:
 // the API refuses the calls of an origin it does not allow. Without WORKSPACE_PUBLIC_URL a link is fetched as
 // it is.
@@ -170,7 +170,7 @@ if (workspacePublicUrl) {
   } catch {}
   if (!isOrigin) {
     logger.fatal(
-      "WORKSPACE_ORIGIN is required with WORKSPACE_PUBLIC_URL: the web app's origin, which the Workspace API allows (BACKEND_CORS_ORIGINS), like https://workspace.example.com",
+      "WORKSPACE_ORIGIN is required with WORKSPACE_PUBLIC_URL: the web app's origin, which the FINOS Workspace API allows (BACKEND_CORS_ORIGINS), like https://workspace.example.com",
     );
     process.exit(1);
   }
@@ -190,7 +190,7 @@ if (!docRagEnabled) {
   logger.warn(`${embedProblem} query_documents/list_documents disabled (embeddings unavailable)`);
 }
 
-// Workspace bridge (companion) tools — require a Workspace browser
+// FINOS Workspace bridge (companion) tools — require a FINOS Workspace browser
 // tab connected to /bridge/ws. Behind COMPANION_TOOLS_ENABLED (default off)
 // so a plain backend-tools deployment doesn't advertise 18 tools that need
 // a connected browser. Prompts and app-builder resources only describe
@@ -339,7 +339,7 @@ async function buildMcpServer(): Promise<McpServer> {
       manageAppsHandler,
     );
 
-    // Workspace MCP prompts (workspace_tool_usage + workspace_session_context).
+    // FINOS Workspace MCP prompts (workspace_tool_usage + workspace_session_context).
     registerWorkspacePrompts(mcp);
 
     // App-builder MCP resources (16 markdown documents under workspace://*).

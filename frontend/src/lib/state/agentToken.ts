@@ -54,7 +54,7 @@ export function clearAgentToken() {
 /**
  * fetch for agent endpoints. A request to the default Copilot's origin carries the agent
  * token as its bearer and is sent once more with a fresh token after a 401. Any other
- * URL (a custom agent) is fetched exactly as given, with no Workspace credential.
+ * URL (a custom agent) is fetched exactly as given, with no FINOS Workspace credential.
  */
 export async function fetchAgent(
   input: string | URL,

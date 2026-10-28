@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document outlines the testing strategy, conventions, and best practices for the Workspace project.
+This document outlines the testing strategy, conventions, and best practices for the FINOS Workspace project.
 
 ## Table of Contents
 

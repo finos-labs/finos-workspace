@@ -17,8 +17,8 @@ function parseUrl(url: string | URL): URL | null {
 }
 
 /**
- * Whether `url` is on the Workspace API's origin: an exact origin match, never a prefix
- * or substring test. Workspace credentials and the client header go to this origin only.
+ * Whether `url` is on the FINOS Workspace API's origin: an exact origin match, never a prefix
+ * or substring test. FINOS Workspace credentials and the client header go to this origin only.
  */
 export function isApiUrl(url: string | URL): boolean {
   const api = parseUrl(getConfig().urls.backend);
@@ -27,7 +27,7 @@ export function isApiUrl(url: string | URL): boolean {
 
 /**
  * Whether `url` is one of the API's own file routes (`/app/files/...` under the API's
- * URL): the only URLs a widget names that may get the Workspace session.
+ * URL): the only URLs a widget names that may get the FINOS Workspace session.
  */
 export function isApiFileUrl(url: string | URL): boolean {
   const api = parseUrl(getConfig().urls.backend);

@@ -90,7 +90,7 @@ function workspaceListWidgetsArtifact(data: ToolMessage["data"]): CopilotArtifac
   const rows = workspaceListWidgetsDetails(data);
   if (!rows?.length) return undefined;
 
-  return [htmlTableArtifact("Available Widgets", "Widgets available from the selected Workspace catalog.", rows)];
+  return [htmlTableArtifact("Available Widgets", "Widgets available from the selected FINOS Workspace catalog.", rows)];
 }
 
 function workspaceWidgetSchema(data: ToolMessage["data"]): Record<string, unknown> | undefined {
@@ -470,7 +470,7 @@ function toolDataMessageTitle(value: unknown): string | undefined {
 function workspaceBridgeResultMessage(functionName: string, data?: ToolMessage["data"]): string {
   switch (functionName) {
     case "get_workspace_snapshot":
-      return "Workspace snapshot loaded";
+      return "FINOS Workspace snapshot loaded";
     case "list_available_widgets":
       return "Available widgets listed";
     case "get_widget_schema":
@@ -496,7 +496,7 @@ function workspaceBridgeResultMessage(functionName: string, data?: ToolMessage["
     case "read_widget":
       return "Widget read result received";
     default:
-      return `Workspace command result received: ${functionName}`;
+      return `FINOS Workspace command result received: ${functionName}`;
   }
 }
 
@@ -832,7 +832,7 @@ export function injectWidgetData(
   });
 }
 
-/** Gives the model a skill's instructions, whether the Workspace or Ines supplied them. */
+/** Gives the model a skill's instructions, whether the FINOS Workspace or Ines supplied them. */
 export function injectSkill(slug: string, content: string, ctx: RoundTripContext): SSEEvent {
   ctx.messages.push({
     role: "user" as const,
@@ -875,7 +875,7 @@ export async function* injectFromReboot(
   toolMsg: ToolMessage,
   ctx: RoundTripContext,
 ): AsyncGenerator<SSEEvent, InjectFromRebootResult> {
-  // The result of the Workspace's MCP `get_widget_data` is taken in as the data of a widget round trip.
+  // The result of the FINOS Workspace's MCP `get_widget_data` is taken in as the data of a widget round trip.
   toolMsg = asWidgetDataMessage(toolMsg, ctx.allWidgets) ?? toolMsg;
 
   // Restore intermediate citations from extra_state, if any
@@ -903,7 +903,7 @@ export async function* injectFromReboot(
       ctx.messages.push({
         role: "user" as const,
         content:
-          "Workspace bridge result from get_params_options:\n\n" +
+          "FINOS Workspace bridge result from get_params_options:\n\n" +
           `Input:\n${JSON.stringify(toolMsg.input_arguments ?? {}, null, 2)}\n\n` +
           `Output:\n${payload}`,
       });
@@ -953,7 +953,7 @@ export async function* injectFromReboot(
         ctx.messages.push({
           role: "user" as const,
           content:
-            `Workspace bridge result from ${toolMsg.function}:\n\n` +
+            `FINOS Workspace bridge result from ${toolMsg.function}:\n\n` +
             `Input:\n${JSON.stringify(toolMsg.input_arguments ?? {}, null, 2)}\n\n` +
             `Output:\n${payload}`,
         });

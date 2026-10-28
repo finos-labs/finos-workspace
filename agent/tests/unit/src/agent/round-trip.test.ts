@@ -96,7 +96,7 @@ describe("injectFromReboot — get_params_options", () => {
     const msg = ctx.messages[0];
     expect(msg.role).toBe("user");
     const content = msg.content as string;
-    expect(content).toContain("Workspace bridge result from get_params_options");
+    expect(content).toContain("FINOS Workspace bridge result from get_params_options");
     expect(content).toContain("AAPL");
     expect(content).toContain("MSFT");
     expect(events.length).toBe(1);
@@ -354,7 +354,7 @@ describe("injectFromReboot — workspace bridge results", () => {
       data: [
         {
           status: "success",
-          message: "Workspace snapshot loaded.",
+          message: "FINOS Workspace snapshot loaded.",
           data: {
             ok: true,
             command: "get_workspace_snapshot",
@@ -409,7 +409,7 @@ describe("injectFromReboot — workspace bridge results", () => {
 
     expect(ctx.messages).toHaveLength(1);
     expect(events).toHaveLength(1);
-    expect(events[0].data.message).toBe("Workspace snapshot loaded");
+    expect(events[0].data.message).toBe("FINOS Workspace snapshot loaded");
     expect(events[0].data.details).toEqual([
       {
         Dashboards: {
@@ -461,7 +461,7 @@ describe("injectFromReboot — workspace bridge results", () => {
     expect(ctx.messages).toHaveLength(1);
     expect(ctx.messages[0].role).toBe("user");
     const content = ctx.messages[0].content as string;
-    expect(content).toContain("Workspace bridge result from list_available_widgets");
+    expect(content).toContain("FINOS Workspace bridge result from list_available_widgets");
     expect(content).toContain("economy_fred_series_fred_obb");
     expect(content).not.toContain("config.data_args");
     expect(events).toHaveLength(1);
@@ -505,7 +505,7 @@ describe("injectFromReboot — workspace bridge results", () => {
 
     expect(ctx.messages).toHaveLength(1);
     const content = ctx.messages[0].content as string;
-    expect(content).toContain("Workspace bridge result from list_available_widgets");
+    expect(content).toContain("FINOS Workspace bridge result from list_available_widgets");
     expect(content).toContain('"origin": "ESG"');
     expect(content).not.toContain("retry discovery without the origin filter");
     expect(events).toHaveLength(1);
@@ -582,7 +582,7 @@ describe("injectFromReboot — workspace bridge results", () => {
 
     expect(ctx.messages).toHaveLength(1);
     const content = ctx.messages[0].content as string;
-    expect(content).toContain("Workspace bridge result from get_widget_schema");
+    expect(content).toContain("FINOS Workspace bridge result from get_widget_schema");
     expect(content).toContain('"widget_id": "economy_fred_series_fred_obb"');
     expect(content).not.toContain("Do not call search_widgets or get_workspace_snapshot");
     expect(content).toContain('"value": "m"');
@@ -669,7 +669,7 @@ describe("injectFromReboot — workspace bridge results", () => {
     expect(events).toHaveLength(1);
     expect(events[0].data.message).toBe("Widget creation result received");
     expect(events[0].data.details).toBeUndefined();
-    expect(ctx.messages[0].content).toContain("Workspace bridge result from add_widget_to_dashboard");
+    expect(ctx.messages[0].content).toContain("FINOS Workspace bridge result from add_widget_to_dashboard");
     expect(ctx.messages[0].content).toContain('"widget_uuid": "widget-1"');
     expect(ctx.messages[0].content).not.toContain("do not mention widget_uuid");
   });
@@ -705,7 +705,7 @@ describe("injectFromReboot — workspace bridge results", () => {
     expect(events).toHaveLength(1);
     expect(events[0].data.message).toBe("Dashboard created");
     expect(events[0].data.details).toBeUndefined();
-    expect(ctx.messages[0].content).toContain("Workspace bridge result from manage_dashboard");
+    expect(ctx.messages[0].content).toContain("FINOS Workspace bridge result from manage_dashboard");
     expect(ctx.messages[0].content).toContain('"dashboard_id": "dashboard-1"');
     expect(ctx.messages[0].content).not.toContain("Do not call manage_dashboard again");
   });
@@ -751,7 +751,7 @@ describe("injectFromReboot — workspace bridge results", () => {
     ]);
     const errorCtx = emptyCtx();
     await drain(injectFromReboot(errorTool, errorCtx));
-    expect(errorCtx.messages[0].content).toContain("Workspace bridge result from manage_navigation_bar");
+    expect(errorCtx.messages[0].content).toContain("FINOS Workspace bridge result from manage_navigation_bar");
     expect(errorCtx.messages[0].content).toContain("No navigation bar found");
     expect(errorCtx.messages[0].content).not.toContain("The dashboard does not have a navigation bar yet.");
   });
@@ -884,7 +884,7 @@ describe("injectFromReboot — workspace bridge results", () => {
 
     expect(events[0].data.message).toBe("Widget update succeeded");
     expect(events[0].data.details).toBeUndefined();
-    expect(ctx.messages[0].content).toContain("Workspace bridge result from update_widget_in_dashboard");
+    expect(ctx.messages[0].content).toContain("FINOS Workspace bridge result from update_widget_in_dashboard");
   });
 });
 

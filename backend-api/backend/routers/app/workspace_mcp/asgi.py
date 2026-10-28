@@ -18,7 +18,7 @@ USER_UUID_CLAIM = "user_uuid"
 
 
 class WorkspaceMCPTokenVerifier(TokenVerifier):
-    """Accepts the personal access tokens that users create for the Workspace MCP server.
+    """Accepts the personal access tokens that users create for the FINOS Workspace MCP server.
 
     FastMCP turns a token that this rejects into an HTTP 401 before the MCP transport sees the
     request. Only the ``/mcp`` route is gated: other paths still answer 404, and a GET answers 405.
@@ -57,7 +57,7 @@ class WorkspaceMCPUserMiddleware(Middleware):
 
 
 def create_workspace_mcp_server(auth: TokenVerifier | None = None):
-    """The Workspace MCP server; ``auth`` is what gates it over HTTP."""
+    """The FINOS Workspace MCP server; ``auth`` is what gates it over HTTP."""
     server = create_mcp_server(WorkspaceMCPBridgeState(bridge_manager), auth=auth)
     server.add_middleware(WorkspaceMCPUserMiddleware())
     return server

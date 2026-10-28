@@ -37,7 +37,7 @@ export const createWidgetSchema = {
     .string()
     .optional()
     .describe(
-      "Target dashboard UUID. Omit to target the current Workspace route. " +
+      "Target dashboard UUID. Omit to target the current FINOS Workspace route. " +
         "Resolve from session_context.current_dashboard_uuid in the prior response.",
     ),
   data_args_json: z

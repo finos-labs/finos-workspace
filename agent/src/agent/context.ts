@@ -1,7 +1,7 @@
 /**
  * Request `context` consumption.
  *
- * Workspace forwards prior chat artifacts + widget snapshots as
+ * FINOS Workspace forwards prior chat artifacts + widget snapshots as
  * `request.context: CopilotContextItem[]`. Each item has `{uuid, name,
  * description, metadata?, data?}` where `data.items[i]` carries `content` plus
  * `data_format.parse_as` ("table", "chart", "html", etc.). The agent splits

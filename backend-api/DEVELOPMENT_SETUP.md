@@ -1,6 +1,6 @@
 # Development Setup
 
-This guide walks through setting up the Workspace backend for local development.
+This guide walks through setting up the FINOS Workspace backend for local development.
 
 For UI testing on macOS, run the backend inside Docker via
 `docker-compose-local-dev.yml`. The API and RQ worker both run from Linux
