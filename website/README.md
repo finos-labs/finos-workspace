@@ -9,7 +9,7 @@ This website was created with Docusaurus 3, and it renders the pages in `docs/`.
 
 ## Local run
 
-The site needs Node 26.12.1, the version that the repository's images run.
+The site needs Node 26.12.1, the version that the repository's images run, and Docker, which runs the backend's exporter.
 
 ```bash
 cd website
@@ -18,7 +18,7 @@ npm run reference
 npm start
 ```
 
-The reference pages are generated from data that the backend, the agent and the web app write. Git does not track that data, and `npm run reference` writes it: it expects the backend's Python environment to be active and it runs `npm ci` in `agent` and in `frontend`. The page *How to regenerate the reference data* describes each part. `npm start` opens the site at `http://localhost:3000`. Run `npm run typecheck`, `npm test` and `npm run build` before you push. The build fails on a broken link or anchor.
+The reference pages are generated from data that the backend, the agent and the web app write. Git does not track that data, and `npm run reference` writes it. For the backend, it builds the image of the local stack with `docker compose build init` and runs the exporter in a container of that image, with the backend's folder mounted, so the exporter runs the current code with the dependencies of `poetry.lock` and nothing has to be installed or activated on your machine. For the agent and the web app, it runs `npm ci` in `agent` and in `frontend`, which replaces their `node_modules`. The page *How to regenerate the reference data* describes each part. `npm start` serves the site at `http://localhost:3100`, a port that the local stack does not use, so both can run at the same time. Run `npm run typecheck`, `npm test` and `npm run build` before you push. The build fails on a broken link or anchor.
 
 ## Deployment
 

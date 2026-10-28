@@ -29,7 +29,7 @@ Put each page in the one folder that matches its job. A page that tries to do tw
 
 ## Preview the site
 
-The site needs Node 26.12.1, the version that the repository's images run. The reference pages are generated from data that the backend, the agent and the web app write, and git does not track it, so write the data once, as [How to regenerate the reference data](regenerate-reference-data.md) describes. Then install the site's dependencies and start the development server:
+The site needs Node 26.12.1, the version that the repository's images run, and Docker. The reference pages are generated from data that the backend, the agent and the web app write, and git does not track it, so write the data once, as [How to regenerate the reference data](regenerate-reference-data.md) describes. Then install the site's dependencies and start the development server:
 
 ```bash
 cd website
@@ -38,7 +38,7 @@ npm run reference
 npm start
 ```
 
-The development server listens on port 3000. When the local stack is running, the web app already uses that port, so start the server on another port with `npm start -- --port <port>`.
+The development server listens on port 3100, so it runs next to the local stack, whose web app uses port 3000. Open it at `http://localhost:3100`. The command `npm run serve`, which serves the built site, uses the same port.
 
 ## Check before you push
 

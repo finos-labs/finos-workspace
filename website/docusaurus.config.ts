@@ -10,7 +10,7 @@ const config: Config = {
   title,
   tagline,
   favicon: "img/logo.svg",
-  url: process.env.URL || "http://localhost:3000",
+  url: process.env.URL || "http://localhost:3100",
   baseUrl: "/",
   trailingSlash: false,
   onBrokenLinks: "throw",
