@@ -38,7 +38,7 @@ cd ../..
 
 The script writes four files that git does not track. It fills `backend-api/backend/envs/.env` with random keys and the addresses of the stack. It writes `backend-api/backend/scripts/cfgs/config.toml`, which names the organization and the administrator that the first start creates. It holds no password. It creates an empty `backend-api/backend/user_create.json` that the first start fills in, and it writes `agent/.env` with the settings of the AI agent. The script refuses to overwrite the first two files unless you pass `--force`.
 
-The AI agent also needs a model. Open `agent/.env`, set `DEFAULT_MODEL` and the key of that model's provider, and save the file. The stack starts without them, but the Copilot then answers "No model is configured" and tells you to set `DEFAULT_MODEL`.
+The AI agent also needs a model. Open `agent/.env`, set `DEFAULT_MODEL` and the key of that model's provider, and save the file. The stack starts without them, but the Agent then answers "No model is configured" and tells you to set `DEFAULT_MODEL`.
 
 ## Start the stack
 
@@ -80,4 +80,4 @@ Press `Ctrl+C` in the terminal that runs Compose, or run `docker compose down` i
 
 ## Where to go next
 
-You now have a working FINOS Workspace to experiment with. [Web app configuration](../reference/configuration/web-app.mdx), [Backend settings](../reference/configuration/backend.mdx) and [Ines and its MCP server](../reference/configuration/agent.mdx) list every setting that you can change. To make the app look like your own, follow [How to design and apply a theme in the admin area](../../user-guide/administration/design-a-theme-in-the-admin-area.mdx).
+You now have a working FINOS Workspace to experiment with. [Web app configuration](../../reference/configuration/web-app.mdx), [Backend settings](../../reference/configuration/backend.mdx) and [Ines and its MCP server](../../reference/configuration/agent.mdx) list every setting that you can change. To make the app look like your own, follow [How to design and apply a theme in the admin area](../../user-guide/administration/design-a-theme-in-the-admin-area.mdx).

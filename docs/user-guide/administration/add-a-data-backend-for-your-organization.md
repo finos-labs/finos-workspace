@@ -42,4 +42,4 @@ The list shows each backend's id, name and address. Deleting by name removes the
 
 A new organization backend reaches no one yet except the admins, who see it in the list of backends that a role can grant. Grant it to a role, as [How to give a role access to data](give-a-role-access-to-data.md) describes: a role may grant the whole backend or only some of its widgets. A person whose roles grant none of it does not see the backend and cannot use its widgets.
 
-[Admin command line](../../technical-guide/reference/command-line/admin-cli.mdx) lists every command and its arguments.
+[Admin command line](../../reference/command-line/admin-cli.mdx) lists every command and its arguments.

@@ -1,0 +1,330 @@
+---
+title: Agent query protocol
+sidebar_position: 7
+---
+
+import { EnvDefault } from "@site/src/components/Reference/config";
+import {
+  AgentLimit,
+  BridgeCommands,
+  ExtraStateKeys,
+  InesCoreTools,
+  InesLimit,
+  QueryEvents,
+  QueryRequestFields,
+  ToolGroups,
+  WidgetFields,
+} from "@site/src/components/Reference/agent";
+
+# Agent query protocol
+
+The web app asks its agent questions through one HTTP endpoint. It posts the question together with everything the agent may need to know about the user's dashboard, and the agent answers with a stream of server-sent events. When the agent needs something that only the browser has, such as the data of a widget or the result of a tool on one of the user's MCP servers, it ends the stream with a request for that thing. The browser fetches it and posts again, this time with the result appended to the conversation. One question can therefore take several requests, and this page describes all of them.
+
+Ines, the agent that ships with FINOS Workspace, implements this protocol in `agent/src/routes/query.ts` and `agent/src/protocol/`. Any other agent can be connected if its [descriptor](../schemas/agents-json.mdx) names an endpoint that speaks it. The browser side is `frontend/src/components/AI/hooks/useStreamResponse.tsx` and `useAiFetchRequestInit.tsx`.
+
+## Sending a question
+
+The browser sends `POST /v1/query` with a JSON body. The address comes from `endpoints.query` in the agent's descriptor. For Ines the request also needs an agent token in the `Authorization` header, as [Agent authentication](agent-authentication.mdx) describes.
+
+| Header | Meaning |
+|---|---|
+| `Authorization` | `Bearer` and the agent token. Ines requires it unless it runs with `INES_AUTH=none`. |
+| `Content-Type` | `application/json`. |
+| `X-Trace-Id` | The identifier of the chat. The web app sends its chat id on every request of the chat, and Ines files whatever it keeps for the chat under the user and this value. A request without it still works, but Ines cannot keep anything for the chat between requests, and it counts every request that ends in a tool result as a new question. |
+
+The body has these fields. Only `messages` is required. The table is generated from the schema that Ines checks the body against, so its limits are the ones that Ines enforces.
+
+<QueryRequestFields />
+
+Ines checks the body against a schema and answers 400 when it does not fit. The error names every problem, as in this reply to a message whose role is not one of the three:
+
+```json
+{
+  "error": "Invalid request",
+  "details": [
+    {
+      "code": "invalid_value",
+      "values": ["human", "ai", "tool"],
+      "path": ["messages", 0, "role"],
+      "message": "Invalid option: expected one of \"human\"|\"ai\"|\"tool\""
+    }
+  ]
+}
+```
+
+### Messages
+
+A message is an object with a `role`.
+
+| Role | Meaning |
+|---|---|
+| `human` | A question or reply of the user. `content` is a string. |
+| `ai` | An earlier answer of the agent. `content` is a string. The web app rewrites the artifact and citation tags that its stored answers contain into the markers `<\|start_artifact_id\|>` … `<\|end_artifact_id\|>` and `<\|start_citation_id\|>` … `<\|end_citation_id\|>` around an id, and Ines does not interpret them. When the agent asked the browser for something, the web app records the request as an `ai` message whose content is the JSON text of `function` and `input_arguments`. |
+| `tool` | The browser's result for a request of the agent. It has the fields `function`, `input_arguments`, `data` and `extra_state`, which [Function calls](#function-calls) describes. |
+
+Ines gives the model the current turn only: the user's last message and what has happened since. The model reads earlier messages with a tool of its own when it needs them, so a long chat does not make every request more expensive.
+
+### Widgets
+
+Each widget object describes one source of data that the user can reach. A widget may carry fields that the table does not list, and Ines passes them on. The `mcp_tool` field is a link from the widget to an MCP tool, as [MCP tool link](mcp-tool-link.md) describes.
+
+<WidgetFields />
+
+The tiers say how close a widget is to the user's question. `primary` holds the widgets that the user selected or mentioned, `secondary` holds the other widgets of the dashboard, and `extra` holds the rest of the catalog. The web app fills `extra` only when the descriptor has the feature `widget-global-search`.
+
+The model finds a widget with its tool `search_widgets`. The tool splits the query into words and keeps the widgets whose name, description, category, sub-category or origin contains at least one of them. It lists at most <AgentLimit name="searchResults" /> widgets, those that match more words first, and among widgets that match the same number of words, the nearer tier first. An empty query lists every widget, nearer tier first and then by name. Each result carries the widget's `uuid`, `widget_id`, `origin`, `kind` (`data`, `note` or `display`), `widget_type`, `params` and a `location` that is `added_to_context`, `on_dashboard` or `connected`, for the three tiers. The model passes a result's `uuid` to the tool that loads data, as [Widget data for the agent](ines-widget-data.mdx) describes.
+
+### Limits on the request
+
+Ines refuses a body that is larger than `INES_MAX_BODY_MB`, which is <EnvDefault name="INES_MAX_BODY_MB" /> MB by default, with the status 413. The helper routes described in [Ines HTTP API](../http-api/ines-api.mdx) accept at most <InesLimit name="helperBodyBytes" />.
+
+### Context
+
+An item of `context` has a `name`, an optional `description` and a `data` object with a list of `items`. An item that has no data but has a description becomes a text note for the model. Each entry of `items` has a `content` string and may have a `data_format` object whose `parse_as` names the kind of content. When `parse_as` is `table` or is missing and the content is JSON rows, the item becomes a table that the model can query with SQL under the name `ctx_` followed by the item's name in lowercase letters, digits and underscores. Every other entry becomes a text note, cut to <AgentLimit name="contextTextChars" /> characters, and that includes JSON rows whose `parse_as` is any other value. The browser sets `parse_as` to the type of the artifact that the user attached.
+
+### An example
+
+This request is the first one of a chat on the dashboard from the [first tutorial](../../technical-guide/build-a-backend/connect-a-backend-and-build-a-dashboard.mdx). The user selected no widget, so `primary` is empty, and the dashboard has the two widgets of the tutorial. The `tools` list is cut to one of the three tools of Ines's own MCP server, and its schema is shortened.
+
+```json
+{
+  "messages": [ { "role": "human", "content": "Which region has the highest revenue?" } ],
+  "widgets": {
+    "primary": [],
+    "secondary": [
+      {
+        "origin": "Sales demo",
+        "widget_id": "revenue_by_region",
+        "uuid": "1ebf877c-223a-4fd6-9e08-a94c8c5d7131",
+        "name": "Revenue by region",
+        "description": "Revenue in millions of dollars for each sales region in one year",
+        "widget_type": "markdown",
+        "category": "sales",
+        "params": [
+          { "name": "year", "type": "number", "description": "", "default_value": 2025, "current_value": "2024", "options": [], "multi_select": false }
+        ],
+        "metadata": { "lastUpdated": 1793050534955 }
+      },
+      {
+        "origin": "Sales demo",
+        "widget_id": "sales_notes",
+        "uuid": "d73fad61-02e2-4138-b8ef-b2ad1508d91d",
+        "name": "Sales notes",
+        "description": "Notes from the sales team",
+        "widget_type": "markdown",
+        "category": "sales",
+        "params": [],
+        "metadata": { "lastUpdated": 1793050534956 }
+      }
+    ],
+    "extra": []
+  },
+  "context": [],
+  "urls": [],
+  "timezone": "Europe/Paris",
+  "workspace_state": {
+    "action_history": [],
+    "current_dashboard_uuid": "3b7edc8b-9c6c-4624-96b0-1acb19526dbb",
+    "current_dashboard_info": {
+      "id": "3b7edc8b-9c6c-4624-96b0-1acb19526dbb",
+      "name": "Sales overview",
+      "current_tab_id": "__no_tab__",
+      "current_tab_name": "__no_tab__",
+      "tabs": [
+        {
+          "tab_id": "__no_tab__",
+          "tab_name": "__no_tab__",
+          "widgets": [
+            { "widget_uuid": "1ebf877c-223a-4fd6-9e08-a94c8c5d7131", "name": "Revenue by region" },
+            { "widget_uuid": "d73fad61-02e2-4138-b8ef-b2ad1508d91d", "name": "Sales notes" }
+          ],
+          "layout": [
+            { "widget_uuid": "1ebf877c-223a-4fd6-9e08-a94c8c5d7131", "x": 0, "y": 0, "w": 40, "h": 10, "min_w": 8, "min_h": 4 },
+            { "widget_uuid": "d73fad61-02e2-4138-b8ef-b2ad1508d91d", "x": 0, "y": 10, "w": 40, "h": 10, "min_w": 8, "min_h": 4 }
+          ]
+        }
+      ],
+      "groups": []
+    },
+    "current_page_context": "dashboard"
+  },
+  "workspace_options": { "widget-global-search": true, "prompt-suggestions": true, "model": "<provider>:<model>" },
+  "tools": [
+    {
+      "server_id": "ines-tools",
+      "name": "Ines Tools_web_search",
+      "tool_name": "web_search",
+      "description": "Search the web (DuckDuckGo) for current information. ...",
+      "url": "http://ines-mcp:8787/mcp",
+      "input_schema": { "type": "object", "properties": { "query": { "type": "string" } }, "required": ["query"] }
+    }
+  ]
+}
+```
+
+The dashboard has no tabs, so its widgets sit in a tab whose id and name are `__no_tab__`. A tool has the `server_id` of its MCP server, the `name` that the agent uses for it, which is the server's name and the tool's name joined by an underscore, the `tool_name` that the server knows, the `url` of the server and the tool's `input_schema`.
+
+When the model asks for the widget's data, the response ends with a function call, and the browser posts the conversation again. The second request has the same `widgets`, `context`, `workspace_state`, `workspace_options` and `tools`. It leaves out `urls` and `timezone`, because the time zone now travels in the `extra_state` that the agent returned. Its `messages` are the question, the record of the call and the result:
+
+```json
+[
+  { "role": "human", "content": "Which region has the highest revenue?" },
+  {
+    "role": "ai",
+    "content": "{\"function\":\"get_widget_data\",\"input_arguments\":{\"data_sources\":[{\"widget_uuid\":\"1ebf877c-223a-4fd6-9e08-a94c8c5d7131\",\"origin\":\"Sales demo\",\"id\":\"revenue_by_region\",\"input_args\":{\"year\":\"2024\"}}]}}"
+  },
+  {
+    "role": "tool",
+    "function": "get_widget_data",
+    "input_arguments": {
+      "data_sources": [
+        { "widget_uuid": "1ebf877c-223a-4fd6-9e08-a94c8c5d7131", "origin": "Sales demo", "id": "revenue_by_region", "input_args": { "year": "2024" } }
+      ]
+    },
+    "data": [
+      {
+        "items": [
+          {
+            "content": "| Region | Revenue ($M) |\n|---|---|\n| East | 110 |\n| West | 90 |\n| North | 70 |",
+            "data_format": { "data_type": "object", "parse_as": "text" }
+          }
+        ],
+        "extra_citations": []
+      }
+    ],
+    "extra_state": {
+      "copilot_function_call_arguments": { "widget_queries": [ { "widget_uuid": "1ebf877c-223a-4fd6-9e08-a94c8c5d7131" } ] },
+      "timezone": "Europe/Paris",
+      "turn_usage": { "inputTokens": 10, "cachedInputTokens": 0, "cacheWriteTokens": 0, "outputTokens": 5, "totalTokens": 15, "postCount": 1 }
+    }
+  }
+]
+```
+
+The `input_args` hold the parameter value that the widget showed, `"2024"`, as the dashboard stored it. [Widget data for the agent](ines-widget-data.mdx) explains how the browser got `data`.
+
+## The response
+
+The answer is `Content-Type: text/event-stream`. Every event is two lines and an empty line, in the standard server-sent events form:
+
+```
+event: copilotMessageChunk
+data: {"delta":"Hello from the stand-in model. "}
+
+```
+
+The response carries the headers `X-Trace-Id`, which repeats the request's value or holds a new identifier when the request had none, and `X-Completion-Id`, which is new for every response. Ines lists both in `Access-Control-Expose-Headers`, so a script in the browser can read them.
+
+<QueryEvents />
+
+### Status updates
+
+A status update reports what the agent is doing, so that the user sees progress before the answer arrives. `eventType` is `INFO`, `WARNING` or `ERROR`. `group` is `reasoning` for the agent's own steps and `planning` for a plan that the model shows before a multi-step job. `details` is a list of objects that the interface shows, and `artifacts` lists artifacts that the step produced, such as the table of rows that a widget returned. `tool_call` holds the `tool_name` and `input` of the call that the step reports. The web app does not show an update whose `hidden` is true, and it removes the last function call and its result from the chat when an update has `eventType` `ERROR`.
+
+Text that the model writes while it also calls a tool is a reasoning step and not part of the answer, so it arrives as a status update:
+
+```
+event: copilotStatusUpdate
+data: {"eventType":"INFO","message":"Let me look at the sales data first, one moment.","group":"reasoning"}
+```
+
+### The answer
+
+Ines holds back the text of a model step until the step ends. When the step ends with no tool call, the text is the answer, and Ines sends it in one `copilotMessageChunk`, however long it is. It never sends the answer token by token. A client should still append the `delta` of every chunk it receives, in order, because another agent may send an answer in pieces. Ines removes from the answer the markers that models sometimes write, such as `artifact` and `citation` tags, and it turns image syntax into plain links, so that an answer cannot make the browser load an address that a document chose.
+
+The web app puts an artifact in the answer at the point where the event arrives and a citation after the text that it follows. A typical complete response to a question that loaded one widget looks like this, with the artifact's HTML left out:
+
+```
+event: copilotStatusUpdate
+data: {"eventType":"INFO","message":"Loaded \"Sales by region\" data.","group":"reasoning","artifacts":[{"type":"html","name":"Sales by region", ...}]}
+
+event: copilotMessageChunk
+data: {"delta":"The East region leads. "}
+
+event: copilotCitationCollection
+data: {"citations":[{"id":"a70d6d3e-c242-5fd5-bbd5-89c9a32a83a7","source_info":{"type":"widget","origin":"demo","widget_id":"sales","name":"Sales by region","metadata":{"input_args":{"year":2025},"widget_uuid":"w-sales"},"citable":true},"details":[{"Source type":"widget","Origin":"demo","Data source":"Sales by region","year":2025}],"signature":""}]}
+
+event: copilotPromptSuggestions
+data: {"suggestions":["Show it as a chart"]}
+```
+
+### Artifacts
+
+An artifact is an object with a `type`, a `uuid`, a `name` and a `description`. An `html` artifact also has a `content` string that holds a complete HTML document, which the web app shows in a sandboxed frame. An `app` artifact has an `app` object, which is a definition in the format of [apps.json](../schemas/apps-json.mdx), and `widget_refs`, which lists the widgets that the app uses. Ines turns a table of rows into an `html` artifact that is styled for the light and the dark theme.
+
+### Citations
+
+A citation has an `id`, a `source_info`, a list of `details` and a `signature`, which Ines leaves empty. The `source_info` has a `type` of `widget`, `web` or `file`, a `name` and `citable: true`. A widget citation also carries the widget's identifiers and the arguments that fetched its data, which lets the web app open the source. A web citation has a `details` entry with the `link` and the `title` of the page. A citation of a page of a document names the file and the page in `details`, for example `[{"Filename": "report.pdf", "Page": 4}]`.
+
+## Function calls
+
+A `copilotFunctionCall` event ends the response. `function` names what the browser must do, `input_arguments` holds its arguments, and `extra_state` holds state that the agent wants back. The browser does the work and posts the same conversation again with two messages added: an `ai` message that records the call, and a `tool` message that holds the result.
+
+```json
+{
+  "role": "tool",
+  "function": "get_widget_data",
+  "input_arguments": { "data_sources": [ { "widget_uuid": "w-sales", "origin": "demo", "id": "sales", "input_args": { "year": 2025 } } ] },
+  "data": [ { "items": [ { "content": "[{\"region\":\"East\",\"revenue\":120}]", "data_format": { "data_type": "json" } } ] } ],
+  "extra_state": { "copilot_function_call_arguments": { "widget_queries": [ { "widget_uuid": "w-sales" } ] } }
+}
+```
+
+The function names are these:
+
+| `function` | What the browser does | Fields of `input_arguments` | Content of `data` |
+|---|---|---|---|
+| `get_widget_data` | Fetches the data of widgets. | `data_sources`, a list of `widget_uuid`, `origin`, `id` and `input_args`. | One entry for each data source, in order. Each entry has `items`, and each item has `content`, a string, or `url`, and a `data_format` with the `data_type` and for files the `filename`, or the entry is an error with an `error_type` and a `content`. [Widget data for the agent](ines-widget-data.mdx) describes them. |
+| `execute_agent_tool` | Runs a tool of an MCP server. For the server `workspace` it runs a [FINOS Workspace tool](../../mcp/reference/tools.mdx) in the tab. | `server_id`, `tool_name`, which is the `name` that the tool has in the request's `tools`, and `parameters`. | The result of the tool, in the form [Tool results](ines-tool-results.mdx) describes. |
+| `get_skill_content` | Looks up a skill in the user's library. | `slug` and optionally `reason`. | A list with one object. It is `{"status": "success", "data": {"skill": {...}}}` with the skill's `slug`, `description` and `contentMarkdown`, or `{"status": "error", "message": ...}` when the library has no such skill. |
+
+The agent's own commands for working with the FINOS Workspace are the other functions, and they are listed after this section. Each has a list of results in `data`, each with a `status` and a `message`.
+
+When the browser cannot do what a call asks for, it puts an object in `data` in place of the result, with an `error_type`, which is `not_found`, `gateway_error` or `unexpected_error`, and a `content` that holds the message. For a call that has several data sources or parameter queries, the error replaces only the entry of the source that failed.
+
+The agent's own commands for changing a dashboard, listed below, are offered to the model only when the request carries none of the FINOS Workspace's tools. When the request has the tools of the server `workspace`, the model changes the dashboard with those tools instead, and Ines sends them as `execute_agent_tool` calls. The web app adds the FINOS Workspace tools to `tools`, under the names `Workspace_` and the tool's name, whenever the agent has the feature `mcp-tools` and the user's roles allow them. The roles that a new organization starts with do not allow them, so in a fresh deployment `tools` holds only the tools of Ines's own MCP server.
+
+For a `get_widget_data` result Ines reads `content` as text, fetches a `url` itself, and decides what an item is from `data_format.data_type`. [Widget data for the agent](ines-widget-data.mdx) describes the whole read, from the model's tool call to the events that the user sees.
+
+### Several calls in one step
+
+The browser runs one function call at a time and posts again after each. When the model calls several of the FINOS Workspace's tools or dashboard commands in one step, Ines emits the first and records the others in `extra_state`, in `pending_workspace_calls` or `pending_bridge_calls`. On the next request it emits the next call straight away, without asking the model, so one tool result never leaves the others behind. The final request, which carries the last result, goes to the model.
+
+### Extra state
+
+The agent chooses the content of `extra_state`, and the browser stores it with the call and returns it unchanged in the `tool` message. Because the state passes through the browser, an agent has to treat it as input that a user could have edited. Ines reads only the keys below, checks the size and the type of each, and ignores a value that does not fit.
+
+<ExtraStateKeys />
+
+### Tool groups
+
+A model that is given every tool in full pays for every definition on every call, so Ines gives it the core tools <InesCoreTools /> at every step and puts the other tools into groups. The system prompt names each group in one line, and the model loads a group with its tool `load_tools` when it needs it. The groups that the model has loaded travel in `extra_state.loaded_tool_groups`. These are the groups:
+
+<ToolGroups />
+
+### The agent's own commands
+
+These are the functions that the agent emits for itself, one for each command in `agent/src/protocol/bridge-commands.ts`. Their arguments come from the schema of each command.
+
+<BridgeCommands />
+
+## How a turn is counted
+
+A question and its function calls make a turn. A request whose last message is a tool result continues a turn only when Ines knows that a turn of that chat is under way, which it remembers for <AgentLimit name="turnSeconds" unit="s" />. Every other request is a new question, and Ines reports it to the FINOS Workspace API as one use of the user's daily limit. A turn may take at most `INES_MAX_TURN_REQUESTS` requests, which is <EnvDefault name="INES_MAX_TURN_REQUESTS" /> by default. Past that limit Ines answers with a notice and stops. Ines reports the tokens that a request used to the FINOS Workspace API when the request ends.
+
+## Refusals and errors
+
+Before the stream starts, Ines can refuse a request with an ordinary HTTP status and a JSON body that has an `error` field.
+
+| Status | `error` | Cause |
+|---|---|---|
+| 400 | `Invalid JSON` or `Invalid request` | The body is not JSON, or it does not fit the schema. Each refusal counts against the user's allowance of invalid requests. |
+| 401 | `Not signed in` | The token is missing or not valid. The response has `WWW-Authenticate: Bearer`. |
+| 413 | `The request is too large` | The body exceeds `INES_MAX_BODY_MB`. |
+| 429 | `Too many invalid requests. Try again in a minute.` | The user sent more than `INES_INVALID_REQUESTS_PER_MINUTE` requests that were not questions. The response has `Retry-After: 60`. |
+| 429 | `Too many of your queries are running. Wait for one to finish.` | The user already has `INES_MAX_CONCURRENT_QUERIES` queries in progress. |
+| 503 | `The agent is busy. Try again in a moment.` | The agent already runs `INES_MAX_TOTAL_QUERIES` queries. The response has `Retry-After: 5`. |
+| 503 | `The FINOS Workspace API is not available` | Ines needs the API to check the user and cannot reach it. |
+| 503 | `The agent is busy signing users in. Try again in a moment.` | Too many sign-in checks are waiting for the API. The response has `Retry-After: 1`. |
+
+Some refusals depend on the user's rights and are therefore sent as an ordinary answer, with the status 200 and one `copilotMessageChunk`, so that the user reads them in the chat. They are the message of the API when the user has reached the usage limit, `The model ... is not available here.` when `workspace_options.model` names a model that this deployment does not offer, `Your role does not allow the model ...` when a role forbids it, and a notice that the question needed more steps than a question may take. When no model is configured at all, the response holds a `copilotStatusUpdate` of type `ERROR` and a `copilotMessageChunk` with the same message. A failure after the stream has started is reported as a `copilotStatusUpdate` of type `ERROR`, and the stream then ends.

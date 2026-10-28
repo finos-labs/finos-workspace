@@ -1,6 +1,6 @@
 ---
 title: How to review and debug a backend
-sidebar_position: 7
+sidebar_position: 12
 ---
 
 # How to review and debug a backend
@@ -48,11 +48,11 @@ When the request for `widgets.json` fails, the Error notice names the cause and 
 | 23 | The request timed out. | Whether the backend answers within one minute. |
 | Anything else | Unable to find a widgets.json file. | The console of your browser, where the details are logged. |
 
-A backend on `localhost` or `127.0.0.1` gets a section Troubleshooting localhost, which lists the three usual causes. [How to connect a backend](../../user-guide/data-backends/connect-a-backend.md) describes them, and [Widget requests](../reference/protocols/widget-requests.mdx#cors) lists what the backend must answer so that the browser may call it.
+A backend on `localhost` or `127.0.0.1` gets a section Troubleshooting localhost, which lists the three usual causes. [How to connect a backend](../../user-guide/data-backends/connect-a-backend.md) describes them, and [Widget requests](../../reference/protocols/widget-requests.mdx#cors) lists what the backend must answer so that the browser may call it.
 
 ## A widget does not appear
 
-The web app checks every widget definition against the contract that [widgets.json](../reference/schemas/widgets-json.mdx) describes. The Error notice reports a widget that breaks it, with the widget's name and key and then each problem on a line of its own: the path inside the definition in square brackets, and a sentence that says what is wrong. Read the path first, because it points at the key that you need to change. The contract is closed, so a key that it does not define, such as `paramz` above, is a problem too. A file that is not an object of widgets is reported with the text "Invalid format", followed by what the web app expected and what it received.
+The web app checks every widget definition against the contract that [widgets.json](../../reference/schemas/widgets-json.mdx) describes. The Error notice reports a widget that breaks it, with the widget's name and key and then each problem on a line of its own: the path inside the definition in square brackets, and a sentence that says what is wrong. Read the path first, because it points at the key that you need to change. The contract is closed, so a key that it does not define, such as `paramz` above, is a problem too. A file that is not an object of widgets is reported with the text "Invalid format", followed by what the web app expected and what it received.
 
 A widget that breaks the contract makes the test fail. Once the backend is connected, a refresh keeps the valid widgets and apps and leaves the invalid ones out, and it shows a warning toast titled "Invalid items in" and the backend's name. The button Inspect of the toast opens each invalid item with its JSON and its problems.
 
@@ -64,7 +64,7 @@ A key that the web app does not know in `apps.json` is not an error in the test.
 
 ## An app does not appear
 
-FINOS Workspace reads `apps.json`, and when the backend has no such file, it reads `templates.json` instead. An `apps.json` that holds a single object instead of an array counts as an array with that one object. Each element has to satisfy the schema of [apps.json](../reference/schemas/apps-json.mdx). The Error notice lists the elements that do not under the heading "App errors", with the path of each problem, and the app does not appear. The notice also reports these problems:
+FINOS Workspace reads `apps.json`, and when the backend has no such file, it reads `templates.json` instead. An `apps.json` that holds a single object instead of an array counts as an array with that one object. Each element has to satisfy the schema of [apps.json](../../reference/schemas/apps-json.mdx). The Error notice lists the elements that do not under the heading "App errors", with the path of each problem, and the app does not appear. The notice also reports these problems:
 
 - A plugin widget whose configuration in `state.storage.plugin.config` the plugin's settings refuse, or a built-in widget that sets such a configuration.
 - An MCP server whose name another app of the backend uses for a different address.
@@ -82,7 +82,7 @@ After that, each route that answers 404 is listed as "no such route (404)", and 
 
 ## A widget loads but shows an error
 
-The routes can be right while a request still fails. A widget that cannot build its request shows the problem in its place, and it names the parameter, for example that `team` needs a value. A request that the backend rejects shows the backend's answer. Open the network tab of your browser to see the exact request, and compare it with [Widget requests](../reference/protocols/widget-requests.mdx), which lists how FINOS Workspace builds the URL, the headers and the body.
+The routes can be right while a request still fails. A widget that cannot build its request shows the problem in its place, and it names the parameter, for example that `team` needs a value. A request that the backend rejects shows the backend's answer. Open the network tab of your browser to see the exact request, and compare it with [Widget requests](../../reference/protocols/widget-requests.mdx), which lists how FINOS Workspace builds the URL, the headers and the body.
 
 ## The connection is inactive
 

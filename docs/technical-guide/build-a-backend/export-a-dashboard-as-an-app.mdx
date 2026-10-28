@@ -1,13 +1,13 @@
 ---
 title: How to turn a dashboard into an app of your backend
-sidebar_position: 6
+sidebar_position: 10
 ---
 
 import { WebAppValue } from "@site/src/components/Reference/config";
 
 # How to turn a dashboard into an app of your backend
 
-This guide builds an app of your backend, which is an entry of its `apps.json`, by arranging a dashboard in the web app and exporting it. You do not have to write the layout by hand: the export records which widgets are on the dashboard, where they sit and how big they are, the values of their parameters, the tabs and the groups. [apps.json](../reference/schemas/apps-json.mdx) describes the format that you get.
+This guide builds an app of your backend, which is an entry of its `apps.json`, by arranging a dashboard in the web app and exporting it. You do not have to write the layout by hand: the export records which widgets are on the dashboard, where they sit and how big they are, the values of their parameters, the tabs and the groups. [apps.json](../../reference/schemas/apps-json.mdx) describes the format that you get.
 
 ## What you need
 
@@ -22,7 +22,7 @@ You need a backend that is connected to your account, as [How to connect a backe
 ## Export the dashboard
 
 1. Right-click the dashboard in the sidebar, or select the three dots that appear next to it, and choose Export apps.json. The item is disabled, with the hint "No backend sources found in this dashboard", when the dashboard has no widget of a backend.
-2. In the dialog Export App, fill in the Name and the Description of the app, which are required, and optionally the Image cover, which is the address of a picture. Add the prompts that the Copilot should suggest: at most <WebAppValue of="maxAppPrompts" unit="raw" />, each of at most <WebAppValue of="maxAppPromptLength" unit="raw" /> characters.
+2. In the dialog Export App, fill in the Name and the Description of the app, which are required, and optionally the Image cover, which is the address of a picture. Add the prompts that the Agent should suggest: at most <WebAppValue of="maxAppPrompts" unit="raw" />, each of at most <WebAppValue of="maxAppPromptLength" unit="raw" /> characters.
 3. Select Copy to put the app on the clipboard, which gives the message "App copied to clipboard!", or Download App to save it as a file, which gives "App downloaded successfully!". The file has the name of the app in lower case with underscores in place of spaces, and the extension `.json`.
 
 ## Put the app in `apps.json`
@@ -38,4 +38,4 @@ Check the object before you ship it:
 
 ## What the export leaves out
 
-The export has no `selected_agent` and no `mcpServers`, because the dashboard does not know them. Add them to the object by hand when your app needs them. It also marks the app with `"allowCustomization": true`, which lets users change the dashboards that they open from the app. Set it to `false` when those dashboards should stay as you built them, as [apps.json](../reference/schemas/apps-json.mdx) describes.
+The export has no `selected_agent` and no `mcpServers`, because the dashboard does not know them. Add them to the object by hand when your app needs them. It also marks the app with `"allowCustomization": true`, which lets users change the dashboards that they open from the app. Set it to `false` when those dashboards should stay as you built them, as [apps.json](../../reference/schemas/apps-json.mdx) describes.

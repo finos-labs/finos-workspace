@@ -9,7 +9,7 @@ In this lesson you add a new kind of widget to your FINOS Workspace. A widget pl
 
 ## What you need
 
-You need the FINOS Workspace that [Run FINOS Workspace on your machine](../technical-guide/build-from-source/run-the-stack-from-source.md) starts, with its administrator signed in, and the backend of [Connect a backend and build a dashboard](../technical-guide/build-a-backend/connect-a-backend-and-build-a-dashboard.md), connected under the name Sales demo. You also need a text editor and a terminal that is in the folder of the repository, next to `docker-compose.yml`.
+You need the FINOS Workspace that [Run FINOS Workspace on your machine](../technical-guide/build-from-source/run-the-stack-from-source.md) starts, with its administrator signed in, and the backend of [Connect a backend and build a dashboard](../technical-guide/build-a-backend/connect-a-backend-and-build-a-dashboard.mdx), connected under the name Sales demo. You also need a text editor and a terminal that is in the folder of the repository, next to `docker-compose.yml`.
 
 A plugin never arrives through the app. The person who runs a deployment places its files on the server, a superuser reviews them and approves them, and an administrator of an organization enables the plugin and says who may use it. Because you run your own FINOS Workspace, you do all of these parts, in that order.
 

@@ -75,7 +75,7 @@ A binding names one of the traits above, or it has the form `param:<name>`, `con
 
 ### Rows
 
-A backend widget that sets `raw` has a button that shows its rows instead of its view. When the widget has no `data.rawType`, or when the user may not use the plugin that `rawType` names, the module itself shows the rows. In that case `data` holds the rows, usually as an array of objects, and the frame starts again with them. It starts again when the user switches back to the view. The module should show the rows as a table, or it should say that it cannot show them. The AI agent receives the rows in either case, so a widget with `raw` does not need to provide `copilotContext`. [Widget rows](../../technical-guide/reference/protocols/raw-rows.md) describes the feature.
+A backend widget that sets `raw` has a button that shows its rows instead of its view. When the widget has no `data.rawType`, or when the user may not use the plugin that `rawType` names, the module itself shows the rows. In that case `data` holds the rows, usually as an array of objects, and the frame starts again with them. It starts again when the user switches back to the view. The module should show the rows as a table, or it should say that it cannot show them. The AI agent receives the rows in either case, so a widget with `raw` does not need to provide `copilotContext`. [Widget rows](../../reference/protocols/raw-rows.md) describes the feature.
 
 ## Exports
 

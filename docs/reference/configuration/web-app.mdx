@@ -1,0 +1,76 @@
+---
+title: Web app
+sidebar_position: 1
+---
+
+import { WebBuildVariables, WebConfigTable } from "@site/src/components/Reference/config";
+
+# Web app configuration
+
+The web app is a static single-page application, so it cannot read environment variables itself. Instead it reads its configuration from a file named `config.js`, which sets `window.__APP_CONFIG__`. The web container renders that file from its environment each time it starts, using `frontend/app-config.js`, which runs inside nginx. During development, `npm run build:runtime` writes the same file from the `VITE_` variables, and `npm run dev` reads those variables directly.
+
+Every setting therefore has two variables. The container variable configures a running container, and the build variable feeds the development tools. A container variable that is not set is left out of `config.js`, and the setting then takes its default from `frontend/src/lib/runtimeConfigSchema.ts`.
+
+A variable that is set is passed on exactly as it is. A string setting may be empty, a boolean variable must be exactly `true` or `false`, and an enum variable must be one of its values. A list variable is comma-separated, and the app trims each item, converts it to lowercase and drops empty items. When a value does not fit its type, `/config.js` and `/healthz` answer with status 500 and an error message that names the variable.
+
+The settings are grouped by the section of `config.js` that they fill. Each table lists the setting, its container variable and build variable, its type and its default, and what it does. The tables are generated from `app-config.js` and the schema, and the generator fails when a setting has no description.
+
+## urls
+
+These settings give the addresses of the API and of the AI service.
+
+<WebConfigTable group="urls" />
+
+## authentication
+
+These settings control how users sign in, which means whether email sign-in is allowed and which identity providers the app offers. They also control whether the web app forwards a user's identity tokens or email address to data backends in request headers.
+
+<WebConfigTable group="authentication" />
+
+## authProviders
+
+These settings hold the client ids and domains of the single sign-on providers: Google, Microsoft (Azure) and Okta.
+
+<WebConfigTable group="authProviders" />
+
+## copilot
+
+These settings configure the Agent and what it offers to users.
+
+<WebConfigTable group="copilot" />
+
+## ui
+
+These settings control which parts of the interface are shown, and the default theme.
+
+<WebConfigTable group="ui" />
+
+## data
+
+This group has one setting, which controls whether scripts in HTML widgets and Agent artifacts may run.
+
+<WebConfigTable group="data" />
+
+## links
+
+This group has one setting, the address of the documentation that the interface links to.
+
+<WebConfigTable group="links" />
+
+## contact
+
+This group has one setting, the support email address that the interface shows.
+
+<WebConfigTable group="contact" />
+
+## whiteLabel
+
+These settings brand the app: its name, logos, favicon, description and keywords, and the theme stylesheet that `WL_STYLESHEET` names.
+
+<WebConfigTable group="whiteLabel" />
+
+## Variables of the build
+
+Three variables are read when the app is built and are not settings: no variable of the container takes their place, and `config.js` cannot change them. Like the build variables above, they come from the `VITE_` variables of the build environment, such as `frontend/.env`. The table is generated from `runtimeConfigSchema.ts`, and a test fails when the code reads a `VITE_` variable that is neither a setting nor in this table.
+
+<WebBuildVariables />

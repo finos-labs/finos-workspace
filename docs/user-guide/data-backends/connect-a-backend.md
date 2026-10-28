@@ -5,18 +5,18 @@ sidebar_position: 3
 
 # How to connect a backend
 
-This guide adds a data backend to your own FINOS Workspace account, gives it a credential if it needs one, and refreshes, edits or removes it later. A backend is a web server that describes its widgets in `widgets.json`. To write one, follow the [first tutorial](../../technical-guide/build-a-backend/connect-a-backend-and-build-a-dashboard.md). To make a backend available to a whole organization, an admin follows [How to add a data backend for your organization](../administration/add-a-data-backend-for-your-organization.md).
+This guide adds a data backend to your own FINOS Workspace account, gives it a credential if it needs one, and refreshes, edits or removes it later. A backend is a web server that describes its widgets in `widgets.json`. To write one, follow the [first tutorial](../../technical-guide/build-a-backend/connect-a-backend-and-build-a-dashboard.mdx). To make a backend available to a whole organization, an admin follows [How to add a data backend for your organization](../administration/add-a-data-backend-for-your-organization.md).
 
 ## What you need
 
-You need an account of type Admin or Developer, because a User cannot add connections and has no Connections page. The backend has to be running at an address that your browser can reach, and it has to allow the web app's address in its CORS headers, because the browser calls it directly. [Widget requests](../../technical-guide/reference/protocols/widget-requests.mdx#cors) lists what the backend must answer.
+You need an account of type Admin or Developer, because a User cannot add connections and has no Connections page. The backend has to be running at an address that your browser can reach, and it has to allow the web app's address in its CORS headers, because the browser calls it directly. [Widget requests](../../reference/protocols/widget-requests.mdx#cors) lists what the backend must answer.
 
 ## Add the backend
 
 1. Select Connections in the sidebar, and then Connect Backend. The dialog Connect backend opens.
 2. In Name, type the name that the connection will have. People see it as the origin of the backend's widgets.
 3. In Endpoint URL, type the base address of the backend, for example `http://localhost:9100`. FINOS Workspace removes any slashes from the end.
-4. Leave Validate widgets at No, or choose Yes to make the test also send a plain `OPTIONS` request to every route that the widgets use, as [Widget requests](../../technical-guide/reference/protocols/widget-requests.mdx#other-requests) describes.
+4. Leave Validate widgets at No, or choose Yes to make the test also send a plain `OPTIONS` request to every route that the widgets use, as [Widget requests](../../reference/protocols/widget-requests.mdx#other-requests) describes.
 5. If the backend needs a credential, select Add Authentication, as the next section describes.
 6. Select Test. Add stays disabled until a test has succeeded.
 7. Select Add.

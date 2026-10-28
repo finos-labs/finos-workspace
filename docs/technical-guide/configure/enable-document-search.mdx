@@ -7,7 +7,7 @@ import { EnvDefault } from "@site/src/components/Reference/config";
 
 # How to switch on the search of documents
 
-The Copilot cannot read a PDF or a Word document as text that it is given directly. It searches such a document: the MCP server that serves the agent's tools splits the file into passages, turns each passage into numbers with an embedding model, and finds the passages that match a question. Each hit carries its page, so that an answer can point to the page. Searching is off until you name an embedding model. This guide switches it on and checks it.
+The Agent cannot read a PDF or a Word document as text that it is given directly. It searches such a document: the MCP server that serves the agent's tools splits the file into passages, turns each passage into numbers with an embedding model, and finds the passages that match a question. Each hit carries its page, so that an answer can point to the page. Searching is off until you name an embedding model. This guide switches it on and checks it.
 
 ## Choose an embedding model
 
@@ -17,13 +17,13 @@ Choose the model once. The server indexes a document with the model that is set 
 
 ## What it turns on
 
-With `INES_EMBED_MODEL` set, the MCP server offers two more tools to the Copilot: `list_documents`, which lists the files that a chat holds, and `query_documents`, which searches one of them. Without the setting, the server leaves both tools out, so the Copilot cannot read a PDF or a Word file, and its answer says so when a user attaches one or puts a PDF widget on the dashboard. When the server starts, it logs which tools it left out and why.
+With `INES_EMBED_MODEL` set, the MCP server offers two more tools to the Agent: `list_documents`, which lists the files that a chat holds, and `query_documents`, which searches one of them. Without the setting, the server leaves both tools out, so the Agent cannot read a PDF or a Word file, and its answer says so when a user attaches one or puts a PDF widget on the dashboard. When the server starts, it logs which tools it left out and why.
 
 Users see no setting for this feature. A role grants the document tools with the rest of the server's tools, which [How to choose the models and tools of a role](../../user-guide/administration/choose-the-models-and-tools-of-a-role.md) describes.
 
 ## Limits that you can set
 
-`INES_INGEST_CHUNKS_PER_HOUR` limits how many passages one chat may add to the search in an hour, which is <EnvDefault name="INES_INGEST_CHUNKS_PER_HOUR" /> by default, so that one chat cannot make the embedding provider run up a large bill. The agent also reads a file only up to its size limits, and [Widget data for the agent](../reference/protocols/ines-widget-data.mdx) lists them.
+`INES_INGEST_CHUNKS_PER_HOUR` limits how many passages one chat may add to the search in an hour, which is <EnvDefault name="INES_INGEST_CHUNKS_PER_HOUR" /> by default, so that one chat cannot make the embedding provider run up a large bill. The agent also reads a file only up to its size limits, and [Widget data for the agent](../../reference/protocols/ines-widget-data.mdx) lists them.
 
 ## Share the index between replicas
 
@@ -31,4 +31,4 @@ The MCP server keeps the documents of a chat in the shared store that `REDIS_URL
 
 ## Check it
 
-Attach a PDF to a question in the Copilot and ask what is on its second page. The Copilot's steps show a search of the document, and its answer names the page, with a link that opens the file at that page.
+Attach a PDF to a question in the Agent and ask what is on its second page. The Agent's steps show a search of the document, and its answer names the page, with a link that opens the file at that page.

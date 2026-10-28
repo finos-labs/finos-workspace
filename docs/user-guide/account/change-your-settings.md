@@ -21,7 +21,7 @@ Select the menu icon next to the logo at the top of the sidebar, which has the t
 
 - **Corner drag handles** lets you choose which corners of a widget show a handle for resizing it. Click a corner of the small drawing to switch its handle on or off.
 - **Quick add toolbar** keeps the button at the bottom right of a dashboard, which adds widgets, always visible. Untick it to hide the toolbar, and add widgets from the widget menu, which Ctrl+K, or Cmd+K on a Mac, opens.
-- **Collapsed sidebar and AI chat visibility** makes the button that expands a collapsed sidebar or a collapsed Copilot appear only when you point at its edge.
+- **Collapsed sidebar and AI chat visibility** makes the button that expands a collapsed sidebar or a collapsed Agent appear only when you point at its edge.
 
 ## Widget
 

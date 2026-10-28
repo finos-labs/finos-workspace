@@ -5,7 +5,7 @@ sidebar_position: 3
 
 # How to add a database migration
 
-The API's tables are declared as SQLAlchemy models, and a migration of the tool Alembic changes an existing database to match them. When you add a table, add a column or change one, you change the model and write a migration, so that every deployment's database follows the model when its API starts. This guide generates the migration, makes it fit the conventions of the repository and tests it. [How to run database migrations](../technical-guide/deploy/run-database-migrations.mdx) describes how the migrations run in a deployment, and [Database tables](../technical-guide/reference/schemas/database.mdx) lists the tables as the models declare them.
+The API's tables are declared as SQLAlchemy models, and a migration of the tool Alembic changes an existing database to match them. When you add a table, add a column or change one, you change the model and write a migration, so that every deployment's database follows the model when its API starts. This guide generates the migration, makes it fit the conventions of the repository and tests it. [How to run database migrations](../technical-guide/deploy/run-database-migrations.mdx) describes how the migrations run in a deployment, and [Database tables](../reference/schemas/database.mdx) lists the tables as the models declare them.
 
 All commands run in `backend-api/backend`, with the environment of the API. The local development stack, which [How to run the development stack](run-the-development-stack.md) describes, provides a database, and its `init` step applies the migrations on every start.
 

@@ -5,7 +5,7 @@ sidebar_position: 3
 
 # How to connect FINOS Workspace to its database and cache
 
-The API keeps its data in a relational database, and it keeps what is short-lived, such as tokens, rate limits and job queues, in Valkey or Redis. This guide chooses the database engine, sets the connection of the API and its worker to both, and lists what must be shared when you run several replicas. [Backend settings](../reference/configuration/backend.mdx) lists every setting with its description.
+The API keeps its data in a relational database, and it keeps what is short-lived, such as tokens, rate limits and job queues, in Valkey or Redis. This guide chooses the database engine, sets the connection of the API and its worker to both, and lists what must be shared when you run several replicas. [Backend settings](../../reference/configuration/backend.mdx) lists every setting with its description.
 
 ## Choose the database engine
 

@@ -1,0 +1,38 @@
+---
+title: Report classes
+sidebar_position: 11
+---
+
+import { ReportColors, ReportComponents } from "@site/src/components/Reference/theme";
+import { SelectorTable } from "@site/src/components/Reference/css";
+
+# Report classes
+
+The Agent can write a report as a single HTML document and show it as an artifact, as [HTML widgets and artifacts](html-documents.mdx) describes. To make such reports look consistent, the Agent's HTML report skill, `agent/src/skills/html-report.md`, gives the model one stylesheet and a library of components. This page lists the classes of that stylesheet and the colors that it uses. The other two HTML skills, `html-table.md` and `html-chart.md`, contain no stylesheet.
+
+The skill instructs the model to produce a document with these properties:
+
+- The document is self-contained. It uses inline CSS and inline SVG charts, has no external dependencies, and loads no font or image from the network.
+- The document uses the font family `Montserrat, -apple-system, "Segoe UI", sans-serif`, although the stylesheet's `body` rule sets `Montserrat, sans-serif`.
+- The page is sized for A4 with `@page { size: A4 portrait; margin: 15mm 15mm 25mm 20mm }`, and pages break at the `.page-break` class.
+- The document prints with `print-color-adjust: exact` under `@media print`.
+
+A `.page` is 170 mm wide. The body text is 9.5 pt with a line height of 1.35, in black on white. The tables on this page are generated from the skill file.
+
+## Components
+
+This table lists the classes that the skill offers for building a report, and what each one is.
+
+<ReportComponents />
+
+## Colors
+
+This table is the skill's color reference. The same values appear as literals in the stylesheet.
+
+<ReportColors />
+
+## Rules of the stylesheet
+
+This table lists the rules of the report stylesheet, with their declarations.
+
+<SelectorTable source="report" />

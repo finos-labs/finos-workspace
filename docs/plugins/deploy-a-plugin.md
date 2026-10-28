@@ -24,7 +24,7 @@ Every API replica must see the same files. A version is approved against a diges
       backend/          optional, never served to browsers
 ```
 
-The API reads the plugin settings like any other API setting, from its environment. The Widget plugins group of [Backend configuration](../technical-guide/reference/configuration/backend.mdx) lists them with their defaults. Set them wherever your deployment sets the API's other values.
+The API reads the plugin settings like any other API setting, from its environment. The Widget plugins group of [Backend configuration](../reference/configuration/backend.mdx) lists them with their defaults. Set them wherever your deployment sets the API's other values.
 
 ## Provide the directory
 

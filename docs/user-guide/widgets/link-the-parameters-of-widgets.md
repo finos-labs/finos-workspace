@@ -47,4 +47,4 @@ Point at a group in either menu and select the trash icon. FINOS Workspace delet
 
 ## Keep the groups in an app
 
-A dashboard that you save as an app keeps its groups, so a dashboard that someone creates from the app starts with the same links. A backend can also ship an app whose layout names groups, as [the schema of `apps.json`](../../technical-guide/reference/schemas/apps-json.mdx) describes.
+A dashboard that you save as an app keeps its groups, so a dashboard that someone creates from the app starts with the same links. A backend can also ship an app whose layout names groups, as [the schema of `apps.json`](../../reference/schemas/apps-json.mdx) describes.

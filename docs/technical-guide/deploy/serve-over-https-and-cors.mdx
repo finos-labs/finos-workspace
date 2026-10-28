@@ -7,7 +7,7 @@ import { EnvDefault, SettingDefault, WebPort } from "@site/src/components/Refere
 
 # How to serve FINOS Workspace over HTTPS and set the addresses
 
-A deployment of FINOS Workspace has three services that browsers talk to: the web app, the FINOS Workspace API and the agent. A browser reaches them over HTTPS, they have to know each other's addresses, and the API has to know which web app may call it. This guide describes what the platform must provide and which settings carry the addresses, so that sign-in, file links and the Copilot work. The local stack of the repository is a trial and does none of this: it uses plain HTTP on `localhost`.
+A deployment of FINOS Workspace has three services that browsers talk to: the web app, the FINOS Workspace API and the agent. A browser reaches them over HTTPS, they have to know each other's addresses, and the API has to know which web app may call it. This guide describes what the platform must provide and which settings carry the addresses, so that sign-in, file links and the Agent work. The local stack of the repository is a trial and does none of this: it uses plain HTTP on `localhost`.
 
 ## What the platform provides
 
@@ -46,6 +46,6 @@ The agent keeps its own list. `INES_CORS_ORIGINS` names the origins of the web a
 2. Sign in. The sign-in works when the cookie is accepted, and a sign-in that seems to work but leaves you on the sign-in page often points to an API that is not on the same site as the web app.
 3. Open the browser's network tool and check that calls go to the API's address and the agent's address, and that none is refused with 403.
 4. Upload a file to a dashboard and open it. A link that points at the wrong address means that `SELFURL` or `WORKSPACE_PUBLIC_URL` is wrong.
-5. Ask the Copilot a question. A Copilot that fails with nothing in the interface to say why usually means that `INES_CORS_ORIGINS` does not allow the origin that you opened the web app on.
+5. Ask the Agent a question. An Agent that fails with nothing in the interface to say why usually means that `INES_CORS_ORIGINS` does not allow the origin that you opened the web app on.
 
-[Web app configuration](../reference/configuration/web-app.mdx), [Backend settings](../reference/configuration/backend.mdx) and [Ines and its MCP server](../reference/configuration/agent.mdx) list every setting with its description.
+[Web app configuration](../../reference/configuration/web-app.mdx), [Backend settings](../../reference/configuration/backend.mdx) and [Ines and its MCP server](../../reference/configuration/agent.mdx) list every setting with its description.

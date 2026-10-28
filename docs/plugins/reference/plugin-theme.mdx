@@ -28,6 +28,6 @@ The table lists the tokens with the values that the stylesheets declare:
 
 <PluginTokens />
 
-The tokens `brand-main`, `brand-lighter` and `brand-darker` follow `--color-main-100`, `--color-main-50` and `--color-main-200`, as [Brand color, font and text size](../../technical-guide/reference/css/brand-font-size.mdx) describes. The host resolves a value that is not hexadecimal to hex before it gives it to the module. That applies, for example, to a `color-mix()` that a theme gives to a brand step, so a stylesheet that changes the brand color changes these tokens too.
+The tokens `brand-main`, `brand-lighter` and `brand-darker` follow `--color-main-100`, `--color-main-50` and `--color-main-200`, as [Brand color, font and text size](../../reference/css/brand-font-size.mdx) describes. The host resolves a value that is not hexadecimal to hex before it gives it to the module. That applies, for example, to a `color-mix()` that a theme gives to a brand step, so a stylesheet that changes the brand color changes these tokens too.
 
 Nothing applies the tokens to the plugin's elements, and the frame defines no custom properties of its own. The module reads `theme.tokens` and `theme.mode`, and its own stylesheet decides what to draw. [How to style a plugin widget for both themes](../style-a-plugin-widget.md) shows one way to do that.

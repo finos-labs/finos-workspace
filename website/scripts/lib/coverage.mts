@@ -25,7 +25,7 @@ function requirements(plugins: PluginsData, agent: AgentData): Requirement[] {
       what: "host versions in the manifest that the lesson writes",
       tokens: [`"host": { "api": ${values["host.api"]}, "afm": "${values["host.afm"]}" }`],
     },
-    { page: "docs/technical-guide/reference/protocols/ines-tool-results.mdx", what: "typed result kinds", tokens: agent.protocol.typedResults.kinds.map((kind) => `| \`${kind}\` |`) },
+    { page: "docs/reference/protocols/ines-tool-results.mdx", what: "typed result kinds", tokens: agent.protocol.typedResults.kinds.map((kind) => `| \`${kind}\` |`) },
   ];
 }
 

@@ -14,22 +14,49 @@ import {
 
 # FINOS Workspace bridge protocol
 
-The FINOS Workspace MCP server does not hold a user's dashboards. The dashboards live in the user's browser, so every tool of the server works by sending a command to a FINOS Workspace tab and waiting for the tab's answer. The channel between the server and the tab is the bridge. This page describes how a tab opens a bridge session, the messages that the API and the tab exchange over a WebSocket, the commands that the tab executes, and the limits that apply. The server side is `backend-api/backend/routers/app/workspace_mcp/` and `backend-api/backend/workspace_mcp/models.py`, and the browser side is `frontend/src/components/AI/WorkspaceBridgeConnectionManager.tsx` and `workspaceBridgeProtocol.ts`. The tables on this page are generated from the Python models and from the constants of the two sides, and tests keep the data equal to the code.
+The FINOS Workspace MCP server does not hold the dashboards of a user. The dashboards are in the browser of the user. Each tool of the server sends a command to a FINOS Workspace tab and waits for the answer of the tab. The connection between the server and the tab is the **bridge**.
+
+This page describes:
+
+- How a tab opens a bridge session.
+- The messages that the API and the tab send over a WebSocket.
+- The commands that the tab runs.
+- The limits of the bridge.
+
+The code of the API is in `backend-api/backend/routers/app/workspace_mcp/` and `backend-api/backend/workspace_mcp/models.py`. The code of the browser is in `frontend/src/components/AI/WorkspaceBridgeConnectionManager.tsx` and `workspaceBridgeProtocol.ts`. The docs generator builds the tables on this page from the Python models and from the constants of the two sides. Tests make sure that the data agrees with the code.
 
 ## Opening a session
 
-A tab opens a bridge session in two steps. The user must be signed in, and the tab must have the companion mode of the FINOS Workspace MCP turned on.
+A tab opens a bridge session in two steps. Before the steps, the user must sign in, and the MCP Companion must be on in the tab.
 
-1. The tab sends `POST /app/workspace-mcp/bridge/session/start` with its `client_name` and, optionally, the `current_dashboard_id` and `current_tab_id` that it shows. The API answers with the new `session`, which holds a `session_id`, and with a `websocket_url` of the form `wss://<api host>/app/workspace-mcp/bridge/ws?session_id=<session id>`. The tab waits at most <BridgeValue of="limits.sessionStartTimeoutMs" unit="ms" /> for the answer.
-2. The tab opens that WebSocket. The browser sends the web session cookie with the request, and the API also requires an allowed origin, as [FINOS Workspace API](../../technical-guide/reference/http-api/workspace-api.mdx) describes. The API closes the socket with code <BridgeValue of="constants.closeCode" unit="raw" /> when the cookie is missing or invalid, or when the session id does not belong to the signed-in user.
+1. The tab sends `POST /app/workspace-mcp/bridge/session/start` with its `client_name`. It can also send the `current_dashboard_id` and the `current_tab_id` that it shows.
+   - The API answers with the new `session`, which contains a `session_id`.
+   - The answer also contains a `websocket_url` in the form `wss://<api host>/app/workspace-mcp/bridge/ws?session_id=<session id>`.
+   - The tab waits a maximum of <BridgeValue of="limits.sessionStartTimeoutMs" unit="ms" /> for the answer.
+2. The tab opens that WebSocket.
+   - The browser sends the cookie of the web session with the request.
+   - The API also requires an allowed origin, as [FINOS Workspace API](../../reference/http-api/workspace-api.mdx) describes.
+   - The API closes the socket with code <BridgeValue of="constants.closeCode" unit="raw" /> in these conditions:
+     - The cookie is missing or not valid.
+     - The session id is not a session of the signed-in user.
 
-Each user has at most one active bridge session. Starting a new session replaces the old one: the API closes the old socket and fails the commands that were waiting for it with the message "<BridgeValue of="constants.sessionReplacedMessage" plain />". The API keeps a started session for <BridgeValue of="constants.sessionTtlSeconds" unit="s" />, so a tab that does not connect within that time has to start a new session.
+Each user has a maximum of one active bridge session. A new session replaces the old session:
 
-When the socket is accepted, the API sends the first event, `session_ready`, and the session is live. While the socket is open, the API checks every <BridgeValue of="constants.sessionCheckSeconds" unit="s" /> that the web session that opened it is still alive. When the web session has ended, the API closes the socket with code <BridgeValue of="constants.closeCode" unit="raw" /> and fails the waiting commands with the message "<BridgeValue of="constants.sessionEndedMessage" plain />".
+- The API closes the old socket.
+- The commands that wait for the old socket fail with the message "<BridgeValue of="constants.sessionReplacedMessage" plain />".
+
+The API keeps a started session for <BridgeValue of="constants.sessionTtlSeconds" unit="s" />. A tab that does not connect in that time must start a new session.
+
+When the API accepts the socket, it sends the first event, `session_ready`. The session is then live.
+
+While the socket is open, the API checks every <BridgeValue of="constants.sessionCheckSeconds" unit="s" /> that the web session that opened the socket is still active. When the web session stops, the API does these two things:
+
+- It closes the socket with code <BridgeValue of="constants.closeCode" unit="raw" />.
+- It fails the waiting commands with the message "<BridgeValue of="constants.sessionEndedMessage" plain />".
 
 ## Messages over the WebSocket
 
-Every message is a JSON object with a `type` field. The API validates the messages that the browser sends, and it closes the socket with code <BridgeValue of="constants.closeCode" unit="raw" /> when the web session ends.
+Each message is a JSON object with a `type` field. The API checks the messages that the browser sends. The API closes the socket with code <BridgeValue of="constants.closeCode" unit="raw" /> when the web session stops.
 
 **From the API to the tab:**
 
@@ -39,13 +66,18 @@ Every message is a JSON object with a `type` field. The API validates the messag
 
 <BridgeMessages direction="toApi" />
 
-A command result has these fields. When `ok` is false, `error` has a `code`, which is one of <BridgeList of="errorCodes" />.
+A command result has these fields. When `ok` is false, `error` has a `code`. The code is one of <BridgeList of="errorCodes" />.
 
 <BridgeResultFields />
 
 ## Commands
 
-The `command_request` message carries one of <BridgeValue of="counts.sent" plain /> commands. Every command has a `command` field that names it and a `request_id` that identifies the call, and the table lists the other arguments of each command. The tab accepts <BridgeValue of="counts.accepted" plain /> commands in all. The command <BridgeList of="agentOnlyCommands" /> comes only from the agent, which runs it through the same handler in the tab, and it never travels over the WebSocket. [FINOS Workspace MCP server](tools.mdx) lists each tool with its arguments and its description.
+The `command_request` message contains one of <BridgeValue of="counts.sent" plain /> commands. Each command has two fields:
+
+- `command` gives the name of the command.
+- `request_id` identifies the call.
+
+The table below gives the other arguments of each command. The tab accepts <BridgeValue of="counts.accepted" plain /> commands in total. Only the Agent sends the command <BridgeList of="agentOnlyCommands" />. The tab runs it with the same handler, but it never goes over the WebSocket. [FINOS Workspace MCP server](tools.mdx) lists each tool with its arguments and its description.
 
 <BridgeCommandSummary />
 
@@ -57,10 +89,10 @@ The `command_request` message carries one of <BridgeValue of="counts.sent" plain
 
 | Limit | Value |
 |---|---|
-| Time that the API waits for a command result | <BridgeValue of="constants.commandTimeoutSeconds" unit="s" />. After that the result is `ok: false` with the error code `timeout` and `retryable: true`. |
-| Liveness | The tab pings every <BridgeValue of="limits.heartbeatIntervalMs" unit="ms" />, and each ping refreshes the session's presence for <BridgeValue of="constants.presenceTtlSeconds" unit="s" />. The tab closes a connection that has not answered for <BridgeValue of="limits.heartbeatTimeoutMs" unit="ms" />. |
-| No connected tab | When no tab is connected, the tool call fails with the message "<BridgeValue of="constants.noBrowserMessage" plain />". A command that is already waiting when the tab disconnects or is replaced fails with the error code `unavailable` and `retryable: true`, and with the message "<BridgeValue of="constants.disconnectedMessage" plain />" or the one for a replaced session. |
-| Reconnects | After a lost connection the tab retries up to <BridgeValue of="limits.maxReconnectAttempts" plain /> times. The first wait is <BridgeValue of="limits.reconnectBaseDelayMs" unit="ms" />, and each later wait is twice as long. The tab then reports that the connection failed. |
-| Repeated requests | The API remembers the results of the last <BridgeValue of="constants.completedResultsMax" plain /> requests, so a command that is sent again with the same `request_id` receives the stored result and does not run twice. |
+| Time that the API waits for a command result | <BridgeValue of="constants.commandTimeoutSeconds" unit="s" />. After this time, the result is `ok: false` with the error code `timeout` and `retryable: true`. |
+| Liveness | The tab sends a ping every <BridgeValue of="limits.heartbeatIntervalMs" unit="ms" />. Each ping keeps the session present for <BridgeValue of="constants.presenceTtlSeconds" unit="s" />. The tab closes a connection that gives no answer for <BridgeValue of="limits.heartbeatTimeoutMs" unit="ms" />. |
+| No connected tab | When no tab is connected, the tool call fails with the message "<BridgeValue of="constants.noBrowserMessage" plain />". A command can wait when the tab disconnects, or when a new session replaces the tab. That command fails with the error code `unavailable` and `retryable: true`. The message is "<BridgeValue of="constants.disconnectedMessage" plain />", or the message for a replaced session. |
+| Reconnects | When the tab loses the connection, it tries again a maximum of <BridgeValue of="limits.maxReconnectAttempts" plain /> times. The first wait is <BridgeValue of="limits.reconnectBaseDelayMs" unit="ms" />. Each subsequent wait is two times longer. After the last attempt, the tab reports that the connection failed. |
+| Repeated requests | The API keeps the results of the last <BridgeValue of="constants.completedResultsMax" plain /> requests. When a command comes again with the same `request_id`, it gets the stored result. The command does not run a second time. |
 
-The API runs several worker processes, and the tab's socket is open on only one of them. A tool call that arrives at another worker is forwarded to the worker that holds the socket through the shared Redis-compatible store, and the result comes back the same way, so the MCP client does not need to know which worker holds the tab.
+The API runs more than one worker process. The socket of the tab is open on only one of them. When a tool call comes to a different worker, that worker sends the call to the worker with the socket. The workers use the shared Redis-compatible store for this. The result comes back in the same way. The AI tool does not need to know which worker holds the tab.

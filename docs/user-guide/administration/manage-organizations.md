@@ -42,4 +42,4 @@ The same move is available from the command line, which is the way to put back a
 python -m scripts.workspace_admin user move --email <email> --entity-uuid <entity-uuid> --role user
 ```
 
-[Admin command line](../../technical-guide/reference/command-line/admin-cli.mdx) lists the commands for organizations and users, including `entity delete`, which removes an organization that has no users left.
+[Admin command line](../../reference/command-line/admin-cli.mdx) lists the commands for organizations and users, including `entity delete`, which removes an organization that has no users left.

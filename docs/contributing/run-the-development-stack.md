@@ -78,7 +78,7 @@ On Apple silicon, the backend images are built for `linux/amd64` as the deployed
 
 The stack runs plain HTTP on `localhost` with one port per service, a single copy of each service, and a database and a cache without TLS and with a fixed password. The web app runs the Vite development server in place of the finished image. Files that users upload go to `backend-api/backend/local_storage`, because `STORAGE_PROVIDER` is `folder`.
 
-The Copilot does not work in this stack, because it does not run the agent Ines: `AI_API_URL` stays empty and `AI_COPILOT_ENABLED` stays `false`. The root stack runs Ines. Sign in with the address and the password, and not with Google, unless `http://localhost:1420` is an allowed origin of your Google client.
+The Agent does not work in this stack, because it does not run the agent Ines: `AI_API_URL` stays empty and `AI_COPILOT_ENABLED` stays `false`. The root stack runs Ines. Sign in with the address and the password, and not with Google, unless `http://localhost:1420` is an allowed origin of your Google client.
 
 ## When something fails
 

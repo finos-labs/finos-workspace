@@ -1,13 +1,13 @@
 ---
-title: How to export traces of the Copilot
+title: How to export traces of the Agent
 sidebar_position: 11
 ---
 
 import { EnvDefault } from "@site/src/components/Reference/config";
 
-# How to export traces of the Copilot
+# How to export traces of the Agent
 
-Ines, the agent behind the Copilot, can export OpenTelemetry traces of the questions that people ask and of the calls that it makes to models. A trace shows how long each model call took, which model answered and how many tokens it used, so it answers questions that the logs and the metrics cannot, such as why one question was slow. This guide turns the export on, says what the traces contain and how to find the trace of a question. Only Ines exports traces. The FINOS Workspace API and the Ines MCP server do not. [Ines and its MCP server](../reference/configuration/agent.mdx) lists the settings, and [How to ship logs and metrics](ship-logs-and-metrics.mdx) covers the logs and the metrics.
+Ines, the agent behind the Agent, can export OpenTelemetry traces of the questions that people ask and of the calls that it makes to models. A trace shows how long each model call took, which model answered and how many tokens it used, so it answers questions that the logs and the metrics cannot, such as why one question was slow. This guide turns the export on, says what the traces contain and how to find the trace of a question. Only Ines exports traces. The FINOS Workspace API and the Ines MCP server do not. [Ines and its MCP server](../../reference/configuration/agent.mdx) lists the settings, and [How to ship logs and metrics](ship-logs-and-metrics.mdx) covers the logs and the metrics.
 
 ## Turn the export on
 
@@ -45,6 +45,6 @@ The log line "Token usage" of a question carries the fields `conversationId` and
 ## Check it
 
 1. Restart the agent and look for the line "Telemetry enabled" in its log.
-2. Ask the Copilot a question.
+2. Ask the Agent a question.
 3. Open the tracing backend and look for the service whose name is the value of `OTEL_SERVICE_NAME`. A trace with a span `ines.turn.request` appears within moments of the answer, because Ines sends spans in batches.
 4. When nothing arrives, set `OTEL_TRACES_CONSOLE` to `true` to check that Ines creates the spans, and then check that the collector's address is reachable from the agent and that the collector accepts OTLP over HTTP at the path `/v1/traces`.

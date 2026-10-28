@@ -15,7 +15,7 @@ The questions below will be answered on this page, grouped by reader. The pages 
 ## Using FINOS Workspace
 
 - Why does changing a parameter reload a widget? *(from [How a widget gets its data](how-widget-data-flows.md))*
-- How does the Copilot decide which widgets and tools to use? *(from [How the Copilot answers](how-the-copilot-answers.md))*
+- How does the Agent decide which widgets and tools to use? *(from [How the Agent answers](how-the-agent-answers.md))*
 - What is the difference between a dashboard and an app?
 
 ## Administering it

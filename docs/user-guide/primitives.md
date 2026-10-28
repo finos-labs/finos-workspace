@@ -11,7 +11,7 @@ Three nouns carry most of what people see in FINOS Workspace: a widget, a dashbo
 
 A widget shows what one source returns. The source is usually an endpoint of a data backend, and it can also be a file that a person uploaded or something that FINOS Workspace provides itself, such as a page embedded in an iframe. The widget's definition says where the data comes from, what the person may change, and how it is drawn. The things that a person may change are the widget's parameters, such as a year or a team, and how it is drawn is its type, such as a table of Markdown, an HTML page or a chart that a plugin draws.
 
-The definition belongs to the backend, which lists it in its `widgets.json`. Until somebody places it on a dashboard, a widget is only an entry in a catalog. The Widget Menu lists those entries, grouped by the category that the backend gave them, and the Copilot searches the same entries by their names and descriptions. This is why a backend's author decides how a widget is described and what it can be asked, and why FINOS Workspace itself needs to know nothing about the data.
+The definition belongs to the backend, which lists it in its `widgets.json`. Until somebody places it on a dashboard, a widget is only an entry in a catalog. The Widget Menu lists those entries, grouped by the category that the backend gave them, and the Agent searches the same entries by their names and descriptions. This is why a backend's author decides how a widget is described and what it can be asked, and why FINOS Workspace itself needs to know nothing about the data.
 
 ## A dashboard is an arrangement of widgets
 
@@ -21,9 +21,9 @@ A dashboard stores no data from the backends. It stores the arrangement and the 
 
 ## An app is a dashboard that can be opened again
 
-An app is a template for dashboards. It remembers which widgets to place, where, with which parameter values and links, and it may carry suggested questions for the Copilot. Opening an app does not show the app: it creates a new dashboard from it, which belongs to the person who opened it and which that person can change freely.
+An app is a template for dashboards. It remembers which widgets to place, where, with which parameter values and links, and it may carry suggested questions for the Agent. Opening an app does not show the app: it creates a new dashboard from it, which belongs to the person who opened it and which that person can change freely.
 
-An app comes from one of two places. A backend may offer apps in its `apps.json`, so that the people who use the backend start from a good arrangement. A person may also save a dashboard of their own as an app, which is the quickest way to reuse something that took work to arrange. Both kinds appear on the Apps page, and the second kind carries the tag Saved App. [Offer an app from your backend](../technical-guide/build-a-backend/offer-an-app-from-your-backend.md) builds the first kind, and [How to save a dashboard as an app](apps/save-a-dashboard-as-an-app.mdx) makes the second.
+An app comes from one of two places. A backend may offer apps in its `apps.json`, so that the people who use the backend start from a good arrangement. A person may also save a dashboard of their own as an app, which is the quickest way to reuse something that took work to arrange. Both kinds appear on the Apps page, and the second kind carries the tag Saved App. [Offer an app from your backend](../technical-guide/build-a-backend/offer-an-app-from-your-backend.mdx) builds the first kind, and [How to save a dashboard as an app](apps/save-a-dashboard-as-an-app.mdx) makes the second.
 
 ## What follows for sharing and access
 

@@ -27,7 +27,7 @@ Register an application with the provider first, as the provider's documentation
 | Microsoft | `AZURE_CLIENT_ID`, the application id of the Microsoft Entra app registration, and `AZURE_TENANT_ID`, the id or domain of the tenant. | `AZURE_CLIENT_ID` and `AZURE_TENANT_ID`, the same values. The tenant may also be `organizations`, for every work or school tenant, or `common`, which adds personal Microsoft accounts. |
 | Okta | `OKTA_CLIENT_ID` and `OKTA_DOMAIN`, the issuer of the authorization server, such as `https://example.okta.com/oauth2/default`. | `OKTA_CLIENT_ID` and `OKTA_DOMAIN`, the same values. |
 
-The registration with Microsoft has to send the optional claims `email` and `xms_edov` in the ID token. The claim `xms_edov` says that Microsoft verified the email address. Without it, a person who signs in with Microsoft gets the message "Microsoft has not verified the email address of this account", and has to use a password or ask an admin to change the registration. [Web app configuration](../reference/configuration/web-app.mdx) and [Backend settings](../reference/configuration/backend.mdx) list every setting with its description.
+The registration with Microsoft has to send the optional claims `email` and `xms_edov` in the ID token. The claim `xms_edov` says that Microsoft verified the email address. Without it, a person who signs in with Microsoft gets the message "Microsoft has not verified the email address of this account", and has to use a password or ask an admin to change the registration. [Web app configuration](../../reference/configuration/web-app.mdx) and [Backend settings](../../reference/configuration/backend.mdx) list every setting with its description.
 
 ## Who may sign in
 
@@ -44,7 +44,7 @@ To give a person a place in a particular organization or role before their first
 
 ## Pass the provider's token to a data backend
 
-A backend may need to know who the user is. Set `AUTHENTICATION_SEND_MICROSOFT_IDTOKEN` or `AUTHENTICATION_SEND_OKTA_IDTOKEN` to `true`, and FINOS Workspace sends the signed-in user's ID token to data backends in the header `X-Microsoft-Id-Token` or `X-Okta-Id-Token`. `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER` sends the email address in the header `X-Workspace-User`. [Widget requests](../reference/protocols/widget-requests.mdx) describes these headers.
+A backend may need to know who the user is. Set `AUTHENTICATION_SEND_MICROSOFT_IDTOKEN` or `AUTHENTICATION_SEND_OKTA_IDTOKEN` to `true`, and FINOS Workspace sends the signed-in user's ID token to data backends in the header `X-Microsoft-Id-Token` or `X-Okta-Id-Token`. `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER` sends the email address in the header `X-Workspace-User`. [Widget requests](../../reference/protocols/widget-requests.mdx) describes these headers.
 
 ## Check it
 

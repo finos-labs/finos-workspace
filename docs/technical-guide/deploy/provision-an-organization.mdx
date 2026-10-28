@@ -7,7 +7,7 @@ import { SettingConstant } from "@site/src/components/Reference/config";
 
 # How to provision an organization from a file
 
-This guide creates a whole organization in one step: the organization itself, its administrators and its users, from a JSON file. It suits a deployment that serves several organizations, and a rollout that starts with a list of people. You need access to the admin command line tool, which runs inside the API's container and works on the database directly, as [Admin command line](../reference/command-line/admin-cli.mdx) describes. You do not need a session of the web app.
+This guide creates a whole organization in one step: the organization itself, its administrators and its users, from a JSON file. It suits a deployment that serves several organizations, and a rollout that starts with a list of people. You need access to the admin command line tool, which runs inside the API's container and works on the database directly, as [Admin command line](../../reference/command-line/admin-cli.mdx) describes. You do not need a session of the web app.
 
 ## Write the file
 
@@ -54,7 +54,7 @@ python -m scripts.workspace_admin provision apply --config provision.json
 
 The tool creates the organization and then each administrator and user, and it prints a line for each. Every account gets a link that sets its password. The tool prints the link once: copy it and give it to the person, because FINOS Workspace sends no email. The link works once and expires after <SettingConstant name="passwordResetLifetimeSeconds" unit="hours" />, and the line shows the exact time. When the person opens it, they choose their own password, so you never learn it.
 
-Each new account starts with the role Agent User of its organization, which grants the Copilot's default models and tools, and administrators have the type Admin and everyone else the type User. To change a person's type or role afterwards, use the admin area, as [How to add a user](../../user-guide/administration/add-a-user.mdx) and [How to create a role](../../user-guide/administration/create-a-role.md) describe.
+Each new account starts with the role Agent User of its organization, which grants the Agent's default models and tools, and administrators have the type Admin and everyone else the type User. To change a person's type or role afterwards, use the admin area, as [How to add a user](../../user-guide/administration/add-a-user.mdx) and [How to create a role](../../user-guide/administration/create-a-role.md) describe.
 
 ## Run it twice, and add people later
 

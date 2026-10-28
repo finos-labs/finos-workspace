@@ -1,0 +1,55 @@
+---
+title: HTML widgets and artifacts
+sidebar_position: 10
+---
+
+# HTML widgets and artifacts
+
+Three surfaces draw an HTML document that someone other than the app wrote. None of them can see the app's stylesheets or custom properties: each document is in its own frame, so its own CSS is all there is. This page lists what the app does to each frame and document.
+
+## HTML widgets
+
+The widget draws the response of its endpoint.
+
+| Item | Value |
+|---|---|
+| Frame | An `iframe` with `srcdoc` |
+| `sandbox` | Empty. With `ALLOW_HTML_JS_EXECUTION` set to `true`: `allow-scripts allow-forms allow-downloads allow-popups` |
+| Content security policy | None added |
+| Sanitizing | None |
+| Added to the document | A script that passes parameters on, when scripts are allowed |
+| Theme | The `theme` query parameter, `dark` or `light`, on the request |
+
+## iframe widgets
+
+The widget draws the page at its URL.
+
+| Item | Value |
+|---|---|
+| Frame | An `iframe` with `src` |
+| `sandbox` | `allow-scripts allow-forms allow-downloads allow-popups allow-same-origin` |
+| Content security policy | None added |
+| Sanitizing | None |
+| Added to the document | Nothing |
+| Theme | The `theme` query parameter on the URL |
+
+## Agent HTML artifacts
+
+The artifact draws the HTML that the model wrote.
+
+| Item | Value |
+|---|---|
+| Frame | An `iframe` with `srcdoc` |
+| `sandbox` | `allow-same-origin`. With `ALLOW_HTML_JS_EXECUTION` set to `true`: `allow-scripts allow-downloads allow-popups` |
+| Content security policy | `default-src 'none'`, `img-src data:`, `style-src 'unsafe-inline'`, `font-src data:`, `form-action 'none'` and `base-uri 'none'`, plus a `script-src` nonce when scripts are allowed |
+| Sanitizing | The `script`, `iframe`, `form`, `object` and `embed` elements, the `onerror`, `onload`, `onclick` and `onmouseover` attributes, and `data-*` attributes are removed |
+| Added to the document | A `style` element with `body{margin:0;padding:0}table{display:block;overflow-x:auto;max-width:100%}`, and a script that reports the height, when scripts are allowed |
+| Theme | None: the model decides |
+
+## What follows from this
+
+- The document draws its own background, text and fonts. The app adds no background color and no font to it.
+- Nothing in the frame can read `--btn-primary-bg` or any other property of the app. To match the app, use the values on [Color palette](color-palette.mdx) and [Semantic properties](semantic-properties.mdx) in the document's own CSS.
+- The theme reaches an HTML widget or an iframe widget only as the `theme` query parameter. An HTML widget's document arrives through `srcdoc`, which has no query string, so the backend that serves it chooses the light or the dark styles. An iframe widget's page receives the parameter in its URL.
+- In an artifact, styles must be inline in the document: `style-src` allows inline styles only, `img-src` and `font-src` allow `data:` URLs only, and nothing loads from the network.
+- `theme` is a reserved query parameter name for `markdown`, `html`, `iframe` and plugin widget types (see the [widgets.json schema](../schemas/widgets-json.mdx)).

@@ -11,16 +11,16 @@ In this lesson you let another person work with a backend that you connected, an
 
 ## What you need
 
-You need the FINOS Workspace that [Run FINOS Workspace on your machine](../../technical-guide/build-from-source/run-the-stack-from-source.md) starts, with its administrator signed in, and the backend of [Connect a backend and build a dashboard](../../technical-guide/build-a-backend/connect-a-backend-and-build-a-dashboard.md), connected under the name Sales demo and still running. You also need a second browser window that does not share the administrator's session, such as a private window.
+You need the FINOS Workspace that [Run FINOS Workspace on your machine](../../technical-guide/build-from-source/run-the-stack-from-source.md) starts, with its administrator signed in, and the backend of [Connect a backend and build a dashboard](../../technical-guide/build-a-backend/connect-a-backend-and-build-a-dashboard.mdx), connected under the name Sales demo and still running. You also need a second browser window that does not share the administrator's session, such as a private window.
 
 ## Create a role
 
 A role is a name for a set of grants, and a person gets what their roles grant. Open the main menu, choose Admin Portal, and select Roles and Access. The page lists the roles of your organization. Select Create new role and fill in the dialog:
 
 1. In Name, type `Analysts`.
-2. In Description, type `Reads the sales data and asks the Copilot about it.`
+2. In Description, type `Reads the sales data and asks the Agent about it.`
 3. Leave Sharing at None, so that the members neither share nor receive dashboards.
-4. Under Agent calls per day, clear the box No limit and type `20`. This is the number of questions that a member may ask the Copilot in a day.
+4. Under Agent calls per day, clear the box No limit and type `20`. This is the number of questions that a member may ask the Agent in a day.
 5. Select Create role.
 
 A message says "Role created", and the role appears in the table with no members yet. It grants nothing so far except the allowance of 20 questions.
@@ -57,4 +57,4 @@ Two of the widgets show their data: Revenue by region shows the table, and Sales
 
 ## Where to go next
 
-You created a role, gave it to a person and limited what it opens. To change what the role grants, open Edit permissions again, choose the role and change its menus. To choose which models and tools the role gives to the Copilot, read [How to choose the models and tools of a role](choose-the-models-and-tools-of-a-role.md). To give the role an app, read [How to give a role access to data](give-a-role-access-to-data.md). To add many people at once, read [How to add a user](add-a-user.mdx). [About roles and access](../../faq/roles-and-access.md) explains why access is built from grants and not from switches.
+You created a role, gave it to a person and limited what it opens. To change what the role grants, open Edit permissions again, choose the role and change its menus. To choose which models and tools the role gives to the Agent, read [How to choose the models and tools of a role](choose-the-models-and-tools-of-a-role.md). To give the role an app, read [How to give a role access to data](give-a-role-access-to-data.md). To add many people at once, read [How to add a user](add-a-user.mdx). [About roles and access](../../faq/roles-and-access.md) explains why access is built from grants and not from switches.

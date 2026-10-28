@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # How to choose where files are stored
 
-The API keeps the files that people upload, such as documents on a dashboard and the files that they attach to a question, in one place that you choose with the setting `STORAGE_PROVIDER`. This guide lists the providers, what each one needs, and what to check so that every replica of the API sees the same files. Backend settings come from the environment of the API's container and the worker's, and [Backend settings](../reference/configuration/backend.mdx) lists each one with its description.
+The API keeps the files that people upload, such as documents on a dashboard and the files that they attach to a question, in one place that you choose with the setting `STORAGE_PROVIDER`. This guide lists the providers, what each one needs, and what to check so that every replica of the API sees the same files. Backend settings come from the environment of the API's container and the worker's, and [Backend settings](../../reference/configuration/backend.mdx) lists each one with its description.
 
 ## Choose the provider
 
