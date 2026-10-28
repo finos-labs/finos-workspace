@@ -132,7 +132,7 @@ def teams():
 uvicorn main:app --reload --port 7779
 ```
 
-Then in Workspace: Settings → Data Connectors → Connect Backend → `http://localhost:7779`.
+Then in Workspace: Connections in the sidebar → Connect Backend → `http://localhost:7779`.
 
 ## Notes specific to Python
 

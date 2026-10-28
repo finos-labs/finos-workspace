@@ -120,7 +120,7 @@ const RESOURCES: readonly AppBuilderResource[] = [
     title: "Convert an Existing Endpoint to a Widget",
     description:
       "Turn an existing HTTP endpoint into a Workspace widget — type " +
-      "selection, params, columns, validation.",
+      "selection, params, validation.",
     relativePath: "guides/convert-endpoint-to-widget.md",
   },
   {

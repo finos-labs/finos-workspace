@@ -35,8 +35,7 @@ GET <backend-url>/apps.json
 
 What you should see: a JSON **array** of app objects. Common failures:
 
-- Returns a single object → Workspace will reject it with `Unknown App: [name]: Required` or similar. Wrap in `[ ... ]`.
-- Each app missing `allowCustomization`, `groups`, `prompts` → some validators flag these as required. Add them with sensible defaults.
+- Returns a single object → Workspace reads it as an array of one app, but the contract is an array. Wrap it in `[ ... ]`.
 - Each tab missing `id`, `name`, or `layout` → required.
 
 ## 3. Validate the JSON shape
@@ -79,7 +78,7 @@ Common failures:
 If the backend works from `curl` but fails in Workspace:
 
 - CORS: open the browser devtools network tab while loading the dashboard. CORS failures show as red entries with no response body. Add the missing origin.
-- Auth: if the backend requires a header or query string, confirm Workspace's backend connection has it configured (Settings → Data Connectors → edit the connection).
+- Auth: if the backend requires a header or query string, confirm Workspace's backend connection has it configured (Connections in the sidebar → edit the connection).
 - Mixed content: a backend served over HTTP can't be reached from an HTTPS Workspace. Use HTTPS in production.
 
 ## 6. Parameter sync isn't working
@@ -88,8 +87,8 @@ Symptoms: changing a synced param in one widget doesn't update the others; the w
 
 Walk through:
 
-- Group `name` is `Group 1`, `Group 2`, ... literally — not `"team-group"` or anything custom. Custom names validate but never link.
-- Group `type` matches the widget param shape: `param` for `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for Workspace's universal ticker registry. The wrong type silently disables sync.
+- Group `name` is the same text in `groups` and in the `groups` of every layout item that should join it. Any name works, as long as the two match exactly.
+- Group `type` matches the widget param shape: `param` for `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for a `ticker` param. The wrong type silently disables sync.
 - The group's `widgetIds` array, every layout item's `groups: [...]`, and the widget's own param config all agree on the same `paramName`.
 - For dynamic dropdowns: every widget shares the same `optionsEndpoint`. If they differ, Workspace can't link them.
 
@@ -98,10 +97,10 @@ Walk through:
 The browser/MCP path exposes the *actual* validator the running Workspace uses. When the doc and the validator disagree, **trust the validator** — adjust the files to match what Workspace accepts and then update docs/comments.
 
 - **`workspace_mcp` (preferred)**: `manage_backends(operation="add", ...)` returns schema errors directly. `list_available_widgets(backend_id=...)` and `manage_apps(operation="list", backend_id=...)` confirm what loaded.
-- **Browser**: Settings → Data Connectors → Connect Backend → Test surfaces the same errors.
+- **Browser**: Connections in the sidebar → Connect Backend shows the same errors in a list of invalid items.
 
 ## 8. Refresh, don't restart, for metadata changes
 
-- `widgets.json` / `apps.json` edits → right-click the backend → "Refresh backend".
+- `widgets.json` / `apps.json` edits → right-click the dashboard → "Refresh backend".
 - Code/handler edits → restart the backend.
 - Major schema changes → close the dashboard and open a fresh app instance from the gallery so cached state doesn't lie to you.

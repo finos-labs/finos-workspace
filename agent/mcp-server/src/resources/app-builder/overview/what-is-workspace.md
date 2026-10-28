@@ -35,7 +35,7 @@ Don't reinvent these — Workspace handles them natively, no backend code needed
 
 - **Layout & sizing** — drag/drop, resize, duplicate dashboards, folder organization.
 - **Auto-refresh** — dashboards refresh data automatically; per-widget `refetchInterval` overrides cadence.
-- **Parameter linking** — widgets in the same parameter Group share a value (one ticker drives all of them). Defined in `apps.json`. See `workspace://specs/apps-json` and `workspace://specs/layout-grid`.
+- **Parameter linking** — widgets in the same parameter Group share a value (one `team` selection drives all of them). Defined in `apps.json`. See `workspace://specs/apps-json` and `workspace://specs/layout-grid`.
 - **Native content embeds** — users can drop PDFs, images, and spreadsheets onto a Dashboard. You don't need a widget for static content.
 - **Sharing & roles** — RBAC, share with team, self-hosted deployment.
 - **AI Agent over the dashboard** — the built-in agent already reads widgets via their metadata. You don't ship an agent to make widgets queryable.
@@ -53,7 +53,7 @@ That's the whole contract. See `workspace://contract/backend`.
 
 - **Build a toolbar.** Widgets already have one (title, settings, full screen, refresh).
 - **Reimplement parameter sync inside one widget.** Use `apps.json` parameter Groups.
-- **Embed PDFs / images inside a widget response.** Users drop these directly onto the Dashboard.
+- **Embed images inside a widget response.** Users drop images directly onto the Dashboard. A PDF that your backend serves goes in a `pdf` widget (`workspace://specs/widget-types`).
 - **Build authentication UI.** Workspace's connection setup handles auth (header / query / none).
 - **Hide data inside rendered output if you want the AI Agent to use it.** See `workspace://overview/ai-agent-contract`.
 
@@ -70,6 +70,6 @@ If you find yourself designing one big monolithic widget with a custom UI inside
 
 ## Out of scope here
 
-- **Building AI Agent backends.** Agents are a separate backend surface (`/agents.json` + `/query` SSE), not the widget-backend surface this skill covers.
+- **Building AI Agent backends.** Agents are a separate backend surface (`/agents.json` + `/query` SSE), not the widget-backend surface these resources cover.
 - **PWA / enterprise deployment.** End-user / deployment surfaces, not authoring.
 - **Specific UI affordances (per-widget chat buttons, fullscreen, etc.).** Runtime features; check Workspace directly if you need to confirm one.

@@ -64,8 +64,8 @@ Skip if you're shipping a backend without canned dashboards. Otherwise:
 
 1. Plan the tabs. Most apps fit one tab. 3–5 is a healthy ceiling.
 2. Lay widgets out on the 40-column grid. Sketch on paper or in ASCII first. See `workspace://specs/layout-grid`.
-3. Define parameter groups for synchronized widgets. Prefer `Group 1`, `Group 2`, ... names for strict compatibility; put human-readable meaning in descriptions/categories.
-4. Add `"groups": []` and `"prompts": []` even when empty — several validators expect those keys to exist.
+3. Define parameter groups for synchronized widgets. A widget joins a group by listing the group's `name` in its layout item's `groups`, so any name works when the two match.
+4. Add `groups` and `prompts` only when the app has some; both are optional, and so is `allowCustomization`.
 5. Populate `img`, `img_dark`, and `img_light` when feasible. Prefer a small served SVG/PNG via `/thumbnails/{name}` or a stable hosted image URL over empty strings.
 
 See `workspace://specs/apps-json`.
@@ -89,7 +89,7 @@ Before going to the browser:
 - `widgets.json` is an object (`{...}`), not an array.
 - `apps.json` is an array (`[...]`), not an object.
 - Layout `i` matches a key in `widgets.json`.
-- Group `name` uses `Group 1`, `Group 2`, ... unless you have browser-tested descriptive names.
+- Each group `name` is the same text in `groups` and in the layout items that join it.
 - Every widget `type` is one of `markdown`, `html`, `newsfeed`, `pdf`, `iframe`, or a plugin type enabled for the organization, and every key is one `workspace://specs/widgets-json` lists.
 
 Then run a semantic output pass. Schema-valid is not enough:
@@ -109,7 +109,7 @@ See `workspace://validation/common-errors` for the full list.
 Two paths — pick whichever is available; both validate against the same Workspace schema.
 
 - **Preferred — `workspace_mcp`.** If you have the Workspace MCP companion connected, register the backend with `manage_backends(operation="add", url=...)` then confirm with `list_available_widgets` and `manage_apps(operation="list")`. Headless and returns structured errors.
-- **Fallback — browser.** In your Workspace, open Settings → Data Connectors → Connect Backend → Test.
+- **Fallback — browser.** In your Workspace, open Connections in the sidebar and choose Connect Backend; Workspace validates the backend and lists the invalid items.
 
 If validation fails, trust the validator over docs — the running validator is the source of truth.
 
@@ -119,6 +119,6 @@ Once validation passes, the backend is registered and apps appear in the gallery
 
 ## After it ships
 
-- **Widget config changes**: refresh the backend in Workspace (right-click → "Refresh backend") rather than restarting your server.
+- **Widget config changes**: refresh the backend in Workspace (right-click the dashboard → "Refresh backend") rather than restarting your server.
 - **Code changes**: restart the backend.
 - **Major schema changes**: open a fresh app instance from the gallery so cached state doesn't mask the change.

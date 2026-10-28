@@ -28,7 +28,7 @@ If any of these are wrong, fix before reviewing further.
 
 - Top level is an object keyed by widget id.
 - Each widget has `name`, `type`, `endpoint`.
-- `type` is one of the five types this Workspace renders: `markdown`, `html`, `newsfeed`, `pdf`, `iframe`. No invented aliases, and no types of the wider protocol (`table`, `chart`, `metric`, ...).
+- `type` is one of the five built-in types: `markdown`, `html`, `newsfeed`, `pdf`, `iframe`, or a plugin type enabled for the organization. No invented aliases, and no types that nothing renders, such as `table`, `chart` or `metric`.
 - Every param has `paramName`, `type`, `label`, `description`, and a sensible `value`.
 - Param types match shape: `boolean` for toggles, `number` for free-form integers, `date` for dates, `endpoint` for dropdowns from a backend.
 - Dropdown option objects are simple unless an advanced picker is intentional: usually `{label, value}`. Do not add `extraInfo` by default.
@@ -42,13 +42,13 @@ See `workspace://specs/widgets-json` and `workspace://specs/widget-parameters`.
 ## 3. `apps.json` shape
 
 - Top level is an array of app objects.
-- Each app has `name`, `tabs`, `allowCustomization`. `groups` and `prompts` are present even when `[]`.
+- Each app has `name` and `tabs`. `allowCustomization`, `groups` and `prompts` are optional.
 - `img`, `img_dark`, and `img_light` are populated when a reasonable thumbnail exists; if blank, note it as a polish gap.
 - Each tab has `id`, `name`, `layout`.
 - Each layout item uses `i` (not `id`), plus `x`, `y`, `w`, `h`.
 - Every layout item's `i` matches a key in `widgets.json`.
-- Group `name` follows the literal `Group 1`, `Group 2`, ... pattern.
-- Group `type` matches the underlying widget param shape: `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for Workspace's universal ticker registry.
+- Each group `name` is the same text in `groups` and in the layout items that join it.
+- Group `type` matches the underlying widget param shape: `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for a `ticker` param.
 - `groups[].widgetIds`, every layout item's `groups: [...]`, and the widget's own param config all agree.
 
 See `workspace://specs/apps-json`.
@@ -89,4 +89,4 @@ When you write the review:
 - Then **UX issues** (parameter groups that don't link, type mismatches that work but feel dead).
 - Then **nice-to-haves** (descriptions, heights, prompts).
 
-A reviewer's job is to find *the cheapest fix* that produces the biggest UX uplift — usually that's wiring a parameter group correctly, not ratcheting borderWidth.
+A reviewer's job is to find *the cheapest fix* that produces the biggest UX uplift — usually that's wiring a parameter group correctly, not polishing cosmetics.

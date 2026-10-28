@@ -18,31 +18,26 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `widgets.json must be object` | Top-level is `[ ... ]` | Change to `{ "widget_id": { ... } }` |
+| `[widgets.json]: Invalid format`, with an `Expected` and a `Received` line | Top-level is `[ ... ]`, or a single widget instead of an object of widgets | Change to `{ "widget_id": { ... } }` |
 | `missing \`name\`` (or `description`, `endpoint`) | A required key is absent | Add it |
 | `unknown key \`xxx\`` | A key the contract does not define, such as `defaultViz`, `widgetId` or `widgetType` | Remove it; the keys are in `workspace://specs/widgets-json` |
-| Widget missing from the catalog, with a warning that nothing renders its type | A typo, a type of the wider protocol (`table`, `chart`, ...), or a plugin type not enabled for the organization | Use a built-in type, or ask an administrator to enable the plugin |
+| Widget missing from the catalog, with a warning that nothing renders its type | A typo, a type that nothing renders (such as `table`, `chart` or `metric`), or a plugin type not enabled for the organization | Use a built-in type, or ask an administrator to enable the plugin |
 | `endpoint` must be a path or an absolute URL with no `?` and no `#` | A static query value in the endpoint | Make it a param with a default `value` and `"show": false` |
 | `` `{xxx}` names no param of this widget `` | A placeholder in `endpoint` with no param of that name | Declare the param, or fix the placeholder |
 | `` `xxx` fills a path placeholder, so it is sent nowhere else and declares no `in` `` | A path param with `in` | Remove its `in` |
 | `Body params are sent only with "method": "POST"` | A param `in: body` on a `GET` widget | Set `"method": "POST"` |
 | A header param refused | Its name is one a browser forbids or Workspace sets, or one the backend connection's credentials use | Rename it; the rules are in `workspace://specs/widget-parameters` |
 | `` `xxx` is declared twice `` | Two params with one `paramName` | Rename one |
-| `gridData.w out of range` | Width too small/large | Use `w` between 1 and 40 |
+| Widget far too wide or too narrow on the dashboard | `gridData.w` does not fit the 40-column grid | Use `w` between 1 and 40 |
 | Widget endpoint 404 | Path mismatch | Confirm `endpoint` matches a real route |
 
 ## `apps.json` shape
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `Unknown App: [name]: Required` | apps.json is an object, not array | Wrap in `[ ... ]` |
-| `[tabs]: Required` | Missing or wrong tab structure | Each tab needs `id`, `name`, `layout` |
-| `allowCustomization: Required` | Field missing | Add `"allowCustomization": true` |
+| `[tabs]: Invalid input: expected object, received undefined` | Missing or wrong tab structure | Each tab needs `id`, `name`, `layout` |
 | App has no thumbnail | `img`, `img_dark`, and `img_light` are empty | Prefer a stable hosted image URL or serve a small SVG/PNG from `/thumbnails/{name}` |
-| `groups: Recommended` | `groups` field absent | Add `"groups": []` as the safe default |
-| `prompts: Required` | `prompts` field absent | Add `"prompts": []` as the safe default |
-| `Widget 'xxx' not found` | Layout `i` doesn't match any widget id | Fix typo or align with `widgets.json` keys |
-| `Widgets overlap at (x,y)` | Layout collision | Adjust `x`/`y`/`w`/`h` |
+| Creating a dashboard from the app fails with `Unable to create app because these widgets are unavailable: xxx` | Layout `i` doesn't match any widget id | Fix typo or align with `widgets.json` keys |
 | `id` rejected | Top-level `id` doesn't match `^custom-.+` | Use `custom-<slug>` or omit `id` |
 
 ## Layout fields
@@ -56,8 +51,8 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Group exists, no widget joins | Group `name` may not be compatible with runtime group matching | Prefer `Group 1`/`Group 2`/... and put human-readable meaning in `description`/`category`; browser-test custom names before shipping |
-| Group exists but sync silently disabled | Group `type` doesn't match the underlying param shape | `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for Workspace's universal ticker registry |
+| Group exists, no widget joins | A layout item's `groups` does not contain the group's exact `name` | Make the `name` in `groups` and in each layout item the same text |
+| Group exists but sync silently disabled | Group `type` doesn't match the underlying param shape | `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for a `ticker` param |
 | Sync works for some widgets, not others | A widget is missing from the group's `widgetIds`, or its layout entry is missing `"groups": [...]`, or its widget config uses a different `paramName`/`optionsEndpoint` | Make all three places agree |
 
 ## Endpoint and CORS
@@ -72,19 +67,11 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 | Wrong response shape | Endpoint returns the wrong kind of response for the widget type | `markdown` → string; `html` → HTML document; `newsfeed` → array of articles; `pdf` → file or base64 JSON |
 | Garbled non-ASCII | JSON file read with OS locale (cp1252 on Windows) | Open files with `encoding="utf-8"` (Python) or your language's UTF-8 equivalent |
 
-## State and styling
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `state.style` field rejected | `state.style` is closed | Use only `borderWidth` (0–24), `radius` (0–64), `contentPadding` (0–64), `shadow` (`none|sm|md|lg`) |
-| `state.style.headerMode` set, no visible effect | Schema accepts it; renderer ignores it | Remove |
-| Speculative `state.*` field appears to do nothing | Schema-but-not-runtime field | Remove unless verified visually in Workspace |
-
 ## When the doc and the validator disagree
 
 Trust the running validator. Workspace's actual validator is the source of truth — adjust the files to match what it accepts, then update docs.
 
 - **Preferred check** — `workspace_mcp`: `manage_backends(operation="add", url=...)` returns schema errors directly.
-- **Browser check**: Settings → Data Connectors → Connect Backend → Test.
+- **Browser check**: open Connections in the sidebar and choose Connect Backend. Workspace validates the backend and lists the invalid items.
 
 See `workspace://guides/debug-app` for the full diagnostic order.
