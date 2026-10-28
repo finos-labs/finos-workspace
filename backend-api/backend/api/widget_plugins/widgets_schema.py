@@ -13,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api import models
 from api.models.widget_plugin_models import PLUGIN_ENABLED, VERSION_ACTIVE
 
+from . import service
+
 KIT_PATH = Path(__file__).with_name("widgets_schema_kit.json")
 _REGEX_SPECIAL = re.compile(r"([.^$*+?()\[\]{}|\\/])")
 
@@ -247,8 +249,12 @@ async def entity_plugin_types(db: AsyncSession, entity_uuid: UUID | None) -> dic
             await db.execute(select(models.EntityVizHandler).where(models.EntityVizHandler.entity_uuid == entity_uuid))
         ).scalars()
     }
+    developing = await service.development_versions(db, [plugin for plugin, _version in rows])
     handlers: dict[str, dict[str, Any]] = {}
-    for plugin, version in rows:
+    for plugin, active in rows:
+        version = developing.get(plugin.uuid) or active
+        if isinstance(version, service.LiveVersion) and version.errors:
+            continue
         for widget in (version.manifest or {}).get("contributes", {}).get("widgets", []):
             for handle in widget.get("handles", []):
                 candidate = {

@@ -4,6 +4,7 @@ import json
 import os
 import re
 import stat
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -77,6 +78,19 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+_hash_cache: dict[str, tuple[int, int, str]] = {}
+
+
+def cached_sha256(path: Path) -> str:
+    info = path.stat()
+    cached = _hash_cache.get(str(path))
+    if cached and cached[0] == info.st_size and cached[1] == info.st_mtime_ns:
+        return cached[2]
+    digest = sha256_file(path)
+    _hash_cache[str(path)] = (info.st_size, info.st_mtime_ns, digest)
+    return digest
+
+
 def listing_digest(files: dict[str, str]) -> str:
     lines = b"".join(f"{path}\0{files[path]}\n".encode() for path in sorted(files))
     raw = hashlib.sha256(lines).digest()
@@ -91,7 +105,7 @@ def package_checksum(files: dict[str, str]) -> str:
     return listing_digest({p: h for p, h in files.items() if p != MANIFEST_FILE})
 
 
-def _walk(root: Path, version: DiscoveredVersion, max_files: int, max_bytes: int) -> None:
+def _walk(root: Path, version: DiscoveredVersion, max_files: int, max_bytes: int, hasher: Callable[[Path], str]) -> None:
     total = 0
     stack = [(root, "")]
     while stack:
@@ -121,7 +135,8 @@ def _walk(root: Path, version: DiscoveredVersion, max_files: int, max_bytes: int
                     return
                 version.files[relative] = FileInfo(
                     size=info.st_size,
-                    sha256=sha256_file(Path(entry.path)),
+                    sha256=hasher(Path(entry.path)),
+                    mtime_ns=info.st_mtime_ns,
                 )
 
 
@@ -134,6 +149,18 @@ def _format_validation(error: ValidationError) -> list[str]:
     return messages
 
 
+def _check_pin(found: DiscoveredVersion, pin: str | None, require_pins: bool) -> None:
+    if pin is None:
+        found.pin_status = "unpinned"
+        if require_pins:
+            found.fail("pin", "no pin, and WIDGET_PLUGINS_REQUIRE_PINS is on")
+    elif pin == found.digest:
+        found.pin_status = "pinned"
+    else:
+        found.pin_status = "mismatch"
+        found.fail("pin", f"the version digest differs from its pin {pin}")
+
+
 def inspect_version(  # noqa: PLR0911, PLR0912
     root: Path,
     plugin_id: str,
@@ -143,10 +170,11 @@ def inspect_version(  # noqa: PLR0911, PLR0912
     require_pins: bool,
     max_files: int,
     max_bytes: int,
+    development: bool = False,
 ) -> DiscoveredVersion:
     found = DiscoveredVersion(plugin_id=plugin_id, version=version_name, path=f"{plugin_id}/{version_name}")
     version_dir = root / plugin_id / version_name
-    _walk(version_dir, found, max_files, max_bytes)
+    _walk(version_dir, found, max_files, max_bytes, cached_sha256 if development else sha256_file)
     if found.errors:
         return found
 
@@ -182,24 +210,18 @@ def inspect_version(  # noqa: PLR0911, PLR0912
     if manifest.version != version_name:
         found.fail("manifest", f"the manifest version {manifest.version!r} differs from its directory")
     if manifest.checksum != found.checksum:
-        found.fail(
-            "checksum",
-            f"the files do not match the manifest's checksum (declared {manifest.checksum}, computed {found.checksum})",
+        stale = (
+            f"the files do not match the manifest's checksum (declared {manifest.checksum}, computed {found.checksum})"
         )
+        if development:
+            found.warnings.append(stale)
+        else:
+            found.fail("checksum", stale)
     for path in sorted(manifest.served_paths()):
         if path not in found.files:
             found.fail("manifest", f"{path}: named by the manifest but missing")
-
-    pin = pins.get(f"{plugin_id}@{version_name}")
-    if pin is None:
-        found.pin_status = "unpinned"
-        if require_pins:
-            found.fail("pin", "no pin, and WIDGET_PLUGINS_REQUIRE_PINS is on")
-    elif pin == found.digest:
-        found.pin_status = "pinned"
-    else:
-        found.pin_status = "mismatch"
-        found.fail("pin", f"the version digest differs from its pin {pin}")
+    if not development:
+        _check_pin(found, pins.get(f"{plugin_id}@{version_name}"), require_pins)
 
     entry_path = version_dir / manifest.entry.module
     if manifest.entry.module in found.files:
@@ -223,6 +245,7 @@ def scan(
     require_pins: bool = False,
     max_files: int = 200,
     max_bytes: int = 64 * 1024 * 1024,
+    development: frozenset[str] = frozenset(),
 ) -> ScanResult:
     result = ScanResult()
     if not plugins_dir:
@@ -267,6 +290,7 @@ def scan(
                     require_pins=require_pins,
                     max_files=max_files,
                     max_bytes=max_bytes,
+                    development=name in development,
                 )
             )
     return result

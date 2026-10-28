@@ -70,7 +70,13 @@ export async function postPluginReports(body: {
   await apiClient.post("/app/widget-plugins/report", body);
 }
 
-export type VersionState = "discovered" | "active" | "blocked" | "retired" | "missing";
+export type VersionState =
+  | "discovered"
+  | "active"
+  | "blocked"
+  | "retired"
+  | "missing"
+  | "development";
 export type PluginStatus = "disabled" | "enabled" | "revoked";
 export type Risk = "none" | "low" | "medium" | "high" | "critical";
 
@@ -98,6 +104,7 @@ export interface PlatformVersion {
   blocked_reason: string | null;
   digest: string | null;
   declared_checksum: string | null;
+  checksum: string | null;
   pin_status: "pinned" | "unpinned" | "mismatch";
   path: string;
   files: Record<string, { size: number; sha256: string }>;
@@ -225,9 +232,26 @@ interface RescanSummary {
 }
 
 export async function getPlatformPlugins() {
-  const { data } = await apiClient.get<{ enabled: boolean; plugins: PlatformPlugin[] }>(
-    "/plugins",
-  );
+  const { data } = await apiClient.get<{
+    enabled: boolean;
+    development: boolean;
+    plugins: PlatformPlugin[];
+  }>("/plugins");
+  return data;
+}
+
+export type VersionBump = "patch" | "minor" | "major";
+
+export async function developPluginVersion(
+  pluginId: string,
+  version: string,
+  bump: VersionBump,
+) {
+  const { data } = await apiClient.post<{
+    plugin_id: string;
+    version: string;
+    path: string;
+  }>(`/plugins/${pluginId}/versions/${version}/develop`, { bump });
   return data;
 }
 

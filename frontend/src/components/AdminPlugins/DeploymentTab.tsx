@@ -2,11 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
+  developPluginVersion,
   forgetPlugin,
   getPlatformPlugins,
   type PlatformPlugin,
   rescanPlugins,
   setPluginRevoked,
+  type VersionBump,
 } from "~/api/plugins.api";
 import { Button } from "~/components/ds/atoms/Button";
 import { Tag } from "~/components/ds/atoms/Tag";
@@ -163,20 +165,62 @@ export function DeploymentTab() {
         </table>
       )}
 
-      {plugin && <PluginDetail plugin={plugin} />}
+      {plugin && <PluginDetail plugin={plugin} development={data.development} />}
     </div>
   );
 }
 
-function PluginDetail({ plugin }: { plugin: PlatformPlugin }) {
+function DevelopNext({ plugin, from }: { plugin: PlatformPlugin; from: string }) {
+  const queryClient = useQueryClient();
+  const { mutate: develop, isPending } = useMutation({
+    mutationFn: (bump: VersionBump) =>
+      developPluginVersion(plugin.plugin_id, from, bump),
+    onSuccess: (created) => {
+      toast.success(`${created.version} is in development`, {
+        description: `Edit ${created.path} in the plugins directory. The app serves its files as they are on disk.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["widget-plugins"] });
+    },
+    onError: (error) => toast.error(errorText(error)),
+  });
+  return (
+    <div
+      className="flex flex-wrap items-center gap-2 body-xs-regular"
+      data-testid="develop-next"
+    >
+      <span className="text-ds-text-caption">Develop a new version from {from}:</span>
+      {(["patch", "minor", "major"] as const).map((bump) => (
+        <Button
+          key={bump}
+          size="sm"
+          variant="secondary"
+          disabled={isPending}
+          onClick={() => develop(bump)}
+        >
+          {bump[0].toUpperCase() + bump.slice(1)}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+function PluginDetail({
+  plugin,
+  development,
+}: {
+  plugin: PlatformPlugin;
+  development: boolean;
+}) {
   const queryClient = useQueryClient();
   const [prefill, setPrefill] = useState<{ directive: string; source: string } | null>(
     null,
   );
   const active = plugin.versions.find((v) => v.version === plugin.active_version);
   const reviewable = plugin.versions.filter(
-    (v) => v.state === "discovered" || v.state === "retired",
+    (v) =>
+      v.state === "discovered" || v.state === "retired" || v.state === "development",
   );
+  const developing = plugin.versions.some((v) => v.state === "development");
 
   const { mutate: setRevoked } = useMutation({
     mutationFn: (revoked: boolean) => setPluginRevoked(plugin.plugin_id, revoked),
@@ -234,6 +278,9 @@ function PluginDetail({ plugin }: { plugin: PlatformPlugin }) {
             </li>
           ))}
         </ul>
+        {development && active && !developing && (
+          <DevelopNext plugin={plugin} from={active.version} />
+        )}
       </Section>
 
       {reviewable.map((version) => (
@@ -241,6 +288,7 @@ function PluginDetail({ plugin }: { plugin: PlatformPlugin }) {
           <h3 className="body-sm-bold">
             Review {version.version}
             {version.state === "retired" && " (an earlier version)"}
+            {version.state === "development" && " (in development)"}
           </h3>
           <TrustSummary plugin={plugin} version={version} />
         </div>

@@ -88,7 +88,11 @@ export function TrustSummary(props: {
           <dt className="text-ds-text-caption">Version digest</dt>
           <dd className="break-all font-mono">{version.digest}</dd>
           <dt className="text-ds-text-caption">Checksum</dt>
-          <dd>matches the manifest</dd>
+          <dd>
+            {version.checksum === version.declared_checksum
+              ? "matches the manifest"
+              : "does not match the manifest: write the current checksum before approving"}
+          </dd>
           <dt className="text-ds-text-caption">Pin</dt>
           <dd>
             {version.pin_status === "pinned"
@@ -127,7 +131,7 @@ export function TrustSummary(props: {
           <dt className="text-ds-text-caption">Runs code on the server</dt>
           <dd>
             {version.server.backend
-              ? "Yes, in a separate process the deployer runs and isolates (T2)"
+              ? "Yes, in a separate process the deployer runs and isolates"
               : `No${version.server.proxies.length ? ": the server fills the request templates below and sends them" : ""}`}
           </dd>
           <dt className="text-ds-text-caption">Hosts the server may call</dt>

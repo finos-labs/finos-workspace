@@ -171,7 +171,9 @@ On a FINOS Workspace deployment (`local/LOCAL_SETUP.md`, "Widget plugins", for y
    use it: a role is the only way to a plugin.
 
 Every change is a new version: raise `version` in `package.json` and build again.
-FINOS Workspace blocks an approved version whose files change.
+FINOS Workspace blocks an approved version whose files change. On your own stack, the
+plugin's Deployment page starts the next version for you and serves it from its files
+as you rebuild them (see the documentation site, How to build and try a widget plugin).
 
 ## Try it
 

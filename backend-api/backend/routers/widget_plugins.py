@@ -66,6 +66,14 @@ class ApproveBody(BaseModel):
     )
 
 
+class DevelopBody(BaseModel):
+    model_config = closed
+
+    bump: Literal["patch", "minor", "major"] = Field(
+        description="Which part of the version number to raise: `patch`, `minor` or `major`."
+    )
+
+
 class OverridesBody(BaseModel):
     model_config = closed
 
@@ -259,6 +267,33 @@ async def approve_version(
         acknowledged=body.acknowledged,
         actor_uuid=superuser.uuid,
     )
+
+
+@platform_router.post(
+    "/{plugin_id}/versions/{version}/develop",
+    summary="Start the next version of a plugin",
+    description=(
+        "Copies an approved version of the plugin to the next patch, minor or major number, rewrites the version and the "
+        "checksum in the copy's manifest, and records the copy as a version in development. The API serves the copy "
+        "from its files as they change until a superuser approves it. Only one version of a plugin is in development at "
+        "a time. Answers the plugin id, the new version and its path. Answers 404 when the plugin or the version does "
+        "not exist, and 409 when the deployment is not a local stack, where `MODE` is `local`, when the version is not "
+        "approved, when another version is in development, or when the plugins directory cannot be written. Only a "
+        "superuser can call it."
+    ),
+)
+async def develop_version(
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
+    version: Annotated[
+        str,
+        StringConstraints(pattern=VERSION_PATTERN),
+        Path(description="The approved version, as `major.minor.patch`, that the new version starts from."),
+    ],
+    body: DevelopBody,
+    db: Annotated[AsyncSession, Depends(aget_write_db)],
+    superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
+):
+    return await service.start_development(db, plugin_id, version, body.bump, superuser.uuid)
 
 
 @platform_router.post(

@@ -24,6 +24,7 @@ VERSION_ACTIVE = "active"
 VERSION_BLOCKED = "blocked"
 VERSION_RETIRED = "retired"
 VERSION_MISSING = "missing"
+VERSION_DEVELOPMENT = "development"
 
 
 class WidgetPlugin(Base, UUIDMixin, DateMixin):
