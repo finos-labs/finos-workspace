@@ -27,7 +27,7 @@ FINOS Workspace creates a group named Group 1, or the next free number, and give
 
 The widget adopts the group's value and loads its data again. Untick the checkbox to take the widget out of the group, and the widget keeps the value that it had. From now on, a change of the parameter in any widget of the group changes it in all of them.
 
-A group that is linked to a ticker works in the same way for widgets that show a ticker. Such a group links only widgets of the same asset class, and FINOS Workspace explains with the message "Widget from a different asset class" when a widget does not fit. A group of an endpoint parameter links the widgets that share that endpoint parameter.
+A group of an endpoint parameter links the widgets that share that endpoint parameter.
 
 ## Change the color of a group
 

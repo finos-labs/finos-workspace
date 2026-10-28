@@ -28,7 +28,6 @@ Broken app (tab: main):
 
 Error
 Bad params (bad_params):
- [widget]: unknown key paramz
  [params/0]: missing paramName
 App errors:
 Unknown App:
@@ -52,7 +51,7 @@ A backend on `localhost` or `127.0.0.1` gets a section Troubleshooting localhost
 
 ## A widget does not appear
 
-The web app checks every widget definition against the contract that [widgets.json](../../reference/schemas/widgets-json.mdx) describes. The Error notice reports a widget that breaks it, with the widget's name and key and then each problem on a line of its own: the path inside the definition in square brackets, and a sentence that says what is wrong. Read the path first, because it points at the key that you need to change. The contract is closed, so a key that it does not define, such as `paramz` above, is a problem too. A file that is not an object of widgets is reported with the text "Invalid format", followed by what the web app expected and what it received.
+The web app checks every widget definition against the contract that [widgets.json](../../reference/schemas/widgets-json.mdx) describes. The Error notice reports a widget that breaks it, with the widget's name and key and then each problem on a line of its own: the path inside the definition in square brackets, and a sentence that says what is wrong. Read the path first, because it points at the key that you need to change. A key that the contract does not define is not a problem of this kind, because the web app ignores it, as the next section describes. A file that is not an object of widgets is reported with the text "Invalid format", followed by what the web app expected and what it received.
 
 A widget that breaks the contract makes the test fail. Once the backend is connected, a refresh keeps the valid widgets and apps and leaves the invalid ones out, and it shows a warning toast titled "Invalid items in" and the backend's name. The button Inspect of the toast opens each invalid item with its JSON and its problems.
 
@@ -60,7 +59,7 @@ Two more causes make a valid widget disappear, and the Warning notice names both
 
 ## Fields that FINOS Workspace does not recognize
 
-A key that the web app does not know in `apps.json` is not an error in the test. When the backend loads, FINOS Workspace shows a warning toast titled "Unrecognized fields" and the backend's name, which lists the keys and where they sit. The toast has a Copy button for the list, and a link to the reference when the deployment sets a documentation address.
+A key that the web app does not know, in a widget of `widgets.json` or in `apps.json`, is not an error in the test: the web app loads the widget or the app without the key. When the backend loads, FINOS Workspace shows a warning toast titled "Unrecognized fields" and the backend's name, which lists the keys and where they sit. The toast has a Copy button for the list, and a link to the reference when the deployment sets a documentation address.
 
 ## An app does not appear
 
