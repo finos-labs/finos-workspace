@@ -39,7 +39,7 @@ const McpServerConnection = memo(({ server }: { server: McpConnectionServer }) =
     return {
       url: server.url,
       serverId: server.id,
-      clientName: server.clientName || "Workspace",
+      clientName: server.clientName || "FINOS Workspace",
       serverName: server.serverName,
       autoReconnect: server.autoReconnect ?? true,
       isLocal: server.isLocal ?? false,

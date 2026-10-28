@@ -10,7 +10,6 @@ import type {
   ParamDef,
   ParamDefT,
   StoredParamValue,
-  Ticker,
   WidgetT as Widget,
   WidgetJsonT,
   WidgetT,
@@ -26,7 +25,6 @@ import {
   useBackendConnectorStore,
 } from "../state/backendConnector";
 import { useCopilotDataStore } from "../state/copilotData";
-import { DEFAULT_TICKERS } from "../types";
 import {
   ExternalWidgetSchema,
   InternalWidgetSchema,
@@ -38,7 +36,7 @@ import {
   generateGroupingColor,
   generateRandomName,
 } from "./utils";
-import { getJsonWidget, getSupportedAssetClasses } from "./widget";
+import { getJsonWidget } from "./widget";
 import {
   createParamDefs,
   createWidgetEndpoint,
@@ -50,32 +48,6 @@ import {
   requestInit,
   requestKey,
 } from "./widgetRequest";
-
-export function checkIfWidgetsHaveMainTickerAndAreTheSame(widgets: Widget[]) {
-  let mainTicker: Ticker | undefined;
-  let someHaveMainTicker = false;
-  let allTheSame = true;
-  for (const widget of widgets) {
-    if (widget.data?.mainTicker) {
-      someHaveMainTicker = true;
-      if (mainTicker) {
-        if (
-          widget.data.mainTicker.id !== mainTicker.id ||
-          widget.data.mainTicker.type !== mainTicker.type
-        ) {
-          allTheSame = false;
-        }
-      } else {
-        mainTicker = widget.data.mainTicker;
-      }
-    }
-  }
-  return {
-    someHaveMainTicker,
-    allTheSame,
-    mainTicker,
-  };
-}
 
 export function createTab(addTab: AppState["addTab"]) {
   const id = uuidv4();
@@ -374,7 +346,6 @@ export function addDuplicateWidgetToItem(item: Item, widget: Widget) {
     ...(cloneDeep(widget) as Widget),
     id,
     innerTab: widget.innerTab || "",
-    groupId: "",
   };
 
   const gridLayout = updateWidgetGridLayout({
@@ -400,7 +371,6 @@ export function addDuplicateWidgetToItem(item: Item, widget: Widget) {
 export function duplicateTabItem(item: Item, rootId?: string, rename = true): Item {
   const { isShared, ...tabToDuplicate } = cloneDeep({ ...item });
 
-  const groupIdMap = new Map<string, string>();
   const paramGroupIdMap = new Map<string, string>();
 
   const gridLayout = { ...(tabToDuplicate.data.gridLayout || {}) } as GridLayout;
@@ -467,43 +437,11 @@ export function duplicateTabItem(item: Item, rootId?: string, rename = true): It
           }
         }
 
-        if (!w.groupId) return { ...w, id: newId };
-
-        if (groupIdMap.has(w.groupId)) {
-          return {
-            ...w,
-            id: newId,
-            groupId: groupIdMap.get(w.groupId),
-          };
-        }
-
-        const newGroupId = uuidv4();
-        groupIdMap.set(w.groupId, newGroupId);
-
-        return {
-          ...w,
-          id: newId,
-          groupId: newGroupId,
-        };
+        return { ...w, id: newId };
       }),
       groups: tabToDuplicate.data.groups.map((g) => {
         const pGroupId = paramGroupIdMap.get(g.id);
-        if (["param", "endpointParam"].includes(g.type) && pGroupId) {
-          return {
-            ...g,
-            id: pGroupId,
-            color: generateGroupingColor(),
-          };
-        }
-
-        const newGroupId = groupIdMap.get(g.id);
-        return newGroupId
-          ? {
-              ...g,
-              id: newGroupId,
-              color: generateGroupingColor(),
-            }
-          : g;
+        return pGroupId ? { ...g, id: pGroupId, color: generateGroupingColor() } : g;
       }),
     },
   };
@@ -522,18 +460,6 @@ export function needsGroupValueUpdate(widget: Widget, group: Group) {
     const current =
       paramName === undefined ? undefined : widget?.storage?.params?.[paramName];
     return current !== group.value;
-  }
-
-  if (group?.type === "ticker" && group?.value?.symbol) {
-    const supportedTypes = getSupportedAssetClasses(widget.widgetId);
-    const category = group?.value?.category ?? widget?.data?.mainTicker?.category;
-    const isOptions = supportedTypes.includes("options") && group?.value?.has_options;
-
-    const validTicker =
-      [category, "all"].some((type) => supportedTypes.includes(type)) ||
-      widget?.external;
-
-    return validTicker || isOptions;
   }
 
   if (group?.type === "param" && group?.groupById) {
@@ -564,22 +490,6 @@ export function updateWidgetGroupValues(widget: Widget, groups: Group[]): Widget
             [paramName]: group.value,
           },
         };
-        return w;
-      }
-
-      if (group?.type === "ticker" && group?.value?.symbol) {
-        w.data = { ...w.data, mainTicker: group.value };
-
-        const tickerParam = getTickerParamName(w);
-
-        w.storage = {
-          ...(w.storage ?? {}),
-          params: {
-            ...(w.storage?.params ?? {}),
-            ...(tickerParam ? { [tickerParam]: group.value.symbol } : {}),
-          },
-        };
-
         return w;
       }
 
@@ -619,7 +529,6 @@ export function updateWidgetGroupValue(widget: Widget, group: Group | null) {
 }
 
 export function getGroupLabel(group: Group) {
-  if (group?.type === "ticker") return group?.value?.symbol;
   return group?.value;
 }
 
@@ -627,7 +536,7 @@ export function getGroupInfo(group: Group | null, paramDef?: ParamDef) {
   const output = { valueLabel: "", paramLabel: paramDef?.label || paramDef?.paramName };
   if (!group) return output;
 
-  const rawValue = group.type === "ticker" ? group.value?.symbol : group.value;
+  const rawValue = group.value;
   if (!rawValue) return { ...output, valueLabel: "" };
 
   output.valueLabel = ensureArray(rawValue)
@@ -679,7 +588,6 @@ export function getEndpointParamName(params: ParamDef[], paramId: string | undef
 }
 
 export function getGroupKindLabel(group: Group): string {
-  if (group.type === "ticker" && group.value?.category === "country") return "country";
   return "paramName" in group && typeof group.paramName === "string"
     ? group.paramName
     : group.type;
@@ -687,27 +595,14 @@ export function getGroupKindLabel(group: Group): string {
 
 export function getWidgetGroupValue(
   widget: Widget,
-  group: GroupTypeT<"ticker">,
-): Ticker | null | undefined;
-export function getWidgetGroupValue(
-  widget: Widget,
-  group: GroupTypeT<"param" | "endpointParam">,
-): StoredParamValue | undefined;
-export function getWidgetGroupValue(
-  widget: Widget,
   group: Group | undefined,
-): Ticker | StoredParamValue | undefined;
-export function getWidgetGroupValue(widget: Widget, group: Group | undefined) {
+): StoredParamValue | undefined {
   if (group?.id === undefined) return null;
 
   if (group?.type === "endpointParam") {
     const params = getEndpointParams(widget);
     const paramName = getEndpointParamName(params, group?.groupById);
     return paramName === undefined ? undefined : widget?.storage?.params?.[paramName];
-  }
-
-  if (group?.type === "ticker") {
-    return widget?.data?.mainTicker;
   }
 
   if (group?.type === "param" && group?.groupById) {
@@ -1047,12 +942,6 @@ function isValidParamOption(
   return false;
 }
 
-export function getTickerParamName(widget: Partial<Widget | WidgetJsonT>) {
-  const isEconomyGroup = widget?.data?.mainTicker?.category === "country";
-  const param = widget?.params?.find((param) => param?.type === "ticker");
-  return param?.paramName || (isEconomyGroup ? "country" : null);
-}
-
 export function getEndpointParamGroupByIds(widget: Partial<Widget>) {
   return getEndpointParams(widget as Widget)?.reduce<Record<string, string>>(
     (acc, p) => {
@@ -1288,89 +1177,17 @@ export function updateWidgetGridLayout(params: UpdateWidgetGridLayoutParams) {
   return gridLayout;
 }
 
-type MainTickerByCategoryParams = {
-  widget?: (NewWidget | WidgetJsonT) & { dependsOn?: string[] };
-  defaultTicker?: Ticker;
-  defaultCategory?: Ticker["category"];
-};
-
-function MainTickerByCategory(props: MainTickerByCategoryParams): Ticker {
-  const { widget, defaultTicker = DEFAULT_TICKERS.AAPL, defaultCategory } = props;
-  const mainTicker = widget?.data?.mainTicker || defaultTicker;
-
-  const widgetTypes = getSupportedAssetClasses(widget?.widgetId);
-  const hasOptions = widgetTypes.includes("options") && mainTicker?.has_options;
-
-  const supportedTypes = widgetTypes?.length
-    ? widgetTypes
-    : [
-        widget?.defaultAssetClass,
-        widget?.category?.toLowerCase(),
-        defaultCategory,
-        defaultTicker?.category,
-      ];
-
-  const tickerCategories: Record<string, Ticker> = {
-    etf: DEFAULT_TICKERS.SPY,
-    equity: DEFAULT_TICKERS.AAPL,
-    stock: DEFAULT_TICKERS.AAPL,
-    [defaultTicker?.category]: defaultTicker,
-    all: mainTicker,
-    [mainTicker?.category]: mainTicker,
-  };
-
-  if (hasOptions) {
-    return widget?.data?.mainTicker || defaultTicker;
-  }
-
-  const categoryTicker = (category: string | undefined) =>
-    category === undefined ? undefined : tickerCategories[category];
-
-  return (
-    supportedTypes
-      .map(
-        (assetClass) =>
-          categoryTicker(widget?.defaultAssetClass) ||
-          categoryTicker(assetClass) ||
-          categoryTicker(defaultCategory),
-      )
-      .find((ticker) => ticker) || tickerCategories.all
-  );
-}
-
-export function getWidgetData(params: {
-  widget: (NewWidget | WidgetJsonT) & { dependsOn?: string[] };
-  defaultTicker?: Ticker;
-}): Widget {
-  const { widget, defaultTicker = DEFAULT_TICKERS.AAPL } = params;
-
-  const mainTicker = MainTickerByCategory({ widget, defaultTicker });
+export function getWidgetData(params: { widget: NewWidget | WidgetJsonT }): Widget {
+  const { widget } = params;
 
   widget.params = createParamDefs(widget);
   widget.storage = widget.storage || {};
   widget.storage.params = widget?.storage?.params || {};
 
-  const tickerParam = getTickerParamName(widget);
-
   if (widget?.params?.length > 0) {
-    const initialParams = createWidgetInitParams(widget, mainTicker);
+    const initialParams = createWidgetInitParams(widget);
 
     widget.storage = { ...widget.storage, params: initialParams };
-  }
-
-  if (
-    !widget.data?.mainTicker &&
-    widget.dependsOn?.includes("mainTicker") &&
-    tickerParam
-  ) {
-    widget.data = {
-      ...widget.data,
-      mainTicker,
-    };
-    widget.storage = {
-      ...widget.storage,
-      params: { ...widget.storage.params, [tickerParam]: mainTicker.symbol },
-    };
   }
 
   if (widget.dataKey) {
@@ -1395,25 +1212,8 @@ export function getWidgetData(params: {
     };
   }
 
-  if (
-    widget.dependsOn?.includes("mainTicker") &&
-    tickerParam &&
-    !widget?.storage?.params?.[tickerParam]
-  ) {
-    widget.data = { ...widget.data, mainTicker };
-    widget.storage = {
-      ...widget.storage,
-      params: { ...widget.storage?.params, [tickerParam]: mainTicker.symbol },
-    };
-  }
-
-  if (widget?.data?.mainTicker === null) {
-    widget.data.mainTicker = undefined;
-  }
-
   const finalWidgetData: Partial<Widget> = {
     id: widget.id || uuidv4(),
-    groupId: widget.groupId ?? "",
     widgetId: widget.widgetId,
     name: widget.name ?? "",
     external: widget.external,
@@ -1457,18 +1257,6 @@ export function getWidgetData(params: {
       finalWidgetData.endpoint = { url, method };
     }
 
-    const uniqueParam = widget?.params?.find((param) => param.type === "ticker");
-
-    if (uniqueParam?.type === "ticker") {
-      if (finalWidgetData.storage?.params) {
-        finalWidgetData.storage.params[uniqueParam.paramName] = mainTicker.symbol;
-      }
-      finalWidgetData.data = {
-        ...finalWidgetData.data,
-        mainTicker,
-      };
-    }
-
     if (
       widget.connectionType === "advanced-backend" &&
       widget.widgetId !== undefined &&
@@ -1478,17 +1266,6 @@ export function getWidgetData(params: {
     }
 
     if (import.meta.env.DEV) console.log(widget, finalWidgetData);
-  }
-
-  if (!widget.external) {
-    const mainTickerFields: Record<string, unknown> | undefined =
-      widget.data?.mainTicker;
-    if (tickerParam && mainTickerFields?.[tickerParam]) {
-      finalWidgetData.data = {
-        ...finalWidgetData.data,
-        mainTicker: widget.data?.mainTicker,
-      };
-    }
   }
 
   const result = finalWidgetData.external

@@ -231,7 +231,7 @@ export function updateWidgetEndpoints(
 
       if (isSharedSource) updatedWidget.isSharedWidget = true;
 
-      const initialParams = createWidgetInitParams(updatedWidget, w?.data?.mainTicker);
+      const initialParams = createWidgetInitParams(updatedWidget);
       updatedWidget.storage = { ...updatedWidget.storage, params: initialParams };
 
       onUpdatedWidget(dashId, updatedWidget, w.innerTab);

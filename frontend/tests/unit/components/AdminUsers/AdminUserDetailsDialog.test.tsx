@@ -44,7 +44,6 @@ vi.mock("~/lib/utils", async () => {
   const original = await vi.importActual("~/lib/utils");
   return {
     ...original,
-    getWidgetsWithSupportedAssetClass: vi.fn(() => []),
   };
 });
 

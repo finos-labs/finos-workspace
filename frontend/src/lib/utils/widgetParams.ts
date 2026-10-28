@@ -4,13 +4,11 @@ import type {
   NewWidget,
   ParamDef,
   StoredParamValue,
-  Ticker,
   WidgetJsonT,
   WidgetT,
 } from "~/components/types";
 import { getConfig } from "~/lib/runtimeConfig";
 import { getIdpTokens } from "~/lib/state/idpTokens";
-import { DEFAULT_TICKERS } from "~/lib/types";
 import { newParamDef, ParamsSchema } from "~/lib/types/app";
 import { isDate } from "~/lib/utils/format";
 import type { WidgetType } from "~/utils/zodForms";
@@ -210,7 +208,6 @@ export function isStoredParamValue(value: unknown): value is StoredParamValue {
 
 export function createWidgetInitParams(
   widget: NewWidget | WidgetT | WidgetJsonT,
-  mainTicker: Ticker = DEFAULT_TICKERS.AAPL,
 ): Record<string, StoredParamValue> {
   const params = createParamDefs(widget) as ParamDef[];
   const storage = widget?.storage?.params ?? {};
@@ -221,7 +218,6 @@ export function createWidgetInitParams(
       if (stored !== undefined) return [[param.paramName, stored]];
       if (param.value === undefined) return [];
 
-      if (param.type === "ticker") return [[param.paramName, mainTicker.symbol]];
       if (param.type === "date" && !dayjs(param.value).isValid()) {
         return [[param.paramName, currentDateModifier(param.value)]];
       }

@@ -16,7 +16,6 @@ import type {
   GroupTypeT,
   NewWidget,
   ParamDef,
-  TickerT as Ticker,
   WidgetT as Widget,
   WidgetJsonT,
 } from "~/components/types";
@@ -28,8 +27,6 @@ import {
   deleteItemFn,
   diffItemsWithRemote,
   duplicateTabItem,
-  getEndpointParamName,
-  getEndpointParams,
   getInnerTabsGridLayout,
   getStoredFileUUIDs,
   getValidItems,
@@ -146,10 +143,9 @@ export type AppState = {
   setWidgetGroupId: (
     tabId: string,
     widgetId: string,
-    group: Group | null,
+    group: Group,
     remove?: boolean,
   ) => void;
-  getWidgetGroup: (tabId: string, widgetId: string) => Group | undefined;
   getWidgetGroups: (tabId: string, widgetId: string | undefined) => Group[];
   addGroup: (tabId: string, group: Group) => void;
   duplicateWidgetById: (tabId: string, widgetId: string) => void;
@@ -168,11 +164,7 @@ export type AppState = {
   updateItems: (items: SideBarItems) => void;
   deletedItems: string[];
   getLastInnerTab: (tabId: string) => string | undefined;
-  addTab: (
-    tab: ItemT,
-    ignoreGridDataComputations?: boolean,
-    defaultTicker?: Ticker,
-  ) => void;
+  addTab: (tab: ItemT, ignoreGridDataComputations?: boolean) => void;
   getTabById: (id: string) => Item | undefined;
   getTabWidgetById: (tabId: string, widgetId: string) => Widget | undefined;
   removeTab: (id: string, navigate?: (id: string) => void) => void;
@@ -370,9 +362,8 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         );
       }
 
-      return widgetsList.filter(
-        (w) =>
-          w.groupId === groupId || Object.values(w.paramGroups || {}).includes(groupId),
+      return widgetsList.filter((w) =>
+        Object.values(w.paramGroups || {}).includes(groupId),
       );
     },
     getRootTabs: () => {
@@ -535,9 +526,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
       const { tabParamOptions, endpointParams } = (tab?.data?.widgets || []).reduce(
         (acc, w) => {
-          const params = createParamDefs({ params: w.params || [] }).filter(
-            (p) => p.type !== "ticker",
-          );
+          const params = createParamDefs({ params: w.params || [] });
           for (const param of params) {
             if (param.type === "endpoint") {
               const groupById = param.groupById;
@@ -940,15 +929,9 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       const tab = items?.[tabId];
       if (!tab?.data) return [];
 
-      const activeGroups = tab.data.widgets
-        .filter((w) => w.groupId || Object.values(w.paramGroups || {}).length > 0)
-        .flatMap((w) => {
-          const paramGroups = Object.values(w.paramGroups || {}).filter(Boolean);
-          if (w.groupId) {
-            paramGroups.push(w.groupId);
-          }
-          return paramGroups;
-        });
+      const activeGroups = tab.data.widgets.flatMap((w) =>
+        Object.values(w.paramGroups || {}).filter(Boolean),
+      );
 
       const uniqueGroups = Array.from(new Set(activeGroups));
 
@@ -960,25 +943,18 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       if (!tab?.data) return;
 
       set((state: AppState) => {
-        const group = tab.data.groups.find((g) => g.id === groupId);
         tab.data.groups = tab.data.groups.filter((g) => g.id !== groupId);
 
         tab.data.widgets = tab.data.widgets.map((w) => {
-          if (group && ["param", "endpointParam"].includes(group.type)) {
-            w.paramGroups = Object.entries(w.paramGroups || {}).reduce(
-              (acc, [key, value]) => {
-                if (value !== groupId) {
-                  acc[key] = value;
-                }
-                return acc;
-              },
-              {} as Record<string, string>,
-            );
-          }
-
-          if (w.groupId === groupId) {
-            w.groupId = null;
-          }
+          w.paramGroups = Object.entries(w.paramGroups || {}).reduce(
+            (acc, [key, value]) => {
+              if (value !== groupId) {
+                acc[key] = value;
+              }
+              return acc;
+            },
+            {} as Record<string, string>,
+          );
           return w;
         });
 
@@ -1049,7 +1025,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
     setWidgetGroupId: (
       tabId: string,
       widgetId: string,
-      group: Group | null,
+      group: Group,
       remove?: boolean,
     ) => {
       const { items } = get();
@@ -1058,30 +1034,23 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
       set((state: AppState) => {
         tab.data.widgets = tab.data.widgets.map((w) => {
-          if (w.id === widgetId) {
-            if (group?.type === "param" || group?.type === "endpointParam") {
-              if (remove) {
-                w.paramGroups = Object.entries(w.paramGroups || {}).reduce(
-                  (acc, [key, value]) => {
-                    if (value !== group.id) {
-                      acc[key] = value;
-                    }
-                    return acc;
-                  },
-                  {} as Record<string, string>,
-                );
-              } else {
-                w.paramGroups = addToWidgetParamGroups(w?.paramGroups, group);
-              }
+          if (w.id !== widgetId) return w;
 
-              return updateWidgetGroupValue(w, group);
-            }
-
-            w.groupId = group && !remove ? group.id : null;
-            return updateWidgetGroupValue(w, group);
+          if (remove) {
+            w.paramGroups = Object.entries(w.paramGroups || {}).reduce(
+              (acc, [key, value]) => {
+                if (value !== group.id) {
+                  acc[key] = value;
+                }
+                return acc;
+              },
+              {} as Record<string, string>,
+            );
+          } else {
+            w.paramGroups = addToWidgetParamGroups(w?.paramGroups, group);
           }
 
-          return w;
+          return updateWidgetGroupValue(w, group);
         });
 
         return {
@@ -1091,16 +1060,6 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           },
         };
       });
-    },
-    getWidgetGroup: (tabId: string, widgetId: string) => {
-      const { items } = get();
-      const tab = items?.[tabId];
-      if (!tab?.data) return undefined;
-
-      const widget = tab.data.widgets.find((w) => w.id === widgetId);
-      if (!widget) return undefined;
-
-      return tab.data.groups.find((g) => g.id === widget.groupId);
     },
     getWidgetGroups: (tabId: string, widgetId: string | undefined) => {
       if (!widgetId) return [];
@@ -1114,10 +1073,8 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       const widget = tab.data.widgets.find((w) => w.id === widgetId);
       if (!widget) return [];
 
-      return tab.data.groups.filter(
-        (g) =>
-          Object.values(widget.paramGroups || {}).includes(g.id) ||
-          g.id === widget.groupId,
+      return tab.data.groups.filter((g) =>
+        Object.values(widget.paramGroups || {}).includes(g.id),
       );
     },
     addGroup: (tabId: string, group: Group) => {
@@ -1192,7 +1149,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
       return duplicatedTab.index;
     },
-    addTab: (tab, ignoreLastWidgetGridData = false, defaultTicker?: Ticker) => {
+    addTab: (tab, ignoreLastWidgetGridData = false) => {
       const { items } = get();
       if (!items) return;
 
@@ -1201,7 +1158,6 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       if (!rootFolder) return;
 
       const rootId = rootFolder.index;
-      const mainTicker = defaultTicker;
 
       const gridLayout = { ...(tab?.data?.gridLayout || {}) } as GridLayout;
       const widgets = [] as Widget[];
@@ -1222,10 +1178,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           (g): g is GroupTypeT<"param" | "endpointParam"> =>
             Object.values(w?.paramGroups || {}).includes(g.id),
         );
-        const group = w?.groupId ? groups.find((g) => g.id === w.groupId) : undefined;
-        const newMainTicker =
-          group?.type === "ticker" ? (group.value ?? mainTicker) : mainTicker;
-        const newWidget = getWidgetData({ widget: w, defaultTicker: newMainTicker });
+        const newWidget = getWidgetData({ widget: w });
 
         for (const g of paramGroups) {
           if (["param", "endpointParam"].includes(g.type)) {
@@ -1237,10 +1190,6 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         const id = w.id ? w.id : uuidv4();
         newWidget.id = id;
         const gridData = widgetsInGrid?.[id];
-
-        if (group?.type === "ticker" && !newWidget?.data?.mainTicker) {
-          newWidget.groupId = "";
-        }
 
         newWidget.innerTab = gridData?.innerTab ?? w.innerTab ?? "";
         newWidget.isNew = true;
@@ -1486,10 +1435,6 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           });
         }
 
-        const widgetGroup = newWidget?.groupId
-          ? tab.data.groups.find((g) => g.id === newWidget?.groupId)
-          : undefined;
-
         const hasNavigationBar = tabWidgets.some(
           (widget) => widget.widgetId === "navigation_bar",
         );
@@ -1520,33 +1465,6 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         if (newWidget?.connectionType === "file") {
           const fileUUID = extractUUIDFromURL(newWidget?.endpoint?.url);
           if (fileUUID) storedFileUUIDs.add(fileUUID);
-        }
-
-        if (
-          widgetGroup?.type === "endpointParam" &&
-          widgetGroup?.groupById === newWidget?.groupById
-        ) {
-          const paramName = getEndpointParamName(
-            getEndpointParams(newWidget),
-            widgetGroup?.groupById,
-          );
-          if (paramName) {
-            newWidget.storage = {
-              ...(newWidget.storage || {}),
-              params: {
-                ...(newWidget.storage?.params || {}),
-                [paramName]: widgetGroup.value,
-              },
-            };
-          }
-          newWidget.paramGroups = addToWidgetParamGroups(
-            newWidget?.paramGroups,
-            widgetGroup,
-          );
-        }
-
-        if (widgetGroup?.type === "ticker" && !newWidget?.data?.mainTicker) {
-          newWidget.groupId = "";
         }
 
         const paramGroupIds = Object.values(newWidget?.paramGroups || {});
@@ -1637,19 +1555,12 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         const widgetsInGroup = widgets.filter((w) => {
           const wParamGroups = Object.values(w?.paramGroups || {});
 
-          return (
-            w.id !== widgetId &&
-            (paramGroups.some((p) => wParamGroups.includes(p)) ||
-              w.groupId === widgetToRemove?.groupId)
-          );
+          return w.id !== widgetId && paramGroups.some((p) => wParamGroups.includes(p));
         });
 
         if (widgetsInGroup.length === 0) {
           tab.data.groups = tab.data.groups.filter(
-            (g) =>
-              !(
-                g.id === widgetToRemove?.groupId || paramGroups.some((p) => p === g.id)
-              ),
+            (g) => !paramGroups.some((p) => p === g.id),
           );
         }
 
@@ -1709,24 +1620,10 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       const tab = items?.[tabId] || sharedTab;
       if (!tab) return;
 
-      const widgetGroup = tab.data?.groups?.find(
-        (g) => widget?.groupId && g.id === widget.groupId,
-      );
-
-      if (widgetGroup?.type === "ticker") {
-        const newTicker = getWidgetGroupValue(widget, widgetGroup) ?? null;
-        if (newTicker?.id !== widgetGroup.value?.id) widgetGroup.value = newTicker;
-      }
-
-      if (widgetGroup?.type === "endpointParam") {
-        const newValue = getWidgetGroupValue(widget, widgetGroup) ?? null;
-        if (widgetGroup.value !== newValue) widgetGroup.value = newValue;
-      }
-
       const currentGroups = Object.values(widget.paramGroups || {});
 
       for (const group of (tab.data.groups || []) as Group[]) {
-        if (group?.type === "ticker" || !currentGroups.includes(group?.id)) continue;
+        if (!currentGroups.includes(group?.id)) continue;
         const value = getWidgetGroupValue(widget, group) ?? null;
 
         if (value !== group.value) {
@@ -1878,4 +1775,4 @@ export function useIsDashboardLocked(id: string | undefined) {
   return useAppStore((state) => !!id && state.isDashboardLocked(id));
 }
 
-export type { GridData, GridLayout, Group, Ticker, Widget };
+export type { GridData, GridLayout, Group, Widget };

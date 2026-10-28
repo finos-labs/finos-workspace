@@ -31,7 +31,7 @@ describe("isWidgetDataToolName", () => {
 });
 
 describe("asWidgetDataMessage", () => {
-  it("reads the result of the Workspace's tool as the tool message of a widget-data round trip", () => {
+  it("reads the result of the FINOS Workspace's tool as the tool message of a widget-data round trip", () => {
     const message = asWidgetDataMessage(mcpMessage(OK), [widget()]);
     expect(message).toMatchObject({
       role: "tool",
@@ -88,7 +88,7 @@ describe("asWidgetDataMessage", () => {
     expect(asWidgetDataMessage({ ...mcpMessage(OK), data: [] } as unknown as ToolMessage, [widget()])).toBeNull();
   });
 
-  it("is only for the Workspace's widget-data tool", () => {
+  it("is only for the FINOS Workspace's widget-data tool", () => {
     const other = { ...mcpMessage(OK), input_arguments: { server_id: "x", tool_name: "x_web_search", parameters: {} } } as unknown as ToolMessage;
     expect(isWidgetDataMcpResult(other)).toBe(false);
     expect(asWidgetDataMessage(other, [widget()])).toBeNull();

@@ -11,9 +11,8 @@ const mockWidgets = vi.hoisted(() => ({
     category: "Test",
     subCategory: "Unit",
     source: ["test_source"],
-    supportedAssetClasses: ["equity", "etf"],
     params: [
-      { paramName: "symbol", type: "ticker", value: "AAPL" },
+      { paramName: "region", type: "text", value: "north" },
       { paramName: "period", type: "text", value: "annual" },
     ],
   },
@@ -22,7 +21,6 @@ const mockWidgets = vi.hoisted(() => ({
     name: "Another Widget",
     type: "markdown",
     source: "single_source",
-    supportedAssetClasses: ["crypto"],
   },
   navigation_bar: {
     widgetId: "navigation_bar",
@@ -43,11 +41,9 @@ import {
   extractColumns,
   getCleanWidgetId,
   getJsonWidget,
-  getSupportedAssetClasses,
   getUUIDFromWidgetId,
   getWidgetInfo,
   getWidgetSourceInfo,
-  getWidgetsWithSupportedAssetClass,
   METADATA_WIDGETS,
   processWidgetId,
   WIDGETS_CONNECTION_TYPES,
@@ -94,45 +90,6 @@ describe("Widget Utility Functions", () => {
         result1.name = "Modified";
         expect(result2.name).toBe("Test Widget");
       }
-    });
-  });
-
-  describe("getSupportedAssetClasses", () => {
-    it("should return supported asset classes for a valid widget", () => {
-      const result = getSupportedAssetClasses("test_widget");
-      expect(result).toEqual(["equity", "etf"]);
-    });
-
-    it("should return empty array for widget without supported asset classes", () => {
-      const result = getSupportedAssetClasses(malformed("non_existent"));
-      expect(result).toEqual([]);
-    });
-
-    it("should return a deep clone of the array", () => {
-      const result1 = getSupportedAssetClasses("test_widget");
-      const result2 = getSupportedAssetClasses("test_widget");
-      expect(result1).not.toBe(result2);
-      result1.push("new_class");
-      expect(result2).not.toContain("new_class");
-    });
-  });
-
-  describe("getWidgetsWithSupportedAssetClass", () => {
-    it("should return widgets that support a given asset class", () => {
-      const result = getWidgetsWithSupportedAssetClass("equity");
-      expect(result.length).toBeGreaterThan(0);
-      expect(result.some((w) => w.widgetId === "test_widget")).toBe(true);
-    });
-
-    it("should return only widget IDs when onlyIds is true", () => {
-      const result = getWidgetsWithSupportedAssetClass("equity", true);
-      expect(result).toContain("test_widget");
-      expect(typeof result[0]).toBe("string");
-    });
-
-    it("should return empty array for unsupported asset class", () => {
-      const result = getWidgetsWithSupportedAssetClass("forex");
-      expect(result).toEqual([]);
     });
   });
 

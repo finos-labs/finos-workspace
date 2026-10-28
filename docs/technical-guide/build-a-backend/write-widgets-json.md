@@ -27,7 +27,7 @@ The file is a JSON object. Each key is the id of a widget, and each value is its
 - **`type`** decides how the widget is drawn.
 - **`endpoint`** is a path on your backend, or an absolute URL, that returns the widget's data. It contains neither `?` nor `#`. A value for the query is a parameter, as the next sections show.
 
-The contract is closed: a key that it does not define is an error, so a misspelled key does not pass silently. FINOS Workspace reports the problem with the path of the key when you test the backend.
+The contract defines every key. A key that it does not define is ignored: FINOS Workspace loads the widget without it, so a misspelled key has no effect, and the warning "Unrecognized fields" lists the key with its path when you test the backend. Any other problem leaves the widget out.
 
 ## Choose the type
 
@@ -67,7 +67,7 @@ A parameter is a control in the widget's header whose value goes into the reques
 }
 ```
 
-Each parameter needs a `paramName` and a `type`. The types are `text`, `tabs`, `ticker`, `date`, `number`, `boolean`, `button`, `endpoint` and `form`. A `text` parameter takes free text, `tabs` and `endpoint` offer a choice, `date` takes a date, `number` a number and `boolean` a box to tick. `ticker` carries the symbol of the ticker that the widget shows, and widgets that show a ticker can be linked, as [How to link the parameters of widgets](../../user-guide/widgets/link-the-parameters-of-widgets.md) describes. `button` is a button whose value goes into the request, and `form` is a set of inputs that FINOS Workspace sends to its own endpoint. The other keys of a parameter set `label`, `description` for the help that appears on hover, `placeholder`, `options` for a fixed choice, `multiSelect` for a choice of several values and `value` for the default.
+Each parameter needs a `paramName` and a `type`. The types are `text`, `tabs`, `date`, `number`, `boolean`, `button`, `endpoint` and `form`. A `text` parameter takes free text, `tabs` and `endpoint` offer a choice, `date` takes a date, `number` a number and `boolean` a box to tick. `button` is a button whose value goes into the request, and `form` is a set of inputs that FINOS Workspace sends to its own endpoint. The other keys of a parameter set `label`, `description` for the help that appears on hover, `placeholder`, `options` for a fixed choice, `multiSelect` for a choice of several values and `value` for the default.
 
 Where the value goes depends on the key `in`. With the widget above, and `team` set to `platform`, FINOS Workspace sends this request:
 

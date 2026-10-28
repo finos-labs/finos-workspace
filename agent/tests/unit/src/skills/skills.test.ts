@@ -9,7 +9,7 @@ const request = (skills_catalog?: QueryRequest["skills_catalog"]): QueryRequest 
 const INES_SLUGS = ["html-report", "html-table", "html-chart"];
 
 describe("skillsCatalog", () => {
-  it("lists Ines's own skills when the Workspace lists none", () => {
+  it("lists Ines's own skills when the FINOS Workspace lists none", () => {
     expect(skillsCatalog(request()).map((s) => s.slug)).toEqual(INES_SLUGS);
   });
 
@@ -49,7 +49,7 @@ describe("inesSkills", () => {
 describe("inesSkillContent", () => {
   it("has the instructions of every skill Ines lists", () => {
     for (const slug of INES_SLUGS) expect(inesSkillContent(slug).trim().length).toBeGreaterThan(0);
-    expect(inesSkillContent("html-chart")).toContain("# Workspace chart colors skill");
+    expect(inesSkillContent("html-chart")).toContain("# FINOS Workspace chart colors skill");
   });
 
   it("has none of a skill Ines does not have", () => {

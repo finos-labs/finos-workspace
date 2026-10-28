@@ -1,6 +1,6 @@
-# Workspace
+# FINOS Workspace
 
-The web application of Workspace: dashboards of widgets that read from the data backends a deployment connects, with an agent beside them. It is a React and TypeScript single-page app that talks to the Workspace backend (`backend-api/backend` in this repository).
+The web application of FINOS Workspace: dashboards of widgets that read from the data backends a deployment connects, with an agent beside them. It is a React and TypeScript single-page app that talks to the FINOS Workspace backend (`backend-api/backend` in this repository).
 
 ## Tech stack
 

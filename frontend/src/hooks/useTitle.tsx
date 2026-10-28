@@ -20,7 +20,7 @@ export function useGlobalTitleManager(): void {
   useEffect(() => {
     if (typeof document === "undefined") return;
 
-    const brandName = getConfig().whiteLabel?.name || "Workspace";
+    const brandName = getConfig().whiteLabel?.name || "FINOS Workspace";
     let pageTitle = "";
 
     const path = location.pathname;

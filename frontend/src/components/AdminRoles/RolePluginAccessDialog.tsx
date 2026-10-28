@@ -91,7 +91,7 @@ export default function RolePluginAccessDialog({ open, onClose, role }: Props) {
         </p>
       ) : list.length === 0 ? (
         <p className="mt-4 body-xs-regular text-ds-text-caption">
-          No widget plugin is approved on this Workspace.
+          No widget plugin is approved on this FINOS Workspace.
         </p>
       ) : (
         <section className="mt-4 flex flex-col gap-3" data-testid="role-plugin-access">

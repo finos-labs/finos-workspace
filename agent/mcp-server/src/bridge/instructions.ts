@@ -1,6 +1,6 @@
 const USAGE_SUMMARY =
   "Use snake_case payloads. Start with get_workspace_snapshot to discover valid " +
-  "dashboard_id, dashboard_composition, and skills from the live Workspace " +
+  "dashboard_id, dashboard_composition, and skills from the live FINOS Workspace " +
   "session. Use list_available_widgets and get_widget_schema for widget library " +
   "discovery. Do not invent identifiers.";
 
@@ -39,8 +39,8 @@ export const GENERATIVE_WIDGET_GUIDANCE =
   "The response includes widget_uuid; use that UUID for layout changes. " +
   "The inner_tab argument only places the new widget on an existing navigation tab; " +
   "it does not create a tab. To put a generated widget on a new tab, first call " +
-  'manage_navigation_bar operation="add_tabs" with tabs_json such as [{"name":"AAPL Analysis"}], ' +
-  "then navigate_workspace to the generated slug tab_id such as aapl-analysis, " +
+  'manage_navigation_bar operation="add_tabs" with tabs_json such as [{"name":"Quarterly Review"}], ' +
+  "then navigate_workspace to the generated slug tab_id such as quarterly-review, " +
   "then call add_generative_widget without inner_tab so it lands on the active tab.";
 
 export const WIDGET_INSTANCE_GUIDANCE =
@@ -82,8 +82,8 @@ export const NAVIGATION_BAR_GUIDANCE =
   "If the dashboard does not already have a navigation_bar widget, call create first. " +
   "Its create operation creates or initializes navigation tabs on that dashboard; it does not create a dashboard. " +
   "For create, add_tabs, and remove_tabs, tabs_json must be a JSON array of objects, " +
-  'for example [{"name":"AAPL Analysis"}]. Each object must use only the key name, not tab_id or tab_name. ' +
-  'Do not pass a JSON array of strings such as ["AAPL Analysis"].';
+  'for example [{"name":"Quarterly Review"}]. Each object must use only the key name, not tab_id or tab_name. ' +
+  'Do not pass a JSON array of strings such as ["Quarterly Review"].';
 
 const DISCOVERY_WORKFLOW =
   "Recommended workflow: call get_workspace_snapshot first, manage_dashboard " +
@@ -105,8 +105,8 @@ const DISCOVERY_WORKFLOW =
   "add_generative_widget inner_tab creates the tab.";
 
 export const SERVER_INSTRUCTIONS = [
-  "Expose the active Workspace browser session as MCP tools.",
-  "All tools require a running local Workspace browser bridge.",
+  "Expose the active FINOS Workspace browser session as MCP tools.",
+  "All tools require a running local FINOS Workspace browser bridge.",
   USAGE_SUMMARY,
   WIDGET_SCHEMA_GUIDANCE,
   CREATE_WIDGET_GUIDANCE,
@@ -119,7 +119,7 @@ export const SERVER_INSTRUCTIONS = [
   LAYOUT_GUIDANCE,
   DISCOVERY_WORKFLOW,
   "Provide dashboard_id explicitly when operating on a dashboard other than " +
-    "the current Workspace route.",
+    "the current FINOS Workspace route.",
 ].join(" ");
 
 export function describeTool(summary: string, ...notes: string[]): string {

@@ -112,7 +112,7 @@ async def generate_totp(
     )
     await db.execute(query)
     await db.commit()
-    uri = totp.provisioning_uri(name=user.email, issuer_name="Workspace")
+    uri = totp.provisioning_uri(name=user.email, issuer_name="FINOS Workspace")
     return schemas.TotpGenerateReturn(uri=uri, secret=totp.secret)
 
 

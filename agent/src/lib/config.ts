@@ -65,7 +65,7 @@ export function loadConfig(env: Env = process.env): ServerConfig {
   const publicUrl = (env.WORKSPACE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
   if (mode === "workspace" || publicUrl) {
     if (!origin) {
-      problems.push("WORKSPACE_ORIGIN is required with INES_AUTH=workspace or WORKSPACE_PUBLIC_URL: the web app's origin, which the Workspace API allows (BACKEND_CORS_ORIGINS).");
+      problems.push("WORKSPACE_ORIGIN is required with INES_AUTH=workspace or WORKSPACE_PUBLIC_URL: the web app's origin, which the FINOS Workspace API allows (BACKEND_CORS_ORIGINS).");
     } else if (!isOrigin(origin)) {
       problems.push(`WORKSPACE_ORIGIN must be an origin like https://workspace.example.com without a path; got "${env.WORKSPACE_ORIGIN}".`);
     }

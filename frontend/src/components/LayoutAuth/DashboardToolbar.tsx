@@ -120,9 +120,9 @@ export default function DashboardToolbar() {
     return (
       <div className="max-w-[457px]">
         <p className="body-xs-regular max-w-md break-words whitespace-normal">
-          <strong>This dashboard is shared</strong> — You're allowed to change tickers
-          and switch tabs. You don't have permission to add, remove or resizing widgets.
-          Duplicate the template first before applying any modifications.
+          <strong>This dashboard is shared</strong> — You're allowed to change
+          parameters and switch tabs. You don't have permission to add, remove or resize
+          widgets. Duplicate the template first before applying any modifications.
         </p>
         <Button
           variant="primary"

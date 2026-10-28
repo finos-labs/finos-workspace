@@ -1,7 +1,7 @@
 ---
 title: App Builder Index
 uri: workspace://app-builder/index
-use_when: You are about to build, review, debug, or extend a Workspace app and need to find the right resource to read next.
+use_when: You are about to build, review, debug, or extend a FINOS Workspace app and need to find the right resource to read next.
 language_specific: false
 related:
   - workspace://overview/what-is-workspace
@@ -12,21 +12,21 @@ related:
   - workspace://guides/build-an-app
 ---
 
-# Workspace App Builder
+# FINOS Workspace App Builder
 
-Workspace apps are **language-agnostic HTTP backends plus JSON metadata contracts**. A backend can be written in any language or framework; Workspace only requires that it expose the right endpoints and return the right JSON shapes. FastAPI is the recommended starter path because most current examples use Python — not because Workspace requires Python.
+FINOS Workspace apps are **language-agnostic HTTP backends plus JSON metadata contracts**. A backend can be written in any language or framework; FINOS Workspace only requires that it expose the right endpoints and return the right JSON shapes. FastAPI is the recommended starter path because most current examples use Python — not because FINOS Workspace requires Python.
 
 ## How to use this resource set
 
-If this is your first time touching Workspace, read the two **overview** docs before anything else — they are the consumer-side mental model. Then read the contract, then the spec for the file you are touching, then a guide for the workflow you are in. Examples are read on demand.
+If this is your first time touching FINOS Workspace, read the two **overview** docs before anything else — they are the consumer-side mental model. Then read the contract, then the spec for the file you are touching, then a guide for the workflow you are in. Examples are read on demand.
 
 | You are about to… | Read |
 |-------------------|------|
-| **Build a mental model of what Workspace is** | `workspace://overview/what-is-workspace` |
+| **Build a mental model of what FINOS Workspace is** | `workspace://overview/what-is-workspace` |
 | **Make widgets the AI Agent can actually use** | `workspace://overview/ai-agent-contract` |
 | Understand what a backend must expose | `workspace://contract/backend` |
 | Author or edit `widgets.json` | `workspace://specs/widgets-json` + `workspace://specs/widget-types` + `workspace://specs/widget-parameters` |
-| Check a `widgets.json` against what this Workspace accepts | `workspace://specs/widgets-json-schema`, the JSON Schema for the signed-in user (needs the browser connected) |
+| Check a `widgets.json` against what this FINOS Workspace accepts | `workspace://specs/widgets-json-schema`, the JSON Schema for the signed-in user (needs the browser connected) |
 | Author or edit `apps.json` | `workspace://specs/apps-json` + `workspace://specs/layout-grid` |
 | Build a brand-new app | `workspace://guides/build-an-app` |
 | Review someone else's app | `workspace://guides/review-app` + `workspace://validation/common-errors` |
@@ -37,11 +37,11 @@ If this is your first time touching Workspace, read the two **overview** docs be
 
 ## Reminders
 
-- The backend is HTTP-only. Workspace never imports your code.
-- `widgets.json` is a JSON **object** keyed by widget id. Not an array. Its keys are closed: an unknown key leaves the widget out.
+- The backend is HTTP-only. FINOS Workspace never imports your code.
+- `widgets.json` is a JSON **object** keyed by widget id. Not an array. Its keys are the contract's: a key it does not define is ignored and named under the backend's unrecognized fields.
 - `apps.json` is a JSON **array** of app objects. Not an object.
 - Layout uses `i` for the widget id, not `id`.
-- Prefer `Group 1`, `Group 2`, ... names for parameter groups; put human-readable meaning in descriptions/categories.
+- A parameter group's `name` must be the same text in `groups` and in every layout item that joins the group; any name works.
 - A schema-valid app still needs a semantic output pass: verify default values, parameter scenarios, units, and the shape of each widget's response.
 - Try to ship app thumbnails via `img`, `img_dark`, and `img_light`; a small backend-served SVG is enough.
 - FastAPI is one option. Use whatever fits the project.

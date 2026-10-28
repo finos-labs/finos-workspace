@@ -35,7 +35,7 @@ if (workspacePublicUrl) {
   } catch {}
   if (!isOrigin) {
     logger.fatal(
-      "WORKSPACE_ORIGIN is required with WORKSPACE_PUBLIC_URL: the web app's origin, which the Workspace API allows (BACKEND_CORS_ORIGINS), like https://workspace.example.com",
+      "WORKSPACE_ORIGIN is required with WORKSPACE_PUBLIC_URL: the web app's origin, which the FINOS Workspace API allows (BACKEND_CORS_ORIGINS), like https://workspace.example.com",
     );
     process.exit(1);
   }

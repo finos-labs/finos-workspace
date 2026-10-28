@@ -32,7 +32,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         uri="workspace://app-builder/index",
         title="App Builder Index",
         description=(
-            "Router for the Workspace app-builder resources. Read this "
+            "Router for the FINOS Workspace app-builder resources. Read this "
             "first to find the right spec, guide, or example. Only for when the "
             "user has explicitly asked to build, review, debug, or extend a "
             "backend or app — not for composing dashboards from existing widgets."
@@ -41,9 +41,9 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
     ),
     AppBuilderResource(
         uri="workspace://overview/what-is-workspace",
-        title="What Workspace Is",
+        title="What FINOS Workspace Is",
         description=(
-            "Mental model of Workspace from the consumer side — "
+            "Mental model of FINOS Workspace from the consumer side — "
             "Dashboards, Apps (templates), Widgets, Prompts, the AI Agent, "
             "and what is native vs. what your backend supplies."
         ),
@@ -53,7 +53,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         uri="workspace://overview/ai-agent-contract",
         title="AI Agent Contract",
         description=(
-            "How Workspace's built-in AI Agent reads widget metadata and data, "
+            "How FINOS Workspace's built-in AI Agent reads widget metadata and data, "
             "and the description / response-shape rules that make widgets "
             "agent-friendly."
         ),
@@ -63,7 +63,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         uri="workspace://contract/backend",
         title="Backend Contract",
         description=(
-            "What a Workspace backend must expose over HTTP, "
+            "What a FINOS Workspace backend must expose over HTTP, "
             "language-agnostic."
         ),
         relative_path="backend-contract.md",
@@ -116,7 +116,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         uri="workspace://guides/build-an-app",
         title="Build an App",
         description=(
-            "End-to-end workflow for building a new Workspace app from "
+            "End-to-end workflow for building a new FINOS Workspace app from "
             "scratch. Only for when the user has explicitly asked to build one."
         ),
         relative_path="guides/build-an-app.md",
@@ -125,7 +125,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         uri="workspace://guides/review-app",
         title="Review an App",
         description=(
-            "Structured review pass for an existing Workspace backend "
+            "Structured review pass for an existing FINOS Workspace backend "
             "or app template."
         ),
         relative_path="guides/review-app.md",
@@ -143,8 +143,8 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         uri="workspace://guides/convert-endpoint-to-widget",
         title="Convert an Existing Endpoint to a Widget",
         description=(
-            "Turn an existing HTTP endpoint into a Workspace widget — type "
-            "selection, params, columns, validation."
+            "Turn an existing HTTP endpoint into a FINOS Workspace widget — type "
+            "selection, params, validation."
         ),
         relative_path="guides/convert-endpoint-to-widget.md",
     ),
@@ -152,7 +152,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         uri="workspace://examples/generic-http/minimal",
         title="Minimal Backend (Generic HTTP)",
         description=(
-            "Framework-neutral picture of a Workspace backend — "
+            "Framework-neutral picture of a FINOS Workspace backend — "
             "routes, response shapes, CORS, auth."
         ),
         relative_path="examples/generic-http-minimal.md",
@@ -161,7 +161,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         uri="workspace://examples/python-fastapi/minimal",
         title="Minimal Backend (Python + FastAPI)",
         description=(
-            "Recommended Python starter shape for a Workspace backend "
+            "Recommended Python starter shape for a FINOS Workspace backend "
             "using FastAPI."
         ),
         relative_path="examples/python-fastapi-minimal.md",

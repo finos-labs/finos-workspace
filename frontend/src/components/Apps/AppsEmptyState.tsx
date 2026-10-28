@@ -70,7 +70,7 @@ export default function AppsEmptyState() {
         {mayShare && (
           <FeatureCard
             title="Share Apps"
-            description="Any App you create can be shared with other users across the Workspace."
+            description="Any App you create can be shared with other users across the FINOS Workspace."
             imageSrc="/assets/images/apps/share.png"
             imageAlt="Share apps preview"
             iconId="share-07"

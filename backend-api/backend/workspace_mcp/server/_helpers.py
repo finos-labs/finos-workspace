@@ -184,12 +184,12 @@ def param_options_payloads(items: list[ParamOptionsRequest]) -> list[dict[str, A
 def session_context_prompt_content(state: BridgeSessionManager) -> str:
     session = state.get_session_context()
     if session is None:
-        return "No Workspace browser session context is currently available."
+        return "No FINOS Workspace browser session context is currently available."
 
     dashboard_id = session.current_dashboard_id or "none"
     tab_id = session.current_tab_id or "none"
     return (
-        "Current Workspace browser session context: "
+        "Current FINOS Workspace browser session context: "
         f"current_dashboard_id={dashboard_id}; "
         f"current_tab_id={tab_id}."
     )

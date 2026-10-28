@@ -36,10 +36,6 @@ const createMockWidget = (overrides: Partial<WidgetT> = {}): WidgetT =>
     widgetId: "html",
     name: "Chart Widget",
     innerTab: "overview",
-    groupId: null,
-    data: {
-      mainTicker: { symbol: "AAPL", id: "AAPL", category: "equity", type: "stock" },
-    },
     ...overrides,
   }) as WidgetT;
 

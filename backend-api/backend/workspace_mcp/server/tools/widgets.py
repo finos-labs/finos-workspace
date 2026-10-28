@@ -84,7 +84,7 @@ def register(
 ) -> None:
     @server.tool(
         description=describe_tool(
-            "Fetch current data for one Workspace data source.",
+            "Fetch current data for one FINOS Workspace data source.",
             "Only use this after selecting an exact widget identity and explicit data_args.",
         )
     )
@@ -129,7 +129,7 @@ def register(
 
     @server.tool(
         description=describe_tool(
-            "List widgets available to the current Workspace session.",
+            "List widgets available to the current FINOS Workspace session.",
             "Returns deterministic widget identities for later get_widget_schema and create_widget calls.",
             (
                 "Each returned widget includes origin; pass origin to other widget "

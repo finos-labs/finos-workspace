@@ -32,7 +32,7 @@ function isMultiSelect(selected: unknown): selected is ValueType[] {
 export type TSelectValues = {
   label: string;
   value: ValueType;
-  extraInfo?: { description: string; rightOfDescription: string };
+  extraInfo?: { description?: string; rightOfDescription?: string };
 };
 
 type AdvancedSelectProps<SelectedType = ValueType | ValueType[]> = {

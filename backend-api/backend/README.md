@@ -1,6 +1,6 @@
 # Backend
 
-FastAPI + SQLAlchemy backend for Workspace.
+FastAPI + SQLAlchemy backend for FINOS Workspace.
 
 ## Setup
 
@@ -75,7 +75,7 @@ deployment serves the API on a host of its own that no other server shares. On l
 (the compose stack) that cannot hold: browsers treat `http://localhost` as secure,
 and the session cookie also reaches every other server on a local port that the browser
 navigates to or loads a frame or an image from, such as a local data backend or an app
-in an iframe widget. Run only servers you trust on localhost next to a signed-in Workspace.
+in an iframe widget. Run only servers you trust on localhost next to a signed-in FINOS Workspace.
 The sign-in providers check their tokens against `GOOGLE_OAUTH_CLIENT_ID`,
 `AZURE_CLIENT_ID` with `AZURE_TENANT_ID`, and `OKTA_CLIENT_ID` with `OKTA_DOMAIN`, the same
 public values the web app uses (its `VITE_` settings of the same names); a provider without

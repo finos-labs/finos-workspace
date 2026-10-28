@@ -9,17 +9,11 @@ type ParamGroupBinding = [string, GroupTypeT<"endpointParam" | "param">];
 
 const EMPTY_GROUPS: Group[] = [];
 
-export function getGroupParamName(
-  group: Group,
-  paramDefs: ParamDef[],
-): string | undefined {
+export function getGroupParamName(group: Group, paramDefs: ParamDef[]): string {
   if (group.type === "endpointParam") {
     return getEndpointParamName(paramDefs, group.groupById) ?? group.groupById;
   }
-  if (group.type === "param") {
-    return group.groupById;
-  }
-  return undefined;
+  return group.groupById;
 }
 
 export function useParamGroupBindings(params?: {
@@ -66,7 +60,6 @@ export function useParamGroupBindings(params?: {
     const seenGroupIds = new Set<string>();
 
     const addGroupBinding = (group: Group) => {
-      if (group.type !== "endpointParam" && group.type !== "param") return;
       if (seenGroupIds.has(group.id)) return;
 
       const paramName = getGroupParamName(group, widgetFromJSON?.params ?? []);

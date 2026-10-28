@@ -21,7 +21,7 @@ export const updateWidgetLayoutSchema = {
     "Fallback widget type identifier when uuid is unknown.",
   ),
   dashboard_id: z.string().optional().describe(
-    "Target dashboard UUID. Omit to target the current Workspace route.",
+    "Target dashboard UUID. Omit to target the current FINOS Workspace route.",
   ),
   tab_id: z.string().optional().describe(
     "Inner tab id to place the widget on. Omit to keep current tab.",

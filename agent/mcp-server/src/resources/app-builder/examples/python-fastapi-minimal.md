@@ -1,7 +1,7 @@
 ---
 title: Minimal Backend (Python + FastAPI)
 uri: workspace://examples/python-fastapi/minimal
-use_when: You are starting a new Python backend for Workspace and want the recommended starter shape.
+use_when: You are starting a new Python backend for FINOS Workspace and want the recommended starter shape.
 language_specific: true
 related:
   - workspace://contract/backend
@@ -12,9 +12,9 @@ related:
 
 # Minimal Backend — Python + FastAPI
 
-> This is an **implementation example**, not a platform requirement. Workspace is language-agnostic. If your project already uses a different framework, use that. See `workspace://examples/generic-http/minimal` for the framework-neutral shape.
+> This is an **implementation example**, not a platform requirement. FINOS Workspace is language-agnostic. If your project already uses a different framework, use that. See `workspace://examples/generic-http/minimal` for the framework-neutral shape.
 
-FastAPI is the recommended Python starter because most current Workspace examples are written against it.
+FastAPI is the recommended Python starter because most current FINOS Workspace examples are written against it.
 
 ## Project shape
 
@@ -37,7 +37,7 @@ import json
 
 app = FastAPI()
 
-# CORS: allow the origin your Workspace is served from, and the local development server
+# CORS: allow the origin your FINOS Workspace is served from, and the local development server
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -132,7 +132,7 @@ def teams():
 uvicorn main:app --reload --port 7779
 ```
 
-Then in Workspace: Settings → Data Connectors → Connect Backend → `http://localhost:7779`.
+Then in FINOS Workspace: Connections in the sidebar → Connect Backend → `http://localhost:7779`.
 
 ## Notes specific to Python
 

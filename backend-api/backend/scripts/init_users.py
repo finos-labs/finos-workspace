@@ -230,7 +230,7 @@ async def set_password(db: AsyncSession, user: User, password: str) -> None:
 async def change_password(db: AsyncSession, email: str) -> int:
     user = await get_administrator(db, email)
     if user is None:
-        sys.stderr.write(f"{email} is not an administrator of this Workspace.\n")
+        sys.stderr.write(f"{email} is not an administrator of this FINOS Workspace.\n")
         return 1
     try:
         password = read_password()

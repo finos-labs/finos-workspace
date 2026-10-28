@@ -6,7 +6,7 @@ mkdir -p "$dir"
 cd "$dir"
 
 openssl req -x509 -new -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 2 \
-  -subj "/CN=Workspace end-to-end CA" -keyout ca.key -out ca.pem \
+  -subj "/CN=FINOS Workspace end-to-end CA" -keyout ca.key -out ca.pem \
   -addext "basicConstraints=critical,CA:TRUE" \
   -addext "keyUsage=critical,keyCertSign,cRLSign" \
   -addext "subjectKeyIdentifier=hash" 2>/dev/null

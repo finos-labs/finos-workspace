@@ -36,7 +36,6 @@ vi.mock("~/lib/utils", async () => {
   const actual = await vi.importActual("~/lib/utils");
   return {
     ...actual,
-    getWidgetsWithSupportedAssetClass: vi.fn(() => []),
     cn: vi.fn(),
     generateMultiTabReport: vi.fn(),
     generateReportImage: vi.fn(),
@@ -63,7 +62,7 @@ describe("ExportModal", () => {
       data: {
         name: "Test Dashboard",
         widgets: [{ id: 1 }],
-        groups: [{ ticker: { symbol: "AAPL" } }, { ticker: { symbol: "GOOGL" } }],
+        groups: [{ value: "north" }, { value: "south" }],
       },
     });
 

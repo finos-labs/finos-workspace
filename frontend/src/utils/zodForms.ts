@@ -96,7 +96,7 @@ export type WidgetsType = {
   };
 };
 
-interface UnrecognizedKeysEntry {
+export interface UnrecognizedKeysEntry {
   name: string;
   keys: string[];
 }

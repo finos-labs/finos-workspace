@@ -146,7 +146,7 @@ const AddConnectionModal = () => {
             : `Edit Data — ${dcTab}`}
       </DialogTitle>
       <DialogDescription className="sr-only">
-        Add data connections to Workspace
+        Add data connections to FINOS Workspace
       </DialogDescription>
       <div className="h-[calc(100%-30px)]">
         <DataConnectionTabs />

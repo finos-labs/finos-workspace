@@ -573,7 +573,7 @@ export async function generateReportImage(
           ctx.fillText(title, 10, 48);
 
           ctx.font = exportCanvasFont(28);
-          const exportString = "| Exported with Workspace";
+          const exportString = "| Exported with FINOS Workspace";
           ctx.fillText(exportString, ctx.measureText(title).width + 40, 48);
 
           const logoSvg = LOGO_SVG;
@@ -690,7 +690,7 @@ async function captureElementWithHeader(
       ctx.fillText(title, EXPORT_HEADER_PADDING_LEFT, EXPORT_HEADER_TEXT_Y);
 
       ctx.font = exportCanvasFont(EXPORT_HEADER_FONT_SIZE);
-      const exportString = "| Exported with Workspace";
+      const exportString = "| Exported with FINOS Workspace";
       ctx.fillText(
         exportString,
         ctx.measureText(title).width + 40,

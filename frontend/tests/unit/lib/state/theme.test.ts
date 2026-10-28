@@ -3,16 +3,6 @@ import type { WidgetItem } from "~/components/LayoutAuth/Search/WidgetMenu";
 import { useThemeStore } from "~/lib/state/theme";
 import { malformed, partial } from "../../mocks";
 
-vi.mock("~/api/auth.api", () => ({
-  migrateDefaultTicker: vi.fn().mockResolvedValue({
-    symbol: "AAPL",
-    id: "AAPL",
-    type: "stock",
-    name: "Apple Inc.",
-    category: "equity",
-  }),
-}));
-
 vi.mock("~/api/user.api", () => ({
   updateUserDisplaySettings: vi.fn().mockResolvedValue({}),
 }));
@@ -23,17 +13,7 @@ vi.mock("~/lib/state/auth", () => ({
   },
 }));
 
-vi.mock("~/lib/types", () => ({
-  DEFAULT_TICKERS: {
-    AAPL: {
-      id: "AAPL",
-      symbol: "AAPL",
-      type: "stock",
-      name: "Apple Inc.",
-      category: "equity",
-    },
-  },
-}));
+const originalDocumentElement = document.documentElement;
 
 describe("useThemeStore", () => {
   let colorSchemeMeta: HTMLMetaElement;

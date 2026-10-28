@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { GridDataT as GridData, GridLayout, WidgetT } from "~/components/types";
+import type { GridDataT as GridData, GridLayout } from "~/components/types";
 import {
-  checkIfWidgetsHaveMainTickerAndAreTheSame,
   createRootFolder,
   createTab,
   recursiveCleanKeys,
@@ -10,29 +9,6 @@ import {
 import { partial } from "../../mocks";
 
 describe("app utils", () => {
-  describe("checkIfWidgetsHaveMainTickerAndAreTheSame", () => {
-    it("returns correct flags for widgets with same ticker", () => {
-      const widgets = partial<WidgetT[]>([
-        { data: { mainTicker: { id: "AAPL", type: "stock" } } },
-        { data: { mainTicker: { id: "AAPL", type: "stock" } } },
-      ]);
-      const result = checkIfWidgetsHaveMainTickerAndAreTheSame(widgets);
-      expect(result.someHaveMainTicker).toBe(true);
-      expect(result.allTheSame).toBe(true);
-      expect(result.mainTicker?.id).toBe("AAPL");
-    });
-
-    it("returns allTheSame false for different tickers", () => {
-      const widgets = partial<WidgetT[]>([
-        { data: { mainTicker: { id: "AAPL", type: "stock" } } },
-        { data: { mainTicker: { id: "MSFT", type: "stock" } } },
-      ]);
-      const result = checkIfWidgetsHaveMainTickerAndAreTheSame(widgets);
-      expect(result.someHaveMainTicker).toBe(true);
-      expect(result.allTheSame).toBe(false);
-    });
-  });
-
   describe("createTab", () => {
     it("calls addTab with new uuid and random name", () => {
       const addTab = vi.fn();

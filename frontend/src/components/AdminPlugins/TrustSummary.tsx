@@ -248,7 +248,7 @@ export function TrustSummary(props: {
 
       <div className="flex flex-col gap-2 border-t border-general-border-secondary pt-3">
         <Checkbox
-          label={`I have reviewed ${plugin.plugin_id} ${version.version} and take responsibility for trusting it on this Workspace. Approving it does not make it available to anyone until an organization enables it.`}
+          label={`I have reviewed ${plugin.plugin_id} ${version.version} and take responsibility for trusting it on this FINOS Workspace. Approving it does not make it available to anyone until an organization enables it.`}
           checked={responsible}
           onCheckedChange={(on) => setResponsible(on === true)}
         />

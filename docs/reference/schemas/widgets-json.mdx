@@ -13,7 +13,7 @@ A backend describes its widgets in a file named `widgets.json`. The file is an o
 
 A definition must have the keys `name`, `description`, `endpoint` and `type`. It may also have `method`, `category`, `subCategory`, `source`, `showTitle`, `params`, `gridData`, `staleTime`, `refetchInterval`, `dataUpdateDisplay`, `runButton`, `disableRetrievalForCopilot`, `exportable`, `mcp_tool` and `data`. The key `mcp_tool` links the widget to an MCP tool, as [The MCP tool link](../protocols/mcp-tool-link.md) describes. The `data` object always accepts `dataKey`, and some types accept more keys. The types `html` and every plugin type also accept `raw`, which [Widget rows](../protocols/raw-rows.md) describes, and `iframe` accepts `storage`.
 
-The contract is closed. A key that the contract does not define is an error at every depth of the definition. When a definition breaks the contract, the web app leaves the widget out of the catalog and reports the problem together with its JSON pointer. Strings and lists are bounded as well.
+The contract defines every key at every depth of the definition, and it bounds every string and list. A key that the contract does not define is ignored: the web app loads the widget without the key and lists the key, with its JSON pointer, under the backend's unrecognized fields. Any other problem leaves the widget out of the catalog and is reported together with its JSON pointer.
 
 ## Types
 
@@ -53,7 +53,7 @@ The API composes one JSON Schema (draft-07) for each organization. It starts fro
 
 Each `Widget_<type>` definition is complete on its own, so the schema works with any draft-07 validator. To produce readable errors, a validator should first check the widget's `type` against `x-types` and then validate the widget against that single branch.
 
-**The schema is closed.** In the composed schema every object has `additionalProperties: false` or a defined value schema, every string has a `maxLength`, an `enum`, a `const` or a `pattern`, and every array has `maxItems`. A test walks the kit and fails when it finds anything open. The same walk runs on a plugin's `definition` when the plugin is discovered, and a definition that is not closed and bounded blocks the version and names the offending node.
+**The schema is closed.** In the composed schema every object has `additionalProperties: false` or a defined value schema, every string has a `maxLength`, an `enum`, a `const` or a `pattern`, and every array has `maxItems`. The web app reads a failed `additionalProperties: false` as a key to ignore, unless it falls inside a `oneOf` or an `anyOf` that no branch matched. A test walks the kit and fails when it finds anything open. The same walk runs on a plugin's `definition` when the plugin is discovered, and a definition that is not closed and bounded blocks the version and names the offending node.
 
 **The API serves the schema.** The route `GET /app/widget-plugins/widgets-schema` answers for the signed-in user's organization, and a superuser may pass `?entity=` to ask for another one. The answer carries an `ETag`, and the route returns `304` for a matching `If-None-Match` header. When the plugin feature is off, the schema contains only the built-in types. The web app fetches the schema together with the plugin list and hands it to the worker that loads backends. A new `$id` makes the worker validate the connected backends again.
 

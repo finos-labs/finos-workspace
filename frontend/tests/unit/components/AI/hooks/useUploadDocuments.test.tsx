@@ -57,7 +57,7 @@ describe("useUploadDocuments", () => {
     useCopilotStore.setState({ externalCopilotHolders: [] });
   });
 
-  it("uploads the default Copilot's documents to the Workspace API", async () => {
+  it("uploads the default Copilot's documents to the FINOS Workspace API", async () => {
     useCopilotStore.setState({ selectedCopilot: getDefaultCopilot() });
     const upload = renderUpload();
 
@@ -69,7 +69,7 @@ describe("useUploadDocuments", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("sends a custom agent only its own headers, never a Workspace credential", async () => {
+  it("sends a custom agent only its own headers, never a FINOS Workspace credential", async () => {
     useCopilotStore.setState({
       selectedCopilot: customAgent,
       externalCopilotHolders: [

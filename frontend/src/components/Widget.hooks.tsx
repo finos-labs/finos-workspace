@@ -13,7 +13,6 @@ import { type SharedAppState, useSharedAppStore } from "~/lib/state/sharedApp";
 import {
   addToWidgetParamGroups,
   getEndpointParamGroupByIds,
-  getEndpointParamName,
   getJsonWidget,
   getWidgetInfo,
   needsGroupValueUpdate,
@@ -36,10 +35,7 @@ export function shouldPersistWidgetUpdate(
   newWidget: WidgetT,
   getParamName: (groupById: string) => string,
 ): boolean {
-  const prevMainTicker = currentWidget.data?.mainTicker?.symbol;
   const prevParams = currentWidget.storage?.params;
-  const prevGroupById = currentWidget.groupById;
-  const newMainTicker = newWidget.data?.mainTicker?.symbol;
   const newParams = newWidget.storage?.params;
 
   if (
@@ -65,18 +61,7 @@ export function shouldPersistWidgetUpdate(
     }
   }
 
-  if (prevGroupById || newWidget.groupId) {
-    const paramName = getEndpointParamName(newWidget.params ?? [], newWidget.groupById);
-    if (
-      prevGroupById !== newWidget.groupId ||
-      prevMainTicker !== newMainTicker ||
-      (paramName && prevParams?.[paramName] !== newParams?.[paramName])
-    ) {
-      return true;
-    }
-  }
-
-  return false;
+  return !!currentWidget.groupById;
 }
 
 export function useWidgetSync(props: Omit<WidgetProps, "children">) {
@@ -155,10 +140,8 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
 
           const [groups, innerTab] = current;
           const [prevGroups] = prev;
-          const group = groups?.find((g) => g.type === "ticker");
 
-          const newGroup =
-            !isEqual(groups, prevGroups) || lastWidget?.groupId !== group?.id;
+          const newGroup = !isEqual(groups, prevGroups);
 
           const linkedGroups = groups?.filter((g) =>
             needsGroupValueUpdate(lastWidget, g),
@@ -171,12 +154,8 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
                 currentWidget,
                 linkedGroups,
               );
-              updatedWidget.groupId = group?.id ?? null;
               updatedWidget.paramGroups = (groups || []).reduce<Record<string, string>>(
-                (acc, g) => {
-                  if (g.type === "ticker") return acc;
-                  return addToWidgetParamGroups(acc, g);
-                },
+                (acc, g) => addToWidgetParamGroups(acc, g),
                 {},
               );
 

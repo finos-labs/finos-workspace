@@ -177,11 +177,7 @@ export function getDashboardInfo(
     type: g.type,
     ...(g.type === "endpointParam" && g.groupById ? { group_by_id: g.groupById } : {}),
     widget_uuids: widgets
-      .filter(
-        (widget) =>
-          widget.groupId === g.id ||
-          Object.values(widget.paramGroups || {}).includes(g.id),
-      )
+      .filter((widget) => Object.values(widget.paramGroups || {}).includes(g.id))
       .map((widget) => widget.id),
   }));
 

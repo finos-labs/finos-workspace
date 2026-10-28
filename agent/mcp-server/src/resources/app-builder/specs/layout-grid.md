@@ -11,7 +11,7 @@ related:
 
 # Layout Grid and Groups
 
-Workspace lays out widgets on a fixed grid and supports param synchronization via named groups. Both live in `apps.json`.
+FINOS Workspace lays out widgets on a fixed grid and supports param synchronization via named groups. Both live in `apps.json`.
 
 ## Grid
 
@@ -53,9 +53,9 @@ For a single, unnamed tab use empty strings:
 
 Groups synchronize a parameter (e.g. `team`) across multiple widgets. The runtime is strict:
 
-1. **Group `name` must follow the literal `Group 1`, `Group 2`, ...** Custom names like `"team-group"` validate but don't link.
+1. **A widget joins a group by its `name`.** The `name` in `groups` and in each layout item's `groups` must be the same text, and any text works, such as `"team-group"`. `Group 1` is only the name that the UI gives a new group.
 2. **Group `type` must match the widget param's shape** — see `workspace://specs/apps-json`.
-3. **Three places must agree:** `groups[].widgetIds`, each layout item's `groups: ["Group N"]`, and each widget's own param config.
+3. **Three places must agree:** `groups[].widgetIds`, each layout item's `groups: [...]`, and each widget's own param config.
 
 Group object shape:
 
@@ -72,9 +72,9 @@ Group object shape:
 ## Checklist
 
 - [ ] Every layout item uses `i` and matches a key in `widgets.json`.
-- [ ] Every widget that shares a parameter has `"groups": ["Group N"]` in its layout entry, is listed in that group's `widgetIds`, and declares the matching param.
+- [ ] Every widget that shares a parameter lists the group's `name` in the `groups` of its layout entry, is listed in that group's `widgetIds`, and declares the matching param.
 - [ ] Widgets do not overlap and fit in the 40 columns.
-- [ ] Open the app in Workspace and change the shared param in one widget — confirm the others refresh.
+- [ ] Open the app in FINOS Workspace and change the shared param in one widget — confirm the others refresh.
 
 ## What this spec does not cover
 

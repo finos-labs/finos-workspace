@@ -47,7 +47,7 @@ export const createArtifactSchema = z.object({
   from_table_id: z
     .preprocess(absentIfNull, z.string().optional())
     .describe(
-      "Name of an already-loaded table in pendingTables (e.g. 'aapl_prices'). " +
+      "Name of an already-loaded table in pendingTables (e.g. 'daily_prices'). " +
         "Alternative to sql/data. Use only when rendering the loaded table as-is; if filtering/aliasing, use sql instead. " +
         "This must be a loaded table name, not an execute_sql result set or CTE alias.",
     ),

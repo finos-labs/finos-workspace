@@ -224,7 +224,7 @@ function refusal(c: Context<AppEnv>, failure: Failure): Response {
     return chatNotice(failure.message);
   }
   if (failure.reason === "rejected") return c.json({ error: "Not signed in" }, 401);
-  return c.json({ error: "The Workspace API is not available" }, 503);
+  return c.json({ error: "The FINOS Workspace API is not available" }, 503);
 }
 
 interface QueryRun {
@@ -342,7 +342,7 @@ async function answerQuery(
 
   const rawModelId = getOption("model") || process.env.DEFAULT_MODEL;
   if (!rawModelId) {
-    return modelFailure("No model is configured. Set DEFAULT_MODEL on the agent (for example <provider>:<model>) or pick a model in the Workspace.");
+    return modelFailure("No model is configured. Set DEFAULT_MODEL on the agent (for example <provider>:<model>) or pick a model in the FINOS Workspace.");
   }
   if (services && !services.config.models.includes(rawModelId)) {
     metrics.queries.inc({ outcome: "denied" });

@@ -98,7 +98,7 @@ export default function MenuHomePage() {
     ...(uiShowExternalDocumentationLinksFF && workspaceDocsHref
       ? [
           {
-            title: "Workspace Documentation",
+            title: "FINOS Workspace Documentation",
             buttonText: "Read Documentation",
             description:
               "Access technical specifications for building custom data widgets, integrating AI agents, configuring role-based access controls, and much more.",

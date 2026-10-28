@@ -175,7 +175,7 @@ export const RuntimeConfigSchema = z.object({
   }),
   whiteLabel: z.object({
     name: stringField(
-      "Workspace",
+      "FINOS Workspace",
       "The product name, used as the title of the page and as the alternative text of the logos. The build also writes it into the manifest of the web app, and config.js cannot change that.",
     ),
     loginImage: stringField(
