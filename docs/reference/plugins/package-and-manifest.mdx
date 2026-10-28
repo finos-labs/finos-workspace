@@ -26,7 +26,7 @@ Every package lives in a directory that is named after the plugin and its versio
 The names and sizes follow these rules:
 
 - The plugin id consists of lowercase letters, digits and hyphens, and it starts with a letter. It matches <PluginValue of="patterns.pluginId" />.
-- The version has the form `major.minor.patch` and contains only numbers. It matches <PluginValue of="patterns.version" />. A version is immutable, so a change of any kind requires a new version directory.
+- The version has the form `major.minor.patch` and contains only numbers. It matches <PluginValue of="patterns.version" />. An approved version is immutable, so a change of any kind requires a new version directory. On a local stack, the app starts that directory for you, as [Plugin lifecycle and administration](lifecycle.mdx#developing-on-a-local-stack) describes.
 - A file name may contain letters, digits, `.`, `_` and `-`. A package may not contain symbolic links.
 - A version may hold at most <PluginValue of="package.maxFiles" /> files and <PluginValue of="package.maxUnpackedBytes" unit="bytes" /> by default. The deployment can lower or raise both limits.
 - The file <PluginValue of="package.manifestFile" /> may be at most <PluginValue of="package.manifestBytes" unit="bytes" />.

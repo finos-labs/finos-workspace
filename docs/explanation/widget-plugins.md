@@ -18,7 +18,7 @@ A plugin can offer widgets in four ways:
 - A widget can call proxies that the manifest declares. The API makes those calls and adds the secrets on the server.
 - A widget can call the plugin's own backend, which the deployment runs as a separate process.
 
-Nobody installs a plugin from the app. The app has no upload, it does not fetch packages from a URL, and it has no endpoint that writes plugin files. It only decides whether files that are already on the server may run, and for whom.
+Nobody installs a plugin from the app. The app has no upload, it does not fetch packages from a URL, and it has no endpoint that writes plugin files, except on a developer's own machine. There, where `MODE` is `local`, a superuser can copy an approved version to the next version number and develop it in place. Everywhere else the app only decides whether files that are already on the server may run, and for whom.
 
 ## How it compares to other systems
 
@@ -88,6 +88,6 @@ Several designs could isolate plugin code. The table compares them with systems 
 | Run the module in a worker and draw its UI tree from the host. | Shopify's remote rendering. | It isolates strongly, but it offers no DOM or canvas, which grids and charts need. |
 | Use an opaque-origin frame with a private port and a policy. | Figma's plugin iframes. | FINOS Workspace uses this design. |
 
-Code reaches a deployment only through the plugins directory, the image or the configuration, and the API mounts that directory read-only. A hijacked admin session can enable or grant a plugin that is already on the server, but only through the review and its recorded acknowledgements, and it cannot add a plugin. A pin ties the approval to a digest that was chosen outside the app.
+Code reaches a deployment only through the plugins directory, the image or the configuration, and the API mounts that directory read-only. The one route that writes there copies an approved version to a new number for a developer. It works only where `MODE` is `local`, a developer's own machine, and a version in development is served from changing files only there. A hijacked admin session can enable or grant a plugin that is already on the server, but only through the review and its recorded acknowledgements, and it cannot add a plugin. A pin ties the approval to a digest that was chosen outside the app.
 
 [About the widget plugin security model](widget-plugin-security.md) explains what the sandbox defends and what it leaves to others.

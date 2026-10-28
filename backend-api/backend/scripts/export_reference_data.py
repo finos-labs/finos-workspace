@@ -321,6 +321,10 @@ VERSION_STATES = {
         "The version's directory is gone. When every version of a plugin is missing, "
         "a superuser can forget the plugin, which deletes its reviews, grants, settings and secrets."
     ),
+    "development": (
+        "A superuser started the version from an approved one on a local stack, where MODE is local. "
+        "The API serves it from its files as they change, until a superuser approves it."
+    ),
 }
 
 

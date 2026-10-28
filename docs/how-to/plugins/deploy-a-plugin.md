@@ -75,6 +75,6 @@ These steps do not depend on the platform.
 
 ## Publish a new version
 
-To publish a new version, add a new version directory next to the old one and approve it. Do not edit the files of an approved version, because the API hashes a file again whenever its size or modification time changes, and a changed file blocks its version. Keep the active version's directory in place until the new version is approved. A version whose directory is gone is `missing`, so when you ship the packages in an image, include both versions until the approval is done.
+To publish a new version, add a new version directory next to the old one and approve it. Do not edit the files of an approved version, because the API hashes a file again whenever its size or modification time changes, and a changed file blocks its version. Keep the active version's directory in place until the new version is approved. A version whose directory is gone is `missing`, so when you ship the packages in an image, include both versions until the approval is done. A deployment runs only approved versions, so it has no counterpart of the Patch, Minor and Major actions that [How to build and try a widget plugin](build-a-plugin.md) describes for a local stack.
 
 [Plugin package and manifest](../../reference/plugins/package-and-manifest.mdx) describes the rules for the package, and [Plugin lifecycle and administration](../../reference/plugins/lifecycle.mdx) describes the states that a version passes through.
