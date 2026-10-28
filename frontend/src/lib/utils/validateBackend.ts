@@ -34,6 +34,7 @@ import {
 } from "~/lib/utils/widgetParams";
 import {
   detectUnrecognizedKeys,
+  type UnrecognizedKeysEntry,
   type UnrecognizedKeysReport,
   type WidgetsType,
 } from "~/utils/zodForms";
@@ -49,6 +50,7 @@ import {
   type ComposedWidgetsSchema,
   pluginConfigProblems,
   validateWidgetDefinition,
+  withoutKeyAt,
 } from "./widgetsSchemaValidation";
 
 export interface ProbeReport {
@@ -201,6 +203,7 @@ export interface WidgetItems {
   invalid: InvalidItem[];
   unsupported: string[];
   unrendered: string[];
+  unrecognized: UnrecognizedKeysEntry[];
 }
 
 export function validateWidgetItems(
@@ -218,6 +221,7 @@ export function validateWidgetItems(
     invalid: [],
     unsupported: [],
     unrendered: [],
+    unrecognized: [],
   };
   if (items.fileError) return items;
 
@@ -244,17 +248,27 @@ export function validateWidgetItems(
       continue;
     }
 
-    const problems = validateWidgetDefinition(context.schema, definition);
-    if (problems.length === 0)
+    const { problems, unknownKeys } = validateWidgetDefinition(
+      context.schema,
+      definition,
+    );
+    const name =
+      typeof definition.name === "string" && definition.name ? definition.name : "";
+    if (unknownKeys.length)
+      items.unrecognized.push({
+        name: name ? `${name} (${widgetId})` : widgetId,
+        keys: unknownKeys.map((pointer) => pointer.slice(1)),
+      });
+    if (problems.length === 0) {
+      for (const pointer of unknownKeys) withoutKeyAt(definition, pointer);
       problems.push(
         ...contractProblems(definition, {
           credentialHeaders: context.credentialHeaders,
           credentialQuery: context.credentialQuery,
         }),
       );
+    }
     if (problems.length) {
-      const name =
-        typeof definition.name === "string" && definition.name ? definition.name : "";
       items.invalid.push({
         file: "widgets.json",
         id: widgetId,
@@ -629,6 +643,11 @@ export async function validateBackend(
 
   const widgetItems = validateWidgetItems(await widgetsRes.json(), widgetContext);
   const widgets = widgetItems.valid;
+  if (widgetItems.unrecognized.length)
+    unrecognizedReports.push({
+      label: "[widgets.json]",
+      entries: widgetItems.unrecognized,
+    });
 
   let templates: BackendTemplate[] = [];
   let templatesFile: "apps.json" | "templates.json" = "apps.json";

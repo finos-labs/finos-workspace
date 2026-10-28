@@ -210,7 +210,9 @@ export function fetchBackend(
   signal?: AbortSignal,
 ) {
   if (!isApiUrl(url)) {
-    return Promise.reject(new Error("fetchBackend only calls the Workspace API."));
+    return Promise.reject(
+      new Error("fetchBackend only calls the FINOS Workspace API."),
+    );
   }
   const headers = new Headers(options.headers);
   headers.set(WORKSPACE_CLIENT_HEADER, WORKSPACE_CLIENT);

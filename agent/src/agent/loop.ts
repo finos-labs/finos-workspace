@@ -685,7 +685,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
             input_arguments: parameters,
           }));
         }
-        logger.info("Draining queued Workspace call", {
+        logger.info("Draining queued FINOS Workspace call", {
           emitting: next.entry.toolName,
           remaining: remaining.map(({ entry }) => entry.toolName),
         });
@@ -1221,7 +1221,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
           });
           if (queued.length > 0) {
             extraState.pending_workspace_calls = queued;
-            logger.info("Queueing extra Workspace calls for sequential drain", {
+            logger.info("Queueing extra FINOS Workspace calls for sequential drain", {
               emitted: entry.toolName,
               queued: queued.map((call) => call.tool_name),
             });

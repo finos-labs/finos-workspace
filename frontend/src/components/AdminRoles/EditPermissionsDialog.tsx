@@ -1089,7 +1089,7 @@ export function EditPermissionsDialog({
                           >
                             Prompts
                           </Link>{" "}
-                          page in the Workspace.
+                          page in the FINOS Workspace.
                         </>
                       ) : (
                         <>
@@ -1104,7 +1104,7 @@ export function EditPermissionsDialog({
                           >
                             Widgets Library
                           </Link>{" "}
-                          page in the Workspace.
+                          page in the FINOS Workspace.
                         </>
                       )}
                     </p>

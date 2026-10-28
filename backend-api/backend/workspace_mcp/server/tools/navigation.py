@@ -97,7 +97,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
 
     @server.tool(
         description=describe_tool(
-            "Navigate the Workspace browser to an existing dashboard or inner tab.",
+            "Navigate the FINOS Workspace browser to an existing dashboard or inner tab.",
             "For operation='dashboard', pass dashboard_id and optional tab_id.",
             (
                 "For operation='tab', pass tab_id and optional dashboard_id; "

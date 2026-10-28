@@ -1,7 +1,7 @@
 ---
 title: Review an App
 uri: workspace://guides/review-app
-use_when: You are reviewing an existing Workspace backend or app template and need a structured pass.
+use_when: You are reviewing an existing FINOS Workspace backend or app template and need a structured pass.
 language_specific: false
 related:
   - workspace://specs/widgets-json
@@ -18,8 +18,8 @@ A structured pass for reviewing an existing app. Read the file you're reviewing 
 
 - Does the backend serve `GET /widgets.json` returning a JSON **object**?
 - If app templates are shipped, does it serve `GET /apps.json` returning a JSON **array**?
-- Are CORS origins configured for the origin the Workspace is served from, and `http://localhost:1420`?
-- If the backend is reached from an HTTPS Workspace in production, is it served over HTTPS?
+- Are CORS origins configured for the origin the FINOS Workspace is served from, and `http://localhost:1420`?
+- If the backend is reached from an HTTPS FINOS Workspace in production, is it served over HTTPS?
 - Is the auth path explicit? (header, query string, or none — pick one and document it)
 
 If any of these are wrong, fix before reviewing further.
@@ -48,7 +48,7 @@ See `workspace://specs/widgets-json` and `workspace://specs/widget-parameters`.
 - Each layout item uses `i` (not `id`), plus `x`, `y`, `w`, `h`.
 - Every layout item's `i` matches a key in `widgets.json`.
 - Each group `name` is the same text in `groups` and in the layout items that join it.
-- Group `type` matches the underlying widget param shape: `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for a `ticker` param.
+- Group `type` matches the underlying widget param shape: `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`.
 - `groups[].widgetIds`, every layout item's `groups: [...]`, and the widget's own param config all agree.
 
 See `workspace://specs/apps-json`.
@@ -70,7 +70,7 @@ After contract shape passes, review whether the numbers and parameter behavior m
 - Single-period selections should show snapshots or `delta: n/a`, not fake deltas such as `2024 vs 2024`.
 - Units and formatting should match the metric meaning, especially intensity fields like `*_per_revenue`, `*_per_employee`, or `*_per_MEUR`.
 
-## 5. Common Workspace validation failures
+## 5. Common FINOS Workspace validation failures
 
 Walk `workspace://validation/common-errors`. Most reviews find at least one entry from that list.
 
@@ -84,8 +84,8 @@ Walk `workspace://validation/common-errors`. Most reviews find at least one entr
 
 When you write the review:
 
-- Lead with **broken contract issues** (Workspace can't load the backend). These are blockers.
-- Then **shape issues** in `widgets.json` / `apps.json` (Workspace loads but specific widgets fail).
+- Lead with **broken contract issues** (FINOS Workspace can't load the backend). These are blockers.
+- Then **shape issues** in `widgets.json` / `apps.json` (FINOS Workspace loads but specific widgets fail).
 - Then **UX issues** (parameter groups that don't link, type mismatches that work but feel dead).
 - Then **nice-to-haves** (descriptions, heights, prompts).
 

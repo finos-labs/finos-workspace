@@ -626,8 +626,8 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
         const backend = widget?.external
           ? widget?.connectionType === "advanced-backend"
             ? widget?.sourceName || "Unknown"
-            : "Workspace API"
-          : "Workspace";
+            : "FINOS Workspace API"
+          : "FINOS Workspace";
 
         const category = widget?.category || widgetFromJSON?.category;
         const subCategory = widget?.subCategory || widgetFromJSON?.subCategory;
@@ -642,12 +642,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
           subCategory,
           backend,
         };
-      }, [
-        widgetRef,
-        getWidgetInfo(widgetRef?.current),
-        widgetFromJSON,
-        widgetRef?.current?.data?.mainTicker?.exchange,
-      ]);
+      }, [widgetRef, getWidgetInfo(widgetRef?.current), widgetFromJSON]);
 
     const createdAt = widgetRef?.current?.storage?.createdAt;
 

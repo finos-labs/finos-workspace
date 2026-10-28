@@ -7,15 +7,15 @@ export type CatalogSkill = Pick<SkillCatalogEntry, "slug" | "description">;
 const INES_SKILLS: readonly CatalogSkill[] = [
   {
     slug: "html-report",
-    description: "Generate an HTML report using Workspace's reporting capabilities.",
+    description: "Generate an HTML report using FINOS Workspace's reporting capabilities.",
   },
   {
     slug: "html-table",
-    description: "When creating or styling a table widget for Workspace, follow these rules.",
+    description: "When creating or styling a table widget for FINOS Workspace, follow these rules.",
   },
   {
     slug: "html-chart",
-    description: "When creating or styling a chart widget (line/area/scatter) for Workspace, follow these rules.",
+    description: "When creating or styling a chart widget (line/area/scatter) for FINOS Workspace, follow these rules.",
   },
 ];
 

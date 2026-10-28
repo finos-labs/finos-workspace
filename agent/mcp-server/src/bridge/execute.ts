@@ -21,7 +21,7 @@ export async function executeBridgeCommand(
         errorItem({
           code: "unavailable",
           message:
-            "No connected Workspace browser. Open the workspace and connect the bridge before calling this tool.",
+            "No connected FINOS Workspace browser. Open the workspace and connect the bridge before calling this tool.",
           retryable: true,
         }),
       ],

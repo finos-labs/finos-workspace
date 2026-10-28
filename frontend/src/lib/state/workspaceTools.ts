@@ -32,7 +32,10 @@ export function getWorkspaceAgentTools(): Promise<AgentToolConfig[]> {
       })),
     )
     .catch((error: unknown) => {
-      console.warn("[Workspace tools] Could not load the Workspace's tools", error);
+      console.warn(
+        "[FINOS Workspace tools] Could not load the FINOS Workspace's tools",
+        error,
+      );
       if (cached?.userUuid === userUuid) cached = null;
       return [];
     });

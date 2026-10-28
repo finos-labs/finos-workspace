@@ -630,7 +630,7 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
         <DialogDescription>
           {existingServerId
             ? "Update your MCP server details. Supports streamable HTTP only (stdio and SSE are not supported)."
-            : "Connect Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported)."}
+            : "Connect FINOS Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported)."}
         </DialogDescription>
       </DialogHeader>
 
@@ -665,7 +665,7 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
             render={({ field, fieldState }) => (
               <FormInput
                 label="Client Name (Optional)"
-                placeholder="Workspace"
+                placeholder="FINOS Workspace"
                 {...field}
                 message={fieldState.error?.message}
               />

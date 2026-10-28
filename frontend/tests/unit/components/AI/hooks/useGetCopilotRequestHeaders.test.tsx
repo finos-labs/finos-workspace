@@ -22,7 +22,7 @@ describe("useGetCopilotRequestHeaders", () => {
     useCopilotStore.setState({ externalCopilotHolders: [] });
   });
 
-  it("adds no Workspace credential and no user id for the default Copilot", () => {
+  it("adds no FINOS Workspace credential and no user id for the default Copilot", () => {
     setIdpTokens({ email: "user@example.com" });
 
     expect(getHeaders(getDefaultCopilot())).toEqual({

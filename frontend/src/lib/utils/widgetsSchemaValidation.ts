@@ -134,33 +134,63 @@ function describe(
   }
 }
 
+export interface WidgetDefinitionCheck {
+  problems: SchemaProblem[];
+  unknownKeys: string[];
+}
+
+function pointerSegment(key: string): string {
+  return key.replace(/~/g, "~0").replace(/\//g, "~1");
+}
+
 export function validateWidgetDefinition(
   schema: ComposedWidgetsSchema,
   widget: Record<string, unknown>,
-): SchemaProblem[] {
+): WidgetDefinitionCheck {
   const type = widget.type;
-  if (typeof type !== "string") return [{ pointer: "", message: "missing `type`" }];
+  if (typeof type !== "string")
+    return { problems: [{ pointer: "", message: "missing `type`" }], unknownKeys: [] };
   if (!schema["x-types"].includes(type))
-    return [
-      {
-        pointer: "/type",
-        message: `\`${type}\` is not a widget type here, which has \`${schema["x-types"].join("`, `")}\``,
-      },
-    ];
+    return {
+      problems: [
+        {
+          pointer: "/type",
+          message: `\`${type}\` is not a widget type here, which has \`${schema["x-types"].join("`, `")}\``,
+        },
+      ],
+      unknownKeys: [],
+    };
 
   const definition = `Widget_${type}`;
   const validate = validatorFor(schema, definition);
-  if (validate(widget)) return [];
+  if (validate(widget)) return { problems: [], unknownKeys: [] };
 
   const errors = validate.errors ?? [];
-  const unions = errors
-    .filter((e) => e.keyword === "anyOf")
-    .map((e) => absolutePath(definition, e.schemaPath).replace(/\/anyOf$/, ""));
+  const branchesOf = (keyword: "anyOf" | "oneOf") =>
+    errors
+      .filter((e) => e.keyword === keyword)
+      .map(
+        (e) =>
+          `${absolutePath(definition, e.schemaPath).replace(new RegExp(`/${keyword}$`), "")}/${keyword}/`,
+      );
+  const anyOfBranches = branchesOf("anyOf");
+  const unionBranches = [...anyOfBranches, ...branchesOf("oneOf")];
   const problems = new Map<string, SchemaProblem>();
+  const unknownKeys: string[] = [];
   for (const error of errors) {
     if (error.keyword === "if") continue;
     const path = absolutePath(definition, error.schemaPath);
-    if (unions.some((u) => path.startsWith(`${u}/anyOf/`))) continue;
+    if (anyOfBranches.some((branch) => path.startsWith(branch))) continue;
+    if (
+      error.keyword === "additionalProperties" &&
+      !unionBranches.some((branch) => path.startsWith(branch))
+    ) {
+      const key = String(
+        (error.params as { additionalProperty: unknown }).additionalProperty,
+      );
+      unknownKeys.push(`${error.instancePath}/${pointerSegment(key)}`);
+      continue;
+    }
     const rule = ruleOf(schema, path);
     const pointer = rule
       ? path.startsWith("#/definitions/ParamDef/")
@@ -170,7 +200,28 @@ export function validateWidgetDefinition(
     const message = rule ?? describe(error, schema, path);
     problems.set(`${pointer}\u0000${message}`, { pointer, message });
   }
-  return [...problems.values()];
+  return { problems: [...problems.values()], unknownKeys };
+}
+
+export function withoutKeyAt(target: Record<string, unknown>, pointer: string): void {
+  const segments = pointer
+    .split("/")
+    .slice(1)
+    .map((s) => s.replace(/~1/g, "/").replace(/~0/g, "~"));
+  const key = segments.pop();
+  if (key === undefined) return;
+  let node: unknown = target;
+  for (const segment of segments) {
+    if (!node || typeof node !== "object") return;
+    node = (node as Record<string, unknown>)[segment];
+  }
+  if (
+    node &&
+    typeof node === "object" &&
+    !Array.isArray(node) &&
+    Object.hasOwn(node, key)
+  )
+    delete (node as Record<string, unknown>)[key];
 }
 
 export function pluginConfigProblems(

@@ -376,7 +376,7 @@ def _pct(values: list[float], p: float) -> float:
 
 async def main():
     print(
-        f"Workspace MCP load sim -> {BASE_URL} | users={USERS} duration={DURATION}s "
+        f"FINOS Workspace MCP load sim -> {BASE_URL} | users={USERS} duration={DURATION}s "
         f"think={THINK_MIN}-{THINK_MAX}s"
     )
     connector = aiohttp.TCPConnector(limit=0)

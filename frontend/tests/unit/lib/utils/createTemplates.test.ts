@@ -559,7 +559,7 @@ describe("createTemplates utility functions", () => {
           overview: {
             id: "overview",
             name: "Overview",
-            layout: [{ i: "ticker_information", x: 0, y: 0, w: 12, h: 8, groups: [] }],
+            layout: [{ i: "region_summary", x: 0, y: 0, w: 12, h: 8, groups: [] }],
           },
         },
       });
@@ -570,9 +570,9 @@ describe("createTemplates utility functions", () => {
         template: appTemplate,
         source,
         resolveWidget: (widgetId) =>
-          widgetId === "ticker_information"
+          widgetId === "region_summary"
             ? partial<WidgetT>({
-                widgetId: "ticker_information",
+                widgetId: "region_summary",
                 name: "Resolved Widget",
                 params: [],
               })
@@ -580,11 +580,11 @@ describe("createTemplates utility functions", () => {
       });
 
       const widgets = createdTab(addTab).data.widgets;
-      const widget = widgets.find((w) => w.widgetId === "ticker_information");
+      const widget = widgets.find((w) => w.widgetId === "region_summary");
       expect(widget?.name).toBe("Resolved Widget");
     });
 
-    it("resolves a ticker param into mainTicker on the widget data", async () => {
+    it("puts a layout item's state params in the widget's storage", async () => {
       const addTab = vi.fn<AppState["addTab"]>();
       const appTemplate = partial<BackendTemplate>({
         name: "My App",
@@ -595,13 +595,13 @@ describe("createTemplates utility functions", () => {
             name: "Overview",
             layout: [
               {
-                i: "ticker_information",
+                i: "region_summary",
                 x: 0,
                 y: 0,
                 w: 12,
                 h: 8,
                 groups: [],
-                state: { params: { symbol: "aapl" } },
+                state: { params: { region: "north" } },
               },
             ],
           },
@@ -615,15 +615,15 @@ describe("createTemplates utility functions", () => {
         source,
         resolveWidget: () =>
           partial<WidgetT>({
-            widgetId: "ticker_information",
-            name: "Ticker Info",
-            params: [{ paramName: "symbol", type: "ticker" }],
+            widgetId: "region_summary",
+            name: "Region Summary",
+            params: [{ paramName: "region", type: "text" }],
           }),
       });
 
       const widgets = createdTab(addTab).data.widgets;
-      const widget = widgets.find((w) => w.widgetId === "ticker_information");
-      expect(widget?.data?.mainTicker?.symbol).toBe("AAPL");
+      const widget = widgets.find((w) => w.widgetId === "region_summary");
+      expect(widget?.storage?.params?.region).toBe("north");
     });
   });
 

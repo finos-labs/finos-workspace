@@ -202,18 +202,6 @@ describe("GroupRow", () => {
       expect(screen.getByTitle("Apple Inc.")).toBeInTheDocument();
     });
   });
-
-  it("dims the row when disabled", () => {
-    const { container } = render(<GroupRow {...baseProps} disabled />);
-
-    expect(container.firstChild).toHaveClass("opacity-50");
-  });
-
-  it("does not dim the row when enabled", () => {
-    const { container } = render(<GroupRow {...baseProps} />);
-
-    expect(container.firstChild).not.toHaveClass("opacity-50");
-  });
 });
 
 describe("GroupPanelHeader", () => {

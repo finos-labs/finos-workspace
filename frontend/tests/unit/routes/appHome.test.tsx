@@ -75,7 +75,7 @@ describe("MenuHomePage", () => {
       </BrowserRouter>,
     );
 
-    expect(screen.queryByText("Workspace Documentation")).not.toBeInTheDocument();
+    expect(screen.queryByText("FINOS Workspace Documentation")).not.toBeInTheDocument();
   });
 
   it("renders documentation link when FF is enabled", () => {
@@ -87,7 +87,7 @@ describe("MenuHomePage", () => {
       </BrowserRouter>,
     );
 
-    expect(screen.getByText("Workspace Documentation")).toBeInTheDocument();
+    expect(screen.getByText("FINOS Workspace Documentation")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /read documentation/i }),
     ).toBeInTheDocument();

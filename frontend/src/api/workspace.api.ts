@@ -1,7 +1,7 @@
 import type { Layout } from "react-grid-layout";
 import { useGetWidgetsStore } from "~/components/AI/hooks/useGetAppWidgets";
 import { getWidgetOrigin } from "~/components/AI/hooks/utils";
-import type { ParamDef, StoredParamValue, Ticker, WidgetT } from "~/components/types";
+import type { ParamDef, StoredParamValue, WidgetT } from "~/components/types";
 import type { WidgetId } from "~/components/Widgets";
 import { DASHBOARD_LOCKED_MESSAGE, useAppStore } from "~/lib/state/app";
 import { useCopilotDataStore } from "~/lib/state/copilotData";
@@ -327,38 +327,11 @@ async function updateWidget(
 ): Promise<void> {
   const widget = getDashboardWidgetOrThrow(dashboardId, widgetUuid);
 
-  const tickerParam = widget.params?.find((p) => p.type === "ticker");
-  let mainTicker: Ticker | undefined;
-  if (tickerParam) {
-    const tickerValue = config.dataArgs?.[tickerParam.paramName];
-    if (tickerValue && tickerValue !== "null") {
-      const symbol = String(tickerValue);
-      mainTicker = {
-        ...(widget.data?.mainTicker ?? {}),
-        id: symbol.replace(/[\^$]/g, ""),
-        symbol,
-        category: widget.data?.mainTicker?.category ?? "equity",
-        type: widget.data?.mainTicker?.type ?? "stock",
-      };
-    }
-  }
-
-  const applyUpdate = (w: WidgetT) => {
-    const updatedWidget = updateWidgetState(w, config);
-    if (mainTicker) {
-      updatedWidget.data = {
-        ...updatedWidget.data,
-        mainTicker,
-      };
-    }
-    return updatedWidget;
-  };
-
-  const persistedWidget = applyUpdate(widget);
+  const persistedWidget = updateWidgetState(widget, config);
   useAppStore.getState().updateWidget(dashboardId, persistedWidget);
 
   const updateFn = (w: WidgetT) => {
-    const updatedWidget = applyUpdate(w);
+    const updatedWidget = updateWidgetState(w, config);
     triggerCustomEvent(
       `updateQueryParams-${widgetUuid}`,
       updatedWidget.storage?.params || {},
@@ -371,7 +344,6 @@ async function updateWidget(
     console.debug("[AI updateWidget]", {
       widgetUuid,
       widgetId: widget.widgetId,
-      newSymbol: mainTicker?.symbol,
       params: persistedWidget.storage?.params,
     });
   }

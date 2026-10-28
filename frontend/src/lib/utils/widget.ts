@@ -54,28 +54,6 @@ export function getJsonWidget(widget: WidgetId | Partial<Widget>): WidgetT | nul
   return cloneDeep({ ...(fromCatalog ?? widget), id, widgetId } as WidgetT);
 }
 
-export function getSupportedAssetClasses(
-  widgetId: WidgetsIds | string | undefined,
-): string[] {
-  return cloneDeep((widgetId && WIDGET_CATALOG[widgetId]?.supportedAssetClasses) || []);
-}
-
-export function getWidgetsWithSupportedAssetClass(
-  assetClass: string,
-  onlyIds: true,
-): WidgetJsonT["widgetId"][];
-export function getWidgetsWithSupportedAssetClass(
-  assetClass: string,
-  onlyIds?: false,
-): WidgetJsonT[];
-export function getWidgetsWithSupportedAssetClass(assetClass: string, onlyIds = false) {
-  return cloneDeep(
-    Object.values(WIDGET_CATALOG)
-      .filter((widget) => widget?.supportedAssetClasses?.includes(assetClass))
-      .map((widget) => (onlyIds ? widget.widgetId : widget)),
-  );
-}
-
 export function getWidgetSourceInfo(widget: Widget | null) {
   const widgetSource = getWidgetDataSource(widget as WidgetT);
 
@@ -103,18 +81,9 @@ export function getWidgetDataSource(widget: Partial<WidgetT> | null): string[] {
 }
 
 export function useWidgetDataSource(): string[] {
-  const mainTicker = useWidgetContext()?.widget?.data?.mainTicker;
-  const widgetFromJSON = useWidgetContext()?.widgetFromJSON;
+  const widgetFromJSON = useWidgetContext()?.widgetFromJSON ?? null;
 
-  const widgetDataSource = useMemo(() => {
-    const widget = {
-      ...widgetFromJSON,
-      data: { ...widgetFromJSON?.data, mainTicker },
-    };
-    return getWidgetDataSource(widget);
-  }, [widgetFromJSON?.widgetId, mainTicker?.exchange]);
-
-  return widgetDataSource;
+  return useMemo(() => getWidgetDataSource(widgetFromJSON), [widgetFromJSON]);
 }
 
 export function extractColumns(data: unknown): string[] | null {

@@ -26,7 +26,7 @@ export default function AdminWidgets() {
   return (
     <SettingsLayout
       title="Widgets"
-      description="Core widget types are part of the Workspace. Plugin widgets come from packages the deployer placed on the server; each is off until approved and enabled."
+      description="Core widget types are part of the FINOS Workspace. Plugin widgets come from packages the deployer placed on the server; each is off until approved and enabled."
       tabs={tabs}
       defaultTab="plugins"
     >

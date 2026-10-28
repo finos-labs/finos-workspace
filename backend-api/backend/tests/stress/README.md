@@ -1,6 +1,6 @@
 # Stress / load tests
 
-A repeatable, multi-user load simulator for the backend + Workspace MCP, plus a launcher that
+A repeatable, multi-user load simulator for the backend + FINOS Workspace MCP, plus a launcher that
 brings up the topology you want to test.
 
 > These are **manual** load tests against a running stack — not part of the pytest suite. The
@@ -12,7 +12,7 @@ brings up the topology you want to test.
 | file | purpose |
 |---|---|
 | `run_stress.sh` | launcher — brings up the MySQL dev stack with a chosen worker count and runs the simulator |
-| `load_simulator.py` | the load generator (realistic multi-user Workspace MCP traffic) |
+| `load_simulator.py` | the load generator (realistic multi-user FINOS Workspace MCP traffic) |
 | `docker-compose.stress.yml` | one parameterized overlay (workers + Prometheus), layered on a base stack |
 
 ## Prerequisites
@@ -69,7 +69,7 @@ origin `ORIGIN` (default `http://localhost:3000`), which must be one of the stac
 Each simulated user logs in, opens a bridge WebSocket (an auto-answering "browser tab"), and loops a
 weighted mix of real endpoints: `validate-and-sync` (once, the dashboard-open aggregation),
 `dash/sync` (save), the read endpoints (`api-source`, `apps`, `shared`, `resource-permissions`),
-`display-settings`, and Workspace MCP tool calls over `/mcp`. A `--mcp-users` pool can add MCP-only
+`display-settings`, and FINOS Workspace MCP tool calls over `/mcp`. A `--mcp-users` pool can add MCP-only
 load to isolate the MCP server's impact on the rest of the API.
 
 ## Reading the output

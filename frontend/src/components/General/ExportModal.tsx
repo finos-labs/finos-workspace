@@ -55,11 +55,11 @@ export default function ExportModal() {
     const formattedDateTime = dayjs().format("YYYY-MM-DD HH:mm");
 
     const groups = isShared ? sharedTab?.data?.groups : tab?.data?.groups || [];
-    const tickersInGroups = (groups || []).map((group) => getGroupLabel(group));
-    const tickersString =
-      tickersInGroups.length > 0 ? `- ${tickersInGroups.join("_")} - ` : "- ";
+    const groupLabels = (groups || []).map((group) => getGroupLabel(group));
+    const groupsString =
+      groupLabels.length > 0 ? `- ${groupLabels.join("_")} - ` : "- ";
 
-    const title = `${formattedDateTime} ${tickersString}${isShared ? sharedTab?.data?.name : tab?.data?.name} report`;
+    const title = `${formattedDateTime} ${groupsString}${isShared ? sharedTab?.data?.name : tab?.data?.name} report`;
 
     return {
       loading: false,

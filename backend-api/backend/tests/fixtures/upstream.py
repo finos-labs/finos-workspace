@@ -41,8 +41,8 @@ def make_certificates(directory: Path, hostname: str = "localhost") -> tuple[Pat
     ca_key = ec.generate_private_key(ec.SECP256R1())
     ca = (
         x509.CertificateBuilder()
-        .subject_name(_name("Workspace test CA"))
-        .issuer_name(_name("Workspace test CA"))
+        .subject_name(_name("FINOS Workspace test CA"))
+        .issuer_name(_name("FINOS Workspace test CA"))
         .public_key(ca_key.public_key())
         .serial_number(x509.random_serial_number())
         .not_valid_before(now - datetime.timedelta(minutes=5))

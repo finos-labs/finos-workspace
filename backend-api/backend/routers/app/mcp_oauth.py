@@ -163,7 +163,7 @@ def create_mcp_http_client(
 mcp_http = create_mcp_http_client()
 
 CALLBACK_PATH = "/oauth/callback"
-CLIENT_NAME = "Workspace"
+CLIENT_NAME = "FINOS Workspace"
 GRANT_TYPES = ["authorization_code", "refresh_token"]
 STATE_LIFETIME = timedelta(minutes=10)
 REFRESH_LOCK_SECONDS = 30

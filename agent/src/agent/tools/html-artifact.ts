@@ -28,7 +28,7 @@ export const htmlArtifactDescription =
   "Render a one-off HTML report or layout in the workspace conversation. " +
   "Use sparingly — prefer a table or chart artifact when the data is structured. " +
   "For flowcharts or other diagrams, use a diagram tool if one is listed; otherwise draw them here. " +
-  "Workspace renders the HTML in a sandboxed iframe that may load nothing by address and runs no script.";
+  "FINOS Workspace renders the HTML in a sandboxed iframe that may load nothing by address and runs no script.";
 
 type HtmlArtifactArgs = z.infer<typeof htmlArtifactSchema>;
 

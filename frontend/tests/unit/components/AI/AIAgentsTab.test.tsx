@@ -134,7 +134,7 @@ vi.mock("~/lib/constants", async (importOriginal) => {
     getDefaultCopilot: () => ({
       id: "default-copilot",
       name: "Copilot",
-      description: "Copilot is the default agent for Workspace.",
+      description: "Copilot is the default agent for FINOS Workspace.",
       image: "/assets/images/brand.png",
     }),
   };
@@ -1085,7 +1085,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       expect(
-        screen.getByText("Copilot is the default agent for Workspace."),
+        screen.getByText("Copilot is the default agent for FINOS Workspace."),
       ).toBeInTheDocument();
     });
 

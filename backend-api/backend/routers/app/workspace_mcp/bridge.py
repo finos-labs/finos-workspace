@@ -28,10 +28,10 @@ PRESENCE_TTL_SECONDS = 45
 SESSION_TTL_SECONDS = 300
 COMPLETED_RESULTS_MAX = 2048
 SESSION_ENDED_CLOSE_CODE = 1008
-SESSION_ENDED_MESSAGE = "The Workspace session that opened the browser bridge has ended."
-NO_BROWSER_MESSAGE = "No active Workspace browser connected"
-SESSION_REPLACED_MESSAGE = "Workspace browser session replaced."
-BROWSER_DISCONNECTED_MESSAGE = "Workspace browser disconnected."
+SESSION_ENDED_MESSAGE = "The FINOS Workspace session that opened the browser bridge has ended."
+NO_BROWSER_MESSAGE = "No active FINOS Workspace browser connected"
+SESSION_REPLACED_MESSAGE = "FINOS Workspace browser session replaced."
+BROWSER_DISCONNECTED_MESSAGE = "FINOS Workspace browser disconnected."
 
 SessionCheck = Callable[[], Awaitable[bool]]
 
@@ -345,10 +345,10 @@ class BridgeSessionManager:
             ok=False,
             command=command_name,
             request_id=request_id,
-            message="Workspace command timed out waiting for the browser.",
+            message="FINOS Workspace command timed out waiting for the browser.",
             error=BridgeError(
                 code="timeout",
-                message="Workspace command timed out waiting for the browser.",
+                message="FINOS Workspace command timed out waiting for the browser.",
                 retryable=True,
             ),
         ).model_dump(mode="json")
@@ -391,7 +391,7 @@ class BridgeSessionManager:
         except asyncio.CancelledError:
             raise
         except Exception as error:
-            logger.exception(f"Workspace MCP Redis listener failed: {error}")
+            logger.exception(f"FINOS Workspace MCP Redis listener failed: {error}")
         finally:
             await pubsub.aclose()
 
@@ -443,7 +443,7 @@ class BridgeSessionManager:
             if payload.get("request_id") == request_id:
                 return payload["result"]
         raise BrowserUnavailableError(
-            "Workspace command timed out waiting for the browser."
+            "FINOS Workspace command timed out waiting for the browser."
         )
 
     async def _get_session(self, session_id: str) -> tuple[UUID, BrowserSession]:

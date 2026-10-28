@@ -54,7 +54,7 @@ describe("the server process", () => {
 });
 
 describe("the MCP server process", () => {
-  it("refuses to fetch the Workspace's files without the Origin the API allows", { timeout: 30_000 }, async () => {
+  it("refuses to fetch the FINOS Workspace's files without the Origin the API allows", { timeout: 30_000 }, async () => {
     const { exited, output } = run(MCP_SERVER, {
       PATH: process.env.PATH ?? "",
       INES_AUTH: "none",

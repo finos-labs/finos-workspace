@@ -47,7 +47,7 @@ export function writePackage(
 
 const BASE = {
   manifestVersion: 1,
-  publisher: { name: "Workspace end-to-end tests" },
+  publisher: { name: "FINOS Workspace end-to-end tests" },
   host: { api: 1, afm: "0.11" },
   entry: { module: "entry.js" },
 };

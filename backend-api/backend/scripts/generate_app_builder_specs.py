@@ -176,7 +176,7 @@ def header_names_block(kit: Node) -> str:
             f"- The name matches {_code(headers['namePattern'])}: 1 to 64 characters of the HTTP token set.",
             f"- Not a name a browser forbids page script to set, which `fetch` drops silently: {forbidden},"
             f" or a name that starts with {prefixes} (compared without case).",
-            f"- Not a name Workspace sets or reserves: {reserved}.",
+            f"- Not a name FINOS Workspace sets or reserves: {reserved}.",
             "- Not a header the backend connection's credentials use; checked when the backend is connected.",
             f"- The value matches {_code(headers['valuePattern'])}: printable ASCII, at most 1,024 characters."
             " Any other value stops the request and the param is shown as invalid.",

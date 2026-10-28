@@ -3,12 +3,10 @@ import { CORE_WIDGET_IDS } from "~/lib/utils/widget";
 import type { SearchDialogState } from "../SearchDialog";
 import type { WidgetItem } from "../WidgetMenu";
 
-const assetClasses = ["all", "equity", "index", "etf"];
-
 export function useFilterWidgets(widgets: WidgetItem[], state: SearchDialogState) {
   const widgetsMemo = useMemo(
     () =>
-      widgets.flatMap((widget) => {
+      widgets.map((widget) => {
         const category =
           widget.category?.toLowerCase() === "others" && widget.external
             ? "my data"
@@ -16,20 +14,6 @@ export function useFilterWidgets(widgets: WidgetItem[], state: SearchDialogState
               ? widget?.category.toLocaleLowerCase()
               : "my data";
 
-        const supportedAssetClasses = widget?.supportedAssetClasses || [];
-        if (assetClasses.some((asset) => supportedAssetClasses.includes(asset))) {
-          if (
-            supportedAssetClasses.length === 1 &&
-            supportedAssetClasses[0] === "all"
-          ) {
-            return { ...widget, category };
-          }
-          return supportedAssetClasses.map((assetClass) => ({
-            ...widget,
-            uniqueId: `${widget.uniqueId}-${assetClass}`,
-            category: assetClass.toLowerCase(),
-          }));
-        }
         return { ...widget, category };
       }),
     [widgets],

@@ -14,7 +14,7 @@ export const getSkillContentSchema = {
 } as const;
 
 export const getSkillContentDescription = describeTool(
-  "Load one skill body from the Workspace skill library.",
+  "Load one skill body from the FINOS Workspace skill library.",
   "Pass the exact skill slug from the latest workspace snapshot.",
 );
 

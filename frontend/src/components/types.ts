@@ -35,7 +35,7 @@ export type GridLayout = {
   [key: GridInnerTab]: GridData[];
 };
 
-export type GroupTypes = "ticker" | "endpointParam" | "param";
+export type GroupTypes = "endpointParam" | "param";
 
 interface GroupBase<T> {
   type: T;
@@ -51,48 +51,14 @@ interface LinkedParamGroup extends GroupBase<"param"> {
   value: StoredParamValue;
 }
 
-interface TickerGroup extends GroupBase<"ticker"> {
-  type: "ticker";
-  value: Ticker | null;
-  acceptAssetClasses?: string[];
-}
-
 interface EndpointParamGroup extends GroupBase<"endpointParam"> {
   type: "endpointParam";
   groupById: string;
   value: StoredParamValue;
 }
 
-export type Group = TickerGroup | EndpointParamGroup | LinkedParamGroup;
+export type Group = EndpointParamGroup | LinkedParamGroup;
 export type GroupTypeT<T extends GroupTypes> = Extract<Group, { type: T }>;
-
-type TickerCategory =
-  | "crypto"
-  | "equity"
-  | "forex"
-  | "index"
-  | "futures"
-  | "derivative"
-  | "country"
-  | "etf";
-
-export type Ticker = {
-  id: string;
-  symbol: string;
-  category: TickerCategory;
-  color?: string;
-  type: "index" | "etf" | "economic" | "stock" | "indices" | "country";
-  name?: string;
-  exchange?: string;
-  currency?: string | null;
-  industry?: string | null;
-  sector?: string | null;
-  country?: string | null;
-  cik?: string | null;
-  isin?: string | null;
-  cusip?: string | null;
-  has_options?: boolean;
-};
 
 export type StoredParamValue =
   | string
@@ -139,15 +105,10 @@ export type Widget = {
   gridData?: GridData;
   showTitle?: boolean;
   exportable?: boolean;
-  groupId?: string | null;
   groupById?: string;
   paramGroups?: { [key: string]: string };
 
-  supportedAssetClasses?: string[];
-  defaultAssetClass?: string;
-
   data?: {
-    mainTicker?: Ticker;
     dataKey?: string;
     rawDataKey?: string;
     rawType?: string;
@@ -228,7 +189,6 @@ export interface WidgetProps {
 type ParamType =
   | "date"
   | "text"
-  | "ticker"
   | "number"
   | "boolean"
   | "endpoint"
@@ -245,7 +205,11 @@ interface BaseParamDef<PT extends ParamType = "text"> {
   label?: string;
   show?: boolean;
   description?: string;
-  options?: { label: string; value: ParamOptionValue }[];
+  options?: {
+    label: string;
+    value: ParamOptionValue;
+    extraInfo?: { description?: string; rightOfDescription?: string };
+  }[];
   multiSelect?: boolean;
   placeholder?: string;
   row?: number;
@@ -266,11 +230,6 @@ interface DateParamDef extends BaseParamDef<"date"> {
   type: "date";
   value?: DateModifierValue;
 }
-interface TickerParamDef extends BaseParamDef<"ticker"> {
-  type: "ticker";
-  value?: Ticker["symbol"];
-}
-
 interface NumberParamDef extends BaseParamDef<"number"> {
   type: "number";
   value?: number;
@@ -302,7 +261,7 @@ interface TabsParamDef extends BaseParamDef<"tabs"> {
 }
 
 type FormInputType = "date" | "boolean" | "endpoint" | "number" | "text" | "button";
-export type FormInputParamDef = Exclude<ParamDef, { type: "form" | "ticker" | "tabs" }>;
+export type FormInputParamDef = Exclude<ParamDef, { type: "form" | "tabs" }>;
 
 export type FormInputParamDefT<T extends FormInputType = FormInputType> = Extract<
   FormInputParamDef,
@@ -317,13 +276,12 @@ interface FormParamDef extends BaseParamDef<"form"> {
 }
 
 // biome-ignore format: on
-export type ParamDef = TextParamDef | TickerParamDef | DateParamDef | NumberParamDef | BooleanParamDef | EndpointParamDef | FormParamDef | FormButton | TabsParamDef;
+export type ParamDef = TextParamDef | DateParamDef | NumberParamDef | BooleanParamDef | EndpointParamDef | FormParamDef | FormButton | TabsParamDef;
 export type ParamDefT<T extends ParamType> = Extract<ParamDef, { type: T }>;
 
 export type {
   GridData as GridDataT,
   GridLayout as GridLayoutT,
   Group as GroupT,
-  Ticker as TickerT,
   WidgetT,
 };

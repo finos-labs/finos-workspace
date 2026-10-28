@@ -20,7 +20,7 @@ export const readWidgetSchema = {
     .string()
     .optional()
     .describe(
-      "Target dashboard UUID. Omit to target the current Workspace route.",
+      "Target dashboard UUID. Omit to target the current FINOS Workspace route.",
     ),
 } as const;
 

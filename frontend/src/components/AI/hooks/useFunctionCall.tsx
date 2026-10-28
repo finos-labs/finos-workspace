@@ -210,7 +210,7 @@ async function responseToCopilotError(
     case 404:
       return new CopilotError(
         CopilotErrorType.GATEWAY_ERROR,
-        `${context} hit '${endpoint}' and returned HTTP 404. Re-check the resource identifier or query arguments, and confirm this data source is available in Workspace.${bodySuffix}`,
+        `${context} hit '${endpoint}' and returned HTTP 404. Re-check the resource identifier or query arguments, and confirm this data source is available in FINOS Workspace.${bodySuffix}`,
       );
     case 422:
       return new CopilotError(

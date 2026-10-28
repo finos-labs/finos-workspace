@@ -56,7 +56,7 @@ export function createApp(services: Services): Hono<AppEnv> {
   app.route("/", createStatusRouter(services.store));
   app.get("/ready", async (c) => {
     if (workspace && !(await workspace.ready())) {
-      return c.json({ status: "not ready", reason: "the Workspace API does not answer" }, 503);
+      return c.json({ status: "not ready", reason: "the FINOS Workspace API does not answer" }, 503);
     }
     return c.json({ status: "ready" });
   });

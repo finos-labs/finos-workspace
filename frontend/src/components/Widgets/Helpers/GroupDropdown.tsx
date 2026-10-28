@@ -15,7 +15,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { toast } from "sonner";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/SpecialTooltip";
 import type { Group, GroupTypes, ParamDef, Widget } from "~/components/types";
@@ -38,8 +37,6 @@ import {
   getGroupInfo,
   getGroupKindLabel,
   getGroupLabel,
-  getJsonWidget,
-  getWidgetsWithSupportedAssetClass,
   scoreArrays,
   triggerCustomEvent,
   useEventListener,
@@ -58,11 +55,6 @@ interface GroupDropdownProps {
   className?: string;
 }
 
-const GROUP_TYPE: Record<string, "endpointParam" | "ticker" | undefined> = {
-  endpoint: "endpointParam",
-  ticker: "ticker",
-};
-
 export const GroupDropdownAnchorContext =
   createContext<RefObject<HTMLDivElement | null> | null>(null);
 
@@ -72,7 +64,7 @@ const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
     _ref,
   ) => {
     const {
-      widget: { id: widgetUuid, paramGroups, groupId } = {},
+      widget: { id: widgetUuid, paramGroups } = {},
       activeDashboardId,
       widgetFromJSON,
     } = useWidgetContext();
@@ -93,7 +85,7 @@ const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
       }
 
       if (!newProps.type && paramDef) {
-        newProps.type = GROUP_TYPE[paramDef.type] || "param";
+        newProps.type = paramDef.type === "endpoint" ? "endpointParam" : "param";
       }
 
       return newProps;
@@ -105,9 +97,7 @@ const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
       if (!paramDef) {
         const paramName = props?.groupById;
         const param = params?.find(
-          (param) =>
-            param.paramName === paramName &&
-            !["ticker", "endpoint"].includes(param.type),
+          (param) => param.paramName === paramName && param.type !== "endpoint",
         );
         return param?.options?.map((o) => o.value) || [];
       }
@@ -135,12 +125,9 @@ const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
         const { groups, currentTabParams, currentEndpointParams } = params;
         const paramName = props?.groupById ?? "";
 
-        const group = groups?.find((group) => {
-          if (["param", "endpointParam"].includes(props.type ?? ""))
-            return group.type === props.type && paramGroups?.[paramName] === group.id;
-
-          return group.id === groupId && group.type === props.type;
-        });
+        const group = groups?.find(
+          (group) => group.type === props.type && paramGroups?.[paramName] === group.id,
+        );
 
         let canGroup = !!activeDashboardId;
         if (props.type === "param" && canGroup) {
@@ -162,14 +149,7 @@ const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
         const groupTextColor = getContrastTextColor(group?.color ?? "");
         return { canGroup, group, groupTextColor };
       },
-      [
-        activeDashboardId,
-        paramGroups,
-        groupId,
-        props.type,
-        props?.groupById,
-        optionValues,
-      ],
+      [activeDashboardId, paramGroups, props.type, props?.groupById, optionValues],
     );
 
     useEffect(() => {
@@ -393,10 +373,6 @@ export default memo(GroupDropdown);
 function GroupContent(props: Omit<GroupDropdownProps, "children">) {
   const { type, groupById, paramDef } = props;
 
-  const EXCEPTION_WIDGETS_IDS = useMemo(
-    () => getWidgetsWithSupportedAssetClass("all", true),
-    [],
-  );
   const { widget, activeDashboardId } = useWidgetContext();
 
   const getDashboardById = useShallowSharedAppStore((s) => s.getDashboardById);
@@ -428,38 +404,6 @@ function GroupContent(props: Omit<GroupDropdownProps, "children">) {
     return group.type === type;
   });
 
-  const widgetAssetClasses = useMemo(() => {
-    const widgetFromJSON = getJsonWidget(widget);
-
-    return widget?.supportedAssetClasses || widgetFromJSON?.supportedAssetClasses || [];
-  }, [widget?.supportedAssetClasses, widget?.widgetId]);
-
-  const validateAssetClass = useCallback(
-    (group: Group) => {
-      if (group.type === "param") return group.groupById === groupById;
-
-      if (paramDef?.type === "endpoint" && group.type === "endpointParam")
-        return [widget?.groupById, paramDef?.groupById].includes(group?.groupById);
-
-      if (group.type !== "ticker") return false;
-
-      const isOptions =
-        widgetAssetClasses.includes("options") && group?.value?.has_options;
-
-      if (group.acceptAssetClasses?.includes("all") || isOptions) return true;
-      if (EXCEPTION_WIDGETS_IDS.includes(widget?.widgetId)) {
-        return true;
-      }
-      if (!widgetAssetClasses || widgetAssetClasses.length === 0) {
-        return true;
-      }
-
-      return [group?.value?.category ?? "", "all"].some((type) =>
-        widgetAssetClasses.includes(type),
-      );
-    },
-    [widget?.groupById, widget?.widgetId, widgetAssetClasses, groupById, paramDef],
-  );
   const debouncedUpdateGroup = useCallback(debounce(updateGroup, 500), [updateGroup]);
 
   const groupElements = useMemo(
@@ -468,24 +412,18 @@ function GroupContent(props: Omit<GroupDropdownProps, "children">) {
         <GroupContentItem
           key={element.id}
           element={element}
-          validateAssetClass={validateAssetClass}
           updateGroup={debouncedUpdateGroup}
         />
       )),
-    [validGroups, validateAssetClass, debouncedUpdateGroup],
+    [validGroups, debouncedUpdateGroup],
   );
 
   const onClick = useCallback(() => {
-    if (!widget.data?.mainTicker?.symbol && type === "ticker") {
-      toast.error("Please select a widget with a ticker to create a group");
-      return;
-    }
-
-    const newGroup = getNewGroup(widget, groups, widgetAssetClasses, type, groupById);
+    const newGroup = getNewGroup(widget, groups, type, groupById);
 
     addGroup(activeDashboardId, newGroup);
     setWidgetGroupId(activeDashboardId, widget?.id, newGroup);
-  }, [widget, groups, widgetAssetClasses, type, groupById]);
+  }, [widget, groups, type, groupById]);
 
   return (
     <div className="flex flex-col gap-2 group-dropdown">
@@ -506,24 +444,19 @@ function GroupContent(props: Omit<GroupDropdownProps, "children">) {
 const GroupContentItem = memo(
   (props: {
     element: Group;
-    validateAssetClass: (group: Group) => boolean;
     updateGroup: (tabId: string, groupId: string, group: Group) => void;
   }) => {
-    const { element, validateAssetClass, updateGroup } = props;
+    const { element, updateGroup } = props;
 
-    const {
-      widget: { external, paramGroups, groupId, id: widgetUUid } = {},
-      activeDashboardId,
-    } = useWidgetContext();
-    const groupedInfo = useMemo(() => {
-      const canGroup = validateAssetClass(element);
-      const groupedValue = getGroupLabel(element);
-
-      const selected =
-        Object.values(paramGroups || {}).includes(element.id) || groupId === element.id;
-
-      return { canGroup, groupedValue, selected };
-    }, [element, validateAssetClass, paramGroups, groupId]);
+    const { widget: { paramGroups, id: widgetUUid } = {}, activeDashboardId } =
+      useWidgetContext();
+    const groupedInfo = useMemo(
+      () => ({
+        groupedValue: getGroupLabel(element),
+        selected: Object.values(paramGroups || {}).includes(element.id),
+      }),
+      [element, paramGroups],
+    );
 
     const { setWidgetGroupId, deleteGroup } = useShallowAppStore((state) => ({
       setWidgetGroupId: state.setWidgetGroupId,
@@ -535,51 +468,23 @@ const GroupContentItem = memo(
         e.stopPropagation();
         e.preventDefault();
 
-        const { canGroup, selected } = groupedInfo;
-
-        if (!canGroup && external) {
-          toast.error("Widget from a different asset class", {
-            description:
-              "Widgets can only be grouped together if they share the same endpoint parameters.",
-          });
-          return;
-        }
-
-        if (!canGroup) {
-          toast.error("Widget from a different asset class", {
-            description: `Widgets can only be grouped together if they belong to the same asset class,
-              with the exception of News, Price Performance, and Watchlist`,
-          });
-          return;
-        }
-
         if (!(activeDashboardId && widgetUUid)) return;
 
-        if (selected) {
+        if (groupedInfo.selected) {
           return setWidgetGroupId(activeDashboardId, widgetUUid, element, true);
         }
 
         setWidgetGroupId(activeDashboardId, widgetUUid, element);
       },
-      [
-        groupedInfo,
-        deleteGroup,
-        element,
-        updateGroup,
-        external,
-        widgetUUid,
-        activeDashboardId,
-      ],
+      [groupedInfo, element, widgetUUid, activeDashboardId],
     );
 
     const onDeleteGroupClick = useCallback(() => {
       const widgetsInGroup = useAppStore
         .getState()
         .getTabById(activeDashboardId)
-        ?.data?.widgets.filter(
-          (w) =>
-            w.groupId === element.id ||
-            Object.values(w.paramGroups || {}).includes(element.id),
+        ?.data?.widgets.filter((w) =>
+          Object.values(w.paramGroups || {}).includes(element.id),
         );
 
       if ((widgetsInGroup?.length ?? 0) > 0) {
@@ -625,7 +530,6 @@ const GroupContentItem = memo(
           onToggleSelect={onCheckboxClick}
           onColorChange={onColorChange}
           onDelete={onDeleteGroupClick}
-          disabled={!groupedInfo?.canGroup}
         />
       ),
       [
@@ -633,27 +537,19 @@ const GroupContentItem = memo(
         element.color,
         groupedInfo?.groupedValue,
         groupedInfo?.selected,
-        groupedInfo?.canGroup,
         onCheckboxClick,
         onColorChange,
         onDeleteGroupClick,
       ],
     );
 
-    return groupedInfo?.canGroup ? (
-      <Fragment key={element.id}>{content}</Fragment>
-    ) : (
-      <Tooltip key={element.id} message="Group from different asset class">
-        <div>{content}</div>
-      </Tooltip>
-    );
+    return <Fragment key={element.id}>{content}</Fragment>;
   },
 );
 
 function getNewGroup(
   widget: Widget,
   groups: Group[],
-  widgetAssetClasses?: string[],
   type?: GroupTypes,
   groupById?: string,
 ): Group {
@@ -685,32 +581,20 @@ function getNewGroup(
   }
   const newGroup = { id: uuidv4(), name: newGroupName, color };
 
-  if (type === "param") {
-    return {
-      ...newGroup,
-      type: "param",
-      groupById,
-      value: (groupById ? widget?.storage?.params?.[groupById] : undefined) ?? null,
-    } as Group;
-  }
-
   if (type === "endpointParam") {
     const paramName = getEndpointParamName(getEndpointParams(widget), groupById);
-
-    if (paramName) {
-      return {
-        ...newGroup,
-        type: "endpointParam",
-        groupById,
-        value: widget?.storage?.params?.[paramName] ?? null,
-      } as Group;
-    }
+    return {
+      ...newGroup,
+      type: "endpointParam",
+      groupById,
+      value: (paramName ? widget?.storage?.params?.[paramName] : undefined) ?? null,
+    } as Group;
   }
 
   return {
     ...newGroup,
-    type: "ticker",
-    value: widget.data?.mainTicker,
-    acceptAssetClasses: widgetAssetClasses,
+    type: "param",
+    groupById,
+    value: (groupById ? widget?.storage?.params?.[groupById] : undefined) ?? null,
   } as Group;
 }

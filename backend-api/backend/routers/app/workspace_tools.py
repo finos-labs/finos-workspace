@@ -58,7 +58,7 @@ class _CommandCapture:
         model = workspace_command_adapter.validate_python(command)
         commands = _commands.get()
         if commands is None:
-            raise RuntimeError("A Workspace tool ran outside of a call.")
+            raise RuntimeError("A FINOS Workspace tool ran outside of a call.")
         commands.append(model.model_dump(mode="json"))
         return WorkspaceCommandResult(ok=True, command=model.command, message="")
 

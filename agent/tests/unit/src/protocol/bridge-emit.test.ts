@@ -13,7 +13,7 @@ describe("SSE_BRIDGE_COMMANDS", () => {
     }
   });
 
-  it("are exactly the Workspace SSE-equivalent surface", () => {
+  it("are exactly the FINOS Workspace SSE-equivalent surface", () => {
     expect([...SSE_BRIDGE_COMMANDS].sort()).toEqual([
       "add_generative_widget",
       "add_widget_to_dashboard",

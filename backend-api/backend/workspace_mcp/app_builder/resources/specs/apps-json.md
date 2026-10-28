@@ -21,7 +21,7 @@ The `/apps.json` endpoint MUST return a JSON **array** of app objects:
 [ { "...app object..." }, { "...app object..." } ]
 ```
 
-Serve an array even for one app. Workspace reads a single object as an array of one app, but the contract is an array.
+Serve an array even for one app. FINOS Workspace reads a single object as an array of one app, but the contract is an array.
 
 > **Schema vs served format.** Some validators describe a schema for *one* app object. The `/apps.json` endpoint serves an **array** of these objects. Validate each array element against the per-app schema individually.
 
@@ -33,13 +33,13 @@ Serve an array even for one app. Workspace reads a single object as an array of 
 | `tabs` | Yes | Object keyed by tab id; each value has `id`, `name`, `layout`. |
 | `description` | Recommended | Shown in the app gallery. |
 | `img`, `img_dark`, `img_light` | Recommended | App gallery image URLs. Prefer populated values: a stable hosted image URL or a backend-served `/thumbnails/{name}` SVG/PNG. Empty string `""` is acceptable only as a fallback. |
-| `allowCustomization` | Optional | Boolean. `false` locks the dashboards that Workspace creates from the app: users cannot add, remove, duplicate or move their widgets or edit their tabs, but can still change parameters and resize widgets. `true`, or no value, lets users change the dashboard freely. |
+| `allowCustomization` | Optional | Boolean. `false` locks the dashboards that FINOS Workspace creates from the app: users cannot add, remove, duplicate or move their widgets or edit their tabs, but can still change parameters and resize widgets. `true`, or no value, lets users change the dashboard freely. |
 | `groups` | Optional | Array of parameter sync groups. Leave it out when none are needed. |
 | `prompts` | Optional | Array of suggested prompts for the agent. Leave it out when none are needed. |
 | `id` | Optional | If set, must match `^custom-.+`. Plain strings are rejected. |
 | `mcpServers` | Optional | MCP servers of this backend: see "MCP servers" below. |
 
-`allowCustomization`, `groups` and `prompts` are all optional: Workspace accepts an app that leaves them out.
+`allowCustomization`, `groups` and `prompts` are all optional: FINOS Workspace accepts an app that leaves them out.
 
 ## Tab shape
 
@@ -87,13 +87,12 @@ Coordinates are on a 40-column grid — see `workspace://specs/layout-grid`.
 `groups` synchronizes a parameter across multiple widgets. The runtime is strict about three things:
 
 1. **A widget joins a group by its `name`.** The `name` in `groups` and the name in the layout item's `groups` must be the same text, and any text works. `Group 1` is only the name that the UI gives a new group. A group has no `description` or `category`: its keys are `name`, `type`, `paramName`, `widgetIds` and `defaultValue`.
-2. **Group `type` must match how the underlying widget's param is defined in `widgets.json`.** The schema accepts any string; the runtime accepts a closed set:
+2. **Group `type` must match how the underlying widget's param is defined in `widgets.json`.** It is one of two values:
 
    | `groups[].type` | Use when widget param is | `paramName` |
    |---|---|---|
    | `"param"` | static dropdown — `type: "text"` with inline `options` | required |
    | `"endpointParam"` | dynamic dropdown — `type: "endpoint"` with `optionsEndpoint` | required |
-   | `"ticker"` | a `ticker` param, whose value is a ticker symbol (no `optionsEndpoint`) | omit |
 
 3. **Three places must agree:** the group's `widgetIds`, every participating widget's layout `groups: [...]`, and the widget's own param config (matching `paramName` and option source).
 
@@ -109,7 +108,7 @@ Group object shape:
 }
 ```
 
-> **Implicit auto-sync.** Workspace also auto-links widgets that share an identical `paramName` plus matching `options`/`optionsEndpoint`, even with no entry in `groups`. The explicit `groups` entry layers a named, user-toggleable group on top — useful when you want users to see and disable the linkage from the UI. If you don't need that affordance, matching `paramName` + `optionsEndpoint` is enough.
+> **Implicit auto-sync.** FINOS Workspace also auto-links widgets that share an identical `paramName` plus matching `options`/`optionsEndpoint`, even with no entry in `groups`. The explicit `groups` entry layers a named, user-toggleable group on top — useful when you want users to see and disable the linkage from the UI. If you don't need that affordance, matching `paramName` + `optionsEndpoint` is enough.
 
 ## Layout item `state`
 
@@ -119,11 +118,12 @@ Optional. Pre-configures how a widget displays inside this app template. Common 
 - `paramOrder` — render order for the widget's parameter panel.
 - `storage.text` and `storage.html` — the text of a note, the HTML of an HTML widget.
 - `storage.plugin.config` — the configuration of a widget whose type a widget plugin renders. It is checked against that plugin's settings when the backend loads: a key the settings do not define, a value they refuse, or a configuration for a widget no plugin renders leaves the app out, with the path of each problem.
-`state` is an open object, so a key that this list does not name is kept in the file, but nothing reads it. Render the app in Workspace and confirm that a default takes effect before you rely on it.
+
+`state` is an open object, so a key that this list does not name is kept in the file, but nothing reads it. Render the app in FINOS Workspace and confirm that a default takes effect before you rely on it.
 
 ## MCP servers
 
-An app can declare MCP servers that belong to this backend. When the backend is connected, Workspace registers each one for the user, with the backend connection's header credentials; the user connects it (an OAuth server asks for consent first), and their roles decide which tools the AI Agent may use.
+An app can declare MCP servers that belong to this backend. When the backend is connected, FINOS Workspace registers each one for the user, with the backend connection's header credentials; the user connects it (an OAuth server asks for consent first), and their roles decide which tools the AI Agent may use.
 
 ```json
 "mcpServers": [

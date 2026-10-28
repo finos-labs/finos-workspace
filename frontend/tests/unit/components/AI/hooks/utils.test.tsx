@@ -440,7 +440,7 @@ describe("createSignatureMap", () => {
     const widgets = [
       createTestWidget({
         id: "workspace-widget",
-        name: "Workspace Widget",
+        name: "FINOS Workspace Widget",
         type: "iframe",
         widgetId: "iframe-123",
       }),
@@ -547,7 +547,7 @@ describe("createSignatureMap", () => {
     it("should ensure widgetId logic follows origin-based rules", () => {
       const workspaceWidget = createTestWidget({
         id: "workspace-1",
-        name: "Workspace Widget",
+        name: "FINOS Workspace Widget",
         type: "iframe",
         widgetId: "iframe-123",
       });

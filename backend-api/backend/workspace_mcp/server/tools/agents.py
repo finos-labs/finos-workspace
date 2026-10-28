@@ -15,7 +15,7 @@ from workspace_mcp.server._helpers import CommandRunner, ToolResponse
 def register(server: FastMCP, run: CommandRunner) -> None:
     @server.tool(
         description=describe_tool(
-            "Assign tasks to configured external Workspace agents.",
+            "Assign tasks to configured external FINOS Workspace agents.",
             (
                 "Get assigned_holder_url and assigned_agent_id from "
                 "get_workspace_snapshot; do not invent them."
@@ -42,7 +42,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
 
     @server.tool(
         description=describe_tool(
-            "Load one skill body from the Workspace skill library.",
+            "Load one skill body from the FINOS Workspace skill library.",
         )
     )
     async def get_skill_content(

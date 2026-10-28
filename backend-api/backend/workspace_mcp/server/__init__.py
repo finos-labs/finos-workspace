@@ -64,7 +64,7 @@ def create_mcp_server(
     auth: AuthProvider | None = None,
 ) -> FastMCP:
     server = FastMCP(
-        name="Workspace MCP",
+        name="FINOS Workspace MCP",
         instructions=SERVER_INSTRUCTIONS,
         lifespan=lifespan,
         auth=auth,
@@ -96,7 +96,7 @@ def create_mcp_server(
 
     @server.prompt(
         name="workspace_tool_usage",
-        description="Generic guidance for using the Workspace MCP tool surface.",
+        description="Generic guidance for using the FINOS Workspace MCP tool surface.",
     )
     def workspace_tool_usage() -> list[Message]:
         return [
@@ -106,7 +106,7 @@ def create_mcp_server(
 
     @server.prompt(
         name="workspace_session_context",
-        description="Current tracked Workspace dashboard and tab context.",
+        description="Current tracked FINOS Workspace dashboard and tab context.",
     )
     def workspace_session_context() -> list[Message]:
         return [Message(session_context_prompt_content(state), role="user")]
@@ -144,7 +144,7 @@ def create_mcp_server(
         description=(
             "The JSON Schema a backend's widgets.json is validated against for the "
             "signed-in user: the built-in types and the plugin types enabled for their "
-            "organization, every key and value closed. Read from the user's Workspace "
+            "organization, every key and value closed. Read from the user's FINOS Workspace "
             "session, so it needs the browser connected."
         ),
         mime_type="application/schema+json",
