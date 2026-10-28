@@ -1,0 +1,106 @@
+---
+title: FINOS Workspace API
+sidebar_position: 1
+---
+
+import { ApiMetrics, ApiTag } from "@site/src/components/Reference/api";
+import { SettingConstant, SettingDefault } from "@site/src/components/Reference/config";
+
+# FINOS Workspace API
+
+The FINOS Workspace API is the FastAPI application in `backend-api/backend` that the web app, the worker, the FINOS Workspace MCP server and the admin tools talk to. This page lists its routes, grouped by the tag that each router gives them. For each route it shows the method and path, what the route does, the parameters, the request body and the responses. The request and response types link to [FINOS Workspace API schemas](workspace-api-schemas.mdx).
+
+The API does not serve interactive documentation. It sets `docs_url`, `redoc_url` and `openapi_url` to `None`, so this page is the reference. A request whose path, query or body does not validate receives the status 422 with FastAPI's standard error body, which lists each invalid field, and the routes below do not repeat it.
+
+## How requests are authenticated
+
+A signed-in browser holds a session in the HttpOnly, secure and same-site cookie `__Host-ws_session`, and the web app marks its requests with the header `X-Workspace-Client: web`. A request that cannot be authenticated receives the status 401 with the detail "Could not validate credentials". The API sets every response to a request that carries credentials with `Cache-Control: no-store`, so that no cache keeps it. Some routes need more than a session, and they answer 403 when the user lacks the role. The routes under `/admin` need a user of type Admin, and the routes under `/plugins` need a superuser.
+
+Every HTTP and WebSocket request must come from an allowed origin. The API allows the origins that are listed in `BACKEND_CORS_ORIGINS` and the origins that match `BACKEND_CORS_ORIGIN_REGEX`. It refuses any other request, including a request without an `Origin` header, with the status 403 and the detail "Requests must come from an allowed origin", and it closes a WebSocket with code 1008. The paths `/health` and `/healthz` are the only exceptions.
+
+Routes that apply a rate limit allow <SettingConstant name="rateLimitDefault" /> for each client address by default, and a few sensitive routes allow <SettingConstant name="rateLimitFew" />. A request that carries a valid service token in the header `X-Workspace-Authorization` is exempt from the limits when the deployment turns that exemption on with `RATE_LIMIT_EXEMPT_ENABLED`.
+
+The routes below leave out `/metrics`, because that route exists only when the `PROMETHEUS` setting is on. [Metrics](#metrics) describes it.
+
+## admin
+
+The routes under `/admin` let an organization's admin manage its users and invitations, password and two-factor resets, roles and their permissions with the audit log, apps, theme settings and presets, and the organization's own settings. They require a user of type Admin.
+
+<ApiTag tag="admin" schemaPage="/technical-guide/reference/http-api/workspace-api-schemas" />
+
+## app
+
+These routes are under `/app` and carry no other tag. They serve the signed-in web app with the user's access and two-factor settings, the Copilot's chats, keys, access and tokens, the organization's theme settings, the user's MCP servers and other per-user data.
+
+<ApiTag tag="app" schemaPage="/technical-guide/reference/http-api/workspace-api-schemas" />
+
+## app-dash
+
+The routes under `/app/dash` synchronize the user's dashboards, show their versions, and manage how a dashboard is shared with other users and with the organization.
+
+<ApiTag tag="app-dash" schemaPage="/technical-guide/reference/http-api/workspace-api-schemas" />
+
+## app-data-connectors
+
+The routes under `/app/data-connectors` manage the backends and the file widgets that a user connects, and list the files that the user has stored.
+
+<ApiTag tag="app-data-connectors" schemaPage="/technical-guide/reference/http-api/workspace-api-schemas" />
+
+## app-file-storage
+
+The routes under `/app/files` upload, download and delete files, and hand out signed links to them.
+
+<ApiTag tag="app-file-storage" schemaPage="/technical-guide/reference/http-api/workspace-api-schemas" />
+
+## app-user-apps
+
+The routes under `/app/user-apps` synchronize, save, delete and share the apps of a user.
+
+<ApiTag tag="app-user-apps" schemaPage="/technical-guide/reference/http-api/workspace-api-schemas" />
+
+## auth
+
+These routes set up two-factor authentication under `/totp`, and let a user change or delete their own account under `/user`.
+
+<ApiTag tag="auth" schemaPage="/technical-guide/reference/http-api/workspace-api-schemas" />
+
+## entity
+
+The routes under `/entity` manage organizations, which the API calls entities, together with their permission maps, roles and data backends, and they register administrators. They require a superuser.
+
+<ApiTag tag="entity" schemaPage="/technical-guide/reference/http-api/workspace-api-schemas" />
+
+## widget-plugins
+
+These are the widget plugin routes. Superuser routes are under `/plugins`, organization admin routes are under `/admin/plugins`, member routes are under `/app/widget-plugins`, and the backends' data route is under `/internal/plugin-broker`. [Plugin lifecycle and administration](../../../plugins/reference/lifecycle.mdx) explains how they fit together.
+
+<ApiTag tag="widget-plugins" schemaPage="/technical-guide/reference/http-api/workspace-api-schemas" />
+
+## workspace-mcp
+
+These routes manage the personal access tokens and the bridge session of the FINOS Workspace MCP server, which [FINOS Workspace MCP server](../../../mcp/reference/tools.mdx) describes.
+
+<ApiTag tag="workspace-mcp" schemaPage="/technical-guide/reference/http-api/workspace-api-schemas" />
+
+## workspace-tools
+
+These routes list the FINOS Workspace's own tools for the embedded agent and prepare a call to one of them.
+
+<ApiTag tag="workspace-tools" schemaPage="/technical-guide/reference/http-api/workspace-api-schemas" />
+
+## service
+
+These routes carry no tag. They are the root path and the two health checks, `/health` and `/healthz`.
+
+<ApiTag tag="service" schemaPage="/technical-guide/reference/http-api/workspace-api-schemas" />
+
+## Metrics
+
+The setting `PROMETHEUS` turns the metrics on. It is off by default, and with it off the API has no `/metrics` route and does not sample its runtime. With it on, the API serves metrics in Prometheus's text format in two places, and both show all its worker processes together.
+
+- **`GET /metrics` on the API's port.** The route passes through the origin check like every other route, so a request without an allowed `Origin` header receives the status 403. The API compresses the answer with gzip when the client accepts it.
+- **A second listener on port <SettingConstant name="prometheusListenerPort" unit="raw" />.** The main process of the web server serves it, and it checks neither the origin nor a token. A scraper uses this port.
+
+The API runs several worker processes, and each one writes its counters to files that the answer reads, so the counters and the histograms are the totals of the whole API, and a worker that the server replaces leaves its counts in them. The gauges of the runtime metrics describe one worker's event loop, thread pool and database pools, so they have one series for each live worker, which the label `pid` tells apart. The runtime metrics are sampled every `RUNTIME_METRICS_INTERVAL` seconds, <SettingDefault name="RUNTIME_METRICS_INTERVAL" unit="s" /> by default. The API serves the metrics below and the metrics of the widget plugins, which [Plugin lifecycle and administration](../../../plugins/reference/lifecycle.mdx) lists, and no others.
+
+<ApiMetrics />

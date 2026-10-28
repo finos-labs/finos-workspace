@@ -1,0 +1,98 @@
+---
+title: Plugin lifecycle and administration
+sidebar_position: 7
+---
+
+import { PluginList, PluginMetrics, PluginStates, PluginValue } from "@site/src/components/Reference/plugins";
+
+# Plugin lifecycle and administration
+
+This page describes the steps that a plugin version goes through, the states that it can be in, and the places where admins work with plugins.
+
+## Lifecycle
+
+A plugin version moves through five steps before users see its widgets.
+
+1. The deployer places the version in `<WIDGET_PLUGINS_DIR>/<plugin-id>/<version>/`.
+2. A superuser rescans, either in Admin, Widgets, Deployment or with the command `plugin rescan`. The new version then becomes `discovered`, or it becomes `blocked` together with the reason.
+3. The superuser reviews the version and approves it. Every request that the version adds to what the active version already asked for needs its own acknowledgement. Such a request can be a permission, a frame source, a server host, a proxy, a secret, a backend route, a data source or the pseudonymous id. The approval binds to the digest that the superuser reviewed, and the first approval enables the plugin at the deployment.
+4. An organization admin enables the plugin for the organization in Admin, Widgets, Plugin widgets. The admin then grants the plugin's widget types to roles in Admin, Roles and Access, using the role's Widget plugins action.
+5. Members of those roles can now use the plugin. Backend widgets of the types that the plugin handles render through it, and its standalone widgets appear in Add widget.
+
+A new version directory starts as `discovered` and waits. The active version keeps serving until a superuser approves the new version, and that approval retires the old one. The organization's settings and the role grants carry over to the new version. On a local stack, a superuser can start the next version from an approved one, as [Developing on a local stack](#developing-on-a-local-stack) describes.
+
+## States
+
+A plugin has one of these states:
+
+<PluginStates kind="plugin" />
+
+A version has one of these states:
+
+<PluginStates kind="version" />
+
+A rescan reads every version directory. It refuses symbolic links, odd file names and anything above the caps. It parses and validates the manifest, hashes every file, checks the manifest's `checksum` and any pin, and records what it found. A remote import in the entry module, or `eval` without `'unsafe-eval'`, produces a warning that does not block the version. Before the API serves a file, it hashes the file again whenever the file's size or modification time has changed, and a file that no longer matches blocks its version. The API scans only when someone asks, and never at startup.
+
+## Developing on a local stack
+
+A developer works on a version on their own machine, where `MODE` is `local`. The repository's `local/compose.yaml` sets that value, and every other stack, including the stacks that are built from the `develop` and `main` branches, runs with `MODE=production`. On those stacks the route that starts a version refuses, and no version is served from files that change. The feature works like `pip install -e`, because the app uses the files where they are.
+
+1. On the plugin's Deployment page, the actions Patch, Minor and Major copy the active version to the next version number after the highest that the plugin has. They rewrite the copy's `version` and `checksum`, and they mark the copy `development`. The plugins directory must be writable for this, and only one version of a plugin is in development at a time.
+2. Until a superuser approves the copy, everyone to whom the plugin is granted on that stack gets the copy instead of the active version. The API reads the copy again whenever someone requests the plugin list or one of its files, so it applies the code, the frame policy, the proxies and routes, and the widgets' `definition`s as they change. An edit never blocks the copy, and a `checksum` that no longer matches is a warning. A copy that fails a check, such as an invalid manifest or a missing file, is not served, and its Deployment page says why.
+3. Approving the copy checks it like any other version, the `checksum` included, and makes it the active version. No edit changes it from then on. The developer can instead commit the version directory and open a pull request, so that a deployment discovers the directory as a new version.
+
+Deleting the directory of a version in development and rescanning ends it, and the version becomes `missing`.
+
+## Who may do what
+
+[About widget plugins](../widget-plugins.md) contains the table of who does what, and it states when a widget type is available to a user.
+
+## The Widgets page
+
+The Widgets page in the admin area has three tabs.
+
+On the **Plugin widgets** tab, organization admins manage each plugin that is approved at the deployment. An admin can enable the plugin for the organization and choose which plugin renders a type when two plugins handle it. An admin can also fill in the plugin's settings and narrow what it may do for the organization by removing permissions, frame sources and server hosts. For a plugin with a backend, the admin maps each data source that the backend declares to one of the organization's backends.
+
+The **Core widgets** tab lists the built-in widget types, which are <PluginList of="builtInTypes" />. It is read-only.
+
+On the **Deployment** tab, superusers see every discovered plugin with its status, its active version and what it asks for. A plugin's page offers these sections:
+
+- The Versions section shows each version and its review, which covers what the plugin is, its integrity, the frame's network, the egress and the server side. The Approve action is in this section, and on a local stack the Patch, Minor and Major actions that start the next version are too.
+- The Revoke, Restore and Forget actions control the plugin as a whole.
+- The Enabled for section enables the plugin for organizations, one at a time or all at once.
+- The Overrides section changes the frame's policy for each directive and the server network. It asks for the confirmations <PluginValue of="csp.confirmations" /> when they apply.
+- The Secrets section sets secret values, and the Backend section shows the backend's registration and identity and offers a Check now action.
+- The Activity section lists the plugin's events, and the Blocked requests section lists what the frame's policy refused. Each blocked request has an Allow action that opens the override with that source.
+
+In Admin, Roles and Access, a role's Widget plugins action grants either all of a plugin's widget types or only chosen ones. The grants appear in the activity log. A superuser's entity dialog lists the plugins that the organization has enabled.
+
+## Commands and routes
+
+The admin command line tool runs inside the API container and works on the database directly. It does everything that the superuser's pages do. You start it inside the API container, with `python -m scripts.workspace_admin plugin <action>`, using whatever your platform offers for running a command in a container, for example `kubectl exec`. [Admin CLI](../../technical-guide/reference/command-line/admin-cli.mdx) lists the `plugin` commands. The command `plugin approve` prints the review and approves nothing unless you add `--acknowledge`, and its `--digest` option stops the approval when the server's files are not the ones that you checked. The command `plugin secret set` reads the value without echoing it, or from standard input, and never from an argument.
+
+The routes carry the `widget-plugins` tag on [FINOS Workspace API](../../technical-guide/reference/http-api/workspace-api.mdx). Superuser routes are under `/plugins`, organization admin routes are under `/admin/plugins` and `/admin/role/{role_uuid}/plugin-access`, and user routes are under `/app/widget-plugins`. A backend reads data through `POST /internal/plugin-broker/data/{data_source_id}`. The route `GET /app/widget-plugins` answers with `{ enabled, etag, plugins, vizHandlers }`, which describes what the calling user may use. The API serves a plugin's files as `application/octet-stream` with `Content-Disposition: attachment`. It serves the files of the version that the user gets, which is the active version, or on a local stack the version in development.
+
+The settings are in the Widget plugins group of [Backend configuration](../../technical-guide/reference/configuration/backend.mdx).
+
+## What users see
+
+A user finds the widgets of a plugin in two places. Backend widgets of a type that a plugin handles appear in the catalog and render through the plugin, and standalone plugin widgets appear in Add widget.
+
+A plugin widget's card behaves like any other card. It has a title, parameters, a refresh action, the Copilot, a fullscreen view, a settings form that comes from the widget's `settings`, and an Export entry when the plugin offers one. The frame follows the site's light or dark mode without restarting.
+
+A widget that cannot run keeps its place and its settings, and it tells the user why. The possible messages are "This widget type is not available to you", "Plugin sandbox unavailable", "Failed to load", "Plugin error", "Not responding" and "The widget was stopped".
+
+The host creates a plugin widget's frame when its card comes near the viewport, and it releases the frame when the card is scrolled far away or its tab is not active.
+
+## Watching a plugin
+
+FINOS Workspace records several kinds of information about plugins:
+
+- **Events** record that versions were found, changed, gone or back, and they record the start of a version's development, approvals, blocks, revocations and restores. They also record overrides, an organization's enablement and settings, secrets that were set or cleared, and backend mismatches. You can read them in a plugin's Activity section and with `plugin events`.
+- **Blocked requests** show what a frame's policy refused, by directive and origin, as [Plugin frame policy](frame-policy.mdx) describes.
+- **Metrics** appear on `/metrics` when `PROMETHEUS` is on. FINOS Workspace counts a plugin's labels only for a caller who may use that plugin.
+- **Logs** hold one line for each proxy, backend and broker call, with the plugin, the widget, the outcome, the number of bytes and the duration. They never contain arguments, bodies or secrets.
+
+These are the metrics:
+
+<PluginMetrics />

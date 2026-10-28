@@ -77,10 +77,14 @@ const config: Config = {
         height: 26,
       },
       items: [
-        { type: "docSidebar", sidebarId: "tutorials", label: "Tutorials", position: "left" },
-        { type: "docSidebar", sidebarId: "howTo", label: "How-to guides", position: "left" },
-        { type: "docSidebar", sidebarId: "reference", label: "Reference", position: "left" },
-        { type: "docSidebar", sidebarId: "explanation", label: "Explanation", position: "left" },
+        { type: "docSidebar", sidebarId: "quickStart", label: "Quick Start", position: "left" },
+        { type: "docSidebar", sidebarId: "mcp", label: "MCP Companion", position: "left" },
+        { type: "docSidebar", sidebarId: "userGuide", label: "User Guide", position: "left" },
+        { type: "docSidebar", sidebarId: "technicalGuide", label: "Technical Guide", position: "left" },
+        { type: "docSidebar", sidebarId: "faq", label: "FAQ", position: "left" },
+        { type: "docSidebar", sidebarId: "contributing", label: "Contribute", position: "left" },
+        { type: "docSidebar", sidebarId: "plugins", label: "Plugins", position: "left" },
+        { href: "https://github.com/openbq-org/workspace", label: "GitHub", position: "right" },
       ],
     },
     footer: {
@@ -89,10 +93,13 @@ const config: Config = {
         {
           title: "Docs",
           items: [
-            { label: "Tutorials", to: "/tutorials" },
-            { label: "How-to guides", to: "/how-to" },
-            { label: "Reference", to: "/reference" },
-            { label: "Explanation", to: "/explanation" },
+            { label: "Quick Start", to: "/quick-start" },
+            { label: "MCP Companion", to: "/mcp" },
+            { label: "User Guide", to: "/user-guide" },
+            { label: "Technical Guide", to: "/technical-guide" },
+            { label: "FAQ", to: "/faq" },
+            { label: "Contribute", to: "/contributing" },
+            { label: "Plugins", to: "/plugins" },
           ],
         },
         {

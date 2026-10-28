@@ -46,20 +46,32 @@
   line-height: 1.5;
 }
 
-.tutorials {
+.quickStart {
   --tone: #00b5e2;
 }
 
-.howTo {
+.mcp {
+  --tone: #e2007a;
+}
+
+.userGuide {
   --tone: #57ba6f;
 }
 
-.reference {
+.technicalGuide {
   --tone: #d2ab21;
 }
 
-.explanation {
+.faq {
   --tone: #967bed;
+}
+
+.contributing {
+  --tone: #8a9ba8;
+}
+
+.plugins {
+  --tone: #8a9ba8;
 }
 
 @media (max-width: 700px) {

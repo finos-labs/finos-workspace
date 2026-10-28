@@ -1,0 +1,86 @@
+---
+title: Backend
+sidebar_position: 2
+---
+
+import { SettingsTable } from "@site/src/components/Reference/config";
+
+# Backend settings
+
+The API, the worker and the init job read their settings from the environment. On a local stack, the file `backend-api/backend/envs/.env` supplies them, and a deployment supplies the same variables through its own configuration. The `Settings` class in `backend-api/backend/utilities/config.py` declares every setting, in groups, and this page follows those groups.
+
+A variable has the name of the setting, matched without regard to case and without any prefix. A setting that has no default is required, and the process does not start without it. Each table lists the variable, its type, its default and what it does. A setting that takes one of a few values lists them in the place of its type. The description is the `description` of the setting's `Field` in `config.py`, and a test fails for a setting that has none, or that the code reads from the environment without declaring it. The file `backend-api/backend/envs/.env.example` is a template of `envs/.env`.
+
+The tables are generated from the `Settings` class. The data is `backend-api/backend/reference-data/settings.json`, which the backend's exporter writes.
+
+## Access (`AccessSettings`)
+
+This group holds the key that encrypts stored secrets, `WORKSPACE_AES_KEY`. Plugin secrets and other values that the API must read back later are encrypted with it, so every API and worker process must use the same key.
+
+<SettingsTable group="AccessSettings" />
+
+## Application (`AppSettings`)
+
+This group holds the web app's address (`APPURL`), which the API uses in the links that it sends, and the permissions mapping that new users receive by default.
+
+<SettingsTable group="AppSettings" />
+
+## General (`GeneralSettings`)
+
+This group holds the settings that do not belong to a narrower group. They include the run mode, the port and the number of workers, and the storage provider, which is `folder`, `aws`, `azure` or `gcp`. They also include the origins that the API allows, the addresses of the frontend and of the API itself, the secret that signs sign-in tokens, the client ids of the sign-in providers, the default and allowed MCP servers, the registration switch, the rate-limit exemption and the logging options.
+
+<SettingsTable group="GeneralSettings" />
+
+## Database (`DatabaseSettings`)
+
+This group selects the database engine and describes how to connect to it: the engine type, host, port and name, the credentials for reads and writes, the TLS files, and the file path that SQLite uses.
+
+<SettingsTable group="DatabaseSettings" />
+
+## Redis (`RedisSettings`)
+
+This group configures the Redis-compatible store that the API and the worker share. Valkey works as this store. The settings cover the address, the credentials, the TLS files and the cluster mode.
+
+<SettingsTable group="RedisSettings" />
+
+## Local storage (`LocalStorageSettings`)
+
+This group configures file storage on the local disk. It holds the folder for uploaded files and the key that signs the links to them.
+
+<SettingsTable group="LocalStorageSettings" />
+
+## AWS (`AWSSettings`)
+
+This group configures S3-compatible object storage: the endpoint, region, bucket names, credentials and signature options.
+
+<SettingsTable group="AWSSettings" />
+
+## Azure (`AzureSettings`)
+
+This group configures Azure Blob Storage: the connection string or storage account, the container, and whether to use the Azure CLI's sign-in.
+
+<SettingsTable group="AzureSettings" />
+
+## Prometheus (`PrometheusSettings`)
+
+This group has the switch `PROMETHEUS`, which turns on the `/metrics` route of the API and the sampling of its runtime, and the interval of that sampling.
+
+<SettingsTable group="PrometheusSettings" />
+
+## Notifications (`NotificationSettings`)
+
+This group configures the notification that goes out when a new organization is created. By default the notifier sends a JSON request to a webhook, so the group holds the notifier, the sender and recipient, and the webhook address and secret.
+
+<SettingsTable group="NotificationSettings" />
+
+## Widget plugins (`WidgetPluginSettings`)
+
+This group configures widget plugins: the plugins directory, the digest pins, the limits on files, proxies and backends, the secrets directory, and the backends that the API may call. [How to deploy a widget plugin](../../../plugins/deploy-a-plugin.md) explains how they fit together.
+
+<SettingsTable group="WidgetPluginSettings" />
+
+## FINOS Workspace MCP sidecar (`WorkspaceMcpSidecar`)
+
+The FINOS Workspace MCP server runs inside the API, and it can also run alone as a sidecar with `python -m workspace_mcp`. The sidecar reads these variables when it restarts itself in reload mode, and the size from which a tool result is not returned inline applies to the server in the API as well. The names in this table, unlike those above, carry a prefix, `WORKSPACE_MCP_`, and are the complete names of the variables.
+
+<SettingsTable group="WorkspaceMcpSidecar" />
