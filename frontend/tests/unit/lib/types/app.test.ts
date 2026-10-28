@@ -1,106 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   _GridDataSchema,
+  backendTemplateSchema,
   ExternalWidgetSchema,
   InternalWidgetSchema,
   isBuiltInVizType,
   ParamDefSchema,
   ParamsSchema,
   StorageSchema,
-  TickerSchema,
   WidgetSchemaBase,
   WidgetVizTypes,
   widgetTypesSchema,
 } from "~/lib/types/app";
 
 describe("Zod Schemas from app.ts", () => {
-  describe("TickerSchema", () => {
-    it("should have a consistent shape", () => {
-      const shapeKeys = Object.keys(TickerSchema.shape).sort();
-      expect(shapeKeys).toMatchInlineSnapshot(`
-        [
-          "category",
-          "cik",
-          "color",
-          "country",
-          "currency",
-          "cusip",
-          "exchange",
-          "has_options",
-          "id",
-          "industry",
-          "isin",
-          "name",
-          "sector",
-          "symbol",
-          "type",
-        ]
-      `);
-    });
-
-    it("should validate a valid ticker object", () => {
-      const validTicker = {
-        id: "123",
-        symbol: "AAPL",
-        category: "equity",
-        color: "#FF0000",
-        type: "Common Stock",
-        name: "Apple Inc.",
-        exchange: "NASDAQ",
-        currency: "USD",
-        industry: "Technology",
-        sector: "Information Technology",
-        country: "USA",
-        cik: "0000320193",
-        isin: "US0378331005",
-        cusip: "037833100",
-        has_options: true,
-      };
-      expect(TickerSchema.safeParse(validTicker).success).toBe(true);
-    });
-
-    it("should validate with minimal required fields (id, symbol, category)", () => {
-      const minimalTicker = {
-        id: "456",
-        symbol: "GOOG",
-        category: "equity",
-      };
-      const result = TickerSchema.safeParse(minimalTicker);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data).toEqual({
-          ...minimalTicker,
-        });
-      }
-    });
-
-    it("should invalidate if required fields are missing", () => {
-      const invalidTicker = { id: "123", symbol: "TSLA" };
-      const result = TickerSchema.safeParse(invalidTicker);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(
-          result.error.issues.some((issue) => issue.path.includes("category")),
-        ).toBe(true);
-      }
-    });
-
-    it("should invalidate with incorrect category enum", () => {
-      const invalidTicker = {
-        id: "789",
-        symbol: "MSFT",
-        category: "invalidCategory",
-      };
-      const result = TickerSchema.safeParse(invalidTicker);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(
-          result.error.issues.find((issue) => issue.path.includes("category"))?.message,
-        ).toContain("Invalid input");
-      }
-    });
-  });
-
   describe("ParamDefSchema (and base/form variants)", () => {
     it("ParamDefSchemaBase: should have a consistent shape", () => {
       const validBaseParam = {
@@ -307,7 +220,6 @@ describe("Zod Schemas from app.ts", () => {
           "exportable",
           "external",
           "groupById",
-          "groupId",
           "id",
           "innerTab",
           "name",
@@ -342,15 +254,13 @@ describe("Zod Schemas from app.ts", () => {
         id: "widget2",
         widgetId: "internal2",
         type: "html",
-        data: {
-          mainTicker: { id: "t1", symbol: "AAPL", category: "equity" },
-        },
+        data: { html: "<p>Report</p>" },
       };
       const result = InternalWidgetSchema.safeParse(widget);
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.type).toBe("html");
-        expect(result.data.data?.mainTicker?.symbol).toBe("AAPL");
+        expect(result.data.data?.html).toBe("<p>Report</p>");
       }
     });
 
@@ -389,7 +299,6 @@ describe("Zod Schemas from app.ts", () => {
           "exportable",
           "external",
           "groupById",
-          "groupId",
           "id",
           "innerTab",
           "isSharedWidget",
@@ -634,7 +543,6 @@ describe("Zod Schemas from app.ts", () => {
           "exportable",
           "external",
           "groupById",
-          "groupId",
           "id",
           "innerTab",
           "name",
@@ -756,5 +664,21 @@ describe("Zod Schemas from app.ts", () => {
         expect(result.data.showTitle).toBeNull();
       }
     });
+  });
+});
+
+describe("backendTemplateSchema groups", () => {
+  const app = (type: string) => ({
+    name: "Demo",
+    tabs: {},
+    groups: [{ name: "Group 1", type, paramName: "region", widgetIds: [] }],
+  });
+
+  it.each(["param", "endpointParam"])("accepts a %s group", (type) => {
+    expect(backendTemplateSchema.safeParse(app(type)).success).toBe(true);
+  });
+
+  it("refuses any other group type", () => {
+    expect(backendTemplateSchema.safeParse(app("other")).success).toBe(false);
   });
 });

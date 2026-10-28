@@ -36,7 +36,6 @@ export function addNewDataConnector(
         {
           ...widgetToAdd,
           id: uuidv4(),
-          groupId: "",
           innerTab: "",
           external: true,
         } as Widget,
@@ -62,7 +61,6 @@ export function addMultipleNewDataConnector(
           ({
             ...widget,
             id: uuidv4(),
-            groupId: "",
             innerTab: "",
             external: true,
             name: Array.isArray(widget.name) ? widget.name.join(" ") : widget.name,
@@ -288,7 +286,7 @@ export function updateWidgetEndpoints(
 
       if (isSharedSource) updatedWidget.isSharedWidget = true;
 
-      const initialParams = createWidgetInitParams(updatedWidget, w?.data?.mainTicker);
+      const initialParams = createWidgetInitParams(updatedWidget);
       updatedWidget.storage = { ...updatedWidget.storage, params: initialParams };
 
       onUpdatedWidget(dashId, updatedWidget, w.innerTab);

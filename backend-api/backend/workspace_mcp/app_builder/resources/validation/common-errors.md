@@ -20,7 +20,7 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 |---------|-------|-----|
 | `widgets.json must be object` | Top-level is `[ ... ]` | Change to `{ "widget_id": { ... } }` |
 | `missing \`name\`` (or `description`, `endpoint`) | A required key is absent | Add it |
-| `unknown key \`xxx\`` | A key the contract does not define, such as `defaultViz`, `widgetId` or `widgetType` | Remove it; the keys are in `workspace://specs/widgets-json` |
+| A widget's key listed under unrecognized fields | A key the contract does not define, such as `defaultViz`, `widgetId` or `widgetType`; the widget loads without it | Remove it; the keys are in `workspace://specs/widgets-json` |
 | Widget missing from the catalog, with a warning that nothing renders its type | A typo, a type of the wider protocol (`table`, `chart`, ...), or a plugin type not enabled for the organization | Use a built-in type, or ask an administrator to enable the plugin |
 | `endpoint` must be a path or an absolute URL with no `?` and no `#` | A static query value in the endpoint | Make it a param with a default `value` and `"show": false` |
 | `` `{xxx}` names no param of this widget `` | A placeholder in `endpoint` with no param of that name | Declare the param, or fix the placeholder |
@@ -57,7 +57,7 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Group exists, no widget joins | Group `name` may not be compatible with runtime group matching | Prefer `Group 1`/`Group 2`/... and put human-readable meaning in `description`/`category`; browser-test custom names before shipping |
-| Group exists but sync silently disabled | Group `type` doesn't match the underlying param shape | `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for FINOS Workspace's universal ticker registry |
+| Group exists but sync silently disabled | Group `type` doesn't match the underlying param shape | `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint` |
 | Sync works for some widgets, not others | A widget is missing from the group's `widgetIds`, or its layout entry is missing `"groups": [...]`, or its widget config uses a different `paramName`/`optionsEndpoint` | Make all three places agree |
 
 ## Endpoint and CORS

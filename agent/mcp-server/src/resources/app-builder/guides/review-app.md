@@ -48,7 +48,7 @@ See `workspace://specs/widgets-json` and `workspace://specs/widget-parameters`.
 - Each layout item uses `i` (not `id`), plus `x`, `y`, `w`, `h`.
 - Every layout item's `i` matches a key in `widgets.json`.
 - Group `name` follows the literal `Group 1`, `Group 2`, ... pattern.
-- Group `type` matches the underlying widget param shape: `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for FINOS Workspace's universal ticker registry.
+- Group `type` matches the underlying widget param shape: `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`.
 - `groups[].widgetIds`, every layout item's `groups: [...]`, and the widget's own param config all agree.
 
 See `workspace://specs/apps-json`.

@@ -129,7 +129,7 @@ const WebsiteForm = forwardRef<HTMLFormElement, WebsiteFormProps>((props, _ref) 
                 render={({ field }) => (
                   <FormTextarea
                     label="Description"
-                    placeholder="Iframe from FINOS Workspace, the company building an AI-powered Research FINOS Workspace"
+                    placeholder="What this page shows"
                     {...field}
                     rows={3}
                   />

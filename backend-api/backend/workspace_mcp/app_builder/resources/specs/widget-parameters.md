@@ -20,7 +20,7 @@ A param accepts these keys and no others; `paramName` and `type` are required, a
 <!-- generated:param-fields -->
 | Field | Param types | Value | Notes |
 |---|---|---|---|
-| `type` | all | `text`, `tabs`, `ticker`, `date`, `number`, `boolean`, `button`, `endpoint`, `form` | The control the param shows |
+| `type` | all | `text`, `tabs`, `date`, `number`, `boolean`, `button`, `endpoint`, `form` | The control the param shows |
 | `paramName` | all | text, at most 128 characters | The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead. For `form`: A name for the form; it is not sent |
 | `label` | all | text, at most 200 characters | The control's label; the paramName by default |
 | `description` | all | text, at most 4,000 characters | Help shown on hover, which the AI Agent also reads |
@@ -29,13 +29,13 @@ A param accepts these keys and no others; `paramName` and `type` are required, a
 | `roles` | all but `form` | list of `fileSelector`, at most 1 | `fileSelector`: the param picks the file the widget shows, at most one per widget |
 | `placeholder` | all but `form` | text, at most 200 characters | Shown in the control while it is empty |
 | `style` | all but `form` | object | `popupWidth`: the width of a dropdown's list, in pixels |
-| `options` | all but `form` | list of object, at most 1,000 | The choices of a dropdown, as `{ label, value }` |
+| `options` | all but `form` | list of object, at most 1,000 | The choices of a dropdown, as `{ label, value, extraInfo }` |
 | `multiSelect` | all but `form` | `true` or `false` | Several values can be chosen; sent joined with commas, or as a list in a body |
 | `in` | all but `form` | `query`, `header`, `body` | Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none |
 | `value` | all but `form` | depends on `type` | The default value. For `date`: The default: a date, `YYYY-MM-DD`, or `$currentDate` with a modifier such as `$currentDate-1M`. For `number`: The default: a number, or a string of digits. For `endpoint`: The default: an option's value, or a list of them for multiSelect (or a comma-separated string) |
 | `multiple` | `text` | `true` or `false` | Several values can be entered, sent like multiSelect |
 | `language` | `text` | `sql`, `javascript`, `python`, `json`, `html`, `css`, `markdown`, `xml`, `text` | The value is code in this language, edited in a code editor |
-| `optionsEndpoint` | `endpoint` | text, at most 2,048 characters | A path or an absolute URL with no `?` and no `#`, which answers with the choices as a list of strings or `{ label, value }` |
+| `optionsEndpoint` | `endpoint` | text, at most 2,048 characters | A path or an absolute URL with no `?` and no `#`, which answers with the choices as a list of strings or `{ label, value, extraInfo }` |
 | `optionsMethod` | `endpoint` | `GET`, `POST` | How the options are requested: GET (the default) or POST |
 | `optionsParams` | `endpoint` | object | Values for the options request: a `{name}` placeholder of optionsEndpoint takes one, the rest go in the query (GET) or a JSON body (POST). `$name` is the current value of the param `name` |
 | `endpoint` | `form` | text, at most 2,048 characters | A path or an absolute URL with no `?` and no `#`, which receives the form's inputs as a JSON body; `{name}` takes an input's or a param's value |
@@ -57,7 +57,7 @@ How a value is written:
 
 | Param type | In the query, a header or the path | In the body |
 |---|---|---|
-| `text`, `tabs`, `ticker` | the string | a JSON string |
+| `text`, `tabs` | the string | a JSON string |
 | `number` | the decimal string | a JSON number |
 | `boolean` | `true` or `false` | a JSON boolean |
 | `date` | the date, `YYYY-MM-DD`, after `$currentDate` modifiers | a JSON string in the same format |
@@ -196,5 +196,5 @@ A param with `"show": false` is not shown but is still sent to the endpoint. Use
 ## What this spec does not cover
 
 - The widget-level shape that contains `params` — see `workspace://specs/widgets-json`.
-- App-level `groups[].type` choice (`param` vs `endpointParam` vs `ticker`) — see `workspace://specs/apps-json`.
+- App-level `groups[].type` choice (`param` vs `endpointParam`) — see `workspace://specs/apps-json`.
 - Layout wiring and parameter groups — see `workspace://specs/layout-grid`.

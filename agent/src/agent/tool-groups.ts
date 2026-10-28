@@ -51,7 +51,7 @@ const WORKSPACE_NOTES =
   "A result says ok: false and why when a call did not work: read it, fix the call or say that it cannot be done, and never say that something changed unless a result says it did.";
 
 const APPS_NOTES =
-  "- create_app assembles connected widgets into a multi-tab dashboard app the user can open or save. Call search_widgets first and pass each widget's (origin, widget_id) with grid x/y/w/h; ticker/symbol sync is detected automatically.";
+  "- create_app assembles connected widgets into a multi-tab dashboard app the user can open or save. Call search_widgets first and pass each widget's (origin, widget_id) with grid x/y/w/h.";
 
 const RENDER_NOTES =
   "- create_html_artifact: render a small inline HTML report or chart (max 50 KB) for a one-off layout; after create_artifact-style rendering succeeds, do not repeat the markup in the answer. For flowchart-like renders prefer a Mermaid diagram tool when one is listed, with `flowchart TD`.\n" +

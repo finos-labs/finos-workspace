@@ -87,13 +87,12 @@ Coordinates are on a 40-column grid — see `workspace://specs/layout-grid`.
 `groups` synchronizes a parameter across multiple widgets. The runtime is strict about three things:
 
 1. **For strict compatibility, group `name` follows the literal `Group 1`, `Group 2`, ... pattern.** Put human-readable meaning in `description`, `category`, or surrounding app copy. If you use descriptive group names, browser-test them because validators may warn while runtime behavior can vary.
-2. **Group `type` must match how the underlying widget's param is defined in `widgets.json`.** The schema accepts any string; the runtime accepts a closed set:
+2. **Group `type` must match how the underlying widget's param is defined in `widgets.json`.** It is one of two values:
 
    | `groups[].type` | Use when widget param is | `paramName` |
    |---|---|---|
    | `"param"` | static dropdown — `type: "text"` with inline `options` | required |
    | `"endpointParam"` | dynamic dropdown — `type: "endpoint"` with `optionsEndpoint` | required |
-   | `"ticker"` | FINOS Workspace's built-in universal ticker registry (no custom `optionsEndpoint`) | omit |
 
 3. **Three places must agree:** the group's `widgetIds`, every participating widget's layout `groups: [...]`, and the widget's own param config (matching `paramName` and option source).
 

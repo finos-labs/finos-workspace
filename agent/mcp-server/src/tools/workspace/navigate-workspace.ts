@@ -17,7 +17,7 @@ export const navigateWorkspaceSchema = {
     .string()
     .optional()
     .describe(
-      "Tab id (slug-form, e.g. 'aapl-analysis'). Required when operation='tab'.",
+      "Tab id (slug-form, e.g. 'quarterly-review'). Required when operation='tab'.",
     ),
 } as const;
 

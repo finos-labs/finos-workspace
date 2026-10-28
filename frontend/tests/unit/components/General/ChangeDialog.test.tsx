@@ -64,7 +64,6 @@ vi.mock("./Changelog", () => ({
 vi.mock("~/lib/utils", async (_importOriginal) => {
   return {
     slugify: vi.fn().mockReturnValue("slugified-string"),
-    getWidgetsWithSupportedAssetClass: vi.fn().mockReturnValue([]),
     cn: vi.fn(),
   };
 });

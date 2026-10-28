@@ -180,7 +180,7 @@ export const manageNavigationBarInputSchema = z.object({
     .array(z.object({ name: z.string() }))
     .optional()
     .describe(
-      "Tab objects, e.g. [{name:'AAPL Analysis'}]. Required for create, add_tabs, remove_tabs. " +
+      "Tab objects, e.g. [{name:'Quarterly Review'}]. Required for create, add_tabs, remove_tabs. " +
         "Do not pass tab_id; it is generated as the slug of name.",
     ),
   rename_map: z
@@ -239,7 +239,7 @@ export const navigateWorkspaceInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      "Tab id (slug-form, e.g. 'aapl-analysis'). Required when operation='tab'.",
+      "Tab id (slug-form, e.g. 'quarterly-review'). Required when operation='tab'.",
     ),
 });
 

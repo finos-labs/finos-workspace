@@ -641,12 +641,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
           subCategory,
           backend,
         };
-      }, [
-        widgetRef,
-        getWidgetInfo(widgetRef?.current),
-        widgetFromJSON,
-        widgetRef?.current?.data?.mainTicker?.exchange,
-      ]);
+      }, [widgetRef, getWidgetInfo(widgetRef?.current), widgetFromJSON]);
 
     const createdAt = widgetRef?.current?.storage?.createdAt;
 

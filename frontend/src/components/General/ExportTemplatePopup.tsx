@@ -281,17 +281,10 @@ function formatDashboardDataForTemplate(
   const groups = dashboardData.groups.map((group) => ({
     name: group.name,
     type: group.type,
-    ...((group.type === "endpointParam" || group.type === "param") && {
-      paramName: optionEndpoints[group.groupById] ?? group.groupById,
-    }),
-    defaultValue: group.type === "ticker" ? group.value?.symbol : group.value,
+    paramName: optionEndpoints[group.groupById] ?? group.groupById,
+    defaultValue: group.value,
     widgetIds: dashboardData.widgets
-      .filter((widget) => {
-        if (group.type === "param" || group.type === "endpointParam")
-          return widget?.paramGroups?.[group?.groupById] === group.id;
-
-        return widget.groupId === group.id;
-      })
+      .filter((widget) => widget?.paramGroups?.[group?.groupById] === group.id)
       .map((widget) => widget.id),
   }));
 

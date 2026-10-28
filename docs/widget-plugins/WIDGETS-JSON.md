@@ -16,7 +16,7 @@ A backend's `widgets.json` is an object whose keys are widget ids and whose valu
 
 A definition needs `name`, `description`, `endpoint` and `type`. It may have `method`, `category`, `subCategory`, `source`, `showTitle`, `params`, `gridData`, `staleTime`, `refetchInterval`, `dataUpdateDisplay`, `runButton`, `disableRetrievalForCopilot`, `exportable`, `mcp_tool` and `data` (`dataKey`, and for some types more, section 2). `html` and plugin types also take `raw` (4.11), and `iframe` takes `storage`.
 
-The contract is closed: a key it does not define, at any depth, is an error. The web app leaves that widget out of the catalog and reports the problem with its JSON pointer. Strings and lists are bounded.
+The contract defines every key, at any depth, and bounds every string and list. A key it does not define is ignored: the web app loads the widget without it and lists the key, by its JSON pointer, under the backend's unrecognized fields. Any other problem leaves the widget out of the catalog, reported with its JSON pointer.
 
 ## 2. Types
 
@@ -38,7 +38,7 @@ The API composes one JSON Schema for each organization from the kit (the base ke
 
 ### 3.2 Closed
 
-In the composed schema every object has `additionalProperties: false` or a defined value schema, every string a `maxLength`, `enum`, `const` or `pattern`, every array `maxItems`. A test walks the kit and fails on anything open. The same walk runs on a plugin's `definition` when the plugin is discovered: one that is not closed and bounded blocks the version, naming the offending node.
+In the composed schema every object has `additionalProperties: false` or a defined value schema, every string a `maxLength`, `enum`, `const` or `pattern`, every array `maxItems`. The web app reads a failed `additionalProperties: false` as a key to ignore (section 1), unless it falls inside a `oneOf` or `anyOf` that no branch matched. A test walks the kit and fails on anything open. The same walk runs on a plugin's `definition` when the plugin is discovered: one that is not closed and bounded blocks the version, naming the offending node.
 
 ### 3.3 A plugin's fragment
 
@@ -131,7 +131,7 @@ A `{name}` placeholder in `endpoint` takes the value of the param named `name`, 
 
 | Param | In the query, a header or the path | In the body |
 |---|---|---|
-| `text`, `tabs`, `ticker` | the string | a JSON string |
+| `text`, `tabs` | the string | a JSON string |
 | `number` | the decimal string | a JSON number |
 | `boolean` | `true` or `false` | a JSON boolean |
 | `date` | `YYYY-MM-DD`, after `$currentDate` modifiers | a JSON string |

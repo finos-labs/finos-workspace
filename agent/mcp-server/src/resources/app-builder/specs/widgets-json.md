@@ -57,7 +57,7 @@ Each value is an object with these keys and no others:
 | `storage` | No | object | Only for `iframe`. `mcpUrl`: an MCP server of the page's own, connected for the widget without the backend's credentials |
 <!-- /generated:widget-fields -->
 
-The contract is closed. A key it does not define, or a value outside its bounds, leaves the widget out, and FINOS Workspace names the widget and the path of each problem when the backend is connected; the other widgets load. `workspace://specs/widgets-json-schema` is the JSON Schema in force for the signed-in user, for an editor or a test. Set `runButton` only for heavy work (more than 5 seconds).
+The contract defines every key and bounds every value. A key it does not define is ignored: the widget loads without it, and FINOS Workspace names the key under the backend's unrecognized fields. A value outside its bounds leaves the widget out, and FINOS Workspace names the widget and the path of each problem when the backend is connected; the other widgets load. `workspace://specs/widgets-json-schema` is the JSON Schema in force for the signed-in user, for an editor or a test. Set `runButton` only for heavy work (more than 5 seconds).
 
 ## `gridData` is a hint, not the layout
 

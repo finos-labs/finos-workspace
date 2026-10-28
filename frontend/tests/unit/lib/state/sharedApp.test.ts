@@ -6,7 +6,7 @@ import {
   type SharedItems,
   useSharedAppStore,
 } from "~/lib/state/sharedApp";
-import { makeTicker, makeTickerGroup, makeWidget } from "../../factories";
+import { makeParamGroup, makeWidget } from "../../factories";
 import { malformed } from "../../mocks";
 
 const createMockWidget = (overrides: Partial<Widget> = {}): Widget =>
@@ -15,8 +15,6 @@ const createMockWidget = (overrides: Partial<Widget> = {}): Widget =>
     widgetId: "equity_profile",
     name: "Equity Profile",
     innerTab: "overview",
-    groupId: null,
-    data: { mainTicker: makeTicker() },
     ...overrides,
   });
 
@@ -398,7 +396,6 @@ describe("useSharedAppStore", () => {
       const widget = createMockWidget({
         id: "complex-widget",
         data: malformed({
-          mainTicker: makeTicker(),
           params: { startDate: "2024-01-01", endDate: "2024-12-31" },
           nested: {
             level1: {
@@ -416,8 +413,9 @@ describe("useSharedAppStore", () => {
           ...createMockItem().data,
           widgets: [widget],
           groups: [
-            makeTickerGroup({
+            makeParamGroup({
               id: "group-1",
+              groupById: "region",
               name: "Group 1",
               color: "#ff0000",
               value: null,

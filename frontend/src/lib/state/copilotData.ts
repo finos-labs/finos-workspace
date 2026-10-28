@@ -32,7 +32,6 @@ export interface DashboardWidgetData {
 }
 
 export interface WidgetData extends DashboardWidgetData {
-  ticker: string;
   source: string;
   widgetId: string;
 }

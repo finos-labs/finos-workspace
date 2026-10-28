@@ -38,7 +38,7 @@ If this is your first time touching FINOS Workspace, read the two **overview** d
 ## Reminders
 
 - The backend is HTTP-only. FINOS Workspace never imports your code.
-- `widgets.json` is a JSON **object** keyed by widget id. Not an array. Its keys are closed: an unknown key leaves the widget out.
+- `widgets.json` is a JSON **object** keyed by widget id. Not an array. Its keys are the contract's: a key it does not define is ignored and named under the backend's unrecognized fields.
 - `apps.json` is a JSON **array** of app objects. Not an object.
 - Layout uses `i` for the widget id, not `id`.
 - Prefer `Group 1`, `Group 2`, ... names for parameter groups; put human-readable meaning in descriptions/categories.

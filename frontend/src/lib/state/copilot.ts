@@ -271,7 +271,7 @@ export interface CopilotContextItem {
 
 interface WidgetParam {
   name: string;
-  type: "date" | "text" | "ticker" | "number" | "boolean" | "endpoint";
+  type: "date" | "text" | "number" | "boolean" | "endpoint";
   description: string;
   default_value: string | number | boolean | string[];
   current_value: string | number | boolean | string[];
@@ -354,7 +354,7 @@ type AppArtifactLayoutItem = {
 
 type AppArtifactGroup = {
   name: string;
-  type: "param" | "endpointParam" | "ticker";
+  type: "param" | "endpointParam";
   paramName?: string;
   defaultValue: string;
   widgetIds: string[];
