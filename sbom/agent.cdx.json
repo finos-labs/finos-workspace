@@ -828,63 +828,6 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40hono/node-server@1.19.17?package-id=2c3ecf83cd0aeb39",
-      "type": "library",
-      "name": "@hono/node-server",
-      "version": "1.19.17",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:\\@hono\\/node-server:\\@hono\\/node-server:1.19.17:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40hono/node-server@1.19.17",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "javascript-lock-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "javascript"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "npm"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "javascript-npm-package-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@hono\\/node-server:\\@hono\\/node_server:1.19.17:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@hono\\/node_server:\\@hono\\/node-server:1.19.17:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@hono\\/node_server:\\@hono\\/node_server:1.19.17:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@hono\\/node:\\@hono\\/node-server:1.19.17:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@hono\\/node:\\@hono\\/node_server:1.19.17:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/package-lock.json"
-        }
-      ]
-    },
-    {
       "bom-ref": "pkg:npm/%40hono/node-server@2.1.5?package-id=39746fe64f3dda67",
       "type": "library",
       "name": "@hono/node-server",
@@ -5772,10 +5715,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/body-parser@2.3.0?package-id=4eeaf467b4aa16e5",
+      "bom-ref": "pkg:npm/body-parser@2.4.0?package-id=67863443431b212f",
       "type": "library",
       "name": "body-parser",
-      "version": "2.3.0",
+      "version": "2.4.0",
       "licenses": [
         {
           "license": {
@@ -5783,8 +5726,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:openjsf:body-parser:2.3.0:*:*:*:*:node.js:*:*",
-      "purl": "pkg:npm/body-parser@2.3.0",
+      "cpe": "cpe:2.3:a:openjsf:body-parser:2.4.0:*:*:*:*:node.js:*:*",
+      "purl": "pkg:npm/body-parser@2.4.0",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -9051,10 +8994,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/fast-uri@3.1.8?package-id=5cc7d8cede67f281",
+      "bom-ref": "pkg:npm/fast-uri@3.1.9?package-id=326b4f52c3593150",
       "type": "library",
       "name": "fast-uri",
-      "version": "3.1.8",
+      "version": "3.1.9",
       "licenses": [
         {
           "license": {
@@ -9062,8 +9005,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:openjsf:fast-uri:3.1.8:*:*:*:*:node.js:*:*",
-      "purl": "pkg:npm/fast-uri@3.1.8",
+      "cpe": "cpe:2.3:a:openjsf:fast-uri:3.1.9:*:*:*:*:node.js:*:*",
+      "purl": "pkg:npm/fast-uri@3.1.9",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -10325,7 +10268,7 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/ines?package-id=da543292427de8ca",
+      "bom-ref": "pkg:npm/ines?package-id=f0a2829d84999fd8",
       "type": "library",
       "name": "ines",
       "version": "UNKNOWN",
@@ -10473,10 +10416,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/ip-address@10.7.3?package-id=e23553a1e70f8709",
+      "bom-ref": "pkg:npm/ip-address@10.7.5?package-id=3f9b2f807553402f",
       "type": "library",
       "name": "ip-address",
-      "version": "10.7.3",
+      "version": "10.7.5",
       "licenses": [
         {
           "license": {
@@ -10484,8 +10427,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:beaugunderson:ip-address:10.7.3:*:*:*:*:node.js:*:*",
-      "purl": "pkg:npm/ip-address@10.7.3",
+      "cpe": "cpe:2.3:a:beaugunderson:ip-address:10.7.5:*:*:*:*:node.js:*:*",
+      "purl": "pkg:npm/ip-address@10.7.5",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -13995,10 +13938,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/qs@6.16.0?package-id=ce16a00c1c2b4f6c",
+      "bom-ref": "pkg:npm/qs@6.17.0?package-id=fcdea98c75c2a8f7",
       "type": "library",
       "name": "qs",
-      "version": "6.16.0",
+      "version": "6.17.0",
       "licenses": [
         {
           "license": {
@@ -14006,8 +13949,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:qs_project:qs:6.16.0:*:*:*:*:node.js:*:*",
-      "purl": "pkg:npm/qs@6.16.0",
+      "cpe": "cpe:2.3:a:qs_project:qs:6.17.0:*:*:*:*:node.js:*:*",
+      "purl": "pkg:npm/qs@6.17.0",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -16528,10 +16471,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/undici@6.29.0?package-id=27fdc03c2060209b",
+      "bom-ref": "pkg:npm/undici@6.29.1?package-id=588e995bec8ac172",
       "type": "library",
       "name": "undici",
-      "version": "6.29.0",
+      "version": "6.29.1",
       "licenses": [
         {
           "license": {
@@ -16539,8 +16482,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:nodejs:undici:6.29.0:*:*:*:*:node.js:*:*",
-      "purl": "pkg:npm/undici@6.29.0",
+      "cpe": "cpe:2.3:a:nodejs:undici:6.29.1:*:*:*:*:node.js:*:*",
+      "purl": "pkg:npm/undici@6.29.1",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -16565,10 +16508,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/undici@7.30.0?package-id=0095919d6c2561e5",
+      "bom-ref": "pkg:npm/undici@7.30.1?package-id=428fb2d5e4c9ab83",
       "type": "library",
       "name": "undici",
-      "version": "7.30.0",
+      "version": "7.30.1",
       "licenses": [
         {
           "license": {
@@ -16576,8 +16519,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:nodejs:undici:7.30.0:*:*:*:*:node.js:*:*",
-      "purl": "pkg:npm/undici@7.30.0",
+      "cpe": "cpe:2.3:a:nodejs:undici:7.30.1:*:*:*:*:node.js:*:*",
+      "purl": "pkg:npm/undici@7.30.1",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -16864,10 +16807,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/uuid@8.3.2?package-id=afa674e08a11b480",
+      "bom-ref": "pkg:npm/uuid@14.0.3?package-id=6bef59c18783c2af",
       "type": "library",
       "name": "uuid",
-      "version": "8.3.2",
+      "version": "14.0.3",
       "licenses": [
         {
           "license": {
@@ -16875,8 +16818,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:uuidjs:uuid:8.3.2:*:*:*:*:node.js:*:*",
-      "purl": "pkg:npm/uuid@8.3.2",
+      "cpe": "cpe:2.3:a:uuidjs:uuid:14.0.3:*:*:*:*:node.js:*:*",
+      "purl": "pkg:npm/uuid@14.0.3",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -17462,10 +17405,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/zod@4.6.5?package-id=ab65f70d49652be0",
+      "bom-ref": "pkg:npm/zod@4.6.7?package-id=4ee4a886887dd62f",
       "type": "library",
       "name": "zod",
-      "version": "4.6.5",
+      "version": "4.6.7",
       "licenses": [
         {
           "license": {
@@ -17473,8 +17416,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:zod:zod:4.6.5:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/zod@4.6.5",
+      "cpe": "cpe:2.3:a:zod:zod:4.6.7:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/zod@4.6.7",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -17633,8 +17576,8 @@
         "pkg:npm/%40ai-sdk/provider@3.0.8?package-id=d6dce1d298f1be09",
         "pkg:npm/%40standard-schema/spec@1.1.0?package-id=ead6561efb69da9c",
         "pkg:npm/eventsource-parser@3.1.1?package-id=0311cf4ed99a3c1b",
-        "pkg:npm/undici@6.29.0?package-id=27fdc03c2060209b",
-        "pkg:npm/undici@7.30.0?package-id=0095919d6c2561e5"
+        "pkg:npm/undici@6.29.1?package-id=588e995bec8ac172",
+        "pkg:npm/undici@7.30.1?package-id=428fb2d5e4c9ab83"
       ]
     },
     {
@@ -17740,7 +17683,6 @@
     {
       "ref": "pkg:npm/%40modelcontextprotocol/sdk@1.32.1?package-id=27bdcf43e38a1334",
       "dependsOn": [
-        "pkg:npm/%40hono/node-server@1.19.17?package-id=2c3ecf83cd0aeb39",
         "pkg:npm/%40hono/node-server@2.1.5?package-id=39746fe64f3dda67",
         "pkg:npm/ajv-formats@3.0.1?package-id=a9f9624d21a14fb7",
         "pkg:npm/ajv@8.20.0?package-id=f834af5b78b8b4ec",
@@ -17758,7 +17700,7 @@
         "pkg:npm/pkce-challenge@5.0.1?package-id=ea8c63e778177d68",
         "pkg:npm/raw-body@3.0.2?package-id=022e061e7736f675",
         "pkg:npm/zod-to-json-schema@3.25.2?package-id=61cdfb2234c5af79",
-        "pkg:npm/zod@4.6.5?package-id=ab65f70d49652be0"
+        "pkg:npm/zod@4.6.7?package-id=4ee4a886887dd62f"
       ]
     },
     {
@@ -17954,7 +17896,7 @@
       "ref": "pkg:npm/ajv@8.20.0?package-id=f834af5b78b8b4ec",
       "dependsOn": [
         "pkg:npm/fast-deep-equal@3.1.3?package-id=a0346a310beb478a",
-        "pkg:npm/fast-uri@3.1.8?package-id=5cc7d8cede67f281",
+        "pkg:npm/fast-uri@3.1.9?package-id=326b4f52c3593150",
         "pkg:npm/json-schema-traverse@1.0.0?package-id=4d484ea9c65dff1b",
         "pkg:npm/require-from-string@2.0.2?package-id=4a9cbdc5d92606c7"
       ]
@@ -18027,7 +17969,7 @@
       ]
     },
     {
-      "ref": "pkg:npm/body-parser@2.3.0?package-id=4eeaf467b4aa16e5",
+      "ref": "pkg:npm/body-parser@2.4.0?package-id=67863443431b212f",
       "dependsOn": [
         "pkg:npm/bytes@3.1.2?package-id=d3e4c2005bffef75",
         "pkg:npm/content-type@1.0.5?package-id=97c124b07ec3e060",
@@ -18037,7 +17979,7 @@
         "pkg:npm/iconv-lite@0.6.3?package-id=6e387c2d4ffa6cad",
         "pkg:npm/iconv-lite@0.7.3?package-id=3ee96f4850abeb4d",
         "pkg:npm/on-finished@2.4.1?package-id=1d2c84071a9ec341",
-        "pkg:npm/qs@6.16.0?package-id=ce16a00c1c2b4f6c",
+        "pkg:npm/qs@6.17.0?package-id=fcdea98c75c2a8f7",
         "pkg:npm/raw-body@3.0.2?package-id=022e061e7736f675",
         "pkg:npm/type-is@2.1.0?package-id=c01dcd4273ec9e12"
       ]
@@ -18108,8 +18050,8 @@
         "pkg:npm/parse5-htmlparser2-tree-adapter@7.1.0?package-id=b12223f76afb89fc",
         "pkg:npm/parse5-parser-stream@7.1.2?package-id=fa9bf3448701decd",
         "pkg:npm/parse5@7.3.0?package-id=75c10baf5898ce1d",
-        "pkg:npm/undici@6.29.0?package-id=27fdc03c2060209b",
-        "pkg:npm/undici@7.30.0?package-id=0095919d6c2561e5",
+        "pkg:npm/undici@6.29.1?package-id=588e995bec8ac172",
+        "pkg:npm/undici@7.30.1?package-id=428fb2d5e4c9ab83",
         "pkg:npm/whatwg-mimetype@4.0.0?package-id=73c268780370fc25"
       ]
     },
@@ -18271,7 +18213,7 @@
         "pkg:npm/saxes@5.0.1?package-id=cd0770f05f54e5d3",
         "pkg:npm/tmp@0.2.7?package-id=2ce1a7fc2745cf19",
         "pkg:npm/unzipper@0.12.5?package-id=4415422049b87d67",
-        "pkg:npm/uuid@8.3.2?package-id=afa674e08a11b480"
+        "pkg:npm/uuid@14.0.3?package-id=6bef59c18783c2af"
       ]
     },
     {
@@ -18289,14 +18231,14 @@
       "ref": "pkg:npm/express-rate-limit@8.7.1?package-id=0aabf03adebb1870",
       "dependsOn": [
         "pkg:npm/debug@4.4.3?package-id=09d7405dbcbcac49",
-        "pkg:npm/ip-address@10.7.3?package-id=e23553a1e70f8709"
+        "pkg:npm/ip-address@10.7.5?package-id=3f9b2f807553402f"
       ]
     },
     {
       "ref": "pkg:npm/express@5.3.0?package-id=0e5b177262dd0e4d",
       "dependsOn": [
         "pkg:npm/accepts@2.0.0?package-id=6648bf891c4938b3",
-        "pkg:npm/body-parser@2.3.0?package-id=4eeaf467b4aa16e5",
+        "pkg:npm/body-parser@2.4.0?package-id=67863443431b212f",
         "pkg:npm/content-disposition@2.0.1?package-id=1499c391083cd080",
         "pkg:npm/content-type@1.0.5?package-id=97c124b07ec3e060",
         "pkg:npm/content-type@2.1.0?package-id=ea56f8cc892e442b",
@@ -18316,7 +18258,7 @@
         "pkg:npm/once@1.4.0?package-id=a1574f5c516d36ab",
         "pkg:npm/parseurl@1.3.3?package-id=267e225773a54e98",
         "pkg:npm/proxy-addr@2.0.8?package-id=16afaaf2cfe8f71e",
-        "pkg:npm/qs@6.16.0?package-id=ce16a00c1c2b4f6c",
+        "pkg:npm/qs@6.17.0?package-id=fcdea98c75c2a8f7",
         "pkg:npm/range-parser@1.3.0?package-id=d180d86b9aa2d2d5",
         "pkg:npm/router@2.2.0?package-id=009f9c348be6a554",
         "pkg:npm/send@1.2.1?package-id=1cdfb6c7c6c3e4d0",
@@ -18426,7 +18368,7 @@
       ]
     },
     {
-      "ref": "pkg:npm/ines?package-id=da543292427de8ca",
+      "ref": "pkg:npm/ines?package-id=f0a2829d84999fd8",
       "dependsOn": [
         "pkg:npm/%40ai-sdk/groq@3.0.72?package-id=4553ca4ee2661481",
         "pkg:npm/%40ai-sdk/openai@3.0.125?package-id=c919641eab0da204",
@@ -18434,7 +18376,6 @@
         "pkg:npm/%40ai-sdk/provider@3.0.8?package-id=d6dce1d298f1be09",
         "pkg:npm/%40grpc/grpc-js@1.14.6?package-id=b8f9a49c190a07b8",
         "pkg:npm/%40hono/mcp@0.2.5?package-id=8938bd6e61baff34",
-        "pkg:npm/%40hono/node-server@1.19.17?package-id=2c3ecf83cd0aeb39",
         "pkg:npm/%40hono/node-server@2.1.5?package-id=39746fe64f3dda67",
         "pkg:npm/%40logtape/hono@2.4.0?package-id=f7e7b792580f83fc",
         "pkg:npm/%40logtape/logtape@2.4.0?package-id=eee45118cc2233c6",
@@ -18459,7 +18400,7 @@
         "pkg:npm/turndown@7.2.4?package-id=de150d06a7caabb1",
         "pkg:npm/unpdf@1.8.1?package-id=884da1b02cba754b",
         "pkg:npm/ws@8.22.0?package-id=d94915b6c2e19e85",
-        "pkg:npm/zod@4.6.5?package-id=ab65f70d49652be0"
+        "pkg:npm/zod@4.6.7?package-id=4ee4a886887dd62f"
       ]
     },
     {
@@ -18696,7 +18637,7 @@
       ]
     },
     {
-      "ref": "pkg:npm/qs@6.16.0?package-id=ce16a00c1c2b4f6c",
+      "ref": "pkg:npm/qs@6.17.0?package-id=fcdea98c75c2a8f7",
       "dependsOn": [
         "pkg:npm/es-define-property@1.0.1?package-id=ff4ca55380f5d9bd",
         "pkg:npm/side-channel@1.1.1?package-id=c2762c1438059cff"
