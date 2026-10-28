@@ -24,7 +24,7 @@ A plugin is a package of files that adds widget types to Workspace. Its code is 
 ```
 
 - `<plugin-id>`: 2 to 48 characters, lowercase letters, digits and `-`, starting with a letter.
-- `<version>`: `major.minor.patch`, numbers only. A version is immutable: change anything and publish a new version directory.
+- `<version>`: `major.minor.patch`, numbers only. An approved version is immutable: change anything and publish a new version directory. On your own machine the app starts one for you (section 11).
 - File names: letters, digits, `.`, `_`, `-`. No symbolic links. At most 200 files and 64 MiB per version by default (the deployment can lower or raise these).
 - `plugin.json` is at most 256 KiB.
 - The frame receives `entry.js` and the styles. A file under `assets/` reaches it when the module asks for it: `invoke("core:asset:read", { path: "assets/<file>" })` resolves to `[{ path, size }, [bytes]]`, checked against the approved version like the module (section 4.3). Make a `blob:` URL of the bytes for an image, a font, a worker or a WebAssembly binary. Nothing else in the package reaches the frame: not `plugin.json`, not `backend/`.
@@ -382,13 +382,18 @@ The first runs discovery as the server does (files, links, caps, the manifest, t
 
 ## 11. Developing
 
-There is no developer mode. Run your own Workspace (the repository's `local/LOCAL_SETUP.md`, section Widget plugins) and be its administrator:
+Develop on your own machine, with the repository's local stack (`local/LOCAL_SETUP.md`, section Widget plugins), where you are the administrator. That stack runs with `MODE=local`. Deployments, including those built from the `develop` and `main` branches, run with `MODE=production`, and none of the steps from 4 on exist there.
 
-1. Mount a plugins directory into the API and set `WIDGET_PLUGINS_DIR`.
-2. Build into `<dir>/<id>/<version>/` and check it (section 10).
-3. In Admin, Widgets, Deployment: Rescan, review, approve. Under Plugin widgets, enable it, and in Roles and Access grant it to a role you hold.
-4. Add the widget to a dashboard.
-5. To change it, publish a new version and approve it. Editing an approved version's files blocks it.
+1. Mount a plugins directory into the API, writable, and set `WIDGET_PLUGINS_DIR`.
+2. Build the first version into `<dir>/<id>/<version>/` and check it (section 10).
+3. In Admin, Widgets, Deployment: Rescan, review, approve. Under Plugin widgets, enable it, and in Roles and Access grant it to a role you hold. Add the widget to a dashboard.
+4. On the plugin's Deployment page, choose Patch, Minor or Major. The API copies the active version to the next version number, rewrites the copy's `version` and `checksum`, and marks it `development`.
+5. Edit the copy's files, or build into its directory. The app serves them as they are: a dashboard reads the plugin list when its window gets focus and every minute, and a frame restarts when the files changed. An edit does not block the copy, a `checksum` that no longer matches is a warning, and the manifest's other declarations (the policy, proxies, routes, the widgets' `definition`s) apply as you change them. A copy that fails a check is not served; the Deployment page says why.
+6. When it is done, write its `checksum` (`plugin_check --digest`, or your build), then approve it, which makes it the active version, or commit its directory and open a pull request. A deployment discovers it as a new version, and its superuser reviews and approves it.
+
+An approved version is never edited: changing its files blocks it. One version of a plugin is in development at a time; deleting its directory and rescanning ends it.
+
+A widget of a type you handle can read a deployed data backend: add it to your local stack as a connection with your own key, read-only where the backend has such keys, and have the backend allow your local web app's origin. The deployment's agent and its plugin backends accept only that deployment's sessions and call tokens, so a local stack cannot use them or write to them: run them locally (the root `docker-compose.yml` runs the agent, and `docs/examples/sql-explorer/examples/compose.yaml` shows a plugin backend).
 
 For proxies, set the secret on the plugin's Deployment page. A service on your own machine or network resolves to a private address, which needs a superuser's server network override with private hosts confirmed; a private certificate authority needs `WIDGET_PLUGIN_PROXY_CA_FILE`.
 

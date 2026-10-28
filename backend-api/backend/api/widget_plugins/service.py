@@ -2,7 +2,9 @@ import asyncio
 import hashlib
 import json
 import re
+import shutil
 from collections.abc import Iterable
+from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, TypeVar
@@ -21,6 +23,7 @@ from api.models.widget_plugin_models import (
     PLUGIN_REVOKED,
     VERSION_ACTIVE,
     VERSION_BLOCKED,
+    VERSION_DEVELOPMENT,
     VERSION_DISCOVERED,
     VERSION_MISSING,
     VERSION_RETIRED,
@@ -35,14 +38,17 @@ from . import (
     secrets as secret_values,
 )
 from .discovery import (
+    MANIFEST_FILE,
     DiscoveredVersion,
     ScanResult,
+    cached_sha256,
     inspect_version,
+    package_checksum,
     resolve_served_file,
     scan,
     sha256_file,
 )
-from .manifest import PERMISSIONS
+from .manifest import PERMISSIONS, VERSION_PATTERN
 from .schema_lint import validate_settings_values
 
 CHANGED = "the files changed after discovery; versions are immutable, so publish a new version"
@@ -54,6 +60,10 @@ _REPORT_ORIGIN = re.compile(r"^(https?|wss?)://[a-z0-9.-]{1,253}(:\d{1,5})?$")
 
 def feature_enabled() -> bool:
     return bool(settings.WIDGET_PLUGINS_DIR)
+
+
+def local_development() -> bool:
+    return settings.MODE == "local"
 
 
 def _require_feature() -> None:
@@ -134,23 +144,33 @@ def _record(row: models.WidgetPluginVersion, found: DiscoveredVersion) -> None:
 
 
 def _remember_state(row: models.WidgetPluginVersion) -> None:
-    if row.state in {VERSION_ACTIVE, VERSION_DISCOVERED, VERSION_RETIRED}:
+    if row.state in {VERSION_ACTIVE, VERSION_DISCOVERED, VERSION_RETIRED, VERSION_DEVELOPMENT}:
         row.findings = {**(row.findings or {}), "previous_state": row.state}
 
 
 def _restore_state(row: models.WidgetPluginVersion) -> str:
     previous = (row.findings or {}).get("previous_state")
-    return previous if previous in {VERSION_ACTIVE, VERSION_RETIRED} else VERSION_DISCOVERED
+    return previous if previous in {VERSION_ACTIVE, VERSION_RETIRED, VERSION_DEVELOPMENT} else VERSION_DISCOVERED
+
+
+def _in_development(row: models.WidgetPluginVersion) -> bool:
+    if row.state == VERSION_DEVELOPMENT:
+        return True
+    return row.state == VERSION_MISSING and (row.findings or {}).get("previous_state") == VERSION_DEVELOPMENT
 
 
 async def rescan(db: AsyncSession, actor_uuid: UUID | None = None) -> dict[str, Any]:  # noqa: PLR0912, PLR0915
     _require_feature()
-    result: ScanResult = await asyncio.to_thread(scan, settings.WIDGET_PLUGINS_DIR, **_scan_settings())
+    plugins = {p.plugin_id: p for p in (await db.execute(select(models.WidgetPlugin))).scalars()}
+    rows = {(v.plugin_uuid, v.version): v for v in (await db.execute(select(models.WidgetPluginVersion))).scalars()}
+    ids = {p.uuid: p.plugin_id for p in plugins.values()}
+    developing = frozenset(f"{ids[row.plugin_uuid]}/{row.version}" for row in rows.values() if _in_development(row))
+    result: ScanResult = await asyncio.to_thread(
+        scan, settings.WIDGET_PLUGINS_DIR, **_scan_settings(), development=developing
+    )
     if result.error:
         raise HTTPException(409, detail=result.error)
 
-    plugins = {p.plugin_id: p for p in (await db.execute(select(models.WidgetPlugin))).scalars()}
-    rows = {(v.plugin_uuid, v.version): v for v in (await db.execute(select(models.WidgetPluginVersion))).scalars()}
     summary: dict[str, list[str]] = {
         "discovered": [],
         "blocked": [],
@@ -207,6 +227,14 @@ async def rescan(db: AsyncSession, actor_uuid: UUID | None = None) -> dict[str, 
                 actor_uuid=actor_uuid,
                 details={"digest": found.digest, "errors": found.errors},
             )
+            continue
+
+        if _in_development(row):
+            if row.state == VERSION_MISSING:
+                row.state = VERSION_DEVELOPMENT
+                summary["restored"].append(label)
+                _event(db, plugin, "restored-files", version=found.version, actor_uuid=actor_uuid)
+            _record(row, found)
             continue
 
         if row.digest and found.digest and row.digest != found.digest:
@@ -552,23 +580,32 @@ def review_items(
 
 
 def _version_view(
-    plugin: models.WidgetPlugin, row: models.WidgetPluginVersion, active: models.WidgetPluginVersion | None
+    plugin: models.WidgetPlugin,
+    row: models.WidgetPluginVersion,
+    active: models.WidgetPluginVersion | None,
+    live: "LiveVersion | None" = None,
 ) -> dict[str, Any]:
-    manifest = row.manifest or {}
+    shown = live or row
+    manifest = shown.manifest or {}
     policy = csp_rules.approved_policy(manifest.get("csp"), _overrides_csp(plugin))
     return {
         "version": row.version,
         "state": row.state,
         "blocked_reason": row.blocked_reason,
-        "digest": row.digest,
-        "declared_checksum": row.declared_checksum,
+        "digest": shown.digest,
+        "declared_checksum": live.declared_checksum if live else row.declared_checksum,
+        "checksum": live.checksum if live else row.declared_checksum,
         "pin_status": row.pin_status,
         "path": row.path,
-        "files": row.files or {},
-        "findings": {
-            "errors": (row.findings or {}).get("errors", []),
-            "warnings": (row.findings or {}).get("warnings", []),
-        },
+        "files": shown.files or {},
+        "findings": (
+            {"errors": live.errors, "warnings": live.warnings}
+            if live
+            else {
+                "errors": (row.findings or {}).get("errors", []),
+                "warnings": (row.findings or {}).get("warnings", []),
+            }
+        ),
         "discovered_at": row.discovered_at,
         "approved_at": row.approved_at,
         "approved_by_uuid": row.approved_by_uuid,
@@ -593,13 +630,18 @@ def _version_view(
             "data_sources": manifest.get("dataSources", []),
             "identity": manifest.get("identity", "none"),
         },
-        "review": review_items(plugin, row, active) if row.state in {VERSION_DISCOVERED, VERSION_RETIRED} else None,
+        "review": (
+            review_items(plugin, shown, active)
+            if row.state in {VERSION_DISCOVERED, VERSION_RETIRED, VERSION_DEVELOPMENT}
+            else None
+        ),
     }
 
 
 async def _platform_entry(db: AsyncSession, plugin: models.WidgetPlugin) -> dict[str, Any]:
     versions = await _versions(db, plugin)
     active = _active(plugin, versions)
+    developing = await development_versions(db, [plugin])
     enabled_for = (
         await db.execute(
             select(models.EntityWidgetPlugin.entity_uuid).where(
@@ -623,7 +665,10 @@ async def _platform_entry(db: AsyncSession, plugin: models.WidgetPlugin) -> dict
         "overrides": plugin.overrides or {},
         "enabled_entities": len(enabled_for),
         "enabled_for": [{"entity_uuid": r.entity_uuid} for r in enabled_for],
-        "versions": [_version_view(plugin, v, active) for v in versions],
+        "versions": [
+            _version_view(plugin, v, active, developing.get(plugin.uuid) if v.state == VERSION_DEVELOPMENT else None)
+            for v in versions
+        ],
         "secrets": await secret_values.status(db, plugin, versions),
         "backend": backend_status(plugin),
     }
@@ -644,7 +689,11 @@ def backend_status(plugin: models.WidgetPlugin) -> dict[str, Any]:
 
 async def platform_listing(db: AsyncSession) -> dict[str, Any]:
     plugins = (await db.execute(select(models.WidgetPlugin).order_by(models.WidgetPlugin.plugin_id))).scalars().all()
-    return {"enabled": feature_enabled(), "plugins": [await _platform_entry(db, p) for p in plugins]}
+    return {
+        "enabled": feature_enabled(),
+        "development": local_development(),
+        "plugins": [await _platform_entry(db, p) for p in plugins],
+    }
 
 
 async def platform_plugin(db: AsyncSession, plugin_id: str) -> dict[str, Any]:
@@ -693,6 +742,161 @@ async def plugin_events(
     ]
 
 
+def _approval_of(manifest: dict, digest: str | None) -> dict[str, Any]:
+    return {
+        "digest": digest,
+        "permissions": {w["id"]: list(w.get("permissions", [])) for w in _widgets(manifest)},
+        "csp": manifest.get("csp") or {},
+        "server_network": _server(manifest).get("network", []),
+        "backend": bool(_server(manifest).get("backend")),
+        "data_sources": [d["id"] for d in manifest.get("dataSources", [])],
+        "identity": manifest.get("identity", "none"),
+    }
+
+
+@dataclass
+class LiveVersion:
+    version: str
+    path: str
+    digest: str | None
+    declared_checksum: str | None
+    checksum: str | None
+    manifest: dict | None
+    files: dict[str, dict[str, Any]]
+    approved: dict[str, Any]
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+
+def _inspect_development(plugin_id: str, version: str) -> DiscoveredVersion:
+    return inspect_version(
+        Path(settings.WIDGET_PLUGINS_DIR or ""),
+        plugin_id,
+        version,
+        development=True,
+        **_scan_settings(),
+    )
+
+
+async def development_versions(db: AsyncSession, plugins: list[models.WidgetPlugin]) -> dict[UUID, LiveVersion]:
+    if not local_development() or not plugins:
+        return {}
+    ids = {p.uuid: p.plugin_id for p in plugins}
+    rows = (
+        await db.execute(
+            select(models.WidgetPluginVersion).where(
+                models.WidgetPluginVersion.plugin_uuid.in_(list(ids)),
+                models.WidgetPluginVersion.state == VERSION_DEVELOPMENT,
+            )
+        )
+    ).scalars()
+    live: dict[UUID, LiveVersion] = {}
+    for row in rows:
+        found = await asyncio.to_thread(_inspect_development, ids[row.plugin_uuid], row.version)
+        live[row.plugin_uuid] = LiveVersion(
+            version=row.version,
+            path=found.path,
+            digest=found.digest,
+            declared_checksum=found.declared_checksum,
+            checksum=found.checksum,
+            manifest=found.manifest,
+            files=found.served_files(),
+            approved=_approval_of(found.manifest or {}, found.digest),
+            errors=found.errors,
+            warnings=found.warnings,
+        )
+    return live
+
+
+def next_version(existing: Iterable[str], bump: str) -> str:
+    major, minor, patch = max(tuple(int(part) for part in v.split(".")) for v in existing)
+    if bump == "major":
+        return f"{major + 1}.0.0"
+    if bump == "minor":
+        return f"{major}.{minor + 1}.0"
+    return f"{major}.{minor}.{patch + 1}"
+
+
+def _version_names(plugin_dir: Path) -> set[str]:
+    if not plugin_dir.is_dir():
+        return set()
+    return {entry.name for entry in plugin_dir.iterdir() if re.fullmatch(VERSION_PATTERN, entry.name)}
+
+
+def _copy_version(root: Path, plugin_id: str, source: str, target: str) -> None:
+    source_dir = root / plugin_id / source
+    if not source_dir.is_dir():
+        raise FileNotFoundError(source_dir)
+    target_dir = root / plugin_id / target
+    target_dir.mkdir()
+    try:
+        shutil.copytree(source_dir, target_dir, symlinks=True, dirs_exist_ok=True)
+        manifest_path = target_dir / MANIFEST_FILE
+        raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+        raw["version"] = target
+        raw["checksum"] = package_checksum(
+            {
+                path.relative_to(target_dir).as_posix(): sha256_file(path)
+                for path in target_dir.rglob("*")
+                if path.is_file() and not path.is_symlink()
+            }
+        )
+        manifest_path.write_text(json.dumps(raw, indent=2) + "\n", encoding="utf-8")
+    except BaseException:
+        shutil.rmtree(target_dir, ignore_errors=True)
+        raise
+
+
+async def start_development(
+    db: AsyncSession, plugin_id: str, version: str, bump: str, actor_uuid: UUID | None
+) -> dict[str, Any]:
+    _require_feature()
+    if not local_development():
+        raise HTTPException(409, detail="A new version is developed on a local stack only, where MODE is local")
+    plugin = await _plugin_or_404(db, plugin_id)
+    versions = await _versions(db, plugin)
+    source = next((v for v in versions if v.version == version), None)
+    if source is None:
+        raise HTTPException(404, detail="Version not found")
+    if source.state not in {VERSION_ACTIVE, VERSION_RETIRED}:
+        raise HTTPException(409, detail="A new version starts from an approved one")
+    current = next((v for v in versions if v.state == VERSION_DEVELOPMENT), None)
+    if current is not None:
+        raise HTTPException(
+            409, detail=f"{current.version} is in development: approve it, or delete its directory and rescan"
+        )
+
+    root = Path(settings.WIDGET_PLUGINS_DIR or "")
+    on_disk = await asyncio.to_thread(_version_names, root / plugin.plugin_id)
+    target = next_version({*on_disk, *(v.version for v in versions)}, bump)
+    if not re.fullmatch(VERSION_PATTERN, target):
+        raise HTTPException(409, detail=f"{target} is not a version number this host accepts")
+    try:
+        await asyncio.to_thread(_copy_version, root, plugin.plugin_id, source.version, target)
+    except FileExistsError:
+        raise HTTPException(409, detail=f"{plugin.plugin_id}/{target} already exists in the plugins directory") from None
+    except FileNotFoundError:
+        raise HTTPException(409, detail=f"The files of {source.version} are not in the plugins directory") from None
+    except OSError as error:
+        raise HTTPException(409, detail=f"The plugins directory cannot be written: {error.strerror}") from None
+
+    found = await asyncio.to_thread(_inspect_development, plugin.plugin_id, target)
+    row = models.WidgetPluginVersion(plugin_uuid=plugin.uuid, version=target, path=found.path, discovered_at=get_now())
+    _record(row, found)
+    row.state = VERSION_DEVELOPMENT
+    db.add(row)
+    _event(
+        db,
+        plugin,
+        "development-started",
+        version=target,
+        actor_uuid=actor_uuid,
+        details={"from": source.version, "digest": found.digest},
+    )
+    await db.commit()
+    return {"plugin_id": plugin.plugin_id, "version": target, "path": found.path}
+
+
 async def approve(
     db: AsyncSession,
     plugin_id: str,
@@ -708,9 +912,10 @@ async def approve(
     row = next((v for v in versions if v.version == version), None)
     if row is None:
         raise HTTPException(404, detail="Version not found")
-    if row.state not in {VERSION_DISCOVERED, VERSION_RETIRED}:
+    if row.state not in {VERSION_DISCOVERED, VERSION_RETIRED, VERSION_DEVELOPMENT}:
         raise HTTPException(409, detail=f"This version is {row.state} and cannot be approved")
-    if row.digest != digest:
+    developing = row.state == VERSION_DEVELOPMENT
+    if not developing and row.digest != digest:
         raise HTTPException(409, detail="The version changed since it was reviewed; review it again")
 
     found = await asyncio.to_thread(
@@ -720,7 +925,13 @@ async def approve(
         version,
         **_scan_settings(),
     )
-    if found.blocked or found.digest != row.digest:
+    if developing:
+        if found.digest != digest:
+            raise HTTPException(409, detail="The version changed since it was reviewed; review it again")
+        if found.blocked:
+            raise HTTPException(409, detail=f"The version cannot be approved: {'; '.join(found.errors)}")
+        _record(row, found)
+    elif found.blocked or found.digest != row.digest:
         _remember_state(row)
         row.state = VERSION_BLOCKED
         row.blocked_reason = CHANGED if found.digest != row.digest else "; ".join(found.errors)
@@ -748,13 +959,7 @@ async def approve(
     row.state = VERSION_ACTIVE
     row.blocked_reason = None
     row.approved = {
-        "digest": row.digest,
-        "permissions": {w["id"]: list(w.get("permissions", [])) for w in _widgets(manifest)},
-        "csp": manifest.get("csp") or {},
-        "server_network": _server(manifest).get("network", []),
-        "backend": bool(_server(manifest).get("backend")),
-        "data_sources": [d["id"] for d in manifest.get("dataSources", [])],
-        "identity": manifest.get("identity", "none"),
+        **_approval_of(manifest, row.digest),
         "acknowledged": sorted({i["key"] for i in items if i["added"]}),
     }
     row.approved_by_uuid = actor_uuid
@@ -1221,8 +1426,12 @@ async def available(db: AsyncSession, user_uuid: UUID) -> list[dict[str, Any]]:
     ).all():
         granted.setdefault(plugin_uuid, set()).add(widget_id)
 
+    developing = await development_versions(db, [plugin for plugin, _version, _row in rows])
     plugins = []
-    for plugin, version, entity_row in rows:
+    for plugin, active, entity_row in rows:
+        version = developing.get(plugin.uuid) or active
+        if isinstance(version, LiveVersion) and version.errors:
+            continue
         manifest = version.manifest or {}
         approved = version.approved or {}
         narrowed = set(entity_row.narrowed_permissions or [])
@@ -1338,19 +1547,6 @@ async def user_listing(db: AsyncSession, user_uuid: UUID) -> dict[str, Any]:
     return {**body, "etag": etag}
 
 
-_hash_cache: dict[str, tuple[int, int, str]] = {}
-
-
-def _current_hash(path: Path) -> str:
-    info = path.stat()
-    cached = _hash_cache.get(str(path))
-    if cached and cached[0] == info.st_size and cached[1] == info.st_mtime_ns:
-        return cached[2]
-    digest = sha256_file(path)
-    _hash_cache[str(path)] = (info.st_size, info.st_mtime_ns, digest)
-    return digest
-
-
 async def served_file(
     db: AsyncSession, user_uuid: UUID, plugin_id: str, digest: str, file_path: str
 ) -> tuple[Path, dict[str, Any]]:
@@ -1361,7 +1557,7 @@ async def served_file(
     entry = next((e for e in await available(db, user_uuid) if e["plugin"].plugin_id == plugin_id), None)
     if entry is None:
         raise refused("Plugin not found")
-    version: models.WidgetPluginVersion = entry["version"]
+    version = entry["version"]
     if version.digest != digest:
         raise refused("This version of the plugin is not the active one")
     info = (version.files or {}).get(file_path)
@@ -1370,7 +1566,10 @@ async def served_file(
     path = await asyncio.to_thread(resolve_served_file, settings.WIDGET_PLUGINS_DIR or "", version.path, file_path)
     if path is None:
         raise refused("Not a file of this plugin")
-    if await asyncio.to_thread(_current_hash, path) != info["sha256"]:
+    if await asyncio.to_thread(cached_sha256, path) != info["sha256"]:
+        if isinstance(version, LiveVersion):
+            metrics.FILE_FETCHES.labels("changed").inc()
+            raise HTTPException(409, detail="The plugin's files changed while they were read; reload")
         plugin = entry["plugin"]
         _remember_state(version)
         version.state = VERSION_BLOCKED

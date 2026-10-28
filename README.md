@@ -89,7 +89,7 @@ the code, so the API does not start without them.
 
 | Variable | Written by `create_local_env` | What it is |
 |---|---|---|
-| `MODE` | `production` | One of `production`, `local` or `test`. |
+| `MODE` | `production` | One of `production`, `local` or `test`. `local` is a developer's own machine: `local/compose.yaml` sets it, and it lets a superuser develop widget plugin versions in place (`docs/widget-plugins/README.md`, 5.1). |
 | `FRONTENDURL` | `http://localhost:3000` | Address of the web app. |
 | `APPURL` | `http://localhost:3000` | Address of the web app that the API uses for links back to it, such as login redirects. |
 | `SELFURL` | `http://localhost:8000` | The API's own address, used to build links to files. |

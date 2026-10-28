@@ -578,6 +578,9 @@ class TestNoInstallPath:
         await grant(superuser)
         await superuser.put("/plugins/test-chart/overrides", json={"csp": {"img-src": ["data:"]}})
         await member.get(f"/app/widget-plugins/test-chart/{view['digest']}/files/entry.js")
+        refused = await superuser.post("/plugins/test-chart/versions/1.0.0/develop", json={"bump": "patch"})
+        assert refused.status_code == 409
+        assert "local" in refused.json()["detail"]
         await superuser.post("/plugins/test-chart/revoke")
         await superuser.get("/plugins/test-chart/events")
         assert _tree_hashes(plugins_dir) == before

@@ -20,7 +20,7 @@ A plugin is a directory with a manifest (`plugin.json`), one bundled module (`en
 - call proxies the manifest declares, which the API makes with secrets added on the server;
 - call the plugin's own backend, which the deployment runs as a separate process.
 
-Nobody installs a plugin from the app. The app has no upload, no fetch from a URL and no endpoint that writes plugin files. It decides only whether files already on the server may run, and for whom.
+Nobody installs a plugin from the app. The app has no upload, no fetch from a URL and no endpoint that writes plugin files, except on a developer's own machine: where `MODE` is `local`, a superuser can copy an approved version to the next version number and develop it in place (5.1). Everywhere else the app decides only whether files already on the server may run, and for whom.
 
 ## 2. How it compares
 
@@ -89,7 +89,18 @@ A new version directory is `discovered` and waits; the active version keeps serv
 | `active` | a version | The one version that serves. |
 | `retired` | a version | Was active; can be approved again. |
 | `blocked` | a version | A check failed, or its files changed after discovery. Versions are immutable, so the deployer publishes a new version. |
+| `development` | a version | Copied from an approved version on a local stack (5.1); served from its files as they are, until it is approved. |
 | `missing` | a version | Its directory is gone. When every version is missing, a superuser can forget the plugin, which deletes its reviews, grants, settings and secrets. |
+
+### 5.1 Developing on a local stack
+
+A version is developed on the developer's own machine, where `MODE` is `local` (the repository's `local/compose.yaml` sets it). Every other stack, including those built from the `develop` and `main` branches, runs `MODE=production`, where the route below refuses and no version is served from changing files. It works like `pip install -e`: the app uses the files where they are.
+
+1. On the plugin's Deployment page, Patch, Minor or Major copies the active version to the next version number after the highest the plugin has, rewrites the copy's `version` and `checksum`, and marks it `development`. The plugins directory has to be writable for this. One version of a plugin is in development at a time.
+2. Until it is approved, everyone the plugin is granted to on that stack gets the copy instead of the active version, read again whenever the plugin list or one of its files is requested: its code, its policy, its proxies and routes, and its widgets' `definition`s. An edit never blocks it, and a `checksum` that no longer matches is a warning. A copy that fails a check (an invalid manifest, a missing file) is not served, and its Deployment page says why.
+3. Approving it checks it like any version, the `checksum` included, and makes it the active version, which no edit changes from then on. Or the developer commits the version directory and opens a pull request, and a deployment discovers it as a new version.
+
+Deleting its directory and rescanning ends a version in development (`missing`).
 
 ## 6. Deploying
 
@@ -198,7 +209,7 @@ Compose networks cannot restrict ports, so the gateway stands between the API an
   - Data sources: which of the organization's backends serves each data source a plugin backend declares.
 - **Core widgets**: the built-in types, read-only.
 - **Deployment** (superusers): every discovered plugin with its status, active version and what it asks for. A plugin's page has:
-  - Versions, and the review (what it is, integrity, the frame's network, egress, the server side) with Approve.
+  - Versions, and the review (what it is, integrity, the frame's network, egress, the server side) with Approve. On a local stack, Patch, Minor and Major start the next version (5.1).
   - Revoke, Restore and Forget.
   - Enabled for: organizations, one at a time or all.
   - Overrides: the frame's policy by directive and the server network, with confirmations for `insecure-scheme`, `private-host` and `remote-script`.
@@ -226,6 +237,7 @@ Compose networks cannot restrict ports, so the gateway stands between the API an
 |---|---|---|
 | `GET /plugins`, `GET /plugins/{id}`, `POST /plugins/rescan` | superuser | Listing, detail with the review, rescan. |
 | `POST /plugins/{id}/versions/{version}/approve` | superuser | Body: the digest reviewed and the acknowledgements. |
+| `POST /plugins/{id}/versions/{version}/develop` | superuser | Body: `{"bump": "patch" \| "minor" \| "major"}`. Copies an approved version to the next number (5.1). Refused unless `MODE` is `local`. |
 | `POST /plugins/{id}/revoke`, `.../restore`, `DELETE /plugins/{id}` | superuser | Kill switch, undo, forget. |
 | `PUT /plugins/{id}/overrides`, `PUT` and `DELETE /plugins/{id}/secrets/{name}` | superuser | Overrides; set or clear a secret. |
 | `PUT /plugins/{id}/entities`, `PUT /plugins/{id}/entities/{entity_uuid}` | superuser | Enable for all organizations or one. |
@@ -234,7 +246,7 @@ Compose networks cannot restrict ports, so the gateway stands between the API an
 | `GET` and `PUT /admin/role/{role_uuid}/plugin-access` | organization admin | Role grants. |
 | `GET /app/widget-plugins` | user | `{ enabled, etag, plugins, vizHandlers }`: what this user may use. |
 | `GET /app/widget-plugins/widgets-schema` | user | The organization's `widgets.json` schema (WIDGETS-JSON 3.5). |
-| `GET /app/widget-plugins/{id}/{digest}/files/{path}` | user with access | One file of the active version, as `application/octet-stream` with `Content-Disposition: attachment`. |
+| `GET /app/widget-plugins/{id}/{digest}/files/{path}` | user with access | One file of the version the user gets (the active one, or on a local stack the one in development), as `application/octet-stream` with `Content-Disposition: attachment`. |
 | `POST /app/widget-plugins/{id}/proxy/{proxy_id}`, `.../backend/{route_id}` | user with access | A proxy or backend call. |
 | `POST /app/widget-plugins/report` | user | Frame failures and blocked requests. |
 
@@ -246,7 +258,7 @@ Compose networks cannot restrict ports, so the gateway stands between the API an
 
 ## 9. Watching it
 
-- **Events.** Versions found, changed, gone or back, approvals, blocks, revocations and restores, overrides, an organization's enablement and settings, secrets set or cleared, and backend mismatches are recorded per plugin: the Activity section, `plugin events`.
+- **Events.** Versions found, changed, gone or back, a version's development started, approvals, blocks, revocations and restores, overrides, an organization's enablement and settings, secrets set or cleared, and backend mismatches are recorded per plugin: the Activity section, `plugin events`.
 - **Blocked requests.** What a frame's policy refused, by directive and origin, kept 30 days, at most 200 origins per plugin, shown as text.
 - **Metrics** on `/metrics` when `PROMETHEUS` is on: `widget_plugin_discoveries_total`, `widget_plugin_blocks_total{reason}`, `widget_plugin_approvals_total`, `widget_plugin_file_fetches_total{outcome}`, `widget_plugin_proxy_calls_total`, `widget_plugin_proxy_call_seconds`, `widget_plugin_backend_calls_total`, `widget_plugin_backend_call_seconds`, `widget_plugin_backend_identity_checks_total`, `widget_plugin_broker_calls_total`, `widget_plugin_csp_reports_total{directive}` and `widget_plugin_frame_failures_total{plugin, version, kind}`. Plugin labels are counted only for a plugin the caller may use.
 - **Logs.** One line per proxy, backend and broker call: plugin, widget, outcome, bytes and duration, never arguments, bodies or secrets.

@@ -58,6 +58,12 @@ class ApproveBody(BaseModel):
     acknowledged: list[Annotated[str, StringConstraints(max_length=400)]] = Field(default_factory=list, max_length=500)
 
 
+class DevelopBody(BaseModel):
+    model_config = closed
+
+    bump: Literal["patch", "minor", "major"]
+
+
 class OverridesBody(BaseModel):
     model_config = closed
 
@@ -161,6 +167,17 @@ async def approve_version(
         acknowledged=body.acknowledged,
         actor_uuid=superuser.uuid,
     )
+
+
+@platform_router.post("/{plugin_id}/versions/{version}/develop")
+async def develop_version(
+    plugin_id: PluginId,
+    version: Annotated[str, StringConstraints(pattern=VERSION_PATTERN)],
+    body: DevelopBody,
+    db: Annotated[AsyncSession, Depends(aget_write_db)],
+    superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
+):
+    return await service.start_development(db, plugin_id, version, body.bump, superuser.uuid)
 
 
 @platform_router.post("/{plugin_id}/revoke")

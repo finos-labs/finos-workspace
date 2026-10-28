@@ -154,7 +154,7 @@ The Playwright specs generate their packages into a temporary plugins directory 
 | Policy sources that are too broad, private or insecure, with and without confirmations | The validator | `csp-cases.json`, in `csp.test.ts` and `test_widget_plugin_rules.py` |
 | An organization admin approves or sets a secret; a role of another organization grants access | Authorization | `test_widget_plugins_api.py`, `test_widget_plugin_server_side.py` |
 | A file edited after approval; a new version; a version whose files changed before approval; an old digest | The API re-hashes a file whose size or modification time changed, and the browser checks every file against the approved digest; explicit approval bound to the reviewed digest | `test_widget_plugins_api.py`, `plugin-admin-journey.spec.ts`, `bundle.test.ts`, `plugins.spec.ts`, the-host-refuses-files-that-differ-from-the-approved-version |
-| A route that uploads or writes plugin files | None exists | `test_widget_plugins_api.py` |
+| A route that uploads or writes plugin files | None, except the copy of an approved version to a new number on a local stack, which every `MODE` but `local` refuses | `test_widget_plugins_api.py`, `test_widget_plugin_development.py` |
 | A proxy aimed at a private or metadata address, a name that resolves to several addresses or changes, a bad certificate; arguments or secrets outside their places | Template rules and the outbound guard | `test_widget_plugin_proxies.py` |
 | Reading a secret from the frame or the page; calls after narrowing or revoking; calls by users without access | Server-side secrets; availability on every call | `test_widget_plugin_server_side.py`, `plugin-proxies.spec.ts` |
 | A backend reading data the user may not read, with a forged, changed or expired token, or after a version change | Token, broker and identity check | `test_widget_plugin_backends.py`, `plugin-backends.spec.ts` |
@@ -171,7 +171,7 @@ The Playwright specs generate their packages into a temporary plugins directory 
 | A worker with a host-drawn UI tree | Shopify's remote rendering | Strong, but no DOM or canvas for grids and charts. |
 | An opaque-origin frame with a private port and a policy | Figma's plugin iframes | Used. |
 
-Code reaches a deployment only through the plugins directory, the image or configuration: the app has no upload, no fetch from a URL and no route that writes plugin files, and the API mounts the directory read-only. A hijacked admin session can enable or grant a plugin that is already on the server, through the review and its acknowledgements, which are recorded; it cannot add one. A pin ties approval to a digest chosen outside the app.
+Code reaches a deployment only through the plugins directory, the image or configuration: the app has no upload, no fetch from a URL and no route that writes plugin files, and the API mounts the directory read-only. The one route that writes there copies an approved version to a new number for a developer, and it works only where `MODE` is `local`, a developer's own machine; a version in development is served from changing files only there. A hijacked admin session can enable or grant a plugin that is already on the server, through the review and its acknowledgements, which are recorded; it cannot add one. A pin ties approval to a digest chosen outside the app.
 
 ## 10. Responsibility
 

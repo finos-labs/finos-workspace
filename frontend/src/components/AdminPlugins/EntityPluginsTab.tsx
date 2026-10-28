@@ -38,10 +38,9 @@ export function EntityPluginsTab() {
     );
   if (!data.plugins.length)
     return (
-      <p className="body-xs-regular">
-        No widget plugin is approved on this Workspace yet. A superuser approves plugins
-        that the deployer placed on the server.
-      </p>
+      <Notice variant="info" title="No widget plugin is approved yet">
+        A superuser approves plugins that the deployer placed on the server.
+      </Notice>
     );
 
   return (

@@ -171,7 +171,9 @@ On a Workspace deployment (`local/LOCAL_SETUP.md`, "Widget plugins", for your ow
    use it: a role is the only way to a plugin.
 
 Every change is a new version: raise `version` in `package.json` and build again.
-Workspace blocks an approved version whose files change.
+Workspace blocks an approved version whose files change. On your own stack, the
+plugin's Deployment page starts the next version for you and serves it from its files
+as you rebuild them (`docs/widget-plugins/AUTHORING.md`, section 11).
 
 ## Try it
 

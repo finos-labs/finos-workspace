@@ -3,9 +3,10 @@ import { Tag } from "~/components/ds/atoms/Tag";
 
 const STATE_COLORS: Record<
   VersionState | PluginStatus,
-  "grey" | "success" | "warning" | "danger" | "brand"
+  "grey" | "success" | "warning" | "danger" | "brand" | "yellow"
 > = {
   discovered: "brand",
+  development: "yellow",
   active: "success",
   blocked: "danger",
   retired: "grey",
