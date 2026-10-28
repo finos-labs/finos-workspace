@@ -24,7 +24,7 @@ function ctx(tables: Record<string, Record<string, unknown>[]> = {}) {
   };
 }
 
-// The Workspace has no table artifact, so a table is an HTML artifact; these read it back.
+// The FINOS Workspace has no table artifact, so a table is an HTML artifact; these read it back.
 function cells(html: string, tag: "th" | "td"): string[] {
   return [...html.matchAll(new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, "g"))].map((m) => m[1]);
 }

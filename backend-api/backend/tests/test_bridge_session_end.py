@@ -1,4 +1,4 @@
-"""The Workspace bridge socket serves only while the web session that opened it lasts.
+"""The FINOS Workspace bridge socket serves only while the web session that opened it lasts.
 
 A socket is admitted with the web session cookie, and from then on it is tied to that
 session: once the session is signed out, replaced by a new sign-in, ended by a password

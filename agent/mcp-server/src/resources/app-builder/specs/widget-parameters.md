@@ -98,7 +98,7 @@ Date modifiers: `$currentDate`, `$currentDate-1d`, `$currentDate-1w`, `$currentD
 
 The `optionsEndpoint` should return an array of `{ label, value }` objects.
 
-Keep dropdown options simple. Use `{label, value}` for normal dropdowns; add `category` only when Workspace needs that category for grouping/search semantics. Avoid `extraInfo` unless the user explicitly wants an advanced/search-rich dropdown.
+Keep dropdown options simple. Use `{label, value}` for normal dropdowns; add `category` only when FINOS Workspace needs that category for grouping/search semantics. Avoid `extraInfo` unless the user explicitly wants an advanced/search-rich dropdown.
 
 ### Multi-select dimensions
 

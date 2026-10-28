@@ -1,7 +1,7 @@
 /**
- * Tier 2 — widgets read through the Workspace's MCP tool.
+ * Tier 2 — widgets read through the FINOS Workspace's MCP tool.
  *
- * The Workspace serves its own MCP server, and its `get_widget_data` is how Ines reads a widget when the
+ * The FINOS Workspace serves its own MCP server, and its `get_widget_data` is how Ines reads a widget when the
  * request has it: the model sees the tool as the server describes it, the call goes to the browser as any MCP
  * call does, and the result is taken in as the data of the widget (tables the model queries). A request
  * without the tool still has the agent's own `get_widget_data`.
@@ -22,7 +22,7 @@ const WORKSPACE_TOOL: AgentTool = {
   name: "Workspace_get_widget_data",
   server_id: "workspace",
   url: "http://api:8000/mcp",
-  description: "Fetch current data for one Workspace data source.",
+  description: "Fetch current data for one FINOS Workspace data source.",
   input_schema: {
     properties: {
       origin: { type: "string" },
@@ -42,7 +42,7 @@ const ROWS = [
   { symbol: "MSFT", price: 521.1 },
 ];
 
-/** What the browser re-POSTs after it has run the Workspace's tool. */
+/** What the browser re-POSTs after it has run the FINOS Workspace's tool. */
 function result(content: unknown): ToolMessage {
   return {
     role: "tool",
@@ -86,7 +86,7 @@ const promptOf = (messages: unknown): string =>
     )
     .join("\n");
 
-describe("the model reads widgets with the Workspace's MCP tool", () => {
+describe("the model reads widgets with the FINOS Workspace's MCP tool", () => {
   it("is given the tool as the server describes it, and not the agent's own", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("ok"));
     await ask({ messages: [{ role: "human", content: "what is on the dashboard" }], tools: [WORKSPACE_TOOL], model: spy.model, chat: "wwd-tools" });
@@ -94,13 +94,13 @@ describe("the model reads widgets with the Workspace's MCP tool", () => {
     const tools = spy.calls[0].tools as unknown as Array<{ name: string; description?: string; inputSchema?: { properties?: Record<string, unknown> } }>;
     const widgetData = tools.filter((t) => t.name === "get_widget_data");
     expect(widgetData).toHaveLength(1);
-    expect(widgetData[0].description).toBe("Fetch current data for one Workspace data source.");
+    expect(widgetData[0].description).toBe("Fetch current data for one FINOS Workspace data source.");
     // The server's arguments, not the agent's own `widgets` list.
     expect(Object.keys(widgetData[0].inputSchema?.properties ?? {})).toEqual(expect.arrayContaining(["origin", "widget_id", "data_args", "widget_uuid"]));
     expect(Object.keys(widgetData[0].inputSchema?.properties ?? {})).not.toContain("widgets");
   });
 
-  it("still has the agent's own get_widget_data when the request does not have the Workspace's", async () => {
+  it("still has the agent's own get_widget_data when the request does not have the FINOS Workspace's", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("ok"));
     await ask({ messages: [{ role: "human", content: "what is on the dashboard" }], model: spy.model, chat: "wwd-native" });
 
@@ -148,7 +148,7 @@ describe("the model reads widgets with the Workspace's MCP tool", () => {
   it("leaves a failure for the model to read, with nothing loaded", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("It could not be read."));
     const events = await ask({
-      messages: [{ role: "human", content: "show the asset info" }, result({ ok: false, message: "No Workspace browser is connected." })],
+      messages: [{ role: "human", content: "show the asset info" }, result({ ok: false, message: "No FINOS Workspace browser is connected." })],
       tools: [WORKSPACE_TOOL],
       model: spy.model,
       chat: "wwd-failure",
@@ -156,7 +156,7 @@ describe("the model reads widgets with the Workspace's MCP tool", () => {
 
     const statuses = events.filter((e) => e.event === "copilotStatusUpdate").map((e) => (e.data as { message?: string }).message ?? "");
     expect(statuses.some((m) => m.startsWith("Loaded"))).toBe(false);
-    expect(promptOf(spy.calls[0].messages)).toContain("No Workspace browser is connected.");
+    expect(promptOf(spy.calls[0].messages)).toContain("No FINOS Workspace browser is connected.");
   });
 });
 

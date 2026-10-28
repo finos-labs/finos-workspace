@@ -1,7 +1,7 @@
 import { apiClient } from "~/api/api";
 import type { McpInputSchema } from "~/lib/state/mcpTools";
 
-/** One of the Workspace's tools, as the Workspace describes it to the agent. */
+/** One of the FINOS Workspace's tools, as the FINOS Workspace describes it to the agent. */
 export interface WorkspaceToolDefinition {
   name: string;
   description?: string | null;

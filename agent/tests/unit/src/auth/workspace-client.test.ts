@@ -32,7 +32,7 @@ function clientAnswering(respond: (seen: Seen) => Response | Promise<Response>) 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 
 describe("getUser", () => {
-  it("asks the Workspace API who the token belongs to, with the user's own token and nothing else", async () => {
+  it("asks the FINOS Workspace API who the token belongs to, with the user's own token and nothing else", async () => {
     const { client, calls } = clientAnswering(() => json({ uuid: "11111111-2222-3333-4444-555555555555", email: "x@example.com" }));
     expect(await client.getUser("user-token")).toEqual({ ok: true, value: { userId: "11111111-2222-3333-4444-555555555555" } });
     expect(calls[0].url).toBe("http://api:8000/app/user");
@@ -41,14 +41,14 @@ describe("getUser", () => {
     expect(calls[0].headers.get("x-metering-authorization")).toBeNull();
   });
 
-  it("is rejected for a token the Workspace refuses", async () => {
+  it("is rejected for a token the FINOS Workspace refuses", async () => {
     for (const status of [401, 403]) {
       const { client } = clientAnswering(() => json({ detail: "no" }, status));
       expect(await client.getUser("t")).toEqual({ ok: false, reason: "rejected" });
     }
   });
 
-  it("is unavailable when the Workspace fails, answers nonsense or cannot be reached", async () => {
+  it("is unavailable when the FINOS Workspace fails, answers nonsense or cannot be reached", async () => {
     expect(await clientAnswering(() => json({}, 500)).client.getUser("t")).toEqual({ ok: false, reason: "unavailable" });
     expect(await clientAnswering(() => json({ nothing: true })).client.getUser("t")).toEqual({ ok: false, reason: "unavailable" });
     const unreachable = createWorkspaceClient({
@@ -72,7 +72,7 @@ describe("recordQuery", () => {
     expect(calls[0].headers.get("x-metering-authorization")).toBe("Bearer metering-secret");
   });
 
-  it("reports the daily limit in the Workspace's own words", async () => {
+  it("reports the daily limit in the FINOS Workspace's own words", async () => {
     const { client } = clientAnswering(() =>
       json({ error: "Maximum usage limit reached", message: "Cannot increment usage beyond the maximum limit of 50", current_usage: 50 }, 422),
     );
@@ -97,7 +97,7 @@ describe("recordTokens", () => {
     expect(calls[0].headers.get("x-metering-authorization")).toBe("Bearer metering-secret");
   });
 
-  it("makes no call for no tokens, and never throws when the Workspace fails", async () => {
+  it("makes no call for no tokens, and never throws when the FINOS Workspace fails", async () => {
     const quiet = clientAnswering(() => json({}));
     await quiet.client.recordTokens("t", 0);
     expect(quiet.calls).toHaveLength(0);
@@ -160,13 +160,13 @@ describe("authorize", () => {
     });
   });
 
-  it("takes an answer without the list (an older Workspace) as nothing being switched off", async () => {
+  it("takes an answer without the list (an older FINOS Workspace) as nothing being switched off", async () => {
     const { client } = clientAnswering(() => json({ allowed: true, denied_tools: [] }));
     const result = await client.authorize("t", { agentId: "default_agent", tools: [] });
     expect(result.ok && result.value.disabledCapabilities).toEqual([]);
   });
 
-  it("allows a request the Workspace allows, and leaves out a model that was not named", async () => {
+  it("allows a request the FINOS Workspace allows, and leaves out a model that was not named", async () => {
     const { client, calls } = clientAnswering(() => json({ allowed: true, denied_model: null, denied_tools: [] }));
     const result = await client.authorize("t", { agentId: "default_agent", tools: [] });
     expect(result).toEqual({ ok: true, value: { allowed: true, deniedModel: null, deniedTools: [], disabledCapabilities: [] } });
@@ -201,7 +201,7 @@ describe("Origin", () => {
 });
 
 describe("ready", () => {
-  it("is whether the Workspace API's health check answers", async () => {
+  it("is whether the FINOS Workspace API's health check answers", async () => {
     expect(await clientAnswering(() => json({ status: "ok" })).client.ready()).toBe(true);
     expect(await clientAnswering(() => json({}, 503)).client.ready()).toBe(false);
   });
@@ -214,7 +214,7 @@ describe("ready", () => {
  * Read as the latter it becomes "Not signed in" in the chat, for every user at once, with nothing in
  * the logs to say why (which is what an expired metering token did).
  */
-describe("a metering token the Workspace API will not take", () => {
+describe("a metering token the FINOS Workspace API will not take", () => {
   // A fresh Response per call: a body can only be read once, so a shared one would be empty the
   // second time and the test would be measuring that instead.
   const expired = () =>

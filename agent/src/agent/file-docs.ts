@@ -1,7 +1,7 @@
 /**
  * File-tier widget → RAG document bridge.
  *
- * Workspace ships uploaded files as `widgets.primary` entries with widget_id
+ * FINOS Workspace ships uploaded files as `widgets.primary` entries with widget_id
  * `file-<stored_file_uuid>` and `metadata.extension`. The actual bytes arrive
  * via a normal `get_widget_data` round-trip. When those bytes come back, this
  * helper turns each RAG-eligible file widget into a `PendingDocument` so the
@@ -98,7 +98,7 @@ export async function extractFileTierDocs(
         out.push({ id: widget.uuid!, name: widget.name, format, bytes });
         logger.debug("File-tier doc captured", { widgetUuid: widget.uuid, format, bytes: bytes.byteLength });
       } else if (url) {
-        // The file is where the Workspace keeps it: the document search fetches it from there, so neither
+        // The file is where the FINOS Workspace keeps it: the document search fetches it from there, so neither
         // this process nor the browser that carries the call handles its bytes.
         out.push({ id: widget.uuid!, name: widget.name, format, url });
         logger.debug("File-tier doc referenced", { widgetUuid: widget.uuid, format });

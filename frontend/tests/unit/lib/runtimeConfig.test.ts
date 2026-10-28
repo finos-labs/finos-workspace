@@ -174,7 +174,7 @@ describe("getConfig", () => {
     expect(cfg.ui.defaultTheme).toBe("dark");
     expect(cfg.links.docsUrl).toBe("");
     expect(cfg.contact.supportEmail).toBe("");
-    expect(cfg.whiteLabel.name).toBe("Workspace");
+    expect(cfg.whiteLabel.name).toBe("FINOS Workspace");
   });
 
   it("reads boolean env vars via parseBool", () => {

@@ -1,8 +1,8 @@
 /**
- * Tier 2 — the Workspace's own tools.
+ * Tier 2 — the FINOS Workspace's own tools.
  *
- * The Workspace gives the agent in its web app the tools it has for itself, as the tools of a request: the model
- * is given them as the Workspace describes them, a call is made like a call of any MCP tool (the browser runs it,
+ * The FINOS Workspace gives the agent in its web app the tools it has for itself, as the tools of a request: the model
+ * is given them as the FINOS Workspace describes them, a call is made like a call of any MCP tool (the browser runs it,
  * as the signed-in user), and the agent has no function calls of its own for the same things then. The browser
  * runs one call per round trip, so the calls the model makes together are made one by one.
  */
@@ -74,7 +74,7 @@ const updates = (...uuids: string[]) => ({
   finishReason: "tool-calls" as const,
 });
 
-/** What the browser re-POSTs after it ran a call of the Workspace's tool, with the extra state it was sent. */
+/** What the browser re-POSTs after it ran a call of the FINOS Workspace's tool, with the extra state it was sent. */
 function result(extraState?: Record<string, unknown>): ToolMessage {
   return {
     role: "tool",
@@ -89,12 +89,12 @@ function result(extraState?: Record<string, unknown>): ToolMessage {
   } as unknown as ToolMessage;
 }
 
-describe("the model is given the Workspace's tools", () => {
-  it("as the Workspace describes them, when the user lets the agent change the Workspace", async () => {
+describe("the model is given the FINOS Workspace's tools", () => {
+  it("as the FINOS Workspace describes them, when the user lets the agent change the FINOS Workspace", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("ok"));
     await ask({ messages: [{ role: "human", content: "set the symbol to MSFT" }], model: spy.model, chat: "wt-tools" });
 
-    // Its tools are in the model's tool list from the first step, with the description the Workspace gave
+    // Its tools are in the model's tool list from the first step, with the description the FINOS Workspace gave
     // them: the model reads them before it acts, and does not have to load them.
     const offered = toolNamesOf(spy.calls[0].tools);
     expect(offered).toContain("Workspace_update_widget");
@@ -120,7 +120,7 @@ describe("the model is given the Workspace's tools", () => {
     expect(JSON.stringify(spy.calls[0].messages)).toContain("update_widget_in_dashboard");
   });
 
-  it("only the one that reads a widget while the user does not let the agent change the Workspace", async () => {
+  it("only the one that reads a widget while the user does not let the agent change the FINOS Workspace", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("ok"));
     await ask({
       messages: [{ role: "human", content: "set the symbol to MSFT" }],
@@ -134,7 +134,7 @@ describe("the model is given the Workspace's tools", () => {
   });
 });
 
-describe("a call of the Workspace's tool", () => {
+describe("a call of the FINOS Workspace's tool", () => {
   it("is made as a call of any MCP tool: the browser runs it", async () => {
     const events = await ask({
       messages: [{ role: "human", content: "set the symbol to MSFT" }],
@@ -169,7 +169,7 @@ describe("a call of the Workspace's tool", () => {
     ]);
   });
 
-  it("does not make another server's calls wait with the Workspace's", async () => {
+  it("does not make another server's calls wait with the FINOS Workspace's", async () => {
     const events = await ask({
       messages: [{ role: "human", content: "search the web and update the widget" }],
       tools: [...TOOLS, { name: "Ines_Tools_web_search", server_id: "ines", url: "http://ines:8787/mcp", description: "Search the web." }],
@@ -227,7 +227,7 @@ describe("the calls that wait", () => {
     expect(events.some((e) => e.event === "copilotMessageChunk")).toBe(true);
   });
 
-  it("are made only of the Workspace's tools that the request has: what comes back from the browser is not trusted", async () => {
+  it("are made only of the FINOS Workspace's tools that the request has: what comes back from the browser is not trusted", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("Done."));
     const events = await ask({
       tools: [...TOOLS, { name: "Ines_Tools_web_search", server_id: "ines", url: "http://ines:8787/mcp", description: "Search the web." }],

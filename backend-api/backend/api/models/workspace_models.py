@@ -1,4 +1,4 @@
-"""Models of the Workspace: dashboards, backends (API sources), chats, files, apps, copilots and MCP servers"""
+"""Models of the FINOS Workspace: dashboards, backends (API sources), chats, files, apps, copilots and MCP servers"""
 
 from datetime import datetime
 from uuid import UUID

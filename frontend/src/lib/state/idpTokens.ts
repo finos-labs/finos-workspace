@@ -1,5 +1,5 @@
 /**
- * The identity values Workspace may forward to data backends, iframe widgets and custom
+ * The identity values FINOS Workspace may forward to data backends, iframe widgets and custom
  * agents (X-Microsoft-Id-Token, X-Okta-Id-Token, X-Workspace-User), when the deployment
  * turns each one on. They live in page memory only: nothing here is persisted, so a
  * reload drops the ID tokens, and the provider is asked for them again without a prompt.

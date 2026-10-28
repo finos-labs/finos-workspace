@@ -447,7 +447,7 @@ describe("createSignatureMap", () => {
     const widgets = [
       createTestWidget({
         id: "workspace-widget",
-        name: "Workspace Widget",
+        name: "FINOS Workspace Widget",
         type: "iframe",
         widgetId: "iframe-123",
       }),
@@ -465,7 +465,7 @@ describe("createSignatureMap", () => {
     expect(result).toEqual({
       "workspace-widget": {
         origin: "Workspace",
-        widgetId: "workspace-widget", // Uses widget.id for Workspace widgets
+        widgetId: "workspace-widget", // Uses widget.id for FINOS Workspace widgets
         args: {},
       },
       "backend-widget": {
@@ -556,7 +556,7 @@ describe("createSignatureMap", () => {
     it("should ensure widgetId logic follows origin-based rules", () => {
       const workspaceWidget = createTestWidget({
         id: "workspace-1",
-        name: "Workspace Widget",
+        name: "FINOS Workspace Widget",
         type: "iframe",
         widgetId: "iframe-123",
       });
@@ -571,7 +571,7 @@ describe("createSignatureMap", () => {
 
       const result = createSignatureMap([workspaceWidget, backendWidget], {});
 
-      // Workspace widgets should use widget.id as widgetId
+      // FINOS Workspace widgets should use widget.id as widgetId
       expect(result["workspace-1"].widgetId).toBe("workspace-1");
 
       // Non-workspace widgets should use widget.widgetId

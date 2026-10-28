@@ -107,7 +107,7 @@ describe("buildWidgetCitations", () => {
     ]);
     const out = await buildWidgetCitations(cited);
     expect(out).toHaveLength(1);
-    // A widget citation is what the Workspace can match to the widget on the dashboard.
+    // A widget citation is what the FINOS Workspace can match to the widget on the dashboard.
     expect(out[0].source_info).toMatchObject({ type: "widget", uuid: "file-uuid-1", name: "report.pdf", citable: true });
     expect(out[0].details[0]).toEqual({ Filename: "report.pdf", Extension: "pdf" });
   });

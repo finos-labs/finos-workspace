@@ -216,7 +216,7 @@ mcp_http = create_mcp_http_client()
 
 # The web app's page that the authorization server sends the browser back to
 CALLBACK_PATH = "/oauth/callback"
-CLIENT_NAME = "Workspace"
+CLIENT_NAME = "FINOS Workspace"
 GRANT_TYPES = ["authorization_code", "refresh_token"]
 STATE_LIFETIME = timedelta(minutes=10)
 # How long a refresh may hold the lock, and how long another request waits for it

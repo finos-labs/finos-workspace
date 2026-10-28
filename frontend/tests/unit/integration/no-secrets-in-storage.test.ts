@@ -1,5 +1,5 @@
 /**
- * Nothing secret is written to browser storage. The page holds the user's Workspace
+ * Nothing secret is written to browser storage. The page holds the user's FINOS Workspace
  * session as an HttpOnly cookie it never sees; every other credential it uses (agent
  * token, IdP ID tokens, data backend keys, custom agent keys, MCP headers) lives in page
  * memory only. This fills every store with such values in the places they really sit,
@@ -40,7 +40,7 @@ const credentialWidget = (key: string) => ({
   },
 });
 
-/** Every value IndexedDB's Workspace store holds, as text. */
+/** Every value IndexedDB's FINOS Workspace store holds, as text. */
 function readIndexedDB(): Promise<string> {
   return new Promise((resolve, reject) => {
     const open = indexedDB.open("Workspace");

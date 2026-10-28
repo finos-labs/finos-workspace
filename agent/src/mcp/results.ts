@@ -276,7 +276,7 @@ function dispatchTyped(typed: InesTypedItem, ctx: McpResultContext, c: Counters)
 function processPayload(text: string, ctx: McpResultContext, c: Counters): void {
   const parsed = tryParseJson(text);
 
-  // Workspace flattens MCP `content[]` into a JSON-stringified array of text strings
+  // FINOS Workspace flattens MCP `content[]` into a JSON-stringified array of text strings
   // (the frontend's `hooks/mcp/useMcp.ts`). Recurse into each element so typed items survive.
   if (Array.isArray(parsed)) {
     for (const sub of parsed) {

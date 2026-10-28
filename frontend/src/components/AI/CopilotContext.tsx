@@ -104,7 +104,7 @@ export function CopilotContext() {
 
     async function hydrateDefaultAgentFeatures() {
       try {
-        // agents.json is public: no agent token, no Workspace credential
+        // agents.json is public: no agent token, no FINOS Workspace credential
         const ada = await fetchDefaultAgent(ctrl.signal);
         if (!ada) return;
         ada.id = "default-copilot"; // Ensure id matches default copilot id

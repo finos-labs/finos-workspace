@@ -30,7 +30,7 @@ export const addGenerativeWidgetSchema = {
     .enum(["note", "table", "chart", "html"])
     .describe("Generative widget kind."),
   dashboard_id: z.string().optional().describe(
-    "Target dashboard UUID. Omit to target the current Workspace route.",
+    "Target dashboard UUID. Omit to target the current FINOS Workspace route.",
   ),
   data_json: z.string().optional().describe(
     "Widget content. note/html: plain string OR JSON-quoted string. " +

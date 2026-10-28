@@ -1,4 +1,4 @@
-"""Multi-user Workspace MCP load simulator against the LIVE local stack (http://localhost:8001).
+"""Multi-user FINOS Workspace MCP load simulator against the LIVE local stack (http://localhost:8001).
 
 Spins up N simulated users that concurrently:
   * GET  /app/dash/validate-and-sync      ("validate and sync" — heavy DB read)
@@ -6,7 +6,7 @@ Spins up N simulated users that concurrently:
   * POST /mcp  get_workspace_snapshot      (command through the MCP bridge -> browser WS)
   * POST /mcp  update_widget_layout        ("move things around" through the bridge)
 
-A single shared browser WebSocket (the "open Workspace tab") auto-answers bridge commands.
+A single shared browser WebSocket (the "open FINOS Workspace tab") auto-answers bridge commands.
 Throughout the run it samples /metrics and reports how the DB pool / thread pool / event-loop
 lag move under load, plus per-action throughput and latency.
 
@@ -206,7 +206,7 @@ async def cleanup_dashboards(
 async def start_bridge_browser(
     session: aiohttp.ClientSession, access_token: str, stop: asyncio.Event
 ):
-    """Open a bridge session + WebSocket and auto-answer command_requests like the Workspace UI."""
+    """Open a bridge session + WebSocket and auto-answer command_requests like the FINOS Workspace UI."""
     async with session.post(
         f"{BASE_URL}/app/workspace-mcp/bridge/session/start",
         headers=web(access_token),
@@ -418,7 +418,7 @@ def _pct(values: list[float], p: float) -> float:
 
 async def main():
     print(
-        f"Workspace MCP load sim -> {BASE_URL} | users={USERS} duration={DURATION}s "
+        f"FINOS Workspace MCP load sim -> {BASE_URL} | users={USERS} duration={DURATION}s "
         f"think={THINK_MIN}-{THINK_MAX}s"
     )
     connector = aiohttp.TCPConnector(limit=0)

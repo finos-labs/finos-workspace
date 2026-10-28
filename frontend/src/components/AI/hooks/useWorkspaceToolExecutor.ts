@@ -39,7 +39,7 @@ function reasonOf(error: unknown): string {
 }
 
 /**
- * Runs a tool of the Workspace for the agent, in this tab, as the user who is signed in. The Workspace
+ * Runs a tool of the FINOS Workspace for the agent, in this tab, as the user who is signed in. The FINOS Workspace
  * checks the call and says what command it is (the tools are the same ones that external hosts have, and
  * what they check is the same); the tab runs the command, and the agent gets what it came to.
  */

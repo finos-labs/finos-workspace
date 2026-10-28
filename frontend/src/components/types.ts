@@ -184,7 +184,7 @@ export type Widget = {
   params?: ParamDef[]; // url params to send to endpoint
 
   // 🔹 External Integration
-  external?: boolean; // Indicates if the widget is external, i.e., if data is loaded from outside Workspace API
+  external?: boolean; // Indicates if the widget is external, i.e., if data is loaded from outside FINOS Workspace API
   connectionType?: ConnectionType; // Connection type for the widget data.
   source?: string | string[]; // Source for the widget. Where the data for the widget is coming from.
   sourceId?: string; // Source id for the widget.

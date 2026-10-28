@@ -94,7 +94,7 @@ const dashboardWidget = createMockWidget({
   params: [{ paramName: "symbol", type: "text" }],
 });
 
-describe("Workspace API", () => {
+describe("FINOS Workspace API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockTriggerCustomEvent.mockReturnValue(true);

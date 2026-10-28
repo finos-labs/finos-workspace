@@ -75,9 +75,9 @@ async function getDescriptionsMap(
 }
 
 /**
- * Uploads documents for the selected agent. The default Copilot's go to the Workspace API
+ * Uploads documents for the selected agent. The default Copilot's go to the FINOS Workspace API
  * (session cookie); a custom agent's go straight to its own upload endpoint with only
- * the headers configured for that agent, never a Workspace credential.
+ * the headers configured for that agent, never a FINOS Workspace credential.
  */
 async function uploadToAgent(
   formData: FormData,

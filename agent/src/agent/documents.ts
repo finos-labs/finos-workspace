@@ -31,7 +31,7 @@ export interface PendingDocument {
   /** The file's own bytes, for a document that arrived inline. */
   bytes?: Uint8Array;
   /**
-   * Where the file is, for a document that arrived as a link (the Workspace's link to the file of a widget
+   * Where the file is, for a document that arrived as a link (the FINOS Workspace's link to the file of a widget
    * or an attachment). The document search fetches it itself: nothing of the file passes through the agent
    * or through the browser that carries the call.
    */

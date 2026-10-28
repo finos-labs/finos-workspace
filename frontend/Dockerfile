@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 ###############################################
-# Workspace frontend, served by nginx
+# FINOS Workspace frontend, served by nginx
 ###############################################
 # The bundle is built once in runtime mode, so one image runs in every
 # environment: nginx renders config.js from environment variables

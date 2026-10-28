@@ -1,4 +1,4 @@
-"""Load/regression test for the Workspace MCP bridge under concurrency.
+"""Load/regression test for the FINOS Workspace MCP bridge under concurrency.
 
 Proves the async-redis bridge does NOT consume the thread pool or block the event loop
 under load — the property the sync `asyncio.to_thread` version violated. Drives many

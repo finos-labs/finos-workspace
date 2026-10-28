@@ -1,5 +1,5 @@
 /**
- * Mock Workspace browser for bridge integration tests.
+ * Mock FINOS Workspace browser for bridge integration tests.
  *
  * Connects to a `/bridge/session/start` + `/bridge/ws` endpoint, sends
  * configurable canned `command_result` payloads in response to incoming

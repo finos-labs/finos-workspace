@@ -188,7 +188,7 @@ COPY package.json package-lock.json ./
 RUN ["node", "/opt/npm/package/bin/npm-cli.js", "ci", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund"]
 
 # The companion MCP server: the tools the agent uses (web search, page fetch, document search, ...).
-# Only the Workspace talks to it, so it is not meant to be reachable from outside the deployment.
+# Only the FINOS Workspace talks to it, so it is not meant to be reachable from outside the deployment.
 FROM scratch AS ines-mcp
 
 COPY --from=node / /

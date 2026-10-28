@@ -1,10 +1,10 @@
-# Workspace chart colors skill
+# FINOS Workspace chart colors skill
 
 1. **Fix the outer wrapper first**: same rule as tables — apply the theme
 background to the outermost element (`html`, `body`, `#root`), not just
 an inner chart container. Reset `margin: 0` on `html`/`body`, wrapper
 `width: 100%`, `min-height: 100%`.
-2. **Use these exact colors** (sampled from the real Workspace UI):
+2. **Use these exact colors** (sampled from the real FINOS Workspace UI):
 
 Backgrounds:
 

@@ -9,7 +9,7 @@ export interface CitedWidget {
 
 /**
  * Every source the answer rests on. `widgets` are the request's widgets: a hit in a document is cited as
- * the file widget it came from, so that the Workspace can find that widget and open it at the page.
+ * the file widget it came from, so that the FINOS Workspace can find that widget and open it at the page.
  * `answer` is the final answer: of the pages the document search returned, the pages it names are cited.
  */
 export async function buildAllCitations(
@@ -79,7 +79,7 @@ export function selectCitedPages(hits: DocumentCitation[], answer?: string): Doc
 }
 
 /**
- * The citation of a file widget, optionally at a page. It is a widget citation (what the Workspace needs to
+ * The citation of a file widget, optionally at a page. It is a widget citation (what the FINOS Workspace needs to
  * find the widget on the dashboard and open it) whose details name the file and, when there is one, the page:
  * `Filename` marks it as a file and `Page` is where "Go to reference" takes the viewer.
  */

@@ -1,7 +1,7 @@
 /**
  * What the agent is told of a conversation.
  *
- * The Workspace sends the whole chat with every request. The model is not given it: it is served what
+ * The FINOS Workspace sends the whole chat with every request. The model is not given it: it is served what
  * the current turn needs (the question and what has happened since in this turn) and one note that says
  * the earlier messages exist, how many they are, and what the user last asked. Anything else of the
  * conversation it fetches itself with `recall_conversation`. Serving the whole chat every time costs more

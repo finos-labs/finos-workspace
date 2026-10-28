@@ -35,7 +35,7 @@ from api.models import User, Session as SessionModel, UserInvite
 
 
 # =============================================================================
-# Workspace Payloads - Exact payloads from the frontend
+# FINOS Workspace Payloads - Exact payloads from the frontend
 # =============================================================================
 
 

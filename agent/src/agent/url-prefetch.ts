@@ -1,7 +1,7 @@
 /**
  * Eager URL prefetch.
  *
- * Workspace extracts URLs from the user's message (linkify-it, cap 4) and
+ * FINOS Workspace extracts URLs from the user's message (linkify-it, cap 4) and
  * forwards them in `request.urls`. The loop fetches them server-side before
  * the first model call and gives the model an OVERVIEW of each page (what it
  * is, what it contains, the start of its text), not the page: a model that

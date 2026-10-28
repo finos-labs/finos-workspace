@@ -161,7 +161,7 @@ function useStreamResponse(stopSubmit: () => void) {
   } = useFunctionCall();
   const manageNavigationBar = useManageNavigationBar();
 
-  // MCP tool execution; the Workspace's own tools are run by this tab
+  // MCP tool execution; the FINOS Workspace's own tools are run by this tab
   const executeAgentTool = useMcpExecutor();
   const executeWorkspaceTool = useWorkspaceToolExecutor();
 
@@ -800,7 +800,7 @@ function useStreamResponse(stopSubmit: () => void) {
             // The answer is put in the chat whole, with what belongs to it.
             commitAnswer(updateMessage);
             // Only update title if there is actual AI message content
-            // Title generation is a Workspace backend feature available for all agents
+            // Title generation is a FINOS Workspace backend feature available for all agents
             if (aiEnhancements && aiCopilotAiEnhancementsFF) {
               updateCopilotTitle(xHeaders?.traceId || "");
             }

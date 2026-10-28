@@ -26,7 +26,7 @@ export const updateWidgetSchema = {
     "Fallback widget type identifier when uuid is unknown.",
   ),
   dashboard_id: z.string().optional().describe(
-    "Target dashboard UUID. Omit to target the current Workspace route.",
+    "Target dashboard UUID. Omit to target the current FINOS Workspace route.",
   ),
   data_args_json: z.string().optional().describe(
     "JSON object string of widget data inputs.",

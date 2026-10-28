@@ -3,7 +3,7 @@
  *
  * When the model picks one of the SSE-surfaced bridge commands the loop must
  * emit a `copilotFunctionCall` whose `function` equals the command name and
- * whose `input_arguments` are normalized to the Workspace wire shape (see
+ * whose `input_arguments` are normalized to the FINOS Workspace wire shape (see
  * normalizeBridgeArgs). No `execute_agent_tool` (MCP detour) for these.
  */
 
@@ -337,7 +337,7 @@ describe("workspace bridge — generic dispatch", () => {
       extra_state?: Record<string, unknown>;
     };
     expect(data.function).toBe("update_widget_in_dashboard");
-    // The raw queued input is normalized to the Workspace data_sources shape.
+    // The raw queued input is normalized to the FINOS Workspace data_sources shape.
     expect(data.input_arguments).toEqual({
       data_sources: [{ widget_uuid: "w-2", input_args: { sector: "technology" } }],
     });

@@ -397,7 +397,7 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
 
     if (!clientRef.current) {
       clientRef.current = new Client(
-        { name: clientName || "Workspace", version: "0.1.0" },
+        { name: clientName || "FINOS Workspace", version: "0.1.0" },
         { capabilities: {} },
       );
       addLog("debug", "MCP Client initialized in connect.");

@@ -31,7 +31,7 @@ if (config.auth.mode === "none") {
   logger.warn("INES_AUTH=none: there are no users. Every request is anonymous and nothing is counted. Do not use this where others can reach the agent.");
 }
 
-// The links to the Workspace's own files are the one internal address the agent may fetch from.
+// The links to the FINOS Workspace's own files are the one internal address the agent may fetch from.
 configureFetchPolicy({ workspace: config.workspaceFiles ?? undefined });
 
 // Shared between replicas when REDIS_URL names a Redis, in this process otherwise.

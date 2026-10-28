@@ -388,7 +388,7 @@ async def _create_session_record(
 
 
 def _build_service_jwt() -> str:
-    """Generate a service JWT for Workspace auth header checks."""
+    """Generate a service JWT for FINOS Workspace auth header checks."""
     import jwt
     from datetime import datetime, timedelta
 

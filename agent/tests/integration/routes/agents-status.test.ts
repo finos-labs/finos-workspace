@@ -49,7 +49,7 @@ describe("GET /agents.json", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { default_agent: Record<string, unknown> };
     expect(body.default_agent.name).toBe("Ines");
-    // No avatar: the descriptor carries no image, so the Workspace keeps its own icon.
+    // No avatar: the descriptor carries no image, so the FINOS Workspace keeps its own icon.
     expect(body.default_agent).not.toHaveProperty("image");
     expect(body.default_agent).toHaveProperty("endpoints");
     expect(body.default_agent).toHaveProperty("features");

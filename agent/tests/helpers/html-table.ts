@@ -1,4 +1,4 @@
-// The Workspace has no table artifact: a table is an html artifact. These read one back.
+// The FINOS Workspace has no table artifact: a table is an html artifact. These read one back.
 
 function unescapeHtml(s: string): string {
   return s

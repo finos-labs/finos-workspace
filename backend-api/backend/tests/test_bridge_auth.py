@@ -1,4 +1,4 @@
-"""The Workspace bridge websocket carries no token.
+"""The FINOS Workspace bridge websocket carries no token.
 
 The web app starts a bridge session with its session cookie and opens the socket at a URL
 with the session's id only. Before the handshake is accepted the socket must come from an

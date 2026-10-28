@@ -65,7 +65,7 @@ class BrowserSessionStartRequest(Model):
 
 
 class BrowserSessionContext(Model):
-    """Tracked active Workspace context for one browser session."""
+    """Tracked active FINOS Workspace context for one browser session."""
 
     current_dashboard_id: str | None = None
     current_tab_id: str | None = None
@@ -177,7 +177,7 @@ class WorkspaceSnapshot(Model):
 
 
 class WorkspaceWidgetConfig(Model):
-    """Widget configuration passed through to the Workspace frontend."""
+    """Widget configuration passed through to the FINOS Workspace frontend."""
 
     data_args: dict[str, Any] | None = None
     ui_args: dict[str, Any] | None = None
@@ -229,7 +229,7 @@ class ParamOptionsRequest(Model):
 
 
 class GetWidgetDataCommand(Model):
-    """Fetch primary widget data from Workspace data sources."""
+    """Fetch primary widget data from FINOS Workspace data sources."""
 
     command: Literal["get_widget_data"]
     request_id: str | None = None
@@ -237,7 +237,7 @@ class GetWidgetDataCommand(Model):
 
 
 class ListAvailableWidgetsCommand(Model):
-    """List widgets that can be created in the current Workspace session."""
+    """List widgets that can be created in the current FINOS Workspace session."""
 
     command: Literal["list_available_widgets"]
     request_id: str | None = None
@@ -246,7 +246,7 @@ class ListAvailableWidgetsCommand(Model):
 
 
 class GetWidgetSchemaCommand(Model):
-    """Fetch one deterministic widget schema from the Workspace widget library."""
+    """Fetch one deterministic widget schema from the FINOS Workspace widget library."""
 
     command: Literal["get_widget_schema"]
     request_id: str | None = None
@@ -318,7 +318,7 @@ class ManageDashboardCommand(Model):
 
 
 class NavigateWorkspaceCommand(Model):
-    """Navigate the Workspace browser to an existing dashboard or inner tab."""
+    """Navigate the FINOS Workspace browser to an existing dashboard or inner tab."""
 
     command: Literal["navigate_workspace"]
     request_id: str | None = None
@@ -379,7 +379,7 @@ class AssignTasksToAgentsCommand(Model):
 
 
 class GetSkillContentCommand(Model):
-    """Load one skill body from the Workspace skill library."""
+    """Load one skill body from the FINOS Workspace skill library."""
 
     command: Literal["get_skill_content"]
     request_id: str | None = None
@@ -395,7 +395,7 @@ class GetWorkspaceSnapshotCommand(Model):
 
 
 class BackendEndpointHeader(Model):
-    """One header or query parameter sent to a Workspace backend."""
+    """One header or query parameter sent to a FINOS Workspace backend."""
 
     key: str
     value: str
@@ -423,7 +423,7 @@ class NavigationTabInput(Model):
 
 
 class TaskRequest(Model):
-    """One task delegated to an external Workspace agent.
+    """One task delegated to an external FINOS Workspace agent.
 
     Field names match the frontend Zod schema in
     ``frontend/src/components/AI/.../ai.ts`` (``taskRequestsSchema``).
@@ -436,7 +436,7 @@ class TaskRequest(Model):
 
 
 class ManageBackendsCommand(Model):
-    """List, add, update, refresh, or remove Workspace data backends."""
+    """List, add, update, refresh, or remove FINOS Workspace data backends."""
 
     command: Literal["manage_backends"]
     request_id: str | None = None
@@ -449,7 +449,7 @@ class ManageBackendsCommand(Model):
 
 
 class ManageAppsCommand(Model):
-    """List, read, or instantiate Workspace apps across all app sources."""
+    """List, read, or instantiate FINOS Workspace apps across all app sources."""
 
     command: Literal["manage_apps"]
     request_id: str | None = None

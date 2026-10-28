@@ -33,7 +33,7 @@ export const manageAppsSchema = {
 } as const;
 
 export const manageAppsDescription = describeTool(
-  "List, read, or instantiate apps from a Workspace data backend.",
+  "List, read, or instantiate apps from a FINOS Workspace data backend.",
   "Apps are full dashboard templates declared in the backend's apps.json: " +
     "they bundle tabs, widget layouts, parameter groups, and suggested prompts. " +
     "Instantiating one is the programmatic equivalent of clicking an app in the gallery.",

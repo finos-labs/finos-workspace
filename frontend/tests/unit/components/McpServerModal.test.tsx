@@ -252,7 +252,7 @@ describe("ManageMcpServer", () => {
 
     expect(
       screen.getByText(
-        "Connect Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported).",
+        "Connect FINOS Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported).",
       ),
     ).toBeInTheDocument();
   });

@@ -14,7 +14,7 @@ export default function Setup2FA() {
                 ? "/assets/images/logo-horizontal-white.svg"
                 : "/assets/images/logo-horizontal-color.svg"
             }
-            alt="Workspace"
+            alt="FINOS Workspace"
             className="mx-auto h-auto w-[280px] max-w-full border-none shadow-none"
           />
         </div>

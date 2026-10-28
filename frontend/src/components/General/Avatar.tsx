@@ -118,7 +118,7 @@ export const Avatar = memo((props: AvatarProps) => {
     cacheKey = src ?? "",
   } = props;
 
-  // A data URI, or a path on the Workspace itself, is shown as it is
+  // A data URI, or a path on the FINOS Workspace itself, is shown as it is
   const isInline = !!src && (src.startsWith("data:") || src.startsWith("/"));
   // An image that needs a data backend's credentials comes only through the request that
   // carries them
