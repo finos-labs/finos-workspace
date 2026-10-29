@@ -1,3 +1,5 @@
+[![badge-labs](https://user-images.githubusercontent.com/327285/230928932-7c75f8ed-e57b-41db-9fb7-a292a13a1e58.svg)](https://community.finos.org/docs/governance/lifecycle-stages/labs)
+
 # FINOS Workspace
 
 Source code for FINOS Workspace and the components that build and run it.
@@ -237,4 +239,13 @@ it does not answer.
   workflows and `deploy-dev.yml` read the repository variables `AWS_REGION` and `AWS_IMAGE_PUSH_ROLE_ARN`;
   `deploy-dev.yml` also reads `ECR_REGISTRY`, `INFRA_APP_ID`, `INFRA_REPO` and `DEV_VALUES_FILE`, and the secret
   `INFRA_APP_PRIVATE_KEY`.
-- Licensed under Apache-2.0 (see [LICENSE](LICENSE)). Individual components may carry additional notices in their own directories.
+
+## License
+
+Copyright 2026 FINOS
+
+Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+
+SPDX-License-Identifier: [Apache-2.0](https://spdx.org/licenses/Apache-2.0)
+
+Individual components may carry additional notices in their own directories.
