@@ -31,6 +31,7 @@ from api.models.model_helpers import (
     GzipJsonLongType,
     GzipJsonType,
     HttpUrlType,
+    JSONType,
     UUIDMixin,
 )
 from utilities.config import settings
@@ -98,6 +99,7 @@ class ApiSource(Base, UUIDMixin, DateMixin):
     entity_uuid: Mapped[None | UUID] = mapped_column(
         ForeignKey("entity.uuid", ondelete="CASCADE"), index=True
     )
+    mcp_servers: Mapped[list[str] | None] = mapped_column(JSONType)
 
     __table_args__ = (
         CheckConstraint(

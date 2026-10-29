@@ -170,6 +170,27 @@ async def post_user_api_source(
     return SuccessReturn.success_instance()
 
 
+@router.put("/api-source/{source_uuid}/mcp-servers", response_model=SuccessReturn)
+async def put_api_source_mcp_servers(
+    source_uuid: Annotated[
+        UUID, Path(..., description="The UUID of the source whose declared MCP servers to record")
+    ],
+    payload: schemas.ApiSourceMcpServers,
+    user=Depends(auth_helpers.GetCurrentUser(["uuid", "is_superuser"], app_session=True)),
+    db: AsyncSession = Depends(aget_write_db),
+):
+    owned = ApiSource.user_uuid == user.uuid
+    editable = or_(owned, ApiSource.entity_uuid.is_not(None)) if user.is_superuser else owned
+    source = (
+        await db.execute(select(ApiSource).where(ApiSource.uuid == source_uuid, editable))
+    ).scalar_one_or_none()
+    if source is None:
+        raise HTTPException(404, detail="Source not found")
+    source.mcp_servers = sorted(set(payload.servers))
+    await db.commit()
+    return SuccessReturn.success_instance()
+
+
 @router.delete("/api-source/{source_uuid}", response_model=SuccessReturn)
 async def delete_user_api_source(
     source_uuid: Annotated[
