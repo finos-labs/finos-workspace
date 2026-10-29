@@ -26,8 +26,6 @@ jobs:
         include:
           - repository: finos/backend
             dockerfile: fastapi.Dockerfile
-          - repository: finos/backend-worker
-            dockerfile: rqworker.Dockerfile
     concurrency:
       group: backend-image-${{ matrix.repository }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true

@@ -43,14 +43,11 @@ function dockerbackend () {
         return 1
     fi
     tag="${repo##*/}"
-    echo "Building payments_backend:${version} and payments_worker-${version}"
+    echo "Building payments_backend-${version}"
 
     docker build -t $tag:payments_backend-$version -f fastapi.Dockerfile .
-    docker build -t $tag:payments_worker-$version -f rqworker.Dockerfile .
 
     docker tag $tag:payments_backend-$version $repo:payments_backend-$version
-    docker tag $tag:payments_worker-$version $repo:payments_worker-$version
 
     docker push $repo:payments_backend-$version
-    docker push $repo:payments_worker-$version
 }
