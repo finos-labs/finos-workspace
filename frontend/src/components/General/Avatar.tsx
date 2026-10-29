@@ -12,7 +12,7 @@ import { cn } from "../ds/utils";
 
 const avatarVariants = cva(
   [
-    "BB-Avatar relative flex aspect-square shrink-0 overflow-hidden rounded-full",
+    "relative flex aspect-square shrink-0 overflow-hidden rounded-full",
     "bg-transparent dark:text-white text-black",
   ],
   {

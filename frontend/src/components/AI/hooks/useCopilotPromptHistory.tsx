@@ -3,7 +3,7 @@ import { useRef } from "react";
 import { useCallbackRef } from "~/hooks/useRefHooks";
 
 type UseCopilotPromptHistoryArgs = {
-  textAreaRef: RefObject<HTMLTextAreaElement>;
+  textAreaRef: RefObject<HTMLTextAreaElement | null>;
   questionsHistory: string[];
   currentPrompt: string;
   setPrompt: (value: string) => void;

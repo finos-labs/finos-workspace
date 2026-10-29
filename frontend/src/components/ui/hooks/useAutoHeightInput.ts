@@ -1,7 +1,7 @@
 import { type RefObject, useCallback, useEffect } from "react";
 
 export function useAutoHeightInput(
-  inputRef: RefObject<HTMLInputElement | HTMLTextAreaElement>,
+  inputRef: RefObject<HTMLInputElement | HTMLTextAreaElement | null>,
   options?: {
     value?: string;
     textContent?: string;

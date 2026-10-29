@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "types": ["vite-plugin-pwa/client", "vitest/globals"],
+    "types": ["vitest/globals"],
     "target": "ESNext",
     "useDefineForClassFields": true,
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
@@ -28,7 +28,6 @@
     "vitest.setup.ts",
     "playwright.config.ts",
     "scripts/check-runtime-config.ts",
-    "scripts/generate-widgets-schema.ts",
-    "tailwind.config.ts"
+    "scripts/generate-widgets-schema.ts"
   ]
 }

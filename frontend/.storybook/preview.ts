@@ -10,6 +10,13 @@ const preview: Preview = {
     docs: {
       page: DocPage,
     },
+    a11y: {
+      test: "error",
+      context: {
+        exclude: ["[data-a11y-ignore]", "[disabled]", '[aria-disabled="true"]'],
+      },
+      options: { runOnly: ["wcag2a", "wcag2aa"] },
+    },
   },
 };
 
