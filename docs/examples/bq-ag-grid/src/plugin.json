@@ -1,8 +1,8 @@
 {
   "manifestVersion": 1,
-  "id": "ag-grid",
-  "name": "AG Grid",
-  "description": "Renders the ag-grid widget type with AG Grid Community: any backend's rows as a grid that sorts, filters, searches, groups, aggregates and pivots.",
+  "id": "bq-ag-grid",
+  "name": "BQ AG Grid",
+  "description": "Renders the bq-ag-grid widget type with AG Grid Community: any backend's rows as a grid that sorts, filters, searches, groups, aggregates and pivots.",
   "publisher": { "name": "BrightQuery" },
   "icon": "assets/icon.svg",
   "host": { "api": 1, "afm": "0.11" },
@@ -11,15 +11,15 @@
     "widgets": [
       {
         "id": "grid",
-        "name": "AG Grid table",
+        "name": "BQ AG Grid table",
         "description": "A backend's rows in AG Grid, with sorting, filters, search, grouping, aggregates and a pivot table",
         "category": "Tables",
         "handles": [
           {
-            "type": "ag-grid",
+            "type": "bq-ag-grid",
             "response": {
               "accepts": "json",
-              "description": "Rows, a list of objects whose columns are inferred, or a grid in AG Grid's names: {\"rowData\": [...], \"columnDefs\": [...], \"gridOptions\": {...}}. Columns and options can be declared once in data[\"ag-grid\"] instead; the response's win."
+              "description": "Rows, a list of objects whose columns are inferred, or a grid in AG Grid's names: {\"rowData\": [...], \"columnDefs\": [...], \"gridOptions\": {...}}. Columns and options can be declared once in data[\"bq-ag-grid\"] instead; the response's win."
             },
             "definition": {
               "type": "object",

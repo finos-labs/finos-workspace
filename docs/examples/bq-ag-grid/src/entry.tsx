@@ -1,11 +1,11 @@
 /*
- * AG Grid for Workspace: an Anywidget front-end module (AFM 0.11) that renders the `ag-grid`
+ * AG Grid for Workspace: an Anywidget front-end module (AFM 0.11) that renders the `bq-ag-grid`
  * widget type, any backend's rows, with AG Grid Community.
  *
  * The widget's endpoint returns rows, a list of objects, or a grid in AG Grid's own names,
  * `{ "rowData": [...], "columnDefs": [...], "gridOptions": {...} }`. Workspace fetches it
  * with the user's credentials and pushes the response into the `data` trait; the backend's
- * `data["ag-grid"]` in its `widgets.json` arrives as the `definition` trait. The grid sorts,
+ * `data["bq-ag-grid"]` in its `widgets.json` arrives as the `definition` trait. The grid sorts,
  * filters, searches, pins, resizes, moves and pages as AG Grid does, and keeps the user's
  * choices with the dashboard in the `state` trait. Row grouping and the pivot table, which
  * are AG Grid Enterprise's, are this plugin's own, read from AG Grid's column keys

@@ -1,4 +1,4 @@
-"""A second, unrelated backend for the same ag-grid widget type: an HR directory.
+"""A second, unrelated backend for the same bq-ag-grid widget type: an HR directory.
 
 Nothing here knows the companies backend, and the plugin is not changed for it. It reuses
 the grid three ways: rows under a key with columns declared in widgets.json and params
@@ -41,7 +41,7 @@ WIDGETS = {
         "name": "People",
         "description": "The directory: pick a department and whether to include leavers. Add it twice to compare two",
         "category": "HR examples",
-        "type": "ag-grid",
+        "type": "bq-ag-grid",
         "endpoint": "/people",
         "gridData": {"w": 24, "h": 14},
         "params": [
@@ -51,7 +51,7 @@ WIDGETS = {
         "data": {
             # The response is {"results": [...], "count": n}: the rows are under results
             "dataKey": "results",
-            "ag-grid": {
+            "bq-ag-grid": {
                 "columnDefs": [
                     {"field": "name", "pinned": "left", "minWidth": 160},
                     {"field": "title", "enableRowGroup": True},
@@ -73,7 +73,7 @@ WIDGETS = {
         "name": "Headcount by office",
         "description": "Joiners per office and department in a year: the columns come from the data",
         "category": "HR examples",
-        "type": "ag-grid",
+        "type": "bq-ag-grid",
         "endpoint": "/headcount",
         "gridData": {"w": 24, "h": 10},
         "params": [
@@ -90,7 +90,7 @@ WIDGETS = {
         "name": "Team roster",
         "description": "One team's members: the teams come from this backend, and the team is in the path",
         "category": "HR examples",
-        "type": "ag-grid",
+        "type": "bq-ag-grid",
         "endpoint": "/teams/{team}/members",
         "gridData": {"w": 20, "h": 10},
         "params": [

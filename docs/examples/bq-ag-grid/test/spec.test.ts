@@ -172,7 +172,7 @@ describe("headerOf", () => {
 });
 
 describe("plugin.json", () => {
-  // The manifest's definition is what Workspace checks a backend's data["ag-grid"] against;
+  // The manifest's definition is what Workspace checks a backend's data["bq-ag-grid"] against;
   // the code reads the same keys from a response. They must agree.
   const defs = manifest.contributes.widgets[0].handles[0].definition.$defs;
   const keys = (schema: { properties: object }) => Object.keys(schema.properties).sort();

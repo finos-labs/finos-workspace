@@ -1,13 +1,17 @@
-# AG Grid for Workspace
+# BQ AG Grid for Workspace
 
-A Workspace widget plugin that draws the `ag-grid` widget type with AG Grid Community 34.
-Any backend whose `widgets.json` declares a widget of type `ag-grid`, and whose endpoint
+A Workspace widget plugin that draws the `bq-ag-grid` widget type with AG Grid Community 34.
+Any backend whose `widgets.json` declares a widget of type `bq-ag-grid`, and whose endpoint
 returns rows, is shown as a grid that sorts, filters, searches, pins, resizes, moves and
 pages as AG Grid does, and groups, aggregates and pivots, once a Workspace deployment has
 approved and enabled the plugin. It is an example in the repository's `docs/examples/`, a
 package of its own that nothing in Workspace imports, built and deployed the way any
 plugin is ([AUTHORING.md](../../widget-plugins/AUTHORING.md)), on the same lines as
 [`plotly-charts`](../plotly-charts/README.md).
+
+It is not the [`ag-grid`](../ag-grid/README.md) example, a different plugin with a widget
+type of its own: the two install side by side, and a backend picks one by the type it
+declares.
 
 ## The contract
 
@@ -41,7 +45,7 @@ appear, and the type of each from its values: `number`, `boolean`, `dateString`
 ```
 
 A backend declares the widget with its type and endpoint. Columns and grid options that
-are the same for every response can be declared once, in the widget's `data["ag-grid"]`
+are the same for every response can be declared once, in the widget's `data["bq-ag-grid"]`
 (the plugin's `definition`): Workspace checks them against the plugin's schema when it
 reads the backend, and the AI agent reads that schema when it builds a grid widget. A
 response that is a grid overrides them: its `columnDefs` replace the declared ones, and its
@@ -51,10 +55,10 @@ response that is a grid overrides them: its `columnDefs` replace the declared on
 {
   "daily_prices": {
     "name": "Daily prices",
-    "type": "ag-grid",
+    "type": "bq-ag-grid",
     "endpoint": "/prices",
     "data": {
-      "ag-grid": {
+      "bq-ag-grid": {
         "columnDefs": [
           { "field": "date", "valueFormat": { "style": "date" }, "sort": "desc" },
           { "field": "ticker", "enableRowGroup": true },
@@ -138,7 +142,7 @@ switch turns it on, for any widget with a column that can pivot.
 
 ```json
 "data": {
-  "ag-grid": {
+  "bq-ag-grid": {
     "columnDefs": [
       { "field": "sector", "enableRowGroup": true, "rowGroup": true },
       { "field": "size", "enablePivot": true, "pivot": true },
@@ -168,7 +172,7 @@ value columns, the first 20 rows with their first 20 pivot values' cells named b
 ### Rows of other widgets
 
 A widget of any plugin type with `"raw": true` can name this grid for its rows,
-`"data": { "rawType": "ag-grid" }`: its rows button then shows them here. The example
+`"data": { "rawType": "bq-ag-grid" }`: its rows button then shows them here. The example
 backend's *Sales by month* is a Plotly chart that does.
 
 ## Build
@@ -181,7 +185,7 @@ npm run build
 ```
 
 The build bundles `src/entry.tsx` with esbuild, React and AG Grid Community included, into
-`dist/ag-grid/<version>/entry.js` (about 1.3 MB), and prints the checksum and the version
+`dist/bq-ag-grid/<version>/entry.js` (about 1.3 MB), and prints the checksum and the version
 digest. `.npmrc` sets `legacy-peer-deps`, which works around an npm 10 error resolving the
 test tools' optional peers.
 
@@ -204,13 +208,13 @@ dashboard.
 ## Try it
 
 1. Build into the plugins directory of your local stack (`local/LOCAL_SETUP.md`, section
-   Widget plugins): copy `dist/ag-grid/<version>/` to
-   `<plugins directory>/ag-grid/<version>/`.
+   Widget plugins): copy `dist/bq-ag-grid/<version>/` to
+   `<plugins directory>/bq-ag-grid/<version>/`.
 2. In Workspace, Admin, Widgets, Deployment: Rescan, review and approve the version, and
    enable it for your organization. Under Plugin widgets, enable it, and under Roles and
    Access grant it to a role you hold.
 3. Start the example backend and connect it under Connections (below).
-4. Add the *AG Grid examples* widgets to a dashboard.
+4. Add the *BQ AG Grid examples* widgets to a dashboard.
 
 `examples/backend.py` needs only Python 3. It serves six widgets:
 
@@ -234,7 +238,7 @@ origin>` changes either.
 ### A second backend: the same widget, reused
 
 `examples/hr_backend.py` is an unrelated backend, an HR directory, that uses the same
-`ag-grid` type and nothing else of the first: the plugin is not changed for it. It reuses
+`bq-ag-grid` type and nothing else of the first: the plugin is not changed for it. It reuses
 the grid three ways:
 
 | Widget | Shows |

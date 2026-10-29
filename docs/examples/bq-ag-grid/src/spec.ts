@@ -1,5 +1,5 @@
 /**
- * The grid a backend asks for, from two places: the widget's `data["ag-grid"]` in its
+ * The grid a backend asks for, from two places: the widget's `data["bq-ag-grid"]` in its
  * `widgets.json` (the `definition` trait, checked by Workspace against the manifest's
  * schema) and the endpoint's response (the `data` trait). The response is either the rows,
  * or `{ rowData, columnDefs?, gridOptions? }` in AG Grid's own names.
