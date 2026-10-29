@@ -1,0 +1,523 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.7",
+  "version": 1,
+  "metadata": {
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "author": "anchore",
+          "name": "syft",
+          "version": "1.54.1"
+        }
+      ]
+    },
+    "component": {
+      "bom-ref": "2a6695fc606399ed",
+      "type": "file",
+      "name": "docs/examples/plotly-charts"
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "pkg:npm/%40mathjax/mathjax-newcm-font@4.1.3?package-id=ae541e33272f052f",
+      "type": "library",
+      "name": "@mathjax/mathjax-newcm-font",
+      "version": "4.1.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:\\@mathjax\\/mathjax-newcm-font:\\@mathjax\\/mathjax-newcm-font:4.1.3:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40mathjax/mathjax-newcm-font@4.1.3",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "javascript-lock-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "javascript"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "npm"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "javascript-npm-package-lock-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@mathjax\\/mathjax-newcm-font:\\@mathjax\\/mathjax_newcm_font:4.1.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@mathjax\\/mathjax_newcm_font:\\@mathjax\\/mathjax-newcm-font:4.1.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@mathjax\\/mathjax_newcm_font:\\@mathjax\\/mathjax_newcm_font:4.1.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@mathjax\\/mathjax-newcm:\\@mathjax\\/mathjax-newcm-font:4.1.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@mathjax\\/mathjax-newcm:\\@mathjax\\/mathjax_newcm_font:4.1.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@mathjax\\/mathjax_newcm:\\@mathjax\\/mathjax-newcm-font:4.1.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@mathjax\\/mathjax_newcm:\\@mathjax\\/mathjax_newcm_font:4.1.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@mathjax\\/mathjax:\\@mathjax\\/mathjax-newcm-font:4.1.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@mathjax\\/mathjax:\\@mathjax\\/mathjax_newcm_font:4.1.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/package-lock.json"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/mathjax@4.1.3?package-id=57c458ef8e3dd32b",
+      "type": "library",
+      "name": "mathjax",
+      "version": "4.1.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:mathjax:mathjax:4.1.3:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/mathjax@4.1.3",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "javascript-lock-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "javascript"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "npm"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "javascript-npm-package-lock-entry"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/package-lock.json"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:pypi/numpy@2.5.4?package-id=a0fd77ec3fe44294",
+      "type": "library",
+      "name": "numpy",
+      "version": "2.5.4",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0"
+        }
+      ],
+      "cpe": "cpe:2.3:a:python-numpy:python-numpy:2.5.4:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/numpy@2.5.4",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "python-package-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "python-pip-requirements-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-numpy:python_numpy:2.5.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_numpy:python-numpy:2.5.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_numpy:python_numpy:2.5.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python-numpy:2.5.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python_numpy:2.5.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:numpy:python-numpy:2.5.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:numpy:python_numpy:2.5.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-numpy:numpy:2.5.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_numpy:numpy:2.5.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:numpy:2.5.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:numpy:numpy:2.5.4:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/examples/requirements.txt"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:pypi/plotly@7.1.0?package-id=ec560c1256607a70",
+      "type": "library",
+      "name": "plotly",
+      "version": "7.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:python-plotly:python-plotly:7.1.0:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/plotly@7.1.0",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "python-package-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "python-pip-requirements-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-plotly:python_plotly:7.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_plotly:python-plotly:7.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_plotly:python_plotly:7.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly:python-plotly:7.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly:python_plotly:7.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-plotly:plotly:7.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python-plotly:7.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python_plotly:7.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_plotly:plotly:7.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly:plotly:7.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:plotly:7.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/examples/requirements.txt"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/plotly.js-strict-dist-min@4.1.2?package-id=a19f21cb20e5d0b2",
+      "type": "library",
+      "name": "plotly.js-strict-dist-min",
+      "version": "4.1.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:plotly.js-strict-dist-min:plotly.js-strict-dist-min:4.1.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/plotly.js-strict-dist-min@4.1.2",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "javascript-lock-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "javascript"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "npm"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "javascript-npm-package-lock-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js-strict-dist-min:plotly.js_strict_dist_min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js_strict_dist_min:plotly.js-strict-dist-min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js_strict_dist_min:plotly.js_strict_dist_min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js-strict-dist:plotly.js-strict-dist-min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js-strict-dist:plotly.js_strict_dist_min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js_strict_dist:plotly.js-strict-dist-min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js_strict_dist:plotly.js_strict_dist_min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js-strict:plotly.js-strict-dist-min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js-strict:plotly.js_strict_dist_min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js_strict:plotly.js-strict-dist-min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js_strict:plotly.js_strict_dist_min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js:plotly.js-strict-dist-min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:plotly.js:plotly.js_strict_dist_min:4.1.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/package-lock.json"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/sane-topojson@4.0.0?package-id=a853796c44861a48",
+      "type": "library",
+      "name": "sane-topojson",
+      "version": "4.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:sane-topojson:sane-topojson:4.0.0:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/sane-topojson@4.0.0",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "javascript-lock-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "javascript"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "npm"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "javascript-npm-package-lock-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:sane-topojson:sane_topojson:4.0.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:sane_topojson:sane-topojson:4.0.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:sane_topojson:sane_topojson:4.0.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:sane:sane-topojson:4.0.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:sane:sane_topojson:4.0.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/package-lock.json"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/workspace-plugin-plotly@2.1.0?package-id=2fd066989dd56498",
+      "type": "library",
+      "name": "workspace-plugin-plotly",
+      "version": "2.1.0",
+      "cpe": "cpe:2.3:a:workspace-plugin-plotly:workspace-plugin-plotly:2.1.0:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/workspace-plugin-plotly@2.1.0",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "javascript-lock-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "javascript"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "npm"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "javascript-npm-package-lock-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:workspace-plugin-plotly:workspace_plugin_plotly:2.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:workspace_plugin_plotly:workspace-plugin-plotly:2.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:workspace_plugin_plotly:workspace_plugin_plotly:2.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:workspace-plugin:workspace-plugin-plotly:2.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:workspace-plugin:workspace_plugin_plotly:2.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:workspace_plugin:workspace-plugin-plotly:2.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:workspace_plugin:workspace_plugin_plotly:2.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:workspace:workspace-plugin-plotly:2.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:workspace:workspace_plugin_plotly:2.1.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/package-lock.json"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:npm/mathjax@4.1.3?package-id=57c458ef8e3dd32b",
+      "dependsOn": [
+        "pkg:npm/%40mathjax/mathjax-newcm-font@4.1.3?package-id=ae541e33272f052f"
+      ]
+    },
+    {
+      "ref": "pkg:npm/workspace-plugin-plotly@2.1.0?package-id=2fd066989dd56498",
+      "dependsOn": [
+        "pkg:npm/mathjax@4.1.3?package-id=57c458ef8e3dd32b",
+        "pkg:npm/plotly.js-strict-dist-min@4.1.2?package-id=a19f21cb20e5d0b2",
+        "pkg:npm/sane-topojson@4.0.0?package-id=a853796c44861a48"
+      ]
+    }
+  ]
+}
