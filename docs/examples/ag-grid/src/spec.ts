@@ -53,6 +53,10 @@ export interface ColumnSpec {
   rowGroup?: boolean;
   rowGroupIndex?: number;
   aggFunc?: AggFunc;
+  /** AG Grid's pivot names; this plugin pivots, AG Grid Community does not. */
+  enablePivot?: boolean;
+  pivot?: boolean;
+  pivotIndex?: number;
   valueFormat?: ValueFormat;
 }
 
@@ -86,6 +90,8 @@ export interface GridOptionsSpec {
   suppressFieldDotNotation?: boolean;
   defaultColDef?: DefaultColumnSpec;
   autoGroupColumnDef?: { headerName?: string; field?: string; minWidth?: number };
+  /** Start as a pivot table: rows by the rowGroup columns, columns by the pivot columns. */
+  pivotMode?: boolean;
 }
 
 export interface GridSpec {
@@ -175,6 +181,9 @@ export const COLUMN_KEYS: Record<string, Check> = {
   rowGroup: isBoolean,
   rowGroupIndex: integer(0, 15),
   aggFunc: oneOf(AGG_FUNCS),
+  enablePivot: isBoolean,
+  pivot: isBoolean,
+  pivotIndex: integer(0, 15),
   valueFormat: isObject,
 };
 
@@ -208,6 +217,7 @@ export const GRID_OPTION_KEYS: Record<string, Check> = {
   suppressFieldDotNotation: isBoolean,
   defaultColDef: isObject,
   autoGroupColumnDef: isObject,
+  pivotMode: isBoolean,
 };
 
 /** At most this many columns, counting the children of groups. */
@@ -368,12 +378,17 @@ export interface Grouping {
   measures: { field: string; aggFunc: AggFunc }[];
   /** The grouping the grid starts with: `rowGroup` columns, by `rowGroupIndex`. */
   initial: string[];
+  /** The columns the user may pivot by. */
+  pivotable: ColumnSpec[];
+  /** The pivot the grid starts with: `pivot` columns, by `pivotIndex`. */
+  initialPivot: string[];
 }
 
 /**
  * What the grouping can use. Declared columns are grouped when they say `enableRowGroup`
  * and aggregated when they name an `aggFunc`, as AG Grid's own grouping reads them.
  * Inferred columns: any column of text, booleans or dates groups, and numbers are summed.
+ * Pivoting reads `enablePivot` and `pivot` the same way, and inferred columns pivot as they group.
  */
 export function groupingOf(spec: GridSpec): Grouping {
   const leaves = leafColumns(spec.columnDefs);
@@ -385,12 +400,16 @@ export function groupingOf(spec: GridSpec): Grouping {
         .filter((column) => column.cellDataType === "number")
         .map((column) => ({ field: column.field, aggFunc: "sum" as AggFunc }))
     : leaves.flatMap((column) => (column.aggFunc ? [{ field: column.field, aggFunc: column.aggFunc }] : []));
-  const initial = leaves
-    .map((column, index) => ({ column, order: column.rowGroupIndex ?? MAX_COLUMNS + index }))
-    .filter(({ column }) => column.rowGroup)
-    .sort((a, b) => a.order - b.order)
-    .map(({ column }) => column.field);
-  return { groupable, measures, initial };
+  const ordered = (chosen: (column: ColumnSpec) => boolean, order: (column: ColumnSpec) => number | undefined) =>
+    leaves
+      .map((column, index) => ({ column, order: order(column) ?? MAX_COLUMNS + index }))
+      .filter(({ column }) => chosen(column))
+      .sort((a, b) => a.order - b.order)
+      .map(({ column }) => column.field);
+  const initial = ordered((column) => !!column.rowGroup, (column) => column.rowGroupIndex);
+  const pivotable = spec.inferred ? groupable : leaves.filter((column) => column.enablePivot || column.pivot);
+  const initialPivot = ordered((column) => !!column.pivot, (column) => column.pivotIndex);
+  return { groupable, measures, initial, pivotable, initialPivot };
 }
 
 /** The header a column shows: its `headerName`, else its field in words, as AG Grid writes it. */

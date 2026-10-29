@@ -13,7 +13,8 @@ import {
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { buildGroupTree, collectGroupKeys, type DisplayRow, flattenTree } from "../grouping";
+import { buildGroupTree, collectGroupKeys, type DisplayRow, flattenTree, type Measure } from "../grouping";
+import { LABEL_FIELD, type PivotTable, pivotField, pivotTable, totalField } from "../pivot";
 import {
   type ColumnDefSpec,
   type ColumnSpec,
@@ -34,7 +35,7 @@ import {
 } from "../view-state";
 import { GroupCell, type GroupCellContext } from "./GroupCell";
 import { StatusMessage } from "./StatusMessage";
-import { Toolbar } from "./Toolbar";
+import { AGG_LABELS, Toolbar } from "./Toolbar";
 
 /** The host's `theme` trait. */
 export interface ThemeTrait {
@@ -112,8 +113,17 @@ function formatterFor(column: ColumnSpec, { locale, decimals }: Formats) {
   return undefined;
 }
 
-/** Keys this plugin reads itself: AG Grid Community has no grouping, and no `valueFormat`. */
-const PLUGIN_KEYS = new Set(["enableRowGroup", "rowGroup", "rowGroupIndex", "aggFunc", "valueFormat"]);
+/** Keys this plugin reads itself: AG Grid Community has no grouping or pivot, and no `valueFormat`. */
+const PLUGIN_KEYS = new Set([
+  "enableRowGroup",
+  "rowGroup",
+  "rowGroupIndex",
+  "aggFunc",
+  "enablePivot",
+  "pivot",
+  "pivotIndex",
+  "valueFormat",
+]);
 
 /** The AG Grid column of a declared one: AG Grid's own keys, and a formatter for `valueFormat`. */
 function flatColumn(column: ColumnSpec, formats: Formats): ColDef<Row> {
@@ -168,6 +178,93 @@ function groupedColumn(column: ColumnSpec, measured: boolean, formats: Formats):
   };
 }
 
+/**
+ * The columns of a pivot table: the row columns, pinned, then a column group per value of
+ * the first pivot column, nested per value of the next, with a cell per measure, then the
+ * totals. Without measures, each cell is the count of rows.
+ */
+function pivotColumns(
+  table: PivotTable,
+  rowColumns: readonly ColumnSpec[],
+  /** Every column: a measure's header and format are its column's. */
+  columns: readonly ColumnSpec[],
+  measures: readonly Measure[],
+  formats: Formats,
+): (ColDef<Row> | ColGroupDef<Row>)[] {
+  const values = measures.length ? measures : [null];
+  const measureColumn = new Map(columns.map((column) => [column.field, column]));
+  const valueColumn = (field: string, measure: Measure | null, headerName: string): ColDef<Row> => {
+    const spec = (measure && measureColumn.get(measure.field)) || { field, cellDataType: "number" as const };
+    // A count is a count of rows, whatever the column's format
+    const formatter = formatterFor(
+      !measure || measure.aggFunc === "count" ? { field, cellDataType: "number" } : spec,
+      formats,
+    );
+    return {
+      field,
+      colId: field,
+      headerName,
+      cellDataType: "number",
+      type: "rightAligned",
+      filter: "agNumberColumnFilter",
+      ...(formatter ? { valueFormatter: formatter } : {}),
+    };
+  };
+  const measureHeader = (measure: Measure | null) =>
+    measure ? `${headerOf(measureColumn.get(measure.field) ?? measure)} (${AGG_LABELS[measure.aggFunc]})` : "Rows";
+  const cellsOf = (key: number, header: string): ColDef<Row> | ColGroupDef<Row> =>
+    values.length === 1
+      ? valueColumn(pivotField(key, 0), values[0] ?? null, header)
+      : {
+          headerName: header,
+          children: values.map((measure, m) => valueColumn(pivotField(key, m), measure, measureHeader(measure))),
+        };
+
+  // The keys are sorted, so the keys that share a value at a level are next to each other
+  const nest = (entries: { key: string[]; index: number }[], level: number): (ColDef<Row> | ColGroupDef<Row>)[] => {
+    const out: (ColDef<Row> | ColGroupDef<Row>)[] = [];
+    let start = 0;
+    while (start < entries.length) {
+      const value = entries[start]?.key[level] ?? "";
+      let end = start;
+      while (end < entries.length && entries[end]?.key[level] === value) end++;
+      const run = entries.slice(start, end);
+      const last = level === (run[0]?.key.length ?? 1) - 1;
+      out.push(
+        last
+          ? cellsOf(run[0]?.index ?? 0, value)
+          : { headerName: value, children: nest(run, level + 1) },
+      );
+      start = end;
+    }
+    return out;
+  };
+
+  const rows: ColDef<Row>[] = rowColumns.length
+    ? rowColumns.map((column) => ({
+        ...flatColumn(column, formats),
+        // The values are the rows' own, "(blank)" and "Total" among them: no typed editor or filter
+        cellDataType: false,
+        filter: column.cellDataType === "number" ? "agNumberColumnFilter" : "agTextColumnFilter",
+        pinned: "left",
+        hide: false,
+        flex: undefined,
+        minWidth: column.minWidth ?? 140,
+      }))
+    : [{ field: LABEL_FIELD, colId: LABEL_FIELD, headerName: "", pinned: "left", minWidth: 120, sortable: false }];
+  const totals = values.map((measure, m) =>
+    valueColumn(totalField(m), measure, values.length === 1 ? "Total" : measureHeader(measure)),
+  );
+  return [
+    ...rows,
+    ...nest(
+      table.keys.map((key, index) => ({ key, index })),
+      0,
+    ),
+    ...(table.keys.length && values.length > 1 ? [{ headerName: "Total", children: totals }] : totals),
+  ];
+}
+
 const pageSizes = (options: GridOptionsSpec) =>
   [...new Set([options.paginationPageSize ?? 100, 20, 50, 100])].sort((a, b) => a - b);
 
@@ -199,19 +296,29 @@ export function GridView({ data, theme, saved, onViewChange, onGridState, onApi 
   const [search, setSearch] = useState(saved.search ?? "");
   const [shown, setShown] = useState<number | null>(null);
   const [gridState, setGridState] = useState<GridState | undefined>(saved.grid as GridState | undefined);
+  const [pivotMode, setPivotMode] = useState(saved.pivotMode ?? false);
+  const [pivotBy, setPivotBy] = useState<string[]>(saved.pivotBy ?? []);
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
 
-  // A new response may not have the columns the grouping names: keep the ones it has. With
-  // nothing saved, the grid starts with the columns marked rowGroup.
+  // A new response may not have the columns the grouping and the pivot name: keep the ones
+  // it has. With nothing saved, the grid starts with the columns marked rowGroup and pivot,
+  // and as a pivot table if the grid options say pivotMode.
   const [started, setStarted] = useState(saved.groupBy !== undefined);
+  const startPivot = spec?.gridOptions.pivotMode ?? false;
   useEffect(() => {
     if (!grouping) return;
     const known = new Set(grouping.groupable.map((column) => column.field));
+    const pivots = new Set(grouping.pivotable.map((column) => column.field));
     if (!started) {
       setStarted(true);
       setGroupBy(grouping.initial.filter((field) => known.has(field)));
-    } else setGroupBy((current) => current.filter((field) => known.has(field)));
-  }, [grouping, started]);
+      setPivotBy(grouping.initialPivot.filter((field) => pivots.has(field)));
+      if (saved.pivotMode === undefined) setPivotMode(startPivot && pivots.size > 0);
+    } else {
+      setGroupBy((current) => current.filter((field) => known.has(field)));
+      setPivotBy((current) => current.filter((field) => pivots.has(field)));
+    }
+  }, [grouping, started, startPivot, saved.pivotMode]);
 
   const declared = !!spec && !spec.inferred;
   useEffect(() => {
@@ -219,18 +326,19 @@ export function GridView({ data, theme, saved, onViewChange, onGridState, onApi 
   }, [declared, aggFunc, grouping]);
 
   useEffect(() => {
-    onViewChange({ groupBy, aggFunc, search: debouncedSearch });
-  }, [onViewChange, groupBy, aggFunc, debouncedSearch]);
+    onViewChange({ groupBy, aggFunc, search: debouncedSearch, pivotMode, pivotBy });
+  }, [onViewChange, groupBy, aggFunc, debouncedSearch, pivotMode, pivotBy]);
 
-  const grouped = groupBy.length > 0;
+  const pivoting = pivotMode && (grouping?.pivotable.length ?? 0) > 0;
+  const grouped = !pivoting && groupBy.length > 0;
   const fields = useMemo(() => leaves.map((column) => column.field), [leaves]);
   const measures = useMemo(() => measuresOf(grouping?.measures ?? [], aggFunc), [grouping, aggFunc]);
 
-  // Grouped, the grid holds the tree, so the search runs here over the rows; ungrouped, it is
-  // AG Grid's quick filter
+  // Grouped or pivoted, the grid holds what is made of the rows, so the search runs here over
+  // the rows; otherwise it is AG Grid's quick filter
   const matching = useMemo(
-    () => (spec && grouped ? quickMatch(spec.rowData, fields, debouncedSearch) : null),
-    [spec, grouped, fields, debouncedSearch],
+    () => (spec && (grouped || pivoting) ? quickMatch(spec.rowData, fields, debouncedSearch) : null),
+    [spec, grouped, pivoting, fields, debouncedSearch],
   );
   const tree = useMemo(
     () => (matching ? buildGroupTree(matching, groupBy, measures) : []),
@@ -297,6 +405,18 @@ export function GridView({ data, theme, saved, onViewChange, onGridState, onApi 
     ];
   }, [measures, options, labelField, headers, leaves, groupBy, formats]);
 
+  const pivotColumnsBy = useMemo(() => pivotBy.filter((field) => !groupBy.includes(field)), [pivotBy, groupBy]);
+  const pivot = useMemo(
+    () => (pivoting && matching ? pivotTable(matching, groupBy, pivotColumnsBy, measures) : null),
+    [pivoting, matching, groupBy, pivotColumnsBy, measures],
+  );
+  const pivotDefs = useMemo(() => {
+    if (!pivot) return [];
+    const byField = new Map(leaves.map((column) => [column.field, column]));
+    const rowColumns = groupBy.flatMap((field) => byField.get(field) ?? []);
+    return pivotColumns(pivot, rowColumns, leaves, measures, formats);
+  }, [pivot, leaves, groupBy, measures, formats]);
+
   const getRowId = useCallback((params: GetRowIdParams<DisplayRow>) => params.data.key, []);
   const getRowClass = useCallback(
     (params: RowClassParams<DisplayRow>) =>
@@ -347,11 +467,27 @@ export function GridView({ data, theme, saved, onViewChange, onGridState, onApi 
         The endpoint returned no rows.
       </StatusMessage>
     );
-  } else if (grouped && !matching?.length) {
+  } else if ((grouped || pivoting) && !matching?.length) {
     body = (
       <StatusMessage tone="neutral" title="No rows match the search">
         Try a different search.
       </StatusMessage>
+    );
+  } else if (pivot) {
+    body = (
+      <div className="agw-grid">
+        <AgGridReact<Row>
+          key="pivot"
+          {...grid}
+          suppressFieldDotNotation
+          rowData={pivot.rows}
+          columnDefs={pivotDefs}
+          defaultColDef={{ sortable: true, filter: true, resizable: true, minWidth: 110 }}
+          pinnedBottomRowData={groupBy.length ? [pivot.totals] : undefined}
+          getRowClass={(params) => (params.node.rowPinned ? "agw-row-group" : undefined)}
+          onGridReady={(event) => onApi(event.api as unknown as GridApi)}
+        />
+      </div>
     );
   } else if (grouped) {
     body = (
@@ -396,9 +532,14 @@ export function GridView({ data, theme, saved, onViewChange, onGridState, onApi 
 
   const total = spec?.rowData.length ?? 0;
   const format = (value: number) => value.toLocaleString(locale);
+  const pivotMeta = (table: PivotTable) =>
+    `${format(table.rows.length)} rows × ${format(table.keys.length)} pivot columns, from ${format(matching?.length ?? 0)} of ${format(total)} rows` +
+    (table.hidden ? `; ${format(table.hidden)} more column values not shown` : "");
   const meta = !spec
     ? null
-    : grouped
+    : pivot
+      ? pivotMeta(pivot)
+      : grouped
       ? `${format(matching?.length ?? 0)} of ${format(total)} rows in ${format(groupCount)} groups`
       : shown !== null && shown !== total
         ? `${format(shown)} of ${format(total)} rows`
@@ -434,6 +575,11 @@ export function GridView({ data, theme, saved, onViewChange, onGridState, onApi 
           groupable={(grouping?.groupable ?? []).map((column) => ({ field: column.field, header: headerOf(column) }))}
           groupBy={groupBy}
           onGroupByChange={handleGroupByChange}
+          pivotable={(grouping?.pivotable ?? []).map((column) => ({ field: column.field, header: headerOf(column) }))}
+          pivotMode={pivoting}
+          onPivotModeChange={setPivotMode}
+          pivotBy={pivotColumnsBy}
+          onPivotByChange={setPivotBy}
           hasMeasures={(grouping?.measures.length ?? 0) > 0}
           declared={declared}
           aggFunc={aggFunc}

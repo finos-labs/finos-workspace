@@ -3,10 +3,10 @@
 A Workspace widget plugin that draws the `ag-grid` widget type with AG Grid Community 34.
 Any backend whose `widgets.json` declares a widget of type `ag-grid`, and whose endpoint
 returns rows, is shown as a grid that sorts, filters, searches, pins, resizes, moves and
-pages as AG Grid does, once a Workspace deployment has approved and enabled the plugin. It
-is an example in the repository's `docs/examples/`, a package of its own that nothing in
-Workspace imports, built and deployed the way any plugin is
-([AUTHORING.md](../../widget-plugins/AUTHORING.md)), on the same lines as
+pages as AG Grid does, and groups, aggregates and pivots, once a Workspace deployment has
+approved and enabled the plugin. It is an example in the repository's `docs/examples/`, a
+package of its own that nothing in Workspace imports, built and deployed the way any
+plugin is ([AUTHORING.md](../../widget-plugins/AUTHORING.md)), on the same lines as
 [`plotly-charts`](../plotly-charts/README.md).
 
 ## The contract
@@ -88,12 +88,13 @@ type, is not applied, and the card lists it under *options not applied*.
 | `wrapText`, `autoHeight`, `wrapHeaderText` | Long values. |
 | `valueFormat` | `{ "style": "decimal" \| "percent" \| "currency" \| "date", "decimals", "currency", "notation": "compact", "dateStyle" }`, in the user's locale. Without one, numbers show as they come, fractions rounded to the site's decimals. |
 | `enableRowGroup`, `rowGroup`, `rowGroupIndex`, `aggFunc` | Grouping (below). |
+| `enablePivot`, `pivot`, `pivotIndex` | The pivot table (below). |
 
 A column group is `{ "headerName": "...", "children": [columns], "marryChildren": true }`.
 `gridOptions` takes `pagination`, `paginationPageSize`, `paginationAutoPageSize`,
 `rowHeight`, `headerHeight`, `animateRows`, `enableCellTextSelection`,
 `suppressMovableColumns`, `suppressFieldDotNotation` (on unless set: keys with dots are
-keys, not paths), `defaultColDef` (`sortable`, `filter`, `floatingFilter`, `resizable`,
+keys, not paths), `pivotMode`, `defaultColDef` (`sortable`, `filter`, `floatingFilter`, `resizable`,
 `flex`, `minWidth`, `wrapHeaderText`) and `autoGroupColumnDef` (`headerName`, `field`,
 `minWidth`). The manifest's `definition` is the full schema.
 
@@ -116,10 +117,42 @@ that moves to Enterprise keeps its `columnDefs`.
 - While grouped, the search applies to the rows and the columns do not sort or filter;
   AG Grid's sorting and filters return when the grouping is removed.
 
+### The pivot table
+
+The pivot table is AG Grid Enterprise's pivot mode, made by this plugin from the same
+keys. `gridOptions.pivotMode` starts the widget as one; otherwise the toolbar's **Pivot**
+switch turns it on, for any widget with a column that can pivot.
+
+- **Rows**: one per value of the row columns, the `rowGroup` columns to start with (any
+  `enableRowGroup` column from the toolbar), with a pinned *Total* row.
+- **Columns**: one per value of the pivot columns, the `pivot` columns in `pivotIndex`
+  order to start with (any `enablePivot` column from the toolbar). Two pivot columns nest:
+  *Large* over *CA*, *TX*... At most 100 values become columns; the header says how many
+  more there are, and the totals count them.
+- **Cells**: each `aggFunc` column's aggregate of the rows that have both values, in the
+  column's `valueFormat`; the toolbar's Aggregate applies one function to all. Without an
+  `aggFunc` column, each cell is the count of rows. A *Total* column follows.
+- Inferred columns pivot as they group: any text, boolean or date column.
+- The pivot table is a grid of its own: its columns sort and filter, the search picks the
+  rows it is made of, and *Table as shown* exports it.
+
+```json
+"data": {
+  "ag-grid": {
+    "columnDefs": [
+      { "field": "sector", "enableRowGroup": true, "rowGroup": true },
+      { "field": "size", "enablePivot": true, "pivot": true },
+      { "field": "revenue", "aggFunc": "sum", "valueFormat": { "style": "currency" } }
+    ],
+    "gridOptions": { "pivotMode": true }
+  }
+}
+```
+
 ### What the user keeps
 
 The column order, widths, visibility and pinning, the sort, the filters, the page, the
-grouping, the aggregate and the search are saved with the dashboard (the `state` trait,
+grouping, the pivot, the aggregate and the search are saved with the dashboard (the `state` trait,
 `core:state:write`), and restored when it opens.
 
 ### Exports and the agent
@@ -128,7 +161,9 @@ Workspace's Export menu offers the table as shown (CSV: the visible columns, sor
 filtered and formatted, every page), all the rows (CSV) and the response (JSON). The
 Copilot gets the columns and their types, how many rows there are and how many the view
 keeps, the search, sort and filters, the first 20 rows, and when grouped, the top-level
-groups with their counts and aggregates.
+groups with their counts and aggregates. As a pivot table, it gets the row, pivot and
+value columns, the first 20 rows with their first 20 pivot values' cells named by value
+(*Large · revenueUsdM (sum)*), and the totals.
 
 ### Rows of other widgets
 
@@ -162,7 +197,7 @@ npm test
 ```
 
 The tests check reading responses and definitions (and that the manifest's schema declares
-the keys the code reads), inferring types, the grouping, the search, the formats, the
+the keys the code reads), inferring types, the grouping, the pivot table, the search, the formats, the
 saved state, the CSV and the agent context. Drawing needs a browser and is checked on a
 dashboard.
 
@@ -177,12 +212,13 @@ dashboard.
 3. Start the example backend and connect it under Connections (below).
 4. Add the *AG Grid examples* widgets to a dashboard.
 
-`examples/backend.py` needs only Python 3. It serves five widgets:
+`examples/backend.py` needs only Python 3. It serves six widgets:
 
 | Widget | Shows |
 |---|---|
 | *Companies (rows)* | 500 company rows as a plain list: every column inferred |
 | *Companies (grid)* | The same rows as a grid: headers, a column group, formats, grouped by sector and state |
+| *Companies (pivot table)* | The same endpoint as *Companies (rows)*, as a pivot table: revenue and employees by sector and size, declared in `widgets.json` |
 | *Daily prices* | A year of prices for five tickers, with the columns and options declared in `widgets.json` |
 | *Trades (20,000 rows)* | Twenty thousand inferred rows, paged |
 | *Sales by month* | A `plotly` chart (needs `plotly-charts`) whose rows button shows its rows in this grid |

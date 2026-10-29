@@ -39,6 +39,20 @@ PRICES_GRID = {
     "gridOptions": {"pagination": True, "paginationPageSize": 50, "defaultColDef": {"floatingFilter": True}},
 }
 
+# A pivot table of the companies' rows: the same endpoint as Companies (rows), another definition
+PIVOT_GRID = {
+    "columnDefs": [
+        {"field": "company", "minWidth": 220},
+        {"field": "sector", "enableRowGroup": True, "enablePivot": True, "rowGroup": True},
+        {"field": "industry", "enableRowGroup": True, "enablePivot": True},
+        {"field": "state", "enableRowGroup": True, "enablePivot": True},
+        {"field": "size", "enableRowGroup": True, "enablePivot": True, "pivot": True},
+        {"field": "revenueUsdM", "headerName": "Revenue", "aggFunc": "sum", "valueFormat": {"style": "currency", "decimals": 1}},
+        {"field": "employees", "aggFunc": "sum", "valueFormat": {"style": "decimal", "notation": "compact"}},
+    ],
+    "gridOptions": {"pivotMode": True},
+}
+
 WIDGETS = {
     "grid_companies_rows": {
         "name": "Companies (rows)",
@@ -55,6 +69,15 @@ WIDGETS = {
         "type": "ag-grid",
         "endpoint": "/companies",
         "gridData": {"w": 24, "h": 14},
+    },
+    "grid_companies_pivot": {
+        "name": "Companies (pivot table)",
+        "description": "Revenue and employees by sector and size: the rows of Companies (rows) as a pivot table",
+        "category": "AG Grid examples",
+        "type": "ag-grid",
+        "endpoint": "/companies/rows",
+        "gridData": {"w": 28, "h": 14},
+        "data": {"ag-grid": PIVOT_GRID},
     },
     "grid_prices": {
         "name": "Daily prices",

@@ -69,6 +69,8 @@ describe("stateOf", () => {
         groupBy: ["sector", 3],
         aggFunc: "avg",
         search: "x",
+        pivotMode: true,
+        pivotBy: ["state", null],
         other: true,
       }),
     ).toEqual({
@@ -76,6 +78,8 @@ describe("stateOf", () => {
       groupBy: ["sector"],
       aggFunc: "avg",
       search: "x",
+      pivotMode: true,
+      pivotBy: ["state"],
     });
     expect(stateOf(null)).toEqual({});
     expect(stateOf({ aggFunc: "median" })).toEqual({});
@@ -89,7 +93,7 @@ describe("summary", () => {
     const context = summary({
       ...base,
       shown: ROWS.slice(0, 1),
-      view: { groupBy: [], aggFunc: null, search: "acme" },
+      view: { groupBy: [], aggFunc: null, search: "acme", pivotMode: false, pivotBy: [] },
       sort: { sortModel: [{ colId: "revenue", sort: "desc" }] },
     });
     expect(context).toMatchObject({
@@ -104,7 +108,7 @@ describe("summary", () => {
   });
 
   it("gives the top-level groups when grouped, with each column's function", () => {
-    expect(summary({ ...base, shown: ROWS, view: { groupBy: ["sector"], aggFunc: null, search: "" } })).toMatchObject({
+    expect(summary({ ...base, shown: ROWS, view: { groupBy: ["sector"], aggFunc: null, search: "", pivotMode: false, pivotBy: [] } })).toMatchObject({
       groupBy: ["sector"],
       groups: 2,
       totals: { revenue: 45, employees: 150 },
@@ -113,6 +117,20 @@ describe("summary", () => {
         { sector: "Technology", rows: 1, revenue: 5, employees: 50 },
       ],
       moreGroups: 0,
+    });
+  });
+
+  it("gives the pivot's rows with their cells named, and the totals, when pivoted", () => {
+    const view = { groupBy: ["sector"], aggFunc: "sum" as const, search: "", pivotMode: true, pivotBy: ["state"] };
+    expect(summary({ ...base, shown: ROWS, view, sort: { sortModel: [] } })).toMatchObject({
+      sort: null,
+      pivot: { rows: ["sector"], columns: ["state"], columnKeys: 2, columnKeysNotShown: 0 },
+      pivotRows: 2,
+      firstPivotRows: [
+        { sector: "Energy", "CA · revenue (sum)": 30, "TX · revenue (sum)": 10, "Total · revenue (sum)": 40 },
+        { sector: "Technology", "CA · revenue (sum)": null, "TX · revenue (sum)": 5 },
+      ],
+      totals: { sector: "Total", "Total · employees (sum)": 450 },
     });
   });
 });

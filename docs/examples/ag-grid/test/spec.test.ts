@@ -142,6 +142,24 @@ describe("groupingOf", () => {
     expect(grouping.groupable.map((c) => c.field)).toEqual(["a", "b"]);
     expect(grouping.measures).toEqual([{ field: "c", aggFunc: "avg" }]);
     expect(grouping.initial).toEqual(["b", "a"]);
+    expect(grouping.pivotable).toEqual([]);
+  });
+
+  it("reads AG Grid's pivot keys from declared columns, and pivots inferred ones as they group", () => {
+    const grouping = groupingOf(
+      ok({
+        rowData: [{ a: "x", b: "y", c: 1 }],
+        columnDefs: [
+          { field: "a", enablePivot: true, pivot: true, pivotIndex: 1 },
+          { field: "b", pivot: true, pivotIndex: 0 },
+          { field: "c", aggFunc: "sum" },
+        ],
+        gridOptions: { pivotMode: true },
+      }),
+    );
+    expect(grouping.pivotable.map((c) => c.field)).toEqual(["a", "b"]);
+    expect(grouping.initialPivot).toEqual(["b", "a"]);
+    expect(groupingOf(ok([{ name: "a", revenue: 1 }])).pivotable.map((c) => c.field)).toEqual(["name"]);
   });
 });
 

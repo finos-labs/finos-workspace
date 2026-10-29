@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ag-grid",
   "name": "AG Grid",
-  "description": "Renders the ag-grid widget type with AG Grid Community: any backend's rows as a grid that sorts, filters, searches, groups and aggregates.",
+  "description": "Renders the ag-grid widget type with AG Grid Community: any backend's rows as a grid that sorts, filters, searches, groups, aggregates and pivots.",
   "publisher": { "name": "BrightQuery" },
   "icon": "assets/icon.svg",
   "host": { "api": 1, "afm": "0.11" },
@@ -12,7 +12,7 @@
       {
         "id": "grid",
         "name": "AG Grid table",
-        "description": "A backend's rows in AG Grid, with sorting, filters, search, grouping and aggregates",
+        "description": "A backend's rows in AG Grid, with sorting, filters, search, grouping, aggregates and a pivot table",
         "category": "Tables",
         "handles": [
           {
@@ -86,8 +86,11 @@
                     "aggFunc": {
                       "type": "string",
                       "enum": ["sum", "avg", "min", "max", "count"],
-                      "description": "The aggregate the column shows on group rows"
+                      "description": "The aggregate the column shows on group rows and in pivot cells"
                     },
+                    "enablePivot": { "type": "boolean", "description": "The user may pivot by this column: its values become columns" },
+                    "pivot": { "type": "boolean", "description": "The pivot table starts with this column's values as columns" },
+                    "pivotIndex": { "type": "integer", "minimum": 0, "maximum": 15, "description": "The order of the pivot columns" },
                     "valueFormat": { "$ref": "#/$defs/valueFormat" }
                   }
                 },
@@ -114,6 +117,10 @@
                     "enableCellTextSelection": { "type": "boolean" },
                     "suppressMovableColumns": { "type": "boolean" },
                     "suppressFieldDotNotation": { "type": "boolean" },
+                    "pivotMode": {
+                      "type": "boolean",
+                      "description": "Start as a pivot table: rows by the rowGroup columns, columns by the pivot columns, cells by the aggFunc columns"
+                    },
                     "defaultColDef": {
                       "type": "object",
                       "additionalProperties": false,

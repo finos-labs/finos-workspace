@@ -4,6 +4,7 @@
  * dashboard and the agent's summary. Pure functions, tested without a browser.
  */
 import { aggregate, buildGroupTree, collectGroupKeys, groupValue, type Measure } from "./grouping";
+import { LABEL_FIELD, pivotField, pivotLabel, pivotTable, totalField } from "./pivot";
 import { AGG_FUNCS, type AggFunc, type ColumnSpec, headerOf, type Row, type ValueFormat } from "./spec";
 
 export interface ViewState {
@@ -11,6 +12,9 @@ export interface ViewState {
   /** One function for every measure, or null for the one each column declares. */
   aggFunc: AggFunc | null;
   search: string;
+  /** Whether the view is a pivot table: rows by `groupBy`, columns by `pivotBy`. */
+  pivotMode: boolean;
+  pivotBy: string[];
 }
 
 /** The measures with the view's function applied. */
@@ -95,6 +99,8 @@ export interface SavedState {
   groupBy?: string[];
   aggFunc?: AggFunc | null;
   search?: string;
+  pivotMode?: boolean;
+  pivotBy?: string[];
 }
 
 /** The trait's value, read defensively: it was written by another version, maybe. */
@@ -110,6 +116,8 @@ export function stateOf(value: unknown): SavedState {
   if (saved.aggFunc === null || (AGG_FUNCS as readonly unknown[]).includes(saved.aggFunc))
     out.aggFunc = saved.aggFunc as AggFunc | null;
   if (typeof saved.search === "string") out.search = saved.search.slice(0, 200);
+  if (typeof saved.pivotMode === "boolean") out.pivotMode = saved.pivotMode;
+  if (Array.isArray(saved.pivotBy)) out.pivotBy = saved.pivotBy.filter((f): f is string => typeof f === "string");
   return out;
 }
 
@@ -118,6 +126,8 @@ export function stateOf(value: unknown): SavedState {
 /** At most this many rows and groups go to the agent. */
 const SAMPLE_ROWS = 20;
 const SUMMARY_GROUPS = 20;
+/** At most this many of the pivot's columns, per row, go to the agent. */
+const SUMMARY_PIVOT_KEYS = 20;
 const MAX_CELL = 200;
 
 function short(value: unknown): unknown {
@@ -142,7 +152,8 @@ export interface SummaryInput {
 /**
  * What the agent is told: the columns, how many rows there are and how many the view
  * keeps, the search, sort and filters, the first rows, and when grouped, the top-level
- * groups with their counts and aggregates.
+ * groups with their counts and aggregates. As a pivot table, its rows, with the first
+ * pivot columns' cells named by their values, and the totals.
  */
 export function summary(input: SummaryInput) {
   const { columns, view } = input;
@@ -160,6 +171,34 @@ export function summary(input: SummaryInput) {
     sort: input.sort ?? null,
     filter: input.filter ?? null,
   };
+  if (view.pivotMode) {
+    const pivotBy = view.pivotBy.filter((field) => !view.groupBy.includes(field));
+    const table = pivotTable(input.shown, view.groupBy, pivotBy, measures);
+    const keys = table.keys.slice(0, SUMMARY_PIVOT_KEYS);
+    const values = measures.length ? measures : [undefined];
+    const named = (row: Row) => ({
+      ...Object.fromEntries((view.groupBy.length ? view.groupBy : [LABEL_FIELD]).map((f) => [f, short(row[f])])),
+      ...Object.fromEntries(
+        keys.flatMap((key, k) => values.map((measure, m) => [pivotLabel(key, measure), row[pivotField(k, m)] ?? null])),
+      ),
+      ...Object.fromEntries(values.map((measure, m) => [pivotLabel(null, measure), row[totalField(m)] ?? null])),
+    });
+    return {
+      ...base,
+      sort: null,
+      filter: null,
+      pivot: {
+        rows: view.groupBy,
+        columns: pivotBy,
+        values: measures.length ? measures : "row count",
+        columnKeys: table.keys.length + table.hidden,
+        columnKeysNotShown: table.hidden,
+      },
+      pivotRows: table.rows.length,
+      firstPivotRows: table.rows.slice(0, SAMPLE_ROWS).map(named),
+      totals: named(table.totals),
+    };
+  }
   if (!view.groupBy.length) {
     return { ...base, firstRows: input.shown.slice(0, SAMPLE_ROWS).map(rowOf) };
   }

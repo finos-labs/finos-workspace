@@ -7,9 +7,9 @@
  * with the user's credentials and pushes the response into the `data` trait; the backend's
  * `data["ag-grid"]` in its `widgets.json` arrives as the `definition` trait. The grid sorts,
  * filters, searches, pins, resizes, moves and pages as AG Grid does, and keeps the user's
- * choices with the dashboard in the `state` trait. Row grouping, which is AG Grid
- * Enterprise's, is this plugin's own, read from AG Grid's column keys (`enableRowGroup`,
- * `rowGroup`, `aggFunc`). Workspace's Export menu and its Copilot get the table through the
+ * choices with the dashboard in the `state` trait. Row grouping and the pivot table, which
+ * are AG Grid Enterprise's, are this plugin's own, read from AG Grid's column keys
+ * (`enableRowGroup`, `rowGroup`, `aggFunc`, `enablePivot`, `pivot`) and `pivotMode`. Workspace's Export menu and its Copilot get the table through the
  * exports `initialize` returns.
  *
  * The build bundles React and AG Grid into this one module, because a plugin frame
@@ -61,7 +61,7 @@ function traitStore(model: Model, name: string) {
 type TraitStore = ReturnType<typeof traitStore>;
 
 // One frame is one widget instance, so module scope is this instance's
-let view: ViewState = { groupBy: [], aggFunc: null, search: "" };
+let view: ViewState = { groupBy: [], aggFunc: null, search: "", pivotMode: false, pivotBy: [] };
 let gridApi: GridApi | null = null;
 let gridState: Record<string, unknown> | undefined;
 
@@ -71,9 +71,9 @@ function read(response: unknown, definition: unknown): Parsed | null {
 
 const parsed = (model: Model) => read(model.get("data"), model.get("definition"));
 
-/** The rows the view keeps, in its order: AG Grid's, or the search's while grouped. */
+/** The rows the view keeps, in its order: AG Grid's, or the search's while grouped or pivoted. */
 function shownRows(rows: Row[], fields: string[]): Row[] {
-  if (view.groupBy.length || !gridApi || gridApi.isDestroyed()) return quickMatch(rows, fields, view.search);
+  if (view.groupBy.length || view.pivotMode || !gridApi || gridApi.isDestroyed()) return quickMatch(rows, fields, view.search);
   const shown: Row[] = [];
   gridApi.forEachNodeAfterFilterAndSort((node) => {
     if (node.data) shown.push(node.data as Row);
@@ -175,7 +175,7 @@ export default {
         if (!data?.ok) return null;
         const { spec } = data;
         const columns = leafColumns(spec.columnDefs);
-        const grouped = view.groupBy.length > 0;
+        const grouped = view.groupBy.length > 0 || view.pivotMode;
         return summary({
           columns,
           measures: groupingOf(spec).measures,
