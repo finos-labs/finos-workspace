@@ -139,7 +139,7 @@ const SelectionDropdown = memo(
             collisionPadding={16}
             onCloseAutoFocus={(e) => e.preventDefault()}
             className={cn(
-              "z-[60] radix-side-bottom:animate-slide-down radix-side-top:animate-slide-up",
+              "z-[60] data-[side=bottom]:animate-slide-down data-[side=top]:animate-slide-up",
               "w-48",
               "ws-dropdown-container",
             )}

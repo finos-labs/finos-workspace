@@ -46,7 +46,7 @@ export const RangeDatePicker = ({ onRangeSelect }: RangeDatePickerProps) => {
           align="start"
           sideOffset={5}
           className={cn(
-            "radix-side-top:animate-slide-up radix-side-bottom:animate-slide-down",
+            "data-[side=top]:animate-slide-up data-[side=bottom]:animate-slide-down",
             "z-10 text-xs p-0",
             "ws-dropdown-container _dropdown-container",
           )}

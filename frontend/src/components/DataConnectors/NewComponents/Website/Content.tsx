@@ -423,7 +423,7 @@ export default function WebsiteContent() {
                 </TabsTrigger>
               ))}
               <button
-                className="BB-TabTrigger transition text-nowrap rounded-t-sm px-2.5 disabled:pointer-events-none disabled:opacity-50 bg-light-100 text-light-500 hover:text-light-750 radix-state-active:bg-brand-main radix-state-active:text-light-50 [&.active]:bg-brand-main [&.active]:text-light-50 dark:bg-dark-700 dark:text-dark-50 dark:hover:text-light-200 dark:radix-state-active:bg-brand-main dark:radix-state-active:text-light-50 dark:[&.active]:bg-brand-main dark:[&.active]:text-light-50"
+                className="transition text-nowrap rounded-t-sm px-2.5 disabled:pointer-events-none disabled:opacity-50 bg-light-100 text-light-500 hover:text-light-750 data-[state=active]:bg-brand-main data-[state=active]:text-light-50 [&.active]:bg-brand-main [&.active]:text-light-50 dark:bg-dark-700 dark:text-dark-50 dark:hover:text-light-200 dark:data-[state=active]:bg-brand-main dark:data-[state=active]:text-light-50 dark:[&.active]:bg-brand-main dark:[&.active]:text-light-50"
                 onClick={addWebsiteForm}
               >
                 <Icon id="plus" />

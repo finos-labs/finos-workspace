@@ -124,3 +124,5 @@ export const typographyPlugin = plugin(({ addUtilities }) => {
     });
   });
 });
+
+export default typographyPlugin;

@@ -133,7 +133,7 @@ export default function AddUsersSelect({
         )}
       >
         {isLoading ? "Loading users…" : triggerLabel}
-        <Icon id="chevron-down" className="BB-Icon block size-4 text-ds-text-body" />
+        <Icon id="chevron-down" className="block size-4 text-ds-text-body" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className={cn(

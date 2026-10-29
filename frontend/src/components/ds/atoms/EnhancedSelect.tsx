@@ -363,7 +363,7 @@ export const EnhancedSelect = React.forwardRef<
         disabled={disabled}
         {...props}
       >
-        <div className={cn("BB-Select group", className)} aria-disabled={disabled}>
+        <div className={cn("group", className)} aria-disabled={disabled}>
           {label && (
             <label className="body-xs-medium text-ds-text-body mb-1.5 block">
               {label}

@@ -22,8 +22,8 @@ export const TabsParam = memo<TabsParamProps>(
             key={`${id}-option-${option.value}`}
             value={option.value}
             className="px-4 py-0.5
-            radix-state-on:bg-light-100 radix-state-on:text-brand-main
-            dark:radix-state-on:bg-dark-500 dark:radix-state-on:text-brand-main
+            data-[state=on]:bg-light-100 data-[state=on]:text-brand-main
+            dark:data-[state=on]:bg-dark-500 dark:data-[state=on]:text-brand-main
             text-light-500 dark:text-light-400 text-2xs rounded"
           >
             {option.label}

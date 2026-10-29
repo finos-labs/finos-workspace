@@ -1282,7 +1282,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-2.5 text-xs h-full">
-        <div className="flex items-center justify-center bg-tab-group-bg overflow-hidden h-full rounded border border-secondary/20">
+        <div className="flex items-center justify-center bg-tab-group-bg overflow-hidden h-full rounded border border-light-100/20 dark:border-dark-400/20">
           <BrandedLoadingState message="Loading widgets..." />
         </div>
       </div>
@@ -1291,7 +1291,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
 
   return (
     <div className="flex flex-col gap-2.5 text-xs h-full">
-      <div className="flex flex-col flex-1 min-h-0 bg-tab-group-bg overflow-hidden rounded border border-secondary/20">
+      <div className="flex flex-col flex-1 min-h-0 bg-tab-group-bg overflow-hidden rounded border border-light-100/20 dark:border-dark-400/20">
         <div
           className={cn(
             "flex flex-shrink-0 gap-2 sm:justify-between p-2.5 border-b border-surface-divider",
