@@ -97,7 +97,7 @@ class Stack:
         self.image = f"{self.name}-backend:{VERSION}"
         self.api = f"{self.name}-api"
         self.examples = directory / "backend"
-        shutil.copytree(ROOT, self.examples, ignore=shutil.ignore_patterns("secrets", "tests", "__pycache__", ".pytest_cache"))
+        shutil.copytree(ROOT, self.examples, ignore=shutil.ignore_patterns("secrets", ".env", "tests", "__pycache__", ".pytest_cache"))
         shutil.copytree(BUILT, directory / "sql-explorer" / "dist" / "sql-explorer" / VERSION)
         override = self.examples / "isolation.yaml"
         override.write_text(

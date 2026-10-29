@@ -35,7 +35,7 @@ Build the SQL explorer package first, because the image carries `docs/examples/s
 python3 setup.py
 ```
 
-writes the Postgres passwords and the `postgres_url` secret to `secrets/`. Then, with `<version>` the package version of the SQL explorer and `<network>` the network of the FINOS Workspace stack (`docker network ls`; `workspace_workspace` for the root `docker-compose.yml`):
+writes the Postgres passwords to `.env`, which Compose reads, and the plugin's `postgres_url` secret to `secrets/`, both readable by you only. Then, with `<version>` the package version of the SQL explorer and `<network>` the network of the FINOS Workspace stack (`docker network ls`; `workspace_workspace` for the root `docker-compose.yml`):
 
 ```bash
 VERSION=<version> WORKSPACE_NETWORK=<network> docker compose up -d --build

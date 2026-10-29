@@ -2,26 +2,27 @@ import os
 import secrets
 from pathlib import Path
 
-SECRETS = Path(__file__).resolve().parent / "secrets"
+HERE = Path(__file__).resolve().parent
+ENVIRONMENT = HERE / ".env"
+PLUGIN_URL = HERE / "secrets" / "workspace" / "sql-explorer" / "postgres_url"
 
 
-def secret(path: Path, make) -> str:
-    if not path.exists():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(make(), encoding="utf-8")
-        os.chmod(path, 0o644)
-    return path.read_text(encoding="utf-8").strip()
+def write_private(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        handle.write(text)
 
 
 def main() -> None:
-    SECRETS.mkdir(mode=0o700, exist_ok=True)
-    os.chmod(SECRETS, 0o700)
-    secret(SECRETS / "postgres_password", lambda: secrets.token_urlsafe(32))
-    password = secret(SECRETS / "explorer_password", lambda: secrets.token_urlsafe(32))
-    url = SECRETS / "workspace" / "sql-explorer" / "postgres_url"
-    secret(url, lambda: f"postgresql://explorer:{password}@postgres:5432/explorer")
-    print(f"secrets in {SECRETS}")
-    print(f"the plugin's postgres_url secret: {url}")
+    if ENVIRONMENT.exists() and PLUGIN_URL.exists():
+        print("The credentials already exist.")
+        return
+    admin = secrets.token_urlsafe(32)
+    reader = secrets.token_urlsafe(32)
+    write_private(ENVIRONMENT, f"POSTGRES_PASSWORD={admin}\nEXPLORER_PASSWORD={reader}\n")
+    write_private(PLUGIN_URL, f"postgresql://explorer:{reader}@postgres:5432/explorer")
+    print("Wrote .env for Compose and secrets/workspace/sql-explorer/postgres_url for the plugin.")
 
 
 if __name__ == "__main__":

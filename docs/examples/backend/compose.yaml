@@ -39,18 +39,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: explorer
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-    secrets: [postgres_password, explorer_password]
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run setup.py first}
+      EXPLORER_PASSWORD: ${EXPLORER_PASSWORD:?run setup.py first}
     volumes:
       - ./postgres:/docker-entrypoint-initdb.d:ro
       - postgres-data:/var/lib/postgresql
     networks: [plugin-db]
-
-secrets:
-  postgres_password:
-    file: ./secrets/postgres_password
-  explorer_password:
-    file: ./secrets/explorer_password
 
 volumes:
   postgres-data:
