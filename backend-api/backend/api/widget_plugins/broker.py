@@ -5,11 +5,11 @@ from uuid import UUID
 
 import httpx
 from loguru import logger
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import models
-from routers.app.helpers import may_add_connections
+from routers.app.helpers import readable_backends
 
 from . import backends, metrics, service
 from .proxy import CallError
@@ -20,22 +20,9 @@ _METHODS = {"GET", "POST"}
 
 
 async def readable_backend(db: AsyncSession, user_uuid: UUID, entity_uuid: UUID, backend_uuid: UUID):
-    granted = (
-        select(models.RoleBackend.backend_uuid)
-        .join(models.UserRole, models.UserRole.role_uuid == models.RoleBackend.role_uuid)
-        .join(models.Role, models.Role.uuid == models.RoleBackend.role_uuid)
-        .where(
-            models.UserRole.user_uuid == user_uuid,
-            models.Role.entity_uuid == entity_uuid,
-            models.Role.deleted_at.is_(None),
-            models.RoleBackend.access == "access",
-        )
-    )
-    rules = [models.ApiSource.entity_uuid == entity_uuid, models.ApiSource.uuid.in_(granted)]
-    if await may_add_connections(db, user_uuid):
-        rules.append(models.ApiSource.user_uuid == user_uuid)
+    readable = await readable_backends(db, user_uuid, entity_uuid)
     return (
-        await db.execute(select(models.ApiSource).where(models.ApiSource.uuid == backend_uuid, or_(*rules)))
+        await db.execute(select(models.ApiSource).where(models.ApiSource.uuid == backend_uuid, readable))
     ).scalar_one_or_none()
 
 

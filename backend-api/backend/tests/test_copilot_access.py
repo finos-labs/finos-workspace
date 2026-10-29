@@ -1,6 +1,6 @@
 import os
 import sys
-from uuid import UUID
+from uuid import UUID, uuid4
 
 BACKEND_DIR = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -11,6 +11,9 @@ if BACKEND_DIR not in sys.path:
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy import delete, update
+
+from api import models
 
 from routers.app.index import MCPProxyRequest, check_mcp_tool_calls
 from scripts.create_metering_token import create_metering_token
@@ -554,3 +557,127 @@ class TestWebToolsOfTheCopilot:
         response = await auth_client.get("/app/dash/validate-and-sync")
         assert response.status_code == 200
         assert response.json()["copilot_access"]["disabled_capabilities"] == ["SEARCH_WEB"]
+
+
+SOURCES = "/app/data-connectors/api-source"
+TUNNEL_URL = "https://tunnel.example.com/mcp"
+
+
+def _servers(access):
+    return {(g["server_url"], g["tool_name"]) for g in access["mcp"]}
+
+
+class TestBackendsGrantTheServersTheyDeclare:
+    @pytest.mark.asyncio
+    async def test_a_developers_own_backend_grants_its_servers(self, organization, auth_client):
+        await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
+        source = uuid4()
+        created = await auth_client.post(
+            f"{SOURCES}/{source}", json={"name": "Hurricane", "url": "https://hurricane.example.com"}
+        )
+        assert created.status_code == 200
+
+        reported = await auth_client.put(
+            f"{SOURCES}/{source}/mcp-servers", json={"servers": ["https://Tunnel.example.com/mcp/", MCP_URL]}
+        )
+        assert reported.status_code == 200
+
+        access = (await auth_client.get("/app/copilot/access")).json()
+        assert _servers(access) == {(TUNNEL_URL, "*"), (MCP_URL, "*")}
+        result = await _authorize(auth_client, tools=[{"url": TUNNEL_URL, "tool_name": "query_sql"}])
+        assert result.json()["denied_tools"] == []
+        listed = (await auth_client.get(SOURCES)).json()
+        assert next(s for s in listed if s["id"] == str(source))["mcpServers"] == [MCP_URL, TUNNEL_URL]
+
+    @pytest.mark.asyncio
+    async def test_a_new_report_replaces_the_old_one(self, organization, auth_client):
+        await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
+        source = uuid4()
+        await auth_client.post(
+            f"{SOURCES}/{source}", json={"name": "Hurricane", "url": "https://hurricane.example.com"}
+        )
+        await auth_client.put(f"{SOURCES}/{source}/mcp-servers", json={"servers": [TUNNEL_URL]})
+
+        await auth_client.put(f"{SOURCES}/{source}/mcp-servers", json={"servers": [MCP_URL]})
+
+        access = (await auth_client.get("/app/copilot/access")).json()
+        assert _servers(access) == {(MCP_URL, "*")}
+
+    @pytest.mark.asyncio
+    async def test_a_backend_nobody_approved_grants_nothing(self, organization, auth_client):
+        owner = await organization.add_user(models.DEVELOPER_TYPE)
+        source = uuid4()
+        organization.db.add(
+            models.ApiSource(
+                uuid=source,
+                name="Someone's backend",
+                url="https://other.example.com",
+                user_uuid=owner.uuid,
+                mcp_servers=[TUNNEL_URL],
+            )
+        )
+        await organization.db.commit()
+
+        access = (await auth_client.get("/app/copilot/access")).json()
+        assert access["mcp"] == []
+        refused = await auth_client.put(f"{SOURCES}/{source}/mcp-servers", json={"servers": [MCP_URL]})
+        assert refused.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_approving_the_backend_for_a_role_grants_its_servers(self, organization, auth_client):
+        owner = await organization.add_user(models.DEVELOPER_TYPE)
+        source = uuid4()
+        organization.db.add(
+            models.ApiSource(
+                uuid=source,
+                name="Shared backend",
+                url="https://shared.example.com",
+                user_uuid=owner.uuid,
+                mcp_servers=[TUNNEL_URL],
+            )
+        )
+        await organization.db.commit()
+        role = await organization.role(MEMBER_UUID)
+
+        organization.db.add(models.RoleBackend(role_uuid=role, backend_uuid=source, access="no-access"))
+        await organization.db.commit()
+        assert (await auth_client.get("/app/copilot/access")).json()["mcp"] == []
+
+        await organization.db.execute(
+            update(models.RoleBackend).where(models.RoleBackend.role_uuid == role).values(access="access")
+        )
+        await organization.db.commit()
+        access = (await auth_client.get("/app/copilot/access")).json()
+        assert _servers(access) == {(TUNNEL_URL, "*")}
+
+    @pytest.mark.asyncio
+    async def test_an_entity_backend_grants_its_servers_to_the_entity(self, organization, auth_client):
+        source = uuid4()
+        organization.db.add(
+            models.ApiSource(
+                uuid=source,
+                name="Entity backend",
+                url="https://entity.example.com",
+                entity_uuid=UUID(ADMIN_ENTITY),
+                mcp_servers=[TUNNEL_URL],
+            )
+        )
+        await organization.db.commit()
+        try:
+            access = (await auth_client.get("/app/copilot/access")).json()
+            assert _servers(access) == {(TUNNEL_URL, "*")}
+        finally:
+            await organization.db.execute(delete(models.ApiSource).where(models.ApiSource.uuid == source))
+            await organization.db.commit()
+
+    @pytest.mark.asyncio
+    async def test_the_reported_servers_are_validated(self, organization, auth_client):
+        await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
+        source = uuid4()
+        await auth_client.post(
+            f"{SOURCES}/{source}", json={"name": "Hurricane", "url": "https://hurricane.example.com"}
+        )
+
+        for servers in (["ftp://tunnel.example.com/mcp"], ["https://user:pass@tunnel.example.com/mcp"]):
+            response = await auth_client.put(f"{SOURCES}/{source}/mcp-servers", json={"servers": servers})
+            assert response.status_code == 422

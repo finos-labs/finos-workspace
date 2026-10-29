@@ -330,6 +330,10 @@ class ReturnApiSource(ApiSourceBase, extra="ignore"):  # type: ignore[call-arg]
     created_date: datetime = Field(serialization_alias="createdDate", alias="created_date")
     updated_date: datetime = Field(serialization_alias="updatedDate", alias="updated_date")
     is_entity_backend: Annotated[bool, BeforeValidator(_is_not_none)] = Field(validation_alias="entity_uuid")
+    mcp_servers: list[str] | None = Field(
+        default=None,
+        description="The MCP server URLs the backend declares, as last reported by its owner.",
+    )
 
 
 class EntityBase(BaseModel, extra="forbid"):  # type: ignore[call-arg]
@@ -879,6 +883,14 @@ def mcp_server_url(url: str) -> str:
 class MCPOAuthServer(BaseModel):
     model_config = main_config
     server_url: Annotated[str, Field(max_length=2048), AfterValidator(mcp_server_url)]
+
+
+class ApiSourceMcpServers(BaseModel):
+    model_config = main_config
+    servers: list[Annotated[str, Field(max_length=400), AfterValidator(mcp_server_url)]] = Field(
+        max_length=100,
+        description="The MCP server URLs the backend declares: iframe widgets' storage.mcpUrl and the apps' mcpServers.",
+    )
 
 
 class MCPOAuthAuthorization(BaseModel):
