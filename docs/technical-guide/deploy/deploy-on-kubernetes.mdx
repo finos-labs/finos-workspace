@@ -1,0 +1,238 @@
+---
+title: How to deploy on Kubernetes
+sidebar_position: 0.6
+---
+
+import { EnvDefault, SettingDefault, WebPort } from "@site/src/components/Reference/config";
+
+# How to deploy on Kubernetes
+
+Kubernetes runs FINOS Workspace on several nodes, so the web app and the API can run several replicas and keep serving when a node goes away. FINOS Workspace ships no Helm chart. This guide lists what each workload needs, so that you can write the manifests the way your platform prefers: as plain manifests, with Kustomize or with a chart of your own. It applies [Production setup](production-setup.mdx), so read that page first.
+
+## The workloads
+
+| Workload | Kind | Port | Probes | User | Replicas | Memory to start with |
+|---|---|---|---|---|---|---|
+| Web app | Deployment | <WebPort /> | `/healthz` | 101 | Two or more | Request 64 MiB, limit 256 MiB |
+| API | Deployment | <SettingDefault name="PORT" unit="raw" /> | `/healthz` | 1000 | Two or more | Request 512 MiB, limit 2 GiB |
+| Worker | Deployment | None | None | 1000 | One | Request 512 MiB, limit 1 GiB |
+| Agent | Deployment | <EnvDefault name="PORT" /> | Liveness `/status`, readiness `/ready` | 1000 | One, or more with Valkey | Limit 4 GiB |
+| Agent MCP server | Deployment | <EnvDefault name="MCP_PORT" /> | `/` | 1000 | One | Limit 4 GiB |
+| Init step | Job | None | None | 1000 | One run per release | Request 512 MiB |
+
+The memory figures are starting points: watch what each workload uses, and size the agent for the largest files that your users attach.
+
+Give every workload a Service on its port, except the worker and the init step. The web app, the API and the agent get an Ingress or a route of the Gateway API with TLS. The agent's MCP server, the database and Valkey stay inside the cluster.
+
+## Settings
+
+Keep the secrets of [Production setup](production-setup.mdx#the-secrets-you-need-to-create) in Secrets and the other settings in ConfigMaps, and load them with `envFrom`:
+
+| Holds | Read by |
+|---|---|
+| A ConfigMap with the backend's addresses, database host and other settings | The API, the worker and the init step |
+| A Secret with `JWT_SECRET`, `WORKSPACE_AES_KEY`, `LOCAL_STORAGE_SECRET_KEY`, `REDIS_PASS` and the database passwords | The API, the worker and the init step |
+| A ConfigMap with the addresses that the agent needs | The agent and its MCP server |
+| A Secret with `INES_SCOPE_SECRET`, `INES_METERING_TOKEN` and the key of the model's provider | The agent and its MCP server |
+| `BACKEND_URL`, `AI_API_URL` and the other settings of the web app, in its environment | The web app |
+
+The API and the worker read the same ConfigMap and Secret, because every process of either must have the same `WORKSPACE_AES_KEY`. In the backend's ConfigMap, `DEFAULT_MCP_SERVERS` names the Service of the agent's MCP server, such as `[{"id": "agent-tools", "name": "Agent Tools", "url": "http://agent-mcp:8787/mcp"}]`. In the ConfigMap of the agent, `WORKSPACE_API_URL` names the Service of the API, such as `http://api:8000`.
+
+## The init step
+
+Run the init step as a Job before each rollout of the API and the worker. It needs the backend's settings and the file `config.toml`, which a ConfigMap named `workspace-init` holds here:
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: workspace-init
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: init
+          image: <registry>/workspace-backend:<version>
+          command:
+            - python
+            - -c
+            - |
+              import pathlib, subprocess, sys
+              pathlib.Path("user_create.json").write_text("{}")
+              subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+              subprocess.run([sys.executable, "-m", "scripts.init_users"], check=True)
+              print(pathlib.Path("user_create.json").read_text())
+          envFrom:
+            - configMapRef:
+                name: workspace-backend
+            - secretRef:
+                name: workspace-backend
+          resources:
+            requests:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /opt/code/scripts/cfgs/config.toml
+              subPath: config.toml
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: workspace-init
+```
+
+The Job prints the file `user_create.json`, which holds the id of the role that new people get under `permissions_uuid`. The API and the worker read that file from their working directory, `/opt/code`, when it exists, and otherwise the setting `DEFAULT_USER_MAPPING`. A pod does not see the files of the Job, so set `DEFAULT_USER_MAPPING` in the backend's ConfigMap to the printed id: people who sign in for the first time, with single sign-on for example, get that role. The id stays the same on later runs, because a run that finds everything in place changes nothing.
+
+## The API
+
+The API's Deployment and Service show the pattern that the other workloads follow:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: <registry>/workspace-backend:<version>
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: workspace-backend
+            - secretRef:
+                name: workspace-backend
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector:
+    app: api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+```
+
+The startup probe gives the API five minutes, because it runs the migrations before it serves. The other workloads differ in these places:
+
+- The worker uses the same image with `command: ["python", "base_workers.py"]`, and it has no port, no probes and no Service.
+- The web app runs its own image as the user and group 101, on port 8080, with the probes on `/healthz`.
+- The agent runs its image on port 7777, with the liveness probe on `/status` and the readiness probe on `/ready`, which answers 503 while the API does not answer. Its container has `readOnlyRootFilesystem: true` and an `emptyDir` volume on `/tmp`, and the pod has `shareProcessNamespace: true`, so that the pod's pause process reaps the child processes that the agent starts. Give the pod a `terminationGracePeriodSeconds` at least as long as `INES_SHUTDOWN_GRACE_SECONDS`, which is <EnvDefault name="INES_SHUTDOWN_GRACE_SECONDS" /> seconds by default.
+- The agent's MCP server runs its image on port 8787, with the probes on `/` and the same file system and process settings as the agent.
+
+## Expose the web app, the API and the agent
+
+Route the three public names to their Services, with TLS:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: workspace
+spec:
+  tls:
+    - hosts:
+        - workspace.example.com
+        - api.workspace.example.com
+        - agent.workspace.example.com
+      secretName: workspace-tls
+  rules:
+    - host: workspace.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 8080
+    - host: api.workspace.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8000
+    - host: agent.workspace.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: agent
+                port:
+                  number: 7777
+```
+
+The agent streams its answers, so set the idle timeout of your ingress controller for the name of the agent to at least the longest model call, as [How to run the agent on several replicas](run-the-agent-on-several-replicas.mdx#what-the-load-balancer-and-the-platform-allow) describes. Each controller sets it with its own annotation or policy.
+
+## Files
+
+Keep uploaded files in a bucket on AWS, Azure or Google Cloud, or in a folder on a volume that every API and worker pod mounts, which needs the access mode `ReadWriteMany` when the pods run on several nodes. [How to choose where files are stored](choose-file-storage.md) describes the settings.
+
+## Upgrade
+
+1. Back up the database.
+2. Run the init Job with the new image, and wait until it has completed.
+3. Roll out the API and the worker with the new image together, then the agent, its MCP server and the web app.
