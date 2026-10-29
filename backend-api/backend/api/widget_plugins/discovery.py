@@ -136,7 +136,6 @@ def _walk(root: Path, version: DiscoveredVersion, max_files: int, max_bytes: int
                 version.files[relative] = FileInfo(
                     size=info.st_size,
                     sha256=hasher(Path(entry.path)),
-                    mtime_ns=info.st_mtime_ns,
                 )
 
 
