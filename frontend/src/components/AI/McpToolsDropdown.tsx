@@ -13,6 +13,7 @@ import { Checkbox } from "~/components/ds/atoms/Checkbox";
 import { PopoverContent, PopoverRoot } from "~/components/ds/atoms/Popover";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
+import { isMcpToolAllowed, useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import {
   dedupeIframeServersByUrl,
   type McpServer,
@@ -174,13 +175,20 @@ export function McpToolsDropdown({
     }),
   );
 
+  const access = useCopilotAccessStore((state) => state.access);
+
   const filteredServers = useMemo(() => {
     let processedServers = dedupeIframeServersByUrl(
       servers.filter((server) => {
         const connection = getMCPConnection(server.id);
         return connection?.state === "ready" && server.enabled;
       }),
-    );
+    ).map((server) => ({
+      ...server,
+      tools: server.tools.filter((tool) =>
+        isMcpToolAllowed(access, server.url, tool.id),
+      ),
+    }));
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -207,7 +215,7 @@ export function McpToolsDropdown({
     }
 
     return processedServers;
-  }, [servers, searchQuery, getMCPConnection, mcpConnectionRegistry]);
+  }, [servers, searchQuery, getMCPConnection, mcpConnectionRegistry, access]);
 
   return (
     <PopoverRoot open={open} onOpenChange={onOpenChange}>

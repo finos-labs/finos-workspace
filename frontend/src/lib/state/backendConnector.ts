@@ -182,6 +182,7 @@ export type Source = {
   updatedDate?: string;
   isEntityBackend?: boolean | null;
   hasApiKey?: boolean | null;
+  mcpServers?: string[] | null;
 };
 
 export type WidgetMetaDataT<T extends WidgetT["connectionType"]> = T extends "file"
