@@ -1,7 +1,7 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { useMutation } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { toast } from "sonner";
-import { useUpdateEffect } from "usehooks-ts";
 import { apiClient } from "~/api/api";
 import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout";
 import AdvancedTab from "~/components/Settings/AdvancedTab";
@@ -9,6 +9,7 @@ import GeneralTab from "~/components/Settings/GeneralTab";
 import LayoutTab from "~/components/Settings/LayoutTab";
 import SecurityTab from "~/components/Settings/SecurityTab";
 import WidgetTab from "~/components/Settings/WidgetTab";
+import { useIsFirstRender } from "~/hooks/useIsFirstRender";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import type { DisplaySettings } from "~/types/auth.type";
@@ -38,8 +39,10 @@ export function useSaveSettings(notify = true) {
     },
   });
 
-  useUpdateEffect(() => {
-    if (!hasItems) return;
+  const isFirstRender = useIsFirstRender();
+
+  useEffect(() => {
+    if (isFirstRender || !hasItems) return;
     saveSettings(displaySettings);
   }, [displaySettings]);
 }

@@ -170,12 +170,12 @@ function useStreamResponse(stopSubmit: () => void) {
 
   const resolveStreamRef = useRef<(() => void) | null>(null);
   const handleEventRef =
-    useRef<(props: HandleEventProps) => Promise<StreamAccumulator>>();
+    useRef<(props: HandleEventProps) => Promise<StreamAccumulator>>(undefined);
 
   const pendingMcpCitationsRef = useRef<CitationT[]>([]);
 
   const pendingSuggestionsRef = useRef<string[] | null>(null);
-  const focusInputRef = useRef<ReturnType<typeof setTimeout>>();
+  const focusInputRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const autoOpenAppArtifact = useCallback(
     async (artifact: AppArtifactT) => {

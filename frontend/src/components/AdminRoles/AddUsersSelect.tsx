@@ -146,7 +146,9 @@ export default function AddUsersSelect({
         sideOffset={4}
       >
         <Input
-          ref={(el) => (inputRef.current = el)}
+          ref={(el) => {
+            inputRef.current = el;
+          }}
           prefix={<Icon id="search" />}
           placeholder="Search users"
           defaultValue={state.searchQuery}

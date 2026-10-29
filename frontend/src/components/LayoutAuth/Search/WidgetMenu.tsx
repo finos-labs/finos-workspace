@@ -514,9 +514,9 @@ const WidgetItem = memo(
         onClick={handleClick}
       >
         <CreateCheckbox
-          innerRef={(el: HTMLButtonElement | null) =>
-            (itemRefs.current[currentIndex] = el)
-          }
+          innerRef={(el: HTMLButtonElement | null) => {
+            itemRefs.current[currentIndex] = el;
+          }}
           parentId={`${displayId}-${currentIndex}`}
           id={`${displayId}-${currentIndex}-checkbox`}
           checked={isSelected}

@@ -166,7 +166,7 @@ const WebsiteForm = forwardRef<HTMLFormElement, WebsiteFormProps>((props, _ref) 
 
 interface WebsiteFormState {
   id: string;
-  ref: RefObject<HTMLFormElement>;
+  ref: RefObject<HTMLFormElement | null>;
   data: WebsiteFormData;
 }
 

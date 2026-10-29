@@ -215,7 +215,7 @@ export interface SelectProps<T extends string = string>
   forceLight?: boolean;
 }
 const SelectBase = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Root>,
+  React.ElementRef<typeof SelectPrimitive.Trigger>,
   SelectProps
 >((props, ref) => {
   const {

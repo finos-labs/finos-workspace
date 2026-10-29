@@ -333,7 +333,7 @@ export interface EnhancedSelectProps {
 }
 
 export const EnhancedSelect = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Root>,
+  React.ElementRef<typeof SelectPrimitive.Trigger>,
   EnhancedSelectProps
 >(
   (
@@ -426,7 +426,7 @@ export interface SimpleEnhancedSelectProps
 }
 
 export const SimpleEnhancedSelect = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Root>,
+  React.ElementRef<typeof SelectPrimitive.Trigger>,
   SimpleEnhancedSelectProps
 >(({ options, ...props }, ref) => {
   const enhancedOptions: EnhancedSelectOptionData[] = options.map((option) => ({
