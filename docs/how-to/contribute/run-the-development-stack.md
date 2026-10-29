@@ -14,7 +14,7 @@ The folder `local` of the repository starts everything that you need to work on 
 - `make`, which macOS and Linux provide. On Windows, use WSL.
 - `python3`, only the first time and only its standard library, to write the settings.
 
-Nothing else is needed, because the API and Node run in containers.
+Nothing else is needed, because the API and Node run in containers. The images of this stack are public ones, so it needs no login to a container registry, unlike the stack at the root of the repository.
 
 ## Start the stack
 

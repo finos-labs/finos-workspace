@@ -40,6 +40,16 @@ The API accepts a request only when it carries an `Origin` header that the deplo
 
 The agent keeps its own list. `INES_CORS_ORIGINS` names the origins of the web app that may call the agent from a browser, as a comma-separated list. It allows every origin when it is `*`, and the agent refuses to start with users and no origins at all. The agent and its MCP server call the API too, and each call carries `WORKSPACE_ORIGIN` as its origin, so that origin must be one that `BACKEND_CORS_ORIGINS` allows.
 
+## Set the addresses of the Compose stack
+
+The stack that `docker-compose.yml` at the root of the repository starts takes the addresses from three variables of its own. A deployment sets the settings above directly on its services and does not use them. Set the variables in your shell or in a `.env` file next to the compose file, then run `docker compose up -d`, which recreates the containers that changed.
+
+- `API_URL` is the API's address as the browser sees it, `http://localhost:8000` by default. It becomes `BACKEND_URL` of the web container and `WORKSPACE_PUBLIC_URL` of the agent and its MCP server, so set `SELFURL` in `backend-api/backend/envs/.env` to the same address.
+- `AI_API_URL` is the agent's address as the browser sees it, `http://localhost:7777` by default. It becomes `AI_API_URL` of the web container.
+- `WEB_URL` is the web app's address as the browser sees it. It becomes `WORKSPACE_ORIGIN` of the agent and its MCP server, which is `http://localhost:3000` while `WEB_URL` is unset, and it becomes `INES_CORS_ORIGINS` of the agent, which is `*` while it is unset.
+
+The browser calls the agent directly, so the origin that the agent allows has to be the address on which you opened the web app: `localhost`, `127.0.0.1`, the address of your machine on the network or a tunnel. A machine cannot know which of them you will use, which is why `WEB_URL` has no default. An origin that the agent does not allow gives a Copilot that fails with nothing in the interface to say why. The API has to allow the origin as well, so list it in `BACKEND_CORS_ORIGINS` in `envs/.env`, as the section before this one describes.
+
 ## Check it
 
 1. Open the web app's address in a browser. It loads without a certificate warning.
