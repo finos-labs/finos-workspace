@@ -18,7 +18,7 @@ def parse_cors_allow_origins(values: list[str] | None) -> tuple[str, ...]:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run the Workspace MCP sidecar.",
+        description="Run the FINOS Workspace MCP sidecar.",
         epilog="Example: workspace-mcp --host 127.0.0.1 --port 8787 --mcp-path /mcp",
     )
     parser.add_argument(

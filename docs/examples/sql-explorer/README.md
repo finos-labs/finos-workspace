@@ -1,23 +1,23 @@
-# SQL explorer for Workspace
+# SQL explorer for FINOS Workspace
 
-A Workspace widget plugin with a backend of its own. The widget, in the user's browser, runs
-read-only SQL. The plugin's backend, a process the deployment runs beside Workspace, carries
+A FINOS Workspace widget plugin with a backend of its own. The widget, in the user's browser, runs
+read-only SQL. The plugin's backend, a process the deployment runs beside FINOS Workspace, carries
 each query to one of two engines:
 
 - **Postgres**: a database the deployment runs, over Postgres's own protocol, with the
-  connection URL Workspace sends as the plugin's secret on each call.
+  connection URL FINOS Workspace sends as the plugin's secret on each call.
 - **Files**: DuckDB over Parquet, CSV and JSON files the deployment mounts read-only at
   `/data`, each file a view named after it.
 
 It is the counterpart of a plugin that only draws (the Plotly plugin). Here the work cannot
 happen in the browser: the database speaks its own protocol, its password must never
 reach a browser, and the files are on a server. It is an example in the repository's
-`docs/examples/`, a package of its own that nothing in Workspace imports, built and deployed the
+`docs/examples/`, a package of its own that nothing in FINOS Workspace imports, built and deployed the
 way any plugin is ([AUTHORING.md](../../widget-plugins/AUTHORING.md), section 8 for
 backends).
 
 ```
-widget (frame)  ── core:backend:call {route, args: {sql}} ──▶  Workspace API
+widget (frame)  ── core:backend:call {route, args: {sql}} ──▶  FINOS Workspace API
                                                                 │ checks the route, the args,
                                                                 │ the backend's identity, limits;
                                                                 │ adds the secret and the caller's
@@ -43,7 +43,7 @@ widget (frame)  ── core:backend:call {route, args: {sql}} ──▶  Workspa
   beyond 2^53 as text, so no digit is lost; dates and times in ISO 8601), whether more rows
   were left out, and the time. A query that fails answers with the engine's message.
 - **Who ran it.** Postgres sees each session as `workspace-sql-explorer:<pseudonym>`
-  (`pg_stat_activity.application_name`): the anonymous id Workspace gives the plugin for a
+  (`pg_stat_activity.application_name`): the anonymous id FINOS Workspace gives the plugin for a
   user, the same for them every time and different in every other plugin. The backend
   never learns who the user is.
 - **What it holds.** Nothing. The Postgres URL arrives with each call and is gone after
@@ -65,7 +65,7 @@ anywhere. Arrow keys move, Enter or Tab takes a suggestion, Escape closes. Nothi
 the frame while you type.
 
 - It starts the first time the editor is used: a dashboard that only shows results never
-  loads it. The frame asks Workspace for the package's own files (`core:asset:read`):
+  loads it. The frame asks FINOS Workspace for the package's own files (`core:asset:read`):
   DuckDB's worker script, its WebAssembly binary and the two extensions it would otherwise
   download on first use, `autocomplete` and `json`. DuckDB asks where an extension comes
   from (`runtime.whereToLoad`), and the answer is always the packaged file; no extension
@@ -87,11 +87,11 @@ follow the site's mode.
 | `src/entry.js`, `src/entry.css`, `src/assets/` | The widget, an Anywidget front-end module. |
 | `src/completion.js`, `src/duckdb.js` | Completion: the schema DuckDB mirrors and what it suggests, and DuckDB-WASM started in the frame from the package's assets. |
 | `third-party/` | Licence texts the DuckDB-WASM npm package does not carry. |
-| `backend/server.py` | The three requests a Workspace backend answers: `GET /.workspace/identity`, `GET /.workspace/health`, `POST /.workspace/routes/<route>`. |
+| `backend/server.py` | The three requests a FINOS Workspace backend answers: `GET /.workspace/identity`, `GET /.workspace/health`, `POST /.workspace/routes/<route>`. |
 | `backend/engines.py`, `backend/values.py` | Postgres and DuckDB, and their values as JSON. |
 | `backend/identity.py` | The plugin, version and version digest, computed from the package's files at start. |
 | `backend/Dockerfile`, `backend/requirements.txt` | The backend's image, every dependency pinned. |
-| `examples/` | A deployment beside a Workspace stack (below). |
+| `examples/` | A deployment beside a FINOS Workspace stack (below). |
 
 The backend: Python 3.14 (the newest Python DuckDB 1.5.6 publishes wheels for),
 Starlette 1.8, uvicorn 0.54, psycopg 3.3, DuckDB 1.5.6. The widget: DuckDB-WASM
@@ -133,20 +133,20 @@ database they may change: set `SQL_EXPLORER_TEST_POSTGRES` to an administrator's
 container (`docker run --rm -d -p 127.0.0.1:55432:5432 -e POSTGRES_PASSWORD_FILE=...
 postgres:18.6`). Without it they are skipped. With Docker and a build,
 `tests/test_isolation.py` starts `examples/compose.yaml` under a project name of its own,
-beside a stand-in for the Workspace API, and checks that the backend reaches Postgres and
+beside a stand-in for the FINOS Workspace API, and checks that the backend reaches Postgres and
 the gateway but not the API or the internet, that the gateway forwards only the API's
 calls, and that the backend runs read-only, unprivileged and without capabilities. It
 removes what it started.
 
 ## Deploy
 
-1. Copy `dist/sql-explorer/<version>/` into Workspace's plugins directory and check it,
+1. Copy `dist/sql-explorer/<version>/` into FINOS Workspace's plugins directory and check it,
    from `backend-api/backend`:
    `python -m scripts.plugin_check <plugins directory>/sql-explorer/<version> --digest`.
 2. Build the backend's image from the same directory:
    `docker build -f backend/Dockerfile -t sql-explorer-backend:<version> <that directory>`.
 3. Run it as `docs/widget-plugins/README.md` 6.5 describes: no privileges, a read-only
-   root, its own network that only a gateway joins from the Workspace side, the database
+   root, its own network that only a gateway joins from the FINOS Workspace side, the database
    on a second network, the data files mounted read-only at `/data`.
    `examples/compose.yaml` does exactly this.
 4. List it for the API: `WIDGET_PLUGIN_BACKENDS={"sql-explorer": "http://<gateway>:<port>"}`.
@@ -164,7 +164,7 @@ Postgres says it is not set up. Without files, the Files source has no tables.
 ## Try it
 
 `examples/` runs the backend, a gateway and a Postgres with a `demo` schema beside a
-Workspace stack on the same machine.
+FINOS Workspace stack on the same machine.
 
 ```bash
 .venv/bin/python examples/setup.py
@@ -172,13 +172,13 @@ Workspace stack on the same machine.
 
 generates the passwords (in `examples/secrets/`, kept between runs) and the data files
 (`examples/data/readings.parquet` and `stations.csv`). Then, with `<network>` the
-Workspace stack's network (`docker network ls`):
+FINOS Workspace stack's network (`docker network ls`):
 
 ```bash
 VERSION=<package version> WORKSPACE_NETWORK=<network> docker compose -f examples/compose.yaml up -d --build
 ```
 
-and in Workspace: `WIDGET_PLUGIN_BACKENDS={"sql-explorer": "http://sql-explorer-gateway:8081"}`,
+and in FINOS Workspace: `WIDGET_PLUGIN_BACKENDS={"sql-explorer": "http://sql-explorer-gateway:8081"}`,
 the server network `tcp://postgres:5432` with private hosts, and the secret from
 `examples/secrets/workspace/sql-explorer/postgres_url`. Try
 
@@ -200,7 +200,7 @@ ORDER BY s.site
 
 on Files. `examples/reach.py` shows what a container can reach:
 `docker exec -i sql-explorer-sql-explorer-backend-1 python - postgres:5432 api:8000 < examples/reach.py`
-(Postgres open, the Workspace API not even resolved).
+(Postgres open, the FINOS Workspace API not even resolved).
 
 ## Notes
 

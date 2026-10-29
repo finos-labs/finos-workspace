@@ -2,7 +2,7 @@
 
 Three widget plugins, each a package of its own, built and deployed the way any plugin is
 ([docs/widget-plugins/AUTHORING.md](../widget-plugins/AUTHORING.md)). Nothing in
-Workspace imports them; they show what the plugin framework does from an author's side.
+FINOS Workspace imports them; they show what the plugin framework does from an author's side.
 
 | Folder | Plugin | Shows |
 |---|---|---|

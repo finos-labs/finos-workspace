@@ -161,7 +161,7 @@ def test_the_seed_config_names_the_administrator_and_no_password(tmp_path, monke
     seed = tomllib.loads(config.read_text())
     assert seed["entity"]["name"] == "Acme"
     assert seed["admins"] == [
-        {"email": "admin@mail.test", "first_name": "Workspace", "last_name": "Administrator"}
+        {"email": "admin@mail.test", "first_name": "FINOS Workspace", "last_name": "Administrator"}
     ]
     assert "password" not in config.read_text()
     assert "password" not in (tmp_path / ".env").read_text().lower()

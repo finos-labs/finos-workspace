@@ -118,6 +118,38 @@ describe("validateWidgetItems", () => {
     expect(invalid).toEqual([]);
   });
 
+  it("loads a widget without the keys the contract does not define, and lists them", () => {
+    const { valid, invalid, unrecognized } = validateWidgetItems(
+      {
+        good: {
+          ...goodWidget,
+          defaultViz: "html",
+          params: [{ paramName: "region", type: "text", color: "red" }],
+        },
+      },
+      context,
+    );
+
+    expect(invalid).toEqual([]);
+    expect(valid.good).not.toHaveProperty("defaultViz");
+    expect(valid.good.params?.[0]).not.toHaveProperty("color");
+    expect(unrecognized).toEqual([
+      { name: "Stock Price (good)", keys: ["defaultViz", "params/0/color"] },
+    ]);
+  });
+
+  it("lists the unknown keys of a widget it leaves out, and keeps them in what it shows", () => {
+    const { valid, invalid, unrecognized } = validateWidgetItems(
+      { bad: { ...badWidget, defaultViz: "html" } },
+      context,
+    );
+
+    expect(valid).toEqual({});
+    expect(JSON.parse(invalid[0].json).defaultViz).toBe("html");
+    expect(invalid[0].errors).not.toContain("defaultViz");
+    expect(unrecognized).toEqual([{ name: "bad", keys: ["defaultViz"] }]);
+  });
+
   it("checks what the schema cannot state, once the schema accepts the widget", () => {
     const { invalid } = validateWidgetItems(
       {
@@ -213,6 +245,21 @@ describe("validateBackend with invalid items", () => {
     const result = await validateBackend(source, false);
 
     expect(result.fatalErrorMessage).toContain("Invalid format");
+  });
+
+  it("warns about the keys the contract does not define", async () => {
+    respond({ good: { ...goodWidget, defaultViz: "html" } }, [goodApp]);
+
+    const result = await validateBackend(source, false);
+
+    expect(Object.keys(result.validWidgets ?? {})).toEqual(["good"]);
+    expect(result.invalidItems).toEqual([]);
+    expect(result.unrecognizedKeysMessage).toEqual([
+      {
+        label: "[widgets.json]",
+        entries: [{ name: "Stock Price (good)", keys: ["defaultViz"] }],
+      },
+    ]);
   });
 
   it("reports nothing for a backend that is all valid", async () => {

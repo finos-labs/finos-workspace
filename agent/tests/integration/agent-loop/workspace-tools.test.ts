@@ -78,8 +78,8 @@ function result(extraState?: Record<string, unknown>): ToolMessage {
   } as unknown as ToolMessage;
 }
 
-describe("the model is given the Workspace's tools", () => {
-  it("as the Workspace describes them, when the user lets the agent change the Workspace", async () => {
+describe("the model is given the FINOS Workspace's tools", () => {
+  it("as the FINOS Workspace describes them, when the user lets the agent change the FINOS Workspace", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("ok"));
     await ask({ messages: [{ role: "human", content: "set the symbol to MSFT" }], model: spy.model, chat: "wt-tools" });
 
@@ -107,7 +107,7 @@ describe("the model is given the Workspace's tools", () => {
     expect(JSON.stringify(spy.calls[0].messages)).toContain("update_widget_in_dashboard");
   });
 
-  it("only the one that reads a widget while the user does not let the agent change the Workspace", async () => {
+  it("only the one that reads a widget while the user does not let the agent change the FINOS Workspace", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("ok"));
     await ask({
       messages: [{ role: "human", content: "set the symbol to MSFT" }],
@@ -121,7 +121,7 @@ describe("the model is given the Workspace's tools", () => {
   });
 });
 
-describe("a call of the Workspace's tool", () => {
+describe("a call of the FINOS Workspace's tool", () => {
   it("is made as a call of any MCP tool: the browser runs it", async () => {
     const events = await ask({
       messages: [{ role: "human", content: "set the symbol to MSFT" }],
@@ -156,7 +156,7 @@ describe("a call of the Workspace's tool", () => {
     ]);
   });
 
-  it("does not make another server's calls wait with the Workspace's", async () => {
+  it("does not make another server's calls wait with the FINOS Workspace's", async () => {
     const events = await ask({
       messages: [{ role: "human", content: "search the web and update the widget" }],
       tools: [...TOOLS, { name: "Ines_Tools_web_search", server_id: "ines", url: "http://ines:8787/mcp", description: "Search the web." }],
@@ -213,7 +213,7 @@ describe("the calls that wait", () => {
     expect(events.some((e) => e.event === "copilotMessageChunk")).toBe(true);
   });
 
-  it("are made only of the Workspace's tools that the request has: what comes back from the browser is not trusted", async () => {
+  it("are made only of the FINOS Workspace's tools that the request has: what comes back from the browser is not trusted", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("Done."));
     const events = await ask({
       tools: [...TOOLS, { name: "Ines_Tools_web_search", server_id: "ines", url: "http://ines:8787/mcp", description: "Search the web." }],

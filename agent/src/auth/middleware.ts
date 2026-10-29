@@ -140,10 +140,10 @@ export function authMiddleware(services: Services, cache: AuthCache): Middleware
           return c.json({ error: "The agent is busy signing users in. Try again in a moment." }, 503, { "Retry-After": "1" });
         }
         if (user.reason === "unavailable") {
-          audit.error("Could not sign a user in: the Workspace API is not answering");
-          return c.json({ error: "The Workspace API is not available" }, 503);
+          audit.error("Could not sign a user in: the FINOS Workspace API is not answering");
+          return c.json({ error: "The FINOS Workspace API is not available" }, 503);
         }
-        audit.info("Refused a session token the Workspace API does not accept");
+        audit.info("Refused a session token the FINOS Workspace API does not accept");
         await cache.reject(token);
         return c.json({ error: "Not signed in" }, 401, { "WWW-Authenticate": "Bearer" });
       }

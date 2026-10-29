@@ -17,7 +17,6 @@ interface GroupRowProps {
   onToggleSelect?: (e: ReactMouseEvent) => void;
   onColorChange?: (color: string) => void;
   onDelete: () => void;
-  disabled?: boolean;
   className?: string;
 }
 
@@ -101,7 +100,6 @@ export function GroupRow({
   onToggleSelect,
   onColorChange,
   onDelete,
-  disabled,
   className,
 }: GroupRowProps) {
   const pill = valueLabel ? (
@@ -112,7 +110,6 @@ export function GroupRow({
     <div
       className={cn(
         "group group-dropdown flex items-center justify-between gap-2",
-        disabled && "opacity-50",
         className,
       )}
     >

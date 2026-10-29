@@ -83,7 +83,7 @@ export function interopManifest(module: InteropModule) {
     id: `e2e-interop-${module.id}`,
     name: `Interop ${module.name}`,
     description: "A public Anywidget module, unmodified, in a plugin frame",
-    publisher: { name: "Workspace end-to-end tests" },
+    publisher: { name: "FINOS Workspace end-to-end tests" },
     host: { api: 1, afm: "0.11" },
     entry: { module: "entry.js", ...(module.css ? { styles: ["entry.css"] } : {}) },
     contributes: {

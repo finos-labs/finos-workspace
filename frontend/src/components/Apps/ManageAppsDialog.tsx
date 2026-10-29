@@ -190,7 +190,7 @@ export default function ManageAppsDialog() {
       >
         <DialogTitle>Manage Backends</DialogTitle>
         <DialogDescription className="sr-only">
-          Manage the backends available in the Workspace.
+          Manage the backends available in the FINOS Workspace.
         </DialogDescription>
         <div className="flex only-sm:flex-wrap sm:justify-between gap-2.5 items-center">
           <div className="only-sm:w-full">

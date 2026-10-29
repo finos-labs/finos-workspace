@@ -55,7 +55,7 @@ describe("useGlobalTitleManager", () => {
 
     renderHook(() => useGlobalTitleManager());
 
-    expect(document.title).toBe("Workspace");
+    expect(document.title).toBe("FINOS Workspace");
   });
 
   it("should set custom brand name when path is root and white label name is configured", () => {
@@ -76,7 +76,7 @@ describe("useGlobalTitleManager", () => {
 
     renderHook(() => useGlobalTitleManager());
 
-    expect(document.title).toBe("Login | Workspace");
+    expect(document.title).toBe("Login | FINOS Workspace");
   });
 
   it("titles the page of a password reset link", () => {
@@ -84,7 +84,7 @@ describe("useGlobalTitleManager", () => {
 
     renderHook(() => useGlobalTitleManager());
 
-    expect(document.title).toBe("Set a new password | Workspace");
+    expect(document.title).toBe("Set a new password | FINOS Workspace");
   });
 
   it("should respect custom brand name in static page titles", () => {
@@ -116,7 +116,7 @@ describe("useGlobalTitleManager", () => {
 
     renderHook(() => useGlobalTitleManager());
 
-    expect(document.title).toBe("Dashboard alpha | Workspace");
+    expect(document.title).toBe("Dashboard alpha | FINOS Workspace");
   });
 
   it("should resolve dynamic tab titles from shared app store", () => {
@@ -137,6 +137,6 @@ describe("useGlobalTitleManager", () => {
 
     renderHook(() => useGlobalTitleManager());
 
-    expect(document.title).toBe("Shared Dashboard | Workspace");
+    expect(document.title).toBe("Shared Dashboard | FINOS Workspace");
   });
 });

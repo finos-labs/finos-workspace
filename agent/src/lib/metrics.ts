@@ -173,12 +173,12 @@ export const metrics = {
   modelCalls: registry.counter("ines_model_calls_total", "Calls made to a model (one for each step of a question), by provider.", ["provider"]),
   workspaceRequests: registry.counter(
     "ines_workspace_api_requests_total",
-    "Calls to the Workspace API by endpoint and outcome (ok, rejected, limit, error).",
+    "Calls to the FINOS Workspace API by endpoint and outcome (ok, rejected, limit, error).",
     ["endpoint", "outcome"],
   ),
   workspaceDuration: registry.histogram(
     "ines_workspace_api_request_duration_seconds",
-    "Time a call to the Workspace API takes.",
+    "Time a call to the FINOS Workspace API takes.",
     ["endpoint"],
   ),
   authCache: registry.counter("ines_auth_cache_total", "Lookups of a signed-in user in the cache, by result.", [

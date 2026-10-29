@@ -47,7 +47,7 @@ describe("widgets.json schema resource", () => {
 
   test("fails with the bridge's message when no browser is connected or the browser refuses", async () => {
     const none = register(null, () => ok({}));
-    await expect(none.resource.read()).rejects.toThrow("No connected Workspace browser");
+    await expect(none.resource.read()).rejects.toThrow("No connected FINOS Workspace browser");
     expect(none.sent).toEqual([]);
 
     const refused = register("s-1", () => ({

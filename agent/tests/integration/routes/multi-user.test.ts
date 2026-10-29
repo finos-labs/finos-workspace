@@ -164,7 +164,7 @@ describe("signing in", () => {
     expect(stub.authorized).toHaveLength(0);
   });
 
-  it("refuses a token the Workspace API does not know", async () => {
+  it("refuses a token the FINOS Workspace API does not know", async () => {
     const res = await ask(appFor(workspaceStub()), { token: "forged" });
     expect(res.status).toBe(401);
   });
@@ -176,7 +176,7 @@ describe("signing in", () => {
     expect((await app.request("/ready")).status).toBe(200);
   });
 
-  it("is not ready while the Workspace API does not answer", async () => {
+  it("is not ready while the FINOS Workspace API does not answer", async () => {
     const stub = workspaceStub();
     stub.setReady(false);
     expect((await appFor(stub).request("/ready")).status).toBe(503);
@@ -219,7 +219,7 @@ describe("a user's query", () => {
     expect(stub.authorized[0].request.model).toBe("test-provider:other-model");
   });
 
-  it("is refused with the Workspace's own wording once the daily limit is used up, and the model is not called", async () => {
+  it("is refused with the FINOS Workspace's own wording once the daily limit is used up, and the model is not called", async () => {
     const stub = workspaceStub();
     stub.setCounting({ ok: false, reason: "limit", message: "Cannot increment usage beyond the maximum limit of 50" });
     const spy = makeSpyMockLlm(llmEmitsText("should not be said"));
@@ -260,7 +260,7 @@ describe("a user's query", () => {
     expect(modelKnowsTool(spy.calls[0], "query_documents")).toBe(true);
   });
 
-  it("is refused for a model the deployment does not offer, before the Workspace is asked anything", async () => {
+  it("is refused for a model the deployment does not offer, before the FINOS Workspace is asked anything", async () => {
     const stub = workspaceStub();
     const res = await ask(appFor(stub), { model: "test-provider:forbidden-model" });
     expect(chatText(await readSse(res))).toContain("not available here");
@@ -268,7 +268,7 @@ describe("a user's query", () => {
     expect(stub.counted).toHaveLength(0);
   });
 
-  it("fails closed with a 503 when the Workspace API cannot be asked about access", async () => {
+  it("fails closed with a 503 when the FINOS Workspace API cannot be asked about access", async () => {
     const stub = workspaceStub();
     stub.setAuthorization({ ok: false, reason: "unavailable" });
     expect((await ask(appFor(stub))).status).toBe(503);

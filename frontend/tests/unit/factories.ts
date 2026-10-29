@@ -1,10 +1,5 @@
 import { vi } from "vitest";
-import type {
-  GroupTypeT,
-  Ticker,
-  WidgetContextType,
-  WidgetT,
-} from "~/components/types";
+import type { GroupTypeT, WidgetContextType, WidgetT } from "~/components/types";
 import { type UserAccess, useAccessStore } from "~/lib/state/access";
 import { type Item, type Items, type TabData, useAppStore } from "~/lib/state/app";
 import type { AuthState } from "~/lib/state/auth";
@@ -65,25 +60,6 @@ export function nthLastCall<A extends unknown[]>(
   if (!call) throw new Error(`The mock has been called fewer than ${n} times`);
   return call;
 }
-
-export const makeTicker = (overrides: Partial<Ticker> = {}): Ticker => ({
-  id: overrides.symbol ?? "AAPL",
-  symbol: "AAPL",
-  category: "equity",
-  type: "stock",
-  ...overrides,
-});
-
-export const makeTickerGroup = (
-  overrides: Partial<GroupTypeT<"ticker">> & { id: string },
-): GroupTypeT<"ticker"> => ({
-  type: "ticker",
-  name: "Group",
-  color: "#00AAFF",
-  groupById: undefined,
-  value: makeTicker(),
-  ...overrides,
-});
 
 export const makeParamGroup = (
   overrides: Partial<GroupTypeT<"param">> & { id: string; groupById: string },

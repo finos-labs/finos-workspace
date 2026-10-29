@@ -225,7 +225,7 @@ def start_prometheus(fork_id: int):
 include_routers()
 if config.settings.PROMETHEUS:
     instrumentator.expose(app, endpoint="/metrics", should_gzip=True)
-app.mount("", workspace_mcp_asgi_app, name="Workspace MCP App")
+app.mount("", workspace_mcp_asgi_app, name="FINOS Workspace MCP App")
 add_pagination(app)
 
 

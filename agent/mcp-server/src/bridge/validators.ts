@@ -48,14 +48,14 @@ export function validateNavigationTabs(
     if ("tab_id" in item || "tab_name" in item) {
       return (
         "manage_navigation_bar tabs_json items must not include tab_id or tab_name; " +
-        'use only {"name":"AAPL Analysis"}. The tab_id is generated as the slug of name.'
+        'use only {"name":"Quarterly Review"}. The tab_id is generated as the slug of name.'
       );
     }
     const name = item.name;
     if (typeof name !== "string" || name.trim().length === 0) {
       return (
         "manage_navigation_bar tabs_json items must be objects with a non-empty string 'name' field, " +
-        'for example [{"name":"AAPL Analysis"}]. Do not use tab_id/tab_name keys.'
+        'for example [{"name":"Quarterly Review"}]. Do not use tab_id/tab_name keys.'
       );
     }
   }

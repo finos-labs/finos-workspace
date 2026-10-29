@@ -32,7 +32,7 @@ export function EntityPluginsTab() {
   if (!data.enabled)
     return (
       <Notice variant="info" title="Widget plugins are off">
-        This Workspace has no plugins directory, so there are no plugin widgets to
+        This FINOS Workspace has no plugins directory, so there are no plugin widgets to
         enable.
       </Notice>
     );

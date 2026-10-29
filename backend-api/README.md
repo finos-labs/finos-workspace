@@ -1,6 +1,6 @@
 # Backend
 
-The backend and admin tooling of Workspace.
+The backend and admin tooling of FINOS Workspace.
 
 ## Repository structure
 

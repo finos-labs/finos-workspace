@@ -491,17 +491,12 @@ const WidgetItem = memo(
 
     const handleCheckboxChange = useCallback(
       (checked: boolean) => {
-        const updatedWidget = {
-          ...widgetItem,
-          defaultAssetClass: widgetItem?.category?.toLowerCase(),
-        };
-
         if (multiSelectState?.isShiftPressed) {
           multiSelectState.onShiftClick(displayId);
           return;
         }
 
-        onWidgetChange(checked, updatedWidget);
+        onWidgetChange(checked, { ...widgetItem });
       },
       [widgetItem, onWidgetChange, multiSelectState, displayId],
     );

@@ -88,8 +88,8 @@ async def test_mcp_prompts_list_and_get_workspace_tool_usage():
 
     messages = result.messages
     assert messages[0].content.text == SERVER_INSTRUCTIONS
-    assert "Workspace browser session" in messages[0].content.text
-    assert messages[1].content.text == "No Workspace browser session context is currently available."
+    assert "FINOS Workspace browser session" in messages[0].content.text
+    assert messages[1].content.text == "No FINOS Workspace browser session context is currently available."
 
 
 def _server_answering(result):
@@ -130,9 +130,9 @@ async def test_the_widgets_json_schema_resource_fails_without_a_browser():
         WorkspaceCommandResult(
             ok=False,
             command="get_widgets_schema",
-            message="No Workspace browser session is connected.",
+            message="No FINOS Workspace browser session is connected.",
         )
     )
 
-    with pytest.raises(Exception, match="No Workspace browser session is connected"):
+    with pytest.raises(Exception, match="No FINOS Workspace browser session is connected"):
         await server.read_resource(WIDGETS_JSON_SCHEMA_URI)

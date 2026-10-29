@@ -12,7 +12,7 @@ related:
 
 # `widgets.json` Spec
 
-`widgets.json` is the metadata contract that tells Workspace which widgets your backend offers, what type each one is, and which endpoint serves its data.
+`widgets.json` is the metadata contract that tells FINOS Workspace which widgets your backend offers, what type each one is, and which endpoint serves its data.
 
 ## Top-level shape
 
@@ -25,7 +25,7 @@ related:
 }
 ```
 
-Returning a JSON array is the most common mistake here — Workspace will reject it. Widget ids are referenced by app layouts (the `i` field in `apps.json` layout items), so they must be stable.
+Returning a JSON array is the most common mistake here — FINOS Workspace will reject it. Widget ids are referenced by app layouts (the `i` field in `apps.json` layout items), so they must be stable.
 
 ## Widget definition fields
 
@@ -38,7 +38,7 @@ Each value is an object with these keys and no others:
 | `name` | Yes | text, at most 200 characters | The title the widget shows |
 | `description` | Yes | text, at most 4,000 characters | What the widget shows; the catalog shows it, and the AI Agent finds widgets by it |
 | `endpoint` | Yes | text, at most 2,048 characters | A path or an absolute URL with no `?` and no `#` (a static query value is a param with show: false) |
-| `method` | No | `GET`, `POST` | How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs |
+| `method` | No | `GET`, `POST` | How FINOS Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs |
 | `category` | No | text, at most 100 characters | The group the catalog lists the widget under |
 | `subCategory` | No | text, at most 100 characters | The subgroup within the category |
 | `source` | No | text, at most 100 characters or list of text, at most 16 | Where the data comes from: a label, or a list of labels |
@@ -57,7 +57,7 @@ Each value is an object with these keys and no others:
 | `storage` | No | object | Only for `iframe`. `mcpUrl`: an MCP server of the page's own, connected for the widget without the backend's credentials |
 <!-- /generated:widget-fields -->
 
-The contract is closed. A key it does not define, or a value outside its bounds, leaves the widget out, and Workspace names the widget and the path of each problem when the backend is connected; the other widgets load. `workspace://specs/widgets-json-schema` is the JSON Schema in force for the signed-in user, for an editor or a test. Set `runButton` only for heavy work (more than 5 seconds).
+The contract defines every key and bounds every value. A key it does not define is ignored: the widget loads without it, and FINOS Workspace names the key under the backend's unrecognized fields. A value outside its bounds leaves the widget out, and FINOS Workspace names the widget and the path of each problem when the backend is connected; the other widgets load. `workspace://specs/widgets-json-schema` is the JSON Schema in force for the signed-in user, for an editor or a test. Set `runButton` only for heavy work (more than 5 seconds).
 
 ## `gridData` is a hint, not the layout
 
@@ -72,12 +72,12 @@ Common mistakes:
 
 ## The request
 
-`endpoint` is a path on the backend, or an absolute URL, with no `?` and no `#`; it does not have to match the widget id. For the current param values Workspace builds one request:
+`endpoint` is a path on the backend, or an absolute URL, with no `?` and no `#`; it does not have to match the widget id. For the current param values FINOS Workspace builds one request:
 
 1. **URL.** A `{name}` placeholder in `endpoint` takes the value of the param `name`, encoded as one path segment; the request is not sent while it has no value. Each param with `in: "query"`, or no `in`, is appended to the query.
 2. **Headers.** The backend connection's credentials, the headers the deployment adds, then each param with `in: "header"`, named by its `paramName`.
 3. **Body.** With `"method": "POST"`, the params with `in: "body"` as one JSON object, `{ "<paramName>": <value> }`, sent as `Content-Type: application/json`.
-4. **Workspace's own query values.** `theme` (`dark` or `light`) for `markdown`, `html`, `iframe` and plugin types, and `raw=true` for the raw view of an `html` widget. They are reserved names for those types.
+4. **FINOS Workspace's own query values.** `theme` (`dark` or `light`) for `markdown`, `html`, `iframe` and plugin types, and `raw=true` for the raw view of an `html` widget. They are reserved names for those types.
 
 An empty value is not sent, in any place; `0` and `false` are. How each kind of value is written is in `workspace://specs/widget-parameters`.
 

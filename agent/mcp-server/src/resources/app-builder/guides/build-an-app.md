@@ -1,7 +1,7 @@
 ---
 title: Build an App
 uri: workspace://guides/build-an-app
-use_when: You are building a new Workspace app from scratch and need the workflow.
+use_when: You are building a new FINOS Workspace app from scratch and need the workflow.
 language_specific: false
 related:
   - workspace://overview/what-is-workspace
@@ -16,11 +16,11 @@ related:
 
 # Build an App
 
-A linear workflow for going from "I want a Workspace app for X" to a working backend that Workspace can connect to.
+A linear workflow for going from "I want a FINOS Workspace app for X" to a working backend that FINOS Workspace can connect to.
 
 ## 0. Build the mental model first
 
-If this is your first time, read `workspace://overview/what-is-workspace` and `workspace://overview/ai-agent-contract` before drafting anything. They cover what Workspace is, what's native vs. what your backend supplies, and how the AI Agent reads widget metadata — all of which shape design choices below.
+If this is your first time, read `workspace://overview/what-is-workspace` and `workspace://overview/ai-agent-contract` before drafting anything. They cover what FINOS Workspace is, what's native vs. what your backend supplies, and how the AI Agent reads widget metadata — all of which shape design choices below.
 
 ## 1. Define the user goal and data sources
 
@@ -28,7 +28,7 @@ Write down, in plain English, what the user wants to see and do. Identify the ac
 
 ## 2. Choose a backend implementation
 
-Workspace is language-agnostic. Pick the framework you (or the project) already use. **FastAPI is the documented starter path** because most of Workspace's examples are in Python — but anything that can serve JSON over HTTP works.
+FINOS Workspace is language-agnostic. Pick the framework you (or the project) already use. **FastAPI is the documented starter path** because most of FINOS Workspace's examples are in Python — but anything that can serve JSON over HTTP works.
 
 - Existing project? Use whatever framework it uses.
 - Greenfield with no constraints? Use FastAPI. See `workspace://examples/python-fastapi/minimal`.
@@ -41,7 +41,7 @@ Read `workspace://contract/backend`. Confirm you understand:
 - `GET /widgets.json` returns a JSON object keyed by widget id.
 - `GET /apps.json` returns a JSON array of app templates (only if you ship templates).
 - Each widget references a data endpoint. Pick paths that read well — `/weekly_summary`, `/audit_report`, `/handbook`.
-- CORS allows the origin your Workspace is served from, and `http://localhost:1420` for local development.
+- CORS allows the origin your FINOS Workspace is served from, and `http://localhost:1420` for local development.
 - Auth strategy: header (preferred), query string, or none.
 
 ## 4. Draft `widgets.json`
@@ -53,7 +53,7 @@ For each widget:
 3. Pick the right `type` — `markdown`, `html`, `newsfeed`, `pdf` or `iframe`, or a plugin type enabled for the organization. See `workspace://specs/widget-types`. Don't default to `html` for plain prose.
 4. Define the params. See `workspace://specs/widget-parameters`. Use `boolean`, `number`, `date`, `endpoint` types — not `text` dropdowns of "true"/"false".
    - Prefer individual multi-select choices over fake aggregate options such as `All Geographies` or `2020-2024`; default all values selected when the intended starting scope is "all".
-   - Keep option objects simple: usually `{label, value}`. Add `category` only when it has a concrete Workspace role.
+   - Keep option objects simple: usually `{label, value}`. Add `category` only when it has a concrete FINOS Workspace role.
 5. For an `html` widget generated from data, set `"raw": true` and plan the rows the endpoint returns for `raw=true`.
 
 See `workspace://specs/widgets-json` for the field shape.
@@ -80,7 +80,7 @@ For each widget, implement the data endpoint to return the shape the widget type
 - PDF → the file (`application/pdf`), or JSON with a base64 `content` or a `url`.
 - Iframe → nothing: the `endpoint` is the URL of the page to embed.
 
-Keep things deterministic when you can — Workspace's failure messages are clearer when the endpoint is well-typed.
+Keep things deterministic when you can — FINOS Workspace's failure messages are clearer when the endpoint is well-typed.
 
 ## 7. Validate the JSON and semantic output
 
@@ -106,10 +106,10 @@ See `workspace://validation/common-errors` for the full list.
 
 ## 8. Validate the live backend
 
-Two paths — pick whichever is available; both validate against the same Workspace schema.
+Two paths — pick whichever is available; both validate against the same FINOS Workspace schema.
 
-- **Preferred — `workspace_mcp`.** If you have the Workspace MCP companion connected, register the backend with `manage_backends(operation="add", url=...)` then confirm with `list_available_widgets` and `manage_apps(operation="list")`. Headless and returns structured errors.
-- **Fallback — browser.** In your Workspace, open Settings → Data Connectors → Connect Backend → Test.
+- **Preferred — `workspace_mcp`.** If you have the FINOS Workspace MCP companion connected, register the backend with `manage_backends(operation="add", url=...)` then confirm with `list_available_widgets` and `manage_apps(operation="list")`. Headless and returns structured errors.
+- **Fallback — browser.** In your FINOS Workspace, open Settings → Data Connectors → Connect Backend → Test.
 
 If validation fails, trust the validator over docs — the running validator is the source of truth.
 
@@ -119,6 +119,6 @@ Once validation passes, the backend is registered and apps appear in the gallery
 
 ## After it ships
 
-- **Widget config changes**: refresh the backend in Workspace (right-click → "Refresh backend") rather than restarting your server.
+- **Widget config changes**: refresh the backend in FINOS Workspace (right-click → "Refresh backend") rather than restarting your server.
 - **Code changes**: restart the backend.
 - **Major schema changes**: open a fresh app instance from the gallery so cached state doesn't mask the change.

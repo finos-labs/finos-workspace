@@ -28,8 +28,8 @@ PRESENCE_TTL_SECONDS = 45
 SESSION_TTL_SECONDS = 300
 COMPLETED_RESULTS_MAX = 2048
 SESSION_ENDED_CLOSE_CODE = 1008
-SESSION_ENDED_MESSAGE = "The Workspace session that opened the browser bridge has ended."
-NO_BROWSER_MESSAGE = "No active Workspace browser connected"
+SESSION_ENDED_MESSAGE = "The FINOS Workspace session that opened the browser bridge has ended."
+NO_BROWSER_MESSAGE = "No active FINOS Workspace browser connected"
 
 SessionCheck = Callable[[], Awaitable[bool]]
 
@@ -97,7 +97,7 @@ class BridgeSessionManager:
         await self.ensure_started()
         async with self._lock:
             if (replaced := self._active_by_user.pop(user_uuid, None)) is not None:
-                self._fail_pending_commands("Workspace browser session replaced.", user_uuid)
+                self._fail_pending_commands("FINOS Workspace browser session replaced.", user_uuid)
                 await self._delete_presence(user_uuid)
                 socket, replaced.socket = replaced.socket, None
                 await self._close_socket(socket)
@@ -164,7 +164,7 @@ class BridgeSessionManager:
                 return
             browser.socket = None
             self._active_by_user.pop(user_uuid, None)
-            self._fail_pending_commands("Workspace browser disconnected.", user_uuid)
+            self._fail_pending_commands("FINOS Workspace browser disconnected.", user_uuid)
             await self._delete_presence(user_uuid)
 
     async def check_session(self, user_uuid: UUID, socket: BrowserSocket) -> None:
@@ -234,11 +234,11 @@ class BridgeSessionManager:
         command: dict[str, Any],
     ) -> dict[str, Any]:
         if self.redis is None:
-            raise BrowserUnavailableError("No active Workspace browser connected")
+            raise BrowserUnavailableError("No active FINOS Workspace browser connected")
 
         presence = await self._get_presence(user_uuid)
         if presence is None:
-            raise BrowserUnavailableError("No active Workspace browser connected")
+            raise BrowserUnavailableError("No active FINOS Workspace browser connected")
 
         request_id = command.get("request_id") or f"cmd_{uuid.uuid4().hex}"
         command = {**command, "request_id": request_id}
@@ -327,7 +327,7 @@ class BridgeSessionManager:
             user_uuid=browser.user_uuid,
         )
         if browser.socket is None:
-            raise BrowserUnavailableError("No active Workspace browser connected")
+            raise BrowserUnavailableError("No active FINOS Workspace browser connected")
         await browser.socket.send_json(
             CommandRequestEvent(type="command_request", command=command).model_dump(
                 mode="json"
@@ -343,10 +343,10 @@ class BridgeSessionManager:
             ok=False,
             command=command_name,
             request_id=request_id,
-            message="Workspace command timed out waiting for the browser.",
+            message="FINOS Workspace command timed out waiting for the browser.",
             error=BridgeError(
                 code="timeout",
-                message="Workspace command timed out waiting for the browser.",
+                message="FINOS Workspace command timed out waiting for the browser.",
                 retryable=True,
             ),
         ).model_dump(mode="json")
@@ -389,7 +389,7 @@ class BridgeSessionManager:
         except asyncio.CancelledError:
             raise
         except Exception as error:
-            logger.exception(f"Workspace MCP Redis listener failed: {error}")
+            logger.exception(f"FINOS Workspace MCP Redis listener failed: {error}")
         finally:
             await pubsub.aclose()
 
@@ -414,7 +414,7 @@ class BridgeSessionManager:
                     or browser.session.session_id != envelope["bridge_session_id"]
                 ):
                     raise BrowserUnavailableError(
-                        "No active Workspace browser connected"
+                        "No active FINOS Workspace browser connected"
                     )
             result = await self._execute_local_command(browser, envelope["command"])
         except BrowserUnavailableError as error:
@@ -443,7 +443,7 @@ class BridgeSessionManager:
             if payload.get("request_id") == request_id:
                 return payload["result"]
         raise BrowserUnavailableError(
-            "Workspace command timed out waiting for the browser."
+            "FINOS Workspace command timed out waiting for the browser."
         )
 
     async def _get_session(self, session_id: str) -> tuple[UUID, BrowserSession]:

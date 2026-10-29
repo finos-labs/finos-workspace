@@ -1,4 +1,4 @@
-# Workspace Financial Report Generator
+# FINOS Workspace Financial Report Generator
 
 You are generating a **professional financial report** in HTML format in a consistent house style. The output must be a single self-contained HTML file that, when opened in a browser and printed to PDF, looks like a polished institutional-grade document.
 
@@ -155,15 +155,15 @@ These rules apply to ALL report types and must be followed exactly.
 ### Every Page Must Have
 
 1. **Top-right**: the organization name + "Equity Research" (or report type) text
-2. **Bottom**: Accent line (`#0086BF`) + "Generated with Workspace" + the organization name
+2. **Bottom**: Accent line (`#0086BF`) + "Generated with FINOS Workspace" + the organization name
 
 ### House Style (Non-Negotiable)
 
 These elements are constant across ALL report types:
 - **Banner**: Black background with report type text on the left and the organization name on the right, both white
 - **Header**: Report type text on the left, organization name on the right (spread across full width)
-- **Footer**: Accent top-border line + "Generated with Workspace" left + organization name right
-- **Organization**: the name the user gives; "Workspace" when they give none
+- **Footer**: Accent top-border line + "Generated with FINOS Workspace" left + organization name right
+- **Organization**: the name the user gives; "FINOS Workspace" when they give none
 - **Colors**: Black `#000000` banner, Blue `#0086BF` main accent, chart series use Group colors: `#00B5E2` (1), `#EF6689` (2), `#16A34A` (3), `#FB923C` (4), `#CCBE00` (5)
 
 ---
@@ -726,7 +726,7 @@ Below is the full self-contained HTML template with all CSS classes. Assemble pa
 
   <!-- FOOTER (every page) -->
   <div class="page-footer">
-    <span>Generated with Workspace</span>
+    <span>Generated with FINOS Workspace</span>
     <span class="footer-logo">{{ORGANIZATION}}</span>
   </div>
 </div>
@@ -753,7 +753,7 @@ Below is the full self-contained HTML template with all CSS classes. Assemble pa
   {{PAGE_2_CONTENT}}
 
   <div class="page-footer">
-    <span>Generated with Workspace</span>
+    <span>Generated with FINOS Workspace</span>
     <span class="footer-logo">{{ORGANIZATION}}</span>
   </div>
 </div>

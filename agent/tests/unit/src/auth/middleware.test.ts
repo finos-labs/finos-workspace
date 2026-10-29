@@ -53,7 +53,7 @@ function appWith(workspace: WorkspaceClient | null, cacheSeconds = 30, now = Dat
 const bearer = (token: string) => ({ headers: { Authorization: `Bearer ${token}` } });
 
 describe("authMiddleware — workspace auth", () => {
-  it("lets in a user the Workspace API recognises and tells the route who they are", async () => {
+  it("lets in a user the FINOS Workspace API recognises and tells the route who they are", async () => {
     const { workspace } = workspaceStub({ good: { ok: true, value: { userId: "user-1" } } });
     const res = await appWith(workspace).request("/v1/me", bearer("good"));
     expect(res.status).toBe(200);
@@ -68,7 +68,7 @@ describe("authMiddleware — workspace auth", () => {
     expect(asked).toHaveLength(0);
   });
 
-  it("refuses a token the Workspace API rejects, and anything that is not a bearer token", async () => {
+  it("refuses a token the FINOS Workspace API rejects, and anything that is not a bearer token", async () => {
     const { workspace } = workspaceStub({});
     expect((await appWith(workspace).request("/v1/me", bearer("forged"))).status).toBe(401);
     expect((await appWith(workspace).request("/v1/me", { headers: { Authorization: "Basic abc" } })).status).toBe(401);
@@ -82,7 +82,7 @@ describe("authMiddleware — workspace auth", () => {
     expect(((await res.json()) as { userId: string }).userId).toBe("user-1");
   });
 
-  it("fails closed with a 503 when the Workspace API cannot be asked", async () => {
+  it("fails closed with a 503 when the FINOS Workspace API cannot be asked", async () => {
     const { workspace } = workspaceStub({ t: { ok: false, reason: "unavailable" } });
     const res = await appWith(workspace).request("/v1/me", bearer("t"));
     expect(res.status).toBe(503);
@@ -93,7 +93,7 @@ describe("authMiddleware — workspace auth", () => {
     expect((await appWith(workspace).request("/open")).status).toBe(200);
   });
 
-  it("asks the Workspace API once for a token it saw a moment ago, and again after the cache expires", async () => {
+  it("asks the FINOS Workspace API once for a token it saw a moment ago, and again after the cache expires", async () => {
     let now = 1_000_000;
     const { workspace, asked } = workspaceStub({ good: { ok: true, value: { userId: "user-1" } } });
     const app = appWith(workspace, 30, () => now);
@@ -128,7 +128,7 @@ describe("authMiddleware — workspace auth", () => {
   });
 });
 
-describe("authMiddleware — without a Workspace API", () => {
+describe("authMiddleware — without a FINOS Workspace API", () => {
   it("treats everyone as anonymous", async () => {
     const res = await appWith(null).request("/v1/me");
     expect(res.status).toBe(200);

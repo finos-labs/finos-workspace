@@ -16,7 +16,7 @@ const widget = (type?: string) => ({
   ...(type ? { type } : {}),
 });
 
-describe("the widget types this Workspace renders", () => {
+describe("the widget types this FINOS Workspace renders", () => {
   it("renders markdown, html, iframe, newsfeed and pdf itself", () => {
     expect([...WidgetVizTypes].sort()).toEqual([
       "html",
@@ -50,7 +50,7 @@ describe("the widget types this Workspace renders", () => {
     expect(isWellFormedVizType(undefined)).toBe(false);
   });
 
-  it("has a component for each widget the Workspace renders itself", () => {
+  it("has a component for each widget the FINOS Workspace renders itself", () => {
     for (const type of WidgetVizTypes) {
       expect(getWidgetComponent(type)).toBeDefined();
     }
