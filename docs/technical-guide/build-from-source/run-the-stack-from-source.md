@@ -36,7 +36,7 @@ python3 -m scripts.create_local_env --admin-email <your-email>
 cd ../..
 ```
 
-The script writes four files that git does not track. It fills `backend-api/backend/envs/.env` with random keys and the addresses of the stack. It writes `backend-api/backend/scripts/cfgs/config.toml`, which names the organization and the administrator that the first start creates. It holds no password. It creates an empty `backend-api/backend/user_create.json` that the first start fills in, and it writes `agent/.env` with the settings of the AI agent. The script refuses to overwrite the first two files unless you pass `--force`.
+The script writes four files that git does not track. It fills `backend-api/backend/envs/.env` with random keys and the addresses of the stack. It writes `backend-api/backend/scripts/cfgs/config.toml`, which names the organization and the administrator that the first start creates. It holds no password. It creates an empty `backend-api/backend/user_create.json` that the first start fills in, and it writes `agent/.env` with the settings of the AI agent. The script refuses to overwrite the first two files unless you pass `--force`, and a run with `--force` keeps the other settings in `agent/.env` and gives the agent a new metering token.
 
 The AI agent also needs a model. Open `agent/.env`, set `DEFAULT_MODEL` and the key of that model's provider, and save the file. The stack starts without them, but the Agent then answers "No model is configured" and tells you to set `DEFAULT_MODEL`.
 

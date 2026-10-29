@@ -868,7 +868,8 @@ class GeneralSettings(BaseModel):
     MODE: Literal["production", "local", "test"] = Field(
         description=(
             "The mode of the deployment. With test, the API keeps its rate limits and the state of the Workspace MCP in "
-            "its own process instead of Redis; production and local behave alike."
+            "its own process instead of Redis. With local, a developer's own machine, a superuser can also develop a "
+            "new version of an approved widget plugin in place; production and local are otherwise alike."
         ),
     )
     RATE_LIMIT_EXEMPT_ENABLED: bool = Field(

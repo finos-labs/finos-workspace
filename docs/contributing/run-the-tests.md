@@ -81,4 +81,4 @@ In `website`, `npm run typecheck` generates the reference data and checks the ty
 
 ## The example plugins
 
-Each example plugin has tests of its own. In `docs/examples/plotly-charts` and in `docs/examples/sql-explorer`, run `npm ci --ignore-scripts`, `npm run build` and `npm test`. The SQL explorer also has a backend, which CI tests against a PostgreSQL that it starts, as `examples.yml` shows.
+Each example plugin has tests of its own. In `docs/examples/plotly-charts`, `docs/examples/ag-grid` and `docs/examples/sql-explorer`, run `npm ci --ignore-scripts`, `npm run build` and `npm test`. The SQL explorer's backend and the examples backend in `docs/examples/backend` are tested with pytest, against a PostgreSQL that CI starts, as `examples.yml` shows.

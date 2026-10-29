@@ -34,7 +34,7 @@ An approved version is never edited, because changing its files blocks it. Only 
 
 If your plugin calls a proxy, set the proxy's secret on the plugin's Deployment page. A service on your own machine or network resolves to a private address, so it needs a superuser's override of the server network with the confirmation `private-host`. A server that uses a certificate from a private authority needs `WIDGET_PLUGIN_PROXY_CA_FILE`.
 
-A widget of a type that you handle can read the data backend of a deployment. Add that backend to your local stack as a connection with your own key, read-only where the backend has such keys, and have the backend allow the origin of your local web app. The agent and the plugin backends of a deployment accept only that deployment's sessions and call tokens, so a local stack can neither use them nor write to them. Run them on your machine instead: the root `docker-compose.yml` runs the agent, and `docs/examples/sql-explorer/examples/compose.yaml` shows a plugin backend.
+A widget of a type that you handle can read the data backend of a deployment. Add that backend to your local stack as a connection with your own key, read-only where the backend has such keys, and have the backend allow the origin of your local web app. The agent and the plugin backends of a deployment accept only that deployment's sessions and call tokens, so a local stack can neither use them nor write to them. Run them on your machine instead: the root `docker-compose.yml` runs the agent, and `docs/examples/backend/compose.yaml` shows a plugin backend.
 
 ## Before you publish
 
@@ -46,4 +46,4 @@ Check that the plugin meets these conditions before you hand it to a deployer:
 - The module cleans up through the cleanup function that it returns, or through `signal`.
 - The command `plugin_check` passes, and the `checksum` in the manifest is current.
 
-The folder `docs/examples/` contains two complete packages that you can build and try.
+The folder `docs/examples/` contains three complete packages and one backend for all of them, which you can build and try.
