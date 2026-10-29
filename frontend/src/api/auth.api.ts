@@ -23,6 +23,7 @@ import {
   type ExternalCopilotHolder,
   type HumanMessage,
 } from "~/lib/state/copilot";
+import type { CopilotAccess } from "~/lib/state/copilotAccess";
 import type { EntityThemeSettings } from "~/lib/state/entityTheme";
 import type { McpServer } from "~/lib/state/mcpTools";
 import {
@@ -333,6 +334,25 @@ export async function postApiSource(
       return { status: getErrorResponse(e).status || 500 };
     });
   return { status };
+}
+
+export async function putApiSourceMcpServers(
+  sourceUuid: string,
+  servers: string[],
+): Promise<{ status: number }> {
+  const { status } = await apiClient
+    .put(`/app/data-connectors/api-source/${sourceUuid}/mcp-servers`, { servers })
+    .catch((e: AxiosError) => {
+      return { status: getErrorResponse(e).status || 500 };
+    });
+  return { status };
+}
+
+export async function fetchCopilotAccess(): Promise<CopilotAccess | null> {
+  const { data } = await apiClient
+    .get<CopilotAccess>("/app/copilot/access")
+    .catch(() => ({ data: null }));
+  return data;
 }
 
 export async function deleteApiSource(sourceUuid: string): Promise<{ status: number }> {

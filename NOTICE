@@ -1,7 +1,11 @@
-OpenBB Workspace
+FINOS Workspace
 Copyright 2026 OpenBB, Inc.
+Copyright 2026 FINOS
+Copyright 2026 BrightQuery
 
 This product includes software developed at OpenBB, Inc. (https://openbb.co/).
+This product includes software developed at the Fintech Open Source Foundation (https://www.finos.org/).
+This product includes software developed at BrightQuery (https://www.brightquery.com/).
 
 Dual-Licensed Dependency Selections:
 - jszip (3.10.1, 3.10.2): Selected MIT
@@ -18,3 +22,4 @@ Dual-Licensed Dependency Selections:
 Licences Not Stated in Package Metadata (from each package's LICENSE file):
 - duck (0.1.12, package.json says "BSD"): BSD-2-Clause
 - azure-core (1.41.0), azure-identity (1.25.3): MIT
+

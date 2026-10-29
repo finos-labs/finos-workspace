@@ -64,6 +64,7 @@ import {
   dispatchCopilotCommand,
   normalizeCitations,
   partitionFilesOnSend,
+  withoutCitedWidgets,
 } from "./utils";
 
 export type CopilotSubmitParams = {
@@ -355,10 +356,12 @@ function useStreamResponse(stopSubmit: () => void) {
           return Array.isArray(extra) ? extra : [];
         });
         if (citations.length > 0) {
-          const normalized = normalizeCitations(citations);
-          const existingIds = new Set(pendingMcpCitationsRef.current.map((c) => c.id));
-          const toAdd = normalized.filter((c) => !existingIds.has(c.id));
-          pendingMcpCitationsRef.current.push(...toAdd);
+          pendingMcpCitationsRef.current.push(
+            ...withoutCitedWidgets(
+              pendingMcpCitationsRef.current,
+              normalizeCitations(citations),
+            ),
+          );
         }
       }
 
@@ -713,7 +716,10 @@ function useStreamResponse(stopSubmit: () => void) {
             );
           const updateMessage = {} as Partial<AIMessage>;
 
-          const pending = pendingMcpCitationsRef.current;
+          const pending = withoutCitedWidgets(
+            citationBuffer,
+            pendingMcpCitationsRef.current,
+          );
           if (pending.length) {
             const idsInContent = new Set(
               Array.from(
@@ -729,10 +735,9 @@ function useStreamResponse(stopSubmit: () => void) {
               aiMessageBuffer +=
                 (aiMessageBuffer?.endsWith("| ") ? "\n" : "") + newMarkers;
             }
-            const bufferIds = new Set(citationBuffer.map((c) => c.id));
-            for (const c of pending) if (!bufferIds.has(c.id)) citationBuffer.push(c);
-            pendingMcpCitationsRef.current = [];
+            citationBuffer.push(...pending);
           }
+          pendingMcpCitationsRef.current = [];
 
           if (copilot.selectedCopilot.id === "default-copilot") {
             for (const key of ["traceId", "completionId"] as const) {

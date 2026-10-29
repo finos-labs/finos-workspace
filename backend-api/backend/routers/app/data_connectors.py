@@ -224,6 +224,37 @@ async def post_user_api_source(
     return SuccessReturn.success_instance()
 
 
+@router.put(
+    "/api-source/{source_uuid}/mcp-servers",
+    response_model=SuccessReturn,
+    summary="Record the MCP servers that a backend declares",
+    description=(
+        "Replaces the MCP server URLs that the backend with the given UUID declares, which the web app reports each "
+        "time it loads the backend. The users who can read the backend may use these servers with every tool. The "
+        "backend's owner can report them, and a superuser can for an organization's backend. Answers 404 to any "
+        "other caller."
+    ),
+)
+async def put_api_source_mcp_servers(
+    source_uuid: Annotated[
+        UUID, Path(..., description="The UUID of the source whose declared MCP servers to record")
+    ],
+    payload: schemas.ApiSourceMcpServers,
+    user=Depends(auth_helpers.GetCurrentUser(["uuid", "is_superuser"], app_session=True)),
+    db: AsyncSession = Depends(aget_write_db),
+):
+    owned = ApiSource.user_uuid == user.uuid
+    editable = or_(owned, ApiSource.entity_uuid.is_not(None)) if user.is_superuser else owned
+    source = (
+        await db.execute(select(ApiSource).where(ApiSource.uuid == source_uuid, editable))
+    ).scalar_one_or_none()
+    if source is None:
+        raise HTTPException(404, detail="Source not found")
+    source.mcp_servers = sorted(set(payload.servers))
+    await db.commit()
+    return SuccessReturn.success_instance()
+
+
 @router.delete(
     "/api-source/{source_uuid}",
     response_model=SuccessReturn,

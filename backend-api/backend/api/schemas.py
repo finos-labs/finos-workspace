@@ -363,6 +363,10 @@ class ReturnApiSource(ApiSourceBase, extra="ignore"):  # type: ignore[call-arg]
         validation_alias="entity_uuid",
         description="Whether the backend belongs to the organization and not to one user.",
     )
+    mcp_servers: list[str] | None = Field(
+        default=None,
+        description="The MCP server URLs the backend declares, as last reported by its owner.",
+    )
 
 
 class EntityBase(BaseModel, extra="forbid"):  # type: ignore[call-arg]
@@ -995,6 +999,14 @@ class MCPOAuthServer(BaseModel):
         Field(max_length=2048, description="The address of the MCP server."),
         AfterValidator(mcp_server_url),
     ]
+
+
+class ApiSourceMcpServers(BaseModel):
+    model_config = main_config
+    servers: list[Annotated[str, Field(max_length=400), AfterValidator(mcp_server_url)]] = Field(
+        max_length=100,
+        description="The MCP server URLs the backend declares: iframe widgets' storage.mcpUrl and the apps' mcpServers.",
+    )
 
 
 class MCPOAuthAuthorization(BaseModel):
