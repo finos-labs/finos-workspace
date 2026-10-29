@@ -561,7 +561,9 @@ const TextArea = (props: TextAreaProps) => {
   const suggestionsMemo = useMemo(() => {
     return (
       <div
-        ref={(el) => (suggestionsRef.current = el)}
+        ref={(el) => {
+          suggestionsRef.current = el;
+        }}
         className={cn(
           "absolute only-sm:max-h-[60vh]! bg-dropdown-bg border border-dropdown-border",
           "shadow-dropdown rounded-sm z-30",

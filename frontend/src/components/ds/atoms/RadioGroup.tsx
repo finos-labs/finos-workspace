@@ -11,7 +11,7 @@ const RadioGroup = React.forwardRef<
 >(({ className, ...props }, ref) => {
   return (
     <RadioGroupPrimitive.Root
-      className={cn("BB-RadioGroup grid gap-2", className)}
+      className={cn("grid gap-2", className)}
       {...props}
       ref={ref}
     />
@@ -37,13 +37,13 @@ const RadioGroupItem = React.forwardRef<
       <RadioGroupPrimitive.Item
         ref={ref}
         className={cn(
-          "peer aspect-square h-4 w-4 rounded-full border border-general-label text-general-label ring-offset-background",
+          "peer aspect-square h-4 w-4 rounded-full border border-general-label text-general-label ring-offset-general-bg-primary",
           "flex items-center justify-center",
           "transition",
-          "hover:radix-state-unchecked:border-general-label-hover hover:enabled:text-general-label-hover",
-          "radix-state-checked:border-brand-main",
-          "radix-state-unchecked:bg-general-bg-primary radix-state-unchecked:border-general-border-primary",
-          "focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "hover:data-[state=unchecked]:border-general-label-hover hover:enabled:text-general-label-hover",
+          "data-[state=checked]:border-brand-main",
+          "data-[state=unchecked]:bg-general-bg-primary data-[state=unchecked]:border-general-border-primary",
+          "focus:outline-hidden focus-visible:ring-2 focus-visible:ring-light-300 dark:focus-visible:ring-dark-400 focus-visible:ring-offset-2",
           "disabled:cursor-not-allowed disabled:opacity-50",
 
           className,
@@ -76,16 +76,15 @@ const RadioGroupItem = React.forwardRef<
 RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName;
 
 export interface RadioGroupLabelProps extends React.ComponentPropsWithoutRef<"div"> {}
-const RadioGroupLabel = React.forwardRef<
-  React.ElementRef<React.FC>,
-  RadioGroupLabelProps
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("body-xs-regular mb-1.5 text-ds-text-caption", className)}
-    {...props}
-  />
-));
+const RadioGroupLabel = React.forwardRef<HTMLDivElement, RadioGroupLabelProps>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("body-xs-regular mb-1.5 text-ds-text-caption", className)}
+      {...props}
+    />
+  ),
+);
 RadioGroupLabel.displayName = "RadioGroupLabel";
 
 export { RadioGroup, RadioGroupItem, RadioGroupLabel };

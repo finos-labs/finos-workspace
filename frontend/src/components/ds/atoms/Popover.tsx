@@ -27,7 +27,7 @@ export const TooltipContent = React.forwardRef<
     <TooltipPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn("BB-Tooltip", tooltipContentClasses, className)}
+      className={cn(tooltipContentClasses, className)}
       {...rest}
     />
   );
@@ -67,7 +67,8 @@ export const PopoverContent = React.forwardRef<
         ref={ref}
         align={align}
         sideOffset={sideOffset}
-        className={cn("BB-Popover", DropdownMenuContentVariants(), className)}
+        data-slot="popover"
+        className={cn(DropdownMenuContentVariants(), className)}
         {...rest}
       />
     </PopoverPortal>
@@ -87,7 +88,6 @@ export const PopoverArrow = React.forwardRef<
     <PopoverPrimitive.Arrow
       ref={ref}
       className={cn(
-        "BB-PopoverArrow",
         tooltipArrowClasses,
         "bg-dropdown-bg text-general-label",
         className,

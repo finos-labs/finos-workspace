@@ -182,7 +182,7 @@ function ArticleDialog({ article, onClose }: ArticleDialogProps) {
                   tabIndex={-1}
                   aria-label="Open as a Widget on the Dashboard"
                   onClick={openAsWidget}
-                  className="BB-Button inline-flex items-center justify-center gap-2 rounded-sm ring-offset-background focus-visible:outline-hidden focus-visible:ring-4 disabled:pointer-events-none transition cursor-pointer border border-general-border-primary text-ds-text-subtitle hover:border-general-border-primary hover:text-ds-text-heading focus-visible:ring-general-border-secondary disabled:border-general-border-disabled disabled:text-general-label-disabled body-sm-medium aspect-square p-0 h-5 w-5 border-none"
+                  className="inline-flex items-center justify-center gap-2 rounded-sm ring-offset-general-bg-primary focus-visible:outline-hidden focus-visible:ring-4 disabled:pointer-events-none transition cursor-pointer border border-general-border-primary text-ds-text-subtitle hover:border-general-border-primary hover:text-ds-text-heading focus-visible:ring-general-border-secondary disabled:border-general-border-disabled disabled:text-general-label-disabled body-sm-medium aspect-square p-0 h-5 w-5 border-none"
                 >
                   <Icon id="copy-to-file" className="w-4 h-4" />
                 </button>

@@ -116,7 +116,7 @@ type ConnectionsToolbarProps = {
   dispatch: StateDispatch<ConnectionsState>;
   selectedCount: number;
   onConnectBackend: () => void;
-  inputRef: RefObject<HTMLInputElement>;
+  inputRef: RefObject<HTMLInputElement | null>;
   onRefresh: () => void;
   isRefreshing: boolean;
 };

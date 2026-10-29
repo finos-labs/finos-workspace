@@ -28,9 +28,9 @@ function MenuTab({
       value={value}
       className={cn(
         "rounded flex gap-2.5 items-center p-2.5 text-left capitalize whitespace-nowrap flex-shrink-0 sm:flex-shrink only-sm:gap-1.5 only-sm:px-2 only-sm:py-1 only-sm:text-xs",
-        "radix-state-active:bg-general-bg-secondary-hover radix-state-active:font-medium",
-        "radix-state-inactive:text-ds-text-body",
-        "radix-state-inactive:hover:bg-general-bg-primary-hover",
+        "data-[state=active]:bg-general-bg-secondary-hover data-[state=active]:font-medium",
+        "data-[state=inactive]:text-ds-text-body",
+        "data-[state=inactive]:hover:bg-general-bg-primary-hover",
         value && `_button_${value}`,
       )}
     >
@@ -64,7 +64,7 @@ export const DataConnectionTabs = ({
       value={dcTab}
       onValueChange={(value) => setTab(value as DcTabT)}
       orientation="horizontal"
-      className="flex h-full bg-tab-group-bg rounded border  border-secondary/20 only-sm:flex-col"
+      className="flex h-full bg-tab-group-bg rounded border  border-light-100/20 dark:border-dark-400/20 only-sm:flex-col"
     >
       {mode === "create" && (
         <TabsPrimitive.List className="flex gap-1 overflow-auto p-2.5 sm:min-w-[180px] sm:flex-col sm:border-r sm:border-surface-divider only-sm:overflow-x-auto only-sm:flex-shrink-0">

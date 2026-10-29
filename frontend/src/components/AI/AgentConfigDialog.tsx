@@ -946,7 +946,9 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
                     Key
                   </Label>
                   <Input
-                    ref={(el) => (inputRefs.current[`key-${index}`] = el)}
+                    ref={(el) => {
+                      inputRefs.current[`key-${index}`] = el;
+                    }}
                     size="sm"
                     placeholder="Authorization"
                     defaultValue={pair.key}
@@ -960,7 +962,9 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
                     Value
                   </Label>
                   <Input
-                    ref={(el) => (inputRefs.current[`value-${index}`] = el)}
+                    ref={(el) => {
+                      inputRefs.current[`value-${index}`] = el;
+                    }}
                     size="sm"
                     placeholder="Bearer token..."
                     defaultValue={pair.value}

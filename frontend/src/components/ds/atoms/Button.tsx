@@ -6,7 +6,7 @@ import { cn } from "../utils";
 
 export const buttonVariants = cva(
   [
-    "BB-Button inline-flex items-center justify-center gap-2 ring-offset-background",
+    "inline-flex items-center justify-center gap-2 ring-offset-general-bg-primary",
     "focus-visible:outline-hidden focus-visible:ring-2",
     "disabled:pointer-events-none disabled:[&_svg]:opacity-50",
     "transition",
@@ -61,7 +61,7 @@ export const buttonVariants = cva(
         ],
       },
       size: {
-        xs: "body-xs-medium h-6 rounded-sm px-2 [&_.BB-Icon]:size-3",
+        xs: "body-xs-medium h-6 rounded-sm px-2",
         sm: "body-xs-medium h-8 rounded-sm px-3",
         md: "body-sm-medium h-10 rounded-md px-4",
         lg: "body-md-medium h-12 rounded-md px-5",
