@@ -10,13 +10,13 @@ interface StatusMessageProps {
 export function StatusMessage({ tone, title, children, action }: StatusMessageProps) {
   return (
     <div
-      className={`bqag-status bqag-status--${tone}`}
+      className={`agw-status agw-status--${tone}`}
       role={tone === "error" ? "alert" : "status"}
     >
-      <p className="bqag-status__title">{title}</p>
-      {children && <p className="bqag-status__body">{children}</p>}
+      <p className="agw-status__title">{title}</p>
+      {children && <p className="agw-status__body">{children}</p>}
       {action && (
-        <button type="button" className="bqag-button" onClick={action.onClick}>
+        <button type="button" className="agw-button" onClick={action.onClick}>
           {action.label}
         </button>
       )}

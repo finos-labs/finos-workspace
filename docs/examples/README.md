@@ -7,7 +7,7 @@ Workspace imports them; they show what the plugin framework does from an author'
 | Folder | Plugin | Shows |
 |---|---|---|
 | [`plotly-charts/`](plotly-charts/README.md) | `plotly-charts` | A plugin that only draws: it renders the `plotly` widget type for any backend whose endpoint returns a Plotly figure as JSON, and offers its own exports and Copilot context. |
-| [`bq-advanced-grouping/`](bq-advanced-grouping/README.md) | `bq-advanced-grouping` | A plugin written in TypeScript and React with a library bundled in (AG Grid Community): it renders the `bq-advanced-grouping` widget type, company rows grouped and aggregated across any combination of columns, with the search, the exports and the Copilot context in the frame. |
+| [`ag-grid/`](ag-grid/README.md) | `ag-grid` | A reusable component built on a library: it renders the `ag-grid` widget type, any backend's rows (inferred) or a grid in AG Grid's own names (`rowData`, `columnDefs`, `gridOptions`), declared in the response or once in `widgets.json`, with AG Grid Community's sorting, filters and paging, grouping of its own, state saved with the dashboard, exports and Copilot context. |
 | [`sql-explorer/`](sql-explorer/README.md) | `sql-explorer` | A plugin with a backend of its own: read-only SQL against a Postgres the deployment runs (over `tcp://` the admin approves) and DuckDB over mounted files, with routes, a secret, the identity check, pseudonymous callers, and completion from DuckDB-WASM in the frame (`core:asset:read`). |
 
 Each folder's README says how to build it (`npm run build` writes

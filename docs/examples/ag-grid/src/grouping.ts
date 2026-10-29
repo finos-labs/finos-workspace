@@ -1,13 +1,19 @@
-import type { Aggregation, CompanyRow, GroupField, Measure } from "./types";
+import type { AggFunc, Row } from "./spec";
 
-export type Aggregates = Record<Measure, number | null>;
+/** A column aggregated on group rows, and how. */
+export interface Measure {
+  field: string;
+  aggFunc: AggFunc;
+}
+
+export type Aggregates = Record<string, number | null>;
 
 export interface GroupNode {
   kind: "group";
   /** Stable id built from the group path, e.g. "sector=Energy|state=TX". */
   key: string;
   level: number;
-  field: GroupField;
+  field: string;
   value: string;
   /** Number of leaf rows under this group. */
   count: number;
@@ -19,7 +25,7 @@ export interface LeafNode {
   kind: "leaf";
   key: string;
   level: number;
-  row: CompanyRow;
+  row: Row;
 }
 
 export type TreeNode = GroupNode | LeafNode;
@@ -27,31 +33,40 @@ export type TreeNode = GroupNode | LeafNode;
 /** A row ready for the grid: groups without their children. */
 export type DisplayRow = Omit<GroupNode, "children"> | LeafNode;
 
-export function aggregate(
-  rows: readonly CompanyRow[],
-  measures: readonly Measure[],
-  fn: Aggregation,
-): Aggregates {
-  const result = {} as Aggregates;
-  for (const measure of measures) {
-    if (rows.length === 0) {
-      result[measure] = null;
+/** The label of rows that have no value in a grouped column. */
+export const BLANK = "(blank)";
+
+export function groupValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return BLANK;
+  return typeof value === "object" ? JSON.stringify(value) : String(value);
+}
+
+export function aggregate(rows: readonly Row[], measures: readonly Measure[]): Aggregates {
+  const result: Aggregates = {};
+  for (const { field, aggFunc } of measures) {
+    const values = rows
+      .map((row) => row[field])
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    if (aggFunc === "count") {
+      result[field] = values.length;
       continue;
     }
-    const values = rows.map((row) => row[measure]);
-    switch (fn) {
+    if (values.length === 0) {
+      result[field] = null;
+      continue;
+    }
+    switch (aggFunc) {
       case "sum":
-        result[measure] = values.reduce((total, value) => total + value, 0);
+        result[field] = values.reduce((total, value) => total + value, 0);
         break;
       case "avg":
-        result[measure] =
-          values.reduce((total, value) => total + value, 0) / values.length;
+        result[field] = values.reduce((total, value) => total + value, 0) / values.length;
         break;
       case "min":
-        result[measure] = Math.min(...values);
+        result[field] = Math.min(...values);
         break;
       case "max":
-        result[measure] = Math.max(...values);
+        result[field] = Math.max(...values);
         break;
     }
   }
@@ -59,36 +74,34 @@ export function aggregate(
 }
 
 /**
- * Builds a multi-level group tree. Groups are ordered by value; leaves keep
- * their input order. Aggregates are computed from leaf rows at every level,
- * so averages are true averages rather than averages of averages.
+ * Builds a multi-level group tree. Groups are ordered by value, blanks last; leaves keep
+ * their input order. Aggregates are computed from leaf rows at every level, so averages
+ * are true averages rather than averages of averages.
  */
 export function buildGroupTree(
-  rows: readonly CompanyRow[],
-  groupBy: readonly GroupField[],
+  rows: readonly Row[],
+  groupBy: readonly string[],
   measures: readonly Measure[],
-  fn: Aggregation,
 ): TreeNode[] {
-  const build = (
-    subset: readonly CompanyRow[],
-    level: number,
-    parentKey: string,
-  ): TreeNode[] => {
+  const indexOf = new Map(rows.map((row, index) => [row, index]));
+  const build = (subset: readonly Row[], level: number, parentKey: string): TreeNode[] => {
     const field = groupBy[level];
     if (field === undefined) {
-      return subset.map((row) => ({ kind: "leaf", key: `row:${row.id}`, level, row }));
+      return subset.map((row) => ({ kind: "leaf", key: `row:${indexOf.get(row)}`, level, row }));
     }
 
-    const buckets = new Map<string, CompanyRow[]>();
+    const buckets = new Map<string, Row[]>();
     for (const row of subset) {
-      const value = row[field];
+      const value = groupValue(row[field]);
       const bucket = buckets.get(value);
       if (bucket) bucket.push(row);
       else buckets.set(value, [row]);
     }
 
     return [...buckets.entries()]
-      .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+      .sort(([a], [b]) =>
+        a === BLANK ? 1 : b === BLANK ? -1 : a.localeCompare(b, undefined, { numeric: true }),
+      )
       .map(([value, bucket]) => {
         const key = `${parentKey}${parentKey ? "|" : ""}${field}=${value}`;
         return {
@@ -98,7 +111,7 @@ export function buildGroupTree(
           field,
           value,
           count: bucket.length,
-          aggregates: aggregate(bucket, measures, fn),
+          aggregates: aggregate(bucket, measures),
           children: build(bucket, level + 1, key),
         } satisfies GroupNode;
       });
@@ -108,10 +121,7 @@ export function buildGroupTree(
 }
 
 /** Depth-first list of the rows the grid should show, honouring expanded groups. */
-export function flattenTree(
-  nodes: readonly TreeNode[],
-  expanded: ReadonlySet<string>,
-): DisplayRow[] {
+export function flattenTree(nodes: readonly TreeNode[], expanded: ReadonlySet<string>): DisplayRow[] {
   const out: DisplayRow[] = [];
   const walk = (list: readonly TreeNode[]) => {
     for (const node of list) {

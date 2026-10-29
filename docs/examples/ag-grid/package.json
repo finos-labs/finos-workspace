@@ -1,15 +1,16 @@
 {
-  "name": "workspace-plugin-bq-advanced-grouping",
-  "version": "1.0.1",
+  "name": "workspace-plugin-ag-grid",
+  "version": "1.0.0",
   "private": true,
-  "description": "A Workspace widget plugin that groups and aggregates company rows in AG Grid Community",
+  "description": "A Workspace widget plugin that shows any backend's rows in AG Grid Community",
   "author": "BrightQuery",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "demo-backend": "python3 examples/backend.py"
+    "demo-backend": "python3 examples/backend.py",
+    "demo-hr-backend": "python3 examples/hr_backend.py"
   },
   "dependencies": {
     "ag-grid-community": "34.3.1",

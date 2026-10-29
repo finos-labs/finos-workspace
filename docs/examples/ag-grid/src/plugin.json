@@ -1,0 +1,151 @@
+{
+  "manifestVersion": 1,
+  "id": "ag-grid",
+  "name": "AG Grid",
+  "description": "Renders the ag-grid widget type with AG Grid Community: any backend's rows as a grid that sorts, filters, searches, groups and aggregates.",
+  "publisher": { "name": "BrightQuery" },
+  "icon": "assets/icon.svg",
+  "host": { "api": 1, "afm": "0.11" },
+  "entry": { "module": "entry.js", "styles": ["entry.css"] },
+  "contributes": {
+    "widgets": [
+      {
+        "id": "grid",
+        "name": "AG Grid table",
+        "description": "A backend's rows in AG Grid, with sorting, filters, search, grouping and aggregates",
+        "category": "Tables",
+        "handles": [
+          {
+            "type": "ag-grid",
+            "response": {
+              "accepts": "json",
+              "description": "Rows, a list of objects whose columns are inferred, or a grid in AG Grid's names: {\"rowData\": [...], \"columnDefs\": [...], \"gridOptions\": {...}}. Columns and options can be declared once in data[\"ag-grid\"] instead; the response's win."
+            },
+            "definition": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "The grid's columns and options, in AG Grid's names, for every response of this widget. A response that is a grid ({\"rowData\": ...}) can override them.",
+              "properties": {
+                "columnDefs": {
+                  "type": "array",
+                  "maxItems": 200,
+                  "description": "The columns, in order. A column group has a headerName and children.",
+                  "items": { "anyOf": [{ "$ref": "#/$defs/column" }, { "$ref": "#/$defs/columnGroup" }] }
+                },
+                "gridOptions": { "$ref": "#/$defs/gridOptions" }
+              },
+              "$defs": {
+                "size": { "type": "integer", "minimum": 20, "maximum": 2000 },
+                "filter": {
+                  "enum": [true, false, "agTextColumnFilter", "agNumberColumnFilter", "agDateColumnFilter"],
+                  "description": "true picks the filter of the column's cellDataType"
+                },
+                "valueFormat": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["style"],
+                  "description": "How the values show, in the user's locale: a declaration, since a widget cannot carry a formatter function.",
+                  "properties": {
+                    "style": { "type": "string", "enum": ["decimal", "percent", "currency", "date"] },
+                    "currency": { "type": "string", "pattern": "^[A-Z]{3}$", "description": "ISO 4217 code, for style currency; default USD" },
+                    "decimals": { "type": "integer", "minimum": 0, "maximum": 10 },
+                    "notation": { "type": "string", "enum": ["standard", "compact"] },
+                    "dateStyle": { "type": "string", "enum": ["short", "medium", "long"] }
+                  }
+                },
+                "column": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["field"],
+                  "properties": {
+                    "field": { "type": "string", "minLength": 1, "maxLength": 128, "description": "The row key the column shows" },
+                    "headerName": { "type": "string", "minLength": 1, "maxLength": 128 },
+                    "headerTooltip": { "type": "string", "minLength": 1, "maxLength": 256 },
+                    "cellDataType": {
+                      "type": "string",
+                      "enum": ["text", "number", "boolean", "date", "dateString", "object"],
+                      "description": "Inferred from the values when left out; dateString is yyyy-mm-dd"
+                    },
+                    "width": { "$ref": "#/$defs/size" },
+                    "minWidth": { "$ref": "#/$defs/size" },
+                    "maxWidth": { "$ref": "#/$defs/size" },
+                    "flex": { "type": "number", "minimum": 0, "maximum": 20 },
+                    "hide": { "type": "boolean" },
+                    "pinned": { "type": "string", "enum": ["left", "right"] },
+                    "sort": { "type": "string", "enum": ["asc", "desc"] },
+                    "sortable": { "type": "boolean" },
+                    "filter": { "$ref": "#/$defs/filter" },
+                    "floatingFilter": { "type": "boolean" },
+                    "resizable": { "type": "boolean" },
+                    "wrapText": { "type": "boolean" },
+                    "autoHeight": { "type": "boolean" },
+                    "wrapHeaderText": { "type": "boolean" },
+                    "enableRowGroup": { "type": "boolean", "description": "The user may group by this column" },
+                    "rowGroup": { "type": "boolean", "description": "The grid starts grouped by this column" },
+                    "rowGroupIndex": { "type": "integer", "minimum": 0, "maximum": 15, "description": "The order of the rowGroup columns" },
+                    "aggFunc": {
+                      "type": "string",
+                      "enum": ["sum", "avg", "min", "max", "count"],
+                      "description": "The aggregate the column shows on group rows"
+                    },
+                    "valueFormat": { "$ref": "#/$defs/valueFormat" }
+                  }
+                },
+                "columnGroup": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["headerName", "children"],
+                  "properties": {
+                    "headerName": { "type": "string", "minLength": 1, "maxLength": 128 },
+                    "children": { "type": "array", "minItems": 1, "maxItems": 200, "items": { "$ref": "#/$defs/column" } },
+                    "marryChildren": { "type": "boolean" }
+                  }
+                },
+                "gridOptions": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "pagination": { "type": "boolean" },
+                    "paginationPageSize": { "type": "integer", "minimum": 1, "maximum": 1000 },
+                    "paginationAutoPageSize": { "type": "boolean" },
+                    "rowHeight": { "type": "integer", "minimum": 16, "maximum": 200 },
+                    "headerHeight": { "type": "integer", "minimum": 16, "maximum": 200 },
+                    "animateRows": { "type": "boolean" },
+                    "enableCellTextSelection": { "type": "boolean" },
+                    "suppressMovableColumns": { "type": "boolean" },
+                    "suppressFieldDotNotation": { "type": "boolean" },
+                    "defaultColDef": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "sortable": { "type": "boolean" },
+                        "filter": { "$ref": "#/$defs/filter" },
+                        "floatingFilter": { "type": "boolean" },
+                        "resizable": { "type": "boolean" },
+                        "flex": { "type": "number", "minimum": 0, "maximum": 20 },
+                        "minWidth": { "$ref": "#/$defs/size" },
+                        "wrapHeaderText": { "type": "boolean" }
+                      }
+                    },
+                    "autoGroupColumnDef": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "description": "The group column: its header, and the field that labels the rows inside groups",
+                      "properties": {
+                        "headerName": { "type": "string", "minLength": 1, "maxLength": 128 },
+                        "field": { "type": "string", "minLength": 1, "maxLength": 128 },
+                        "minWidth": { "$ref": "#/$defs/size" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "permissions": ["core:data:read", "core:state:write", "core:export:provide", "core:copilot:context"],
+        "grid": { "w": 24, "h": 14, "minW": 10, "minH": 8 }
+      }
+    ]
+  }
+}

@@ -7,7 +7,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 7798
-ORIGIN = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:3000"  # noqa: PLR2004
+ORIGIN = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:1420"  # noqa: PLR2004
 
 TEMPLATES = {"dark": "plotly_dark", "light": "plotly_white"}
 
