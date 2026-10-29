@@ -1,0 +1,70 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+#root {
+  position: relative;
+}
+
+.ag-grid-container {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.ag-theme-quartz,
+.ag-theme-quartz-dark {
+  --ag-font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ag-font-size: 12px;
+  --ag-grid-size: 4px;
+  --ag-row-height: 26px;
+  --ag-header-height: 30px;
+  --ag-cell-horizontal-padding: 10px;
+  --ag-header-column-resize-handle-display: none;
+  --ag-wrapper-border-radius: 6px;
+}
+
+.ag-theme-quartz .ag-header-cell-label,
+.ag-theme-quartz-dark .ag-header-cell-label {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.ag-theme-quartz .ag-cell,
+.ag-theme-quartz-dark .ag-cell {
+  line-height: calc(var(--ag-row-height) - 2px);
+}
+
+.ag-theme-quartz .ag-paging-panel,
+.ag-theme-quartz-dark .ag-paging-panel {
+  height: 32px;
+}
+
+.ag-theme-quartz {
+  --ag-background-color: #ffffff;
+  --ag-foreground-color: #1f2933;
+  --ag-header-background-color: #f4f6f8;
+  --ag-header-foreground-color: #52606d;
+  --ag-odd-row-background-color: #fafbfc;
+  --ag-row-hover-color: #eaf1f8;
+  --ag-selected-row-background-color: #dbe9f7;
+  --ag-border-color: #e1e6eb;
+  --ag-row-border-color: #edf0f3;
+  --ag-header-column-separator-display: none;
+}
+
+.ag-theme-quartz-dark {
+  --ag-background-color: #0f1b26;
+  --ag-foreground-color: #d5dfe8;
+  --ag-header-background-color: #142330;
+  --ag-header-foreground-color: #8ea3b5;
+  --ag-odd-row-background-color: #112030;
+  --ag-row-hover-color: #1a3042;
+  --ag-selected-row-background-color: #1f3d56;
+  --ag-border-color: #223445;
+  --ag-row-border-color: #182a39;
+  --ag-header-column-separator-display: none;
+}

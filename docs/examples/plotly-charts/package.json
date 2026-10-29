@@ -7,8 +7,7 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --test",
-    "demo-backend": "examples/.venv/bin/python examples/backend.py"
+    "test": "node --test"
   },
   "dependencies": {
     "mathjax": "4.1.3",

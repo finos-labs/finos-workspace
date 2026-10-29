@@ -32,13 +32,10 @@ for (const [name, digest] of Object.entries(EXTENSIONS)) {
 }
 
 const FILES = {
-  "entry.css": "src/entry.css",
   "assets/icon.svg": "src/assets/icon.svg",
   "assets/duckdb-eh.wasm": join(relative(root, duckdbDist), "duckdb-eh.wasm"),
   "assets/duckdb-browser-eh.worker.js": join(relative(root, duckdbDist), "duckdb-browser-eh.worker.js"),
   ...extensionFiles,
-  "backend/Dockerfile": "backend/Dockerfile",
-  "backend/requirements.txt": "backend/requirements.txt",
   "backend/server.py": "backend/server.py",
   "backend/engines.py": "backend/engines.py",
   "backend/identity.py": "backend/identity.py",
@@ -51,6 +48,13 @@ for (const [target, source] of Object.entries(FILES)) {
   mkdirSync(dirname(join(out, target)), { recursive: true });
   copyFileSync(join(root, source), join(out, target));
 }
+
+const agGridStyles = join(root, "node_modules/ag-grid-community/styles");
+const stylesheet = ["ag-grid.css", "ag-theme-quartz.css"]
+  .map((name) => readFileSync(join(agGridStyles, name), "utf8"))
+  .concat(readFileSync(join(root, "src/entry.css"), "utf8"))
+  .join("\n");
+writeFileSync(join(out, "entry.css"), stylesheet);
 
 const bundled = await build({
   entryPoints: [join(root, "src/entry.js")],

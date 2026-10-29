@@ -79,19 +79,27 @@ CSV, and with its query as JSON. The Copilot is told the query and the columns a
 count of the answer, not its values. Its look is its own, a light and a dark version that
 follow the site's mode.
 
+## The SQL grid
+
+The package has a second widget, *SQL grid*. It is the explorer with the same editor, tables,
+completion and sources, and it shows the result in AgGrid Community instead of a plain table:
+columns that share the card's width, formatted and right-aligned numbers, sorting, filtering and
+resizing in the header, `NULL` for a missing value, JSON for a nested one, and pagination above 100
+rows. The widget decides by the `widgetId` of its `meta` trait, and the package bundles
+`ag-grid-community`, which the frame loads the first time a result arrives. Both widgets
+export the last result and tell the Copilot the query and the shape of the answer.
+
 ## The package
 
 | Path | |
 |---|---|
 | `src/plugin.json` | The manifest: the widget, its permissions (`core:backend:call`, `core:state:write`, `core:export:provide`, `core:copilot:context`), the four routes, the `postgres_url` secret, `identity: "pseudonymous"`. |
-| `src/entry.js`, `src/entry.css`, `src/assets/` | The widget, an Anywidget front-end module. |
+| `src/entry.js`, `src/entry.css`, `src/assets/` | The two widgets, an Anywidget front-end module, and the AgGrid theme the build adds to the stylesheet. |
 | `src/completion.js`, `src/duckdb.js` | Completion: the schema DuckDB mirrors and what it suggests, and DuckDB-WASM started in the frame from the package's assets. |
 | `third-party/` | Licence texts the DuckDB-WASM npm package does not carry. |
 | `backend/server.py` | The three requests a FINOS Workspace backend answers: `GET /.workspace/identity`, `GET /.workspace/health`, `POST /.workspace/routes/<route>`. |
 | `backend/engines.py`, `backend/values.py` | Postgres and DuckDB, and their values as JSON. |
 | `backend/identity.py` | The plugin, version and version digest, computed from the package's files at start. |
-| `backend/Dockerfile`, `backend/requirements.txt` | The backend's image, every dependency pinned. |
-| `examples/` | A deployment beside a FINOS Workspace stack (below). |
 
 The backend: Python 3.14 (the newest Python DuckDB 1.5.6 publishes wheels for),
 Starlette 1.8, uvicorn 0.54, psycopg 3.3, DuckDB 1.5.6. The widget: DuckDB-WASM
@@ -118,7 +126,7 @@ python3 -m venv .venv
 ```
 
 ```bash
-.venv/bin/pip install -r backend/requirements.txt pytest==9.1.1 httpx2==2.13.1
+.venv/bin/pip install -r ../backend/requirements.txt pytest==9.1.1 httpx2==2.13.1
 ```
 
 ```bash
@@ -131,24 +139,21 @@ downloaded), and the backend's in pytest. The Postgres tests need a
 database they may change: set `SQL_EXPLORER_TEST_POSTGRES` to an administrator's URL, or
 `SQL_EXPLORER_TEST_POSTGRES_FILE` to a file holding it, for example of a throwaway
 container (`docker run --rm -d -p 127.0.0.1:55432:5432 -e POSTGRES_PASSWORD_FILE=...
-postgres:18.6`). Without it they are skipped. With Docker and a build,
-`tests/test_isolation.py` starts `examples/compose.yaml` under a project name of its own,
-beside a stand-in for the FINOS Workspace API, and checks that the backend reaches Postgres and
-the gateway but not the API or the internet, that the gateway forwards only the API's
-calls, and that the backend runs read-only, unprivileged and without capabilities. It
-removes what it started.
+postgres:18.6`). Without it they are skipped. The isolation of the backend's container is
+tested with the [examples backend](../backend/README.md).
 
 ## Deploy
 
 1. Copy `dist/sql-explorer/<version>/` into FINOS Workspace's plugins directory and check it,
    from `backend-api/backend`:
    `python -m scripts.plugin_check <plugins directory>/sql-explorer/<version> --digest`.
-2. Build the backend's image from the same directory:
-   `docker build -f backend/Dockerfile -t sql-explorer-backend:<version> <that directory>`.
+2. Build the backend's image. The [examples backend](../backend/README.md) does it: its
+   `Dockerfile` copies this package's `dist/sql-explorer/<version>/` and serves the package's
+   `backend/` beside the routes of the other examples.
 3. Run it as `docs/widget-plugins/README.md` 6.5 describes: no privileges, a read-only
    root, its own network that only a gateway joins from the FINOS Workspace side, the database
-   on a second network, the data files mounted read-only at `/data`.
-   `examples/compose.yaml` does exactly this.
+   on a second network, the data files at `/data`. The examples backend's `compose.yaml`
+   does exactly this.
 4. List it for the API: `WIDGET_PLUGIN_BACKENDS={"sql-explorer": "http://<gateway>:<port>"}`.
 5. In Admin, Widgets, Deployment: review and approve the version. Under Overrides, add the
    database's address to the server network, `tcp://<host>:<port>`, and confirm private
@@ -163,24 +168,9 @@ Postgres says it is not set up. Without files, the Files source has no tables.
 
 ## Try it
 
-`examples/` runs the backend, a gateway and a Postgres with a `demo` schema beside a
-FINOS Workspace stack on the same machine.
-
-```bash
-.venv/bin/python examples/setup.py
-```
-
-generates the passwords (in `examples/secrets/`, kept between runs) and the data files
-(`examples/data/readings.parquet` and `stations.csv`). Then, with `<network>` the
-FINOS Workspace stack's network (`docker network ls`):
-
-```bash
-VERSION=<package version> WORKSPACE_NETWORK=<network> docker compose -f examples/compose.yaml up -d --build
-```
-
-and in FINOS Workspace: `WIDGET_PLUGIN_BACKENDS={"sql-explorer": "http://sql-explorer-gateway:8081"}`,
-the server network `tcp://postgres:5432` with private hosts, and the secret from
-`examples/secrets/workspace/sql-explorer/postgres_url`. Try
+The [examples backend](../backend/README.md) runs the backend, a gateway and a Postgres with a
+`demo` schema beside a FINOS Workspace stack on the same machine, and its README says how to
+register it. Try
 
 ```sql
 SELECT r.name AS region, sum(s.units) AS units, sum(s.revenue) AS revenue
@@ -198,9 +188,7 @@ GROUP BY s.site
 ORDER BY s.site
 ```
 
-on Files. `examples/reach.py` shows what a container can reach:
-`docker exec -i sql-explorer-sql-explorer-backend-1 python - postgres:5432 api:8000 < examples/reach.py`
-(Postgres open, the FINOS Workspace API not even resolved).
+on Files. The files are the ones that the *SQL chart* widget of the Plotly examples queries.
 
 ## Notes
 

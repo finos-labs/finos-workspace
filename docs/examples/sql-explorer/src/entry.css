@@ -286,3 +286,27 @@ body,
 .sx-refused {
   color: var(--sx-muted);
 }
+
+.sx-grid {
+  height: 100%;
+}
+
+.sx .ag-theme-quartz,
+.sx .ag-theme-quartz-dark {
+  --ag-font-family: inherit;
+  --ag-font-size: 12px;
+  --ag-grid-size: 4px;
+  --ag-row-height: 26px;
+  --ag-header-height: 30px;
+  --ag-cell-horizontal-padding: 10px;
+  --ag-wrapper-border-radius: 0;
+  --ag-background-color: var(--sx-bg);
+  --ag-foreground-color: var(--sx-text);
+  --ag-header-background-color: var(--sx-panel);
+  --ag-header-foreground-color: var(--sx-muted);
+  --ag-odd-row-background-color: var(--sx-row);
+  --ag-border-color: var(--sx-line);
+  --ag-row-border-color: var(--sx-line);
+  --ag-header-column-separator-display: none;
+  --ag-header-column-resize-handle-display: none;
+}
