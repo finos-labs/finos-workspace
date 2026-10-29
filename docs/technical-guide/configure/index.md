@@ -38,7 +38,7 @@ A few settings of the web app are fixed when its image is built, such as the nam
 | File | Read by | Guide |
 |---|---|---|
 | `scripts/cfgs/config.toml` | The init step, which creates the first organization and administrators from it | [How to run database migrations](../deploy/run-database-migrations.mdx#prepare-a-first-deployment) |
-| `user_create.json` | The API and the worker. The init step writes it, and `DEFAULT_USER_MAPPING` stands in for it where they cannot see it | [How to deploy on Kubernetes](../deploy/deploy-on-kubernetes.mdx#the-init-step) |
+| `user_create.json` | The API and the worker. The init step writes it, and `DEFAULT_USER_MAPPING` stands in for it where they cannot see it | [How to deploy on Kubernetes](../deploy/deploy-on-kubernetes.mdx#run-the-init-step) |
 | A file that describes an organization | The script that provisions organizations | [How to provision an organization from a file](../deploy/provision-an-organization.mdx) |
 | A theme stylesheet | The web app, at the address that `WL_STYLESHEET` gives | [Create a theme](../white-label/create-a-theme.md) |
 | The certificates for the database | The API and the worker, at the paths that `SSL_CA`, `SSL_CERT` and `SSL_KEY` give | [How to connect FINOS Workspace to its database and cache](../deploy/connect-the-database-and-cache.md) |
