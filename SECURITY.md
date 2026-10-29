@@ -6,7 +6,7 @@ If you find something you believe to be a security issue, we encourage and appre
 
 ## Reporting a Vulnerability
 
-- **GitHub Security Reports:** In order for the vulnerability reports to reach maintainers as soon as possible, the preferred way is to use the ["Report a vulnerability"](https://github.com/finos-labs/workspace/security) button under our "Security and quality" tab. This creates a private communication channel between you and the maintainers.
+- **GitHub Security Reports:** In order for the vulnerability reports to reach maintainers as soon as possible, the preferred way is to use the ["Report a vulnerability"](https://github.com/finos-labs/finos-workspace/security) button under our "Security and quality" tab. This creates a private communication channel between you and the maintainers.
 - **Email:** If you are unable to or have strong reasons not to use the GitHub Security vulnerability reporting feature, please email the maintainers directly and CC: [security@finos.org](mailto:security@finos.org) with a description of the vulnerability, along with relevant details (Impact, Patches, Workarounds, References and Screenshots).
 
 ## Vulnerability Process
