@@ -1,0 +1,833 @@
+---
+title: How to deploy on Kubernetes
+sidebar_position: 0.6
+---
+
+import { EnvDefault, SettingDefault, WebPort } from "@site/src/components/Reference/config";
+
+# How to deploy on Kubernetes
+
+Kubernetes runs FINOS Workspace across several machines, so the web app and the API can run more than one copy and keep serving when a machine goes away. FINOS Workspace does not ship a Helm chart. This guide gives plain manifests for every part, in the order you apply them. Use them as they are, or turn them into Kustomize overlays or a chart of your own.
+
+This guide follows [Production setup](production-setup.mdx), so read that page first.
+
+## What you need
+
+- A cluster, and `kubectl` that can reach it.
+- An ingress controller, and a TLS certificate for three names on the same domain. This guide uses `workspace.example.com` for the web app, `api.workspace.example.com` for the API and `agent.workspace.example.com` for the agent.
+- The four images in a registry that the cluster can pull from. [Build the images](../build-from-source/build-the-images.md) shows how to build and push them.
+- The secrets from [Production setup](production-setup.mdx#the-secrets-you-need-to-create), and an API key for the agent's model.
+- MySQL and Valkey. Use your platform's managed services, or run them in the cluster with the manifests in [Run MySQL and Valkey in the cluster](#run-mysql-and-valkey-in-the-cluster).
+- A place for uploaded files that every API and worker pod can reach: a bucket, or a volume that pods on different nodes can mount at the same time.
+
+## What runs
+
+| Workload | Kind | Port | Probes | User | Replicas | Memory to start with |
+|---|---|---|---|---|---|---|
+| Web app | Deployment | <WebPort /> | `/healthz` | 101 | Two or more | Request 64 MiB, limit 256 MiB |
+| API | Deployment | <SettingDefault name="PORT" unit="raw" /> | `/healthz` | 1000 | Two or more | Request 512 MiB, limit 2 GiB |
+| Worker | Deployment | None | None | 1000 | One | Request 512 MiB, limit 1 GiB |
+| Agent | Deployment | <EnvDefault name="PORT" /> | Liveness `/status`, readiness `/ready` | 1000 | One, or more with Valkey | Request 512 MiB, limit 4 GiB |
+| Agent MCP server | Deployment | <EnvDefault name="MCP_PORT" /> | `/` | 1000 | One | Request 256 MiB, limit 4 GiB |
+| Init step | Job | None | None | 1000 | One run per release | Request 512 MiB |
+
+The memory figures are starting points. Watch what each workload uses, and give the agent enough for the largest files your users attach.
+
+Everything goes into one namespace:
+
+```bash
+kubectl create namespace finos-workspace
+```
+
+The manifests leave the namespace out, and the commands below pass `-n finos-workspace`.
+
+## Create the secrets
+
+Put the secrets of the API and the worker into a file called `backend.env`. Both database passwords are the password of the database user `workspace`:
+
+```bash
+JWT_SECRET=<JWT_SECRET>
+WORKSPACE_AES_KEY=<WORKSPACE_AES_KEY>
+LOCAL_STORAGE_SECRET_KEY=<LOCAL_STORAGE_SECRET_KEY>
+REDIS_PASS=
+WRITE_DB_PASSWORD=<the database password>
+READ_DB_PASSWORD=<the database password>
+```
+
+`REDIS_PASS` is empty because the Valkey in this guide has no password. Keep the line anyway: the API does not start when the variable is missing. If you run MySQL in the cluster, put its root password into `mysql.env`:
+
+```bash
+MYSQL_ROOT_PASSWORD=<a random password>
+```
+
+Turn both files into Secrets:
+
+```bash
+kubectl -n finos-workspace create secret generic workspace-backend --from-env-file=backend.env
+kubectl -n finos-workspace create secret generic mysql --from-env-file=mysql.env
+```
+
+The agent's Secret comes later, because the API creates its metering token.
+
+## Write the settings
+
+Save the settings as `config.yaml`. Change the three addresses to yours, and set `DEFAULT_MODEL`:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workspace-backend
+data:
+  MODE: production
+  DATABASE_TYPE: mysql
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_NAME: workspace
+  WRITE_DB_USER: workspace
+  READ_DB_USER: workspace
+  REDIS_HOST: valkey
+  APPURL: https://workspace.example.com
+  FRONTENDURL: https://workspace.example.com
+  SELFURL: https://api.workspace.example.com
+  BACKEND_CORS_ORIGINS: https://workspace.example.com
+  FOLDER_STORAGE_PATH: /opt/code/local_storage
+  DEFAULT_MCP_SERVERS: '[{"id": "agent-tools", "name": "Agent Tools", "url": "http://agent-mcp:8787/mcp"}]'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workspace-agent
+data:
+  DEFAULT_MODEL: openai:<model>
+  WORKSPACE_API_URL: http://api:8000
+  WORKSPACE_ORIGIN: https://workspace.example.com
+  WORKSPACE_PUBLIC_URL: https://api.workspace.example.com
+  REDIS_URL: redis://valkey:6379
+  INES_CORS_ORIGINS: https://workspace.example.com
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workspace-init
+data:
+  config.toml: |
+    [entity]
+    name = "Example Bank"
+
+    [[admins]]
+    email = "admin@example.com"
+    first_name = "Ada"
+    last_name = "Admin"
+```
+
+- `DB_HOST` and `REDIS_HOST` name the Services from [Run MySQL and Valkey in the cluster](#run-mysql-and-valkey-in-the-cluster). With managed services, put their addresses here instead, and their passwords into `backend.env`.
+- `DEFAULT_MCP_SERVERS` gives the API the address of the agent's MCP server, which stays inside the cluster.
+- `DEFAULT_MODEL` is written `<provider>:<model>`. [Pick the providers](../configure/choose-the-agent-model.mdx#pick-the-providers) lists the providers and their keys.
+- `config.toml` names the first organization and its administrators, which the init step creates.
+
+Pods read the ConfigMaps when they start. After you change one, restart the pods that use it, for example with `kubectl -n finos-workspace rollout restart deployment/api deployment/worker`.
+
+## Run MySQL and Valkey in the cluster
+
+Skip this step when you use managed services, and apply `config.yaml` alone. Otherwise save this as `data.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  clusterIP: None
+  selector:
+    app: mysql
+  ports:
+    - name: mysql
+      port: 3306
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  serviceName: mysql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          args: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              value: workspace
+            - name: MYSQL_USER
+              value: workspace
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: workspace-backend
+                  key: WRITE_DB_PASSWORD
+          ports:
+            - name: mysql
+              containerPort: 3306
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "mysqladmin ping -h 127.0.0.1 -u root -p\"$MYSQL_ROOT_PASSWORD\" --silent"]
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: valkey
+spec:
+  clusterIP: None
+  selector:
+    app: valkey
+  ports:
+    - name: valkey
+      port: 6379
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: valkey
+spec:
+  serviceName: valkey
+  replicas: 1
+  selector:
+    matchLabels:
+      app: valkey
+  template:
+    metadata:
+      labels:
+        app: valkey
+    spec:
+      containers:
+        - name: valkey
+          image: valkey/valkey:9.1.2-alpine
+          args: ["valkey-server", "--save", "20", "1", "--loglevel", "warning"]
+          ports:
+            - name: valkey
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["valkey-cli", "ping"]
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+```
+
+MySQL takes the password of the user `workspace` from the backend's Secret, so the two always match. MySQL reads its passwords once, on its very first start, when the volume is empty, the same as in [the Compose guide](deploy-with-docker-compose.md#change-a-database-password).
+
+Apply the settings and the data services, and wait until both are ready:
+
+```bash
+kubectl -n finos-workspace apply -f config.yaml -f data.yaml
+kubectl -n finos-workspace rollout status statefulset/mysql
+kubectl -n finos-workspace rollout status statefulset/valkey
+```
+
+## Run the init step
+
+Save this as `init-job.yaml`:
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: workspace-init
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: init
+          image: <registry>/workspace-backend:<version>
+          command:
+            - python
+            - -c
+            - |
+              import pathlib, subprocess, sys
+              pathlib.Path("user_create.json").write_text("{}")
+              subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+              subprocess.run([sys.executable, "-m", "scripts.init_users"], check=True)
+              print(pathlib.Path("user_create.json").read_text())
+          envFrom:
+            - configMapRef:
+                name: workspace-backend
+            - secretRef:
+                name: workspace-backend
+          resources:
+            requests:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /opt/code/scripts/cfgs/config.toml
+              subPath: config.toml
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: workspace-init
+```
+
+Run it, wait until it completes and read its log:
+
+```bash
+kubectl -n finos-workspace apply -f init-job.yaml
+kubectl -n finos-workspace wait --for=condition=complete job/workspace-init --timeout=5m
+kubectl -n finos-workspace logs job/workspace-init
+```
+
+The log ends with the id of the role that new people get, for example:
+
+```text
+{
+    "permissions_uuid": "0497efcd-31bf-4538-87ea-22f01290b6f3"
+}
+```
+
+The API and the worker cannot see the Job's files, so they need that id as the setting `DEFAULT_USER_MAPPING`. Add it under `data` of the `workspace-backend` ConfigMap in `config.yaml`, with your own id, and apply the file again:
+
+```yaml
+  DEFAULT_USER_MAPPING: "0497efcd-31bf-4538-87ea-22f01290b6f3"
+```
+
+```bash
+kubectl -n finos-workspace apply -f config.yaml
+```
+
+The id stays the same when the Job runs again later, because a run that finds everything in place changes nothing. If the Job fails, its log names the reason, with the same messages as in [When the init step fails](deploy-with-docker-compose.md#when-the-init-step-fails).
+
+## Start the API and the worker
+
+Save this as `backend.yaml`:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: storage
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: <registry>/workspace-backend:<version>
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: workspace-backend
+            - secretRef:
+                name: workspace-backend
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: storage
+              mountPath: /opt/code/local_storage
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector:
+    app: api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: <registry>/workspace-backend:<version>
+          command: ["python", "base_workers.py"]
+          envFrom:
+            - configMapRef:
+                name: workspace-backend
+            - secretRef:
+                name: workspace-backend
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: storage
+              mountPath: /opt/code/local_storage
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: storage
+```
+
+```bash
+kubectl -n finos-workspace apply -f backend.yaml
+kubectl -n finos-workspace rollout status deployment/api
+kubectl -n finos-workspace rollout status deployment/worker
+```
+
+- The volume `storage` holds the uploaded files. Its storage class must offer `ReadWriteMany` when the pods run on more than one node. On a single node, `ReadWriteOnce` works too. To keep the files in a bucket instead, set the storage settings from [How to choose where files are stored](choose-file-storage.md) and remove the volume.
+- `fsGroup: 1000` lets the API's user write to the volume.
+- The startup probe gives the API five minutes, because each API pod runs the database migrations before it serves.
+
+## Start the agent
+
+Create the agent's metering token in an API pod:
+
+```bash
+kubectl -n finos-workspace exec deploy/api -- python -m scripts.create_metering_token
+```
+
+It prints the token, then the date on which it expires, a year from now. Put the token into `agent.env` with the agent's other secrets. This example uses OpenAI:
+
+```bash
+OPENAI_API_KEY=<your OpenAI API key>
+INES_SCOPE_SECRET=<INES_SCOPE_SECRET>
+INES_METERING_TOKEN=<the token>
+```
+
+Save the agent and its MCP server as `agent.yaml`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent
+  template:
+    metadata:
+      labels:
+        app: agent
+    spec:
+      shareProcessNamespace: true
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agent
+          image: <registry>/workspace-agent:<version>
+          ports:
+            - name: http
+              containerPort: 7777
+          envFrom:
+            - configMapRef:
+                name: workspace-agent
+            - secretRef:
+                name: workspace-agent
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 4Gi
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent
+spec:
+  selector:
+    app: agent
+  ports:
+    - name: http
+      port: 7777
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-mcp
+  template:
+    metadata:
+      labels:
+        app: agent-mcp
+    spec:
+      shareProcessNamespace: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agent-mcp
+          image: <registry>/workspace-agent-mcp:<version>
+          ports:
+            - name: http
+              containerPort: 8787
+          envFrom:
+            - configMapRef:
+                name: workspace-agent
+            - secretRef:
+                name: workspace-agent
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 4Gi
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-mcp
+spec:
+  selector:
+    app: agent-mcp
+  ports:
+    - name: http
+      port: 8787
+      targetPort: http
+```
+
+```bash
+kubectl -n finos-workspace create secret generic workspace-agent --from-env-file=agent.env
+kubectl -n finos-workspace apply -f agent.yaml
+kubectl -n finos-workspace rollout status deployment/agent
+kubectl -n finos-workspace rollout status deployment/agent-mcp
+```
+
+- Both run with a read-only root file system and a writable `/tmp`.
+- `shareProcessNamespace: true` lets the pod's pause process clean up the child processes that the agent starts.
+- `terminationGracePeriodSeconds` must be at least `INES_SHUTDOWN_GRACE_SECONDS`, which is <EnvDefault name="INES_SHUTDOWN_GRACE_SECONDS" /> seconds by default, so that the agent can finish the answers it is working on when the pod stops.
+- The readiness probe `/ready` answers 503 while the agent cannot reach the API.
+
+## Start the web app and expose everything
+
+Save the web app as `web.yaml`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: <registry>/workspace-web:<version>
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: BACKEND_URL
+              value: https://api.workspace.example.com
+            - name: AI_API_URL
+              value: https://agent.workspace.example.com
+            - name: AI_COPILOT_ENABLED
+              value: "true"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  selector:
+    app: web
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+```
+
+Save the Ingress as `ingress.yaml`, with your ingress controller's class in `ingressClassName`:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: workspace
+spec:
+  ingressClassName: <ingress class>
+  tls:
+    - hosts:
+        - workspace.example.com
+        - api.workspace.example.com
+        - agent.workspace.example.com
+      secretName: workspace-tls
+  rules:
+    - host: workspace.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  name: http
+    - host: api.workspace.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  name: http
+    - host: agent.workspace.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: agent
+                port:
+                  name: http
+```
+
+Put the certificate for the three names into the Secret `workspace-tls`, or let your certificate manager create it. Then apply both files:
+
+```bash
+kubectl -n finos-workspace create secret tls workspace-tls --cert=tls.crt --key=tls.key
+kubectl -n finos-workspace apply -f web.yaml -f ingress.yaml
+kubectl -n finos-workspace rollout status deployment/web
+```
+
+The agent streams its answers, so set the idle timeout of your ingress controller for the agent's name to at least the longest model call, as [What the load balancer and the platform allow](run-the-agent-on-several-replicas.mdx#what-the-load-balancer-and-the-platform-allow) describes. Each controller sets it with its own annotation or policy.
+
+## Give the administrator a password
+
+```bash
+kubectl -n finos-workspace exec -it deploy/api -- python -m scripts.init_users --new-password admin@example.com
+```
+
+It asks for the password twice and does not show what you type. The password needs at least 8 characters, with an uppercase letter, a lowercase letter, a number and a special character, and no spaces. Then go through the checks in [Production setup](production-setup.mdx#check-that-it-works).
+
+## Upgrade
+
+1. Back up the database, as [Back up and restore](#back-up-and-restore) shows.
+2. Change the version in the image names in `init-job.yaml`, `backend.yaml`, `agent.yaml` and `web.yaml`.
+3. Run the init step with the new image. A Job cannot be changed once it exists, so delete the old one first:
+
+   ```bash
+   kubectl -n finos-workspace delete job workspace-init
+   kubectl -n finos-workspace apply -f init-job.yaml
+   kubectl -n finos-workspace wait --for=condition=complete job/workspace-init --timeout=5m
+   ```
+
+4. Roll out the API and the worker, then the agent and the web app:
+
+   ```bash
+   kubectl -n finos-workspace apply -f backend.yaml
+   kubectl -n finos-workspace rollout status deployment/api
+   kubectl -n finos-workspace apply -f agent.yaml -f web.yaml
+   ```
+
+## Back up and restore
+
+With a managed database, use its backups. With the MySQL from this guide, these commands write the database to `workspace.sql` and load it back:
+
+```bash
+kubectl -n finos-workspace exec mysql-0 -- sh -c 'exec mysqldump --single-transaction -u root -p"$MYSQL_ROOT_PASSWORD" workspace' > workspace.sql
+kubectl -n finos-workspace exec -i mysql-0 -- sh -c 'exec mysql -u root -p"$MYSQL_ROOT_PASSWORD" workspace' < workspace.sql
+```
+
+MySQL warns that a password on the command line can be insecure. The password stays inside the pod, and the warning does not end up in the file. Keep `backend.env` safe away from the cluster too: without its `WORKSPACE_AES_KEY`, the secrets stored in the database cannot be read.
