@@ -25,8 +25,8 @@ describe("Textarea", () => {
 
   it("applies error state", () => {
     const { container } = render(<Textarea error={true} />);
-    const textarea = container.querySelector("[class*='BB-Textarea group']");
-    expect(textarea).toHaveClass("border-alert-error!");
+    const wrapper = container.querySelector("textarea")?.parentElement?.parentElement;
+    expect(wrapper).toHaveClass("border-alert-error!");
   });
 
   it("renders CopyButton when copiable is true and value exists", () => {

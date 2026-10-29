@@ -48,7 +48,7 @@ const RenderIfVisible = forwardRef<HTMLDivElement, Props>(
     const renderChildren = isIntersecting || initialVisible;
 
     return (
-      <div ref={(el) => ref(el)} className={cn("renderIfVisible", rootElementClass)}>
+      <div ref={ref} className={cn("renderIfVisible", rootElementClass)}>
         {renderChildren ? (
           children
         ) : (

@@ -2283,7 +2283,7 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/botocore@1.40.61?package-id=ae8258bcd6679457",
+      "bom-ref": "pkg:pypi/botocore@1.40.61?package-id=cdc888c0dd291261",
       "type": "library",
       "name": "botocore",
       "version": "1.40.61",
@@ -3961,10 +3961,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/fastmcp@4.0.11?package-id=cf3bfd17a964682c",
+      "bom-ref": "pkg:pypi/fastmcp@4.1.4?package-id=e0225313ac8c7fad",
       "type": "library",
       "name": "fastmcp",
-      "version": "4.0.11",
+      "version": "4.1.4",
       "licenses": [
         {
           "license": {
@@ -3972,8 +3972,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:python-fastmcp:python-fastmcp:4.0.11:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/fastmcp@4.0.11",
+      "cpe": "cpe:2.3:a:python-fastmcp:python-fastmcp:4.1.4:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/fastmcp@4.1.4",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -3993,47 +3993,47 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-fastmcp:python_fastmcp:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-fastmcp:python_fastmcp:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_fastmcp:python-fastmcp:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_fastmcp:python-fastmcp:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_fastmcp:python_fastmcp:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_fastmcp:python_fastmcp:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp:python-fastmcp:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp:python-fastmcp:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp:python_fastmcp:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp:python_fastmcp:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-fastmcp:fastmcp:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-fastmcp:fastmcp:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_fastmcp:fastmcp:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_fastmcp:fastmcp:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-fastmcp:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python-fastmcp:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_fastmcp:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python_fastmcp:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp:fastmcp:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp:fastmcp:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:fastmcp:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:fastmcp:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -4042,10 +4042,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/fastmcp-slim@4.0.11?package-id=d18fc333cc1f99ee",
+      "bom-ref": "pkg:pypi/fastmcp-slim@4.1.4?package-id=1de8da4af12f4b9a",
       "type": "library",
       "name": "fastmcp-slim",
-      "version": "4.0.11",
+      "version": "4.1.4",
       "licenses": [
         {
           "license": {
@@ -4053,8 +4053,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:python-fastmcp-slim:python-fastmcp-slim:4.0.11:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/fastmcp-slim@4.0.11",
+      "cpe": "cpe:2.3:a:python-fastmcp-slim:python-fastmcp-slim:4.1.4:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/fastmcp-slim@4.1.4",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -4074,127 +4074,127 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-fastmcp-slim:python_fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-fastmcp-slim:python_fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_fastmcp_slim:python-fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_fastmcp_slim:python-fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_fastmcp_slim:python_fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_fastmcp_slim:python_fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-fastmcp:python-fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-fastmcp:python-fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-fastmcp:python_fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-fastmcp:python_fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_fastmcp:python-fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_fastmcp:python-fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_fastmcp:python_fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_fastmcp:python_fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp-slim:python-fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp-slim:python-fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp-slim:python_fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp-slim:python_fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp_slim:python-fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp_slim:python-fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp_slim:python_fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp_slim:python_fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-fastmcp-slim:fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-fastmcp-slim:fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-fastmcp-slim:fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-fastmcp-slim:fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_fastmcp_slim:fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_fastmcp_slim:fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_fastmcp_slim:fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_fastmcp_slim:fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp:python-fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp:python-fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp:python_fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp:python_fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-fastmcp:fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-fastmcp:fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-fastmcp:fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-fastmcp:fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_fastmcp:fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_fastmcp:fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_fastmcp:fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_fastmcp:fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python-fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python_fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp-slim:fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp-slim:fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp-slim:fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp-slim:fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp_slim:fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp_slim:fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp_slim:fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp_slim:fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp:fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp:fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:fastmcp:fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:fastmcp:fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:fastmcp-slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:fastmcp-slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:fastmcp_slim:4.0.11:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:fastmcp_slim:4.1.4:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -5246,563 +5246,6 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/jaraco-classes@3.4.0?package-id=8967833da457c8a4",
-      "type": "library",
-      "name": "jaraco-classes",
-      "version": "3.4.0",
-      "cpe": "cpe:2.3:a:python-jaraco-classes:python-jaraco-classes:3.4.0:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/jaraco-classes@3.4.0",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "python-package-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "python-poetry-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco-classes:python_jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco_classes:python-jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco_classes:python_jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco-classes:python-jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco-classes:python_jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco_classes:python-jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco_classes:python_jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco-classes:jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco-classes:jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco_classes:jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco_classes:jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco:python-jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco:python_jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco:python-jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco:python_jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco-classes:jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco-classes:jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco_classes:jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco_classes:jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco:python-jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco:python_jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco:jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco:jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco:jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco:jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco:jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco:jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:jaraco-classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:jaraco_classes:3.4.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/poetry.lock"
-        }
-      ]
-    },
-    {
-      "bom-ref": "pkg:pypi/jaraco-context@6.1.2?package-id=a98fc5bafff720da",
-      "type": "library",
-      "name": "jaraco-context",
-      "version": "6.1.2",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:python-jaraco-context:python-jaraco-context:6.1.2:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/jaraco-context@6.1.2",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "python-package-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "python-poetry-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco-context:python_jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco_context:python-jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco_context:python_jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco-context:python-jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco-context:python_jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco_context:python-jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco_context:python_jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco-context:jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco-context:jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco_context:jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco_context:jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco:python-jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco:python_jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco:python-jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco:python_jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco-context:jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco-context:jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco_context:jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco_context:jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco:python-jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco:python_jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco:jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco:jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco:jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco:jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco:jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco:jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:jaraco-context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:jaraco_context:6.1.2:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/poetry.lock"
-        }
-      ]
-    },
-    {
-      "bom-ref": "pkg:pypi/jaraco-functools@4.6.0?package-id=b45002e31d14332a",
-      "type": "library",
-      "name": "jaraco-functools",
-      "version": "4.6.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:python-jaraco-functools:python-jaraco-functools:4.6.0:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/jaraco-functools@4.6.0",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "python-package-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "python-poetry-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco-functools:python_jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco_functools:python-jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco_functools:python_jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco-functools:python-jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco-functools:python_jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco_functools:python-jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco_functools:python_jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco-functools:jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco-functools:jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco_functools:jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco_functools:jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco:python-jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco:python_jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco:python-jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco:python_jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco-functools:jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco-functools:jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco_functools:jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco_functools:jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco:python-jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco:python_jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco:jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jaraco:jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco:jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jaraco:jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco:jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jaraco:jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:jaraco-functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:jaraco_functools:4.6.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/poetry.lock"
-        }
-      ]
-    },
-    {
-      "bom-ref": "pkg:pypi/jeepney@0.9.0?package-id=4b5961d827c42c96",
-      "type": "library",
-      "name": "jeepney",
-      "version": "0.9.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:python-jeepney:python-jeepney:0.9.0:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/jeepney@0.9.0",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "python-package-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "python-poetry-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jeepney:python_jeepney:0.9.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jeepney:python-jeepney:0.9.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jeepney:python_jeepney:0.9.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jeepney:python-jeepney:0.9.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jeepney:python_jeepney:0.9.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-jeepney:jeepney:0.9.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_jeepney:jeepney:0.9.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-jeepney:0.9.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_jeepney:0.9.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:jeepney:jeepney:0.9.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:jeepney:0.9.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/poetry.lock"
-        }
-      ]
-    },
-    {
       "bom-ref": "pkg:pypi/jmespath@1.1.0?package-id=2ca21ddcaf44c9ca",
       "type": "library",
       "name": "jmespath",
@@ -6441,87 +5884,6 @@
         {
           "name": "syft:cpe23",
           "value": "cpe:2.3:a:python:jsonschema_specifications:2025.9.1:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/poetry.lock"
-        }
-      ]
-    },
-    {
-      "bom-ref": "pkg:pypi/keyring@25.7.0?package-id=59636be840a61821",
-      "type": "library",
-      "name": "keyring",
-      "version": "25.7.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:python-keyring:python-keyring:25.7.0:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/keyring@25.7.0",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "python-package-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "python-poetry-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-keyring:python_keyring:25.7.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_keyring:python-keyring:25.7.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_keyring:python_keyring:25.7.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:keyring:python-keyring:25.7.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:keyring:python_keyring:25.7.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-keyring:keyring:25.7.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_keyring:keyring:25.7.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-keyring:25.7.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_keyring:25.7.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:keyring:keyring:25.7.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:keyring:25.7.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -7337,167 +6699,6 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/more-itertools@11.1.0?package-id=9f674f8027cd7461",
-      "type": "library",
-      "name": "more-itertools",
-      "version": "11.1.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:python-more-itertools:python-more-itertools:11.1.0:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/more-itertools@11.1.0",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "python-package-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "python-poetry-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-more-itertools:python_more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_more_itertools:python-more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_more_itertools:python_more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:more-itertools:python-more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:more-itertools:python_more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:more_itertools:python-more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:more_itertools:python_more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-more-itertools:more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-more-itertools:more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_more_itertools:more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_more_itertools:more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-more:python-more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-more:python_more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_more:python-more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_more:python_more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:more-itertools:more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:more-itertools:more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:more_itertools:more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:more_itertools:more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:more:python-more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:more:python_more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-more:more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-more:more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_more:more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_more:more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:more:more-itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:more:more_itertools:11.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/poetry.lock"
-        }
-      ]
-    },
-    {
       "bom-ref": "pkg:pypi/msal@1.38.0?package-id=bf75471d06b48325",
       "type": "library",
       "name": "msal",
@@ -7821,10 +7022,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/openapi-pydantic@0.5.1?package-id=792c05d602e0bc43",
+      "bom-ref": "pkg:pypi/openapi-pydantic@0.6.0?package-id=cb65fd70cfff9aee",
       "type": "library",
       "name": "openapi-pydantic",
-      "version": "0.5.1",
+      "version": "0.6.0",
       "licenses": [
         {
           "license": {
@@ -7832,8 +7033,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:python-openapi-pydantic:python-openapi-pydantic:0.5.1:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/openapi-pydantic@0.5.1",
+      "cpe": "cpe:2.3:a:python-openapi-pydantic:python-openapi-pydantic:0.6.0:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/openapi-pydantic@0.6.0",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -7853,127 +7054,127 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-openapi-pydantic:python_openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-openapi-pydantic:python_openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_openapi_pydantic:python-openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_openapi_pydantic:python-openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_openapi_pydantic:python_openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_openapi_pydantic:python_openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:openapi-pydantic:python-openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:openapi-pydantic:python-openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:openapi-pydantic:python_openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:openapi-pydantic:python_openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:openapi_pydantic:python-openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:openapi_pydantic:python-openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:openapi_pydantic:python_openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:openapi_pydantic:python_openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-openapi-pydantic:openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-openapi-pydantic:openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-openapi-pydantic:openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-openapi-pydantic:openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_openapi_pydantic:openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_openapi_pydantic:openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_openapi_pydantic:openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_openapi_pydantic:openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-openapi:python-openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-openapi:python-openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-openapi:python_openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-openapi:python_openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_openapi:python-openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_openapi:python-openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_openapi:python_openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_openapi:python_openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:openapi-pydantic:openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:openapi-pydantic:openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:openapi-pydantic:openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:openapi-pydantic:openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:openapi_pydantic:openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:openapi_pydantic:openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:openapi_pydantic:openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:openapi_pydantic:openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:openapi:python-openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:openapi:python-openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:openapi:python_openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:openapi:python_openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-openapi:openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-openapi:openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-openapi:openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-openapi:openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_openapi:openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_openapi:openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_openapi:openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_openapi:openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python-openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python_openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:openapi:openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:openapi:openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:openapi:openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:openapi:openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:openapi-pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:openapi-pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:openapi_pydantic:0.5.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:openapi_pydantic:0.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -7982,10 +7183,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/opentelemetry-api@1.44.0?package-id=af360318c38f3bad",
+      "bom-ref": "pkg:pypi/opentelemetry-api@1.45.1?package-id=81e201be8a511290",
       "type": "library",
       "name": "opentelemetry-api",
-      "version": "1.44.0",
+      "version": "1.45.1",
       "licenses": [
         {
           "license": {
@@ -7993,8 +7194,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:python-opentelemetry-api:python-opentelemetry-api:1.44.0:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/opentelemetry-api@1.44.0",
+      "cpe": "cpe:2.3:a:python-opentelemetry-api:python-opentelemetry-api:1.45.1:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/opentelemetry-api@1.45.1",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -8014,127 +7215,127 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-opentelemetry-api:python_opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-opentelemetry-api:python_opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_opentelemetry_api:python-opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_opentelemetry_api:python-opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_opentelemetry_api:python_opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_opentelemetry_api:python_opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-opentelemetry:python-opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-opentelemetry:python-opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-opentelemetry:python_opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-opentelemetry:python_opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_opentelemetry:python-opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_opentelemetry:python-opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_opentelemetry:python_opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_opentelemetry:python_opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:opentelemetry-api:python-opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:opentelemetry-api:python-opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:opentelemetry-api:python_opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:opentelemetry-api:python_opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:opentelemetry_api:python-opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:opentelemetry_api:python-opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:opentelemetry_api:python_opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:opentelemetry_api:python_opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-opentelemetry-api:opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-opentelemetry-api:opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-opentelemetry-api:opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-opentelemetry-api:opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_opentelemetry_api:opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_opentelemetry_api:opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_opentelemetry_api:opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_opentelemetry_api:opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:opentelemetry:python-opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:opentelemetry:python-opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:opentelemetry:python_opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:opentelemetry:python_opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-opentelemetry:opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-opentelemetry:opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-opentelemetry:opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-opentelemetry:opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_opentelemetry:opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_opentelemetry:opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_opentelemetry:opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_opentelemetry:opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:opentelemetry-api:opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:opentelemetry-api:opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:opentelemetry-api:opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:opentelemetry-api:opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:opentelemetry_api:opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:opentelemetry_api:opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:opentelemetry_api:opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:opentelemetry_api:opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:opentelemetry:opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:opentelemetry:opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:opentelemetry:opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:opentelemetry:opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python-opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python_opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:opentelemetry-api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:opentelemetry-api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:opentelemetry_api:1.44.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:opentelemetry_api:1.45.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -9011,7 +8212,7 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/py-key-value-aio@0.4.5?package-id=9c83dd42f8d67615",
+      "bom-ref": "pkg:pypi/py-key-value-aio@0.4.5?package-id=68eb9231ad48998f",
       "type": "library",
       "name": "py-key-value-aio",
       "version": "0.4.5",
@@ -11039,167 +10240,6 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/pywin32-ctypes@0.2.3?package-id=19b3ea10b8149f14",
-      "type": "library",
-      "name": "pywin32-ctypes",
-      "version": "0.2.3",
-      "licenses": [
-        {
-          "license": {
-            "id": "BSD-3-Clause"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:python-pywin32-ctypes:python-pywin32-ctypes:0.2.3:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/pywin32-ctypes@0.2.3",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "python-package-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "python-poetry-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-pywin32-ctypes:python_pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_pywin32_ctypes:python-pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_pywin32_ctypes:python_pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-pywin32-ctypes:pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-pywin32-ctypes:pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-pywin32:python-pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-pywin32:python_pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_pywin32:python-pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_pywin32:python_pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_pywin32_ctypes:pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_pywin32_ctypes:pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pywin32-ctypes:python-pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pywin32-ctypes:python_pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pywin32_ctypes:python-pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pywin32_ctypes:python_pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-pywin32:pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-pywin32:pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_pywin32:pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_pywin32:pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pywin32-ctypes:pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pywin32-ctypes:pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pywin32:python-pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pywin32:python_pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pywin32_ctypes:pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pywin32_ctypes:pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pywin32:pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pywin32:pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:pywin32-ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:pywin32_ctypes:0.2.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/poetry.lock"
-        }
-      ]
-    },
-    {
       "bom-ref": "pkg:pypi/pyyaml@6.0.3?package-id=a0ed8b7e9bbeedc1",
       "type": "library",
       "name": "pyyaml",
@@ -12180,87 +11220,6 @@
         {
           "name": "syft:cpe23",
           "value": "cpe:2.3:a:scramp:scramp:1.4.17:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/poetry.lock"
-        }
-      ]
-    },
-    {
-      "bom-ref": "pkg:pypi/secretstorage@3.5.0?package-id=b56334a48b1cae01",
-      "type": "library",
-      "name": "secretstorage",
-      "version": "3.5.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "BSD-3-Clause"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:python-secretstorage:python-secretstorage:3.5.0:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/secretstorage@3.5.0",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "python-package-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "python-poetry-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-secretstorage:python_secretstorage:3.5.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_secretstorage:python-secretstorage:3.5.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_secretstorage:python_secretstorage:3.5.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-secretstorage:secretstorage:3.5.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_secretstorage:secretstorage:3.5.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:secretstorage:python-secretstorage:3.5.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:secretstorage:python_secretstorage:3.5.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-secretstorage:3.5.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_secretstorage:3.5.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:secretstorage:secretstorage:3.5.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:secretstorage:3.5.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -15014,7 +13973,7 @@
         "pkg:pypi/aiohttp@3.14.5?package-id=317b9330e7ef14ba",
         "pkg:pypi/aioitertools@0.13.0?package-id=dca77f266bf1d0e0",
         "pkg:pypi/boto3@1.40.61?package-id=168cc2222a829d0e",
-        "pkg:pypi/botocore@1.40.61?package-id=ae8258bcd6679457",
+        "pkg:pypi/botocore@1.40.61?package-id=cdc888c0dd291261",
         "pkg:pypi/httpx@0.28.1?package-id=4e695980dd2d0101",
         "pkg:pypi/jmespath@1.1.0?package-id=2ca21ddcaf44c9ca",
         "pkg:pypi/multidict@6.9.1?package-id=eb8e02bc3480fd93",
@@ -15078,7 +14037,7 @@
       "ref": "pkg:pypi/azure-core@1.41.0?package-id=04a10048be247699",
       "dependsOn": [
         "pkg:pypi/aiohttp@3.14.5?package-id=317b9330e7ef14ba",
-        "pkg:pypi/opentelemetry-api@1.44.0?package-id=af360318c38f3bad",
+        "pkg:pypi/opentelemetry-api@1.45.1?package-id=81e201be8a511290",
         "pkg:pypi/requests@2.34.2?package-id=6901bbd7cfdaabad",
         "pkg:pypi/typing-extensions@4.16.0?package-id=670214c5182a6ca9"
       ]
@@ -15112,7 +14071,7 @@
       "ref": "pkg:pypi/beartype@0.22.9?package-id=056f2bebeabc2f06",
       "dependsOn": [
         "pkg:pypi/click@8.4.2?package-id=9bec3798fe928c7e",
-        "pkg:pypi/fastmcp@4.0.11?package-id=cf3bfd17a964682c",
+        "pkg:pypi/fastmcp@4.1.4?package-id=e0225313ac8c7fad",
         "pkg:pypi/pygments@2.21.0?package-id=58d0777be2cb5c8f",
         "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334",
         "pkg:pypi/redis@7.4.1?package-id=1d2e2f879a14cf9f",
@@ -15123,13 +14082,13 @@
     {
       "ref": "pkg:pypi/boto3@1.40.61?package-id=168cc2222a829d0e",
       "dependsOn": [
-        "pkg:pypi/botocore@1.40.61?package-id=ae8258bcd6679457",
+        "pkg:pypi/botocore@1.40.61?package-id=cdc888c0dd291261",
         "pkg:pypi/jmespath@1.1.0?package-id=2ca21ddcaf44c9ca",
         "pkg:pypi/s3transfer@0.14.0?package-id=81056afb76786dd9"
       ]
     },
     {
-      "ref": "pkg:pypi/botocore@1.40.61?package-id=ae8258bcd6679457",
+      "ref": "pkg:pypi/botocore@1.40.61?package-id=cdc888c0dd291261",
       "dependsOn": [
         "pkg:pypi/jmespath@1.1.0?package-id=2ca21ddcaf44c9ca",
         "pkg:pypi/python-dateutil@2.9.0.post0?package-id=997d12dbb2405315",
@@ -15249,10 +14208,12 @@
       ]
     },
     {
-      "ref": "pkg:pypi/fastmcp-slim@4.0.11?package-id=d18fc333cc1f99ee",
+      "ref": "pkg:pypi/fastmcp-slim@4.1.4?package-id=1de8da4af12f4b9a",
       "dependsOn": [
         "pkg:pypi/authlib@1.7.2?package-id=686a6f3559534c74",
         "pkg:pypi/azure-identity@1.25.3?package-id=d361489f760e7303",
+        "pkg:pypi/beartype@0.22.9?package-id=056f2bebeabc2f06",
+        "pkg:pypi/certifi@2026.10.19?package-id=3a0d3ed83b77b094",
         "pkg:pypi/cyclopts@4.23.2?package-id=abcd3b89a4635fee",
         "pkg:pypi/exceptiongroup@1.3.1?package-id=2d4fa8b47819e9c0",
         "pkg:pypi/griffelib@2.2.0?package-id=db8c77371fa655c9",
@@ -15262,11 +14223,11 @@
         "pkg:pypi/jsonschema-path@0.5.0?package-id=8026608df23fc071",
         "pkg:pypi/mcp-types@2.3.0?package-id=50487f00c73ff3de",
         "pkg:pypi/mcp@2.3.0?package-id=2bd669752e4becad",
-        "pkg:pypi/openapi-pydantic@0.5.1?package-id=792c05d602e0bc43",
-        "pkg:pypi/opentelemetry-api@1.44.0?package-id=af360318c38f3bad",
+        "pkg:pypi/openapi-pydantic@0.6.0?package-id=cb65fd70cfff9aee",
+        "pkg:pypi/opentelemetry-api@1.45.1?package-id=81e201be8a511290",
         "pkg:pypi/packaging@26.3?package-id=6873a4d64a3db838",
         "pkg:pypi/platformdirs@4.11.4?package-id=111e76855668d47a",
-        "pkg:pypi/py-key-value-aio@0.4.5?package-id=9c83dd42f8d67615",
+        "pkg:pypi/py-key-value-aio@0.4.5?package-id=68eb9231ad48998f",
         "pkg:pypi/pydantic-settings@2.15.0?package-id=616bad20d414409c",
         "pkg:pypi/pydantic@2.13.4?package-id=65170ef7330343fa",
         "pkg:pypi/pyjwt@2.15.1?package-id=061c55863e0041ea",
@@ -15284,9 +14245,9 @@
       ]
     },
     {
-      "ref": "pkg:pypi/fastmcp@4.0.11?package-id=cf3bfd17a964682c",
+      "ref": "pkg:pypi/fastmcp@4.1.4?package-id=e0225313ac8c7fad",
       "dependsOn": [
-        "pkg:pypi/fastmcp-slim@4.0.11?package-id=d18fc333cc1f99ee"
+        "pkg:pypi/fastmcp-slim@4.1.4?package-id=1de8da4af12f4b9a"
       ]
     },
     {
@@ -15355,34 +14316,6 @@
       ]
     },
     {
-      "ref": "pkg:pypi/jaraco-classes@3.4.0?package-id=8967833da457c8a4",
-      "dependsOn": [
-        "pkg:pypi/more-itertools@11.1.0?package-id=9f674f8027cd7461",
-        "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334"
-      ]
-    },
-    {
-      "ref": "pkg:pypi/jaraco-context@6.1.2?package-id=a98fc5bafff720da",
-      "dependsOn": [
-        "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334"
-      ]
-    },
-    {
-      "ref": "pkg:pypi/jaraco-functools@4.6.0?package-id=b45002e31d14332a",
-      "dependsOn": [
-        "pkg:pypi/jaraco-classes@3.4.0?package-id=8967833da457c8a4",
-        "pkg:pypi/more-itertools@11.1.0?package-id=9f674f8027cd7461",
-        "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334"
-      ]
-    },
-    {
-      "ref": "pkg:pypi/jeepney@0.9.0?package-id=4b5961d827c42c96",
-      "dependsOn": [
-        "pkg:pypi/pytest-asyncio@1.4.0?package-id=5df916587c9408e1",
-        "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334"
-      ]
-    },
-    {
       "ref": "pkg:pypi/joserfc@1.7.4?package-id=6860c3340e3e07ce",
       "dependsOn": [
         "pkg:pypi/cryptography@50.0.0?package-id=959c190fb071fd33"
@@ -15412,18 +14345,6 @@
         "pkg:pypi/jsonschema-specifications@2025.9.1?package-id=1a4674b07cde3c55",
         "pkg:pypi/referencing@0.37.0?package-id=468f81293f5f3fe5",
         "pkg:pypi/rpds-py@2026.6.3?package-id=34d1e7461b93bb9d"
-      ]
-    },
-    {
-      "ref": "pkg:pypi/keyring@25.7.0?package-id=59636be840a61821",
-      "dependsOn": [
-        "pkg:pypi/jaraco-classes@3.4.0?package-id=8967833da457c8a4",
-        "pkg:pypi/jaraco-context@6.1.2?package-id=a98fc5bafff720da",
-        "pkg:pypi/jaraco-functools@4.6.0?package-id=b45002e31d14332a",
-        "pkg:pypi/jeepney@0.9.0?package-id=4b5961d827c42c96",
-        "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334",
-        "pkg:pypi/pywin32-ctypes@0.2.3?package-id=19b3ea10b8149f14",
-        "pkg:pypi/secretstorage@3.5.0?package-id=b56334a48b1cae01"
       ]
     },
     {
@@ -15474,7 +14395,7 @@
         "pkg:pypi/httpx2@2.13.1?package-id=fab9a09c7681f1b4",
         "pkg:pypi/jsonschema@4.26.0?package-id=744990d456716786",
         "pkg:pypi/mcp-types@2.3.0?package-id=50487f00c73ff3de",
-        "pkg:pypi/opentelemetry-api@1.44.0?package-id=af360318c38f3bad",
+        "pkg:pypi/opentelemetry-api@1.45.1?package-id=81e201be8a511290",
         "pkg:pypi/pydantic@2.13.4?package-id=65170ef7330343fa",
         "pkg:pypi/pyjwt@2.15.1?package-id=061c55863e0041ea",
         "pkg:pypi/python-dotenv@1.2.3?package-id=84697be11cd1112e",
@@ -15503,13 +14424,13 @@
       ]
     },
     {
-      "ref": "pkg:pypi/openapi-pydantic@0.5.1?package-id=792c05d602e0bc43",
+      "ref": "pkg:pypi/openapi-pydantic@0.6.0?package-id=cb65fd70cfff9aee",
       "dependsOn": [
         "pkg:pypi/pydantic@2.13.4?package-id=65170ef7330343fa"
       ]
     },
     {
-      "ref": "pkg:pypi/opentelemetry-api@1.44.0?package-id=af360318c38f3bad",
+      "ref": "pkg:pypi/opentelemetry-api@1.45.1?package-id=81e201be8a511290",
       "dependsOn": [
         "pkg:pypi/typing-extensions@4.16.0?package-id=670214c5182a6ca9"
       ]
@@ -15541,7 +14462,7 @@
       ]
     },
     {
-      "ref": "pkg:pypi/py-key-value-aio@0.4.5?package-id=9c83dd42f8d67615",
+      "ref": "pkg:pypi/py-key-value-aio@0.4.5?package-id=68eb9231ad48998f",
       "dependsOn": [
         "pkg:pypi/aioboto3@15.5.0?package-id=8299b6e2bab4fa2a",
         "pkg:pypi/aiofile@3.12.3?package-id=c0dbd90a5aeb7fdd",
@@ -15552,7 +14473,6 @@
         "pkg:pypi/beartype@0.22.9?package-id=056f2bebeabc2f06",
         "pkg:pypi/cachetools@7.1.7?package-id=60350a50ad4cfe16",
         "pkg:pypi/cryptography@50.0.0?package-id=959c190fb071fd33",
-        "pkg:pypi/keyring@25.7.0?package-id=59636be840a61821",
         "pkg:pypi/pydantic@2.13.4?package-id=65170ef7330343fa",
         "pkg:pypi/pytz@2025.2?package-id=7f93aa6b46b2c394",
         "pkg:pypi/redis@7.4.1?package-id=1d2e2f879a14cf9f",
@@ -15665,7 +14585,7 @@
       "ref": "pkg:pypi/redis@7.4.1?package-id=1d2e2f879a14cf9f",
       "dependsOn": [
         "pkg:pypi/cryptography@50.0.0?package-id=959c190fb071fd33",
-        "pkg:pypi/opentelemetry-api@1.44.0?package-id=af360318c38f3bad",
+        "pkg:pypi/opentelemetry-api@1.45.1?package-id=81e201be8a511290",
         "pkg:pypi/pyjwt@2.15.1?package-id=061c55863e0041ea",
         "pkg:pypi/requests@2.34.2?package-id=6901bbd7cfdaabad"
       ]
@@ -15712,20 +14632,13 @@
     {
       "ref": "pkg:pypi/s3transfer@0.14.0?package-id=81056afb76786dd9",
       "dependsOn": [
-        "pkg:pypi/botocore@1.40.61?package-id=ae8258bcd6679457"
+        "pkg:pypi/botocore@1.40.61?package-id=cdc888c0dd291261"
       ]
     },
     {
       "ref": "pkg:pypi/scramp@1.4.17?package-id=f758d74f10c33be2",
       "dependsOn": [
         "pkg:pypi/asn1crypto@1.5.1?package-id=d3aebcc5e1a1192c"
-      ]
-    },
-    {
-      "ref": "pkg:pypi/secretstorage@3.5.0?package-id=b56334a48b1cae01",
-      "dependsOn": [
-        "pkg:pypi/cryptography@50.0.0?package-id=959c190fb071fd33",
-        "pkg:pypi/jeepney@0.9.0?package-id=4b5961d827c42c96"
       ]
     },
     {
