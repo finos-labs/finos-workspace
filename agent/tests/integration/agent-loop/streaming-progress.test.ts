@@ -145,7 +145,7 @@ describe("streaming — MCP tool calls surface input details", () => {
   });
 
   it("renders MCP Mermaid inputs as a code detail without metadata keys", async () => {
-    const code = "flowchart TD\n  A[Platform] --> B[Workspace]";
+    const code = "flowchart TD\n  A[Platform] --> B[FINOS Workspace]";
     const events = await collectGenerator(
       runAgentLoop({
         request: {

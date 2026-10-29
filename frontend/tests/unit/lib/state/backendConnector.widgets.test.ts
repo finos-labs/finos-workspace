@@ -191,7 +191,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       expect(result.unrenderedWidgets).toEqual(["chart"]);
     });
 
-    it("should refuse a widget with a key the contract does not define", async () => {
+    it("should load a widget without a key the contract does not define, and name the key", async () => {
       const widgetWithExtraKey = {
         stock_price: {
           name: "Stock Price",
@@ -222,9 +222,19 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
 
       const result = await validateBackend(mockSource, false);
 
-      expect(result.validWidgets).toEqual({});
-      expect(result.errorMessage).toContain("unknown key `unsupported_widget_option`");
-      expect(result.unrecognizedKeysMessage).toBeNull();
+      expect(Object.keys(result.validWidgets ?? {})).toEqual(["stock_price"]);
+      expect(result.validWidgets?.stock_price).not.toHaveProperty(
+        "unsupported_widget_option",
+      );
+      expect(result.errorMessage).toBeNull();
+      expect(result.unrecognizedKeysMessage).toEqual([
+        {
+          label: "[widgets.json]",
+          entries: [
+            { name: "Stock Price (stock_price)", keys: ["unsupported_widget_option"] },
+          ],
+        },
+      ]);
     });
 
     it("should handle widgets.json with invalid widget schemas", async () => {

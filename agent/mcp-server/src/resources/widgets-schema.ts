@@ -16,14 +16,14 @@ export function registerWidgetsSchemaResource(mcp: McpServer, manager: SchemaSou
       description:
         "The JSON Schema a backend's widgets.json is validated against for the signed-in user: the built-in " +
         "types and the plugin types enabled for their organization, every key and value closed. Read from the " +
-        "user's Workspace session, so it needs the browser connected.",
+        "user's FINOS Workspace session, so it needs the browser connected.",
       mimeType: MIME_TYPE,
     },
     async () => {
       const sessionId = manager.getFirstConnectedSessionId();
       if (!sessionId) {
         throw new Error(
-          "No connected Workspace browser. Open the workspace and connect the bridge before reading this resource.",
+          "No connected FINOS Workspace browser. Open the workspace and connect the bridge before reading this resource.",
         );
       }
       const result = await manager.executeCommand(sessionId, { command: "get_widgets_schema" });

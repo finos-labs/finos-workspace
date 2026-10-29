@@ -382,7 +382,7 @@ async def test_not_supported_sentences_present(server):
     )
     assert "call get_skill_content with its slug" in tools["get_workspace_snapshot"]
     assert "do not invent them" in tools["assign_tasks_to_agents"]
-    assert "one Workspace data source" in tools["get_widget_data"]
+    assert "one FINOS Workspace data source" in tools["get_widget_data"]
     assert "one parameter option query" in tools["get_params_options"]
     assert (
         "Large unfiltered results return a compact index plus a result_ref "

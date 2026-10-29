@@ -18,7 +18,7 @@ const backendEndpointHeaderSchema = z.object({
 });
 
 const DASHBOARD_ID_DESCRIPTION =
-  "Target dashboard UUID. Omit to target the current Workspace route.";
+  "Target dashboard UUID. Omit to target the current FINOS Workspace route.";
 
 const optionalDashboardId = z
   .string()
@@ -129,7 +129,7 @@ export const manageDashboardInputSchema = z.object({
     .enum(["create", "read", "update"])
     .describe("Operation to perform on the dashboard."),
   dashboard_id: optionalDashboardId.describe(
-    "Dashboard UUID. Omit on read to target the current Workspace route. Required for update.",
+    "Dashboard UUID. Omit on read to target the current FINOS Workspace route. Required for update.",
   ),
   name: z
     .string()
@@ -174,13 +174,13 @@ export const manageNavigationBarInputSchema = z.object({
     .enum(["create", "add_tabs", "remove_tabs", "rename_tabs"])
     .describe("Operation: create | add_tabs | remove_tabs | rename_tabs."),
   dashboard_id: optionalDashboardId.describe(
-    "Dashboard UUID. Omit to target the current Workspace route.",
+    "Dashboard UUID. Omit to target the current FINOS Workspace route.",
   ),
   tabs: z
     .array(z.object({ name: z.string() }))
     .optional()
     .describe(
-      "Tab objects, e.g. [{name:'AAPL Analysis'}]. Required for create, add_tabs, remove_tabs. " +
+      "Tab objects, e.g. [{name:'Quarterly Review'}]. Required for create, add_tabs, remove_tabs. " +
         "Do not pass tab_id; it is generated as the slug of name.",
     ),
   rename_map: z
@@ -239,7 +239,7 @@ export const navigateWorkspaceInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      "Tab id (slug-form, e.g. 'aapl-analysis'). Required when operation='tab'.",
+      "Tab id (slug-form, e.g. 'quarterly-review'). Required when operation='tab'.",
     ),
 });
 
@@ -313,7 +313,7 @@ export const WORKSPACE_BRIDGE_COMMANDS: readonly WorkspaceBridgeCommandSpec[] = 
   {
     name: "get_workspace_snapshot",
     description:
-      "Request a fresh Workspace snapshot from the connected browser. " +
+      "Request a fresh FINOS Workspace snapshot from the connected browser. " +
       "Call first when you need current dashboard state, dashboard identifiers, or skill identifiers. " +
       "Use list_available_widgets, get_widget_schema, and manage_dashboard for deeper follow-up inspection.",
     inputSchema: getWorkspaceSnapshotInputSchema,
@@ -321,7 +321,7 @@ export const WORKSPACE_BRIDGE_COMMANDS: readonly WorkspaceBridgeCommandSpec[] = 
   {
     name: "list_available_widgets",
     description:
-      "List widgets available to the current Workspace session. " +
+      "List widgets available to the current FINOS Workspace session. " +
       "Returns deterministic widget identities for later get_widget_schema and create_widget calls. " +
       "origin matches the friendly catalog label exactly; backend_id is optional and must be an exact backend UUID from manage_backends. " +
       "Without filters the entire catalog is returned (hundreds of widgets) — prefer a filter when you know the source. " +
@@ -374,14 +374,14 @@ export const WORKSPACE_BRIDGE_COMMANDS: readonly WorkspaceBridgeCommandSpec[] = 
   {
     name: "delete_widget",
     description:
-      "Delete a Workspace widget from a dashboard. " +
+      "Delete a FINOS Workspace widget from a dashboard. " +
       "Provide widget_uuid (preferred) or widget_id. dashboard_id defaults to the current route.",
     inputSchema: deleteWidgetInputSchema,
   },
   {
     name: "manage_dashboard",
     description:
-      "Create, read, or update one Workspace dashboard. " +
+      "Create, read, or update one FINOS Workspace dashboard. " +
       "create requires name. read uses current route if dashboard_id omitted. update requires dashboard_id and name.",
     inputSchema: manageDashboardInputSchema,
   },
@@ -395,7 +395,7 @@ export const WORKSPACE_BRIDGE_COMMANDS: readonly WorkspaceBridgeCommandSpec[] = 
   {
     name: "manage_navigation_bar",
     description:
-      "Create or mutate the Workspace navigation bar (tabs). " +
+      "Create or mutate the FINOS Workspace navigation bar (tabs). " +
       "create / add_tabs / remove_tabs use tabs:[{name}]. rename_tabs uses rename_map:{oldId:newName}. " +
       "tab_id is generated as the slug of name; navigate to that slug after add_tabs before placing content.",
     inputSchema: manageNavigationBarInputSchema,
@@ -404,35 +404,35 @@ export const WORKSPACE_BRIDGE_COMMANDS: readonly WorkspaceBridgeCommandSpec[] = 
     name: "add_generative_widget",
     description:
       "Create a generative widget (note or html) with inline content on a dashboard. " +
-      "The Workspace has no table or chart widget: draw a table or chart as an html widget " +
+      "The FINOS Workspace has no table or chart widget: draw a table or chart as an html widget " +
       "(follow the `html-table` / `html-chart` skills).",
     inputSchema: addGenerativeWidgetInputSchema,
   },
   {
     name: "assign_tasks_to_agents",
     description:
-      "Assign tasks to configured external Workspace agents. " +
+      "Assign tasks to configured external FINOS Workspace agents. " +
       "task_requests items shaped like {id, description, assigned_holder_url, assigned_agent_id}.",
     inputSchema: assignTasksToAgentsInputSchema,
   },
   {
     name: "navigate_workspace",
     description:
-      "Navigate the Workspace browser to an existing dashboard or inner tab. " +
+      "Navigate the FINOS Workspace browser to an existing dashboard or inner tab. " +
       "operation='dashboard' requires dashboard_id; operation='tab' requires tab_id.",
     inputSchema: navigateWorkspaceInputSchema,
   },
   {
     name: "manage_backends",
     description:
-      "Manage Workspace data backends (the connections that power widgets). " +
+      "Manage FINOS Workspace data backends (the connections that power widgets). " +
       "list / add / update / refresh / remove. add requires name and url. update/refresh/remove require backend_id.",
     inputSchema: manageBackendsInputSchema,
   },
   {
     name: "manage_apps",
     description:
-      "List, read, or instantiate apps from a Workspace data backend. Requires backend_id. " +
+      "List, read, or instantiate apps from a FINOS Workspace data backend. Requires backend_id. " +
       "read/instantiate require app_name or template_id. instantiate creates a fresh dashboard from the app template.",
     inputSchema: manageAppsInputSchema,
   },

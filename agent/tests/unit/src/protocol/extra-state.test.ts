@@ -97,7 +97,7 @@ describe("readExtraState — what a client sends back", () => {
     expect(out.pending_bridge_calls).toEqual([{ function: "manage_navigation_bar", input_arguments: { operation: "create" } }]);
   });
 
-  it("keeps the queued calls of the Workspace's tools that have a name and arguments", () => {
+  it("keeps the queued calls of the FINOS Workspace's tools that have a name and arguments", () => {
     const out = readExtraState(
       tm({
         pending_workspace_calls: [
@@ -113,7 +113,7 @@ describe("readExtraState — what a client sends back", () => {
     ]);
   });
 
-  it("keeps no more of the queued Workspace calls than it has room for", () => {
+  it("keeps no more of the queued FINOS Workspace calls than it has room for", () => {
     const calls = Array.from({ length: 300 }, (_, i) => ({ tool_name: "Workspace_update_widget", input_arguments: { i } }));
     expect(readExtraState(tm({ pending_workspace_calls: calls })).pending_workspace_calls).toHaveLength(100);
   });

@@ -32,7 +32,7 @@ const SQL_NOTES =
   "- execute_sql: SQLite SELECT/WITH only, up to 1000 rows. Result aliases are not saved as columns: to sort, filter, chart or build an artifact from a derived value, define it in the same SQL (a CTE or subquery). In UNION/INTERSECT/EXCEPT, ORDER BY uses output columns or positions (wrap the query in an outer SELECT for a custom sort). Window functions cover moving averages, rankings and cumulative sums.\n" +
   "- peek_table / peek_column_values: cheap previews; peek_table first when names are uncertain (never PRAGMA or SQLite internals). A query that returns 0 rows is not an answer: check the exact values with peek_column_values or SELECT DISTINCT.\n" +
   "- create_artifact renders a table inline. Pass exactly ONE source: `sql`, `from_table_id` (one loaded table as it is) or `data` (raw rows). Call it once per artifact, then go to the final answer. For tabular results and for CSV/export/download/full-table requests use it instead of writing Markdown or CSV rows; keep the final text to the interpretation and the key figures.\n" +
-  "- The Workspace has no chart artifact: draw a chart as HTML/SVG with create_html_artifact (in the `render` group) from the rows you queried, following the `html-chart` skill. Check that the table has the columns first; never invent trend columns from a snapshot table.\n" +
+  "- The FINOS Workspace has no chart artifact: draw a chart as HTML/SVG with create_html_artifact (in the `render` group) from the rows you queried, following the `html-chart` skill. Check that the table has the columns first; never invent trend columns from a snapshot table.\n" +
   "- DEFAULT to these tools for filter / aggregate / chart / table tasks.";
 
 const DASHBOARD_NOTES =
@@ -43,7 +43,7 @@ const DASHBOARD_NOTES =
   "For enum/dropdown/dynamic parameters call get_params_options when needed and pass exact option values, not display labels; for plain string parameters keep the user's literal value and casing unless the schema or options prove otherwise. Omit optional IDs you have no concrete value for.";
 
 const WORKSPACE_NOTES =
-  "These are the Workspace's own tools; each runs in the user's browser, as the user. Use the ones that change something only when the user asks to modify the dashboard or a widget's configuration; a parameter-level imperative like 'update/set/change <param> to <value>' counts even when the word 'widget' or 'dashboard' is absent: update the visible widgets exposing that parameter, or only the named widget when the user names one. " +
+  "These are the FINOS Workspace's own tools; each runs in the user's browser, as the user. Use the ones that change something only when the user asks to modify the dashboard or a widget's configuration; a parameter-level imperative like 'update/set/change <param> to <value>' counts even when the word 'widget' or 'dashboard' is absent: update the visible widgets exposing that parameter, or only the named widget when the user names one. " +
   "Read each tool's description first. Identify target widgets from the lists of widgets in this prompt (use their widget_uuid) or from the snapshot, and update only widgets that actually expose the parameter. " +
   "create_widget adds a catalog widget to a dashboard by its origin and widget_id (from the lists, search_widgets or list_available_widgets; get_widget_schema says its parameters). add_generative_widget creates inline note/html content. manage_navigation_bar creates or edits tabs. " +
   "For enum/dropdown/dynamic parameters call get_params_options and pass exact option values, not display labels; for plain string parameters keep the user's literal value and casing unless the schema or options prove otherwise. Omit optional IDs you have no concrete value for. " +
@@ -51,7 +51,7 @@ const WORKSPACE_NOTES =
   "A result says ok: false and why when a call did not work: read it, fix the call or say that it cannot be done, and never say that something changed unless a result says it did.";
 
 const APPS_NOTES =
-  "- create_app assembles connected widgets into a multi-tab dashboard app the user can open or save. Call search_widgets first and pass each widget's (origin, widget_id) with grid x/y/w/h; ticker/symbol sync is detected automatically.";
+  "- create_app assembles connected widgets into a multi-tab dashboard app the user can open or save. Call search_widgets first and pass each widget's (origin, widget_id) with grid x/y/w/h.";
 
 const RENDER_NOTES =
   "- create_html_artifact: render a small inline HTML report or chart (max 50 KB) for a one-off layout; after create_artifact-style rendering succeeds, do not repeat the markup in the answer. For flowchart-like renders prefer a Mermaid diagram tool when one is listed, with `flowchart TD`.\n" +
@@ -115,7 +115,7 @@ const STATIC_GROUPS: readonly StaticGroup[] = [
   },
   {
     id: "workspace",
-    summary: "look at and change the user's Workspace: find and add widgets, update a widget's parameters, edit tabs, navigate",
+    summary: "look at and change the user's FINOS Workspace: find and add widgets, update a widget's parameters, edit tabs, navigate",
     notes: WORKSPACE_NOTES,
     names: [],
     mcp: true,

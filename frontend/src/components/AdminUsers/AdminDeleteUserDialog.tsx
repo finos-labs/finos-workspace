@@ -52,7 +52,7 @@ export default function AdminDeleteUserDialog(props: Props) {
       <span className="body-sm-bold">Delete account</span>
       <div data-testid="delete-user-dialog" className="pr-5 body-xs-medium">
         <p>Are you sure you want to delete this account {user.email}?</p>
-        <p>Access to Workspace and all API keys will be revoked.</p>
+        <p>Access to FINOS Workspace and all API keys will be revoked.</p>
       </div>
       <AdminDialogFooter
         primaryButtonName="Yes, delete account"

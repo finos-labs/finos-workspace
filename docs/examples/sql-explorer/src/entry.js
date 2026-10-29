@@ -67,6 +67,7 @@ export function stateOf(saved) {
 }
 
 let lastRun = null;
+let loadingGrid = null;
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -80,6 +81,43 @@ const NUMERIC_TYPE =
 
 export function isNumeric(column, value) {
   return typeof value === "number" || NUMERIC_TYPE.test(column?.type ?? "");
+}
+
+const numberFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 6 });
+
+export function formatCell(params) {
+  const { value } = params;
+  if (value === null || value === undefined) return "NULL";
+  if (typeof value === "number") return Number.isFinite(value) ? numberFormat.format(value) : String(value);
+  return typeof value === "object" ? JSON.stringify(value) : value;
+}
+
+export function gridColumns(result) {
+  const first = result.rows[0] ?? [];
+  return result.columns.map((column, i) => ({
+    field: String(i),
+    headerName: column.name,
+    headerTooltip: column.type,
+    valueFormatter: formatCell,
+    ...(isNumeric(column, first[i]) ? { type: "numericColumn" } : {}),
+  }));
+}
+
+export function gridRows(result) {
+  return result.rows.map((row) => Object.fromEntries(row.map((value, i) => [String(i), value])));
+}
+
+export function gridOptions(result) {
+  return {
+    columnDefs: gridColumns(result),
+    rowData: gridRows(result),
+    defaultColDef: { resizable: true, sortable: true, filter: true, flex: 1, minWidth: 80, suppressHeaderFilterButton: true },
+    pagination: result.rows.length > 100,
+    paginationAutoPageSize: true,
+    paginationPageSizeSelector: false,
+    enableCellTextSelection: true,
+    tooltipShowDelay: 400,
+  };
 }
 
 export default {
@@ -112,6 +150,9 @@ export default {
   async render({ model, el, signal, experimental }) {
     let state = stateOf(model.get("state"));
     let running = 0;
+    const withGrid = model.get("meta")?.widgetId === "grid";
+    let gridApi = null;
+    let gridHost = null;
 
     const root = element("div", "sx");
     const bar = element("div", "sx-bar");
@@ -155,8 +196,27 @@ export default {
       return [id, button];
     });
 
+    const gridTheme = () => (model.get("theme")?.mode === "light" ? "ag-theme-quartz" : "ag-theme-quartz-dark");
+
     const applyTheme = () => {
       root.dataset.mode = model.get("theme")?.mode === "light" ? "light" : "dark";
+      if (gridHost) gridHost.className = `sx-grid ${gridTheme()}`;
+    };
+
+    const clearGrid = () => {
+      gridApi?.destroy();
+      gridApi = null;
+      gridHost = null;
+    };
+
+    const showGrid = async (result) => {
+      loadingGrid ??= import("ag-grid-community");
+      const { createGrid } = await loadingGrid;
+      if (signal.aborted) return;
+      clearGrid();
+      gridHost = element("div", `sx-grid ${gridTheme()}`);
+      output.replaceChildren(gridHost);
+      gridApi = createGrid(gridHost, gridOptions(result));
     };
 
     let saveTimer;
@@ -354,6 +414,13 @@ export default {
     };
 
     const showResult = (result, elapsed) => {
+      const count = result.rows.length.toLocaleString("en");
+      status.textContent = `${count} ${result.rows.length === 1 ? "row" : "rows"}${result.truncated ? " (the first; there are more)" : ""} · ${elapsed} ms`;
+      clearGrid();
+      if (withGrid) {
+        showGrid(result);
+        return;
+      }
       const table = element("table", "sx-table");
       const head = element("thead");
       const headRow = element("tr");
@@ -381,11 +448,10 @@ export default {
       }
       table.append(head, rows);
       output.replaceChildren(table);
-      const count = result.rows.length.toLocaleString("en");
-      status.textContent = `${count} ${result.rows.length === 1 ? "row" : "rows"}${result.truncated ? " (the first; there are more)" : ""} · ${elapsed} ms`;
     };
 
     const showMessage = (text, kind) => {
+      clearGrid();
       output.replaceChildren(element("pre", `sx-message sx-${kind}`, text));
     };
 
@@ -411,6 +477,10 @@ export default {
           const result = { columns: answer.columns, rows: answer.rows, truncated: answer.truncated };
           lastRun = { source, sql, engine: engine.textContent, result };
           showResult(result, answer.elapsedMs);
+          if (source === "files") {
+            model.set("params", { sql });
+            model.save_changes();
+          }
         }
       } catch (error) {
         if (signal.aborted || ticket !== running) return;
@@ -429,6 +499,7 @@ export default {
       save();
       show();
       closePopup();
+      clearGrid();
       output.replaceChildren();
       status.textContent = "";
       loadTables();
@@ -489,6 +560,7 @@ export default {
     model.on("msg:custom", onEvent);
     signal.addEventListener("abort", () => {
       clearTimeout(saveTimer);
+      clearGrid();
       model.off("change:state", onState);
       model.off("change:theme", applyTheme);
       model.off("msg:custom", onEvent);

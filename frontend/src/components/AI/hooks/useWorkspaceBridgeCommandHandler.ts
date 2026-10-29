@@ -156,7 +156,7 @@ function commandFailedResult(
 ): WorkspaceBridgeCommandResult {
   const message =
     results.find((result) => result.status === "error")?.message ||
-    "Workspace command failed.";
+    "FINOS Workspace command failed.";
 
   return errorResult(command, requestId, "command_failed", message);
 }
@@ -672,7 +672,7 @@ async function handleDataCommand(
 
   switch (command.command) {
     case "get_workspace_snapshot":
-      return successResult("Workspace snapshot generated.", deps.getSnapshot());
+      return successResult("FINOS Workspace snapshot generated.", deps.getSnapshot());
     case "get_widget_data": {
       const data = await deps.getWidgetData(normalizeDataSources(command.data_sources));
       return successResult("Widget data fetched.", normalizeWidgetDataForBridge(data));
@@ -1361,7 +1361,7 @@ async function handleAgentAndSkillCommand(
       if (!skill) {
         return errorResult(
           "command_failed",
-          `Skill with slug '/${command.slug}' not found in Workspace skill library.`,
+          `Skill with slug '/${command.slug}' not found in FINOS Workspace skill library.`,
         );
       }
 
@@ -1912,7 +1912,7 @@ export function useWorkspaceBridgeCommandHandler() {
           "command_failed",
           error instanceof Error
             ? error.message
-            : "Workspace bridge command failed unexpectedly.",
+            : "FINOS Workspace bridge command failed unexpectedly.",
         );
       }
     },

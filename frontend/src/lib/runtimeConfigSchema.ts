@@ -82,8 +82,8 @@ export const RuntimeConfigSchema = z.object({
     supportEmail: z.string().default(""),
   }),
   whiteLabel: z.object({
-    name: z.string().default("Workspace"),
-    shortName: z.string().default("Workspace"),
+    name: z.string().default("FINOS Workspace"),
+    shortName: z.string().default("FINOS Workspace"),
     loginImage: z.string().default("/assets/images/logo-horizontal-color.svg"),
     loginImageDark: z.string().default("/assets/images/logo-horizontal-white.svg"),
     leftSidebarLogo: z.string().default(""),

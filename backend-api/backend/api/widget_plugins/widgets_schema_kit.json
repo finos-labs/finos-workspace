@@ -87,6 +87,21 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "extraInfo": {
+                    "type": "object",
+                    "properties": {
+                      "description": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "rightOfDescription": {
+                        "type": "string",
+                        "maxLength": 200
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                   }
                 },
                 "required": [
@@ -94,7 +109,7 @@
                 ],
                 "additionalProperties": false
               },
-              "description": "The choices of a dropdown, as `{ label, value }`"
+              "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
             },
             "multiSelect": {
               "type": "boolean",
@@ -232,6 +247,21 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "extraInfo": {
+                    "type": "object",
+                    "properties": {
+                      "description": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "rightOfDescription": {
+                        "type": "string",
+                        "maxLength": 200
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                   }
                 },
                 "required": [
@@ -239,7 +269,7 @@
                 ],
                 "additionalProperties": false
               },
-              "description": "The choices of a dropdown, as `{ label, value }`"
+              "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
             },
             "multiSelect": {
               "type": "boolean",
@@ -358,132 +388,21 @@
                         "type": "null"
                       }
                     ]
-                  }
-                },
-                "required": [
-                  "label"
-                ],
-                "additionalProperties": false
-              },
-              "description": "The choices of a dropdown, as `{ label, value }`"
-            },
-            "multiSelect": {
-              "type": "boolean",
-              "description": "Several values can be chosen; sent joined with commas, or as a list in a body"
-            },
-            "in": {
-              "type": "string",
-              "enum": [
-                "query",
-                "header",
-                "body"
-              ],
-              "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none"
-            },
-            "type": {
-              "type": "string",
-              "const": "ticker"
-            },
-            "value": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "maxLength": 64,
-                  "description": "The default value"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "required": [
-            "paramName",
-            "type"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "paramName": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead"
-            },
-            "label": {
-              "type": "string",
-              "maxLength": 200,
-              "description": "The control's label; the paramName by default"
-            },
-            "description": {
-              "type": "string",
-              "maxLength": 4000,
-              "description": "Help shown on hover, which the AI Agent also reads"
-            },
-            "show": {
-              "type": "boolean",
-              "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it"
-            },
-            "row": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 31,
-              "description": "The row of the parameter bar the control is placed in"
-            },
-            "roles": {
-              "maxItems": 1,
-              "type": "array",
-              "items": {
-                "type": "string",
-                "const": "fileSelector"
-              },
-              "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget"
-            },
-            "placeholder": {
-              "type": "string",
-              "maxLength": 200,
-              "description": "Shown in the control while it is empty"
-            },
-            "style": {
-              "type": "object",
-              "properties": {
-                "popupWidth": {
-                  "type": "number",
-                  "minimum": 100,
-                  "maximum": 1000
-                }
-              },
-              "additionalProperties": false,
-              "description": "`popupWidth`: the width of a dropdown's list, in pixels"
-            },
-            "options": {
-              "maxItems": 1000,
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "label": {
-                    "type": "string",
-                    "maxLength": 200
                   },
-                  "value": {
-                    "anyOf": [
-                      {
+                  "extraInfo": {
+                    "type": "object",
+                    "properties": {
+                      "description": {
                         "type": "string",
-                        "maxLength": 4096
+                        "maxLength": 200
                       },
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "null"
+                      "rightOfDescription": {
+                        "type": "string",
+                        "maxLength": 200
                       }
-                    ]
+                    },
+                    "additionalProperties": false,
+                    "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                   }
                 },
                 "required": [
@@ -491,7 +410,7 @@
                 ],
                 "additionalProperties": false
               },
-              "description": "The choices of a dropdown, as `{ label, value }`"
+              "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
             },
             "multiSelect": {
               "type": "boolean",
@@ -610,6 +529,21 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "extraInfo": {
+                    "type": "object",
+                    "properties": {
+                      "description": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "rightOfDescription": {
+                        "type": "string",
+                        "maxLength": 200
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                   }
                 },
                 "required": [
@@ -617,7 +551,7 @@
                 ],
                 "additionalProperties": false
               },
-              "description": "The choices of a dropdown, as `{ label, value }`"
+              "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
             },
             "multiSelect": {
               "type": "boolean",
@@ -744,6 +678,21 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "extraInfo": {
+                    "type": "object",
+                    "properties": {
+                      "description": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "rightOfDescription": {
+                        "type": "string",
+                        "maxLength": 200
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                   }
                 },
                 "required": [
@@ -751,7 +700,7 @@
                 ],
                 "additionalProperties": false
               },
-              "description": "The choices of a dropdown, as `{ label, value }`"
+              "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
             },
             "multiSelect": {
               "type": "boolean",
@@ -869,6 +818,21 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "extraInfo": {
+                    "type": "object",
+                    "properties": {
+                      "description": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "rightOfDescription": {
+                        "type": "string",
+                        "maxLength": 200
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                   }
                 },
                 "required": [
@@ -876,7 +840,7 @@
                 ],
                 "additionalProperties": false
               },
-              "description": "The choices of a dropdown, as `{ label, value }`"
+              "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
             },
             "multiSelect": {
               "type": "boolean",
@@ -1001,6 +965,21 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "extraInfo": {
+                    "type": "object",
+                    "properties": {
+                      "description": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "rightOfDescription": {
+                        "type": "string",
+                        "maxLength": 200
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                   }
                 },
                 "required": [
@@ -1008,7 +987,7 @@
                 ],
                 "additionalProperties": false
               },
-              "description": "The choices of a dropdown, as `{ label, value }`"
+              "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
             },
             "multiSelect": {
               "type": "boolean",
@@ -1072,7 +1051,7 @@
               "minLength": 1,
               "maxLength": 2048,
               "pattern": "^[^?#]+$",
-              "description": "a path or an absolute URL with no `?` and no `#`, which answers with the choices as a list of strings or `{ label, value }`"
+              "description": "a path or an absolute URL with no `?` and no `#`, which answers with the choices as a list of strings or `{ label, value, extraInfo }`"
             },
             "optionsMethod": {
               "type": "string",
@@ -1249,6 +1228,21 @@
                                   "type": "null"
                                 }
                               ]
+                            },
+                            "extraInfo": {
+                              "type": "object",
+                              "properties": {
+                                "description": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                },
+                                "rightOfDescription": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                }
+                              },
+                              "additionalProperties": false,
+                              "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                             }
                           },
                           "required": [
@@ -1256,7 +1250,7 @@
                           ],
                           "additionalProperties": false
                         },
-                        "description": "The choices of a dropdown, as `{ label, value }`"
+                        "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
                       },
                       "multiSelect": {
                         "type": "boolean",
@@ -1365,6 +1359,21 @@
                                   "type": "null"
                                 }
                               ]
+                            },
+                            "extraInfo": {
+                              "type": "object",
+                              "properties": {
+                                "description": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                },
+                                "rightOfDescription": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                }
+                              },
+                              "additionalProperties": false,
+                              "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                             }
                           },
                           "required": [
@@ -1372,7 +1381,7 @@
                           ],
                           "additionalProperties": false
                         },
-                        "description": "The choices of a dropdown, as `{ label, value }`"
+                        "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
                       },
                       "multiSelect": {
                         "type": "boolean",
@@ -1481,6 +1490,21 @@
                                   "type": "null"
                                 }
                               ]
+                            },
+                            "extraInfo": {
+                              "type": "object",
+                              "properties": {
+                                "description": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                },
+                                "rightOfDescription": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                }
+                              },
+                              "additionalProperties": false,
+                              "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                             }
                           },
                           "required": [
@@ -1488,7 +1512,7 @@
                           ],
                           "additionalProperties": false
                         },
-                        "description": "The choices of a dropdown, as `{ label, value }`"
+                        "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
                       },
                       "multiSelect": {
                         "type": "boolean",
@@ -1605,6 +1629,21 @@
                                   "type": "null"
                                 }
                               ]
+                            },
+                            "extraInfo": {
+                              "type": "object",
+                              "properties": {
+                                "description": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                },
+                                "rightOfDescription": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                }
+                              },
+                              "additionalProperties": false,
+                              "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                             }
                           },
                           "required": [
@@ -1612,7 +1651,7 @@
                           ],
                           "additionalProperties": false
                         },
-                        "description": "The choices of a dropdown, as `{ label, value }`"
+                        "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
                       },
                       "multiSelect": {
                         "type": "boolean",
@@ -1623,13 +1662,9 @@
                         "const": "boolean"
                       },
                       "value": {
-                        "anyOf": [
-                          {
-                            "type": "boolean"
-                          },
-                          {
-                            "type": "null"
-                          }
+                        "type": [
+                          "boolean",
+                          "null"
                         ]
                       }
                     },
@@ -1720,6 +1755,21 @@
                                   "type": "null"
                                 }
                               ]
+                            },
+                            "extraInfo": {
+                              "type": "object",
+                              "properties": {
+                                "description": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                },
+                                "rightOfDescription": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                }
+                              },
+                              "additionalProperties": false,
+                              "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                             }
                           },
                           "required": [
@@ -1727,7 +1777,7 @@
                           ],
                           "additionalProperties": false
                         },
-                        "description": "The choices of a dropdown, as `{ label, value }`"
+                        "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
                       },
                       "multiSelect": {
                         "type": "boolean",
@@ -1842,6 +1892,21 @@
                                   "type": "null"
                                 }
                               ]
+                            },
+                            "extraInfo": {
+                              "type": "object",
+                              "properties": {
+                                "description": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                },
+                                "rightOfDescription": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                }
+                              },
+                              "additionalProperties": false,
+                              "description": "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list"
                             }
                           },
                           "required": [
@@ -1849,7 +1914,7 @@
                           ],
                           "additionalProperties": false
                         },
-                        "description": "The choices of a dropdown, as `{ label, value }`"
+                        "description": "The choices of a dropdown, as `{ label, value, extraInfo }`"
                       },
                       "multiSelect": {
                         "type": "boolean",
@@ -1881,7 +1946,7 @@
                         "minLength": 1,
                         "maxLength": 2048,
                         "pattern": "^[^?#]+$",
-                        "description": "a path or an absolute URL with no `?` and no `#`, which answers with the choices as a list of strings or `{ label, value }`"
+                        "description": "a path or an absolute URL with no `?` and no `#`, which answers with the choices as a list of strings or `{ label, value, extraInfo }`"
                       },
                       "optionsMethod": {
                         "type": "string",
@@ -2005,7 +2070,7 @@
           "GET",
           "POST"
         ],
-        "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
+        "description": "How FINOS Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
       },
       "category": {
         "type": "string",

@@ -108,11 +108,21 @@ const NullableScalar = z.union([
 const OptionItem = z.strictObject({
   label: Label,
   value: NullableScalar.optional(),
+  extraInfo: z
+    .strictObject({
+      description: Label.optional(),
+      rightOfDescription: Label.optional(),
+    })
+    .meta({
+      description:
+        "Two short texts shown at the right of the choice, which the search also matches: `description`, then `rightOfDescription`. A dropdown of several choices shows them, and so does an endpoint param's list",
+    })
+    .optional(),
 });
 const Options = z
   .array(OptionItem)
   .max(LIMITS.options)
-  .meta({ description: "The choices of a dropdown, as `{ label, value }`" });
+  .meta({ description: "The choices of a dropdown, as `{ label, value, extraInfo }`" });
 
 const ParamFields = {
   paramName: z.string().min(1).max(LIMITS.paramName).meta({
@@ -190,7 +200,7 @@ const OptionsParams = z.record(z.string().max(LIMITS.paramName), Scalar).meta({
 });
 const OptionsEndpoint = Endpoint.meta({
   description:
-    "a path or an absolute URL with no `?` and no `#`, which answers with the choices as a list of strings or `{ label, value }`",
+    "a path or an absolute URL with no `?` and no `#`, which answers with the choices as a list of strings or `{ label, value, extraInfo }`",
 });
 const OptionsMethod = z.enum(HTTP_METHODS).meta({
   description: "How the options are requested: GET (the default) or POST",
@@ -221,15 +231,6 @@ const TabsParam = z.strictObject({
   value: z
     .string()
     .max(LIMITS.textValue)
-    .meta({ description: "The default value" })
-    .nullish(),
-});
-const TickerParam = z.strictObject({
-  ...ParamCommon,
-  type: z.literal("ticker"),
-  value: z
-    .string()
-    .max(LIMITS.shortValue)
     .meta({ description: "The default value" })
     .nullish(),
 });
@@ -342,7 +343,6 @@ const FormParam = z.strictObject({
 export const ParamDefContract = z.discriminatedUnion("type", [
   TextParam,
   TabsParam,
-  TickerParam,
   DateParam,
   NumberParam,
   BooleanParam,
@@ -387,7 +387,7 @@ export const WidgetBaseContract = z.strictObject({
     .enum(HTTP_METHODS)
     .meta({
       description:
-        "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs",
+        "How FINOS Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs",
     })
     .optional(),
   category: z

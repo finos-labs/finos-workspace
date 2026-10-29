@@ -17,7 +17,7 @@ export default function ChangelogDialog(props: Props) {
     <BaseDialog className="max-h-[80vh] lg:max-w-3xl xl:max-w-5xl" {...props}>
       <DialogTitle>Changelog</DialogTitle>
       <DialogDescription className="sr-only">
-        View the changelog for the Workspace.
+        View the changelog for the FINOS Workspace.
       </DialogDescription>
       <div className="flex-1 flex h-full min-h-0 dark:bg-dark-750">
         <ScrollspyRoot>

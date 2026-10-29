@@ -33,7 +33,7 @@ function createWrapper() {
   );
 }
 
-describe("useJsonData and the Workspace session", () => {
+describe("useJsonData and the FINOS Workspace session", () => {
   setupMSW();
 
   it("sends the session cookie and the client header with a GET of the API's files", async () => {
@@ -57,7 +57,7 @@ describe("useJsonData and the Workspace session", () => {
     expect(seen).toEqual([{ client: "web", credentials: "include", auth: null }]);
   });
 
-  it("sends no Workspace credential to other hosts", async () => {
+  it("sends no FINOS Workspace credential to other hosts", async () => {
     const seen: Seen[] = [];
     server.use(
       http.get("https://example.com/data", ({ request }) => {
@@ -83,7 +83,7 @@ describe("useJsonData and the Workspace session", () => {
     expect(seen).toEqual([{ client: null, credentials: "omit", auth: null }]);
   });
 
-  it("sends no Workspace credential to a host that only contains the API's URL", async () => {
+  it("sends no FINOS Workspace credential to a host that only contains the API's URL", async () => {
     const seen: Seen[] = [];
     server.use(
       http.get("https://example.com/data", ({ request }) => {
@@ -159,7 +159,9 @@ describe("fetchBackend", () => {
     const seen: Seen[] = [];
     server.use(apiHandler(url, seen));
 
-    await expect(fetchBackend(url)).rejects.toThrow("only calls the Workspace API");
+    await expect(fetchBackend(url)).rejects.toThrow(
+      "only calls the FINOS Workspace API",
+    );
     expect(seen).toEqual([]);
   });
 });

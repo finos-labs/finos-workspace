@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import widget, { contextOf, csvOf, identifier, isNumeric, SOURCES, stateOf } from "../src/entry.js";
+import widget, { contextOf, csvOf, formatCell, gridColumns, gridOptions, gridRows, identifier, isNumeric, SOURCES, stateOf } from "../src/entry.js";
 
 test("a name is quoted only when it has to be", () => {
   assert.equal(identifier("readings"), "readings");
@@ -65,4 +65,26 @@ test("nothing to export before a query ran", async () => {
   assert.deepEqual(await exports.exportOptions(), []);
   assert.equal(await exports.exportData("csv"), null);
   assert.equal(await exports.copilotContext(), null);
+});
+
+test("a result as AgGrid columns and rows, addressed by position", () => {
+  const result = {
+    columns: [{ name: "site", type: "VARCHAR" }, { name: "n", type: "BIGINT" }, { name: "n", type: "BIGINT" }, { name: "a.b", type: "VARCHAR" }],
+    rows: [["north", 1234567, 2, null], ["south", 3, 4, "x"]],
+    truncated: false,
+  };
+  const columns = gridColumns(result);
+  assert.deepEqual(columns.map((c) => [c.field, c.headerName]), [["0", "site"], ["1", "n"], ["2", "n"], ["3", "a.b"]]);
+  assert.equal(columns[0].type, undefined);
+  assert.equal(columns[1].type, "numericColumn");
+  assert.deepEqual(gridRows(result)[0], { 0: "north", 1: 1234567, 2: 2, 3: null });
+  assert.equal(gridOptions(result).pagination, false);
+  assert.equal(gridOptions({ ...result, rows: Array(101).fill(result.rows[0]) }).pagination, true);
+});
+
+test("a cell shows NULL, grouped numbers and JSON", () => {
+  assert.equal(formatCell({ value: null }), "NULL");
+  assert.equal(formatCell({ value: 1234567.5 }), new Intl.NumberFormat(undefined, { maximumFractionDigits: 6 }).format(1234567.5));
+  assert.equal(formatCell({ value: "12345678901234567890" }), "12345678901234567890");
+  assert.equal(formatCell({ value: { a: 1 } }), '{"a":1}');
 });

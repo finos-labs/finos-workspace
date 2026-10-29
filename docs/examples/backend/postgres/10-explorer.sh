@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-password="$(cat /run/secrets/explorer_password)"
+password="$EXPLORER_PASSWORD"
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -v password="$password" <<'SQL'
 CREATE ROLE explorer LOGIN PASSWORD :'password';

@@ -31,7 +31,7 @@ describe("buildMessages", () => {
     expect(c).toContain("beta body");
   });
 
-  it("gives a picked skill of Ines's its instructions, which the Workspace does not send", () => {
+  it("gives a picked skill of Ines's its instructions, which the FINOS Workspace does not send", () => {
     const out = buildMessages(
       req({
         selected_skills: [
@@ -42,7 +42,7 @@ describe("buildMessages", () => {
     );
     const c = out[1].content as string;
     expect(c).toContain('<skill name="html-chart">');
-    expect(c).toContain("# Workspace chart colors skill");
+    expect(c).toContain("# FINOS Workspace chart colors skill");
     expect(c).not.toContain("not-a-skill");
   });
 

@@ -91,7 +91,7 @@ export function FileExtraSettings(props: FileExtraSettingsProps) {
                 <FormTextarea
                   className="min-h-[173px] max-h-[173px]"
                   label={<p className="">Description</p>}
-                  placeholder="Investment report on NVDA written by Bobby Axelrod at Axe Capital"
+                  placeholder="What this file contains"
                   {...field}
                 />
               </div>

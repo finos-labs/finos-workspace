@@ -12,7 +12,6 @@ const createMockWidget = (overrides = {}) => ({
   description: "A test widget",
   source: "workspace",
   external: false,
-  supportedAssetClasses: [],
   ...overrides,
 });
 
@@ -180,38 +179,6 @@ describe("useFilterWidgets", () => {
       expect(
         result.current.some((w) => w.category?.toLowerCase() === "shared backends"),
       ).toBe(true);
-    });
-  });
-
-  describe("Asset Class Handling", () => {
-    it("creates multiple entries for widgets with multiple supported asset classes", () => {
-      const widgets = [
-        createMockWidget({
-          widgetId: "iframe",
-          name: "Multi-Asset Chart",
-          supportedAssetClasses: ["equity", "etf"],
-        }),
-      ];
-
-      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
-
-      expect(result.current.some((w) => w.category === "equity")).toBe(true);
-      expect(result.current.some((w) => w.category === "etf")).toBe(true);
-    });
-
-    it("uses original category for widgets with only all asset class", () => {
-      const widgets = [
-        createMockWidget({
-          widgetId: "iframe",
-          name: "Universal Chart",
-          category: "Equity",
-          supportedAssetClasses: ["all"],
-        }),
-      ];
-
-      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
-
-      expect(result.current[0].category.toLowerCase()).toBe("equity");
     });
   });
 

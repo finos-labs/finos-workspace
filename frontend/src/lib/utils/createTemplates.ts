@@ -6,50 +6,16 @@ import {
 } from "~/components/DataConnectors/common/helpers";
 import type { GroupTypeT, WidgetJsonT, WidgetT } from "~/components/types";
 import { someTruthy } from "~/lib/utils/values";
-import type { AppState, GridLayout, Items, Ticker, Widget } from "../state/app";
+import type { AppState, GridLayout, Items, Widget } from "../state/app";
 import type { BackendTemplate, Source } from "../state/backendConnector";
 import { useCopilotStore } from "../state/copilot";
 import { useThemeStore } from "../state/theme";
 import type { TabLayout } from "../templates";
 import { backendTemplateSchema } from "../types/app";
-import {
-  addToWidgetParamGroups,
-  getGridData,
-  getTickerParamName,
-  recursiveCleanKeys,
-} from "./app";
+import { addToWidgetParamGroups, getGridData, recursiveCleanKeys } from "./app";
 import { COLORS, slugify, uuidv4 } from "./utils";
 import { getJsonWidget } from "./widget";
 import { currentDateModifier } from "./widgetParams";
-
-function getTickerSymbolsFromParams(
-  params: Record<string, unknown>,
-  paramName: string,
-) {
-  const value = params[paramName];
-  if (typeof value === "string") {
-    return value
-      .split(",")
-      .map((symbol) => symbol.trim())
-      .filter(Boolean);
-  }
-  if (value && typeof value === "object" && "symbol" in value) {
-    const symbol = String((value as { symbol?: unknown }).symbol || "").trim();
-    return symbol ? [symbol] : [];
-  }
-  return [];
-}
-
-function tickerFromSymbol(symbol: string): Ticker {
-  const normalizedSymbol = symbol.toUpperCase();
-  return {
-    id: normalizedSymbol,
-    symbol: normalizedSymbol,
-    name: normalizedSymbol,
-    category: "equity",
-    type: "stock",
-  };
-}
 
 export function getUntouchedAppTabInfo(
   templateId: BackendTemplate["id"],
@@ -151,11 +117,11 @@ export async function createCustomTemplateTab({
         id: groupId,
         color,
         name: group.name,
-        type: group.type ?? "endpointParam",
+        type: group.type,
         groupById: group.paramName,
         widgetIds: group.widgetIds,
         value: group.defaultValue,
-      } as GroupTypeT<"endpointParam" | "param" | "ticker"> & { widgetIds: string[] };
+      } as GroupTypeT<"endpointParam" | "param"> & { widgetIds: string[] };
     }) || [];
 
   let hasNavigationBar = false;
@@ -229,21 +195,7 @@ export async function createCustomTemplateTab({
             group.groupById = endpointParams?.[group?.groupById];
           }
 
-          if (group?.type === "param" || group?.type === "endpointParam") {
-            widget.paramGroups = addToWidgetParamGroups(widget?.paramGroups, group);
-          }
-
-          if (group?.type === "ticker") {
-            if (!group?.value?.symbol) {
-              group.value = tickerFromSymbol(group?.value as unknown as string);
-            }
-
-            widget.data = {
-              ...(widget.data ?? {}),
-              mainTicker: group.value,
-            };
-            widget.groupId = group.id;
-          }
+          widget.paramGroups = addToWidgetParamGroups(widget?.paramGroups, group);
         }
 
         widget.params = updateParamOrder(state?.paramOrder, widget.params ?? []);
@@ -256,30 +208,6 @@ export async function createCustomTemplateTab({
             ...(widget.storage ?? {}),
             ...(storage ?? {}),
             params,
-          };
-        }
-
-        const tickerParamName = getTickerParamName(widget as Widget);
-        const tickerSymbols = tickerParamName
-          ? getTickerSymbolsFromParams(params, tickerParamName)
-          : [];
-        const tickerSymbol = tickerSymbols[0];
-        if (tickerParamName && tickerSymbol) {
-          const mainTicker = tickerFromSymbol(tickerSymbol);
-          widget.data = {
-            ...(widget.data ?? {}),
-            mainTicker,
-          };
-          widget.storage = {
-            ...(widget.storage ?? {}),
-            params: {
-              ...(widget.storage?.params ?? {}),
-              ...params,
-              [tickerParamName]:
-                typeof params[tickerParamName] === "string"
-                  ? tickerSymbols.join(",")
-                  : mainTicker.symbol,
-            },
           };
         }
 

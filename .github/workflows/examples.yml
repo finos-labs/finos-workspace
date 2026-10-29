@@ -30,6 +30,21 @@ jobs:
       - run: npm run build
       - run: npm test
 
+  ag-grid:
+    name: AgGrid
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs/examples/ag-grid
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.12.1
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm test
+
   sql-explorer:
     name: SQL explorer
     runs-on: ubuntu-latest
@@ -49,7 +64,7 @@ jobs:
       - run: npm run build
       - run: |
           python -m venv .venv
-          .venv/bin/pip install -r backend/requirements.txt pytest==9.1.1 httpx2==2.13.1
+          .venv/bin/pip install -r ../backend/requirements.txt pytest==9.1.1 httpx2==2.13.1
       - name: Start a Postgres to test against
         run: |
           password="$(openssl rand -hex 24)"
@@ -59,3 +74,27 @@ jobs:
           echo "SQL_EXPLORER_TEST_POSTGRES_FILE=$RUNNER_TEMP/postgres_url" >> "$GITHUB_ENV"
           until docker exec explorer-test-postgres pg_isready -q -h 127.0.0.1 -U postgres; do sleep 1; done
       - run: npm test
+
+  backend:
+    name: Examples backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.12.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Build the SQL explorer package the image carries
+        working-directory: docs/examples/sql-explorer
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+      - name: Test the backend and its container
+        working-directory: docs/examples/backend
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt pytest==9.1.1 httpx2==2.13.1
+          .venv/bin/python -m pytest -q tests

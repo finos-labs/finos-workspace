@@ -445,7 +445,6 @@ export function groupedParamValues(
 ): Record<string, StoredParamValue> {
   const values: Record<string, StoredParamValue> = {};
   for (const group of groups) {
-    if (group.type !== "param" && group.type !== "endpointParam") continue;
     if (group.value === null || group.value === undefined) continue;
     const paramName = getGroupParamName(group, paramDefs);
     if (paramName) values[paramName] = group.value;

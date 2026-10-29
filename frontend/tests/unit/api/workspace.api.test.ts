@@ -94,7 +94,7 @@ const dashboardWidget = createMockWidget({
   params: [{ paramName: "symbol", type: "text" }],
 });
 
-describe("Workspace API", () => {
+describe("FINOS Workspace API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockTriggerCustomEvent.mockReturnValue(true);
@@ -522,57 +522,6 @@ describe("Workspace API", () => {
       );
     });
 
-    it("should handle a ticker parameter through the widget update function", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        params: [{ paramName: "ticker", type: "ticker" }],
-      });
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { ticker: "AAPL" },
-      });
-
-      expect(mockTriggerCustomEvent).toHaveBeenCalledWith(
-        `updateWidget-${widgetUuid}`,
-        expect.any(Function),
-      );
-    });
-
-    it("should not set mainTicker when ticker value is null string", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        params: [{ paramName: "ticker", type: "ticker" }],
-      });
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { ticker: "null" },
-      });
-
-      expect(mockUpdateWidgetInStore.mock.calls[0][1].data?.mainTicker).toBeUndefined();
-    });
-
-    it("should not set mainTicker when ticker value is empty", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        params: [{ paramName: "ticker", type: "ticker" }],
-      });
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { ticker: "" },
-      });
-
-      expect(mockUpdateWidgetInStore.mock.calls[0][1].data?.mainTicker).toBeUndefined();
-    });
-
     it("should update the text of a markdown note", async () => {
       const mockWidget = createMockWidget({
         id: widgetUuid,
@@ -627,117 +576,17 @@ describe("Workspace API", () => {
       }
     });
 
-    it("should set mainTicker in widget data from the new symbol", async () => {
+    it("should persist the updated params to the store", async () => {
       const mockWidget = createMockWidget({
         id: widgetUuid,
-        params: [{ paramName: "symbol", type: "ticker" }],
-      });
-      const mockTicker = {
-        symbol: "TSLA",
-        id: "TSLA",
-        category: "equity",
-        type: "stock",
-      };
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { symbol: "TSLA" },
-      });
-
-      const updateFnCall = mockTriggerCustomEvent.mock.calls.find(
-        (call) => call[0] === `updateWidget-${widgetUuid}`,
-      );
-
-      expect(updateFnCall).toBeDefined();
-
-      if (typeof updateFnCall?.[1] === "function") {
-        const updateFn = updateFnCall[1];
-        const result = updateFn(mockWidget);
-
-        expect(result.data).toEqual(
-          expect.objectContaining({
-            mainTicker: mockTicker,
-          }),
-        );
-      }
-    });
-
-    it("should handle widget with no ticker params", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        params: [{ paramName: "date", type: "date" }],
+        params: [{ paramName: "region", type: "text" }],
       });
 
       mockGetTabWidgetById.mockReturnValue(mockWidget);
       mockTriggerCustomEvent.mockReturnValue(true);
 
       await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { date: "2024-01-01" },
-      });
-
-      expect(mockUpdateWidgetInStore.mock.calls[0][1].data?.mainTicker).toBeUndefined();
-    });
-
-    it("should preserve existing mainTicker metadata when the symbol changes", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        params: [{ paramName: "symbol", type: "ticker" }],
-        data: {
-          mainTicker: {
-            symbol: "NVDA",
-            id: "NVDA",
-            category: "crypto",
-            type: "index",
-            color: "#abc123",
-          },
-        },
-      });
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { symbol: "TSLA" },
-      });
-
-      const updateFnCall = mockTriggerCustomEvent.mock.calls.find(
-        (call) => call[0] === `updateWidget-${widgetUuid}`,
-      );
-
-      expect(updateFnCall?.[1]).toBeTypeOf("function");
-      if (typeof updateFnCall?.[1] === "function") {
-        const result = updateFnCall[1](mockWidget);
-        expect(result.data.mainTicker).toEqual(
-          expect.objectContaining({
-            symbol: "TSLA",
-            id: "TSLA",
-            category: "crypto",
-            type: "index",
-            color: "#abc123",
-          }),
-        );
-      }
-    });
-
-    it("should persist the updated widget (with mainTicker + params) to the store", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        params: [{ paramName: "symbol", type: "ticker" }],
-      });
-      const mockTicker = {
-        symbol: "TSLA",
-        id: "TSLA",
-        category: "equity",
-        type: "stock",
-      };
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { symbol: "TSLA" },
+        dataArgs: { region: "north" },
       });
 
       expect(mockUpdateWidgetInStore).toHaveBeenCalledTimes(1);
@@ -745,9 +594,8 @@ describe("Workspace API", () => {
         dashboardId,
         expect.objectContaining({
           id: widgetUuid,
-          data: expect.objectContaining({ mainTicker: mockTicker }),
           storage: expect.objectContaining({
-            params: expect.objectContaining({ symbol: "TSLA" }),
+            params: expect.objectContaining({ region: "north" }),
           }),
         }),
       );
@@ -1228,36 +1076,6 @@ describe("Workspace API", () => {
       expect(mockTriggerCustomEvent).toHaveBeenCalledTimes(3);
     });
 
-    it("should build a minimal mainTicker for a symbol the widget has not seen", async () => {
-      const mockWidget = createMockWidget({
-        params: [{ paramName: "ticker", type: "ticker" }],
-      });
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget("dashboard-123", "widget", {
-        dataArgs: { ticker: "UNKNOWN" },
-      });
-
-      const updateFnCall = mockTriggerCustomEvent.mock.calls.find(
-        (call) => call[0] === "updateWidget-widget",
-      );
-
-      expect(updateFnCall?.[1]).toBeTypeOf("function");
-      if (typeof updateFnCall?.[1] === "function") {
-        const result = updateFnCall[1](mockWidget);
-        expect(result.data?.mainTicker).toEqual(
-          expect.objectContaining({
-            symbol: "UNKNOWN",
-            id: "UNKNOWN",
-            category: "equity",
-            type: "stock",
-          }),
-        );
-      }
-    });
-
     it("should propagate error when addWidget fails", async () => {
       const mockWidgetDef = createMockWidget({ widgetId: "test-widget" });
       const addWidgetError = new Error("Failed to add widget to dashboard");
@@ -1268,25 +1086,6 @@ describe("Workspace API", () => {
       await expect(
         createWidget("dashboard-123", "workspace", "test-widget", {}),
       ).rejects.toThrow("Failed to add widget to dashboard");
-    });
-
-    it("should handle multiple ticker type params (uses first one)", async () => {
-      const mockWidget = createMockWidget({
-        params: [
-          { paramName: "primaryTicker", type: "ticker" },
-          { paramName: "secondaryTicker", type: "ticker" },
-        ],
-      });
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget("dashboard-123", "widget", {
-        dataArgs: { primaryTicker: "AAPL", secondaryTicker: "MSFT" },
-      });
-
-      expect(mockUpdateWidgetInStore.mock.calls[0][1].data?.mainTicker).toEqual(
-        expect.objectContaining({ symbol: "AAPL", id: "AAPL" }),
-      );
     });
 
     it("should handle widget with undefined params array", async () => {

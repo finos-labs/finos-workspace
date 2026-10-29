@@ -20,10 +20,10 @@ function findFunctionCall(events: SSEEvent[], fn: string): SSEEvent | undefined 
   );
 }
 
-const tickerParam = { name: "symbol", type: "string", description: "" };
+const symbolParam = { name: "symbol", type: "string", description: "" };
 const widgets: Widget[] = [
-  { uuid: "u-price", origin: "example", widget_id: "price", name: "Price", description: "", params: [tickerParam] },
-  { uuid: "u-news", origin: "example", widget_id: "news", name: "News", description: "", params: [tickerParam] },
+  { uuid: "u-price", origin: "example", widget_id: "price", name: "Price", description: "", params: [symbolParam] },
+  { uuid: "u-news", origin: "example", widget_id: "news", name: "News", description: "", params: [symbolParam] },
 ];
 
 describe("create_app — in-process execution", () => {

@@ -160,7 +160,7 @@ export interface AppsJsonTab {
 
 export interface AppsJsonGroup {
   name: string;
-  type: "param" | "endpointParam" | "ticker";
+  type: "param" | "endpointParam";
   paramName?: string;
   defaultValue: string;
   widgetIds: string[];

@@ -9,8 +9,9 @@ import composed from "../../../mocks/widgets-schema.json";
 const schema = composed as unknown as ComposedWidgetsSchema;
 const ok = { name: "N", description: "D", endpoint: "/n", type: "markdown" };
 
-const problems = (widget: Record<string, unknown>) =>
+const check = (widget: Record<string, unknown>) =>
   validateWidgetDefinition(schema, widget);
+const problems = (widget: Record<string, unknown>) => check(widget).problems;
 
 describe("validating a widget against the composed schema", () => {
   it("accepts a definition that keeps to the contract", () => {
@@ -46,13 +47,73 @@ describe("validating a widget against the composed schema", () => {
     ]);
   });
 
-  it("reports each problem once, at its pointer", () => {
-    expect(problems({ ...ok, defaultViz: "x" })).toEqual([
-      { pointer: "", message: "unknown key `defaultViz`" },
-    ]);
+  it("lists a key the contract does not define, at any depth, without failing the widget", () => {
+    expect(check({ ...ok, defaultViz: "x" })).toEqual({
+      problems: [],
+      unknownKeys: ["/defaultViz"],
+    });
     expect(
-      problems({ ...ok, params: [{ paramName: "p", type: "text", color: 1 }] }),
-    ).toEqual([{ pointer: "/params/0", message: "unknown key `color`" }]);
+      check({ ...ok, params: [{ paramName: "p", type: "text", color: 1 }] }),
+    ).toEqual({ problems: [], unknownKeys: ["/params/0/color"] });
+    expect(
+      check({
+        ...ok,
+        type: "test_chart",
+        data: { test_chart: { title: "T", series: [{ field: "a", colour: "red" }] } },
+      }),
+    ).toEqual({ problems: [], unknownKeys: ["/data/test_chart/series/0/colour"] });
+    expect(
+      check({
+        ...ok,
+        "a/b~c": 1,
+        params: [{ paramName: "p", type: "number", value: "abc", color: 1 }],
+      }),
+    ).toEqual({
+      problems: [
+        {
+          pointer: "/params/0/value",
+          message: "must be a number or a string matching `^-?\\d*\\.?\\d*$` or null",
+        },
+      ],
+      unknownKeys: ["/a~1b~0c", "/params/0/color"],
+    });
+  });
+
+  it("accepts the extraInfo of a choice", () => {
+    expect(
+      check({
+        ...ok,
+        params: [
+          {
+            paramName: "region",
+            type: "text",
+            multiSelect: true,
+            options: [
+              {
+                label: "North",
+                value: "north",
+                extraInfo: { description: "Sites", rightOfDescription: "12" },
+              },
+            ],
+          },
+        ],
+      }),
+    ).toEqual({ problems: [], unknownKeys: [] });
+    expect(
+      check({
+        ...ok,
+        params: [
+          {
+            paramName: "region",
+            type: "text",
+            options: [{ label: "North", extraInfo: { note: "x" } }],
+          },
+        ],
+      }).unknownKeys,
+    ).toEqual(["/params/0/options/0/extraInfo/note"]);
+  });
+
+  it("reports each problem once, at its pointer", () => {
     expect(
       problems({ ...ok, params: [[{ paramName: "p", type: "number", value: "abc" }]] }),
     ).toEqual([
@@ -81,7 +142,7 @@ describe("validating a widget against the composed schema", () => {
       {
         pointer: "/params/0",
         message:
-          "`type` must be one of `text`, `tabs`, `ticker`, `date`, `number`, `boolean`, `button`, `endpoint`, `form`",
+          "`type` must be one of `text`, `tabs`, `date`, `number`, `boolean`, `button`, `endpoint`, `form`",
       },
     ]);
     expect(
@@ -91,7 +152,7 @@ describe("validating a widget against the composed schema", () => {
           {
             type: "form",
             endpoint: "/f",
-            inputParams: [{ paramName: "a", type: "ticker" }],
+            inputParams: [{ paramName: "a", type: "tabs" }],
           },
         ],
       }),
@@ -120,7 +181,8 @@ describe("validating a widget against the composed schema", () => {
       [
         {
           pointer: "",
-          message: "theme: query params the Workspace adds to this type's requests",
+          message:
+            "theme: query params the FINOS Workspace adds to this type's requests",
         },
       ],
     );

@@ -43,27 +43,6 @@ export const RefetchIntervalSchema = z.union([
   CronExpressionSchema,
 ]);
 
-export const TickerSchema = z.object({
-  id: z.string(),
-  symbol: z.string(),
-  category: z.enum(
-    ["crypto", "equity", "forex", "index", "futures", "derivative", "etf", "country"],
-    unionErrorMap("Invalid input"),
-  ),
-  color: z.string().nullish(),
-  type: z.string().nullish(),
-  name: z.string().nullish(),
-  exchange: z.string().nullish(),
-  currency: z.string().nullish(),
-  industry: z.string().nullish(),
-  sector: z.string().nullish(),
-  country: z.string().nullish(),
-  cik: z.string().nullish(),
-  isin: z.string().nullish(),
-  cusip: z.string().nullish(),
-  has_options: z.boolean().nullish(),
-});
-
 export type EditorLanguage = (typeof EditorLanguages)[number];
 
 const ParamDefSchemaBase = z
@@ -76,9 +55,9 @@ const ParamDefSchemaBase = z
     row: z.number().optional(),
     type: z
       .enum(
-        ["text", "date", "ticker", "number", "boolean", "endpoint", "button", "tabs"],
+        ["text", "date", "number", "boolean", "endpoint", "button", "tabs"],
         unionErrorMap(
-          "Supported types are text, date, ticker, number, boolean, endpoint, tabs",
+          "Supported types are text, date, number, boolean, endpoint, tabs",
         ),
       )
       .default("text")
@@ -96,6 +75,12 @@ const ParamDefSchemaBase = z
           .object({
             label: z.string(),
             value: z.union([z.string(), z.number(), z.boolean(), z.null()]).nullish(),
+            extraInfo: z
+              .object({
+                description: z.string().optional(),
+                rightOfDescription: z.string().optional(),
+              })
+              .optional(),
           })
           .optional(),
       )
@@ -146,10 +131,6 @@ const ParamValueSchema = z.discriminatedUnion("type", [
       )
       .optional(),
   }).meta({ id: "TabsParamDef" }),
-  ParamDefSchemaBase.extend({
-    type: z.literal("ticker"),
-    value: z.string().nullish(),
-  }).meta({ id: "TickerParamDef" }),
   ParamDefSchemaBase.extend({
     type: z.literal("date"),
     value: z.string().nullish(),
@@ -388,7 +369,7 @@ const templateShapeDefinition = {
         .object({
           name: z.string(),
           paramName: z.string().optional(),
-          type: z.string(),
+          type: z.enum(["param", "endpointParam"]),
           widgetIds: z.array(z.string()).optional(),
           defaultValue: z.unknown().nullish(),
         })
@@ -447,7 +428,6 @@ export const WidgetSchemaBase = z.object({
   name: z.string().optional(),
   showTitle: z.boolean().default(true).nullish(),
   description: z.string().optional(),
-  groupId: z.string().nullish(),
   groupById: z.string().nullish(),
   innerTab: z.string().optional(),
   disableRetrievalForCopilot: z.boolean().optional(),
@@ -475,8 +455,6 @@ export const InternalWidgetSchema = WidgetSchemaBase.extend({
     .optional(),
   data: z
     .object({
-      mainTicker: TickerSchema.optional(),
-      secondaryTickers: z.array(TickerSchema).optional(),
       html: z.string().optional(),
     })
     .optional()
@@ -497,12 +475,7 @@ export const ExternalWidgetSchema = WidgetSchemaBase.extend({
       method: z.enum(["GET", "POST"]),
     })
     .optional(),
-  data: z
-    .looseObject({
-      mainTicker: TickerSchema.optional(),
-    })
-    .optional()
-    .default({}),
+  data: z.looseObject({}).optional().default({}),
   source: z.union([z.array(z.string()), z.string()]).nullish(),
   sourceId: z.string().nullish(),
   sourceName: z.string().nullish(),

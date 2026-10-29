@@ -11,7 +11,7 @@ related:
 
 # Layout Grid and Groups
 
-Workspace lays out widgets on a fixed grid and supports param synchronization via named groups. Both live in `apps.json`.
+FINOS Workspace lays out widgets on a fixed grid and supports param synchronization via named groups. Both live in `apps.json`.
 
 ## Grid
 
@@ -74,7 +74,7 @@ Group object shape:
 - [ ] Every layout item uses `i` and matches a key in `widgets.json`.
 - [ ] Every widget that shares a parameter has `"groups": ["Group N"]` in its layout entry, is listed in that group's `widgetIds`, and declares the matching param.
 - [ ] Widgets do not overlap and fit in the 40 columns.
-- [ ] Open the app in Workspace and change the shared param in one widget — confirm the others refresh.
+- [ ] Open the app in FINOS Workspace and change the shared param in one widget — confirm the others refresh.
 
 ## What this spec does not cover
 

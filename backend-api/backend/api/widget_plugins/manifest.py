@@ -96,9 +96,9 @@ class HostTarget(BaseModel):
     @model_validator(mode="after")
     def supported(self):
         if self.api != HOST_API:
-            raise ValueError(f"targets host API {self.api}; this Workspace implements {HOST_API}")
+            raise ValueError(f"targets host API {self.api}; this FINOS Workspace implements {HOST_API}")
         if self.afm != HOST_AFM:
-            raise ValueError(f"follows AFM {self.afm}; this Workspace implements {HOST_AFM}")
+            raise ValueError(f"follows AFM {self.afm}; this FINOS Workspace implements {HOST_AFM}")
         return self
 
 
@@ -278,7 +278,7 @@ class Widget(BaseModel):
             raise ValueError("a type is handled twice")
         for permission in self.permissions:
             if permission in PERMISSIONS_LATER:
-                raise ValueError(f"{permission} is not available on this Workspace yet")
+                raise ValueError(f"{permission} is not available on this FINOS Workspace yet")
             if permission not in PERMISSIONS:
                 raise ValueError(f"{permission!r} is not a host permission")
         if len(set(self.permissions)) != len(self.permissions):

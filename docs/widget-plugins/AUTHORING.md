@@ -2,13 +2,13 @@
 
 Files: [README](README.md) · **AUTHORING** · [WIDGETS-JSON](WIDGETS-JSON.md) · [SECURITY](SECURITY.md)
 
-The reference for people who build widget plugins for Workspace. README says how a deployment runs plugins and SECURITY what the sandbox enforces; this file says what to write.
+The reference for people who build widget plugins for FINOS Workspace. README says how a deployment runs plugins and SECURITY what the sandbox enforces; this file says what to write.
 
 ## 1. What a plugin is
 
-A plugin is a package of files that adds widget types to Workspace. Its code is an [Anywidget front-end module](https://anywidget.dev/en/afm/) (AFM 0.11): the same `render({ model, el })` contract that Jupyter widgets use.
+A plugin is a package of files that adds widget types to FINOS Workspace. Its code is an [Anywidget front-end module](https://anywidget.dev/en/afm/) (AFM 0.11): the same `render({ model, el })` contract that Jupyter widgets use.
 
-- **It is placed, not installed.** Whoever deploys Workspace puts the package in the API's plugins directory. Nothing in the app uploads, fetches or installs a plugin.
+- **It is placed, not installed.** Whoever deploys FINOS Workspace puts the package in the API's plugins directory. Nothing in the app uploads, fetches or installs a plugin.
 - **It is reviewed before it runs.** A superuser reads what the version asks for and approves it. An organization's admin enables it and grants it to roles. A new version never replaces the active one until it is approved.
 - **It runs in a sandboxed frame.** Each widget instance gets its own `iframe` with an opaque origin, no storage, no cookies, no popups, and a Content Security Policy that allows no network unless the plugin declares hosts and an admin approves them. The host checks everything the frame asks for against the plugin's permissions.
 - **It never sees credentials.** The host fetches a widget's data and pushes it into the frame. A call that needs a key goes through a declared proxy or the plugin's own backend: the server adds the secret.
@@ -115,7 +115,7 @@ A manifest that asks for the permission `core:data:query` or has `signatures` is
 
 One plugin cannot handle the same type twice. When two plugins handle a type, the organization's admin chooses which renders it.
 
-A type you handle works with any backend whose `widgets.json` declares a widget of that type and whose endpoint returns what `response` describes. Workspace adds `theme=dark` or `theme=light` to that endpoint's query, the site's mode, and asks again when the user switches it, as it does for `markdown` and `html`. What each mode looks like is the backend author's to decide. `theme` and `raw` (4.2) are names the backend's widgets cannot use for query params of their own.
+A type you handle works with any backend whose `widgets.json` declares a widget of that type and whose endpoint returns what `response` describes. FINOS Workspace adds `theme=dark` or `theme=light` to that endpoint's query, the site's mode, and asks again when the user switches it, as it does for `markdown` and `html`. What each mode looks like is the backend author's to decide. `theme` and `raw` (4.2) are names the backend's widgets cannot use for query params of their own.
 
 ## 4. The module
 
@@ -316,7 +316,7 @@ The widget lists `"server": { "proxies": ["quote"] }` and the permission `core:p
 
 ## 8. A backend
 
-When the work cannot run in the browser or be written as a request template, the package can carry server-side code in `backend/`. Whoever deploys Workspace builds it, runs it as its own restricted process (a container with no privileges, no mounts of the deployment, and no network but a gateway to the API and an egress point to the hosts the admin approved), and lists it in `WIDGET_PLUGIN_BACKENDS`. The API is its only caller.
+When the work cannot run in the browser or be written as a request template, the package can carry server-side code in `backend/`. Whoever deploys FINOS Workspace builds it, runs it as its own restricted process (a container with no privileges, no mounts of the deployment, and no network but a gateway to the API and an egress point to the hosts the admin approved), and lists it in `WIDGET_PLUGIN_BACKENDS`. The API is its only caller.
 
 ```jsonc
 "secrets": [{ "name": "model_key", "purpose": "Authenticates to the forecast model" }],
@@ -357,7 +357,7 @@ The backend answers three requests, over HTTP on its internal address:
 
 - **Network.** `server.network` names what the backend contacts: https origins, and `tcp://host:port` for anything else, such as a database. The deployment enforces it around the backend. A host that belongs to the deployment rather than your package, such as its database, is added by a superuser's override; name it in your `purpose` texts and README.
 - **Arguments** are checked by the API against the route's `args` before the call (the types of section 7). A route's string may have a `maxLength` up to 32,768, since it travels in the call's JSON body; a proxy's stays at 2,048.
-- **The caller** is `{}`, or `{ "id": "<pseudonymous id>" }` when the admin approved `identity: "pseudonymous"`: stable for a user within your plugin, different in every other plugin, and never the user's name, email or Workspace id.
+- **The caller** is `{}`, or `{ "id": "<pseudonymous id>" }` when the admin approved `identity: "pseudonymous"`: stable for a user within your plugin, different in every other plugin, and never the user's name, email or FINOS Workspace id.
 - **Data of the user.** To read a data source you declare, send the call's token to the broker: `POST <API>/internal/plugin-broker/data/<data-source-id>` with `X-Workspace-Call: <token>`, `Origin: <the web app's origin>` (the deployment gives your backend that value; the API refuses a request from an origin it does not allow) and `{ "path": "/<path under the backend's URL>", "method": "GET", "query": {...}, "body": ... }`. It answers `{ "status", "content_type", "body" }`. The organization chooses which of its backends serves each data source, the user's own access applies, and the backend's credentials are added by the API; you never hold them. The token lasts 60 seconds and cannot be read or changed.
 - **Limits.** A route's `maxBytes` is at most 5 MiB (default 1 MiB) and `timeoutMs` at most 30 seconds (default 10); the deployment caps both. Calls are rate limited and at most 8 of a plugin run at once. After repeated failures (time-outs, errors, a 5xx) the API pauses calls to the backend for a short time. A 4xx you return is passed on as a refusal and does not count.
 - **In the frame,** a refused call rejects with `out_of_scope` for a route the widget does not list, `invalid_args`, `not_granted`, `rate_limited`, `timeout`, `too_large`, and otherwise `unavailable` (not registered, another version, paused, a secret not set, your error).
@@ -371,7 +371,7 @@ The backend answers three requests, over HTTP on its internal address:
 
 ## 10. Checking a package
 
-From `backend-api/backend` in the Workspace repository, run the server's own validator, offline:
+From `backend-api/backend` in the FINOS Workspace repository, run the server's own validator, offline:
 
 ```
 python -m scripts.plugin_check <plugins dir>/<plugin-id>/<version>
@@ -403,7 +403,7 @@ For proxies, set the secret on the plugin's Deployment page. A service on your o
 2. Map its trait names in `model.traits`.
 3. Replace what the Python side did: data comes from a backend endpoint through `data`, settings through `config`, and a round trip to code on a server through a proxy or a route of your own backend (section 8). Kernel messages do not exist.
 4. Remove storage, popups, alerts and cookies; keep preferences in `state`.
-5. Check it (section 10) and try it in your own Workspace, where the first failures are usually storage access and remote imports.
+5. Check it (section 10) and try it in your own FINOS Workspace, where the first failures are usually storage access and remote imports.
 
 ## 13. Before you publish
 

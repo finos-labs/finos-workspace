@@ -17,12 +17,12 @@ export const navigateWorkspaceSchema = {
     .string()
     .optional()
     .describe(
-      "Tab id (slug-form, e.g. 'aapl-analysis'). Required when operation='tab'.",
+      "Tab id (slug-form, e.g. 'quarterly-review'). Required when operation='tab'.",
     ),
 } as const;
 
 export const navigateWorkspaceDescription = describeTool(
-  "Navigate the Workspace browser to an existing dashboard or inner tab.",
+  "Navigate the FINOS Workspace browser to an existing dashboard or inner tab.",
   "Requires operation from {dashboard, tab}.",
   "For dashboard, pass dashboard_id. For tab, pass tab_id.",
   DASHBOARD_TARGETING_GUIDANCE,

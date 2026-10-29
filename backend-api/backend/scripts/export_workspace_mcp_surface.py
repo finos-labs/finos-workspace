@@ -12,7 +12,7 @@ from workspace_mcp.server import LIVE_RESOURCE_TAG, SERVER_INSTRUCTIONS, create_
 from workspace_mcp.state import BridgeSessionManager
 
 FIXTURE_NOTE = (
-    "Generated from the canonical Workspace MCP sidecar surface. Update this "
+    "Generated from the canonical FINOS Workspace MCP sidecar surface. Update this "
     "fixture only when the MCP contract changes intentionally."
 )
 
@@ -117,7 +117,7 @@ def fixture_payload() -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Export the Workspace MCP surface parity fixture.",
+        description="Export the FINOS Workspace MCP surface parity fixture.",
     )
     parser.add_argument(
         "-o",

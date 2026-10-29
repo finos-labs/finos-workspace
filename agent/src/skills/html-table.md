@@ -1,4 +1,4 @@
-# Workspace table colors skill
+# FINOS Workspace table colors skill
 
 1. **Fix the outer wrapper first**: Apply the theme background to the
 outermost element (`html`, `body`, `#root`, or top-level container) — not
@@ -7,7 +7,7 @@ the wrapper `width: 100%`, `min-height: 100%`. Keep the wrapper's own
 padding small (`8px 12px`) — the table should sit close to the widget's
 edges, not float inside a large margin.
 
-2. **Use these exact colors** (sampled from the real Workspace UI):
+2. **Use these exact colors** (sampled from the real FINOS Workspace UI):
 
 Light theme:
 
@@ -29,7 +29,7 @@ separation — don't add border colors.
 4. **Detect the active theme** (light/dark) from the workspace context
 and apply the matching set above — never hardcode one theme.
 
-5. **No in-content title**: Workspace already renders the widget's
+5. **No in-content title**: FINOS Workspace already renders the widget's
 `name` in its own title bar/chrome above the widget. Do not add an
 `<h1>`/header element repeating that name inside the HTML — it shows up
 twice. A short subtitle (e.g. "illustrative sample data") is fine on its

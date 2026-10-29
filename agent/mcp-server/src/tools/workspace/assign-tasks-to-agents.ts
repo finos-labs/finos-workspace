@@ -13,7 +13,7 @@ export const assignTasksToAgentsSchema = {
 } as const;
 
 export const assignTasksToAgentsDescription = describeTool(
-  "Assign tasks to configured external Workspace agents.",
+  "Assign tasks to configured external FINOS Workspace agents.",
   "Use task_requests items shaped like {id, description, assigned_holder_url, assigned_agent_id}.",
 );
 

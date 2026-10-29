@@ -1,6 +1,6 @@
 # Widget plugins
 
-Workspace loads widget types from external packages. A package is built outside this repository, placed on the server by whoever deploys Workspace, reviewed and approved by a superuser, and enabled for roles by an organization's admin. Each widget runs in its own sandboxed frame and never receives credentials.
+FINOS Workspace loads widget types from external packages. A package is built outside this repository, placed on the server by whoever deploys FINOS Workspace, reviewed and approved by a superuser, and enabled for roles by an organization's admin. Each widget runs in its own sandboxed frame and never receives credentials.
 
 | File | For |
 |---|---|
@@ -38,7 +38,7 @@ Nobody installs a plugin from the app. The app has no upload, no fetch from a UR
 ## 3. How it runs
 
 ```
-Browser tab (Workspace)
+Browser tab (FINOS Workspace)
   the host: PluginWidget fetches the widget's data with the user's session,
             pushes it into the frame, and checks every command against the
             widget's permissions
@@ -47,7 +47,7 @@ Browser tab (Workspace)
      the shell: the policy in a <meta> tag, a self-check (the canary),
                 then the plugin's module, checked against its digest
 
-Workspace API
+FINOS Workspace API
   reads the plugins directory (read-only), records reviews and grants,
   serves files after re-hashing them, makes proxy calls, routes backend calls,
   answers a backend's data requests for the calling user

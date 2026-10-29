@@ -61,10 +61,8 @@ export const useSharedAppStore = createWithEqualityFn<SharedAppState>()(
           const widget = tab.data.widgets.find((w) => w.id === widgetId);
           if (!widget) return [];
 
-          return tab.data.groups.filter(
-            (g) =>
-              Object.values(widget.paramGroups || {}).includes(g.id) ||
-              g.id === widget.groupId,
+          return tab.data.groups.filter((g) =>
+            Object.values(widget.paramGroups || {}).includes(g.id),
           );
         },
         updateSharedDashboard: (tabId: string, data: Item) => {
