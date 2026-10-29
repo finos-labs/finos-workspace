@@ -13,6 +13,7 @@ import {
   useBackendConnectorStore,
   useShallowBackendConnectorStore,
 } from "~/lib/state/backendConnector";
+import { watchDeclaredMcpServers } from "~/lib/state/backendMcpServers";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import { useCopilotDataStore } from "~/lib/state/copilotData";
@@ -30,6 +31,7 @@ export default function useSyncItems() {
   const { pathname } = useLocation();
   useGetAppWidgets();
   usePluginRegistrySync();
+  useEffect(watchDeclaredMcpServers, []);
 
   const user = useShallowAuthStore((state) => state.user);
   const updateThemeSettings = useShallowEntityThemeStore(

@@ -32,6 +32,25 @@ export function normalizeCitations(citations: unknown): Citation[] {
   });
 }
 
+const citedWidget = ({ source_info }: Citation) =>
+  source_info.type === "widget"
+    ? (source_info.uuid ?? source_info.widget_id ?? null)
+    : null;
+
+export function withoutCitedWidgets(existing: Citation[], incoming: Citation[]) {
+  const ids = new Set(existing.map((citation) => citation.id));
+  const widgets = new Set(
+    existing.map(citedWidget).filter((widget) => widget !== null),
+  );
+  return incoming.filter((citation) => {
+    const widget = citedWidget(citation);
+    if (ids.has(citation.id) || (widget !== null && widgets.has(widget))) return false;
+    ids.add(citation.id);
+    if (widget !== null) widgets.add(widget);
+    return true;
+  });
+}
+
 export async function dispatchCopilotCommand(
   command: string | ((prev: string) => string),
 ) {

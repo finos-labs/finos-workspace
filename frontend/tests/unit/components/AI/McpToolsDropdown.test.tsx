@@ -7,6 +7,7 @@ import {
   McpToolsDropdown,
   ToolDescriptionMarkdown,
 } from "~/components/AI/McpToolsDropdown";
+import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import {
   type McpConnection,
   type McpServer,
@@ -100,12 +101,50 @@ function renderDropdown() {
 describe("McpToolsDropdown", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useCopilotAccessStore.getState().setAccess(null);
     act(() => {
       useMcpToolsStore.setState({
         servers: [],
         mcpConnectionRegistry: {},
       });
     });
+  });
+
+  it("counts only the tools the user's roles grant", () => {
+    useCopilotAccessStore.getState().setAccess({
+      models: [],
+      mcp: [{ server_url: "https://mcp.example.com", tool_name: "tool-1" }],
+    });
+    act(() => {
+      useMcpToolsStore.setState({
+        servers: [
+          createServer({
+            tools: [
+              { id: "tool-1", name: "Tool 1", enabled: true },
+              { id: "tool-2", name: "Tool 2", enabled: true },
+            ],
+          }),
+        ],
+        mcpConnectionRegistry: { "server-1": createConnection() },
+      });
+    });
+
+    renderDropdown();
+
+    expect(screen.getByText("(1/1)")).toBeInTheDocument();
+  });
+
+  it("counts no tool of a server no role grants", () => {
+    act(() => {
+      useMcpToolsStore.setState({
+        servers: [createServer()],
+        mcpConnectionRegistry: { "server-1": createConnection() },
+      });
+    });
+
+    renderDropdown();
+
+    expect(screen.getByText("(0/0)")).toBeInTheDocument();
   });
 
   it("renders duplicate copies of the same iframe widget as a single entry", () => {

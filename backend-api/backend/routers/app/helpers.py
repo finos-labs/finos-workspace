@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
 from loguru import logger
-from sqlalchemy import and_, case, delete, func, insert, literal, select, update
+from sqlalchemy import and_, case, delete, false, func, insert, literal, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
@@ -410,6 +410,33 @@ async def may_add_connections(db: AsyncSession, user_uuid: UUID) -> bool:
 async def check_may_add_connections(db: AsyncSession, user_uuid: UUID) -> None:
     if not await may_add_connections(db, user_uuid):
         raise HTTPException(403, detail="Your account type cannot add connections")
+
+
+async def readable_backends(db: AsyncSession, user_uuid: UUID, entity_uuid: UUID | None):
+    rules = []
+    if entity_uuid is not None:
+        granted = (
+            select(models.RoleBackend.backend_uuid)
+            .join(models.UserRole, models.UserRole.role_uuid == models.RoleBackend.role_uuid)
+            .join(models.Role, models.Role.uuid == models.RoleBackend.role_uuid)
+            .where(
+                models.UserRole.user_uuid == user_uuid,
+                models.Role.entity_uuid == entity_uuid,
+                models.Role.deleted_at.is_(None),
+                models.RoleBackend.access == "access",
+            )
+        )
+        rules += [models.ApiSource.entity_uuid == entity_uuid, models.ApiSource.uuid.in_(granted)]
+    if await may_add_connections(db, user_uuid):
+        rules.append(models.ApiSource.user_uuid == user_uuid)
+    return or_(*rules) if rules else false()
+
+
+async def get_backend_mcp_grants(db: AsyncSession, user_uuid: UUID) -> list[schemas.McpGrant]:
+    readable = await readable_backends(db, user_uuid, await get_entity_uuid(db, user_uuid))
+    rows = (await db.execute(select(models.ApiSource.mcp_servers).where(readable))).scalars()
+    urls = {url for servers in rows for url in servers or []}
+    return [schemas.McpGrant.model_construct(server_url=url, tool_name=schemas.ALL_MCP_TOOLS) for url in sorted(urls)]
 
 
 async def shares_need_approval(db: AsyncSession, user_uuid: UUID) -> bool:
@@ -1015,7 +1042,7 @@ async def get_user_copilot_access(
     granted = await get_role_copilot_access(db, role_uuids)
     return schemas.CopilotAccess(
         models=granted.models,
-        mcp=granted.mcp,
+        mcp=[*granted.mcp, *await get_backend_mcp_grants(db, user_uuid)],
         disabled_capabilities=await get_disabled_copilot_capabilities(db, role_uuids),
     )
 
