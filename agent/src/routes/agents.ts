@@ -1,12 +1,11 @@
 import { Hono } from "hono";
-import { configuredModels } from "../lib/config";
-import { getLogger } from "../lib/logger";
-import { transcribeModel } from "../lib/transcribe";
-import { inesSkills } from "../skills";
+import { configuredModels } from "../lib/config.ts";
+import { getLogger } from "../lib/logger.ts";
+import { transcribeModel } from "../lib/transcribe.ts";
+import { inesSkills } from "../skills/index.ts";
 
 const logger = getLogger(["app", "routes", "agents"]);
 
-/** The id the Workspace knows this agent by, and the one its role grants of models are filed under. */
 export const AGENT_ID = "default_agent";
 
 export const agentsRouter = new Hono();
@@ -18,7 +17,6 @@ agentsRouter.get("/", (c) => {
 agentsRouter.get("/agents.json", (c) => {
   logger.debug("Agent descriptor requested");
 
-  // The models this agent is configured with (DEFAULT_MODEL and INES_MODELS); with none, no picker is offered.
   const models = configuredModels();
   const defaultModel = process.env.DEFAULT_MODEL || models[0];
 
@@ -26,9 +24,8 @@ agentsRouter.get("/agents.json", (c) => {
     [AGENT_ID]: {
       name: "Ines",
       description:
-        "An open-source, model-agnostic agent for the Workspace",
+        "An open-source, model-agnostic agent for the FINOS Workspace",
       endpoints: { query: "/v1/query" },
-      // The skills that come with Ines: the Workspace shows them, and a user can pick one with /skill:<slug>.
       skills: inesSkills(),
       features: {
         streaming: true,
@@ -37,7 +34,6 @@ agentsRouter.get("/agents.json", (c) => {
         "widget-global-search": true,
         "mcp-tools": true,
         "file-upload": true,
-        // Dictation in the chat: the web app records and asks /v1/transcribe for the text.
         ...(transcribeModel() ? { "speech-to-text": true } : {}),
         "prompt-suggestions": {
           label: "Follow-up Suggestions",

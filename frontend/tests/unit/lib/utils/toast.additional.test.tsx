@@ -142,7 +142,6 @@ describe("toast utils - Additional Tests", () => {
       getToastDontShowAgainMock.mockReturnValue(false);
       const cancelFn = vi.fn();
 
-      // Mock getElementById
       vi.spyOn(document, "getElementById").mockReturnValue(
         partial<HTMLElement>({
           getAttribute: vi.fn(() => "checked"),
@@ -181,7 +180,6 @@ describe("toast utils - Additional Tests", () => {
         action: { label: "Delete", onClick },
       });
 
-      // Should call action immediately since dontShowAgain is true
       expect(onClick).toHaveBeenCalledWith(true);
       expect(toast.warning).not.toHaveBeenCalled();
     });

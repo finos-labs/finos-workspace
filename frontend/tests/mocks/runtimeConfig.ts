@@ -1,15 +1,3 @@
-/**
- * Runtime Config Test Mock
- *
- * Provides a mutable config object for tests. Components that call getConfig()
- * at module level will read from this shared reference, so mutations take effect
- * immediately without needing module re-imports.
- *
- * Usage:
- *   import { mockConfig } from "tests/mocks/runtimeConfig";
- *   // in beforeEach or per-test:
- *   mockConfig.ui.showChangelog = false;
- */
 import { vi } from "vitest";
 import { RuntimeConfigSchema } from "~/lib/runtimeConfigSchema";
 

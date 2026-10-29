@@ -12,7 +12,6 @@ const artifact = (uuid: string, name: string): ArtifactT => ({
   description: "A JavaScript-enabled HTML artifact",
 });
 
-/** The height the script injected into the artifact posts to the app (it cannot be read any other way). */
 function postHeight(iframe: HTMLIFrameElement, height: number) {
   window.dispatchEvent(
     new MessageEvent("message", {
@@ -31,9 +30,6 @@ describe("Artifact HTML JavaScript execution", () => {
     mockConfig.data.allowHtmlJsExecution = false;
   });
 
-  // What a model writes is shaped by what it has read — a fetched page, an uploaded document — so an
-  // artifact never gets this app's origin. `allow-scripts` with `allow-same-origin` would hold nothing
-  // back: the artifact would run script as the app, with its session and its storage.
   it("does not give an artifact this app's origin, even with scripts on", () => {
     const { container } = render(
       <Artifact artifact={artifact("html-js-origin", "Origin")} inAiMessage={true} />,
@@ -57,7 +53,10 @@ describe("Artifact HTML JavaScript execution", () => {
 
   it("takes the height the artifact posts, capped at the maximum", async () => {
     const { container } = render(
-      <Artifact artifact={artifact("html-js-123", "HTML JS Artifact")} inAiMessage={true} />,
+      <Artifact
+        artifact={artifact("html-js-123", "HTML JS Artifact")}
+        inAiMessage={true}
+      />,
     );
     const iframe = container.querySelector("iframe") as HTMLIFrameElement;
 
@@ -68,7 +67,6 @@ describe("Artifact HTML JavaScript execution", () => {
     });
   }, 15000);
 
-  // The artifact is on an opaque origin, so a height is believed only from that very frame.
   it("ignores a height posted by anything but the artifact itself", async () => {
     const { container } = render(
       <Artifact artifact={artifact("html-js-other", "Elsewhere")} inAiMessage={true} />,

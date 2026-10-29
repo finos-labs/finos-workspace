@@ -1,15 +1,6 @@
-import type { Trace } from "../trace";
-import type { GraderSpec } from "./index";
+import type { Trace } from "../trace.ts";
+import type { GraderSpec } from "./index.ts";
 
-/**
- * For evals that surface widgets through a search-then-fetch flow, this
- * grader inspects the get_widget_data call (which carries widget_uuid)
- * and asserts that one of the expected widget UUIDs is among the top-N
- * widgets the model chose.
- *
- * For deeper "search_widgets returned X in top-N" grading we'd need to
- * intercept the local execute() result — left as a follow-up.
- */
 export function widgetIdInTopN(args: {
   expected: string;
   n?: number;

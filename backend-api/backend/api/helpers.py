@@ -1,5 +1,3 @@
-"""General functions to help throughout the repo"""
-
 import asyncio
 import contextlib
 import hmac
@@ -28,7 +26,6 @@ HTTPX_CLIENT: AsyncClient | None = None
 
 
 async def add_log_task(request: str, error: str, status_code: int, method: str):
-    # Silence the pytest mock warning
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         async with AsyncWriteSessionLocal.session() as db:
@@ -40,15 +37,12 @@ async def add_log_task(request: str, error: str, status_code: int, method: str):
 
 
 def add_log(request: str, error: str, status_code: int, method: str):
-    # Ensures exceptions aren't raised while called inside fastapi exception handlers
-    # This is to prevent SQL details from being leaked to the client
     with contextlib.suppress(Exception):
         asyncio.ensure_future(add_log_task(request, error, status_code, method))
 
 
 def handle_duplicate_pk(exc: IntegrityError):
     err_message = str(exc.orig)
-    # SQLite reports duplicates as "UNIQUE constraint failed: <table>.<column>"
     if "UNIQUE constraint failed" in err_message:
         return
     duplicate_entry = "Duplicate entry" in err_message or "duplicate key" in err_message
@@ -59,8 +53,6 @@ def handle_duplicate_pk(exc: IntegrityError):
 
 
 async def get_user_usage(user: User):
-    """Update user usage"""
-
     return await worker_tasks.update_user_usage_cache(user.uuid)
 
 
@@ -97,7 +89,6 @@ async def check_first_login(
     user_uuid: UUID,
     sources: list[Literal["app", "oauth-app"]] | None = None,
 ) -> bool:
-    """Check if the user is logging in for the first time"""
     query = (
         select(func.count(models.Login.uuid))
         .where(
@@ -133,12 +124,6 @@ def handle_share_files(
 async def verify_totp(
     db: AsyncSession, user_uuid: UUID, secret: str | None, code: int | None
 ) -> bool:
-    """Whether ``code`` is the user's current authenticator code.
-
-    A code of the time step before or after the current one is accepted too, for clock
-    drift. The step of an accepted code is recorded, and a code of that step or an
-    earlier one is refused from then on, so a code works once.
-    """
     if not secret or code is None:
         return False
     totp = pyotp.TOTP(secret)
@@ -152,7 +137,6 @@ async def verify_totp(
         for step in (current + 1, current, current - 1)
         if hmac.compare_digest(totp.generate_otp(step), candidate)
     )
-    # One statement checks and records the step, so two requests cannot both use a code
     result = await db.execute(
         update(User)
         .where(
@@ -207,7 +191,6 @@ async def get_managed_users(db: AsyncSession, admin_result: UUID):
         .group_by(models.Login.user_uuid)
         .alias()
     )
-    # Get active users and users who are invited with a new account
     query = (
         select(
             User.uuid,

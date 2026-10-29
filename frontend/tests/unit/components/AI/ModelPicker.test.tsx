@@ -71,7 +71,6 @@ function mockCopilotStore(overrides: {
   return { setSelectedModelForAgent };
 }
 
-/** The models of an agent that the user's roles grant. */
 const grant = (agentId: string, ...ids: string[]) =>
   useCopilotAccessStore.getState().setAccess({
     models: ids.map((model_id) => ({ agent_id: agentId, model_id })),

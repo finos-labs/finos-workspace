@@ -1,15 +1,11 @@
-/**
- * peek_column_values — show unique values for a column. Stateless.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
-import { buildDb, tableNotFoundMessage } from "./db";
-import { NO_TABLES_LOADED_MESSAGE } from "./error-hints";
-import { rejectUnsafeTableName } from "./safety";
-import { getLogger } from "../../../lib/logger";
-import { displaySummarySchema } from "../progress";
-import { runSqlIsolated } from "./isolated";
+import { buildDb, tableNotFoundMessage } from "./db.ts";
+import { NO_TABLES_LOADED_MESSAGE } from "./error-hints.ts";
+import { rejectUnsafeTableName } from "./safety.ts";
+import { getLogger } from "../../../lib/logger.ts";
+import { displaySummarySchema } from "../progress.ts";
+import { runSqlIsolated } from "./isolated.ts";
 
 const logger = getLogger(["app", "tools", "sql", "peek_column_values"]);
 
@@ -59,7 +55,7 @@ export function runPeekColumnValues(
     const col = sanitize(args.column);
     try {
       const rows = db
-        .query(`SELECT DISTINCT "${col}" FROM "${target}" LIMIT ${MAX_VALUES}`)
+        .prepare(`SELECT DISTINCT "${col}" FROM "${target}" LIMIT ${MAX_VALUES}`)
         .all() as Record<string, unknown>[];
       const values = rows.map((r) => Object.values(r)[0]);
       return (

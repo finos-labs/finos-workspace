@@ -1,19 +1,3 @@
-"""MCP credentials stay with the API: sign-in (OAuth) and the MCP proxy.
-
-The API signs the user in to a remote MCP server: POST /app/mcp-oauth/start discovers the
-authorization server, registers a client and answers the sign-in address (PKCE, a state
-kept encrypted in Redis for one use); POST /app/mcp-oauth/complete exchanges the code and
-keeps the grant encrypted, keyed by the hash of the server's URL; POST
-/app/mcp-oauth/disconnect forgets it. The MCP proxy names the server, attaches the user's
-stored headers and the grant's token (refreshed under a lock) to requests under the
-server's path (or to the messages endpoint an SSE server announced), drops the browser's
-own credentials, reaches public addresses only, follows no redirect, and passes back the
-protocol's headers only. Only the web app, by its session cookie, reaches these routes.
-
-The MCP and authorization servers here are fakes, reached through the API's own address
-check (tests/fixtures/mcp_network.py): no test uses a network.
-"""
-
 import asyncio
 import base64
 import hashlib
@@ -46,7 +30,6 @@ RESOURCE_METADATA = "https://mcp.example.com/.well-known/oauth-protected-resourc
 TOOLS_URL = "https://tools.example.com/api/mcp"
 SSE_URL = "https://sse.example.com/sse"
 SSE_MESSAGES = "https://sse.example.com/messages/?session_id=abc"
-# Public addresses of the fake hosts; nothing connects to them
 ADDRESSES = {
     "mcp.example.com": "93.184.215.14",
     "auth.example.com": "93.184.215.15",
@@ -81,8 +64,6 @@ def _mcp_answer() -> httpx.Response:
 
 
 class FakeAuthorizationServer:
-    """auth.example.com: metadata (RFC 8414), registration (RFC 7591) and tokens."""
-
     def __init__(self) -> None:
         self.clients: dict[str, dict] = {}
         self.registrations: list[dict] = []
@@ -91,7 +72,6 @@ class FakeAuthorizationServer:
         self.access_tokens: set[str] = set()
         self.token_requests: list[dict] = []
         self.issued = 0
-        # The status a refresh answers with instead of a token, while it is set
         self.refresh_status: int | None = None
 
     def handle(self, request: httpx.Request) -> httpx.Response:
@@ -133,8 +113,6 @@ class FakeAuthorizationServer:
         )
 
     def sign_in(self, authorization_url: str) -> tuple[str, str]:
-        """The user signs in at the address the API answered: the code and the state the
-        browser comes back to the web app with."""
         url = httpx.URL(authorization_url)
         assert (url.host, url.path) == ("auth.example.com", "/authorize")
         params = dict(url.params)
@@ -192,8 +170,6 @@ class FakeAuthorizationServer:
 
 
 class FakeMcpServer:
-    """mcp.example.com: an MCP server that takes the tokens of auth.example.com."""
-
     def __init__(self, auth: FakeAuthorizationServer, resource: str = MCP_URL) -> None:
         self.auth = auth
         self.resource = resource
@@ -227,9 +203,6 @@ class FakeMcpServer:
 
 
 class FakeSseServer:
-    """sse.example.com: an MCP server of the SSE transport, which announces its messages
-    endpoint on the stream and takes a key header."""
-
     def __init__(self) -> None:
         self.posts: list[httpx.Request] = []
 
@@ -249,7 +222,6 @@ class FakeSseServer:
 
 
 def _tools_server(request: httpx.Request) -> httpx.Response:
-    """tools.example.com: a server that takes a static token and a key header."""
     if (
         request.headers.get("x-api-key") != "key-1"
         or request.headers.get("authorization") != "Bearer static-token"
@@ -317,7 +289,6 @@ async def _sign_in(client, servers) -> None:
 
 
 async def _grant(db_session) -> models.MCPOAuthGrant | None:
-    # The routes ran on this session too: a new transaction sees what other sessions wrote
     await db_session.commit()
     db_session.expire_all()
     return (
@@ -357,12 +328,10 @@ class TestSignIn:
         assert params["code_challenge_method"] == "S256"
         assert len(params["code_challenge"]) == 43
         assert params["resource"] == MCP_URL
-        # The challenge's scope, and a refresh token the authorization server offers
         assert params["scope"] == "mcp offline_access"
         assert params["prompt"] == "consent"
         assert len(params["state"]) >= 43
 
-        # The challenge named the resource metadata; the issuer's metadata followed
         paths = [request.url.path for request in servers.hosts.requests]
         assert paths[:3] == [
             "/mcp",
@@ -374,7 +343,7 @@ class TestSignIn:
                 "redirect_uris": [CALLBACK],
                 "response_types": ["code"],
                 "scope": "mcp offline_access",
-                "client_name": "Workspace",
+                "client_name": "FINOS Workspace",
                 "grant_types": ["authorization_code", "refresh_token"],
                 "application_type": "web",
             }
@@ -392,7 +361,6 @@ class TestSignIn:
         sealed = redis.get(key)
         assert sealed.startswith(b"v2.")
         assert b"secret-of-client-1" not in sealed
-        # Encrypted for its key: under another key it does not decrypt
         assert crypto.decrypt_json(sealed.decode(), key)["user_uuid"] == str(USER_UUID)
         with pytest.raises(crypto.DecryptionError):
             crypto.decrypt_json(sealed.decode(), "mcp_oauth_state:other")
@@ -405,13 +373,10 @@ class TestSignIn:
     ):
         await _sign_in(auth_client, servers)
 
-        # The code went with its PKCE verifier and the client's own credentials
         exchange = servers.auth.token_requests[-1]
         assert exchange["grant_type"] == "authorization_code"
         assert exchange["redirect_uri"] == CALLBACK
         assert exchange["resource"] == MCP_URL
-        # Keyed by the hash of the server's URL, which may carry a credential: the URL is
-        # inside the ciphertext only, with the user
         raw = (
             await db_session.execute(
                 text("SELECT credentials FROM mcp_oauth_grant WHERE server_hash = :hash"),
@@ -530,7 +495,6 @@ class TestSignIn:
     async def test_disconnecting_forgets_the_grant(self, auth_client, servers, db_session):
         await _sign_in(auth_client, servers)
 
-        # The server's URL goes in the body, never in a query string
         response = await auth_client.post(
             "/app/mcp-oauth/disconnect", json={"server_url": "https://MCP.example.com/mcp/"}
         )
@@ -550,7 +514,6 @@ class TestSignIn:
             db_session, _AUTH_USER["user_uuid"], str(session_uuid), "app"
         )
         try:
-            # A session of the user's, sent as a bearer: only the web app's cookie is one
             async with bearer_client(token) as bearer:
                 responses = [
                     await _start(bearer),
@@ -574,8 +537,6 @@ class TestSignIn:
     async def test_a_grant_moved_to_another_users_row_is_not_used(
         self, auth_client, second_user_client, servers, db_session
     ):
-        """A write to the database without the key: another user's grant row gets the
-        victim's ciphertext. It decrypts in its column, but names another user."""
         await _sign_in(auth_client, servers)
         victim = (
             await db_session.execute(
@@ -608,8 +569,6 @@ class TestSignIn:
     async def test_a_grant_moved_to_another_server_is_not_used(
         self, auth_client, servers, db_session
     ):
-        """The row's server hash rewritten to another server's: the grant's own server
-        URL is not that server's, so its token does not go there."""
         await _sign_in(auth_client, servers)
         await db_session.execute(
             text("UPDATE mcp_oauth_grant SET server_hash = :hash WHERE user_uuid = UNHEX(:u)"),
@@ -655,15 +614,10 @@ class TestSignInReachesPublicAddressesOnly:
 
 
 class TestSignInErrorsNameNoUrl:
-    """A server's path may carry its credential, and so may the URLs built from it (the
-    metadata's): a failed sign-in says what failed without them, in its answer and in the
-    log, where the error's text goes."""
-
     SECRET = "path-secret-789"
 
     async def _start_and_log(self, auth_client, server_url=MCP_URL):
         lines: list[str] = []
-        # As the app's own sinks: no values of local variables (utilities/log_helpers.py)
         sink = logger.add(
             lambda message: lines.append(str(message)),
             level="DEBUG",
@@ -768,11 +722,9 @@ class TestTheProxy:
             },
         )
 
-        # Naming the saved server, but going elsewhere
         for url in ("https://elsewhere.example.com/api/mcp", "https://tools.example.com/admin"):
             response = await _proxy(auth_client, TOOLS_URL, url)
             assert response.status_code == 422
-        # Another server on the same host
         await _proxy(auth_client, "https://tools.example.com/other/mcp")
 
         assert [r.url.path for r in servers.hosts.requests] == ["/other/mcp"]
@@ -780,8 +732,6 @@ class TestTheProxy:
 
     @pytest.mark.asyncio
     async def test_the_stored_headers_stay_under_the_servers_path(self, auth_client, servers):
-        """A server at https://host/mcp: its credentials, and the tool grants for it, do
-        not reach the host's other paths."""
         server_url = "https://tools.example.com/mcp"
         await auth_client.post(
             "/app/mcp-servers",
@@ -825,7 +775,6 @@ class TestTheProxy:
         )
         assert saved.status_code == 200, saved.text
 
-        # Beside the server's path, until the server announces it
         assert (await _proxy(auth_client, SSE_URL, SSE_MESSAGES)).status_code == 422
 
         stream = await auth_client.post(
@@ -844,7 +793,6 @@ class TestTheProxy:
         assert accepted.status_code == 202, accepted.text
         assert [request.headers["x-api-key"] for request in servers.sse.posts] == ["sse-key"]
 
-        # Only the endpoint it announced, and only for messages
         for url in (
             "https://sse.example.com/messages/?session_id=other",
             "https://sse.example.com/admin",
@@ -856,7 +804,6 @@ class TestTheProxy:
         )
         assert get.status_code == 422
         assert len(servers.sse.posts) == 1
-        # Recorded by its hash only
         redis = settings.get_redis_session("app")
         keys = redis.keys("mcp_sse_endpoint:*")
         assert len(keys) == 1 and b"session_id" not in keys[0]
@@ -873,7 +820,6 @@ class TestTheProxy:
         assert response.headers["content-type"] == "application/json"
         assert "set-cookie" not in response.headers
         assert "x-powered-by" not in response.headers
-        # The API's own CORS answer for the web app, not the server's
         assert response.headers["access-control-allow-origin"] == "http://test"
         assert "mcp-session-id" in response.headers["access-control-expose-headers"]
 
@@ -893,10 +839,8 @@ class TestTheProxy:
 
     @pytest.mark.asyncio
     async def test_a_failed_connection_logs_the_host_only(self, auth_client, servers):
-        """A server's path or query may carry a credential: the error log names the host."""
         server_url = "https://unreachable.example.com/api/mcp/s/path-secret-123/mcp"
         lines: list[str] = []
-        # As the app's own sinks: no values of local variables (utilities/log_helpers.py)
         sink = logger.add(
             lambda message: lines.append(str(message)),
             level="DEBUG",

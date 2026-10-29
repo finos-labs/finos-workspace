@@ -1,5 +1,3 @@
-"""Workspace snapshot discovery tool."""
-
 from fastmcp import FastMCP
 
 from workspace_mcp.server._guidance import describe_tool
@@ -9,7 +7,7 @@ from workspace_mcp.server._helpers import CommandRunner, ToolResponse
 def register(server: FastMCP, run: CommandRunner) -> None:
     @server.tool(
         description=describe_tool(
-            "Request a fresh Workspace snapshot from the connected browser.",
+            "Request a fresh FINOS Workspace snapshot from the connected browser.",
             (
                 "Call this first when you need current dashboard state, dashboard "
                 "identifiers across the workspace, or skill identifiers."
@@ -29,5 +27,4 @@ def register(server: FastMCP, run: CommandRunner) -> None:
         )
     )
     async def get_workspace_snapshot() -> ToolResponse:
-        """Fetch the current workspace snapshot from the connected browser."""
         return await run({"command": "get_workspace_snapshot"})

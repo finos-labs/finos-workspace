@@ -318,15 +318,6 @@ const MCPServerCard = memo((props: McpServerCardProps) => {
         rightSection={
           <div className="flex items-center gap-3">
             <div className="group-hover:opacity-100 opacity-0 flex items-center gap-1 transition-opacity duration-200">
-              {/* waiting for @jose-donato GIVE ME THAT ICON */}
-              {/* <Tooltip message="Clear authentication">
-                <button
-                  className="ws-small-navbar-btn rounded flex items-center justify-center size-5"
-                  onClick={() => connection?.clearStorage()}
-                >
-                  <Icon id="refresh-icon" className="size-3.5" />
-                </button>
-              </Tooltip> */}
               <Tooltip message="Edit">
                 <button
                   className="ws-small-navbar-btn rounded flex items-center justify-center size-5"

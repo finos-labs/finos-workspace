@@ -6,7 +6,6 @@ import { useWidgetContext } from "~/components/Widget.context";
 import Markdown, { MarkdownContent } from "~/components/Widgets/custom/Markdown";
 import { useJsonData } from "~/lib/api";
 
-// Mock dependencies
 vi.mock("~/components/Widget.context", () => ({
   useWidgetContext: vi.fn(),
 }));

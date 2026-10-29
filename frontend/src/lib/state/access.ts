@@ -8,13 +8,11 @@ export type UserType = "Admin" | "Developer" | "User";
 
 export type SharingLevel = "none" | "receive" | "share";
 
-/** What the roles an admin assigned the user let them do (login, validate-and-sync, /app/access). */
 export type UserAccess = {
   user_type: UserType | null;
   sharing: SharingLevel;
 };
 
-/** Today's usage against the user's limits; a null limit is no limit. */
 export type Usage = {
   number_copilot_calls_day_count: number;
   number_copilot_tokens_day_count: number;
@@ -24,7 +22,6 @@ export type Usage = {
   file_upload_size_limit: number | null;
 };
 
-/** Admins and developers bring their own connections; users work with what roles give them. */
 export function canAddConnections(access: UserAccess | null): boolean {
   return access?.user_type === "Admin" || access?.user_type === "Developer";
 }

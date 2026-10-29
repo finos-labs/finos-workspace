@@ -13,21 +13,22 @@ import {
 } from "~/api/auth.api";
 import { showDeprecatedFlagsToast } from "~/components/AI/hooks/utils";
 import { getConfig } from "~/lib/runtimeConfig";
+import type { ActiveMcpLink } from "~/lib/utils/mcpLink";
 import { AI_SUPPORTED_FILE_TYPES, getDefaultCopilot } from "../constants";
 import { type FunctionCallT, mergeDuplicateChats } from "../utils";
 import type { Selector } from "./app";
 
 export const copilotSchema = z
   .object({
-    holderUuid: z.string().optional(), // For external copilots
+    holderUuid: z.string().optional(),
     id: z.string(),
     name: z.string(),
     description: z.string(),
     image: z.url().optional(),
-    link: z.url().optional(), // What is this?
-    hasStreaming: z.boolean().optional(), // Deprecated: keeping it the schema to avoid breaking changes
-    hasDocuments: z.boolean().optional(), // Deprecated: not applicable anymore
-    hasFunctionCalling: z.boolean().optional(), // Deprecated: use features.widget-dashboard-select, widget-dashboard-search or widget-global-search instead
+    link: z.url().optional(),
+    hasStreaming: z.boolean().optional(),
+    hasDocuments: z.boolean().optional(),
+    hasFunctionCalling: z.boolean().optional(),
     endpoints: z.object({
       upload_docs: z.url().optional(),
       query: z.url().optional(),
@@ -53,7 +54,6 @@ export const copilotSchema = z
       .optional(),
     headers: z.record(z.string(), z.string()).optional(),
     models: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
-    /** The skills that come with the agent, as its /agents.json lists them. The agent has their instructions. */
     skills: z.array(z.object({ slug: z.string(), description: z.string() })).optional(),
   })
   .refine((data) => {
@@ -77,10 +77,8 @@ export const copilotSchema = z
 export type Copilot = z.infer<typeof copilotSchema>;
 export type CopilotModel = { id: string; name: string };
 
-/** The select setting through which an agent without `models`, such as Ines, offers its models. */
 export const MODEL_SETTING = "model";
 
-/** The models an agent without `models` offers as the options of its model setting. */
 export function modelSettingModels(
   copilot: Copilot | null | undefined,
 ): CopilotModel[] {
@@ -93,7 +91,6 @@ export function modelSettingModels(
   }));
 }
 
-/** The models an agent offers: its `models`, else the options of its model setting. */
 export function copilotModels(copilot: Copilot | null | undefined): CopilotModel[] {
   return copilot?.models?.length ? copilot.models : modelSettingModels(copilot);
 }
@@ -124,13 +121,13 @@ export interface DataContent {
 export interface DataUrl {
   url: string;
   data_format?: DataFormat;
-  expiration?: number; // Unix timestamp
+  expiration?: number;
 }
 
 export enum CopilotErrorType {
-  NOT_FOUND = "not_found", // For missing widgets, files, params, endpoints
-  GATEWAY_ERROR = "gateway_error", // For network errors, external server errors
-  UNEXPECTED = "unexpected_error", // For catch-all unexpected errors
+  NOT_FOUND = "not_found",
+  GATEWAY_ERROR = "gateway_error",
+  UNEXPECTED = "unexpected_error",
 }
 
 export interface CopilotFunctionCallError {
@@ -164,7 +161,6 @@ const SourceInfoSchema = z.object({
 const ExtraCitationSchema = z.object({
   id: z.string().optional(),
   source_info: SourceInfoSchema,
-  // What the backend sends is taken as the types say, as it always was
   details: z.custom<DetailT[]>().optional(),
   artifacts: z.custom<ArtifactT[]>().optional(),
   quote_bounding_boxes: z.custom<QuoteBoundingBox[][]>().optional(),
@@ -200,7 +196,7 @@ const CurrentCopilotDataItemSchema = z.union([
   z.object({
     url: z.string(),
     data_format: DataFormatSchema,
-    expiration: z.number().int().optional(), // Unix timestamp
+    expiration: z.number().int().optional(),
   }),
 ]);
 
@@ -220,7 +216,6 @@ export const CopilotDataItemSchema = z.preprocess(
       return InvalidDataItemError;
     }
 
-    // Handle backward compatibility for file_reference
     if ("file_reference" in data && !("url" in data)) {
       return {
         ...data,
@@ -237,7 +232,6 @@ export const MultipleCopilotDataItemSchema = z.array(CopilotDataItemSchema);
 
 export const CopilotDataSchema = z.object({
   items: z.array(CopilotDataItemSchema).transform((items) => {
-    // remove extra_citations from items
     return items.map((item) => {
       if ("extra_citations" in item) {
         const { extra_citations, ...rest } = item;
@@ -277,7 +271,7 @@ export interface CopilotContextItem {
 
 interface WidgetParam {
   name: string;
-  type: "date" | "text" | "ticker" | "number" | "boolean" | "endpoint";
+  type: "date" | "text" | "number" | "boolean" | "endpoint";
   description: string;
   default_value: string | number | boolean | string[];
   current_value: string | number | boolean | string[];
@@ -296,13 +290,13 @@ export interface CopilotWidget {
   uuid?: string;
   name: string;
   description: string;
-  /** What the widget is (`iframe` for a page of a backend that the widget embeds). */
   widget_type?: string;
   source?: string;
   category?: string;
   sub_category?: string;
   columns?: string[];
   params: WidgetParam[];
+  mcp_tool?: ActiveMcpLink;
   metadata?: Record<string, unknown> & {
     tabWidgets?: CopilotWidget[];
     innerTabId?: string;
@@ -310,11 +304,10 @@ export interface CopilotWidget {
   };
 }
 
-// Copilot widgets are ranked by priority
 export interface CopilotWidgets {
-  primary: CopilotWidget[]; // Widgets that were explicitly added to context by the user by clicking on the AI button or using @ mentions
-  secondary: CopilotWidget[]; // Widgets that are in the dashboard but were not explicitly added to context
-  extra: CopilotWidget[]; // Every widget that is available to be added to the dashboard
+  primary: CopilotWidget[];
+  secondary: CopilotWidget[];
+  extra: CopilotWidget[];
 }
 
 export interface Mention {
@@ -349,7 +342,6 @@ type BaseArtifact = {
 };
 type TextArtifact = BaseArtifact & { type: "text"; content: string };
 type HtmlArtifact = BaseArtifact & { type: "html"; content: string };
-/** Per-widget grid placement inside an app artifact tab. `i` MUST equal `widget_id`. */
 type AppArtifactLayoutItem = {
   i: string;
   x: number;
@@ -360,16 +352,14 @@ type AppArtifactLayoutItem = {
   groups?: string[];
 };
 
-/** Parameter-sync group; ticker groups omit `paramName`, `defaultValue` is a symbol. */
 type AppArtifactGroup = {
   name: string;
-  type: "param" | "endpointParam" | "ticker";
+  type: "param" | "endpointParam";
   paramName?: string;
   defaultValue: string;
   widgetIds: string[];
 };
 
-/** apps.json template shape consumed by `createCustomTemplateTab`. */
 export type AppArtifactDef = {
   name: string;
   description?: string;
@@ -379,7 +369,6 @@ export type AppArtifactDef = {
   prompts?: string[];
 };
 
-/** Origin -> Source resolution hint for each widget the app references. */
 export type AppArtifactWidgetRef = {
   i: string;
   origin: string;
@@ -453,7 +442,6 @@ interface BaseMessage {
 export interface HumanMessage extends BaseMessage {
   role: "human";
   content: string;
-  /** Files attached in the composer when this message was sent. */
   files?: CopilotFile[];
 }
 
@@ -472,8 +460,6 @@ export interface AIMessage extends BaseMessage {
 export interface SystemMessage extends BaseMessage {
   role: "system";
   content: SystemSSEContent;
-  // Snapshot of the orchestration toggle at the time this message was streamed.
-  // Keeps the reasoning group title stable when the toggle is flipped later.
   orchestrationModeEnabled?: boolean;
 }
 
@@ -496,7 +482,7 @@ export type Chat<M = Message> = {
   titleNeedsUpdate?: boolean;
   lastOpened?: number;
   lastInteraction?: number;
-  agentIds?: string[]; // List of agents that participated in the chat
+  agentIds?: string[];
 };
 
 export type CopilotTextSuggestion = {
@@ -516,138 +502,94 @@ export interface MetadataFormValues {
 export interface CreateWidgetMetadataDialogState {
   mode: "create" | "update";
   initialValues: MetadataFormValues;
-  // For create mode - stores the pending widget params
   pendingParams?: Record<string, unknown>;
-  // For update mode - stores widget identifiers
   widgetId?: string;
   widgetUuid?: string;
   dashboardId?: string;
 }
 
 export interface CopilotState {
-  /**  Suggestions for user prompts. */
   copilotTextSuggestions: CopilotTextSuggestion[];
   setCopilotTextSuggestions: (suggestions: CopilotTextSuggestion[]) => void;
-  /** Action history for workspace context. */
   actionHistory: string[];
   addAction: (action: string) => void;
   clearActionHistory: () => void;
-  /** Artifacts are pieces of data (e.g., tables, charts) generated by the AI
-  that can be displayed in the chat. */
   addArtifactToCurrentChat: (artifact: ArtifactT) => void;
   getCurrentChatArtifact: (chatArtifactId: string) => ArtifactT | undefined;
   getCurrentChatArtifacts: () => ArtifactT[];
-  /** Retrieves a message by its timestamp. */
   getMessageByTimestamp: (timestamp: number) => HumanMessage | AIMessage | undefined;
-  /** Clears all messages after a specific timestamp and updates the last human message.*/
   clearMessagesAfter: (messageTimestamp: number, newMessageContent: string) => void;
-  /** Removes artifacts that are no longer referenced in any message.*/
   removeUnreachableArtifacts: () => void;
-  /** Updates the label of a specific chat.*/
   updateCopilotLabel: (chatId: number, label: string) => void;
-  /** History of questions asked by the user.*/
   questionsHistory: string[];
-  /** The currently selected copilot instance.*/
   selectedCopilot: Copilot | null;
   setSelectedCopilot: (copilot: Copilot | null) => void;
   orchestrationModeEnabled: boolean;
   setOrchestrationModeEnabled: (enabled: boolean) => void;
-  /** Opens the agent configuration dialog.*/
   agentOrchestrationMap: Record<string, string[]>;
   clearAgentOrchestrationMap: () => void;
   toggleAgentOrchestration: (holderId: string, copilotId: string) => void;
   enableAgentOrchestration: (holderId: string, copilotId: string) => void;
   disableAgentOrchestration: (holderId: string, copilotId: string) => void;
-  /** Sets the selected copilot by its ID.*/
   setCopilotById: (copilotId: string) => void;
-  /** Holds information about external copilots.*/
   externalCopilotHolders: ExternalCopilotHolder[];
   setExternalCopilotHolders: (holders: ExternalCopilotHolder[]) => void;
   updateExternalCopilotHolders: (holders: ExternalCopilotHolder[]) => void;
-  /** The timestamp of the currently active chat.*/
   currentChat: number;
   setCurrentChat: (chatId: number) => void;
   loadChatData: (chatUuid: string) => Promise<void>;
-  /** Retrieves the current chat object.*/
   getCurrentChat: () => Chat;
-  /** Holds all chat sessions.*/
   chats: Chat[];
-  /** A copy of chats as stored in the cloud, used for comparison.*/
   chatsStoredInCloud: Chat[] | null;
   updateChatsStoredInCloud: (chats: Chat[]) => void;
-  /** Retrieves chat data without messages for the current copilot.*/
   getChatsData: () => Omit<Chat, "messages" | "artifacts">[];
-  /** Updates the chats, including merging and migrations.*/
   updateChats: (
     chats: Chat[] | undefined,
     options?: { customCopilots?: CustomCopilot[]; questionsHistory?: string[] },
   ) => void;
-  /** Resets all chats to the default state.*/
   resetChats: () => void;
-  /** Adds a new chat to the list.*/
   addChat: (chat: Chat) => void;
-  /** Removes a chat by its ID.*/
   removeChat: (chatId: number) => void;
-  /** Adds a message to the current chat.*/
   addMessage: (message: Message) => void;
-  /** Removes messages from the current chat by their timestamps.*/
   removeMessages: (timestamps: number[]) => void;
-  /** Resets the content of the current chat, optionally for a specific copilot.*/
   resetContent: (copilotId?: string) => void;
   selectedModelByAgent: Record<string, string>;
   setSelectedModelForAgent: (agentId: string, modelId: string) => void;
   getSelectedModelForAgent: (agentId: string) => string | undefined;
-  /** Updates the last message in the current chat, typically an AI message.*/
   updateLastMessage: (update: Partial<AIMessage>) => void;
-  /** Updates a specific property of an AI message.*/
   updateAIMessage: (property: string, value: unknown, messageTimestamp: number) => void;
-  /** Sets the error state of the last message.*/
   updateLastMessageError: (isError?: boolean) => void;
-  /** Marks the last message as a function call.*/
   makeLastMessageFC: () => void;
-  /** State of the typing indicator.*/
   isTyping: boolean;
   setIsTyping: (typing: boolean) => void;
   toggleTyping: () => void;
-  /** Manages the state of the chat title, whether it has been manually updated.*/
   setTitleManuallyUpdated: (chatId: number, titleManuallyUpdated: boolean) => void;
   setTitleNeedsUpdate: (chatId: number, titleNeedsUpdate: boolean) => void;
   updateCopilotLabelAndSetTitleNeedsUpdate: (
     label: string,
     titleNeedsUpdate: boolean,
   ) => void;
-  /** Retrieves the user prompt that triggered a specific AI message.*/
   getUserPromptForAIMessage: (aiMessage: AIMessage) => string | undefined;
-  /** Gets recent conversation context for widget creation.*/
   getRecentConversationContext: (messageCount?: number) => Message[];
-  /** Gets metadata from selected widgets in context.*/
   getSelectedWidgetsMetadata: () => CopilotWidget[];
-  /** Gets related artifacts from current chat.*/
   getRelatedArtifacts: (maxCount?: number) => ArtifactT[];
-  /** ID of the widget being hovered over in a citation.*/
   hoveredCitationWidgetId: string | null;
   setHoveredCitationWidgetId: (id: string | null) => void;
   updateCitationsOrigin: (previousOrigin: string, newOrigin: string) => void;
   hoveredTabId: string | null;
   setHoveredTabId: (id: string | null) => void;
   setHovered: (params?: { widgetUuid?: string | null; tabId?: string | null }) => void;
-  /** Controls the visibility of the welcome screen.*/
   showWelcome: boolean;
   setShowWelcome: (showWelcome: boolean) => void;
-  /** Controls the fullscreen mode of the copilot panel.*/
   isFullscreen: boolean;
   setIsFullscreen: (isFullscreen: boolean) => void;
   toggleFullscreen: () => void;
-  /** Stores the last state of the panel (open or fullscreen).*/
   lastPanelState: "open" | "fullscreen";
   setLastPanelState: (state: "open" | "fullscreen") => void;
-  /** Indicates if an action was triggered by a button click.*/
   isButtonTriggered: boolean;
   setIsButtonTriggered: (isButtonTriggered: boolean) => void;
-  /** Indicates if the copilot panel was intentionally collapsed by the user.*/
   isIntentionallyCollapsed: boolean;
   setIsIntentionallyCollapsed: (isIntentionallyCollapsed: boolean) => void;
-  /** DateTime tooltip positioning state */
   datetimeState: DatetimeState | null;
   showDatetime: (timestamp: number, targetGroupId: string) => void;
   hideDatetime: () => void;
@@ -657,7 +599,6 @@ export interface CopilotState {
   toggleCustomFeature: (key: string) => boolean;
   setCustomFeatureValue: (key: string, value: string) => void;
 
-  /** Dialog state for editing widget metadata from artifact creation */
   createWidgetMetadataDialog: CreateWidgetMetadataDialogState | null;
   setCreateWidgetMetadataDialog: (
     state: CreateWidgetMetadataDialogState | null,
@@ -687,7 +628,6 @@ function getChatLastOpened(chats: Chat[], currentChat?: number | null) {
   );
 }
 
-/** A custom agent without headers: they stay in page memory and are never persisted. */
 function withoutHeaders<T extends { headers?: unknown }>({ headers: _, ...rest }: T) {
   return rest;
 }
@@ -784,7 +724,7 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
         actionHistory: [],
         addAction: (action) =>
           set((state) => ({
-            actionHistory: [...state.actionHistory.slice(-4), action], // Keep last 5 actions
+            actionHistory: [...state.actionHistory.slice(-4), action],
           })),
         clearActionHistory: () => set({ actionHistory: [] }),
         getCurrentChatArtifacts: () => {
@@ -796,7 +736,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
           const { currentChat, chats } = get();
           const currentChatData = chats.find((c) => c.createdAt === currentChat);
           return currentChatData?.artifacts?.find(
-            // We need to check for UUID for backward compatibility
             (a) => a.name === chatArtifactId || a.uuid === chatArtifactId,
           );
         },
@@ -825,7 +764,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
           const chatsCreatedAt = {} as Record<number, Chat[]>;
 
           for (const chat of chats) {
-            // Ensure createdAt is in milliseconds
             if (chat?.createdAt < 10000000000) {
               chat.createdAt *= 1000;
             }
@@ -842,15 +780,12 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
 
             const agentIds = chat?.agentIds || [];
             let lastInteraction = chat?.lastInteraction || 0;
-            // Extract questions from human messages for history
             for (const message of chat?.messages || []) {
               if (!message.uuid) message.uuid = uuidv4();
               if (!agentIds.includes(message.copilotId))
                 agentIds.push(message.copilotId);
 
-              // Backward compatibility for AI messages
               if (message.role === "ai") {
-                // Backward compatibility for citations
                 if (typeof message.content === "string") {
                   for (const citation of message.citations || []) {
                     citation.id = citation.id || uuidv4();
@@ -880,13 +815,10 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
               continue;
             }
 
-            // Merge duplicate chats
             chatsCreatedAt[chat.createdAt] = mergeDuplicateChats([...chatGroup, chat]);
           }
 
-          // Update the chats with merged duplicates
           const updatedChats = Object.values(chatsCreatedAt).flat();
-          // sort chats by createdAt
           updatedChats.sort((a, b) => a.createdAt - b.createdAt);
 
           if (updatedChats.length > 0) {
@@ -967,7 +899,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
         getCurrentChat: () => {
           const { chats, currentChat } = get();
 
-          // If no currentChat, return the latest chat
           return getChatLastOpened(chats, currentChat) || DEFAULT_CHAT;
         },
         questionsHistory: [],
@@ -977,7 +908,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
         selectedModelByAgent: {},
         currentChat: 0,
         setCurrentChat: (chatId) => {
-          // Clear action history when switching to a different chat
           if (chatId !== get().currentChat) {
             get().clearActionHistory();
           }
@@ -1012,7 +942,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
         chatsStoredInCloud: null,
         updateChatsStoredInCloud: (chats) => set({ chatsStoredInCloud: chats }),
         addChat: (chat) => {
-          // Clear action history when creating a new chat
           get().clearActionHistory();
           set({ chats: [...get().chats, updateAgentIds(chat, get().selectedCopilot)] });
         },
@@ -1039,15 +968,11 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
           const messages =
             chats.find((c) => c.createdAt === currentChat)?.messages || [];
           if (messages.length > 0) {
-            // Copy the messages array to avoid direct state mutation
             const updatedMessages = cloneDeep(messages);
             const lastMessage = updatedMessages[updatedMessages.length - 1];
-            // Safeguard to update only the last message if it's an AI message
             if (lastMessage.role === "ai") {
-              // Update the last message with the new data
               Object.assign(lastMessage, update || {});
 
-              // Set the updated messages array in the state
               set({
                 chats: chats.map((c) =>
                   c.createdAt === currentChat ? { ...c, messages: updatedMessages } : c,
@@ -1096,8 +1021,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
         getSelectedModelForAgent: (agentId) => get().selectedModelByAgent[agentId],
         selectedCopilot: aiCopilotDefaultCopilotFF ? getDefaultCopilot() : null,
         setSelectedCopilot: (copilot) => {
-          // This is a temporary check to notify users about outdated copilots.json
-          // We need to implement copilots.json versioning to handle this properly.
           const outdatedFlags = copilot
             ? [
                 copilot.hasDocuments !== undefined && "hasDocuments",
@@ -1176,12 +1099,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
               normalizedHolders.findIndex((c) => c.url === copilot.url) === index,
           );
 
-          // Auto-select an agent when none is currently selected (or the current
-          // selection is gone). Without this, agents arriving from the backend or
-          // persist rehydrate (e.g. lite, where defaultCopilot is off and
-          // selectedCopilot starts null) leave the panel stuck on "No copilot
-          // selected" until the user re-adds the agent. The built-in copilot
-          // and any still-valid selection are preserved.
           const selectedCopilot = get().selectedCopilot;
           const availableCopilots = uniqueCopilots
             .filter((holder) => holder.enabled !== false)
@@ -1215,7 +1132,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
               const selectedUpdate = holder.copilots.find(
                 (copilot) => copilot.id === selectedCopilot?.id,
               );
-              // If the selected copilot is in the holder, update it
               if (selectedUpdate && selectedCopilot)
                 Object.assign(selectedCopilot, selectedUpdate);
 
@@ -1248,12 +1164,10 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
             const updates: Partial<CopilotState> = {};
 
             if (message.role === "human") {
-              // find the index if the message content is already in the questions history
               const questionIndex = s.questionsHistory.indexOf(message.content);
               if (questionIndex === -1) {
                 updates.questionsHistory = [...s.questionsHistory, message.content];
               } else {
-                // Move the question to the end of the history
                 const updatedHistory = cloneDeep(s.questionsHistory);
                 updatedHistory.splice(questionIndex, 1);
                 updatedHistory.push(message.content);
@@ -1275,7 +1189,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
                 (message) => !timestamps.includes(message.timestamp),
               );
 
-              // Remove any artifacts that are no longer referenced in any message
               const updatedArtifacts = getReachableArtifacts(
                 newMessages,
                 chat.artifacts || [],
@@ -1291,7 +1204,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
         },
         resetContent: (copilotId) => {
           removeChatScrollY(get().currentChat);
-          // Clear action history when resetting chat content
           get().clearActionHistory();
           if (copilotId) {
             const uuid = uuidv4();
@@ -1351,7 +1263,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
 
           if (messageIndex === -1) return undefined;
 
-          // Look for the most recent human message before this AI message
           for (let i = messageIndex - 1; i >= 0; i--) {
             const msg = currentChat.messages[i];
             if (msg.role === "human") {
@@ -1367,8 +1278,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
         },
         getSelectedWidgetsMetadata: () => {
           const { externalCopilotHolders } = get();
-          // This would typically get widgets from copilot data store, but we'll handle this in the component
-          // since the copilot store doesn't directly have access to the copilot data store
           return [];
         },
         getRelatedArtifacts: (maxCount = 3) => {
@@ -1419,7 +1328,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
             const updated = { ...current } as Record<string, boolean | string>;
             for (const [key, val] of Object.entries(features)) {
               if (val && typeof val === "object") {
-                // Only initialize if not already present
                 if (updated[key] === undefined) {
                   const featureType = val.type || "toggle";
                   if (featureType === "text") {
@@ -1530,10 +1438,6 @@ export function useShallowCopilotStore<T>(selector: Selector<CopilotState, T>): 
   return useCopilotStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }
 
-/**
- * Loads the custom agents again with their headers, which the store keeps in page memory
- * only. The page calls it once a reload has restored the signed-in user.
- */
 export async function refreshExternalCopilotHolders() {
   await getExternalCopilotHolders(undefined, (holders) =>
     useCopilotStore.getState().setExternalCopilotHolders(holders),

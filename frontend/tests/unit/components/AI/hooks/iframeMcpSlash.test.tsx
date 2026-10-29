@@ -1,9 +1,3 @@
-/**
- * Regression: iframe MCP tools must surface in the `/` slash dropdown once their
- * server connects. Uses the REAL mcpTools store — the sibling
- * useMcpToolSuggestions.test.tsx mocks the whole store, so it cannot exercise
- * reactivity to connection-state changes (mcpConnectionRegistry).
- */
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useMcpToolSuggestions } from "~/components/AI/hooks/useMcpToolSuggestions";
@@ -100,7 +94,6 @@ describe("iframe MCP tools in slash suggestions (real store)", () => {
       store.addToolsToServer("iframe-mcp-w1", [
         { id: "rebalance", name: "rebalance", description: "Rebalance", enabled: true },
       ]);
-      // tools already in store, but connection still mid-handshake
       store.updateMCPConnectionRegistry("iframe-mcp-w1", conn("connecting"));
     });
 
@@ -108,7 +101,6 @@ describe("iframe MCP tools in slash suggestions (real store)", () => {
     expect(result.current.mcpToolOptions).toHaveLength(0);
 
     act(() => {
-      // ONLY a registry change — servers array untouched
       store.updateMCPConnectionRegistry("iframe-mcp-w1", conn("ready"));
     });
 

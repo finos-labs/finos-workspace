@@ -1,18 +1,18 @@
-import { widgetSelectionCases } from "./widget-selection";
-import { sqlAnalysisCases } from "./sql-analysis";
-import { intentCases } from "./intent";
-import { workspaceContextCases } from "./workspace-context";
-import { toolRoutingCases } from "./tool-routing";
-import { localeCases } from "./locale";
-import { citationsCases } from "./citations";
-import { fileWidgetCases } from "./file-widgets";
-import { skillsCases } from "./skills";
-import { nativeToolsCases } from "./native-tools";
-import { appBuilderCases } from "./app-builder";
-import { mcpRoutingCases } from "./mcp-routing";
-import { urlContextCases } from "./url-context";
-import { streamingCases } from "./streaming";
-import type { EvalCase } from "../runner";
+import { widgetSelectionCases } from "./widget-selection.ts";
+import { sqlAnalysisCases } from "./sql-analysis.ts";
+import { intentCases } from "./intent.ts";
+import { workspaceContextCases } from "./workspace-context.ts";
+import { toolRoutingCases } from "./tool-routing.ts";
+import { localeCases } from "./locale.ts";
+import { citationsCases } from "./citations.ts";
+import { fileWidgetCases } from "./file-widgets.ts";
+import { skillsCases } from "./skills.ts";
+import { nativeToolsCases } from "./native-tools.ts";
+import { appBuilderCases } from "./app-builder.ts";
+import { mcpRoutingCases } from "./mcp-routing.ts";
+import { urlContextCases } from "./url-context.ts";
+import { streamingCases } from "./streaming.ts";
+import type { EvalCase } from "../runner.ts";
 
 export const ALL_CASES: EvalCase[] = [
   ...widgetSelectionCases,

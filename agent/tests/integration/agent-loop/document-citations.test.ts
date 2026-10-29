@@ -1,17 +1,10 @@
-/**
- * Tier 2 — a search of a PDF is cited at the pages the answer names.
- *
- * `query_documents` reports every page it handed to the model, with how well each matched. The loop cites
- * the pages that the answer the user reads says it rests on, as the file widget at that page, and carries
- * the reported pages across round trips until there is an answer to read them against.
- */
-
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { AgentTool, Citation, QueryRequest, SSEEvent, ToolMessage, Widget } from "../../../src/protocol/types";
-import { llmCallsTool, llmEmitsText, makeMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { AgentTool, Citation, QueryRequest, SSEEvent, ToolMessage, Widget } from "../../../src/protocol/types.ts";
+import { llmCallsTool, llmEmitsText, makeMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 
@@ -127,7 +120,6 @@ describe("the pages cited for a search of a PDF", () => {
     const call = events.find((e) => e.event === "copilotFunctionCall" && (e.data as { function?: string }).function === "execute_agent_tool");
     const extra = (call!.data as { extra_state?: { document_hits?: { page: number }[]; intermediate_citations?: Citation[] } }).extra_state;
     expect(extra?.document_hits?.map((h) => h.page).sort()).toEqual([1, 2, 3]);
-    // Not chosen yet: no page of the document is cited as it stands.
     expect(extra?.intermediate_citations?.some((c) => c.details[0]?.Page != null) ?? false).toBe(false);
   });
 
@@ -140,7 +132,6 @@ describe("the pages cited for a search of a PDF", () => {
       ],
       makeMockLlm(llmEmitsText("Budget (page 2); supplier delay (page 3).")),
     );
-    // The first search's pages are restored and the second's are added; the pages are cited once each.
     expect(pagesOf(citationsOf(events))).toEqual([2, 3]);
   });
 

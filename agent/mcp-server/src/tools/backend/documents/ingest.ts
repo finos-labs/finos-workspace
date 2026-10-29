@@ -1,11 +1,7 @@
-/**
- * Reading a document and cutting it into chunks, in a process of its own (see ingest-child.ts).
- */
-
-import { IsolationError, runInChild } from "../../../../../src/lib/isolate";
-import { getLogger } from "../../../lib/logger";
-import type { IngestChildInput, IngestChildOutput } from "./ingest-child";
-import { INGEST_TIMEOUT_MS } from "./limits";
+import { IsolationError, runInChild } from "../../../../../src/lib/isolate.ts";
+import { getLogger } from "../../../lib/logger.ts";
+import type { IngestChildInput, IngestChildOutput } from "./ingest-child.ts";
+import { INGEST_TIMEOUT_MS } from "./limits.ts";
 
 const logger = getLogger(["mcp", "documents", "ingest"]);
 const CHILD = new URL("./ingest-child.ts", import.meta.url).pathname;

@@ -1,11 +1,3 @@
-"""Unit tests for dialect-specific IntegrityError handling in api.helpers.
-
-Regression for lite/SQLite deployments: SQLite reports duplicate keys as
-"UNIQUE constraint failed: <table>.<column>", which handle_duplicate_pk
-previously did not recognize, turning every insert-then-update upsert
-(e.g. renaming a data connector) into a 400 "Unknown database error occurred".
-"""
-
 import pytest
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -19,7 +11,6 @@ def _integrity_error(orig_message: str) -> IntegrityError:
 
 class TestHandleDuplicatePk:
     def test_sqlite_unique_constraint_is_recognized(self):
-        """SQLite duplicate PK message must not raise (upsert falls through to UPDATE)."""
         exc = _integrity_error("UNIQUE constraint failed: api_source.uuid")
         handle_duplicate_pk(exc)
 

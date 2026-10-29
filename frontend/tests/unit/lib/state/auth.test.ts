@@ -38,7 +38,6 @@ vi.mock("~/lib/microsoft-auth-config", () => ({
   getMsalInstance: () => ({ clearCache: mockClearCache }),
 }));
 
-// What the store gave the API client when it loaded, before any test clears the mocks
 const onSessionRefused = vi.mocked(setOnSessionRefused).mock.calls[0]?.[0];
 
 const session = (overrides: Partial<SessionResponse> = {}): SessionResponse => ({
@@ -66,7 +65,6 @@ describe("useAuthStore", () => {
     vi.mocked(apiClient.post).mockResolvedValue({
       data: { token: "agent-token", expires_in: 1800 },
     });
-    // jsdom cannot reload the page; it reports that on the console
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
@@ -194,7 +192,6 @@ describe("useAuthStore", () => {
         useToastStore,
         useWorkspaceBridgeStore,
       ]) {
-        // Writing any state persists the store
         store.setState({});
       }
       useUserAppsStore.setState({ userApps: {} });
@@ -216,7 +213,6 @@ describe("useAuthStore", () => {
       expect(await getStorage("user-apps-storage")).toBeNull();
       expect(window.location.pathname).toBe("/login");
 
-      // The agent token went with the session: the next one is minted afresh
       vi.mocked(apiClient.post).mockClear();
       await getAgentToken();
       expect(apiClient.post).toHaveBeenCalledWith("/app/copilot/token");

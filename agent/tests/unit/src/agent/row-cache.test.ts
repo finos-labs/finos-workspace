@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
 import {
   MAX_CACHED_TABLE_ROWS,
   forgetRows,
@@ -7,9 +8,9 @@ import {
   keepChatDataIn,
   keepWidgetData,
   rememberRows,
-} from "../../../../src/agent/row-cache";
-import { createLocalStore, createStore, type Store } from "../../../../src/lib/store";
-import type { WidgetItem } from "../../../../src/widgets/parse";
+} from "../../../../src/agent/row-cache.ts";
+import { createLocalStore, createStore, type Store } from "../../../../src/lib/store.ts";
+import type { WidgetItem } from "../../../../src/widgets/parse.ts";
 
 let store: Store;
 
@@ -101,7 +102,6 @@ describe("a chat's data is kept in the store and nowhere else", () => {
     await rememberRows("c-large", "prices", rows);
     expect(await store.get("rows:c-large:prices")).not.toBeNull();
 
-    // Another store, as on another replica without the shared one: this process has nothing of its own to give.
     keepChatDataIn(createLocalStore());
     expect((await getCachedRows("c-large")).size).toBe(0);
 
@@ -126,7 +126,7 @@ describe("a chat's data is kept in the store and nowhere else", () => {
     expect(await getKeptWidgetData("scope-1", "w-1:{}")).toBeNull();
   });
 
-  it("keeps nothing, and fails nothing, while Redis cannot answer", async () => {
+  it("keeps nothing, and fails nothing, while Redis cannot answer", { timeout: 20_000 }, async () => {
     const withRedis = createStore({ REDIS_URL: "redis://127.0.0.1:6399" } as NodeJS.ProcessEnv);
     try {
       keepChatDataIn(withRedis.sharedOnly());
@@ -137,5 +137,5 @@ describe("a chat's data is kept in the store and nowhere else", () => {
     } finally {
       await withRedis.close();
     }
-  }, 20_000);
+  });
 });

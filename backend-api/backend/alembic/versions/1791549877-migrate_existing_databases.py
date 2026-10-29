@@ -1,24 +1,3 @@
-"""migrate existing databases to the current schema
-
-Revisions 0001, 0002, 0003, 5c8f2e91d0a3 and 0d4a342f4c26 were edited in place when
-the commercial features were removed. A database that ran their earlier versions
-reaches c3a97e5d2b14 with the old schema. This revision renames user_pro_invite and
-three columns, drops the tables and columns of the removed features, and removes the
-"Pro Trial" data bundle, which the current seed does not create and whose name the
-entitlement schemas reject.
-
-Every step checks the current schema first, so on a database created by the current
-revisions this revision changes nothing, and running it again is safe. downgrade()
-restores the old names and recreates the dropped tables and columns without their
-data. The columns come back nullable, so that SQLite does not have to rebuild the
-tables they belong to.
-
-Revision ID: b179074b50c6
-Revises: c3a97e5d2b14
-Create Date: 2026-10-09
-
-"""
-
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -28,7 +7,6 @@ import sqlalchemy_utils
 import api.models.model_helpers
 from alembic import op  # type: ignore
 
-# revision identifiers, used by Alembic.
 revision = "b179074b50c6"
 down_revision = "c3a97e5d2b14"
 branch_labels = None
@@ -46,9 +24,6 @@ REMOVED_TABLES = [
     "trading_view",
 ]
 
-# (table, old name, new name, type, nullable). app_start is an AwareDateTime column;
-# its DATETIME type is given directly because SQLite batch mode cannot rename a column
-# whose existing_type is that TypeDecorator.
 RENAMED_COLUMNS = [
     ("session", "pro", "app_session", sa.Boolean(), False),
     ("user", "pro_start", "app_start", sa.DateTime(), True),
@@ -70,8 +45,6 @@ TRIAL_BUNDLE = "Pro Trial"
 
 
 def _removed_columns() -> dict[str, list[sa.Column]]:
-    """The dropped columns as the earlier revisions defined them, all nullable here
-    (entity.api_keys and tier.has_trial were NOT NULL)"""
     json_type = api.models.model_helpers.JSONType
     date_type = api.models.model_helpers.AwareDateTime
     return {
@@ -120,8 +93,6 @@ def _removed_columns() -> dict[str, list[sa.Column]]:
 
 
 def _invite_keys(table: str) -> tuple[list[tuple], tuple[str, str]]:
-    """The foreign keys (name, column, referred table, ondelete) and the index (name,
-    column) of the invite table, named after `table` as the naming convention does"""
     return (
         [
             (f"fk_{table}_inviting_user_uuid_user", "inviting_user_uuid", "user", None),
@@ -245,16 +216,12 @@ def _drop_invite_keys(table: str, named_after: str):
         for name in names:
             if name in existing_foreign_keys:
                 batch_op.drop_constraint(name, type_="foreignkey")
-        # On MySQL a foreign key with no other index on its column has an index
-        # with the foreign key's name.
         for name in [*names, index]:
             if name in existing_indexes:
                 batch_op.drop_index(name)
 
 
 def _create_invite_keys(table: str):
-    # The foreign keys come before the index, as in the CREATE TABLE of 0001, so
-    # that MySQL lists the indexes in the same order as on a new database.
     foreign_keys, (index, indexed_column) = _invite_keys(table)
     existing_foreign_keys = _foreign_key_names(table)
     existing_indexes = _index_names(table)
@@ -269,8 +236,6 @@ def _create_invite_keys(table: str):
 
 
 def _remove_trial_bundle():
-    # The current code gives a full-tier entitlement no data bundle, so the
-    # entitlements that used the trial bundle keep their limits and lose the bundle.
     trial_uuid = _trial_bundle_uuid()
     if trial_uuid is None:
         return

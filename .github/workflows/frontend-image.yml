@@ -1,7 +1,5 @@
 name: Frontend Docker Image (ECR)
 
-# Pull requests build the image to check it. A tag like frontend-v1.1.0 builds it
-# and pushes it to ECR as 1.1.0.
 on:
   pull_request:
     branches:
@@ -17,6 +15,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  attestations: write
 
 concurrency:
   group: frontend-image-${{ github.event.pull_request.number || github.ref }}
@@ -34,8 +33,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Tags are the release: frontend-v1.1.0 pushes finos/frontend:1.1.0. The
-      # version must be X.Y.Z and the tagged commit must be on main.
       - name: Read version
         if: github.ref_type == 'tag'
         run: |
@@ -51,11 +48,9 @@ jobs:
           fi
           echo "IMAGE_TAG=$version" >> "$GITHUB_ENV"
 
-      # OIDC: GitHub vouches for this run and AWS hands back credentials for an hour.
-      # The role only trusts tags of this repository and can only push images.
       - name: Configure AWS credentials
         if: github.ref_type == 'tag'
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -63,10 +58,8 @@ jobs:
       - name: Login to Amazon ECR
         if: github.ref_type == 'tag'
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd
 
-      # Tags in this repository are immutable, so a rerun for the same commit keeps the
-      # image that is already there.
       - name: Check for an existing image
         if: github.ref_type == 'tag'
         id: existing
@@ -91,3 +84,10 @@ jobs:
         run: |
           docker tag "$ECR_REPOSITORY:$IMAGE_TAG" "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: SBOM of the image
+        if: github.ref_type == 'tag'
+        uses: ./.github/actions/image-sbom
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          project: frontend

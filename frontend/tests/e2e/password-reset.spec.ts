@@ -4,7 +4,6 @@ import { setPassword, submitLogin, takeLink } from "./helpers";
 const SIGNED_OUT = { cookies: [], origins: [] };
 const USED = "This link has expired or was used already. Ask your admin for a new one.";
 
-/** The row of the users table that shows `email`, found with the search box. */
 async function userRow(page: Page, email: string) {
   await page.getByPlaceholder("Search for users").fill(email);
   const row = page.getByRole("row").filter({ hasText: email });
@@ -19,7 +18,6 @@ async function openUser(page: Page, email: string) {
   await row.getByRole("button", { name: "Edit user" }).click();
 }
 
-/** Sets the password with the link in a browser of the user's own, and signs in with it. */
 async function setPasswordAndSignIn(
   browser: Browser,
   link: string,
@@ -44,8 +42,6 @@ async function setPasswordAndSignIn(
   }
 }
 
-// An admin adds a user, which gives a link; the user opens it, sets a password and signs
-// in. The admin's reset gives another link, which works the same way. A link works once.
 test("a user sets their password with the link an admin gives them", async ({
   page,
   browser,

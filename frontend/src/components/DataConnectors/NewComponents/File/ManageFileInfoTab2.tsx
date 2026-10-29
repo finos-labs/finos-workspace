@@ -143,7 +143,7 @@ export default function ManageFileInfoTab2({ prev }: { prev: () => void }) {
           source: file.source,
           connectionType: "file" as const,
         };
-        widgetsList.push(widgetToAdd); // Append widgetToAdd to the widgetsList
+        widgetsList.push(widgetToAdd);
         dispatchSaveState();
       }
 
@@ -199,7 +199,6 @@ export default function ManageFileInfoTab2({ prev }: { prev: () => void }) {
         },
       });
     } else {
-      //setSearchParams({ tab });
     }
   }, [files]);
 

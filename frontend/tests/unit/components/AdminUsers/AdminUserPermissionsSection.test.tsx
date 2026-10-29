@@ -54,15 +54,12 @@ describe("AdminUserPermissionsSection", () => {
     expect(screen.getByText("Risk Manager")).toBeInTheDocument();
     expect(screen.getByText("Analyst")).toBeInTheDocument();
 
-    // Risk Manager: Apps 1 + Widgets 1 (app2 is denied; no prompts/agents).
     const riskRow = screen.getByText("Risk Manager").closest("tr") as HTMLElement;
     expect(within(riskRow).getAllByText("1")).toHaveLength(2);
 
-    // Analyst: Widgets 2 (w1 + w2).
     const analystRow = screen.getByText("Analyst").closest("tr") as HTMLElement;
     expect(within(analystRow).getByText("2")).toBeInTheDocument();
 
-    // One Final Permission "Access" tag per role (popover tags only render on hover).
     expect(screen.getAllByText("Access")).toHaveLength(2);
   });
 

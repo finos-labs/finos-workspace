@@ -23,6 +23,7 @@ from routers import (
     admin,
     auth,
     entity,
+    widget_plugins,
 )
 from routers.app import (
     dash,
@@ -66,9 +67,6 @@ app = FastAPI(
     generate_unique_id_function=lambda route: route.name,
 )
 
-# Only the web app, by its exact origins, may read answers and send the session cookie. Its
-# client header (auth_helpers.CLIENT_HEADER) needs this preflight, so no other origin can
-# make a request that rides the session cookie.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.settings.BACKEND_CORS_ORIGINS,
@@ -105,6 +103,7 @@ routers = [
     workspace_tools.router,
     entity.router,
     admin.router,
+    *widget_plugins.routers,
 ]
 
 
@@ -131,8 +130,6 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         status_code=exc.status_code,
     )
     logger.bind(**extras).exception(exc)
-    # The exception's headers go out with it: WWW-Authenticate on a 401, the cookie a
-    # refused sign-in clears
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail, "status": exc.status_code},
@@ -143,8 +140,6 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
-    # Where and why the request failed, never what it sent: inputs carry passwords,
-    # tokens and keys
     logger.bind(method=request.method, path=request.url.path, status_code=422).warning(
         "Request validation failed: "
         + "; ".join(f"{error['loc']}: {error['type']}" for error in errors)
@@ -159,8 +154,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    # The scheme of a request behind a proxy comes from X-Forwarded-Proto only when the
-    # proxy is one of TRUSTED_PROXIES (uvicorn's proxy headers, run.py)
     start_time = time()
 
     try:
@@ -199,24 +192,20 @@ async def log_requests(request: Request, call_next):
 @app.get("/healthz")
 @app.get("/")
 def nginx():
-    "This endpoint only exists to test NGINX"
     return JSONResponse(content={"success": True}, status_code=200)
 
 
 def include_routers():
     active_routers = []
     for router in routers:
-        # Supress routers
         if not any(
             tag in config.settings.SUPPRESSED_API_ROUTERS for tag in router.tags
         ):
             active_routers.extend(router.tags)
             app.include_router(router)
 
-    # Include router
     logger.info(f"Included routers: {active_routers}", exclude=True)
 
-    # Supress routes
     routes_to_remove = [
         route
         for route in app.routes
@@ -228,7 +217,6 @@ def include_routers():
 
 
 def start_prometheus(fork_id: int):
-    "Start prometheus server"
     if fork_id == 1:
         logger.info("Starting prometheus server")
         prometheus_client.start_http_server(6970)
@@ -236,18 +224,13 @@ def start_prometheus(fork_id: int):
 
 include_routers()
 if config.settings.PROMETHEUS:
-    # Register /metrics before the catch-all MCP mount below, otherwise the mount
-    # (matched first) shadows it and returns the MCP credential error.
     instrumentator.expose(app, endpoint="/metrics", should_gzip=True)
-app.mount("", workspace_mcp_asgi_app, name="Workspace MCP App")
+app.mount("", workspace_mcp_asgi_app, name="FINOS Workspace MCP App")
 add_pagination(app)
 
 
 app.add_middleware(GZipMiddleware)
 
-# No cache keeps an answer to a request that carried a credential
 app.add_middleware(auth_helpers.NoStoreMiddleware)
 
-# Added last so it is the outermost middleware: a request or websocket that does not name
-# an allowed origin reaches nothing else
 app.add_middleware(auth_helpers.AllowedOriginMiddleware)

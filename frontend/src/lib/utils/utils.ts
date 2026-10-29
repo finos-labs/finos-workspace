@@ -36,27 +36,22 @@ export function isTabPath(pathname: string) {
   return pathname?.includes("/app/") && isUUID(pathname?.split("/app/")?.pop() || "");
 }
 
-// Initialize linkify-it instance for URL detection
 const linkify = new LinkifyIt();
 
 export function extractUrlsFromText(text: string): string[] {
   try {
-    // Use linkify-it to find URLs in text
     const matches = linkify.match(text);
 
     if (!matches) {
       return [];
     }
 
-    // Extract URLs and filter out emails (mailto: links) and @mentions
     const urls = matches
       .map((match) => match.url)
       .filter((url) => {
         if (url.endsWith(".name")) return false;
-        // Filter out mailto: links (emails)
         if (url.startsWith("mailto:")) return false;
 
-        // Check if preceded by @ (indicating email domain pattern like @gmail.com)
         const originalText = matches.find((m) => m.url === url)?.raw || "";
         const urlIndex = text.indexOf(originalText);
         if (urlIndex > 0 && text[urlIndex - 1] === "@") {
@@ -73,7 +68,6 @@ export function extractUrlsFromText(text: string): string[] {
   }
 }
 
-/** The error to report for whatever was thrown. */
 export function toError(thrown: unknown): Error {
   return thrown instanceof Error ? thrown : new Error(String(thrown));
 }
@@ -174,9 +168,6 @@ export function useEventListener<T extends EventName>(
   }, [eventName, listener]);
 }
 
-/**
- * Dispatches an event to save local widget states to AppStore
- */
 export async function dispatchSaveState() {
   return window.dispatchEvent(
     new CustomEvent("saveWidgets", {
@@ -226,7 +217,6 @@ export function shuffle<T>(arr: T[]): T[] {
   const copy = [...arr];
   while (--i) {
     const j = Math.floor(Math.random() * (i + 1));
-    // i and j are within the array
     const a = copy[i] as T;
     const b = copy[j] as T;
     copy[i] = b;
@@ -332,15 +322,15 @@ export function generateBackgroundColorWithContrast(
 }
 
 export const COLORS = [
-  "#00B5E2", // FINOS light blue
-  "#EF6689", // pink
-  "#16A34A", // green
-  "#FB923C", // orange
-  "#CCBE00", // yellow
-  "#0086BF", // FINOS dark blue
-  "#998E00", // dark yellow
-  "#917DB0", // purple
-  "#FB923C", // orange
+  "#00B5E2",
+  "#EF6689",
+  "#16A34A",
+  "#FB923C",
+  "#CCBE00",
+  "#0086BF",
+  "#998E00",
+  "#917DB0",
+  "#FB923C",
 ];
 
 export function generateGroupingColor() {
@@ -379,48 +369,40 @@ export function extractUUIDFromURL(url: string | undefined) {
 export function slugifyWithExtension(str: string) {
   if (!str) return "";
 
-  // Convert to string if it isn't already
   const inputStr = str.toString();
 
-  // Find the last period to separate filename from extension
   const lastDotIndex = inputStr.lastIndexOf(".");
 
-  // If there's no dot or the dot is at the beginning or end, treat the whole string as filename
   if (lastDotIndex <= 0 || lastDotIndex === inputStr.length - 1) {
-    // No extension, slugify the entire string
     return inputStr
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, "_") // Replace one or more spaces with single underscore
+      .replace(/\s+/g, "_")
       .replace(/\n/g, "_")
-      .replace(/[^a-zA-Z0-9_\u0080-\uFFFF.-]/g, "_") // Replace special characters with underscore, but keep dots for now
-      .replace(/_+/g, "_") // Replace multiple consecutive underscores with single underscore
-      .replace(/^_|_$/g, "") // Remove leading and trailing underscores
-      .replace(/\.{2,}/g, "."); // Replace multiple consecutive dots with single dot
+      .replace(/[^a-zA-Z0-9_\u0080-\uFFFF.-]/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "")
+      .replace(/\.{2,}/g, ".");
   }
 
-  // Split into filename and extension
   const filename = inputStr.substring(0, lastDotIndex);
   const extension = inputStr.substring(lastDotIndex + 1);
 
-  // Slugify the filename part
   const slugifiedFilename = filename
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, "_") // Replace one or more spaces with single underscore
+    .replace(/\s+/g, "_")
     .replace(/\n/g, "_")
-    .replace(/[^a-zA-Z0-9_\u0080-\uFFFF.-]/g, "_") // Replace special characters with underscore, but keep dots for now
-    .replace(/_+/g, "_") // Replace multiple consecutive underscores with single underscore
-    .replace(/^_|_$/g, "") // Remove leading and trailing underscores
-    .replace(/\.{2,}/g, "."); // Replace multiple consecutive dots with single dot
+    .replace(/[^a-zA-Z0-9_\u0080-\uFFFF.-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .replace(/\.{2,}/g, ".");
 
-  // Slugify the extension part (extensions should be simple)
   const slugifiedExtension = extension
     .toLowerCase()
     .trim()
-    .replace(/[^a-zA-Z0-9]/g, ""); // Only allow alphanumeric characters in extension
+    .replace(/[^a-zA-Z0-9]/g, "");
 
-  // Return the slugified filename with extension if extension is not empty
   return slugifiedExtension
     ? `${slugifiedFilename}.${slugifiedExtension}`
     : slugifiedFilename;
@@ -449,7 +431,6 @@ export function beautifySlug(
       .replace(/_/g, " ")
       .split(/(?=[A-Z][a-z])|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/)
       .reduce((acc, word) => {
-        // avoids adding space after opening parenthesis
         const addSpace = acc.endsWith("(") ? "" : " ";
         if (!toUpperCase) return `${acc}${addSpace}${word}`;
 
@@ -577,7 +558,6 @@ export function formatNumberMagnitude(
   }
 
   if (inMillions && (value > 1_000 || value < -1_000)) {
-    // format number in millions
     const formatted = round(value / 1_000_000, decimals).toString();
     const parts = formatted?.toString().split(".");
     const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -642,7 +622,6 @@ export async function generateReportImage(
 
   return new Promise<string | null | undefined>((resolve) => {
     if (!element) return null;
-    //document.documentElement.classList.add("generating-report");
 
     const contentWidth = Math.max(
       element.scrollWidth,
@@ -669,51 +648,43 @@ export async function generateReportImage(
 
         const image = new Image();
         image.onload = () => {
-          // Set canvas dimensions to match image dimensions with additional space for the black box
           canvas.width = image.width;
-          canvas.height = image.height + 80; // Increased box height
+          canvas.height = image.height + 80;
 
-          // Fill all the background with the specified color
           ctx.fillStyle = darkMode ? "#000000" : "rgb(246, 246, 246)";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-          // Draw the black box with the specified color
           ctx.fillStyle = "#000000";
-          ctx.fillRect(0, 0, canvas.width, 80); // Increased box height
+          ctx.fillRect(0, 0, canvas.width, 80);
 
-          // Add title text, logo, and date to the canvas
-          ctx.font = exportCanvasFont(28); // Increased font size
+          ctx.font = exportCanvasFont(28);
           ctx.textAlign = "left";
           ctx.fillStyle = "#ffffff";
 
-          // Draw the title text with bold font weight
-          ctx.font = exportCanvasFont(28, "bold"); // Increased font size
-          ctx.fillText(title, 10, 48); // Adjusted position
+          ctx.font = exportCanvasFont(28, "bold");
+          ctx.fillText(title, 10, 48);
 
-          ctx.font = exportCanvasFont(28); // Reset font size
-          const exportString = "| Exported with Workspace";
-          ctx.fillText(exportString, ctx.measureText(title).width + 40, 48); // Adjusted position
+          ctx.font = exportCanvasFont(28);
+          const exportString = "| Exported with FINOS Workspace";
+          ctx.fillText(exportString, ctx.measureText(title).width + 40, 48);
 
-          // Draw the logo SVG next to the title
           const logoSvg = LOGO_SVG;
           const logoImage = new Image();
           logoImage.onload = () => {
             const titleWidth =
-              ctx.measureText(title).width + ctx.measureText(exportString).width + 60; // Adjusted width
-            const logoX = titleWidth; // Adjusted position
-            const logoY = 48 - 16; // 16 is half the logo height to center it vertically
-            ctx.drawImage(logoImage, logoX, logoY, 32, 16); // Doubled the logo size
+              ctx.measureText(title).width + ctx.measureText(exportString).width + 60;
+            const logoX = titleWidth;
+            const logoY = 48 - 16;
+            ctx.drawImage(logoImage, logoX, logoY, 32, 16);
 
             if (showDate) {
-              const currentDate = formatDate(new Date()); // Get the current date
+              const currentDate = formatDate(new Date());
               ctx.textAlign = "right";
-              ctx.fillText(currentDate, canvas.width - 10, 48); // Adjusted position
+              ctx.fillText(currentDate, canvas.width - 10, 48);
             }
 
-            // Draw the image on the canvas, considering the offset due to the black box
-            ctx.drawImage(image, 0, 80); // Increased box height
+            ctx.drawImage(image, 0, 80);
 
-            // Convert canvas to data URL
             const finalDataUrl =
               exportType === "pdf"
                 ? canvas.toDataURL("image/jpeg", 1)
@@ -728,7 +699,6 @@ export async function generateReportImage(
               pdf.addImage(finalDataUrl, "JPEG", 0, 0, canvas.width, canvas.height);
               pdf.save(`${name}.pdf`);
             } else {
-              // Create and download the image
               const link = document.createElement("a");
               link.download = `${name}.png`;
               link.href = finalDataUrl;
@@ -750,12 +720,10 @@ export async function generateReportImage(
       })
       .finally(() => {
         onFinish?.();
-        //document.documentElement.classList.remove("generating-report");
       });
   });
 }
 
-// Export header constants
 const EXPORT_HEADER_HEIGHT = 80;
 const EXPORT_HEADER_FONT_SIZE = 28;
 const EXPORT_HEADER_TEXT_Y = 48;
@@ -767,10 +735,9 @@ const EXPORT_LOGO_Y = 32;
 const EXPORT_ELEMENT_PADDING = 16;
 const EXPORT_TITLE_LOGO_GAP = 60;
 
-// Timing constants for element polling
 const ELEMENT_POLL_INTERVAL = 100;
 const ELEMENT_MAX_WAIT = 5000;
-const ELEMENT_SETTLE_DELAY = 1000; // Allow widgets to fully render after content detected
+const ELEMENT_SETTLE_DELAY = 1000;
 
 const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 277.167 139.248" width="32" height="16" fill="none">
   <path fill="white" d="M147.222,17.667V0h-17.333v17.595H0v52h17.444v-.056h95.111v17.306H16.889v52.278h113.111V17.667h17.222ZM112.556,121.623H34.333v-17.278h78.222v17.278ZM112.556,52.04H17.444v-16.444h95.111v16.444Z"/>
@@ -815,7 +782,7 @@ async function captureElementWithHeader(
       ctx.fillText(title, EXPORT_HEADER_PADDING_LEFT, EXPORT_HEADER_TEXT_Y);
 
       ctx.font = exportCanvasFont(EXPORT_HEADER_FONT_SIZE);
-      const exportString = "| Exported with Workspace";
+      const exportString = "| Exported with FINOS Workspace";
       ctx.fillText(
         exportString,
         ctx.measureText(title).width + 40,
@@ -875,7 +842,6 @@ export async function waitForGridLayout(
     const element = document.getElementsByClassName("react-grid-layout")[0] as
       | HTMLElement
       | undefined;
-    // Check element exists and has rendered content (clientHeight > 0)
     if (element && element.clientHeight > 0) {
       await delay(ELEMENT_SETTLE_DELAY);
       return element;
@@ -1141,22 +1107,18 @@ export async function generateFolderReport(
     if (dashboardId) {
       navigateToDashboard(dashboardId, originalTab || undefined);
     } else {
-      // Restore original URL even if it's not a dashboard path
       window.history.replaceState({}, "", originalPath);
       window.dispatchEvent(new PopStateEvent("popstate"));
     }
   }
 }
 
-// *didier made this function
 export function isLight(color: string) {
-  // Assuming the color is in the format #RRGGBB
   try {
     const r = Number.parseInt(color.slice(1, 3), 16) / 255;
     const g = Number.parseInt(color.slice(3, 5), 16) / 255;
     const b = Number.parseInt(color.slice(5, 7), 16) / 255;
 
-    // Calculate the relative luminance
     const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
     return luminance > 0.5;
@@ -1195,12 +1157,6 @@ export function getRandomUserListBackgroundByEmail(email: string) {
   return COLORS[index];
 }
 
-/**
- * Ensures that the value is an array. If the value is a string, it will be split by commas.
- * @param value - The value to ensure as an array
- * @param defaultValue - The default value to return if the value is null or undefined (default: [])
- * @returns The value as an array
- **/
 export function ensureArray<T>(value: T | T[], defaultValue: T[] = []): T[] {
   if (value === null || value === undefined) return defaultValue;
 
@@ -1213,11 +1169,6 @@ export function ensureArray<T>(value: T | T[], defaultValue: T[] = []): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
-/**
- * Ensures that the value is a string. If the value is an array, it will be joined by commas.
- * @param value - The value to ensure as a string
- * @returns The value as a string
- **/
 export function ensureString<T>(value: T | T[]): string {
   if (Array.isArray(value)) {
     return value.join(", ");
@@ -1225,17 +1176,6 @@ export function ensureString<T>(value: T | T[]): string {
   return value?.toString() || "";
 }
 
-/**
- * Scores two arrays based on the number of matches between them and the length of the larger array
- * @param arr1 - The first array to score
- * @param arr2 - The second array to score
- * @param iterSmArray - Whether to iterate over the smaller array (default: false)
- * @returns The score and the matches between the arrays
- * @example
- * const { score, matches } = scoreArrays([1, 2, 3], [2, 3, 4]);
- * // score = 0.6666666666666666
- * // matches = [2, 3]
- **/
 export function scoreArrays<T>(
   arr1: T[],
   arr2: T[],
@@ -1259,19 +1199,6 @@ export function scoreArrays<T>(
   return { score: score / lgArray.length, matches };
 }
 
-/**
- * Merges two objects recursively, removing any functions and merging objects.
- * @param target - The target object to merge into
- * @param source - The source object to merge from
- * @param withFunctions - Whether to include functions in the merged object (default: false)
- * @returns The merged object
- * @example
- * const target = { a: 1, b: { c: 2 } };
- * const source = { a: 2, b: { d: 3 } };
- * const merged = mergeObjects(target, source);
- * // merged = { a: 2, b: { c: 2, d: 3 } }
- *
- **/
 export function mergeObjects<T, U>(target: T, source: U, withFunctions = false): T & U {
   try {
     const into = target as Record<string, unknown>;
@@ -1312,14 +1239,6 @@ export function mergeObjects<T, U>(target: T, source: U, withFunctions = false):
   }
 }
 
-/**
- * Filter out any functions from the source object or array
- * @param source - The source object or array
- * @example
- * const source = { a: 1, b: () => {}, c: { d: 2, e: () => {} } };
- * const result = filterFunctions(source);
- * // result = { a: 1, c: { d: 2 } }
- */
 export function filterFunctions<T>(source: T | T[]): T | T[] {
   if (Array.isArray(source)) {
     return source.map((item) => mergeObjects({} as T, item));
@@ -1331,12 +1250,6 @@ export function filterFunctions<T>(source: T | T[]): T | T[] {
   return source;
 }
 
-/**
- * Formats the file size in bytes to a human-readable format
- * @param bytes - The file size in bytes
- * @param decimalCases - The number of decimal cases to display (default: 0)
- * @returns The file size in a human-readable format
- **/
 export const formatFileSize = (bytes: number, decimalCases = 0): string => {
   const units = ["B", "KB", "MB", "GB"];
   let size = bytes;
@@ -1350,10 +1263,6 @@ export const formatFileSize = (bytes: number, decimalCases = 0): string => {
   return `${size.toFixed(decimalCases)}${units[unitIndex]}`;
 };
 
-/**
- * Append -2, -3, ... until the slug is unique, truncating the base so the
- * result stays within the skill slug length limit.
- */
 export function ensureUniqueSlug(
   base: string,
   isSlugUnique: (slug: string) => boolean,

@@ -2,13 +2,11 @@ import type { ReactNode } from "react";
 import type { EntityRolePermissions } from "~/api/entity_roles.api";
 import type { SharingLevel } from "~/lib/state/access";
 
-/** What a role lets its members do besides the resources it grants. A null limit is no limit. */
 export interface RoleSettings {
   sharing: SharingLevel;
   copilot_calls_day: number | null;
   copilot_tokens_day: number | null;
   upload_size_gb: number | null;
-  /** The Copilot's tools for the web: on for a user when any of their roles allows them. */
   search_web: boolean;
   fetch_from_web: boolean;
 }
@@ -17,7 +15,7 @@ export interface RoleT extends RoleSettings {
   uuid: string;
   name: string;
   description: string;
-  users: string[]; // email addresses of users in the group
+  users: string[];
   createdAt: number;
 }
 
@@ -47,7 +45,22 @@ export type RoleAuditAction =
   | "remove"
   | "add";
 
-export type RoleResourceType = "role" | "backend" | "file" | "prompt" | "user";
+export type RoleResourceType =
+  | "role"
+  | "backend"
+  | "file"
+  | "prompt"
+  | "user"
+  | "widget_plugin";
+
+export const ROLE_RESOURCE_LABELS: Record<RoleResourceType, string> = {
+  role: "role",
+  backend: "backend",
+  file: "file",
+  prompt: "prompt",
+  user: "user",
+  widget_plugin: "widget plugin",
+};
 
 export type RoleAuditLogReturn = {
   uuid: string;
@@ -68,7 +81,6 @@ export interface PermissionItem {
   name: string;
   description?: string;
   category?: "backend" | "file" | "prompt" | "template";
-  /** Unset until the role's saved permissions are applied */
   access?: "no-access" | "access";
   isChecked?: boolean;
   status?: "success" | "error";
@@ -87,7 +99,6 @@ export interface EditPermissionsDialogProps {
   setOpen: (value: boolean) => void;
   role: RoleT | null;
   permissions: EntityRolePermissions[];
-  /** Optional control rendered in the dialog header to switch the active role. When set, the title becomes "Setup Permissions". */
   roleSelector?: ReactNode;
 }
 

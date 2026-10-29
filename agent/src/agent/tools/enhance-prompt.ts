@@ -1,17 +1,7 @@
-/**
- * `enhance_prompt` — refines a vague user query into a more specific,
- * answerable one. Wraps the standalone `/v1/enhance_prompt` route's logic in a
- * loop-callable tool so the model can decide mid-conversation that it needs a
- * sharper question before searching widgets or fetching data.
- *
- * State-free aside from the closed-over LLM helper; counts as cheap +
- * local-execute per CLAUDE.md rules.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
-import { singleShotLlm } from "../../lib/llm";
-import { getLogger } from "../../lib/logger";
+import { singleShotLlm } from "../../lib/llm.ts";
+import { getLogger } from "../../lib/logger.ts";
 
 const logger = getLogger(["app", "tools", "enhance_prompt"]);
 

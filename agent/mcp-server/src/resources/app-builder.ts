@@ -1,19 +1,8 @@
-/**
- * App-builder MCP resource catalog.
- *
- * Direct port of workspace_mcp/app_builder/resources.py:40-220. Each entry
- * binds an `workspace://...` URI to a markdown file shipped under
- * `mcp-server/src/resources/app-builder/`.
- *
- * The 16 markdown files (~84 KB total) are eager-loaded at boot since they
- * are static + small. Each `read` returns the cached body — no per-request
- * IO unless we someday move to dynamic content.
- */
-
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { getLogger } from "../lib/logger";
+import { getLogger } from "../lib/logger.ts";
 
 const logger = getLogger(["mcp", "resources", "app-builder"]);
 
@@ -31,7 +20,7 @@ const RESOURCES: readonly AppBuilderResource[] = [
     uri: "workspace://app-builder/index",
     title: "App Builder Index",
     description:
-      "Router for the Workspace app-builder resources. Read this " +
+      "Router for the FINOS Workspace app-builder resources. Read this " +
       "first to find the right spec, guide, or example. Only for when the " +
       "user has explicitly asked to build, review, debug, or extend a " +
       "backend or app — not for composing dashboards from existing widgets.",
@@ -39,9 +28,9 @@ const RESOURCES: readonly AppBuilderResource[] = [
   },
   {
     uri: "workspace://overview/what-is-workspace",
-    title: "What Workspace Is",
+    title: "What FINOS Workspace Is",
     description:
-      "Mental model of Workspace from the consumer side — " +
+      "Mental model of FINOS Workspace from the consumer side — " +
       "Dashboards, Apps (templates), Widgets, Prompts, the AI Agent, " +
       "and what is native vs. what your backend supplies.",
     relativePath: "overview/what-is-workspace.md",
@@ -50,7 +39,7 @@ const RESOURCES: readonly AppBuilderResource[] = [
     uri: "workspace://overview/ai-agent-contract",
     title: "AI Agent Contract",
     description:
-      "How Workspace's built-in AI Agent reads widget metadata and data, " +
+      "How FINOS Workspace's built-in AI Agent reads widget metadata and data, " +
       "and the description / response-shape rules that make widgets " +
       "agent-friendly.",
     relativePath: "overview/ai-agent-contract.md",
@@ -59,7 +48,7 @@ const RESOURCES: readonly AppBuilderResource[] = [
     uri: "workspace://contract/backend",
     title: "Backend Contract",
     description:
-      "What a Workspace backend must expose over HTTP, " +
+      "What a FINOS Workspace backend must expose over HTTP, " +
       "language-agnostic.",
     relativePath: "backend-contract.md",
   },
@@ -106,7 +95,7 @@ const RESOURCES: readonly AppBuilderResource[] = [
     uri: "workspace://guides/build-an-app",
     title: "Build an App",
     description:
-      "End-to-end workflow for building a new Workspace app from " +
+      "End-to-end workflow for building a new FINOS Workspace app from " +
       "scratch. Only for when the user has explicitly asked to build one.",
     relativePath: "guides/build-an-app.md",
   },
@@ -114,7 +103,7 @@ const RESOURCES: readonly AppBuilderResource[] = [
     uri: "workspace://guides/review-app",
     title: "Review an App",
     description:
-      "Structured review pass for an existing Workspace backend " +
+      "Structured review pass for an existing FINOS Workspace backend " +
       "or app template.",
     relativePath: "guides/review-app.md",
   },
@@ -130,7 +119,7 @@ const RESOURCES: readonly AppBuilderResource[] = [
     uri: "workspace://guides/convert-endpoint-to-widget",
     title: "Convert an Existing Endpoint to a Widget",
     description:
-      "Turn an existing HTTP endpoint into a Workspace widget — type " +
+      "Turn an existing HTTP endpoint into a FINOS Workspace widget — type " +
       "selection, params, columns, validation.",
     relativePath: "guides/convert-endpoint-to-widget.md",
   },
@@ -138,7 +127,7 @@ const RESOURCES: readonly AppBuilderResource[] = [
     uri: "workspace://examples/generic-http/minimal",
     title: "Minimal Backend (Generic HTTP)",
     description:
-      "Framework-neutral picture of a Workspace backend — " +
+      "Framework-neutral picture of a FINOS Workspace backend — " +
       "routes, response shapes, CORS, auth.",
     relativePath: "examples/generic-http-minimal.md",
   },
@@ -146,7 +135,7 @@ const RESOURCES: readonly AppBuilderResource[] = [
     uri: "workspace://examples/python-fastapi/minimal",
     title: "Minimal Backend (Python + FastAPI)",
     description:
-      "Recommended Python starter shape for a Workspace backend " +
+      "Recommended Python starter shape for a FINOS Workspace backend " +
       "using FastAPI.",
     relativePath: "examples/python-fastapi-minimal.md",
   },
@@ -160,7 +149,7 @@ const RESOURCES: readonly AppBuilderResource[] = [
   },
 ];
 
-const RESOURCE_DIR = join(import.meta.dir, "app-builder");
+const RESOURCE_DIR = join(import.meta.dirname, "app-builder");
 
 interface CachedResource extends AppBuilderResource {
   body: string;
@@ -173,7 +162,7 @@ async function loadAll(): Promise<CachedResource[]> {
   const loaded: CachedResource[] = [];
   for (const r of RESOURCES) {
     const path = join(RESOURCE_DIR, r.relativePath);
-    const body = await Bun.file(path).text();
+    const body = await readFile(path, "utf8");
     loaded.push({ ...r, body });
   }
   cache = loaded;

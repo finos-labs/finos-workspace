@@ -13,22 +13,68 @@ related:
 
 Widget controls live under a widget's `params` array in `widgets.json`. The right `type` is the one that **matches the shape of the value**, not the easiest to implement.
 
-## Common fields
+## Fields
 
-Every param object should have:
+A param accepts these keys and no others; `paramName` and `type` are required, and every param should have a `label`, a `description` and a sensible `value`:
 
-| Field | Required | Notes |
-|-------|----------|-------|
-| `paramName` | Yes | Query/body key sent to the data endpoint. |
-| `type` | Yes | Renderer — see below. |
-| `label` | Yes | Display label in the param panel. |
-| `description` | Yes (in practice) | Tooltip help shown on hover. Don't omit. |
-| `value` | Usually | Default value. |
-| `show` | Optional | When `false`, the param is hidden in the UI but still sent — used when a group or another widget supplies the value. |
-| `multiSelect` | Optional | For dropdowns that allow selecting multiple values. Use a comma-separated default string unless the app's existing convention uses an array. |
-| `optionsEndpoint` | When `type: "endpoint"` | Backend path that returns the options list. |
-| `optionsParams` | Optional | Dependent options — e.g. `{ "country": "$country" }` re-fetches when the named param changes. |
-| `options` | When `type: "text"` with a curated list | Inline `[{label, value}]` array. |
+<!-- generated:param-fields -->
+| Field | Param types | Value | Notes |
+|---|---|---|---|
+| `type` | all | `text`, `tabs`, `date`, `number`, `boolean`, `button`, `endpoint`, `form` | The control the param shows |
+| `paramName` | all | text, at most 128 characters | The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead. For `form`: A name for the form; it is not sent |
+| `label` | all | text, at most 200 characters | The control's label; the paramName by default |
+| `description` | all | text, at most 4,000 characters | Help shown on hover, which the AI Agent also reads |
+| `show` | all | `true` or `false` | False hides the control; the value is still sent, as when a parameter group or another widget supplies it |
+| `row` | all | whole number, 0 to 31 | The row of the parameter bar the control is placed in |
+| `roles` | all but `form` | list of `fileSelector`, at most 1 | `fileSelector`: the param picks the file the widget shows, at most one per widget |
+| `placeholder` | all but `form` | text, at most 200 characters | Shown in the control while it is empty |
+| `style` | all but `form` | object | `popupWidth`: the width of a dropdown's list, in pixels |
+| `options` | all but `form` | list of object, at most 1,000 | The choices of a dropdown, as `{ label, value, extraInfo }` |
+| `multiSelect` | all but `form` | `true` or `false` | Several values can be chosen; sent joined with commas, or as a list in a body |
+| `in` | all but `form` | `query`, `header`, `body` | Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none |
+| `value` | all but `form` | depends on `type` | The default value. For `date`: The default: a date, `YYYY-MM-DD`, or `$currentDate` with a modifier such as `$currentDate-1M`. For `number`: The default: a number, or a string of digits. For `endpoint`: The default: an option's value, or a list of them for multiSelect (or a comma-separated string) |
+| `multiple` | `text` | `true` or `false` | Several values can be entered, sent like multiSelect |
+| `language` | `text` | `sql`, `javascript`, `python`, `json`, `html`, `css`, `markdown`, `xml`, `text` | The value is code in this language, edited in a code editor |
+| `optionsEndpoint` | `endpoint` | text, at most 2,048 characters | A path or an absolute URL with no `?` and no `#`, which answers with the choices as a list of strings or `{ label, value, extraInfo }` |
+| `optionsMethod` | `endpoint` | `GET`, `POST` | How the options are requested: GET (the default) or POST |
+| `optionsParams` | `endpoint` | object | Values for the options request: a `{name}` placeholder of optionsEndpoint takes one, the rest go in the query (GET) or a JSON body (POST). `$name` is the current value of the param `name` |
+| `endpoint` | `form` | text, at most 2,048 characters | A path or an absolute URL with no `?` and no `#`, which receives the form's inputs as a JSON body; `{name}` takes an input's or a param's value |
+| `method` | `form` | `POST`, `PUT` | How the form is sent: POST (the default) or PUT |
+| `inputParams` | `form` | list of object, at most 32 | The form's fields, each like a param, with no `in` |
+<!-- /generated:param-fields -->
+
+`paramName` is unique in a widget: storage and parameter groups key on it.
+
+## Where a value goes
+
+- **The path.** A param whose name is a `{name}` placeholder in the widget's `endpoint` fills it, encoded as one path segment, and is sent nowhere else, so it declares no `in`. It takes one value, so it is not `multiSelect` or `multiple`, and the request waits until it has one.
+- **`in: "query"`** (the default): `name=value` in the query.
+- **`in: "header"`**: a header named `paramName`. The rules are below.
+- **`in: "body"`**: a key of the JSON body. It needs `"method": "POST"` on the widget; the body is one flat object.
+- An `iframe` widget's params go in the query or the path only, and a form's inputs go in the form's own body, so neither declares `in`.
+
+How a value is written:
+
+| Param type | In the query, a header or the path | In the body |
+|---|---|---|
+| `text`, `tabs` | the string | a JSON string |
+| `number` | the decimal string | a JSON number |
+| `boolean` | `true` or `false` | a JSON boolean |
+| `date` | the date, `YYYY-MM-DD`, after `$currentDate` modifiers | a JSON string in the same format |
+| `endpoint` | the option's value as a string | the option's value |
+| `multiSelect`, `multiple` | the values joined with commas | a JSON array; a default written as a comma-separated string is split on commas |
+
+An empty value is not sent; `0` and `false` are. Credentials do not belong in params, whose values are saved with dashboards and shown in the UI: they belong to the backend connection.
+
+### Header params
+
+<!-- generated:header-names -->
+- The name matches `` ^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,64}$ ``: 1 to 64 characters of the HTTP token set.
+- Not a name a browser forbids page script to set, which `fetch` drops silently: `accept-charset`, `accept-encoding`, `access-control-request-headers`, `access-control-request-method`, `connection`, `content-length`, `cookie`, `date`, `dnt`, `expect`, `host`, `keep-alive`, `origin`, `referer`, `set-cookie`, `te`, `trailer`, `transfer-encoding`, `upgrade`, `via`, or a name that starts with `proxy-`, `sec-` (compared without case).
+- Not a name FINOS Workspace sets or reserves: `authorization`, `content-type`, `accept`, `x-microsoft-id-token`, `x-okta-id-token`, `x-workspace-user`.
+- Not a header the backend connection's credentials use; checked when the backend is connected.
+- The value matches `^[\x20-\x7E]{0,1024}$`: printable ASCII, at most 1,024 characters. Any other value stops the request and the param is shown as invalid.
+<!-- /generated:header-names -->
 
 ## Type cheatsheet
 
@@ -96,9 +142,9 @@ Date modifiers: `$currentDate`, `$currentDate-1d`, `$currentDate-1w`, `$currentD
   "optionsEndpoint": "/teams" }
 ```
 
-The `optionsEndpoint` should return an array of `{ label, value }` objects.
+The `optionsEndpoint` returns a JSON array of strings or `{ label, value }` objects. Its path follows the rules of `endpoint`: no `?` and no `#`.
 
-Keep dropdown options simple. Use `{label, value}` for normal dropdowns; add `category` only when Workspace needs that category for grouping/search semantics. Avoid `extraInfo` unless the user explicitly wants an advanced/search-rich dropdown.
+Keep dropdown options simple. Use `{label, value}` for normal dropdowns; add `category` only when FINOS Workspace needs that category for grouping/search semantics. Avoid `extraInfo` unless the user explicitly wants an advanced/search-rich dropdown.
 
 ### Multi-select dimensions
 
@@ -130,6 +176,14 @@ Prefer real individual choices over fake aggregate choices:
 
 When the user changes the `country` param, the `city` dropdown re-fetches with `?country=...` appended.
 
+An `optionsParams` value is a string, a number or a boolean. One that starts with `$` is the current value of the widget's param of that name, which must be declared; any other value is a literal. A `{name}` placeholder in `optionsEndpoint` takes `optionsParams[name]`. With `"optionsMethod": "POST"` the other values go in a JSON body instead of the query:
+
+```json
+{ "paramName": "team", "type": "endpoint", "label": "Team",
+  "optionsEndpoint": "/teams/search", "optionsMethod": "POST",
+  "optionsParams": { "active": true, "region": "$region" } }
+```
+
 ## Hidden params
 
 A param with `"show": false` is not shown but is still sent to the endpoint. Use it for a value that a parameter group or another widget supplies, so the widget does not offer a second control for the same thing:
@@ -142,5 +196,5 @@ A param with `"show": false` is not shown but is still sent to the endpoint. Use
 ## What this spec does not cover
 
 - The widget-level shape that contains `params` — see `workspace://specs/widgets-json`.
-- App-level `groups[].type` choice (`param` vs `endpointParam` vs `ticker`) — see `workspace://specs/apps-json`.
+- App-level `groups[].type` choice (`param` vs `endpointParam`) — see `workspace://specs/apps-json`.
 - Layout wiring and parameter groups — see `workspace://specs/layout-grid`.

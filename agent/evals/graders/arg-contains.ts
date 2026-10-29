@@ -1,11 +1,6 @@
-import type { Trace } from "../trace";
-import type { GraderSpec } from "./index";
+import type { Trace } from "../trace.ts";
+import type { GraderSpec } from "./index.ts";
 
-/**
- * Pass if a tool call to `name` has parameters whose stringified payload
- * contains every term in `terms`. Useful for asserting "execute_sql call
- * mentions NVDA, AAPL, MSFT" without pinning exact SQL.
- */
 export function argContains(name: string, terms: string[]): GraderSpec {
   return {
     name: `argContains(${name}, [${terms.join(", ")}])`,
@@ -31,10 +26,6 @@ export function argContains(name: string, terms: string[]): GraderSpec {
   };
 }
 
-/**
- * Pass if a tool call to `name` has a parameter at the given path equal to
- * `expected` (deep-equal via JSON.stringify).
- */
 export function argEquals(
   name: string,
   path: string,

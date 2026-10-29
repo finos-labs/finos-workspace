@@ -77,7 +77,6 @@ vi.mock("dayjs", () => {
   const dayjsMock = (_timestamp?: number) => ({
     format: (_formatStr: string) => "Jan 15, 2024 • 2:30 PM",
   });
-  // utils.ts calls dayjs.extend(plugin) at module load
   dayjsMock.extend = vi.fn();
   return { default: dayjsMock };
 });
@@ -161,8 +160,6 @@ describe("CopilotHumanMessage", () => {
       expect(messageBubble).toBeInTheDocument();
     });
 
-    // The parent list is `items-start`, so the wrapper must claim the full width
-    // or the bubble's ml-auto/max-w-[80%] resolve against a shrink-wrapped box.
     it("wraps the bubble in a full-width container", () => {
       const { container } = render(<CopilotHumanMessage message={baseMessage} />);
 
@@ -445,7 +442,6 @@ describe("CopilotHumanMessage", () => {
 
       render(<CopilotHumanMessage message={multilineMessage} />);
 
-      // The text content exists in the rendered component
       const textElement = screen.getByTestId("text-style");
       expect(textElement.textContent).toContain("Line 1");
       expect(textElement.textContent).toContain("Line 2");

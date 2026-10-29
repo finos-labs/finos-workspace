@@ -13,7 +13,6 @@ import { type SharedAppState, useSharedAppStore } from "~/lib/state/sharedApp";
 import {
   addToWidgetParamGroups,
   getEndpointParamGroupByIds,
-  getEndpointParamName,
   getJsonWidget,
   getWidgetInfo,
   needsGroupValueUpdate,
@@ -25,33 +24,20 @@ import type { NewWidgetT, StoredParamValue, WidgetProps, WidgetT } from "./types
 
 type SubType = [Group[], string | null | undefined];
 
-/** The subscription both app stores, of a user's dashboards and of a shared one, give to watch a widget. */
 type SubscribeToWidgetState = <U>(
   selector: (state: SharedAppState | AppState) => U,
   listener: (current: U, previous: U) => void,
   options: { fireImmediately: boolean },
 ) => () => void;
 
-/**
- * Decides whether an in-memory widget update must also be persisted to the
- * app store. Param-group, group, and ticker changes are the historical
- * triggers; everything else stays in provider state until an explicit save.
- * Extracted from updateWidgetCallback so the gate is testable in isolation.
- */
 export function shouldPersistWidgetUpdate(
   currentWidget: WidgetT,
   newWidget: WidgetT,
   getParamName: (groupById: string) => string,
 ): boolean {
-  const prevMainTicker = currentWidget.data?.mainTicker?.symbol;
   const prevParams = currentWidget.storage?.params;
-  const prevGroupById = currentWidget.groupById;
-  const newMainTicker = newWidget.data?.mainTicker?.symbol;
   const newParams = newWidget.storage?.params;
 
-  // Identity fields set by update_widget (MCP/copilot) arrive without any
-  // param/group change — they must persist or the rename is a silent no-op.
-  // The `in` guard keeps partial update objects from forcing store churn.
   if (
     ("name" in newWidget && currentWidget.name !== newWidget.name) ||
     ("description" in newWidget &&
@@ -75,18 +61,7 @@ export function shouldPersistWidgetUpdate(
     }
   }
 
-  if (prevGroupById || newWidget.groupId) {
-    const paramName = getEndpointParamName(newWidget.params ?? [], newWidget.groupById);
-    if (
-      prevGroupById !== newWidget.groupId ||
-      prevMainTicker !== newMainTicker ||
-      (paramName && prevParams?.[paramName] !== newParams?.[paramName])
-    ) {
-      return true;
-    }
-  }
-
-  return false;
+  return !!currentWidget.groupById;
 }
 
 export function useWidgetSync(props: Omit<WidgetProps, "children">) {
@@ -121,10 +96,8 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
 
   const needsUpdateRef = useRef(false);
 
-  // Use a ref to keep track of the current providerWidget
   const providerWidgetRef = useCreateRef(providerWidget);
 
-  // Use a ref to keep track of the saveToStore callback
   const saveToStoreCb = useCallbackRef(() => {
     if (needsUpdateRef.current && !props.contextOverride) {
       if (props.activeDashboardId)
@@ -167,10 +140,8 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
 
           const [groups, innerTab] = current;
           const [prevGroups] = prev;
-          const group = groups?.find((g) => g.type === "ticker");
 
-          const newGroup =
-            !isEqual(groups, prevGroups) || lastWidget?.groupId !== group?.id;
+          const newGroup = !isEqual(groups, prevGroups);
 
           const linkedGroups = groups?.filter((g) =>
             needsGroupValueUpdate(lastWidget, g),
@@ -183,12 +154,8 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
                 currentWidget,
                 linkedGroups,
               );
-              updatedWidget.groupId = group?.id ?? null;
               updatedWidget.paramGroups = (groups || []).reduce<Record<string, string>>(
-                (acc, g) => {
-                  if (g.type === "ticker") return acc;
-                  return addToWidgetParamGroups(acc, g);
-                },
+                (acc, g) => addToWidgetParamGroups(acc, g),
                 {},
               );
 
@@ -220,7 +187,6 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
       );
     }
 
-    // Add event listeners for beforeunload and save shortcut
     window.addEventListener("beforeunload", onBeforeUnload, { signal: ctrl.signal });
 
     return () => {

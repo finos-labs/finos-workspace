@@ -146,7 +146,7 @@ describe("updateParamOrder", () => {
       { type: "text", paramName: "param3", value: "value3", show: true },
     ];
 
-    const paramOrder = ["param1", "param3"]; // param2 is hidden
+    const paramOrder = ["param1", "param3"];
 
     const result = updateParamOrder(paramOrder, params);
 
@@ -166,7 +166,7 @@ describe("updateParamOrder", () => {
       { type: "text", paramName: "param3", value: "value3", show: true },
     ];
 
-    const paramOrder = ["param3", "param1"]; // param2 not in order
+    const paramOrder = ["param3", "param1"];
 
     const result = updateParamOrder(paramOrder, params);
 
@@ -185,7 +185,6 @@ describe("updateParamOrder", () => {
 
     const result = updateParamOrder(paramOrder, params);
 
-    // All params should have show: false
     expect(result[0].show).toBe(false);
     expect(result[1].show).toBe(false);
   });
@@ -244,7 +243,6 @@ describe("updateParamOrder", () => {
     const result = updateParamOrder(paramOrder, params);
 
     expect(result.length).toBe(3);
-    // First param1 in the array should match the order
     expect(result[0].paramName).toBe("param2");
     expect(result[1].paramName).toBe("param1");
   });

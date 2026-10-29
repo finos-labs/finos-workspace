@@ -5,8 +5,6 @@ import { ManageMcpServer, McpServerModal } from "~/components/McpServerModal";
 import type { McpServer } from "~/lib/state/mcpTools";
 import { required } from "../mocks";
 
-// ----- shared mock state -----
-
 let mockDispatch = vi.fn();
 let mockState = {
   addingServer: false,
@@ -23,8 +21,6 @@ vi.mock("~/hooks/useStateReducer", () => ({
     return [mockState, dispatch];
   },
 }));
-
-// ----- mcpTools store mock -----
 
 const mockUpdateServer = vi.fn();
 const mockRemoveServer = vi.fn();
@@ -52,8 +48,6 @@ vi.mock("~/lib/state/mcpTools", () => ({
   useShallowMcpToolsStore: (selector: (state: MockMcpState) => unknown) =>
     selector(mockMcpState),
 }));
-
-// ----- UI mocks -----
 
 vi.mock("~/components/ds/dialogs/BaseDialog", () => ({
   BaseDialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -130,7 +124,6 @@ vi.mock("~/components/ds/atoms/Checkbox", () => ({
   Checkbox: ({ label }: { label: ReactNode }) => <label>{label}</label>,
 }));
 
-// Tooltip renders only its children
 vi.mock("~/components/Tooltip", () => ({
   default: ({
     children,
@@ -166,8 +159,6 @@ vi.mock("~/components/General/SearchResultsNotFound", () => ({
   ),
 }));
 
-// SettingsMenu renders title, rightElement, and children unconditionally
-// so tests can query edit/delete buttons without needing to expand a collapsible
 vi.mock("~/components/ds/molecules/SettingsMenu", () => ({
   default: ({
     title,
@@ -187,8 +178,6 @@ vi.mock("~/components/ds/molecules/SettingsMenu", () => ({
     </div>
   ),
 }));
-
-// ----- helpers -----
 
 function makeServer(
   overrides: Partial<McpServer> & { id: string; name: string; url: string },
@@ -241,8 +230,6 @@ function resetMockState(servers: McpServer[] = [], searchTerm = "") {
   };
 }
 
-// ----- ManageMcpServer -----
-
 describe("ManageMcpServer", () => {
   it("describes streamable HTTP support for new MCP servers", () => {
     resetMockState();
@@ -252,7 +239,7 @@ describe("ManageMcpServer", () => {
 
     expect(
       screen.getByText(
-        "Connect Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported).",
+        "Connect FINOS Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported).",
       ),
     ).toBeInTheDocument();
   });
@@ -278,8 +265,6 @@ describe("ManageMcpServer", () => {
     });
   });
 });
-
-// ----- McpServerModal -----
 
 describe("McpServerModal", () => {
   it("renders MCP Servers title and description", () => {
@@ -422,10 +407,8 @@ describe("McpServerModal", () => {
 
     render(<McpServerModal onClose={vi.fn()} />);
 
-    // The edit button has a pencil icon and sits inside a settings-menu-right panel
     const rightPanel = screen.getByTestId("settings-menu-right");
     const buttons = rightPanel.querySelectorAll("button");
-    // First button: Edit (pencil-02), second button: Delete (trash-04)
     const editButton = Array.from(buttons).find((btn) =>
       btn.querySelector("[data-icon='pencil-02']"),
     );
@@ -499,8 +482,6 @@ describe("McpServerModal", () => {
   });
 });
 
-// ----- ConnectionTools (via McpServerModal) -----
-
 describe("ConnectionTools (via McpServerModal)", () => {
   it("shows tool names when server is connected and has tools", () => {
     const toolsConnection = [
@@ -563,7 +544,6 @@ describe("ConnectionTools (via McpServerModal)", () => {
       url: "https://alpha.example.com",
       tools: serverTools,
     });
-    // "get_price" matches tool name case-insensitively; server name "Alpha" doesn't match
     resetMockState([server], "get_price");
 
     mockGetMCPConnection.mockReturnValue(makeConnection("ready", toolsConnection));
@@ -606,8 +586,6 @@ describe("ConnectionTools (via McpServerModal)", () => {
     expect(screen.queryByText("list_symbols")).not.toBeInTheDocument();
   });
 });
-
-// ----- ToolItem (via McpServerModal) -----
 
 describe("ToolItem (via McpServerModal)", () => {
   it("clicking a tool with description toggles expanded description", () => {

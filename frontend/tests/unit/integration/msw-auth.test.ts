@@ -1,16 +1,3 @@
-/**
- * MSW Integration Tests for Auth API
- *
- * This file demonstrates how to use MSW (Mock Service Worker) for API testing.
- * Unlike vi.mock-based tests, MSW intercepts actual network requests,
- * providing more realistic testing of the API layer.
- *
- * Usage:
- * 1. Import setupMSW() and call it in describe block
- * 2. Use server.use() to override handlers for specific test scenarios
- * 3. Default handlers are in tests/mocks/handlers.ts
- */
-
 import axios, { type AxiosError } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -29,15 +16,12 @@ import {
 
 const BASE_URL = "https://backend.test";
 
-// Create a test axios client (similar to apiClient but without store dependencies)
 const testClient = axios.create({
   baseURL: BASE_URL,
 });
 
-// What apiClient sends to the API with the session cookie
 const WEB_CLIENT = { headers: { "X-Workspace-Client": "web" } };
 
-/** The error a request fails with when the server refuses it. */
 async function refusal(request: Promise<unknown>): Promise<AxiosError> {
   try {
     await request;
@@ -66,7 +50,6 @@ describe("MSW Integration - Auth API", () => {
       expect(status).toBe(200);
       expect(data).toHaveProperty("uuid", mockUser.uuid);
       expect(data).toHaveProperty("email", mockUser.email);
-      // The session is a cookie: no token comes back in the body
       expect(data).not.toHaveProperty("token");
       expect(data).not.toHaveProperty("access_token");
     });
@@ -201,7 +184,6 @@ describe("MSW Integration - Auth API", () => {
 
   describe("Custom Handler Overrides", () => {
     it("should allow overriding handlers per test", async () => {
-      // Override the validate endpoint for this specific test
       server.use(
         http.get(`${BASE_URL}/app/validate`, () => {
           return HttpResponse.json({
@@ -220,10 +202,8 @@ describe("MSW Integration - Auth API", () => {
     });
 
     it("should reset to default handlers after previous test", async () => {
-      // server.resetHandlers() is called in afterEach, so this uses default
       const { data } = await testClient.get("/app/validate", WEB_CLIENT);
 
-      // Should be back to the default validate response
       expect(data.uuid).toBe(mockValidateResponse.uuid);
       expect(data).not.toHaveProperty("custom_field");
     });
@@ -245,7 +225,6 @@ describe("MSW Integration - Auth API", () => {
     it("should allow simulating network delays", async () => {
       server.use(
         http.get(`${BASE_URL}/app/validate`, async () => {
-          // Simulate 100ms delay
           await new Promise((resolve) => setTimeout(resolve, 100));
           return HttpResponse.json(mockValidateResponse);
         }),

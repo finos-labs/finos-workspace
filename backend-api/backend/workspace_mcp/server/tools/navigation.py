@@ -1,5 +1,3 @@
-"""Navigation-bar mutation and route navigation tools."""
-
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -66,7 +64,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ] = None,
     ) -> ToolResponse:
-        """Create tabs or update navigation tab metadata."""
         allowed_operations = literal_values(NavigationOperation)
         if operation not in allowed_operations:
             return invalid_request(
@@ -100,7 +97,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
 
     @server.tool(
         description=describe_tool(
-            "Navigate the Workspace browser to an existing dashboard or inner tab.",
+            "Navigate the FINOS Workspace browser to an existing dashboard or inner tab.",
             "For operation='dashboard', pass dashboard_id and optional tab_id.",
             (
                 "For operation='tab', pass tab_id and optional dashboard_id; "
@@ -123,7 +120,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ] = None,
     ) -> ToolResponse:
-        """Navigate to a dashboard route or switch an inner tab."""
         if operation == "dashboard":
             if not dashboard_id:
                 return invalid_request(

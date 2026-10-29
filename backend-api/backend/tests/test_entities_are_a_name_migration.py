@@ -1,12 +1,3 @@
-"""Revision 4871959e3457: an entity is a name.
-
-The entity's type, email, company type, organization size, AUM and country go, and with the
-type the entity_type table. The entities themselves, their names and their switches stay.
-
-As in test_default_roles_migration, alembic runs in a subprocess against a SQLite file: the
-database is brought to the revision before, filled, and upgraded.
-"""
-
 import os
 import subprocess
 import sys
@@ -55,7 +46,7 @@ def _alembic(db_path: str, *args: str) -> None:
         "REDIS_HOST": "127.0.0.1",
         "STORAGE_PROVIDER": "aws",
     }
-    result = subprocess.run(  # noqa: S603 (the test's own alembic arguments)
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "alembic", *args],
         cwd=BACKEND_DIR,
         env=env,
@@ -77,7 +68,6 @@ def database(tmp_path):
 
 
 def _seed(engine: sa.Engine) -> dict:
-    """Two entities of one type, with every detail filled in."""
     type_uuid, first, second = uuid4(), uuid4(), uuid4()
     with engine.begin() as conn:
         conn.execute(

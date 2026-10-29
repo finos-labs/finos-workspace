@@ -24,31 +24,25 @@ export default function WidgetFullscreen({
       ".widgetContent",
     ) as HTMLElement;
     if (targetElement) {
-      // Save the original styles
       const originalParentOverflow = targetElement.style.overflow;
       const originalParentHeight = targetElement.style.height;
 
-      // Adjust the styles to fit the content
       targetElement.style.overflow = "hidden";
       targetElement.style.height = "100%";
 
       toPng(targetElement, {
         pixelRatio: 1.5,
         quality: 1,
-        /*width: targetElement.scrollWidth,
-                height: targetElement.scrollHeight,*/
       })
         .then((dataUrl) => {
           setImage(dataUrl);
 
-          // Reset the styles
           targetElement.style.overflow = originalParentOverflow;
           targetElement.style.height = originalParentHeight;
         })
         .catch((error) => {
           console.error("oops, something went wrong!", error);
 
-          // Reset the styles
           targetElement.style.overflow = originalParentOverflow;
           targetElement.style.height = originalParentHeight;
         });
@@ -80,7 +74,7 @@ export default function WidgetFullscreen({
             />
           </DialogPrimitive.Close>
 
-          <div className="overflow-auto bg-white dark:bg-dark-900" /*ref={ref}*/>
+          <div className="overflow-auto bg-white dark:bg-dark-900">
             {image ? (
               <img src={image} className="mx-auto" />
             ) : (

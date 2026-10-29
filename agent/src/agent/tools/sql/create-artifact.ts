@@ -1,25 +1,14 @@
-/**
- * create_artifact — render rows as a table in the workspace conversation. The
- * Workspace has no table artifact, so the table is an HTML artifact.
- * Stateless. Accepts either a SQL query against the loaded
- * `pendingTables`, or raw rows.
- *
- * Local execute: pushes the rendered artifact directly onto the agent's
- * `artifactQueue` SSE side-channel. The loop drains that queue after
- * `generateText` returns, preserving artifact ordering relative to text.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
-import { buildDb, tableNotFoundMessage } from "./db";
-import { availableTablesHint } from "./error-hints";
-import { rejectUnsafeSql, rejectUnsafeTableName } from "./safety";
-import { messageArtifact } from "../../../protocol/events";
-import { htmlTableArtifact } from "../../../protocol/html-table";
-import type { SSEEvent } from "../../../protocol/types";
-import { getLogger } from "../../../lib/logger";
-import { displaySummarySchema } from "../progress";
-import { runSqlIsolated } from "./isolated";
+import { buildDb, tableNotFoundMessage } from "./db.ts";
+import { availableTablesHint } from "./error-hints.ts";
+import { rejectUnsafeSql, rejectUnsafeTableName } from "./safety.ts";
+import { messageArtifact } from "../../../protocol/events.ts";
+import { htmlTableArtifact } from "../../../protocol/html-table.ts";
+import type { SSEEvent } from "../../../protocol/types.ts";
+import { getLogger } from "../../../lib/logger.ts";
+import { displaySummarySchema } from "../progress.ts";
+import { runSqlIsolated } from "./isolated.ts";
 
 const logger = getLogger(["app", "tools", "sql", "create_artifact"]);
 
@@ -58,7 +47,7 @@ export const createArtifactSchema = z.object({
   from_table_id: z
     .preprocess(absentIfNull, z.string().optional())
     .describe(
-      "Name of an already-loaded table in pendingTables (e.g. 'aapl_prices'). " +
+      "Name of an already-loaded table in pendingTables (e.g. 'daily_prices'). " +
         "Alternative to sql/data. Use only when rendering the loaded table as-is; if filtering/aliasing, use sql instead. " +
         "This must be a loaded table name, not an execute_sql result set or CTE alias.",
     ),
@@ -132,11 +121,9 @@ export function runCreateArtifact(
     try {
       const tInfo = loaded.find((t) => t.tableName === fromTableId);
       if (!tInfo) {
-        // Keep this tool's `Error:` prefix — `artifactFailed` in tool-status
-        // classifies create_artifact failures by it.
         return `Error: ${tableNotFoundMessage(fromTableId, loaded)}`;
       }
-      rows = db.query(`SELECT * FROM "${fromTableId}"`).all() as Record<
+      rows = db.prepare(`SELECT * FROM "${fromTableId}"`).all() as Record<
         string,
         unknown
       >[];
@@ -148,7 +135,7 @@ export function runCreateArtifact(
     if (denyMsg) return denyMsg;
     const { db, loaded } = buildDb(ctx.pendingTables);
     try {
-      rows = db.query(sql).all() as Record<string, unknown>[];
+      rows = db.prepare(sql).all() as Record<string, unknown>[];
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       db.close();
@@ -193,7 +180,6 @@ export function makeCreateArtifactTool(ctx: CreateArtifactContext) {
     inputSchema: createArtifactSchema,
     execute: async (args) => {
       const a = args as CreateArtifactArgs;
-      // Rows given as they are need no database: nothing here can run long.
       if (!a.sql?.trim() && !a.from_table_id?.trim()) return runCreateArtifact(a, ctx);
       const refused = a.sql?.trim() ? rejectUnsafeSql(a.sql) : null;
       return refused ?? runSqlIsolated("create_artifact", a, ctx);

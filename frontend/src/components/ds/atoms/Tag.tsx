@@ -2,8 +2,6 @@ import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
 import { cn } from "../utils";
 
-/* Tag */
-
 const tagVariants = cva(
   [
     "BB-Tag body-xs-regular inline-flex items-center justify-center rounded-full px-1.5",

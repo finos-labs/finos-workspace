@@ -1,21 +1,13 @@
-/**
- * update_widget_layout — move/resize one widget on the active dashboard.
- *
- * Mirrors workspace_mcp/server.py:816-851. Note: tool name is
- * `update_widget_layout` but the wire command is `update_dashboard_layout`
- * (models.py:259) — preserved for byte-compat.
- */
-
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
 import {
   describeTool,
   LAYOUT_GUIDANCE,
   WIDGET_INSTANCE_GUIDANCE,
   DASHBOARD_TARGETING_GUIDANCE,
-} from "../../bridge/instructions";
+} from "../../bridge/instructions.ts";
 
 export const updateWidgetLayoutSchema = {
   x: z.number().describe("Grid column position (0-based)."),
@@ -29,7 +21,7 @@ export const updateWidgetLayoutSchema = {
     "Fallback widget type identifier when uuid is unknown.",
   ),
   dashboard_id: z.string().optional().describe(
-    "Target dashboard UUID. Omit to target the current Workspace route.",
+    "Target dashboard UUID. Omit to target the current FINOS Workspace route.",
   ),
   tab_id: z.string().optional().describe(
     "Inner tab id to place the widget on. Omit to keep current tab.",

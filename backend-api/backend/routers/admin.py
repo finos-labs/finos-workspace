@@ -1,5 +1,3 @@
-"""Entity routes"""
-
 from contextlib import suppress
 from datetime import datetime
 from typing import Annotated
@@ -101,7 +99,6 @@ async def register_user(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """Allows an admin to register a new user"""
     await crud.check_clean_email(db, user.email)
     admin_query = (
         select(Entity.uuid)
@@ -171,7 +168,6 @@ async def remove_user(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """This endpoint is used to remove a user from an entity."""
     await ensure_user_in_admin_entity(db, admin, user_uuid)
     await ensure_not_superuser_target(db, admin, user_uuid)
     maps = None
@@ -193,7 +189,6 @@ async def delete_user(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """This endpoint is used to soft delete a user."""
     await ensure_user_in_admin_entity(db, admin, user_uuid)
     await ensure_not_superuser_target(db, admin, user_uuid)
     result = await app_helpers.delete_user(db, user_uuid)
@@ -228,7 +223,6 @@ async def update_user(
     maps_result = (await db.execute(maps_query)).all()
     maps_clean = [item.uuid for item in maps_result]
 
-    # Moving a user to another organization is a superuser's (PUT /entity/user)
     if (
         update_info.permissions_uuid is not None
         and update_info.permissions_uuid not in maps_clean
@@ -249,11 +243,8 @@ async def update_user(
     )
     response = await db.execute(query)
     await db.commit()
-    # In theory we should remove shares here, but since an admin should only be able to change inside the entity
-    # it feels unnecessary
     if response.rowcount == 0:
         raise HTTPException(404, detail="Matching user not found")
-    # A user's type sets their limits (a developer has none)
     if "permissions_uuid" in data:
         app_helpers.invalidate_usage_cache(user_uuid)
 
@@ -266,7 +257,6 @@ async def validate_admin(
     request: Request,
     _: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """This endpoint is used to validate that the user is an admin."""
     return SuccessReturn.success_instance()
 
 
@@ -309,17 +299,14 @@ async def get_apps(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """Retrieve all apps for users in the entity, sorted by user_uuid"""
     admin_result = await get_admin_entity(db, admin.permissions_uuid)
 
-    # Get all users in the entity
     maps_query = select(PermissionsEntityMap.uuid).where(
         PermissionsEntityMap.entity_uuid == admin_result
     )
     maps_result = (await db.execute(maps_query)).all()
     maps_clean = [item.uuid for item in maps_result]
 
-    # Get all users with these permission maps
     users_query = select(User.uuid, User.email).where(
         User.permissions_uuid.in_(maps_clean),
         User.deleted.is_(False),
@@ -327,7 +314,6 @@ async def get_apps(
     users_result = (await db.execute(users_query)).all()
     user_dict = {user.uuid: user.email for user in users_result}
 
-    # Get all apps for these users
     apps_query = (
         select(
             models.ApiSource.uuid,
@@ -363,7 +349,6 @@ async def get_apps(
 async def ensure_user_in_admin_entity(
     db: AsyncSession, admin: User, user_uuid: UUID
 ) -> None:
-    """Admins manage the users of their own organization. Superusers manage anyone."""
     if admin.is_superuser:
         return
 
@@ -383,7 +368,6 @@ async def ensure_user_in_admin_entity(
 async def ensure_not_superuser_target(
     db: AsyncSession, admin: User, user_uuid: UUID
 ) -> None:
-    """Only superusers manage the accounts of superusers, who act in every organization."""
     if admin.is_superuser:
         return
 
@@ -402,7 +386,6 @@ async def post_reset_usage(
     user_uuid: UUID,
     admin: Annotated[User, Depends(auth_helpers.get_current_admin)],
 ):
-    """Endpoint to reset the Copilot usage (queries and tokens) of a user for the day."""
     await ensure_user_in_admin_entity(db, admin, user_uuid)
     await ensure_not_superuser_target(db, admin, user_uuid)
 
@@ -424,8 +407,6 @@ async def post_reset_password(
     user_uuid: UUID,
     admin: Annotated[User, Depends(auth_helpers.get_current_admin)],
 ):
-    """Resets the password of a user: the password stops working, every session of the
-    user ends, and the answer is the link with which the user sets a new one."""
     if not admin.is_superuser:
         admin_entity_uuid = await get_admin_entity(db, admin.permissions_uuid)
         target_entity_query = (
@@ -452,7 +433,6 @@ async def post_reset_2fa(
     user_uuid: UUID,
     admin: Annotated[User, Depends(auth_helpers.get_current_admin)],
 ):
-    """Endpoint to reset the 2FA for a user."""
     if not admin.is_superuser:
         admin_entity_uuid = await get_admin_entity(db, admin.permissions_uuid)
         target_entity_query = (
@@ -476,7 +456,6 @@ async def post_reset_2fa(
     await db.execute(update_query)
     await db.commit()
 
-    # Remove all sessions for the user
     delete_query = delete(models.Session).where(models.Session.user_uuid == user_uuid)
     await db.execute(delete_query)
     await db.commit()
@@ -492,9 +471,6 @@ async def create_user(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """Allows an admin to register a new user, if the user isn't already registered or
-    invited. The answer is the link with which the user sets their password."""
-    # The user joins the admin's organization, with a role of it
     entity_uuid = await get_admin_entity(db, user.permissions_uuid)
     if not admin.is_superuser and entity_uuid != await get_admin_entity(
         db, admin.permissions_uuid
@@ -509,9 +485,6 @@ async def post_role(
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
-    """
-    Create a new role for the entity
-    """
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     new_role = models.Role(**role.model_dump(exclude={"users"}), entity_uuid=entity_uuid)
     db.add(new_role)
@@ -534,9 +507,6 @@ async def get_roles(
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
-    """
-    Get all roles for the entity
-    """
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     query = select(models.Role).where(
         models.Role.entity_uuid == entity_uuid, models.Role.deleted_at.is_(None)
@@ -556,7 +526,6 @@ async def get_role(
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
-    """Get a role by uuid"""
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     role = (
         await db.execute(
@@ -580,13 +549,11 @@ async def patch_role(
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
-    """Patch a role"""
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
     affected_users = set(await app_helpers.get_role_user_uuids(db, role_uuid))
 
-    # Update the role details and settings that were sent
     adjusted_role = role.changes()
 
     if adjusted_role:
@@ -596,8 +563,7 @@ async def patch_role(
                 setattr(db_role, key, value)
             await db.flush()
 
-    # Update users if provided
-    if role.users is not None:  # Check if None since empty list is valid
+    if role.users is not None:
         await app_helpers.update_role_users(db, role_uuid, role.users)
 
     await db.commit()
@@ -612,7 +578,6 @@ async def delete_role(
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
-    """Delete a role"""
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
@@ -636,9 +601,6 @@ async def check_role_items_in_entity(
     role_uuid: UUID,
     role_permissions: list[schemas.RolePermissions],
 ) -> None:
-    """A role grants only what belongs to its organization: the organization's backends
-    and the backends, files and prompts its users brought. What the role already grants
-    can always be taken away."""
     members = (
         select(User.uuid)
         .join(PermissionsEntityMap, PermissionsEntityMap.uuid == User.permissions_uuid)
@@ -674,7 +636,6 @@ async def check_role_items_in_entity(
         return any(access != "no-access" for access in accesses)
 
     def kind(item: schemas.RolePermissions) -> str:
-        # The templates of a backend are granted as a prompt item naming the backend
         if item.type == "prompt" and not item.prompt and item.templates:
             return "backend"
         return item.type
@@ -705,7 +666,6 @@ async def put_role_permissions(
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
-    """Update the permissions for a role"""
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
@@ -744,7 +704,6 @@ async def get_role_copilot_access(
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
-    """Get the Copilot models and MCP tools that a role grants"""
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
@@ -759,10 +718,6 @@ async def put_role_copilot_access(
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
-    """Set the Copilot models and MCP tools that a role grants.
-
-    The users of the role may use what their roles grant, and nothing else.
-    """
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
@@ -779,13 +734,11 @@ async def get_role_permissions(
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
-    """Get the permissions for a role"""
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
 
     permissions = []
-    # Get backend permissions
     permissions_backends = await db.execute(
         select(models.RoleBackend).where(models.RoleBackend.role_uuid == role_uuid)
     )
@@ -803,7 +756,6 @@ async def get_role_permissions(
         ]
     )
 
-    # Get file permissions
     permissions_files = await db.execute(
         select(
             models.RoleFile.file_uuid,
@@ -827,7 +779,6 @@ async def get_role_permissions(
         ]
     )
 
-    # Get prompt permissions
     permissions_prompts = await db.execute(
         select(
             models.RolePrompt.prompt_uuid,
@@ -869,11 +820,8 @@ async def get_audit_logs(  # noqa: PLR0913, PLR0917
     resource_type: schemas.RoleResourceType | None = Query(None),
     role_uuid: UUID | None = Query(None),
 ):
-    """Retrieve audit logs for the entity"""
-    # Get admin's entity
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
 
-    # Build query
     query = (
         select(
             models.AuditEntityRolesPermissions.uuid,
@@ -914,10 +862,8 @@ async def get_audit_logs(  # noqa: PLR0913, PLR0917
     if role_uuid:
         query = query.where(models.AuditEntityRolesPermissions.role_uuid == role_uuid)
 
-    # Execute query
     results = await db.execute(query)
 
-    # Transform results
     audit_logs = []
     for row in results.mappings():
         details_msg = None
@@ -952,15 +898,12 @@ async def get_user_permissions(
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
-    """Get the permissions for a user"""
     await ensure_user_in_admin_entity(db, admin, user_uuid)
     user_role_permissions = await app_helpers.get_user_role_permissions(db, user_uuid)
 
-    # Convert permissions dict to use role names as keys instead of UUIDs
     permissions_dict = user_role_permissions.model_dump().get("permissions", {})
     named_permissions = {}
     for role_uuid, role_data in permissions_dict.items():
-        # Don't try to convert role_uuid to UUID again, it's already a string
         role_name = await app_helpers.get_role_name(db, role_uuid)
         named_permissions[role_name] = role_data
     user_role_permissions.permissions = named_permissions
@@ -985,8 +928,8 @@ async def get_user_permissions(
                 backend,
                 processed_templates,
                 templates,
-                prompts,  # Pass prompts list
-                processed_prompts,  # Pass processed prompts set
+                prompts,
+                processed_prompts,
             )
 
         for file in role_data.get("files", []):
@@ -994,12 +937,10 @@ async def get_user_permissions(
                 role_name, file, data_connectors, processed_files
             )
 
-        # Process standalone prompts
         await app_helpers.process_prompts(
             role_name, role_data.get("prompts", []), processed_prompts, prompts
         )
 
-    # Add final_permission to all resources
     await app_helpers.add_final_permissions_to_resources(
         data_connectors, templates, prompts
     )
@@ -1017,7 +958,6 @@ async def patch_theme_settings(
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
-    """Update the theme settings for the entity"""
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     existing = (
         await db.execute(
@@ -1043,7 +983,6 @@ async def patch_theme_settings(
 async def get_admin_share_request(
     db: AsyncSession, admin: Row, request_uuid: UUID
 ) -> models.ShareRequest:
-    "A share request of a developer of the admin's organization."
     entity_uuid = await get_admin_entity(db, admin.permissions_uuid)
     query = (
         select(models.ShareRequest)
@@ -1063,7 +1002,6 @@ async def get_admin_share_request(
 async def share_request_users(
     db: AsyncSession, share_requests: list[models.ShareRequest]
 ) -> dict[UUID, schemas.ShareRequestUser]:
-    "The requesters and recipients of the share requests."
     user_uuids = {r.requester_uuid for r in share_requests} | {
         r.recipient_uuid for r in share_requests if r.recipient_uuid
     }
@@ -1081,7 +1019,6 @@ async def share_request_users(
 async def share_request_item_names(
     db: AsyncSession, share_requests: list[models.ShareRequest]
 ) -> dict[UUID, str]:
-    "The names of the dashboards and apps of the share requests."
     dashboards_query = select(
         models.DashboardItem.uuid, models.DashboardItem.content
     ).where(
@@ -1094,7 +1031,6 @@ async def share_request_item_names(
             [r.user_app_uuid for r in share_requests if r.user_app_uuid]
         )
     )
-    # A dashboard's name is in its tab data
     names = {
         uuid: ((content or {}).get("data") or {}).get("name")
         or (content or {}).get("name")
@@ -1115,8 +1051,6 @@ async def get_share_requests(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """The shares that developers of the admin's organization wait to have approved,
-    oldest first."""
     entity_uuid = await get_admin_entity(db, admin.permissions_uuid)
     query = (
         select(models.ShareRequest)
@@ -1152,8 +1086,6 @@ async def approve_share_request(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """Makes the share the developer asked for: the recipient, or with no recipient the
-    whole organization, gets the dashboard or app."""
     share_request = await get_admin_share_request(db, admin, request_uuid)
     await crud.approve_share_request(db, share_request)
     return SuccessReturn.success_instance()
@@ -1167,7 +1099,6 @@ async def decline_share_request(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    "Drops the share the developer asked for; nobody gets the item."
     share_request = await get_admin_share_request(db, admin, request_uuid)
     await db.execute(
         delete(models.ShareRequest).where(

@@ -1,10 +1,7 @@
 import { generateText } from "ai";
-import { PROVIDER_OPTIONS, resolveModel } from "./providers";
-import { aiTelemetry } from "./telemetry";
+import { PROVIDER_OPTIONS, resolveModel } from "./providers.ts";
+import { aiTelemetry } from "./telemetry.ts";
 
-// Backstop so a stalled provider can't hang a /generate route forever. Single
-// turn, ≤1024 tokens — 60s is generous. The loop's streaming call uses its own
-// (longer) timeout: LLM_STREAM_TIMEOUT_MS in src/agent/loop.ts.
 const DEFAULT_TIMEOUT_MS = 60_000;
 
 export async function singleShotLlm(
@@ -14,14 +11,10 @@ export async function singleShotLlm(
     maxTokens?: number;
     temperature?: number;
     timeoutMs?: number;
-    /** Groups this call's spans, e.g. "generate.chat-title". */
     functionId?: string;
-    /** Told what the call used, so that it can be counted. */
     onUsage?: (usage: { inputTokens: number; outputTokens: number; totalTokens: number }) => void;
   },
 ): Promise<string> {
-  // The caller's model, else DEFAULT_MODEL. No model id is baked in, so with
-  // neither this fails loudly.
   const modelId = opts?.model || process.env.DEFAULT_MODEL;
   if (!modelId) {
     throw new Error("No model configured: set DEFAULT_MODEL.");

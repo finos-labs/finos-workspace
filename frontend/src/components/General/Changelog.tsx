@@ -120,8 +120,6 @@ export function Article(props: { children: React.ReactNode }) {
   );
 }
 
-/* Utils */
-
 export interface ChangelogTextChunk {
   content: string;
 }
@@ -129,7 +127,6 @@ export interface ChangelogTextChunk {
 export interface ChangelogVersionChunk {
   version: string;
   slug: string;
-  /** Markdown formatted string of heading */
   heading: string;
   changes: ChangelogChanges[];
 }
@@ -146,9 +143,7 @@ export type ChangelogChangeType = keyof typeof tagColors;
 
 export interface ChangelogChanges {
   type: ChangelogChangeType;
-  /** Markdown formatted string of heading */
   heading: string;
-  /** Markdown formatted string of content */
   content: string;
 }
 

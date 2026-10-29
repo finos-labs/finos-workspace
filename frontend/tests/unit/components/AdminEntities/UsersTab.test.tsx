@@ -60,7 +60,6 @@ describe("UsersTab", () => {
 
     expect(within(row("pat@acme.test")).getByText("Acme")).toBeInTheDocument();
     expect(within(row("pat@acme.test")).getByText("Admin")).toBeInTheDocument();
-    // A user removed from their organization has neither
     expect(within(row("lee@gone.test")).getAllByText("None")).toHaveLength(2);
   });
 

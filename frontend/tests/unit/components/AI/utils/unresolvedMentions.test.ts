@@ -15,8 +15,6 @@ describe("getUnresolvedMentionLabel", () => {
   });
 
   it("does not invent a name out of a widget id", () => {
-    // `portfolio_industries_custom` is an API id, not the widget's title
-    // ("Portfolio Exposure by Industry"), so beautifying it would mislead.
     for (const id of [
       "widget_id=portfolio_industries_custom&uuid=abc-123",
       "eia_steo_table",

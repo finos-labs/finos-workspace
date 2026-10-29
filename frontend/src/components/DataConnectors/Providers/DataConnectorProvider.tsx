@@ -82,7 +82,6 @@ export function DataConnectorProvider({
     () => ({
       open: searchParams.get("modal") === "data-connectors",
       mode: (searchParams.get("mode") as "create" | "edit" | "add-widget") || "create",
-      // Users who may not bring connections only get the iframe tab
       dcTab: mayAdd ? (searchParams.get("dcTab") as DcTabT) || "file" : "website",
       id: searchParams.get("id") || "",
       widgetId: searchParams.get("widgetId") || "",

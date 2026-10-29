@@ -1,16 +1,12 @@
-/**
- * Tier 2 — dictation: POST /v1/transcribe turns a recording into the text of a question, for a signed-in
- * user, within the helper limits, and only when the deployment has a speech-to-text model.
- */
-
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { createApp } from "../../../src/app";
-import { createLimits } from "../../../src/auth/limits";
-import type { WorkspaceClient } from "../../../src/auth/workspace-client";
-import { loadConfig } from "../../../src/lib/config";
-import { createLocalStore } from "../../../src/lib/store";
-import { MAX_AUDIO_BYTES } from "../../../src/routes/transcribe";
-import { wav } from "../../helpers/wav";
+import { afterEach, beforeEach, describe, it } from "node:test";
+import { expect } from "expect";
+import { createApp } from "../../../src/app.ts";
+import { createLimits } from "../../../src/auth/limits.ts";
+import type { WorkspaceClient } from "../../../src/auth/workspace-client.ts";
+import { loadConfig } from "../../../src/lib/config.ts";
+import { createLocalStore } from "../../../src/lib/store.ts";
+import { MAX_AUDIO_BYTES } from "../../../src/routes/transcribe.ts";
+import { wav } from "../../helpers/wav.ts";
 
 const ENV = {
   WORKSPACE_API_URL: "http://api:8000",
@@ -38,7 +34,7 @@ function app(extraEnv: Record<string, string> = {}) {
   });
 }
 
-function send(target: ReturnType<typeof app>, audio: Uint8Array | string | null, token: string | null = "alice-token") {
+function send(target: ReturnType<typeof app>, audio: Uint8Array<ArrayBuffer> | string | null, token: string | null = "alice-token") {
   const form = new FormData();
   if (audio !== null) form.set("audio", new File([audio], "dictation.wav", { type: "audio/wav" }));
   return target.request("/v1/transcribe", {
@@ -56,7 +52,6 @@ beforeEach(() => {
   process.env.INES_TRANSCRIBE_MODEL = "groq:whisper-large-v3-turbo";
   process.env.GROQ_API_KEY = "gsk-test";
   asked = 0;
-  // Groq's API, as the AI SDK calls it.
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     if (String(input).startsWith("https://api.groq.com/")) {
       asked++;

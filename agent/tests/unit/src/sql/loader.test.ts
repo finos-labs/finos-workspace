@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { sanitizeName, analyzeTable } from "../../../../src/sql/loader";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { sanitizeName, analyzeTable } from "../../../../src/sql/loader.ts";
 
 describe("sanitizeName", () => {
   it("lowercases the input", () => {
@@ -45,9 +46,6 @@ describe("analyzeTable", () => {
   });
 
   it("regression: type-infers a column whose first non-null value is past row 50 (sparse columns)", () => {
-    // Old code only sampled the first 50 rows; a column populated only at
-    // index 60 was misclassified as TEXT and stored as a string. New cap is
-    // 500. Mirrors the bug ada catches in tests/services/test_sql_agent_sparse_columns.py.
     const rows = Array.from({ length: 200 }, (_, i) =>
       i === 60 ? { x: 5 } : { x: null },
     );
@@ -55,22 +53,14 @@ describe("analyzeTable", () => {
   });
 
   it("regression: dedupes columns that sanitize to the same name (case-only / separator-only collisions)", () => {
-    // ada equivalent: handle_duplicate_columns_names. SQLite would reject
-    // CREATE TABLE with duplicate columns; our sanitization (lowercasing,
-    // non-identifier→`_`) routinely collides keys that differ only in case
-    // (`a` vs `A`) or separator (`foo bar` vs `foo-bar`). Suffix duplicates.
     const t = analyzeTable("p", [{ a: 1, A: 2, "foo bar": 3, "foo-bar": 4 }]);
     const names = t.columns.map((c) => c.name);
     expect(new Set(names).size).toBe(names.length);
     expect(names).toEqual(["a", "a_2", "foo_bar", "foo_bar_2"]);
-    // originalName preserved per column so insertion still pulls correct values
     expect(t.columns.map((c) => c.originalName)).toEqual(["a", "A", "foo bar", "foo-bar"]);
   });
 
   it("documented limit: rows beyond the 500-row cap can still fall back to TEXT", () => {
-    // Trade-off: linear scan would be O(N×K). The 500-row cap is the
-    // pragmatic middle ground — typical widget payloads are well under it.
-    // If a column is null for the first 500 rows, the type stays TEXT.
     const rows = Array.from({ length: 600 }, (_, i) =>
       i === 599 ? { x: 5 } : { x: null },
     );

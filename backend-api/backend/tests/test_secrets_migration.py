@@ -1,11 +1,3 @@
-"""The secrets-at-rest migration (revision ff59d563599c) on data stored the old way. It
-writes the v1 format, which revision 4c1d2e8f9a3b re-encrypts (test_ciphertext_binding).
-
-As in test_migration_dialects, alembic runs in a subprocess against a SQLite file: the
-database is brought to the revision before, filled with rows as the old code wrote them,
-upgraded, checked, downgraded and checked again.
-"""
-
 import base64
 import gzip
 import hashlib
@@ -31,7 +23,6 @@ from api.schemas import normalize_mcp_url
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BEFORE = "bd12bc3c71ac"
 REVISION = "ff59d563599c"
-# A key of its own, so the test shows the migration uses the configured one
 AES_KEY = base64.urlsafe_b64encode(b"migration-test-key-of-32-bytes!!").decode().rstrip("=")
 OTHER_KEY = base64.urlsafe_b64encode(b"some-other-deployment-key-32byte").decode().rstrip("=")
 
@@ -52,7 +43,7 @@ def _alembic(db_path: str, *args: str) -> str:
         "SELFURL": "http://localhost:8000",
         "FRONTENDURL": "http://localhost:3000",
     }
-    result = subprocess.run(  # noqa: S603 (the test's own alembic arguments)
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "alembic", *args],
         cwd=BACKEND_DIR,
         env=env,
@@ -66,7 +57,6 @@ def _alembic(db_path: str, *args: str) -> str:
 
 
 def _old_encrypt(value, key: str = AES_KEY) -> str:
-    """What the old AESCipher wrote: AES-256-CBC under SHA-256 of the key, base64(ct || IV)."""
     text = json.dumps(value)
     pad = 16 - len(text) % 16
     padded = (text + chr(pad) * pad).encode()
@@ -78,7 +68,6 @@ def _old_encrypt(value, key: str = AES_KEY) -> str:
 
 
 def _v1_cipher(key: str = AES_KEY) -> AESGCM:
-    """The v1 format: AES-256-GCM without associated data under HKDF-SHA256 of the key."""
     hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b"workspace-at-rest:v1")
     return AESGCM(hkdf.derive(decode_key_material(key)))
 
@@ -90,7 +79,6 @@ def v1_encrypt(plaintext: bytes, key: str = AES_KEY) -> str:
 
 
 def v1_decrypt(token: str) -> bytes:
-    """The plaintext of a v1 ciphertext: "v1." + base64url(nonce || ciphertext || tag)."""
     assert token.startswith("v1.")
     raw = base64.urlsafe_b64decode(token[3:] + "=" * (-len(token[3:]) % 4))
     return _v1_cipher().decrypt(raw[:12], raw[12:], None)
@@ -196,7 +184,6 @@ def _seed(engine: sa.Engine) -> dict:
                     "referral_code": "r1",
                     "totp_active": True,
                     "totp_secret": "JBSWY3DPEHPK3PXP",
-                    # As the app writes it: a JSON document holding the settings' JSON text
                     "display_settings": json.dumps(
                         {
                             "theme": "dark",
@@ -274,7 +261,6 @@ def _seed(engine: sa.Engine) -> dict:
 
 
 def _by_uuid(db_path: str, table: str, uuid) -> dict | None:
-    """The row as SQLite holds it (a UUID is its 16 bytes)."""
     with closing(sqlite3.connect(db_path)) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(f'SELECT * FROM "{table}" WHERE uuid = ?', (uuid.bytes,)).fetchone()
@@ -293,7 +279,6 @@ def test_upgrade_encrypts_moves_and_drops_secrets(database):
     log = _alembic(db_path, "upgrade", REVISION)
     engine.dispose()
 
-    # The encrypted columns are re-encrypted; a value of another key is cleared and counted
     assert "api_source.endpointHeaders: 1 values re-encrypted, 1 that did not decrypt cleared" in log
     source = _by_uuid(db_path, "api_source", ids["source"])
     assert source["endpointHeaders"].startswith("v1.")
@@ -306,7 +291,6 @@ def test_upgrade_encrypts_moves_and_drops_secrets(database):
     assert json.loads(v1_decrypt(copilot["headers"])) == {"Authorization": "Bearer agent-secret"}
     assert json.loads(v1_decrypt(copilot["copilots"])) == [{"name": "Agent"}]
 
-    # TOTP secret encrypted; provider keys out of display settings, encrypted
     user = _by_uuid(db_path, "user", ids["user"])
     assert "auth_token" not in user
     assert user["totp_last_step"] is None
@@ -314,17 +298,14 @@ def test_upgrade_encrypts_moves_and_drops_secrets(database):
     assert v1_decrypt(user["openai_api_key"]).decode() == "sk-openai-secret"
     assert v1_decrypt(user["perplexity_api_key"]).decode() == "pplx-secret"
     assert json.loads(json.loads(user["display_settings"])) == {"theme": "dark"}
-    # An empty key is dropped and stores nothing
     plain = _by_uuid(db_path, "user", ids["plain"])
     assert plain["totp_secret"] is None and plain["openai_api_key"] is None
     assert json.loads(plain["display_settings"]) == {"theme": "light"}
 
-    # The SDK's session goes with its token; other sessions stay
     assert _by_uuid(db_path, "session", ids["sdk"]) is None
     web = _by_uuid(db_path, "session", ids["web"])
     assert web is not None and "api_token" not in web
 
-    # MCP headers leave the server list for the encrypted column, keyed by normalized URL
     mcp = _by_uuid(db_path, "mcp_servers", ids["mcp"])
     servers = json.loads(gzip.decompress(mcp["servers"]))
     assert all("custom_headers" not in server for server in servers)
@@ -336,7 +317,6 @@ def test_upgrade_encrypts_moves_and_drops_secrets(database):
         }
     }
 
-    # Invitations hold no password
     invite = _by_uuid(db_path, "user_invite", ids["invite"])
     assert json.loads(invite["data"]) == {"first_name": "In", "last_name": "Vited"}
 
@@ -348,13 +328,11 @@ def test_downgrade_restores_the_old_format_without_plaintext(database):
     _alembic(db_path, "downgrade", BEFORE)
     engine.dispose()
 
-    # The old code reads the encrypted columns again
     source = _by_uuid(db_path, "api_source", ids["source"])
     assert _old_decrypt(source["endpointHeaders"]) == [{"key": "X-Api-Key", "value": "backend-secret"}]
     copilot = _by_uuid(db_path, "custom_copilot", ids["copilot"])
     assert _old_decrypt(copilot["headers"]) == {"Authorization": "Bearer agent-secret"}
 
-    # No secret comes back in plain text: the authenticator is set up again
     user = _by_uuid(db_path, "user", ids["user"])
     assert user["totp_secret"] is None and user["totp_active"] == 0
     assert "openai_api_key" not in user
@@ -363,7 +341,6 @@ def test_downgrade_restores_the_old_format_without_plaintext(database):
 
 
 def test_old_ciphertext_helpers_refuse_tampering():
-    """The migration's reader of the old format refuses what is not a ciphertext of the key."""
     import importlib.util
 
     path = os.path.join(BACKEND_DIR, "alembic", "versions", "1792102721-secrets_at_rest.py")

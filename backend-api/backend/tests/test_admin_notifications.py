@@ -1,5 +1,3 @@
-"""Tests for the admin notification hook (api/notifications.py) and the events wired to it."""
-
 import hashlib
 import hmac
 import json
@@ -20,8 +18,6 @@ _RealAsyncClient = httpx.AsyncClient
 
 
 def _mock_client(handler):
-    """An httpx.AsyncClient factory whose requests go to `handler`."""
-
     def factory(**kwargs):
         return _RealAsyncClient(transport=httpx.MockTransport(handler), **kwargs)
 

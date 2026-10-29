@@ -37,7 +37,6 @@ bridge_manager = BridgeSessionManager(
         settings.get_async_redis_session("app") if not settings.is_test() else None
     )
 )
-# How often a bridge socket checks that the web session that opened it still lasts
 SESSION_CHECK_SECONDS = 10.0
 
 
@@ -134,10 +133,6 @@ async def start_bridge_session(
         auth_helpers.CustomRow, Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True))
     ],
 ):
-    # Behind a reverse proxy that strips a path prefix (nginx rewrites /api/* ->
-    # /*), request.base_url loses that prefix, so the websocket_url we build from
-    # it would not route back through the proxy. Re-add the prefix the proxy
-    # advertises via X-Forwarded-Prefix.
     prefix = request.headers.get("x-forwarded-prefix", "").rstrip("/")
     base_url = str(request.base_url).rstrip("/") + prefix + "/"
 
@@ -152,8 +147,6 @@ async def start_bridge_session(
 async def close_when_session_ends(
     web_session: auth_helpers.WebSocketSession, websocket: WebSocket
 ) -> None:
-    """Checks every few seconds, and when the web session expires, that it still lasts;
-    once it has ended (or the socket no longer serves) the socket is closed (1008)."""
     while True:
         remaining = (web_session.expiration_date - base.get_now()).total_seconds()
         await asyncio.sleep(min(SESSION_CHECK_SECONDS, max(remaining, 1.0)))
@@ -167,11 +160,6 @@ async def close_when_session_ends(
 
 @router.websocket("/app/workspace-mcp/bridge/ws")
 async def bridge_websocket(websocket: WebSocket):
-    """The web app's bridge socket. Before the handshake is accepted it must come from one
-    of the web app's origins with a valid web session cookie, for the user's active bridge
-    session; otherwise it is refused (1008). It serves while that web session lasts: once
-    the session is signed out, replaced by a new sign-in, ended by a password change or
-    reset, or expired, the socket is closed (1008), whichever worker holds it."""
     session_id = websocket.query_params.get("session_id", "")
     web_session = await auth_helpers.websocket_session(websocket)
     if web_session is None:

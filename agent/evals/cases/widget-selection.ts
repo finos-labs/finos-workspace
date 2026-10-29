@@ -1,16 +1,7 @@
-/**
- * Widget-selection cases. Validates that the model picks the right
- * widget(s) from a workspace before fetching data.
- */
+import type { EvalCase } from "../runner.ts";
+import { techWorkspace, macroWorkspace } from "../fixtures/workspaces.ts";
+import { widgetIdInTopN, noBadState } from "../graders/index.ts";
 
-import type { EvalCase } from "../runner";
-import { techWorkspace, macroWorkspace } from "../fixtures/workspaces";
-import { widgetIdInTopN, noBadState } from "../graders";
-
-// All cases here use widgets in the PRIMARY tier — already in the system
-// prompt. Model is not expected to call search_widgets first; it should
-// jump straight to get_widget_data with the right UUID. search_widgets
-// is for the EXTRA tier (covered in workspace-context cases).
 export const widgetSelectionCases: EvalCase[] = [
   {
     id: "aapl-price-history",

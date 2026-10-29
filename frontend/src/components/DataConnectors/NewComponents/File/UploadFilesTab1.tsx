@@ -335,7 +335,6 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
 
       const toUpload = await prepareFiles(acceptedFiles);
 
-      // check if all files are valid
       if (toUpload.length === 0) {
         dispatch({
           uploadProgress: null,
@@ -349,7 +348,6 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
       await uploadFile(toUpload.map((f) => f.file));
 
       setTimeout(() => {
-        // reset the input value after upload
         const input = document.getElementById(
           "data-connector-upload",
         ) as HTMLInputElement;
@@ -365,7 +363,6 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
           const newFiles = prev.filter((f) => f.uuid !== file.uuid);
 
           if (newFiles.length === 0) {
-            // Reset the upload progress if there are no files
             dispatch({ uploadProgress: null });
           }
 
@@ -406,57 +403,6 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
         <input id="data-connector-upload" {...getInputProps()} />
         {isDragActive ? <DragFileHere /> : <UploadChildren />}
       </div>
-      {/*
-      <div
-        className={cn(
-          "mt-4 rounded p-2 gap-6 flex justify-between items-center text-light-900 dark:text-white",
-          {
-            "bg-[#FCA5A533] dark:bg-red-600/20": percentage > STORAGE_THRESHOLD * 100,
-            "bg-[#66CCFF33] dark:bg-brand-main/20":
-              percentage <= STORAGE_THRESHOLD * 100,
-          },
-        )}
-      >
-        <div className="flex flex-col w-full gap-3">
-          <div className="flex gap-1 items-center">
-            <Icon id="cloud-icon" className="w-4 h-4" />
-            <span>
-              Storage (
-              <span
-                className={cn({
-                  "text-brand-main dark:text-brand-lighter":
-                    percentage <= STORAGE_THRESHOLD * 100,
-                  "text-red-600 dark:text-red-500":
-                    percentage > STORAGE_THRESHOLD * 100,
-                })}
-              >
-                {`${percentage}% full`}
-              </span>
-              )
-            </span>
-            <span className="text-light-500 dark:text-dark-50">
-              {`${formatFileSize(
-                (percentage / 100) * MAX_STORAGE_CAPACITY,
-                2,
-              )} of ${formatFileSize(MAX_STORAGE_CAPACITY)} used`}
-            </span>
-          </div>
-          <Progress
-            className="h-[3px]"
-            value={percentage}
-            indicatorClassname={cn({
-              "bg-brand-main dark:bg-brand-lighter":
-                percentage <= STORAGE_THRESHOLD * 100,
-              "bg-red-600 dark:bg-red-500": percentage > STORAGE_THRESHOLD * 100,
-            })}
-          />
-        </div>
-        <Link to={bookingUrl}>
-          <Button size="xs" variant="outlined" className="whitespace-nowrap">
-            Upgrade plan
-          </Button>
-        </Link>
-      </div>*/}
       <FormMessage
         className="text-light-700 mt-1 mb-2 dark:text-light-200 w-full p-2.5
         rounded border-[#EF4444] border dark:bg-[#4E1616] bg-red-500/10"

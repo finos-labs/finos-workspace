@@ -1,16 +1,7 @@
-/**
- * LLM-as-judge grader. Cheap model scores the agent's final answer
- * against a free-form criterion. Returns pass/fail based on a numeric
- * score >= threshold.
- *
- * The judge model is EVAL_JUDGE_MODEL, else EVAL_MODEL, else DEFAULT_MODEL;
- * none is baked in.
- */
-
 import { generateText } from "ai";
-import { resolveModel } from "../../src/lib/providers";
-import type { Trace } from "../trace";
-import type { GraderSpec } from "./index";
+import { resolveModel } from "../../src/lib/providers.ts";
+import type { Trace } from "../trace.ts";
+import type { GraderSpec } from "./index.ts";
 
 const JUDGE_MODEL =
   process.env.EVAL_JUDGE_MODEL || process.env.EVAL_MODEL || process.env.DEFAULT_MODEL;
@@ -55,7 +46,6 @@ function parseJudgeResponse(text: string): JudgeResult | null {
       return { score: parsed.score, reason: parsed.reason };
     }
   } catch {
-    // fall through
   }
   return null;
 }

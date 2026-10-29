@@ -1,22 +1,5 @@
 #!/bin/bash
 
-# This bash function should be added to `~/.zschr` or `~/.bashrc`
-# so that it can be called from anywhere in the shell.
-
-# Description:
-    # Build, tag and push docker images to AWS ECR
-# Usage:
-    # dockerbackend -v|--version version -d|--dev|-p|--prod
-# Options:
-    # -v|--version: version of the docker image
-    # -d|--dev: build and push to the dev ECR repository ($DOCKERBACKEND_DEV_REPO)
-    # -p|--prod: build and push to the prod ECR repository ($DOCKERBACKEND_PROD_REPO)
-# Environment:
-    # DOCKERBACKEND_DEV_REPO, DOCKERBACKEND_PROD_REPO: full repository URIs,
-    # e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com/workspace-backend
-
-# Example: DOCKERBACKEND_DEV_REPO=... dockerbackend -v 0.1.0 -d
-
 function dockerbackend () {
     local version aws tag repo dev_repo prod_repo
 

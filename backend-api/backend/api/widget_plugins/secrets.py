@@ -1,0 +1,109 @@
+import os
+import re
+from collections.abc import Iterable
+from typing import Any
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from api import models
+from api.models.widget_plugin_models import VERSION_MISSING
+from utilities.config import settings
+
+from .manifest import PLUGIN_ID_PATTERN
+from .proxy import NAME_PATTERN
+
+MAX_SECRET_LENGTH = 4096
+SOURCE_CONFIGURATION = "configuration"
+SOURCE_ADMIN = "admin"
+
+_VALUE = re.compile(r"[\x20-\x7e]+")
+
+
+def value_problem(value: str) -> str | None:
+    if not value:
+        return "the value is empty"
+    if len(value) > MAX_SECRET_LENGTH:
+        return f"the value is longer than {MAX_SECRET_LENGTH} characters"
+    if not _VALUE.fullmatch(value):
+        return "the value has a character that is not printable ASCII"
+    return None
+
+
+def configured(plugin_id: str, name: str) -> str | None:
+    if not settings.WIDGET_PLUGIN_SECRETS_DIR:
+        return None
+    if not (re.fullmatch(PLUGIN_ID_PATTERN, plugin_id) and re.fullmatch(NAME_PATTERN, name)):
+        return None
+    base = os.path.normpath(settings.WIDGET_PLUGIN_SECRETS_DIR)
+    path = os.path.normpath(os.path.join(base, plugin_id, name))
+    if not path.startswith(base + os.sep):
+        return None
+    try:
+        if not os.path.isfile(path):
+            return None
+        with open(path, "rb") as handle:
+            raw = handle.read(MAX_SECRET_LENGTH + 2)
+    except OSError:
+        return None
+    return raw.decode("utf-8", errors="replace").removesuffix("\n").removesuffix("\r")
+
+
+def declared(versions: Iterable[models.WidgetPluginVersion]) -> dict[str, str]:
+    found: dict[str, str] = {}
+    for row in versions:
+        if row.state == VERSION_MISSING:
+            continue
+        for secret in (row.manifest or {}).get("secrets") or []:
+            found.setdefault(secret["name"], secret.get("purpose", ""))
+    return found
+
+
+async def stored(db: AsyncSession, plugin_uuid: UUID) -> dict[str, models.WidgetPluginSecret]:
+    rows = await db.execute(select(models.WidgetPluginSecret).where(models.WidgetPluginSecret.plugin_uuid == plugin_uuid))
+    return {row.name: row for row in rows.scalars()}
+
+
+async def status(
+    db: AsyncSession, plugin: models.WidgetPlugin, versions: Iterable[models.WidgetPluginVersion]
+) -> list[dict[str, Any]]:
+    names = declared(versions)
+    rows = await stored(db, plugin.uuid)
+    result = []
+    for name in [*names, *sorted(set(rows) - set(names))]:
+        value = configured(plugin.plugin_id, name)
+        row = rows.get(name)
+        entry: dict[str, Any] = {
+            "name": name,
+            "purpose": names.get(name, ""),
+            "declared": name in names,
+            "set": False,
+            "source": None,
+            "problem": None,
+            "set_by_uuid": None,
+            "set_at": None,
+        }
+        if value is not None:
+            entry.update(set=True, source=SOURCE_CONFIGURATION, problem=value_problem(value))
+        elif row is not None:
+            entry.update(
+                set=True, source=SOURCE_ADMIN, set_by_uuid=row.set_by_uuid, set_at=row.updated_date or row.created_date
+            )
+        result.append(entry)
+    return result
+
+
+async def resolve(db: AsyncSession, plugin: models.WidgetPlugin, names: Iterable[str]) -> dict[str, str]:
+    values: dict[str, str] = {}
+    rows: dict[str, models.WidgetPluginSecret] | None = None
+    for name in names:
+        value = configured(plugin.plugin_id, name)
+        if value is None:
+            if rows is None:
+                rows = await stored(db, plugin.uuid)
+            row = rows.get(name)
+            value = (row.value or {}).get("value") if row is not None else None
+        if isinstance(value, str) and value_problem(value) is None:
+            values[name] = value
+    return values

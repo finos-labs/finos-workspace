@@ -1,85 +1,41 @@
-/**
- * Where the agent keeps what outlives one request: in Redis when there is one, in this process when
- * there is not.
- *
- * A turn is several requests (the browser runs a tool and comes back), and what the agent remembers
- * between them decides what the next one may do: who the caller is, how much of their quota is left,
- * and whether the turn they claim to continue is real. Kept in one process, all of that is right only
- * while there is one process. A second replica gives the same user their quota again, and counts a
- * continuation as a new turn.
- *
- * So each of those lives behind this interface. With REDIS_URL set they are shared and the answers
- * are the same whichever replica a request reaches. Without it they fall back to bounded structures
- * in this process, which is what a single-replica deployment and every test gets, with the same
- * behaviour as before.
- *
- * Redis is not in the way of serving: every operation that fails falls back to the process-local
- * answer rather than failing the request, because a cache that is down must not take the agent with
- * it. A quota is then enforced per replica until Redis comes back, which is looser than intended but
- * never looser than having no limit at all.
- *
- * A chat's tables and widget data are the exception: they are kept in Redis alone (`sharedOnly()`), never in a
- * process's memory. Without Redis, or while it cannot answer, they are not kept, and the widget is fetched again.
- */
-
 import { randomUUID } from "node:crypto";
-import Redis from "ioredis";
-import { getLogger } from "./logger";
-import { metrics } from "./metrics";
+import { Redis } from "ioredis";
+import { getLogger } from "./logger.ts";
+import { metrics } from "./metrics.ts";
 
 const logger = getLogger(["app", "store"]);
 
-/** How long a lease lives if the process holding it dies without giving it back. */
 export const LEASE_TTL_MS = 10 * 60 * 1000;
 
 export interface Store {
-  /** Whether this store is shared between replicas. The status route says so; nothing else branches on it. */
   readonly shared: boolean;
 
   get(key: string): Promise<string | null>;
   set(key: string, value: string, ttlSeconds: number): Promise<void>;
   del(key: string): Promise<void>;
 
-  /** Counts one more in the last `windowMs`, if fewer than `max` are there. Says whether there was room. */
   take(key: string, max: number, windowMs: number): Promise<boolean>;
-  /** Counts one more in the last `windowMs`, stopping at `max` (what is past it is not worth remembering). */
   record(key: string, max: number, windowMs: number): Promise<void>;
-  /** Whether `max` have happened in the last `windowMs`. */
   full(key: string, max: number, windowMs: number): Promise<boolean>;
 
-  /**
-   * Takes one of `max` places held under `key`, or null when they are all taken. The place is given
-   * back by the returned function, and by itself after `ttlMs` if the process holding it stops.
-   */
   lease(key: string, max: number, ttlMs?: number): Promise<(() => Promise<void>) | null>;
 
-  /** Sets the fields of a record, replacing what was there, and gives it `ttlSeconds` to live. */
   putRecord(key: string, fields: Record<string, string>, ttlSeconds: number): Promise<void>;
-  /** A record's fields, or null when there is none. */
   getRecord(key: string): Promise<Record<string, string> | null>;
-  /** Adds to one number of a record. Null when there is no record to add to. */
   addToRecord(key: string, field: string, by: number): Promise<number | null>;
 
-  /**
-   * This store in Redis alone: what Redis cannot keep is not kept, and an operation it cannot answer fails
-   * instead of being answered from this process. Null when there is no Redis. For what is never held in a
-   * process's memory: a chat's tables and widget data (agent/row-cache.ts).
-   */
   sharedOnly(): Store | null;
 
   close(): Promise<void>;
 }
 
-/* ───────────────────────── in this process ───────────────────────── */
 
-/** How many keys of each kind are kept before the ones used longest ago are forgotten. */
 const MAX_LOCAL_KEYS = 10_000;
 
 function bounded<V>(): Map<string, V> {
   return new Map<string, V>();
 }
 
-/** The most recently used stay: a Map keeps insertion order, and every write puts the key back at the end. */
 function keepBounded(map: Map<string, unknown>, max = MAX_LOCAL_KEYS): void {
   for (const key of map.keys()) {
     if (map.size <= max) break;
@@ -119,9 +75,6 @@ export function createLocalStore(now: () => number = Date.now): Store {
       values.set(key, { value, expires: now() + ttlSeconds * 1000 });
       keepBounded(values);
     },
-    // Redis has one keyspace and DEL removes whatever is under the key, whatever its kind. These maps
-    // are an implementation detail of this store, so deleting has to reach all of them or the two
-    // stores would not behave the same (a turn ended here but not there, for one).
     async del(key) {
       values.delete(key);
       records.delete(key);
@@ -203,11 +156,7 @@ export function createLocalStore(now: () => number = Date.now): Store {
   };
 }
 
-/* ───────────────────────── shared, in Redis ───────────────────────── */
 
-// Each of these is read-modify-write, and two replicas doing one at the same time must not both be
-// told there was room. Redis runs a script to the end before it runs anything else, so the whole of
-// each is one step.
 const TAKE = `
   local now, window, max = tonumber(ARGV[1]), tonumber(ARGV[2]), tonumber(ARGV[3])
   redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now - window)
@@ -225,7 +174,6 @@ const FULL = `
   redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now - window)
   return redis.call('ZCARD', KEYS[1])`;
 
-/** `prefix` keeps the agent's keys apart from anything else that uses the same Redis. */
 const PREFIX = "ines:";
 
 export function createRedisStore(url: string, now: () => number = Date.now): Store {
@@ -242,12 +190,7 @@ export function createRedisStore(url: string, now: () => number = Date.now): Sto
 
   const key = (k: string) => `${PREFIX}${k}`;
 
-  /**
-   * The store over this connection. With `local`, an operation Redis cannot answer is answered from this
-   * process; without it, the operation fails.
-   */
   function over(local: Store | null): Omit<Store, "sharedOnly"> {
-    /** The shared answer, or the process-local one when Redis cannot give it and there is a process-local one. */
     async function shared<T>(op: string, ask: () => Promise<T>, fallback: (local: Store) => Promise<T>): Promise<T> {
       try {
         return await ask();
@@ -299,7 +242,6 @@ export function createRedisStore(url: string, now: () => number = Date.now): Sto
           "lease",
           async () =>
             (await client.eval(TAKE, 1, key(k), String(now()), String(ttlMs), String(max), member)) === 1,
-          // Redis is down: this replica keeps its own count rather than letting everything through.
           async (l) => (await l.lease(k, max, ttlMs)) !== null,
         );
         if (!got) return null;
@@ -337,7 +279,6 @@ export function createRedisStore(url: string, now: () => number = Date.now): Sto
         shared(
           "addToRecord",
           async () => {
-            // Only where there is a record: HINCRBY on a key that is gone would make one that never expires.
             if ((await client.exists(key(k))) === 0) return null;
             return await client.hincrby(key(k), field, by);
           },
@@ -355,7 +296,6 @@ export function createRedisStore(url: string, now: () => number = Date.now): Sto
   return { ...over(createLocalStore(now)), sharedOnly: () => onlyRedis };
 }
 
-/** The store this deployment uses: shared when REDIS_URL names one. */
 export function createStore(env: NodeJS.ProcessEnv = process.env, now: () => number = Date.now): Store {
   const url = (env.REDIS_URL ?? "").trim();
   if (!url) {

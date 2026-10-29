@@ -1,16 +1,5 @@
-/**
- * Phase-3 evals — request.context split and request.urls handling.
- *
- * - Context table case: workspace forwards prior-chat artifacts in
- *   `request.context`. The agent splits structured rows into pendingTables.
- *   Model should query the table via execute_sql, not re-fetch.
- * - URL prefetch is harder to eval deterministically without real network;
- *   covered by the unit tests in `tests/unit/src/agent/url-prefetch.test.ts`.
- *   Here we only validate that an empty `urls: []` doesn't blow up.
- */
-
-import type { EvalCase } from "../runner";
-import { noBadState, toolCalled } from "../graders";
+import type { EvalCase } from "../runner.ts";
+import { noBadState, toolCalled } from "../graders/index.ts";
 
 const CONTEXT_TABLE_ROWS = [
   { quarter: "Q1", revenue: 100 },

@@ -1,24 +1,10 @@
-/**
- * Tier 2 — placeholder-tag strip in the SSE stream.
- *
- * Sanity check: even if the model hallucinates `<artifact_id:…>` /
- * `<copilot_table:…>` / `<ines_artifact…>` style tags from training data,
- * the user-visible `messageChunk` SSE never carries them. Mirrors ada's
- * "no leaked artifact tag" regression.
- *
- * Each case drives the tag SPLIT ACROSS DELTAS (llmEmitsTextInDeltas) — the
- * real streaming shape, where a tag can straddle a delta boundary. The sink's
- * withhold-to-terminator state machine must hold the partial tag until its
- * terminator and never leak the prefix. (The exhaustive every-split invariant
- * lives in tests/unit/.../text-sink.test.ts.)
- */
-
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { QueryRequest, SSEEvent } from "../../../src/protocol/types";
-import { llmEmitsTextInDeltas, makeMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { QueryRequest, SSEEvent } from "../../../src/protocol/types.ts";
+import { llmEmitsTextInDeltas, makeMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 
@@ -36,7 +22,6 @@ describe("streaming — placeholder tags never reach the user", () => {
         request: { messages: [{ role: "human", content: "go" }] } as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm(
-          // Tag split mid-name across deltas: "<arti|fact_id…>" and "</arti|fact_id>".
           llmEmitsTextInDeltas([
             "Result: <arti",
             "fact_id:abcd-1234>see chart</arti",
@@ -106,7 +91,6 @@ describe("streaming — placeholder tags never reach the user", () => {
         request: { messages: [{ role: "human", content: "go" }] } as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm(
-          // The <img …> tag (and its base64 data URI) straddles three deltas.
           llmEmitsTextInDeltas([
             "**Trend**\n\n<img src=\"data:image/png;",
             "base64,...\" alt=\"Trend\" ",

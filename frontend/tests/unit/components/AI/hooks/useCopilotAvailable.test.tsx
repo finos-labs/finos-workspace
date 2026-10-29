@@ -9,7 +9,6 @@ import type { Copilot, ExternalCopilotHolder } from "~/lib/state/copilot";
 import { useCopilotStore } from "~/lib/state/copilot";
 import { mockConfig } from "../../../../mocks/runtimeConfig";
 
-// Mock only the hook (default export); keep selectExternalCopilots real for isCopilotAvailable.
 vi.mock("~/components/AI/hooks/useGetAiAgents", async (importActual) => {
   const actual =
     await importActual<typeof import("~/components/AI/hooks/useGetAiAgents")>();

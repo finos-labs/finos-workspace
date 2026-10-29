@@ -1,13 +1,3 @@
-/**
- * Typed-result helpers for the ines MCP server.
- *
- * The agent's `src/mcp/results.ts` parses each MCP text content item; if it parses as JSON
- * with `$ines_kind`, it dispatches as artifact / citation / sqlite_table. Otherwise the text
- * is injected into the model's context as plain text.
- *
- * Each helper returns a single MCP `{ type: "text", text: <json> }` content item.
- */
-
 export interface ContentItem {
   type: "text";
   text: string;
@@ -43,7 +33,6 @@ export function documentCitationItem(args: {
   uri: string;
   title: string;
   page?: number;
-  /** How well the passage matched the question (cosine similarity); lets the agent tell the pages that matter from the rest. */
   score?: number;
   id?: string;
 }): ContentItem {

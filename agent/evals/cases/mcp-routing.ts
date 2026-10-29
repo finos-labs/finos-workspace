@@ -1,17 +1,10 @@
-/**
- * MCP-tool routing cases. Mirrors `tool-routing.ts` but covers tools that
- * live in the MCP server rather than the agent: fetch_webpage, web_search.
- * Single-shot — the eval cuts at the first `execute_agent_tool` SSE, so
- * graders inspect tool choice + args, not the (would-be) MCP response.
- */
-
-import type { EvalCase } from "../runner";
+import type { EvalCase } from "../runner.ts";
 import {
   argContains,
   noBadState,
   toolCalled,
   toolNeverCalled,
-} from "../graders";
+} from "../graders/index.ts";
 
 const FETCH_WEBPAGE_TOOL = {
   name: "fetch_webpage",

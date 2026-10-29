@@ -83,15 +83,8 @@ export interface LoginResponse {
   mcp_servers: McpServer[];
 }
 
-/**
- * A sign-in the API answered with HTTP 202: the code from the user's authenticator is
- * missing or wrong, or (`two_factor_required`) their organization requires an
- * authenticator they have not set up yet. In that case the API also set the short-lived
- * enrollment cookie that POST /totp and POST /totp/activate accept.
- */
 export type Login2FAResponse = Detail & { two_factor_required?: boolean };
 
-/** GET /app/session: who is signed in, restored from the session cookie after a reload. */
 export type SessionResponse = Pick<
   LoginResponse,
   "uuid" | "email" | "entity_name" | "role" | "access"
@@ -164,23 +157,15 @@ export interface Skill extends SkillCreate {
   updatedDate: string;
 }
 
-/**
- * Lightweight skill entry sent with every query to the AI.
- * Contains only the metadata needed for the model to decide if it needs the full content.
- */
 export interface SkillCatalogEntry {
   slug: string;
   description: string;
   updatedAt: string;
 }
 
-/**
- * Full skill payload sent when user forces via /slug or model requests via function call.
- */
 export interface SkillPayload {
   slug: string;
   description: string;
-  /** The skill's instructions; absent for one of the agent's own skills, whose instructions the agent has. */
   contentMarkdown?: string;
   source: "forced_slash" | "model_selected";
 }

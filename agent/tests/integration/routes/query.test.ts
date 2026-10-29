@@ -1,32 +1,18 @@
-/**
- * Tier 2 — POST /v1/query route.
- *
- * Drives the route end-to-end with a mocked provider. Asserts:
- * - X-Trace-Id is threaded as conversationId into the loop
- * - SSE response shape (Content-Type, decodable body)
- * - 400 on invalid request body
- *
- * The loop itself is exercised in tests/integration/agent-loop/*.
- * Here we only verify the route layer wires correctly.
- */
+import { describe, it, beforeEach, afterEach, mock } from "node:test";
+import { expect } from "expect";
 
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { makeMockLlm, llmEmitsText } from "../../helpers/mock-llm.ts";
 
-// Mock providers BEFORE importing the route so the route's resolveModel call
-// returns our deterministic mock.
-import { makeMockLlm, llmEmitsText } from "../../helpers/mock-llm";
-
-// Only resolveModel is replaced; the module's other exports are used by the loop and must stay.
-const realProviders = await import("../../../src/lib/providers");
-mock.module("../../../src/lib/providers", () => ({
+const realProviders = await import("../../../src/lib/providers.ts");
+mock.module("../../../src/lib/providers.ts", { exports: {
   ...realProviders,
   resolveModel: () => makeMockLlm(llmEmitsText("ok from mock")),
-}));
+} });
 
 const { Hono } = await import("hono");
-const { queryRouter } = await import("../../../src/routes/query");
-const { readSse } = await import("../../helpers/sse-reader");
-const { clearAllModuleState } = await import("../../helpers/clear-state");
+const { queryRouter } = await import("../../../src/routes/query.ts");
+const { readSse } = await import("../../helpers/sse-reader.ts");
+const { clearAllModuleState } = await import("../../helpers/clear-state.ts");
 
 function app() {
   const a = new Hono();
@@ -34,8 +20,6 @@ function app() {
   return a;
 }
 
-// No model id is baked into the server: a deployment configures DEFAULT_MODEL.
-// The mocked resolveModel ignores the id, so any string stands in for it.
 const savedDefaultModel = process.env.DEFAULT_MODEL;
 beforeEach(() => {
   clearAllModuleState();

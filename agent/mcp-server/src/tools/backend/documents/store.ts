@@ -1,43 +1,20 @@
-/**
- * Per-conversation document store for the ines-tools MCP server.
- *
- * Lifecycle:
- *  - `query_documents` decoration ships uploaded docs once per conversation.
- *    We extract → chunk → embed → store, keyed by conversationId + docId.
- *  - Subsequent calls in the same chat read from the store directly.
- *  - TTL eviction (30 min idle) matches how long the agent keeps a chat's
- *    rows, so a chat that idles past that will re-ship anyway. Process restart
- *    drops the store entirely (no persistence).
- *
- * Memory cap: per-conversation `MAX_DOCS_PER_CHAT` and `MAX_CHUNKS_PER_CHAT`
- * fail loud on overflow so a runaway upload can't OOM the MCP server.
- *
- * `_resetDocStoreState()` test hook clears everything.
- */
-
-import type { DocChunk } from "./chunk";
-import type { UploadedDocumentFormat } from "../../../../../src/protocol/types";
-import { createBoundedCache } from "../../../../../src/lib/bounded-cache";
-import { userOfScope } from "../../../../../src/lib/scope";
-import { getLogger } from "../../../lib/logger";
-import { getRedisClient } from "../../../lib/redis";
-import { MAX_CHUNKS_PER_DOC } from "./limits";
+import type { DocChunk } from "./chunk.ts";
+import type { UploadedDocumentFormat } from "../../../../../src/protocol/types.ts";
+import { createBoundedCache } from "../../../../../src/lib/bounded-cache.ts";
+import { userOfScope } from "../../../../../src/lib/scope.ts";
+import { getLogger } from "../../../lib/logger.ts";
+import { getRedisClient } from "../../../lib/redis.ts";
+import { MAX_CHUNKS_PER_DOC } from "./limits.ts";
 
 const logger = getLogger(["mcp", "documents", "store"]);
 
 export const TTL_MS = 30 * 60 * 1000;
 export const MAX_DOCS_PER_CHAT = 50;
 export const MAX_CHUNKS_PER_CHAT = 5000;
-/** Most chats whose documents are held at once, and most chunks of all of them: the least recently used go first. */
 export const MAX_STORES = 300;
 export const MAX_TOTAL_CHUNKS = 120_000;
 const REDIS_TTL_S = 48 * 3600;
 
-/**
- * How many chunks one user may have read and embedded in an hour (INES_INGEST_CHUNKS_PER_HOUR, default 20,000).
- * Embedding is paid for with the operator's key: without a ceiling per user, anybody could run it up by
- * uploading documents in chat after chat.
- */
 export function ingestChunksPerHour(): number {
   const configured = Number(process.env.INES_INGEST_CHUNKS_PER_HOUR);
   return Number.isFinite(configured) && configured > 0 ? configured : 20_000;
@@ -52,12 +29,7 @@ export interface StoredDocument {
   id: string;
   name: string;
   format: UploadedDocumentFormat;
-  /** Chunk text + metadata. */
   chunks: DocChunk[];
-  /**
-   * Aligned 1:1 with `chunks` — embedding vector for chunk[i] at index i.
-   * Stored separately so retrieval can do a single matrix-shaped scan.
-   */
   embeddings: number[][];
   ingestedAt: number;
 }
@@ -66,13 +38,11 @@ interface DocStore {
   conversationId: string;
   docs: Map<string, StoredDocument>;
   lastTouched: number;
-  /** True once we've tried to hydrate this conversation from Redis. */
   hydrated: boolean;
 }
 
 const stores = new Map<string, DocStore>();
 
-// A Map keeps insertion order: a store that is used is moved to the end, so the first is the least recently used.
 function touch(s: DocStore): void {
   s.lastTouched = Date.now();
   if (stores.get(s.conversationId) === s) {
@@ -87,7 +57,6 @@ function totalChunks(): number {
   return n;
 }
 
-/** Drops the stores used longest ago while there are too many of them, or they hold too much. */
 function enforceGlobalBounds(keep: string): void {
   let chunks = totalChunks();
   for (const [key, s] of stores) {
@@ -99,10 +68,6 @@ function enforceGlobalBounds(keep: string): void {
   }
 }
 
-/**
- * Throws when a document of `chunks` passages cannot be added to the chat: it has too many documents or
- * passages already. Called before the document is embedded, so that nothing is paid for what will be refused.
- */
 export function assertRoom(conversationId: string, docId: string, chunks: number): void {
   if (chunks > MAX_CHUNKS_PER_DOC) {
     throw new Error(`it is too long to search: ${chunks} passages, and the most for one document is ${MAX_CHUNKS_PER_DOC}`);
@@ -118,14 +83,12 @@ export function assertRoom(conversationId: string, docId: string, chunks: number
   }
 }
 
-/** Counts `chunks` against the user the scope key names; throws when they have used their hour's share. */
 export function chargeIngest(conversationId: string, chunks: number): void {
   const user = userOfScope(conversationId);
   const used = ingestUsed.get(user)?.chunks ?? 0;
   if (used + chunks > ingestChunksPerHour()) {
     throw new Error("you have reached the limit on documents read in the last hour: try again later");
   }
-  // (Set again, not mutated: a write is what gives the count its hour.)
   const entry = ingestUsed.get(user) ?? { chunks: 0 };
   entry.chunks = used + chunks;
   if (!ingestUsed.has(user)) ingestUsed.set(user, entry);
@@ -159,11 +122,6 @@ export function getStore(conversationId: string): DocStore {
   return s;
 }
 
-/**
- * Pull any persisted docs for this conversation from Redis into the in-memory
- * store. No-op when Redis isn't configured or the conversation has already
- * been hydrated this process lifetime. Safe to call repeatedly.
- */
 export async function ensureHydrated(conversationId: string): Promise<void> {
   const s = getStore(conversationId);
   if (s.hydrated) return;
@@ -196,8 +154,6 @@ export async function upsertDocument(
   doc: StoredDocument,
 ): Promise<void> {
   const s = getStore(conversationId);
-  // Cheap guard — concurrent upserts for the same id are fine, just
-  // overwrite. Across distinct ids enforce caps.
   if (!s.docs.has(doc.id) && s.docs.size >= MAX_DOCS_PER_CHAT) {
     throw new Error(
       `Document cap (${MAX_DOCS_PER_CHAT}) reached for conversation ${conversationId}`,
@@ -244,11 +200,6 @@ export function hasDocument(conversationId: string, docId: string): boolean {
   return stores.get(conversationId)?.docs.has(docId) ?? false;
 }
 
-/**
- * Iterate all (chunk, doc, embedding) triples for retrieval. Caller filters
- * by `docIds` if needed; pushing the filter here would require yet another
- * Map and the chat-scope set is tiny anyway.
- */
 export function* iterChunks(
   conversationId: string,
 ): Generator<{ chunk: DocChunk; doc: StoredDocument; embedding: number[] }> {
@@ -262,7 +213,6 @@ export function* iterChunks(
   }
 }
 
-/** Test-only: clear all module state. */
 export function _resetDocStoreState(): void {
   stores.clear();
   ingestUsed.clear();

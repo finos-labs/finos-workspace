@@ -31,7 +31,6 @@ const uiShowRemoveFromOrgFF = getConfig().ui.showRemoveFromOrg;
 interface Props {
   user: User;
   onClose: () => void;
-  /** Role names assigned to this user, shown as tags in the general info section. */
   roles?: string[];
 }
 

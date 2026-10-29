@@ -52,7 +52,6 @@ export function useProcessBackendWidgets() {
         const validatedUrl = cleanURL(backend.url);
         let validated: Partial<ValidateBackend> | undefined;
 
-        // avoids unnecessary API calls if the backend is owned by the user
         const existing = getApiSourceById(backend.uuid);
         if (existing) {
           validated = {
@@ -80,10 +79,8 @@ export function useProcessBackendWidgets() {
 
         const newWidgets = {} as ProcessedBackendT["widgets"];
 
-        // Add widgetId to widgets and check permissions
         for (const [key, widget] of Object.entries(widgets ?? {})) {
           widget.widgetId = widget.widgetId || key;
-          // Disable widgets that the user does not have access to
           newWidgets[key] = createSourceWidget(
             widget,
             source,
@@ -91,7 +88,6 @@ export function useProcessBackendWidgets() {
           );
         }
 
-        // Filter out templates that the user doesn't have access to
         const filteredTemplates = templates
           ?.filter((template) => {
             return (
@@ -100,7 +96,6 @@ export function useProcessBackendWidgets() {
             );
           })
           .map((template) => {
-            // Preserve the original prompts structure from backend.templates
             const backendTemplate = backend.templates.find(
               (t) => t.templateId === template.name,
             );

@@ -1,6 +1,6 @@
 import type { IconId } from "~/components/Icon.types";
 import type { BackendTemplate } from "~/lib/state/backendConnector";
-import type { WidgetType } from "~/utils/zodForms";
+import type { WidgetsType } from "~/utils/zodForms";
 
 export type EndpointHeader = {
   key?: string;
@@ -57,7 +57,7 @@ export type BackendItem = BaseItem & {
   id: string;
   selectionId: string;
   templates?: BackendTemplate[];
-  widgets?: (WidgetType & { selectionId: string; shared?: boolean })[];
+  widgets?: (WidgetsType[string] & { selectionId: string; shared?: boolean })[];
 };
 
 export type ItemType<T extends POSSIBLE_SOURCES> = T extends "file"
@@ -66,7 +66,6 @@ export type ItemType<T extends POSSIBLE_SOURCES> = T extends "file"
     ? BackendItem
     : never;
 
-/** Fields consumed by WidgetCard — union of widget child shapes across source types. */
 export type WidgetCardItem = {
   uuid?: string;
   id?: string;
@@ -85,7 +84,6 @@ export type WidgetCardItem = {
   type?: string | null;
 };
 
-// some items are duplicated because they might have a different type, we need to fix this later
 export const SourceMeta = {
   backend: { name: "Backend Widgets", icon: "grid-01" },
   "advanced-backend": { name: "Backends", icon: "grid-01" },

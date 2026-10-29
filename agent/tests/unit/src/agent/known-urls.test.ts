@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { addressesGiven, addressesIn, isGivenAddress, urlKey } from "../../../../src/agent/known-urls";
-import type { Message, ToolMessage } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { addressesGiven, addressesIn, isGivenAddress, urlKey } from "../../../../src/agent/known-urls.ts";
+import type { Message, ToolMessage } from "../../../../src/protocol/types.ts";
 
 const human = (content: string): Message => ({ role: "human", content }) as Message;
 const ai = (content: string): Message => ({ role: "ai", content }) as Message;
@@ -122,7 +123,7 @@ describe("addressesGiven", () => {
     }
   });
 
-  it("knows a tool by its name with the server in front, as the Workspace may call it", () => {
+  it("knows a tool by its name with the server in front, as the FINOS Workspace may call it", () => {
     const set = given([human("hi"), mcp("Ines Tools_web_search", "https://news.example/story"), mcp("Ines Tools_mermaid_diagram", SECRET_URL), mcp("Ines Tools_not_web_search_at_all", SECRET_URL)]);
     expect(isGivenAddress("https://news.example/story", set)).toBe(true);
     expect(isGivenAddress(SECRET_URL, set)).toBe(false);
@@ -132,7 +133,6 @@ describe("addressesGiven", () => {
     const set = given([
       human("hello"),
       ai(`Here you go: ${SECRET_URL}`),
-      // A renderer repeats what it is told to; the bridge results repeat what the model asked.
       mcp("mermaid_diagram", SECRET_URL),
       toolResult("update_widget_in_dashboard", undefined, SECRET_URL),
       toolResult("get_params_options", undefined, "ok", { query: SECRET_URL }),
@@ -160,7 +160,7 @@ describe("addressesGiven", () => {
   });
 
   it("reads a request made of a great deal of text in bounded time, the newest first, and gives nothing from what it did not reach", () => {
-    const filler = "word ".repeat(20_000); // 100 KB
+    const filler = "word ".repeat(20_000);
     const messages: Message[] = [human("the old one: https://old.example/first"), ...Array.from({ length: 2000 }, () => human(filler)), human("the new one: https://new.example/last")];
     const start = performance.now();
     const set = given(messages);

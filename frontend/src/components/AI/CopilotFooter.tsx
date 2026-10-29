@@ -23,7 +23,6 @@ import PromptSuggestions from "./PromptSuggestions";
 import TextArea from "./TextArea";
 
 export default function CopilotFooter() {
-  // The default copilot stores uploads as the user's files, which users may not add
   const mayUpload = useShallowAccessStore((s) => canAddConnections(s.access));
   const fileUploadFF = useShallowCopilotStore(
     (s) =>
@@ -51,7 +50,6 @@ export default function CopilotFooter() {
 
   const selectedCopilot = useShallowCopilotStore((s) => s.selectedCopilot);
   const speechToTextFF = Boolean(selectedCopilot?.features?.["speech-to-text"]);
-  // What was said goes after what is already typed.
   const onDictated = useCallbackRef((text: string) =>
     dispatchCopilotCommand((prev) =>
       prev.trim() ? `${prev.trimEnd()} ${text}` : text,

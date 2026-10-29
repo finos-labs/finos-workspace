@@ -20,7 +20,6 @@ const CopilotUsageInfo: FC = () => {
   const [timeLeft, setTimeLeft] = useState("");
 
   const updateTimeLeft = useCallback(() => {
-    // don't add days to this code @DidierRLopes
     const now = dayjs().utc();
     const diff = now.endOf("day").diff(now, "minute");
 
@@ -42,7 +41,7 @@ const CopilotUsageInfo: FC = () => {
     if (!usage) return;
 
     updateTimeLeft();
-    const interval = setInterval(updateTimeLeft, 60000); // Update every minute
+    const interval = setInterval(updateTimeLeft, 60000);
 
     return () => interval && clearInterval(interval);
   }, [usage]);

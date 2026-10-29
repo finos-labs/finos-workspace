@@ -9,15 +9,6 @@ function getHostname(url: string): string {
   }
 }
 
-/**
- * Builds the `iframe` custom-widget payload created when a user opens an external
- * link as an embedded page. Centralizes the shape so every entry point (copilot
- * external-link dialog, markdown widget, ...) stays in sync and stays typed.
- *
- * @param url - Page to embed; stored on `storage.html` and read by the Iframe widget.
- * @param source - Human label for where the widget originated, shown in the description.
- * @param innerTab - Optional dashboard inner-tab to place the widget on.
- */
 export function buildIframeWidget(
   url: string,
   source: string,

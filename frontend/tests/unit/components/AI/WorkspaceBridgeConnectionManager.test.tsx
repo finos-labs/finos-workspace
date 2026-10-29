@@ -112,8 +112,6 @@ class MockWebSocket {
   }
 
   emitMessage(message: unknown) {
-    // Real browser WebSockets never deliver messages once closed; failing
-    // loudly here keeps tests from passing against a dead socket.
     if (this.readyState !== MockWebSocket.OPEN) {
       throw new Error(
         `MockWebSocket: cannot deliver a message to a socket with readyState ${this.readyState}`,
@@ -152,8 +150,6 @@ class MockWebSocket {
   }
 
   emitError() {
-    // A fatal socket error closes the connection; real sockets are never
-    // usable again after firing onerror.
     this.readyState = MockWebSocket.CLOSED;
     this.onerror?.();
   }
@@ -172,8 +168,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
       message: "Widget loaded.",
     });
     vi.stubGlobal("WebSocket", MockWebSocket as unknown as typeof WebSocket);
-    // apiClient is mocked globally in tests/mocks/api-client.ts; the session
-    // bootstrap goes through apiClient.post via startBridgeSession.
     vi.mocked(apiClient.post).mockResolvedValue({
       status: 200,
       data: {
@@ -198,8 +192,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
       isEnabled: false,
       status: "disabled",
       lastError: null,
-      // The reconnecting toast is only surfaced while the modal is open, so the
-      // toast-behavior cases below run with it open.
       isModalOpen: true,
     });
   });
@@ -420,7 +412,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
     await waitFor(() => {
       expect(useWorkspaceBridgeStore.getState().status).toBe("reconnecting");
       expect(toast.warning).toHaveBeenCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.objectContaining({
           id: "workspace-bridge-reconnecting",
           description: expect.stringContaining("Retrying in 1 second"),
@@ -433,8 +425,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
       await Promise.resolve();
     });
 
-    // The reconnect must open a brand-new socket: a closed WebSocket can
-    // never be reused, even when the backend returns the same URL.
     await waitFor(() => {
       expect(apiClient.post).toHaveBeenCalledTimes(2);
       expect(MockWebSocket.instances).toHaveLength(2);
@@ -489,9 +479,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
       expect(useWorkspaceBridgeStore.getState().status).toBe("connected");
     });
 
-    // Drop the connection first, then navigate during the backoff window:
-    // the reconnect handshake must carry the new dashboard/tab, not the
-    // context captured when the retry was scheduled.
     act(() => {
       MockWebSocket.instances[0].emitClose();
     });
@@ -553,11 +540,9 @@ describe("WorkspaceBridgeConnectionManager", () => {
       MockWebSocket.instances[0].emitClose();
     });
 
-    // The drop still drives a background reconnect...
     await waitFor(() => {
       expect(useWorkspaceBridgeStore.getState().status).toBe("reconnecting");
     });
-    // ...but no toast is shown because the modal is closed.
     expect(toast.warning).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -608,7 +593,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
 
     await waitFor(() => {
       expect(toast.warning).toHaveBeenCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.objectContaining({
           description: expect.stringContaining("Retrying in 1 second"),
         }),
@@ -629,7 +614,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
 
     await waitFor(() => {
       expect(toast.warning).toHaveBeenLastCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.objectContaining({
           description: expect.stringContaining("Retrying in 2 seconds"),
         }),
@@ -650,7 +635,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
 
     await waitFor(() => {
       expect(toast.warning).toHaveBeenLastCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.objectContaining({
           description: expect.stringContaining("Retrying in 4 seconds"),
         }),
@@ -676,7 +661,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
         "Failed to reconnect after 3 attempts",
       );
       expect(toast.error).toHaveBeenCalledWith(
-        "Workspace MCP companion disconnected",
+        "FINOS Workspace MCP companion disconnected",
         expect.objectContaining({
           description: expect.stringContaining("Failed to reconnect after 3 attempts"),
         }),
@@ -702,7 +687,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
     await waitFor(() => {
       expect(useWorkspaceBridgeStore.getState().status).toBe("reconnecting");
       expect(toast.warning).toHaveBeenCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.anything(),
       );
     });
@@ -730,7 +715,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
     await waitFor(() => {
       expect(useWorkspaceBridgeStore.getState().status).toBe("reconnecting");
       expect(toast.warning).toHaveBeenCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.anything(),
       );
     });
@@ -871,7 +856,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
 
     const socket = MockWebSocket.instances[0];
 
-    // The replacement socket opens successfully, which must reset the budget.
     act(() => {
       socket.emitOpen();
     });
@@ -892,7 +876,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
       expect(useWorkspaceBridgeStore.getState().status).toBe("connected");
     });
 
-    // First two heartbeats send a ping but stay within the timeout window.
     await act(async () => {
       vi.advanceTimersByTime(15_000);
       await Promise.resolve();
@@ -904,14 +887,12 @@ describe("WorkspaceBridgeConnectionManager", () => {
     });
     expect(socket.close).not.toHaveBeenCalled();
 
-    // Third tick crosses the 32s timeout with no pong: the socket is closed.
     await act(async () => {
       vi.advanceTimersByTime(15_000);
       await Promise.resolve();
     });
     expect(socket.close).toHaveBeenCalled();
 
-    // The forced close drives the normal reconnect path.
     act(() => {
       socket.emitClose();
     });
@@ -953,7 +934,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
       expect(useWorkspaceBridgeStore.getState().status).toBe("connected");
     });
 
-    // Answer each ping with a pong so the timeout window keeps resetting.
     for (let tick = 0; tick < 3; tick += 1) {
       await act(async () => {
         vi.advanceTimersByTime(15_000);
@@ -985,7 +965,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
 
     const socket = MockWebSocket.instances[0];
 
-    // Opening starts the heartbeat interval.
     act(() => {
       socket.emitOpen();
       socket.emitMessage({
@@ -1003,7 +982,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
       expect(useWorkspaceBridgeStore.getState().status).toBe("connected");
     });
 
-    // Drop the connection so the bridge is mid-reconnect when unmounted.
     act(() => {
       socket.emitClose();
     });
@@ -1011,20 +989,12 @@ describe("WorkspaceBridgeConnectionManager", () => {
 
     unmount();
 
-    // Teardown must close the socket even though it is not currently
-    // connected, and no reconnect timeout or heartbeat interval may survive.
-    // Flushing remaining time first drains the one-shot AbortSignal.timeout
-    // timer from session start, which is not cancellable; a leaked heartbeat
-    // interval would keep rescheduling itself and still be counted.
     expect(socket.close).toHaveBeenCalled();
     vi.advanceTimersByTime(60_000);
     expect(vi.getTimerCount()).toBe(0);
   });
 
   it("re-handshakes on remount when the store still reports connected", async () => {
-    // Navigating to /admin unmounts the workspace layout (and this manager);
-    // the unmount teardown closes the socket without touching store status,
-    // so coming back to /app remounts with a stale "connected" status.
     const { unmount } = render(<WorkspaceBridgeConnectionManager />);
 
     act(() => {
@@ -1065,7 +1035,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
       await Promise.resolve();
     });
 
-    // The remount must start a fresh session on a brand-new socket.
     await waitFor(() => {
       expect(apiClient.post).toHaveBeenCalledTimes(2);
       expect(MockWebSocket.instances).toHaveLength(2);
@@ -1119,13 +1088,12 @@ describe("WorkspaceBridgeConnectionManager", () => {
       expect(useWorkspaceBridgeStore.getState().status).toBe("connected");
     });
 
-    // First drop -> attempt 1 -> backoff of 1 second.
     act(() => {
       MockWebSocket.instances[0].emitClose();
     });
     await waitFor(() => {
       expect(toast.warning).toHaveBeenLastCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.objectContaining({
           description: expect.stringContaining("Retrying in 1 second"),
         }),
@@ -1140,18 +1108,16 @@ describe("WorkspaceBridgeConnectionManager", () => {
       expect(MockWebSocket.instances).toHaveLength(2);
     });
 
-    // The replacement socket opens successfully, which must reset the budget.
     act(() => {
       MockWebSocket.instances[1].emitOpen();
     });
 
-    // A subsequent drop starts the backoff at 1 second again rather than 2.
     act(() => {
       MockWebSocket.instances[1].emitClose();
     });
     await waitFor(() => {
       expect(toast.warning).toHaveBeenLastCalledWith(
-        "Workspace MCP companion reconnecting",
+        "FINOS Workspace MCP companion reconnecting",
         expect.objectContaining({
           description: expect.stringContaining("Retrying in 1 second"),
         }),

@@ -1,26 +1,18 @@
-/**
- * Tier 2 — agent-loop round-trip scenarios.
- *
- * Pinned to CLAUDE.md gotchas:
- * - Workspace bridge calls are terminal (no re-POST data injection expected)
- * - Cache-resolved widget re-fetch within MAX_LOOPS=3 without HTTP round-trip
- * - Citations forwarded across round-trips (commit 63272c8)
- */
-
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { Citation, QueryRequest, ToolMessage, Widget } from "../../../src/protocol/types";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { Citation, QueryRequest, ToolMessage, Widget } from "../../../src/protocol/types.ts";
 import {
   llmCallsTool,
   llmEmitsText,
   makeMockLlm,
-} from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+} from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 
-describe("a Workspace bridge call is terminal — emits SSE then returns, no continuing loop", () => {
+describe("a FINOS Workspace bridge call is terminal — emits SSE then returns, no continuing loop", () => {
   it("add_generative_widget emits a function call and ends the turn", async () => {
     const events = await collectGenerator(
       runAgentLoop({
@@ -47,7 +39,6 @@ describe("a Workspace bridge call is terminal — emits SSE then returns, no con
         (e.data as { function?: string }).function === "add_generative_widget",
     );
     expect(fnCall).toBeDefined();
-    // Terminal: no execute_agent_tool follow-on emitted.
     expect(
       events.find(
         (e) =>

@@ -1,5 +1,3 @@
-"""Storage abstract class."""
-
 from typing import Any, BinaryIO, Literal
 
 from fastapi.responses import StreamingResponse

@@ -19,19 +19,16 @@ async function updateIcons() {
     console.log(`Extracted ${iconIds.length} icon IDs: ${iconIds.join(", ")}`);
     iconIds.sort((a, b) => a.localeCompare(b));
 
-    // Adds trailing comma to each icon ID
     const icons = JSON.stringify(iconIds, null, 2).replace(
       /\n\s*("[^"]+")(?=\n\s*\])/g,
       "\n  $1,",
     );
 
-    // More specific regex to match the icons array declaration
     const newContent = iconTypesFileContent.replace(
       /const allIcons = \[[\s\S]*?\] as const;/,
       `const allIcons = ${icons} as const;`,
     );
 
-    // Add check to ensure content was actually modified
     if (newContent === iconTypesFileContent) {
       console.log("⚠️ No changes were made to Icon.tsx - pattern not found");
       process.exit(1);

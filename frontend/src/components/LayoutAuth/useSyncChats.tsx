@@ -92,9 +92,7 @@ export const diffChatsWithRemote = (
   const current = prepareChats(currentChats);
   const remote = prepareChats(remoteChats);
 
-  // Iterate over each item in the current state
   for (const [key, value] of Object.entries(current)) {
-    // If the item doesn't exist in the remote state or is different, add it to the diff
     const msgUuids = Object.keys(value?.messages || {});
     const lastMessage = value?.messages?.[msgUuids[msgUuids.length - 1]];
     if (lastMessage?.role === "ai" && lastMessage?.content === "") continue;
@@ -111,7 +109,6 @@ export const diffChatsWithRemote = (
         }
       }
 
-      // check deleted messages
       for (const uuid of remoteUuids) {
         if (!value?.messages?.[uuid]) messagesDiff[uuid] = "DELETE";
       }
@@ -121,7 +118,6 @@ export const diffChatsWithRemote = (
   }
 
   for (const key of Object.keys(remote)) {
-    // If the item doesn't exist in the current state, mark it as "DELETE" in the diff
     if (!current[key]) {
       diff[key] = "DELETE";
     }

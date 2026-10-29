@@ -1,14 +1,3 @@
-"""
-Integration tests for the organization boundary of the admin routes.
-
-An admin manages the users and roles of their own organization only. They cannot create
-users in another organization's maps or with its roles, cannot delete, remove or read the
-permissions of its users, cannot move a user to another organization, and cannot grant
-their roles the backends, files and prompts of another organization. Nor can they manage
-the account of a superuser, who acts in every organization. A superuser may manage users
-anywhere. A user who leaves an organization takes what they brought out of its roles.
-"""
-
 import os
 import sys
 
@@ -34,7 +23,6 @@ OTHER_USER = UUID(_SECOND_USER["user_uuid"])
 
 @pytest.fixture
 async def other_organization(second_user_client):
-    """Another organization, with the second test user in it."""
     return second_user_client
 
 
@@ -272,7 +260,6 @@ class TestRemoveUser:
 class TestSuperuserAccounts:
     @pytest.fixture
     async def superuser(self, organization, db_session):
-        """A superuser who is an admin of the organization too."""
         user = await organization.add_user(models.ADMIN_TYPE)
         await db_session.execute(
             update(models.User).where(models.User.uuid == user.uuid).values(is_superuser=True)
@@ -295,7 +282,6 @@ class TestSuperuserAccounts:
     async def test_admins_do_not_manage_superusers(
         self, organization, superuser, admin_client, db_session, method, path
     ):
-        # A patch would make the superuser a plain user
         kwargs = (
             {"json": {"permissions_uuid": str(organization.maps[models.USER_TYPE])}}
             if method == "patch"
@@ -385,8 +371,6 @@ class TestUserPermissions:
 class TestRolePermissions:
     @pytest.fixture
     async def backends(self, organization, other_organization, db_session):
-        """A backend a member of the organization brought, one the organization has, and
-        one of another organization."""
         own = models.ApiSource(
             uuid=uuid4(), name="Own", url="https://api.example.com/own", user_uuid=MEMBER_UUID
         )
@@ -456,8 +440,6 @@ class TestRolePermissions:
 
     @pytest.fixture
     async def files_and_prompts(self, organization, other_organization, db_session):
-        """A file and a prompt a member of the organization brought, and a file and a
-        prompt of another organization."""
         owners = {"own": MEMBER_UUID, "other": OTHER_USER}
         files = {
             name: models.FileWidget(

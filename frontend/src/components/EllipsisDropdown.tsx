@@ -14,7 +14,8 @@ import Tooltip from "./Tooltip";
 import { useWidgetContext } from "./Widget.context";
 
 export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
-  const { dispatch, settings, exportFns, isMinimized, onMinimizeToggle } = props;
+  const { dispatch, settings, exportFns, onExport, isMinimized, onMinimizeToggle } =
+    props;
 
   const extraSettings = useMemo<ExtraActionT[]>(
     () => props.extraSettings || [],
@@ -77,7 +78,6 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
         </DropdownMenuPrimitive.Item>,
       );
     }
-    // Only show Parameters for backend widgets (external === true), not built-in ones
     if ((widget?.params?.length ?? 0) > 0 && widget?.external) {
       regularItems.push(
         <DropdownMenuPrimitive.Item
@@ -135,6 +135,10 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
           })}
           disabled={!isExportable}
           onSelect={() => {
+            if (onExport) {
+              onExport();
+              return;
+            }
             setExportWidgetData({
               possibleExportFormats: exportFns ? exportFunctions : [],
               widgetId: widget.id,
@@ -156,6 +160,7 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
     isShared,
     exportFunctions,
     exportFns,
+    onExport,
     setExportWidgetData,
     dispatch,
     duplicateWidgetCallback,
@@ -167,7 +172,6 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
     const { regularItems, exportItems } = defaultItems;
     const widget = widgetRef.current;
 
-    // Process extra settings
     const extras = extraSettings
       .filter((item) => {
         if (item.hide) return false;
@@ -250,7 +254,6 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
         );
       });
 
-    // Combine all items in the desired order: regular items -> extras -> export items
     return [...regularItems, ...extras, ...exportItems];
   }, [defaultItems, settings, extraSettings, widgetRef]);
 

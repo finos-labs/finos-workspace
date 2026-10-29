@@ -123,12 +123,10 @@ describe("validateFolderName", () => {
     });
 
     it("should reject empty strings", () => {
-      // Empty string is falsy, so validateFolderName returns falsy value
       expect(!!validateFolderName("")).toBe(false);
     });
 
     it("should handle null/undefined as falsy", () => {
-      // validateFolderName returns falsy for null/undefined due to && short-circuit
       expect(!!validateFolderName(malformed(null))).toBe(false);
       expect(!!validateFolderName(malformed(undefined))).toBe(false);
     });

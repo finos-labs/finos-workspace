@@ -70,7 +70,9 @@ describe("useAccessStore", () => {
   });
 
   it("sets access and usage together", () => {
-    useAccessStore.getState().setAccessAndUsage(access({ sharing: "receive" }), usage());
+    useAccessStore
+      .getState()
+      .setAccessAndUsage(access({ sharing: "receive" }), usage());
 
     const state = useAccessStore.getState();
     expect(state.access?.sharing).toBe("receive");

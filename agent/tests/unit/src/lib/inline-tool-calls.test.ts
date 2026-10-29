@@ -1,8 +1,9 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import { simulateReadableStream, streamText, tool, generateText } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
 import { z } from "zod";
-import { extractInlineToolCalls, withInlineToolCalls } from "../../../../src/lib/inline-tool-calls";
+import { extractInlineToolCalls, withInlineToolCalls } from "../../../../src/lib/inline-tool-calls.ts";
 
 const TOOLS = new Set(["execute_sql", "Ines_Tools_web_search", "get_widget_data"]);
 const calls = (text: string) => extractInlineToolCalls(text, TOOLS);
@@ -83,7 +84,6 @@ describe("extractInlineToolCalls", () => {
   });
 });
 
-/** A provider model that writes its tool call as text, as one block or in pieces. */
 function markerModel(steps: string[][], finish: "stop" | "tool-calls" = "stop") {
   let call = 0;
   return new MockLanguageModelV3({
@@ -120,7 +120,6 @@ const TOOLSET = {
 
 describe("withInlineToolCalls", () => {
   it("turns a marker in a streamed text into a tool call that the SDK runs, and the text that is left is the text", async () => {
-    // The marker is cut across the text deltas the way a model writes it.
     const model = withInlineToolCalls(
       markerModel([
         ["I'll check the prices. <tool_", 'call>{"name": "execute_sql", "argu', 'ments": {"sql": "SELECT 1"}}</tool', "_call>"],
@@ -134,15 +133,12 @@ describe("withInlineToolCalls", () => {
     }
     const steps = await result.steps;
     expect(steps).toHaveLength(2);
-    // Step one: the text before the marker, then the call; no marker is in any text.
     expect(steps[0].toolCalls.map((c) => c.toolName)).toEqual(["execute_sql"]);
     expect(steps[0].toolCalls[0].input).toEqual({ sql: "SELECT 1" });
     expect(steps[0].text).toBe("I'll check the prices. ");
     expect(steps[0].toolResults[0].output).toBe("ran SELECT 1");
-    // The step is reported as the model stopping for a tool call, not as an answer.
     expect(steps[0].finishReason).toBe("tool-calls");
     expect(steps[1].finishReason).toBe("stop");
-    // Step two: the answer.
     expect(steps[1].toolCalls).toHaveLength(0);
     expect(steps[1].text).toBe("The close is 200.");
     expect(parts.map((p) => p.text ?? "").join("")).not.toContain("tool_call");

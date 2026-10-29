@@ -1,27 +1,9 @@
-#!/usr/bin/env bun
-/**
- * Manual smoke test for the document-RAG MCP handler.
- *
- * Hits `queryDocumentsHandler` directly (no agent loop, no HTTP).
- * Validates: format detection → text extraction → chunking → embedding →
- * retrieval → formatted result.
- *
- * Prereqs:
- *   - INES_EMBED_MODEL set as <provider>:<model>, with that provider's key (for example NVIDIA_API_KEY)
- *
- * Usage:
- *   bun scripts/smoke-doc-rag.ts <doc-path> "<question>" [doc-path-2] ...
- *
- * Examples:
- *   bun scripts/smoke-doc-rag.ts ./README.md "what is ines-tools?"
- *   bun scripts/smoke-doc-rag.ts ./report.pdf "what was the Q3 revenue?"
- *   bun scripts/smoke-doc-rag.ts ./notes.txt ./spec.md "summarize both"
- */
+#!/usr/bin/env node
 
 import { readFileSync } from "node:fs";
 import { basename, extname } from "node:path";
-import { queryDocumentsHandler } from "../mcp-server/src/tools/backend/documents/query-documents";
-import { embeddingProblem } from "../mcp-server/src/tools/backend/documents/retrieve";
+import { queryDocumentsHandler } from "../mcp-server/src/tools/backend/documents/query-documents.ts";
+import { embeddingProblem } from "../mcp-server/src/tools/backend/documents/retrieve.ts";
 
 const FORMAT_MAP: Record<string, "pdf" | "docx" | "txt" | "md"> = {
   pdf: "pdf",
@@ -39,7 +21,7 @@ interface ParsedArgs {
 function parseArgs(argv: string[]): ParsedArgs {
   const args = argv.slice(2);
   if (args.length < 2) {
-    console.error("Usage: bun scripts/smoke-doc-rag.ts <doc-path> [more-paths...] \"<question>\"");
+    console.error("Usage: node --env-file=.env scripts/smoke-doc-rag.ts <doc-path> [more-paths...] \"<question>\"");
     process.exit(2);
   }
   const question = args[args.length - 1];

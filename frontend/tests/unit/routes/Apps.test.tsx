@@ -267,8 +267,6 @@ vi.mock("~/components/ds/atoms/Popover", () => ({
   ),
 }));
 
-// --- Mock data factories ---
-
 const makeApiSource = (overrides: Record<string, unknown> = {}) => ({
   id: "backend-1",
   uuid: "uuid-1",
@@ -338,8 +336,6 @@ const TEMPLATES_FOR_TWO_BACKENDS: UnifiedTemplate[] = [
   }),
 ];
 
-// --- Setup helpers ---
-
 function setupDefaultMocks(
   apiSources = TWO_BACKENDS,
   templates = TEMPLATES_FOR_TWO_BACKENDS,
@@ -374,8 +370,6 @@ const renderAppsWithRoute = (initialRoute: string) =>
     </MemoryRouter>,
   );
 
-// --- Tests ---
-
 describe("AppsPage - Backend Filter Dropdown", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -399,7 +393,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
     it("renders a checkbox for each backend plus Select All", () => {
       renderApps();
       const checkboxes = screen.getAllByRole("checkbox");
-      // 2 backend checkboxes + 1 Select All checkbox
       expect(checkboxes).toHaveLength(3);
     });
 
@@ -418,7 +411,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
   describe("Backend Selection", () => {
     it("checks every backend by default (all-selected state)", () => {
       renderApps();
-      // [0] = Select All, [1..] = backends — all checked when no filter is active
       for (const cb of screen.getAllByRole("checkbox")) {
         expect(cb).toBeChecked();
       }
@@ -429,7 +421,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      // [0] = Select All, [1] = Alpha, [2] = Beta
       await user.click(checkboxes[1]);
 
       await waitFor(() => {
@@ -443,8 +434,8 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      await user.click(checkboxes[1]); // deselect Alpha -> only Beta selected
-      await user.click(checkboxes[2]); // deselect Beta (last one) -> explicit none
+      await user.click(checkboxes[1]);
+      await user.click(checkboxes[2]);
 
       await waitFor(() => {
         expect(checkboxes[1]).not.toBeChecked();
@@ -458,7 +449,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      // Clear all via the Select All checkbox so we enter the 'none' state.
       await user.click(checkboxes[0]);
 
       await waitFor(() => {
@@ -466,7 +456,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
         expect(checkboxes[2]).not.toBeChecked();
       });
 
-      // Picking a single backend from 'none' yields exactly that selection.
       await user.click(checkboxes[1]);
 
       await waitFor(() => {
@@ -482,7 +471,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      // [0]=Select All, [1..4]=Alpha,Beta,Gamma,Delta — deselect two, leaving two
       await user.click(checkboxes[1]);
       await user.click(checkboxes[2]);
 
@@ -499,7 +487,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       expect(screen.getByTestId("app-card-t-2")).toBeInTheDocument();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      await user.click(checkboxes[1]); // deselect Alpha -> only Beta apps remain
+      await user.click(checkboxes[1]);
 
       await waitFor(() => {
         expect(screen.queryByTestId("app-card-t-1")).not.toBeInTheDocument();
@@ -514,13 +502,13 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      await user.click(checkboxes[1]); // deselect Alpha -> partial
+      await user.click(checkboxes[1]);
 
       await waitFor(() => {
         expect(checkboxes[1]).not.toBeChecked();
       });
 
-      await user.click(checkboxes[0]); // Select All -> back to all
+      await user.click(checkboxes[0]);
 
       await waitFor(() => {
         for (const cb of screen.getAllByRole("checkbox")) {
@@ -534,7 +522,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      // All backends start selected -> clicking Select All clears them.
       await user.click(checkboxes[0]);
 
       await waitFor(() => {
@@ -550,7 +537,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      await user.click(checkboxes[0]); // clear all
+      await user.click(checkboxes[0]);
 
       await waitFor(() => {
         expect(screen.queryByTestId("app-card-t-1")).not.toBeInTheDocument();
@@ -563,7 +550,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      await user.click(checkboxes[1]); // deselect Alpha -> partial
+      await user.click(checkboxes[1]);
 
       await waitFor(() => {
         expect(checkboxes[0]).toBePartiallyChecked();
@@ -575,13 +562,13 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      await user.click(checkboxes[1]); // deselect Alpha -> only Beta apps remain
+      await user.click(checkboxes[1]);
 
       await waitFor(() => {
         expect(screen.queryByTestId("app-card-t-1")).not.toBeInTheDocument();
       });
 
-      await user.click(checkboxes[0]); // Select All -> restore
+      await user.click(checkboxes[0]);
 
       await waitFor(() => {
         expect(screen.getByTestId("app-card-t-1")).toBeInTheDocument();
@@ -612,7 +599,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       setupDefaultMocks(FOUR_BACKENDS, []);
       renderApps();
 
-      // Select All text should be visible before search
       expect(screen.getByText("Select All")).toBeInTheDocument();
 
       const searchInput = screen.getByPlaceholderText("Search for backends");
@@ -643,7 +629,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
 
       await waitFor(() => {
         const checkboxes = screen.getAllByRole("checkbox");
-        // [0] = Select All, [1] = first backend
         expect(checkboxes[1]).toBeChecked();
       });
     });
@@ -653,7 +638,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
 
       await waitFor(() => {
         const checkboxes = screen.getAllByRole("checkbox");
-        // [0] = Select All, [2] = second backend
         expect(checkboxes[2]).toBeChecked();
       });
     });
@@ -661,7 +645,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
     it("keeps all backends selected when param does not match any source", () => {
       renderAppsWithRoute("/app/apps?backend=nonexistent");
 
-      // No filter applied -> default all-selected state -> everything checked
       for (const cb of screen.getAllByRole("checkbox")) {
         expect(cb).toBeChecked();
       }
@@ -697,7 +680,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       await waitFor(() => {
-        // cleanup empties the selection -> all-selected state -> everything checked
         for (const cb of screen.getAllByRole("checkbox")) {
           expect(cb).toBeChecked();
         }

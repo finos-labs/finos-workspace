@@ -93,7 +93,7 @@ describe("dependent endpoint params of a widget that is not in a group", () => {
 
     expect(fetch).toHaveBeenCalledWith(
       "http://backend.test/api/v1/news/rss_feeds?outlet=bbc",
-      { headers: {} },
+      { method: "GET", headers: {} },
     );
   });
 
@@ -134,7 +134,6 @@ describe("dependent endpoint params of a widget that is not in a group", () => {
       article: "old-article",
     });
 
-    // The cleared feed offers no article, so the article is cleared as well
     expect(updates).toEqual({ source: "", article: "" });
   });
 });

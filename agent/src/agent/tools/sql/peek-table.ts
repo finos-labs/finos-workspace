@@ -1,16 +1,11 @@
-/**
- * peek_table — preview rows + schema from a loaded table.
- * Stateless: fresh in-memory DB per call.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
-import { buildDb, describeColumns, tableNotFoundMessage } from "./db";
-import { NO_TABLES_LOADED_MESSAGE } from "./error-hints";
-import { rejectUnsafeTableName } from "./safety";
-import { getLogger } from "../../../lib/logger";
-import { displaySummarySchema } from "../progress";
-import { runSqlIsolated } from "./isolated";
+import { buildDb, describeColumns, tableNotFoundMessage } from "./db.ts";
+import { NO_TABLES_LOADED_MESSAGE } from "./error-hints.ts";
+import { rejectUnsafeTableName } from "./safety.ts";
+import { getLogger } from "../../../lib/logger.ts";
+import { displaySummarySchema } from "../progress.ts";
+import { runSqlIsolated } from "./isolated.ts";
 
 const logger = getLogger(["app", "tools", "sql", "peek_table"]);
 
@@ -64,7 +59,7 @@ export function runPeekTable(
     }
     const limit = Math.min(args.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
     const rows = db
-      .query(`SELECT * FROM "${target}" LIMIT ${limit}`)
+      .prepare(`SELECT * FROM "${target}" LIMIT ${limit}`)
       .all() as Record<string, unknown>[];
     return (
       `Table "${target}" (${tInfo.rowCount} rows total)\n` +

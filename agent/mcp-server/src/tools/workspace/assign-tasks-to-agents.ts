@@ -1,15 +1,9 @@
-/**
- * assign_tasks_to_agents — delegate work to configured external agents.
- *
- * Mirrors workspace_mcp/server.py:1003-1018.
- */
-
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
-import { parseJsonList, JsonArgumentError } from "../../bridge/json-args";
-import { describeTool } from "../../bridge/instructions";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
+import { parseJsonList, JsonArgumentError } from "../../bridge/json-args.ts";
+import { describeTool } from "../../bridge/instructions.ts";
 
 export const assignTasksToAgentsSchema = {
   task_requests_json: z.string().describe(
@@ -19,7 +13,7 @@ export const assignTasksToAgentsSchema = {
 } as const;
 
 export const assignTasksToAgentsDescription = describeTool(
-  "Assign tasks to configured external Workspace agents.",
+  "Assign tasks to configured external FINOS Workspace agents.",
   "Use task_requests items shaped like {id, description, assigned_holder_url, assigned_agent_id}.",
 );
 

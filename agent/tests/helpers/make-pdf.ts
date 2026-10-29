@@ -1,7 +1,3 @@
-/**
- * A real PDF with one line of text on each page (and no text at all on a page given as ""), for tests of
- * the code that reads PDFs. Built by hand: a catalog, the pages, one font, and a content stream per page.
- */
 export function makePdf(pageTexts: string[]): Uint8Array {
   const objects: string[] = [];
   const pageIds = pageTexts.map((_, i) => 4 + i * 2);

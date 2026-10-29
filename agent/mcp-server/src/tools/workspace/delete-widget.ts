@@ -1,14 +1,7 @@
-/**
- * delete_widget — remove one widget from a dashboard.
- *
- * Pure pass-through to the connected browser bridge. Mirrors
- * workspace_mcp/server.py:857.
- */
-
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
 
 export const deleteWidgetSchema = {
   widget_uuid: z
@@ -23,12 +16,12 @@ export const deleteWidgetSchema = {
     .string()
     .optional()
     .describe(
-      "Target dashboard UUID. Omit to target the current Workspace route.",
+      "Target dashboard UUID. Omit to target the current FINOS Workspace route.",
     ),
 } as const;
 
 export const deleteWidgetDescription =
-  "Delete a Workspace widget from a dashboard. " +
+  "Delete a FINOS Workspace widget from a dashboard. " +
   "Provide widget_uuid (preferred) or widget_id. dashboard_id defaults to the current route.";
 
 export async function deleteWidgetHandler(args: {

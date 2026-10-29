@@ -1,16 +1,8 @@
-/**
- * recall_conversation — read the part of the conversation the model is not shown.
- *
- * The model is served the current turn only (see ../history.ts); everything said before is here, for it
- * to fetch when the question needs it. In-process and stateless: it reads the messages of this request,
- * which the Workspace sends in full every time, so nothing has to be kept between requests.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
-import { metrics } from "../../lib/metrics";
-import type { TranscriptEntry } from "../history";
-import { displaySummarySchema } from "./progress";
+import { metrics } from "../../lib/metrics.ts";
+import type { TranscriptEntry } from "../history.ts";
+import { displaySummarySchema } from "./progress.ts";
 
 const MAX_LAST = 10;
 const MAX_RESULTS = 6;
@@ -45,7 +37,6 @@ function words(text: string): string[] {
   return text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
 }
 
-/** The earlier messages that best match the words, best first: a word that few messages have counts most. */
 function search(entries: TranscriptEntry[], query: string): TranscriptEntry[] {
   const sets = entries.map((entry) => new Set(words(entry.text)));
   const terms = [...new Set(words(query))];
@@ -64,7 +55,6 @@ function search(entries: TranscriptEntry[], query: string): TranscriptEntry[] {
     .map((match) => match.entry);
 }
 
-/** The part of a message around the first of the words in it, for a search result. */
 function snippet(text: string, query: string): string {
   if (text.length <= SNIPPET_BEFORE + SNIPPET_AFTER) return text;
   const lower = text.toLowerCase();
@@ -95,7 +85,6 @@ function render(entries: TranscriptEntry[], textOf: (entry: TranscriptEntry) => 
   return parts.join("\n\n");
 }
 
-/** `earlier` is the conversation before the current turn, numbered from 1. */
 export function makeRecallConversationTool(earlier: TranscriptEntry[]) {
   const count = earlier.length;
   return tool({

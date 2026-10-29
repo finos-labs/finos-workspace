@@ -1,23 +1,16 @@
-/**
- * JSON-string argument parsers for workspace tools.
- *
- * Mirrors workspace_mcp/server.py:248-352. Tools accept JSON-stringified
- * dicts/lists/values via flat MCP arguments (because some MCP clients don't
- * deal well with nested object inputs). Each parser raises
- * `JsonArgumentError` on shape failure so the tool handler can return a
- * structured `invalid_request` ContentItem without further branching.
- */
-
-import { errorItem, type ContentItem } from "../lib/typed";
+import { errorItem, type ContentItem } from "../lib/typed.ts";
 
 export class JsonArgumentError extends Error {
-  constructor(
-    public readonly command: string,
-    public readonly field: string,
-    public readonly reason: string,
-  ) {
+  readonly command: string;
+  readonly field: string;
+  readonly reason: string;
+
+  constructor(command: string, field: string, reason: string) {
     super(`${command} requires ${field} to ${reason}.`);
     this.name = "JsonArgumentError";
+    this.command = command;
+    this.field = field;
+    this.reason = reason;
   }
 
   toContentItem(): ContentItem {
@@ -88,10 +81,6 @@ export function parseJsonValue(
   }
 }
 
-/**
- * `add_generative_widget` data_json accepts plain strings for note/html (not
- * required to be JSON-quoted). Mirrors workspace_mcp/server.py:355-362.
- */
 export function parseGenerativeData(
   widgetType: string,
   raw: string | null | undefined,

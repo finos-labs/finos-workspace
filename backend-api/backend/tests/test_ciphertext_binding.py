@@ -1,13 +1,3 @@
-"""Revision 4c1d2e8f9a3b on data stored the way revision ff59d563599c left it.
-
-Every encrypted value moves from the v1 format (no associated data) to the v2 format of
-api/crypto.py, bound to its "<table>.<column>". An MCP server URL may carry a credential:
-the server list becomes an encrypted column, and a sign-in (mcp_oauth_grant) names its
-server by the SHA-256 of the normalized URL, the URL and the user moving into the
-encrypted credentials. As in test_secrets_migration, alembic runs in a subprocess against
-a SQLite file.
-"""
-
 import gzip
 import hashlib
 import json
@@ -32,7 +22,6 @@ BEFORE = "210b7a161dbc"
 REVISION = "4c1d2e8f9a3b"
 UUID = sqlalchemy_utils.types.uuid.UUIDType()
 
-# A server whose URL carries its credential in the path, and one with it in the query
 PATH_SECRET_URL = "https://mcp.example.org/api/mcp/s/path-secret-value/mcp"
 QUERY_SECRET_URL = "https://tools.example.org/mcp?api_key=query-secret-value"
 GRANT_URL = "https://mcp.example.org/api/mcp/s/path-secret-value/mcp"
@@ -190,7 +179,6 @@ def _seed(engine: sa.Engine) -> dict:
 
 
 def _opens_only_in(token: str, context: str) -> bytes:
-    """The plaintext of a v2 value, which decrypts in its own context and nowhere else."""
     cipher = AtRestCipher(AES_KEY)
     assert token.startswith("v2.")
     with pytest.raises(DecryptionError):
@@ -221,7 +209,6 @@ def test_upgrade_binds_every_ciphertext_and_hides_server_urls(database):
     assert _opens_only_in(user["openai_api_key"], "user.openai_api_key") == b"sk-openai-secret"
     assert _opens_only_in(user["perplexity_api_key"], "user.perplexity_api_key") == b"pplx-secret"
 
-    # The server list is encrypted: no URL, and so no credential in one, in plain text
     mcp = _by_uuid(db_path, "mcp_servers", ids["mcp"])
     assert isinstance(mcp["servers"], str)
     for secret in ("path-secret-value", "query-secret-value", "mcp.example.org"):
@@ -231,7 +218,6 @@ def test_upgrade_binds_every_ciphertext_and_hides_server_urls(database):
         "https://tools.example.org/mcp": {"X-Team": "team-secret"}
     }
 
-    # A grant names its server by the URL's hash; URL and user are inside the ciphertext
     assert "server_url" not in _columns(db_path, "mcp_oauth_grant")
     grant = _by_uuid(db_path, "mcp_oauth_grant", ids["grant"])
     assert grant["server_hash"] == hashlib.sha256(GRANT_URL.encode()).hexdigest()
@@ -241,7 +227,6 @@ def test_upgrade_binds_every_ciphertext_and_hides_server_urls(database):
         "user_uuid": str(ids["user"]),
         "server_url": GRANT_URL,
     }
-    # One that did not decrypt is gone: the user signs in again
     assert _by_uuid(db_path, "mcp_oauth_grant", ids["bad_grant"]) is None
     assert "1 grants keyed by server hash, 1 that did not decrypt deleted" in log
 

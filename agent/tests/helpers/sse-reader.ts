@@ -1,9 +1,3 @@
-/**
- * Reads a Hono SSE Response body into a list of `{ event, data }` blocks.
- * Used by Tier 2 route integration tests; the loop tests drain the
- * AsyncGenerator directly via `for await` instead.
- */
-
 export interface SseBlock {
   event: string;
   data: unknown;
@@ -37,7 +31,6 @@ function parseSseBuffer(buffer: string): SseBlock[] {
     try {
       data = JSON.parse(dataLine);
     } catch {
-      // leave as raw string
     }
     out.push({ event, data });
   }

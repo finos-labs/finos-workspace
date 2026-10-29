@@ -1,10 +1,3 @@
-"""Saved dashboards and apps never keep a data backend's credentials.
-
-Widgets look a backend's headers up when they fetch; the content the API stores loses the
-headers and query values of every widget endpoint, and any backend header rows, whatever
-the client sends.
-"""
-
 import json
 from uuid import uuid4
 
@@ -47,7 +40,6 @@ def test_stripping_keeps_everything_but_the_credentials():
     }
     assert widget["params"] == [{"name": "ticker", "value": "AAPL"}]
     assert stripped["tabs"]["overview"]["widgets"]["b"]["endpoint"]["method"] == "GET"
-    # Nothing else is touched
     assert strip_endpoint_credentials({"name": "x", "headers": {"a": "b"}}) == {
         "name": "x",
         "headers": {"a": "b"},

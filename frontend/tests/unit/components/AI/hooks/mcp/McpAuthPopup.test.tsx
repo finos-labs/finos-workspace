@@ -86,7 +86,6 @@ describe("McpAuthPopup", () => {
     vi.useRealTimers();
   });
 
-  /** A window as window.open returns it, whose opener and location the page sets. */
   function fakeWindow() {
     return {
       closed: false,
@@ -117,7 +116,6 @@ describe("McpAuthPopup", () => {
     render(<McpAuthPopup />);
     fireEvent.click(screen.getByText("Sign in"));
 
-    // The window opens blank, loses its opener, then loads the sign-in page
     expect(openSpy).toHaveBeenCalledWith(
       "about:blank",
       `mcp_auth_${encodeURIComponent(POPUP_VALUE.url)}`,
@@ -141,8 +139,8 @@ describe("McpAuthPopup", () => {
     fireEvent.click(screen.getByText("Sign in"));
 
     popup.closed = true;
-    vi.advanceTimersByTime(500); // poll detects the close
-    vi.advanceTimersByTime(1000); // grace period elapses
+    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(1000);
 
     expect(mockMcpToolsState.disableServerAfterAuthCancel).toHaveBeenCalledWith(
       "server-1",
@@ -161,8 +159,7 @@ describe("McpAuthPopup", () => {
     fireEvent.click(screen.getByText("Sign in"));
 
     popup.closed = true;
-    vi.advanceTimersByTime(500); // poll detects the close
-    // The sign-in's success clears the store slot before the grace period ends
+    vi.advanceTimersByTime(500);
     mockStoreState.mcpAuthPopup = null;
     vi.advanceTimersByTime(1000);
 

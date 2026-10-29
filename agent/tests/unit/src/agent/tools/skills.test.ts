@@ -1,8 +1,9 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   makeGetSkillContentTool,
   getSkillContentSchema,
-} from "../../../../../src/agent/tools/skills";
+} from "../../../../../src/agent/tools/skills.ts";
 
 describe("getSkillContentSchema", () => {
   it("requires slug; reason is optional", () => {

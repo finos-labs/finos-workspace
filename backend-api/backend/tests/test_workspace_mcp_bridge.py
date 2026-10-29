@@ -20,13 +20,10 @@ class FakeSocket:
 
 
 async def session_lasts() -> bool:
-    """The web session that opened a test's browser socket lasts."""
     return True
 
 
 class FakePubSub:
-    """Minimal async pub/sub matching the redis.asyncio.client.PubSub surface the bridge uses."""
-
     def __init__(self, broker: dict):
         self._broker = broker
         self._queue: asyncio.Queue = asyncio.Queue()
@@ -56,8 +53,6 @@ class FakePubSub:
 
 
 class FakeAsyncRedis:
-    """In-memory async Redis double sharing one broker so multiple clients interconnect."""
-
     def __init__(self, broker: dict | None = None):
         self._broker = broker if broker is not None else {"channels": {}, "store": {}}
 
@@ -173,6 +168,28 @@ async def test_bridge_executes_connected_browser_command():
     assert result["data"] == {"dashboards": []}
 
 
+def test_a_command_result_keeps_its_warnings():
+    from routers.app.workspace_mcp.schemas import browser_message_adapter
+
+    message = browser_message_adapter.validate_python(
+        {
+            "type": "command_result",
+            "result": {
+                "ok": True,
+                "command": "create_widget",
+                "request_id": "cmd_1",
+                "message": "Dry run: widget would be created. Nothing was changed.",
+                "data": {"valid": True},
+                "warnings": ["data_args keys not declared by this widget were ignored: bogus."],
+            },
+        }
+    )
+
+    assert message.result.model_dump(mode="json")["warnings"] == [
+        "data_args keys not declared by this widget were ignored: bogus."
+    ]
+
+
 @pytest.mark.asyncio
 async def test_bridge_command_without_browser_is_unavailable():
     from routers.app.workspace_mcp.bridge import (
@@ -198,8 +215,6 @@ async def test_disconnect_only_fails_that_users_pending_commands():
             request=BrowserSessionStartRequest(client_name="workspace-ui"),
             base_url="http://test",
         )
-        # Register the browser directly: the credential handshake in
-        # connect_browser requires Redis-backed active-session lookup.
         manager._active_by_user[user_uuid] = ConnectedBrowser(
             user_uuid=user_uuid,
             session=start.session,
@@ -221,14 +236,11 @@ async def test_disconnect_only_fails_that_users_pending_commands():
     await asyncio.sleep(0.01)
     assert len(manager._pending_commands) == 2
 
-    # User A's browser disconnects.
     await manager.disconnect_browser(user_a, manager._active_by_user[user_a].socket)
 
-    # User A's in-flight command fails fast.
     result_a = await task_a
     assert result_a["ok"] is False
 
-    # User B's browser is still connected, so its command must stay pending.
     await asyncio.sleep(0.01)
     assert not task_b.done()
 
@@ -282,9 +294,6 @@ async def test_completed_results_cache_is_bounded():
 
 @pytest.mark.asyncio
 async def test_ensure_started_pins_worker_id_to_pid():
-    """Guards the multi-worker fix: a manager constructed pre-fork must not keep a shared
-    worker_id once it starts in a worker process, or all workers share one command channel.
-    """
     import os
 
     from routers.app.workspace_mcp.bridge import BridgeSessionManager
@@ -300,7 +309,6 @@ async def test_ensure_started_pins_worker_id_to_pid():
 
 @pytest.mark.asyncio
 async def test_bridge_routes_command_across_processes_via_redis():
-    """A command issued on one worker reaches a browser held by another worker over Redis."""
     from routers.app.workspace_mcp.bridge import BridgeSessionManager
 
     broker: dict = {"channels": {}, "store": {}}
@@ -325,12 +333,10 @@ async def test_bridge_routes_command_across_processes_via_redis():
         authorized=session_lasts,
     )
 
-    # caller has no local browser for this user -> must publish over Redis to holder.
     command_task = asyncio.create_task(
         caller.execute_command(user_uuid, {"command": "get_workspace_snapshot"})
     )
 
-    # Wait for holder's listener to relay the command to the browser socket.
     for _ in range(200):
         if socket.sent:
             break

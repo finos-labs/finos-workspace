@@ -1,26 +1,13 @@
-# The whole Workspace: database, cache, API, background worker, web app, Ines, the Copilot's
-# agent, and the MCP server with the tools she uses.
-#
-#   (cd backend-api/backend && python3 -m scripts.create_local_env --admin-email <your-email>)
-#   # ...which also writes agent/.env: set DEFAULT_MODEL and that provider's key in it
-#   docker compose up --build
-#
-# Web app http://localhost:3000, API http://localhost:8000, Ines http://localhost:7777.
-# The first start creates the organization and the administrator listed in
-# backend-api/backend/scripts/cfgs/config.toml, without a password. Set it with
-#   docker compose run --rm init python -m scripts.init_users --new-password <email>
-#
-# On Apple silicon build for the host's architecture: PLATFORM=linux/arm64 docker compose up --build
 name: workspace
 
 x-backend: &backend
   env_file:
     - ./backend-api/backend/envs/.env
+  platform: ${PLATFORM:-linux/amd64}
   environment:
     DB_HOST: mysql
-    REDIS_HOST: redis
+    REDIS_HOST: valkey
     FOLDER_STORAGE_PATH: /opt/code/local_storage
-    # Every user has the agent's tools, enabled. The web app reaches them through the API's MCP proxy.
     DEFAULT_MCP_SERVERS: '[{"id": "ines-tools", "name": "Ines Tools", "url": "http://ines-mcp:8787/mcp"}]'
   networks:
     - workspace
@@ -41,8 +28,6 @@ services:
         "--character-set-server=utf8mb4",
         "--collation-server=utf8mb4_unicode_ci",
       ]
-    # Pinged over TCP: on a first start the entrypoint runs a temporary server on the socket only,
-    # while it creates the database, and a socket ping would call that healthy too early.
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -P 3306 -u root -proot --silent"]
       interval: 5s
@@ -54,38 +39,35 @@ services:
     networks:
       - workspace
 
-  redis:
-    image: redis:alpine
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
     restart: unless-stopped
-    command: redis-server --save 20 1 --loglevel warning
+    command: valkey-server --save 20 1 --loglevel warning
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
     volumes:
-      - redis:/data
+      - valkey:/data
     networks:
       - workspace
 
-  # Applies the migrations and creates the organization and its administrator, then exits.
-  # user_create.json carries the ids that the API and the worker read at start.
   init:
     <<: *backend
     build:
       context: ./backend-api/backend
       dockerfile: fastapi.Dockerfile
-      args:
-        PLATFORM: ${PLATFORM:-linux/amd64}
     image: workspace-api:local
-    # Runs as root because user_create.json, mounted below, belongs to whoever checked the
-    # repository out (uid 1001 on a GitHub runner), and the image's own user, uid 1000, cannot
-    # write it.
     user: root
     command:
-      - sh
+      - python
       - -c
-      - echo '{}' > user_create.json && alembic upgrade head && python -m scripts.init_users
+      - |
+        import pathlib, subprocess, sys
+        pathlib.Path("user_create.json").write_text("{}")
+        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+        subprocess.run([sys.executable, "-m", "scripts.init_users"], check=True)
     restart: "no"
     volumes:
       - ./backend-api/backend/user_create.json:/opt/code/user_create.json
@@ -93,12 +75,11 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
 
   api:
     <<: *backend
-    # Built by `init`, which shares the image.
     image: workspace-api:local
     pull_policy: never
     restart: unless-stopped
@@ -128,8 +109,6 @@ services:
     build:
       context: ./backend-api/backend
       dockerfile: rqworker.Dockerfile
-      args:
-        PLATFORM: ${PLATFORM:-linux/amd64}
     image: workspace-worker:local
     restart: unless-stopped
     volumes:
@@ -139,22 +118,16 @@ services:
       init:
         condition: service_completed_successfully
 
-  # One image for every environment: the container writes config.js from these variables at start.
   web:
     build:
       context: ./frontend
-      args:
-        PLATFORM: ${PLATFORM:-linux/amd64}
+    platform: ${PLATFORM:-linux/amd64}
     image: workspace-web:local
     restart: unless-stopped
     environment:
       BACKEND_URL: ${API_URL:-http://localhost:8000}
-      # The browser talks to Ines directly, so this is her address as the browser sees it.
       AI_API_URL: ${AI_API_URL:-http://localhost:7777}
-      # The Copilot panel stays hidden until this is true.
       AI_COPILOT_ENABLED: ${AI_COPILOT_ENABLED:-true}
-      # HTML widgets and Copilot artifacts run their scripts only when this is true. Iframe widgets always
-      # run theirs, in a sandboxed frame.
       ALLOW_HTML_JS_EXECUTION: ${ALLOW_HTML_JS_EXECUTION:-false}
     ports:
       - "3000:8080"
@@ -164,18 +137,12 @@ services:
     networks:
       - workspace
 
-  # The Copilot's agent. The web app sends chat requests to it. agent/.env (create_local_env writes it) holds
-  # its secrets and its model: DEFAULT_MODEL and that provider's key (see agent/.env.example); without
-  # a model it answers that none is configured, and without its secrets it does not start.
   ines:
     build:
       context: ./agent
       target: ines
     image: workspace-ines:local
     restart: unless-stopped
-    # What a bug, a hostile file or a model that was talked into something can do is kept to this container:
-    # no writable root, no capabilities, no new privileges, and bounded memory and processes. The work done
-    # for one request in a child process (SQL, spreadsheets, documents, pages) has its own limits inside.
     init: true
     read_only: true
     tmpfs:
@@ -189,49 +156,27 @@ services:
     env_file:
       - ./agent/.env
     environment:
-      # Every caller signs in with the API, which owns the users, their roles and usage limits. The
-      # metering token and the scope secret are in agent/.env (create_local_env writes them).
       WORKSPACE_API_URL: http://api:8000
-      # The Origin of Ines's calls to the API: the web app's address. The API refuses the calls of an origin
-      # it does not allow (BACKEND_CORS_ORIGINS in envs/.env; DISABLE_CORS=1 allows every origin).
       WORKSPACE_ORIGIN: ${WEB_URL:-http://localhost:3000}
-      # The address the browser uses for the API: the Workspace's links to its users' files are on it.
       WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
-      # Where what Ines keeps between the requests of a turn lives: who is signed in, how much of their
-      # share is left, which turn is under way, and a chat's rows. In Redis they are shared, so the
-      # answers are the same whichever replica a request reaches and a user has one share in all. Without
-      # it each replica keeps its own, so run one, and a chat's rows are not kept at all: they are only
-      # ever in Redis, never in a process's memory.
-      REDIS_URL: redis://redis:6379
-      # The origin of the web app: the browser calls Ines directly, so this has to name the address the
-      # web app was loaded from, whatever that is — localhost, 127.0.0.1, the machine's address on the
-      # network, a tunnel. A developer stack cannot know which, and an origin it does not name is a
-      # Copilot that fails with nothing in the UI to say why, so without WEB_URL every origin is allowed,
-      # as the API is here too (DISABLE_CORS=1 in envs/.env). That is not an open door by itself: every
-      # request needs the user's session token in a header, which a page on another origin does not have,
-      # and `*` cannot be combined with credentials. Set WEB_URL to the web app's address for a
-      # deployment; Ines refuses to start with users and no origins at all, so a deployment has to choose.
+      REDIS_URL: redis://valkey:6379
       INES_CORS_ORIGINS: ${WEB_URL:-*}
     ports:
       - "7777:7777"
     depends_on:
       api:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
     networks:
       - workspace
 
-  # The tools Ines uses: web search, page fetch, document search and more, each registered when what
-  # it needs is set (see agent/.env.example). Every user has this server by default
-  # (DEFAULT_MCP_SERVERS above). The web app calls it through the API's MCP proxy, so it publishes no port.
   ines-mcp:
     build:
       context: ./agent
       target: ines-mcp
     image: workspace-ines-mcp:local
     restart: unless-stopped
-    # Kept to this container as the agent's is (see above): the tools read the files and pages of strangers.
     init: true
     read_only: true
     tmpfs:
@@ -245,16 +190,12 @@ services:
     env_file:
       - ./agent/.env
     environment:
-      # The document search fetches the files of the Workspace itself, from the links the Workspace gives
-      # out: they are on the address the browser uses, and are fetched from the API's address here, with
-      # WORKSPACE_ORIGIN as their Origin (the API refuses the calls of an origin it does not allow).
       WORKSPACE_API_URL: http://api:8000
       WORKSPACE_ORIGIN: ${WEB_URL:-http://localhost:3000}
       WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
-      # The documents of a chat, shared between replicas of this server as Ines shares what she keeps.
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://valkey:6379
     depends_on:
-      redis:
+      valkey:
         condition: service_healthy
     networks:
       - workspace
@@ -264,5 +205,5 @@ networks:
 
 volumes:
   db:
-  redis:
+  valkey:
   storage:

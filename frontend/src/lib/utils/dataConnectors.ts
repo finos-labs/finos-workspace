@@ -5,12 +5,6 @@ import { generateRandomName } from "~/lib/utils";
 import type { WidgetType } from "~/utils/zodForms";
 import { useAppStore } from "../state/app";
 
-/**
- * Handles the addition of a connection to a dashboard.
- * @param dashboardId - The id of the dashboard to add the connection to. May be undefined if the user is outside the dashboard.
- * @param widgets - The widgets to add to the dashboard.
- * @param navigate - The navigate function to use to navigate to a new dashboard.
- */
 export function handleConnectionAdded<
   T extends WidgetT | WidgetType | WidgetJsonT = WidgetT,
 >(
@@ -30,14 +24,12 @@ export function handleConnectionAdded<
   }
 
   if (widgetCount > 10) {
-    // Notify the user without adding widgets or providing the "Add to new dashboard" option
     toast.success(`${widgetCount} widgets added to widget menu`, {
       description,
     });
-    return; // Exit the function early
+    return;
   }
   if (dashboardId) {
-    // User is inside a dashboard
     useAppStore.getState().addWidgets(dashboardId, widgets as WidgetT[]);
     toast.success(
       `${widgetCount} widget${widgetCount > 1 ? "s" : ""} added to dashboard`,
@@ -46,7 +38,6 @@ export function handleConnectionAdded<
       },
     );
   } else {
-    // User is outside dashboard
     toast.success(successMessage, {
       className: "_toast-success",
       description,

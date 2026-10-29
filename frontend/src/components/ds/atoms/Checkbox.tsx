@@ -43,31 +43,19 @@ const Checkbox = React.forwardRef<
           "transition",
           "disabled:cursor-not-allowed",
 
-          // Unchecked default
           "bg-general-bg-primary border-general-border-primary",
-          // Unchecked focus
           "focus-visible:outline-hidden focus-visible:border-alert-informative",
-          // Unchecked disabled
           "disabled:bg-general-bg-primary-disabled disabled:border-general-border-primary",
-          // Unchecked error
           "data-error:border-alert-error!",
 
-          // Checked default
           "data-[state=checked]:bg-main-100 data-[state=checked]:border-main-100 data-[state=checked]:text-btn-primary-label",
-          // Checked focus
           "data-[state=checked]:focus-visible:border-alert-informative",
-          // Checked disabled
           "data-[state=checked]:disabled:bg-general-bg-primary-disabled data-[state=checked]:disabled:border-general-border-primary data-[state=checked]:disabled:text-general-label-disabled",
-          // Checked error
           "data-[state=checked]:data-error:border-alert-error!",
 
-          // Indeterminate default
           "data-[state=indeterminate]:bg-main-100 data-[state=indeterminate]:border-main-100 data-[state=indeterminate]:text-btn-primary-label",
-          // Indeterminate focus
           "data-[state=indeterminate]:focus-visible:border-alert-informative",
-          // Indeterminate disabled
           "data-[state=indeterminate]:disabled:bg-general-bg-primary-disabled data-[state=indeterminate]:disabled:border-general-border-primary data-[state=indeterminate]:disabled:text-general-label-disabled",
-          // Indeterminate error
           "data-[state=indeterminate]:data-error:border-alert-error!",
 
           className,

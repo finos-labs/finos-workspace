@@ -19,7 +19,6 @@ describe("useAutoHeightInput", () => {
       value: "",
     };
 
-    // Mock getComputedStyle
     vi.stubGlobal("getComputedStyle", () => ({
       font: "16px Arial",
       lineHeight: "24px",
@@ -30,7 +29,6 @@ describe("useAutoHeightInput", () => {
     const ref = { current: mockElement };
     renderHook(() => useAutoHeightInput(partial(ref), { offset: 2 }));
 
-    // Reset to auto, then scrollHeight + offset
     expect(mockElement.style.height).toBe("52px");
   });
 
@@ -45,7 +43,6 @@ describe("useAutoHeightInput", () => {
   it("adjusts height based on textContent", () => {
     const ref = { current: mockElement };
 
-    // Mock offsetHeight on Div prototype
     const originalOffsetHeight = Object.getOwnPropertyDescriptor(
       HTMLElement.prototype,
       "offsetHeight",
@@ -59,10 +56,8 @@ describe("useAutoHeightInput", () => {
       useAutoHeightInput(partial(ref), { textContent: "some text", offset: 0 }),
     );
 
-    // Max of scrollHeight(50) and contentHeight(100)
     expect(mockElement.style.height).toBe("100px");
 
-    // Restore
     if (originalOffsetHeight) {
       Object.defineProperty(
         HTMLElement.prototype,

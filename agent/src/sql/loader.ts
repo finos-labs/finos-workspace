@@ -1,10 +1,3 @@
-/**
- * Table analyzer used by the agent to derive schema/preview text from
- * incoming widget rows or MCP-provided rows. The SQL family runs the
- * queries (src/agent/tools/sql); this file is purely about producing a
- * `TableInfo` for prompting and for keying `pendingTables`.
- */
-
 export function sanitizeName(name: string): string {
   return name
     .replace(/[^a-zA-Z0-9_]/g, "_")
@@ -12,11 +5,6 @@ export function sanitizeName(name: string): string {
     .toLowerCase();
 }
 
-// Cap how far we scan when inferring a column's SQL type. Sparse columns
-// (populated only past row 50) used to be misclassified as TEXT because the
-// old sample window was 50 rows; bumping to 500 catches the realistic cases
-// without paying full O(N) on huge payloads. The loop also bails on the
-// first non-null cell, so well-populated columns cost ~1 dereference.
 const TYPE_SAMPLE_LIMIT = 500;
 
 function inferSqlType(rows: Record<string, unknown>[], key: string): string {
@@ -37,14 +25,6 @@ export interface TableInfo {
   rowCount: number;
 }
 
-/**
- * Disambiguate columns whose sanitized names collide. Real-world widget
- * payloads can have keys that differ only by case (`{ a, A }`) or by
- * separator (`{ "foo bar", "foo-bar" }`); both sanitize to the same
- * SQL identifier. Suffix duplicates with `_2`, `_3`, … so CREATE TABLE
- * doesn't fail and each column maps back to its originalName for value
- * insertion.
- */
 function dedupColumnNames<T extends { name: string }>(cols: T[]): T[] {
   const seen = new Map<string, number>();
   return cols.map((col) => {
@@ -54,11 +34,6 @@ function dedupColumnNames<T extends { name: string }>(cols: T[]): T[] {
   });
 }
 
-/**
- * Inspect a row array and return a sanitized table name + column metadata.
- * Pure — does not write to any database. The rows themselves stay in the
- * caller's Map.
- */
 export function analyzeTable(
   name: string,
   rows: Record<string, unknown>[],

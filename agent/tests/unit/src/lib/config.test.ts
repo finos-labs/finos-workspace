@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { loadConfig } from "../../../../src/lib/config";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { loadConfig } from "../../../../src/lib/config.ts";
 
 const WORKSPACE_ENV = {
   WORKSPACE_API_URL: "http://api:8000/",
@@ -103,7 +104,7 @@ describe("loadConfig — models and limits", () => {
   });
 });
 
-describe("loadConfig — the Workspace's files", () => {
+describe("loadConfig — the FINOS Workspace's files", () => {
   it("fetches the links on the browser's address from the API's, with workspace auth and its origin", () => {
     const config = loadConfig({ ...WORKSPACE_ENV, WORKSPACE_PUBLIC_URL: "http://localhost:8000/" });
     expect(config.workspaceFiles).toEqual({

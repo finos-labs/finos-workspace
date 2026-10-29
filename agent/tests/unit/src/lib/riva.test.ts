@@ -1,8 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { after as afterAll, before as beforeAll, describe, it } from "node:test";
+import { expect } from "expect";
 import * as grpc from "@grpc/grpc-js";
-import { decodeTranscript, encodeRecognizeRequest, nvidiaFunctionId, recognize } from "../../../../src/lib/riva";
+import { decodeTranscript, encodeRecognizeRequest, nvidiaFunctionId, recognize } from "../../../../src/lib/riva.ts";
 
-// A minimal protobuf writer and reader for the test's own side of the wire.
 const varint = (n: number): number[] => {
   const out: number[] = [];
   while (n > 0x7f) {
@@ -14,7 +14,6 @@ const varint = (n: number): number[] => {
 };
 const bytesField = (field: number, bytes: Uint8Array | number[]) => [...varint((field << 3) | 2), ...varint(bytes.length), ...bytes];
 const text = (s: string) => [...new TextEncoder().encode(s)];
-/** A RecognizeResponse with one result per transcript. */
 const response = (...transcripts: string[]) =>
   Buffer.from(transcripts.flatMap((t) => bytesField(1, bytesField(1, bytesField(1, text(t))))));
 
@@ -55,11 +54,11 @@ describe("the Riva messages", () => {
     const request = readFields(encodeRecognizeRequest(audio, 16_000, 1));
     expect(request.get(2)?.[0]).toEqual(audio);
     const config = readFields(request.get(1)?.[0] as Uint8Array);
-    expect(config.get(1)).toEqual([1]); // LINEAR_PCM
+    expect(config.get(1)).toEqual([1]);
     expect(config.get(2)).toEqual([16_000]);
     expect(new TextDecoder().decode(config.get(3)?.[0] as Uint8Array)).toBe("en-US");
-    expect(config.get(7)).toEqual([1]); // one channel
-    expect(config.get(11)).toEqual([1]); // punctuation
+    expect(config.get(7)).toEqual([1]);
+    expect(config.get(11)).toEqual([1]);
   });
 
   it("reads the transcript of every result, and nothing from an empty answer", () => {

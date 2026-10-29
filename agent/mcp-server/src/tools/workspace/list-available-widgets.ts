@@ -1,14 +1,7 @@
-/**
- * list_available_widgets — enumerate widgets the user can place.
- *
- * Pure pass-through to the connected browser bridge. Mirrors
- * workspace_mcp/server.py:554.
- */
-
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
 
 export const listAvailableWidgetsSchema = {
   origin: z
@@ -24,7 +17,7 @@ export const listAvailableWidgetsSchema = {
 } as const;
 
 export const listAvailableWidgetsDescription =
-  "List widgets available to the current Workspace session. " +
+  "List widgets available to the current FINOS Workspace session. " +
   "Returns deterministic widget identities for later get_widget_schema and create_widget calls. " +
   "Optional filters: origin matches the friendly catalog label exactly; backend_id matches the backend UUID. " +
   "Use backend_id only when you have a UUID from manage_backends; use origin when working from a snapshot. " +

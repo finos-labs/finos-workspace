@@ -1,13 +1,12 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   htmlArtifactDescription,
   runHtmlArtifact,
-} from "../../../../../src/agent/tools/html-artifact";
-import type { CopilotArtifact, SSEEvent } from "../../../../../src/protocol/types";
+} from "../../../../../src/agent/tools/html-artifact.ts";
+import type { CopilotArtifact, SSEEvent } from "../../../../../src/protocol/types.ts";
 
 describe("runHtmlArtifact", () => {
-  // This server has no diagram tool of its own, so the description names none: a description that
-  // named one would have the model call a tool that is not there.
   it("sends diagrams to a diagram tool only when one is listed", () => {
     expect(htmlArtifactDescription).toContain("flowcharts");
     expect(htmlArtifactDescription).toContain("if one is listed");

@@ -16,11 +16,8 @@ export type SettingsMenuProps = {
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  /** Extra classes for the outer container. */
   className?: string;
-  /** Extra classes for the collapsible content wrapper. */
   contentClassName?: string;
-  /** Extra classes for the body (where children render). */
   bodyClassName?: string;
 };
 
@@ -105,7 +102,6 @@ export default function SettingsMenu({
             <div
               className="flex items-center"
               onClick={(e) => {
-                // Prevent collapsible toggle when clicking right element
                 e.preventDefault();
                 e.stopPropagation();
               }}

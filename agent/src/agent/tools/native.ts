@@ -1,36 +1,19 @@
-/**
- * Tiny factory hub for the agent-owned "native" tools that round out parity
- * with Ada's tool surface (think / enhance / table-from-text / html artifact).
- * SQL family + create_artifact stay in `./sql/` because they share the
- * SQLite + create_artifact closure; everything here is independent and
- * state-bound only to the artifact queue or pendingTables.
- */
-
 import type { ToolSet } from "ai";
-import type { SSEEvent } from "../../protocol/types";
-import type { TableInfo } from "../../sql/loader";
-import { makeEnhancePromptTool } from "./enhance-prompt";
-import { makeLlmThinkTool } from "./think";
-import { makeTableFromTextTool } from "./table-from-text";
-import { makeHtmlArtifactTool } from "./html-artifact";
+import type { SSEEvent } from "../../protocol/types.ts";
+import type { TableInfo } from "../../sql/loader.ts";
+import { makeEnhancePromptTool } from "./enhance-prompt.ts";
+import { makeLlmThinkTool } from "./think.ts";
+import { makeTableFromTextTool } from "./table-from-text.ts";
+import { makeHtmlArtifactTool } from "./html-artifact.ts";
 
 export const NATIVE_TOOL_NAMES = [
   "enhance_prompt",
   "_llm_think",
   "create_table_from_text",
   "create_html_artifact",
-  // create_app is its own factory (closes over allWidgets); listed here so the
-  // MCP factory drops any Path-B `*_create_app` wrapper that would double-register.
   "create_app",
-  // suggest_followups is its own factory (closes over the request suggestions
-  // var) and is registered conditionally (suggestionsVia === "tool"); listed
-  // here so the MCP factory never double-registers a colliding wrapper.
   "suggest_followups",
-  // recall_conversation is its own factory (closes over the chat's earlier messages) and is registered
-  // only when there are earlier messages; listed here so the MCP factory never double-registers it.
   "recall_conversation",
-  // load_tools is registered by the loop (it closes over the catalog of the request's tools and the groups
-  // loaded so far); listed here so the MCP factory never double-registers a colliding wrapper.
   "load_tools",
 ] as const;
 

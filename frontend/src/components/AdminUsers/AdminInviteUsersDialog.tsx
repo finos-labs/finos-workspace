@@ -13,8 +13,8 @@ export function AdminInviteUsersDialog({ open, onClose }: ClosableDialogProps) {
     queryKey: ["admin", "entities"],
     queryFn: getEntityMap,
     enabled: true,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 1000 * 60 * 15, // 15 minutes
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 15,
   });
   const entitiesData = entitiesQuery.data || [];
   const permissionsUUID = entitiesData.find((e) => e.name === "User")?.uuid;

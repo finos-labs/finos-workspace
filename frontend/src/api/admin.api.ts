@@ -18,8 +18,6 @@ interface App {
   updated_date: string;
 }
 
-/* Users */
-
 export async function getUsers() {
   const { data } = await apiClient.get<User[]>("/admin/users");
   return data;
@@ -52,13 +50,11 @@ export async function deleteUser(
 ): Promise<{ success: boolean } | undefined> {
   if (source === "user") {
     if (remove) {
-      // this endpoint removes the user from the entity
       const { data } = await apiClient.delete<BaseResponse>(
         `/admin/users/${id}/remove`,
       );
       return data;
     }
-    // this endpoint soft deletes the user
     const { data } = await apiClient.delete<BaseResponse>(`/admin/users/${id}`);
     return data;
   }
@@ -68,15 +64,12 @@ export async function deleteUser(
   }
 }
 
-/** The link an admin gives a user to set their password with: it works once, until
- * expires_at. */
 export type PasswordLinkAnswer = {
   success: boolean;
   link: string;
   expires_at: string;
 };
 
-/** Resets a user's password: the answer is the link with which they set a new one. */
 export async function resetUserPassword(id: string) {
   const { data } = await apiClient.post<PasswordLinkAnswer>(
     `/admin/reset-password/${id}`,
@@ -89,13 +82,10 @@ export async function resetUser2FA(id: string) {
   return data;
 }
 
-/** Adds a user: the answer is the link with which they set their password. */
 export async function createUser(user: CreateUserDTO) {
   const { data } = await apiClient.post<PasswordLinkAnswer>("/admin/create-user", user);
   return data;
 }
-
-/* Share requests */
 
 export type ShareRequestUser = {
   email: string;
@@ -103,7 +93,6 @@ export type ShareRequestUser = {
   last_name: string | null;
 };
 
-/** A share a developer asked for; an admin of their organization approves or declines it. */
 export type ShareRequest = {
   uuid: string;
   created_date: string | null;
@@ -111,7 +100,6 @@ export type ShareRequest = {
   item_type: "dashboard" | "app";
   item_uuid: string;
   item_name: string;
-  /** Null: the whole organization */
   recipient: ShareRequestUser | null;
   permissions: string | null;
 };
@@ -130,8 +118,6 @@ export async function decideShareRequest(
   );
   return data;
 }
-
-/* Entities */
 
 export async function getEntity() {
   const { data } = await apiClient.get<EntitySettings>("/admin/entity");

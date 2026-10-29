@@ -1,18 +1,10 @@
-/**
- * SSE emit adapter — bridge tool input → Workspace wire input_arguments.
- *
- * Verifies:
- *   - SSE_BRIDGE_COMMANDS are all real bridge commands (rename guard)
- *   - normalizeBridgeArgs reshapes each command to the Workspace wire shape
- *     that the frontend's copilotFunctionCall schema expects
- */
-
-import { describe, it, expect } from "bun:test";
-import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../../../../src/protocol/bridge-commands";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../../../../src/protocol/bridge-commands.ts";
 import {
   SSE_BRIDGE_COMMANDS,
   normalizeBridgeArgs,
-} from "../../../../src/protocol/bridge-emit";
+} from "../../../../src/protocol/bridge-emit.ts";
 
 describe("SSE_BRIDGE_COMMANDS", () => {
   it("are all registered bridge commands (rename guard)", () => {
@@ -21,7 +13,7 @@ describe("SSE_BRIDGE_COMMANDS", () => {
     }
   });
 
-  it("are exactly the Workspace SSE-equivalent surface", () => {
+  it("are exactly the FINOS Workspace SSE-equivalent surface", () => {
     expect([...SSE_BRIDGE_COMMANDS].sort()).toEqual([
       "add_generative_widget",
       "add_widget_to_dashboard",

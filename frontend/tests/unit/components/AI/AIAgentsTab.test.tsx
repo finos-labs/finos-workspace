@@ -9,7 +9,6 @@ import type { InputProps } from "~/components/ds/atoms/Input";
 import { setAccess } from "../../factories";
 import { required } from "../../mocks";
 
-// Mock framer-motion so AnimatePresence exit animations complete synchronously in jsdom
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: ReactNode }) => <>{children}</>,
   motion: {
@@ -23,8 +22,6 @@ vi.mock("framer-motion", () => ({
     }) => <div className={className}>{children}</div>,
   },
 }));
-
-// --- Hoisted mocks ---
 
 const {
   mockFetchAgentsData,
@@ -56,8 +53,6 @@ const {
   mockUseShallowThemeStore: vi.fn(),
   mockRuntimeConfig: { copilot: { defaultCopilot: true } },
 }));
-
-// --- Module mocks ---
 
 vi.mock("~/api/auth.api", () => ({
   fetchAgentsData: (...args: unknown[]) => mockFetchAgentsData(...args),
@@ -139,7 +134,7 @@ vi.mock("~/lib/constants", async (importOriginal) => {
     getDefaultCopilot: () => ({
       id: "default-copilot",
       name: "Copilot",
-      description: "Copilot is the default agent for Workspace.",
+      description: "Copilot is the default agent for FINOS Workspace.",
       image: "/assets/images/brand.png",
     }),
   };
@@ -302,8 +297,6 @@ vi.mock("~/components/ds/dialogs/Dialog", () => ({
   ),
 }));
 
-// --- Mock data factories ---
-
 interface CopilotMock {
   id: string;
   name: string;
@@ -391,8 +384,6 @@ const HOLDER_WITH_AUTH = makeHolder({
   ],
 });
 
-// --- Setup helpers ---
-
 function setupDefaultMocks(
   externalCopilotHolders: ExternalCopilotHolderMock[] = SINGLE_HOLDER,
   selectedCopilot: CopilotMock | null = null,
@@ -426,8 +417,6 @@ const renderAIAgentsTab = () =>
       <AIAgentsTab />
     </BrowserRouter>,
   );
-
-// --- Tests ---
 
 describe("AIAgentsTab", () => {
   beforeEach(() => {
@@ -567,11 +556,8 @@ describe("AIAgentsTab", () => {
       await user.type(searchInput, "other-agents.example");
 
       await waitFor(() => {
-        // The holder whose URL doesn't match and has no matching agents should be gone
         expect(screen.queryByText("Alpha Agent")).not.toBeInTheDocument();
         expect(screen.queryByText("Beta Agent")).not.toBeInTheDocument();
-        // The holder with matching URL survives but its copilots are filtered by name/description,
-        // so individual agent cards won't show — but the holder group is still rendered
         expect(screen.queryByText("No results found")).not.toBeInTheDocument();
       });
     });
@@ -595,7 +581,6 @@ describe("AIAgentsTab", () => {
       setupDefaultMocks(TWO_HOLDERS);
       renderAIAgentsTab();
 
-      // 3 agents total (2 in holder-1, 1 in holder-2) = 3 edit buttons
       const editButtons = screen.getAllByTitle("Edit Settings");
       expect(editButtons).toHaveLength(3);
     });
@@ -604,7 +589,6 @@ describe("AIAgentsTab", () => {
       setupDefaultMocks(TWO_HOLDERS);
       renderAIAgentsTab();
 
-      // 3 agents total = 3 delete buttons
       const deleteButtons = screen.getAllByTitle("Delete");
       expect(deleteButtons).toHaveLength(3);
     });
@@ -904,7 +888,6 @@ describe("AIAgentsTab", () => {
         expect(screen.getByTestId("base-dialog")).toBeInTheDocument();
       });
 
-      // Click Test first (required before Update is enabled)
       const testButton = screen.getByRole("button", { name: "Test" });
       await user.click(testButton);
 
@@ -957,15 +940,12 @@ describe("AIAgentsTab", () => {
         expect(screen.getByTestId("base-dialog")).toBeInTheDocument();
       });
 
-      // Add a duplicate key pair
       const addButton = screen.getByRole("button", { name: /Add Authentication/i });
       await user.click(addButton);
 
-      // Type the same key as the existing one
       const keyInputs = screen.getAllByPlaceholderText("Authorization");
       await user.type(keyInputs[keyInputs.length - 1], "Authorization");
 
-      // Test first
       const testButton = screen.getByRole("button", { name: "Test" });
       await user.click(testButton);
 
@@ -1022,7 +1002,6 @@ describe("AIAgentsTab", () => {
       setupDefaultMocks(TWO_HOLDERS);
       renderAIAgentsTab();
 
-      // 3 agents total across 2 holders = 3 sets of buttons
       const deleteButtons = screen.getAllByTitle("Delete");
       expect(deleteButtons).toHaveLength(3);
 
@@ -1108,7 +1087,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       expect(
-        screen.getByText("Copilot is the default agent for Workspace."),
+        screen.getByText("Copilot is the default agent for FINOS Workspace."),
       ).toBeInTheDocument();
     });
 

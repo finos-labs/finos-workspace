@@ -1,16 +1,10 @@
-/**
- * Tier 2 — the model is served the current turn, and reads the rest of the conversation with a tool.
- *
- * Drives the real loop with a spy model, to see exactly what it is given and what happens when it asks
- * for more.
- */
-
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { QueryRequest, Message, AgentTool } from "../../../src/protocol/types";
-import { llmCallsTool, llmEmitsText, makeSequencedSpyMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { QueryRequest, Message, AgentTool } from "../../../src/protocol/types.ts";
+import { llmCallsTool, llmEmitsText, makeSequencedSpyMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => {
   clearAllModuleState();
@@ -58,7 +52,6 @@ describe("what the model is given", () => {
     const prompt = promptText(spy.calls[0]);
     expect(prompt).toContain("and what is the weather?");
     expect(prompt).toContain("This conversation has 600 earlier messages");
-    // Nothing of the earlier answers is in what the model sees.
     expect(prompt).not.toContain("supplier risk");
     expect(prompt).not.toContain("ZK-7");
   });
@@ -95,7 +88,6 @@ describe("what the model does when the question needs the rest", () => {
 
     expect(chunks(events)).toBe("The code is ZK-21.");
     expect(spy.calls).toHaveLength(2);
-    // What the first request had not shown, the second has: the tool's answer.
     expect(promptText(spy.calls[0])).not.toContain("ZK-21");
     expect(promptText(spy.calls[1])).toContain("ZK-21");
     expect(promptText(spy.calls[1])).toContain("workstream 3");

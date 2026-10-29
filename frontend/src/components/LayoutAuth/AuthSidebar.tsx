@@ -94,7 +94,7 @@ function McpStatusIndicator() {
     if (status === "disabled") return null;
     const { color = "text-yellow-500", messageSuffix } = MCP_STATUS_MAP[status];
     return (
-      <Tooltip message={`Workspace MCP Companion is ${messageSuffix}`}>
+      <Tooltip message={`FINOS Workspace MCP Companion is ${messageSuffix}`}>
         <div className="flex items-center justify-center size-6 p-1">
           <Icon
             id="mcp"
@@ -245,7 +245,6 @@ function TabLink(props: TabLinkProps) {
 }
 
 function LinksNav() {
-  // A User brings no connections, so the page is not theirs
   const mayAddConnections = useShallowAccessStore((s) => canAddConnections(s.access));
   const linksMemo = useMemo(
     () => (
@@ -423,7 +422,6 @@ const calculateHeights = (
     }
 
     dispatch((prev) => {
-      //  only update if values have changed to prevent re-renders
       if (
         prev.myDashboards !== myDashboardsMaxHeight ||
         prev.sharedDashboards !== sharedMaxHeight

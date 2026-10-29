@@ -14,7 +14,6 @@ import { FormDialog } from "./FormDialog";
 
 export const moveFormSchema = z.object({
   entityUuid: z.uuid("Choose an entity"),
-  // One of the user types the entity has; the map of the two is checked on submit
   name: z.string().min(1, "Choose a user type"),
 });
 
@@ -26,7 +25,6 @@ export function UserMoveDialog({
   onClose,
 }: {
   user: EntityUser;
-  /** The permission maps: the user types each entity has. */
   maps: EntityMapItem[];
   onClose: () => void;
 }) {
@@ -48,7 +46,6 @@ export function UserMoveDialog({
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [maps]);
 
-  // The user types the chosen entity has a map for
   const typeOptions = useMemo(
     () =>
       USER_TYPES.filter((type) =>
@@ -57,7 +54,6 @@ export function UserMoveDialog({
     [maps, entityUuid],
   );
 
-  // A user type the newly chosen entity does not have is chosen no more
   useEffect(() => {
     const name = form.getValues("name");
     if (name && !typeOptions.some((type) => type === name)) form.setValue("name", "");

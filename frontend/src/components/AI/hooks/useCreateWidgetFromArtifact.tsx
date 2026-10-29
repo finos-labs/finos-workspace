@@ -255,7 +255,6 @@ export function useCreateWidgetFromArtifact() {
         let widgetName: string = existingName || fallbackName;
         let widgetDescription: string = existingDescription || fallbackName;
 
-        // Only fetch AI-generated info if AI enhancements are enabled
         if (aiEnhancementsEnabled) {
           try {
             const aiInfo = await fetchWidgetInfo(
@@ -265,7 +264,6 @@ export function useCreateWidgetFromArtifact() {
             if (aiInfo?.title) widgetName = aiInfo.title;
             if (aiInfo?.description) widgetDescription = aiInfo.description;
           } catch (error) {
-            // If aborted, don't continue - the user clicked "Edit metadata"
             if (error instanceof Error && error.name === "AbortError") {
               return;
             }
@@ -291,7 +289,6 @@ export function useCreateWidgetFromArtifact() {
               <div className="mb-2">{widgetDescription}</div>
             ) : undefined,
           style: { pointerEvents: "auto" },
-          // Only a widget saved as metadata (HTML) has metadata to edit
           ...(widgetType === "html" && {
             cancel: {
               label: "Edit metadata",
@@ -327,7 +324,6 @@ export function useCreateWidgetFromArtifact() {
             }),
         });
       } catch (err: unknown) {
-        // Don't show error if aborted (user clicked "Edit metadata")
         if (err instanceof Error && err.name === "AbortError") {
           return;
         }
@@ -347,7 +343,6 @@ export function useCreateWidgetFromArtifact() {
     ],
   );
 
-  // Expose createWidgetFromParams for the metadata dialog to use
   const createWidgetWithMetadata = useCallback(
     async (
       params: CreateWidgetParams,

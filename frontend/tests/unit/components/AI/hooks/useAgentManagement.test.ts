@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAgentManagement } from "~/components/AI/hooks/useAgentManagement";
 import { required } from "../../../mocks";
 
-// --- Hoisted mocks ---
 const {
   mockFetchAgentsData,
   mockHasCopilotConflict,
@@ -128,8 +127,6 @@ vi.mock("~/lib/state/theme", () => ({
     selector({ setShowAddAgentsDialog: vi.fn() }),
 }));
 
-// --- Factories ---
-
 function makeCopilot(overrides: Partial<CopilotMock> = {}): CopilotMock {
   return {
     id: "agent-1",
@@ -154,8 +151,6 @@ function makeHolder(
     ...overrides,
   };
 }
-
-// --- Tests ---
 
 describe("useAgentManagement", () => {
   beforeEach(() => {
@@ -250,7 +245,6 @@ describe("useAgentManagement", () => {
       const freshCopilots = [makeCopilot({ id: "agent-refreshed" })];
 
       mockFetchAgentsData.mockImplementation(async () => {
-        // Simulate state change during the async operation
         mockCopilotStoreState.externalCopilotHolders = [holder, holder2];
         return freshCopilots;
       });
@@ -261,12 +255,8 @@ describe("useAgentManagement", () => {
         await result.current.handleSaveRefresh("holder-1");
       });
 
-      // hasCopilotConflict should have been called with copilots from the FRESH state
-      // (which includes holder2's copilots), filtered to exclude holder-1's agents
       expect(mockHasCopilotConflict).toHaveBeenCalledTimes(1);
       const [, existingCopilots] = mockHasCopilotConflict.mock.calls[0];
-      // The fresh state has holder2, whose agent has holderUuid "holder-2" (not "holder-1"),
-      // so it should be included in existingCopilots
       expect(existingCopilots).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ id: "agent-2", holderUuid: "holder-2" }),
@@ -292,7 +282,6 @@ describe("useAgentManagement", () => {
       expect(mockFetchAgentsData).toHaveBeenCalledTimes(2);
       expect(mockToast.success).toHaveBeenCalledTimes(1);
       expect(mockToast.success).toHaveBeenCalledWith("Agents refreshed");
-      // Per-holder toasts are suppressed during a bulk refresh.
       expect(mockToast.success).not.toHaveBeenCalledWith(
         "Agents refreshed successfully",
         expect.anything(),
@@ -419,7 +408,6 @@ describe("useAgentManagement", () => {
 
       const { result } = renderHook(() => useAgentManagement());
 
-      // Set groupToDelete
       await act(async () => {
         result.current.handleDeleteGroup("holder-1");
       });
@@ -518,11 +506,9 @@ describe("useAgentManagement", () => {
 
       const { result } = renderHook(() => useAgentManagement());
 
-      // Before search, all agents shown
       expect(result.current.filteredGroups).toHaveLength(1);
       expect(result.current.filteredGroups[0].copilots).toHaveLength(2);
 
-      // Search for "alpha" - only agentAlpha should match
       await act(async () => {
         result.current.handleSearchChange("alpha");
       });

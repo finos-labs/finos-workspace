@@ -1,22 +1,15 @@
-/**
- * update_widget — change widget config (not layout).
- *
- * Mirrors workspace_mcp/server.py:772-808. Rejects layout-shaped ui_args
- * (x/y/w/h/grid_data/etc.) so callers route those to update_widget_layout.
- */
-
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
-import { invalidRequestItem, hasLayoutUiArgs } from "../../bridge/validators";
-import { parseJsonObject, JsonArgumentError } from "../../bridge/json-args";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
+import { invalidRequestItem, hasLayoutUiArgs } from "../../bridge/validators.ts";
+import { parseJsonObject, JsonArgumentError } from "../../bridge/json-args.ts";
 import {
   describeTool,
   WIDGET_INSTANCE_GUIDANCE,
   LAYOUT_GUIDANCE,
   DASHBOARD_TARGETING_GUIDANCE,
-} from "../../bridge/instructions";
+} from "../../bridge/instructions.ts";
 
 export const updateWidgetSchema = {
   widget_uuid: z.string().optional().describe(
@@ -26,13 +19,13 @@ export const updateWidgetSchema = {
     "Fallback widget type identifier when uuid is unknown.",
   ),
   dashboard_id: z.string().optional().describe(
-    "Target dashboard UUID. Omit to target the current Workspace route.",
+    "Target dashboard UUID. Omit to target the current FINOS Workspace route.",
   ),
   data_args_json: z.string().optional().describe(
-    "JSON object string of widget data inputs.",
+    "JSON object string of widget data inputs, as data_args_schema from get_widget_schema defines them.",
   ),
   ui_args_json: z.string().optional().describe(
-    "JSON object string of widget UI inputs. Layout fields rejected — use update_widget_layout.",
+    "JSON object string of widget UI inputs, as ui_args_schema from get_widget_schema defines them. Layout fields rejected — use update_widget_layout.",
   ),
 } as const;
 
@@ -73,8 +66,6 @@ export async function updateWidgetHandler(args: {
     };
   }
 
-  // Python's required_widget_config always builds a config object even when
-  // both args are empty (server.py:799-802). Match that for wire parity.
   const config = {
     data_args: Object.keys(dataArgs).length > 0 ? dataArgs : null,
     ui_args: Object.keys(uiArgs).length > 0 ? uiArgs : null,

@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   buildAllCitations,
   citationUuid,
@@ -9,9 +10,9 @@ import {
   pagesNamedIn,
   preferCitationsWithPages,
   selectCitedPages,
-} from "../../../../src/protocol/citations";
-import type { Citation, Widget } from "../../../../src/protocol/types";
-import type { McpCitation } from "../../../../src/mcp/results";
+} from "../../../../src/protocol/citations.ts";
+import type { Citation, Widget } from "../../../../src/protocol/types.ts";
+import type { McpCitation } from "../../../../src/mcp/results.ts";
 
 function widget(overrides: Partial<Widget> = {}): Widget {
   return {
@@ -106,7 +107,6 @@ describe("buildWidgetCitations", () => {
     ]);
     const out = await buildWidgetCitations(cited);
     expect(out).toHaveLength(1);
-    // A widget citation is what the Workspace can match to the widget on the dashboard.
     expect(out[0].source_info).toMatchObject({ type: "widget", uuid: "file-uuid-1", name: "report.pdf", citable: true });
     expect(out[0].details[0]).toEqual({ Filename: "report.pdf", Extension: "pdf" });
   });
@@ -201,7 +201,7 @@ describe("pagesNamedIn", () => {
 
   it("does not take other numbers for pages", () => {
     expect(named("The budget is 731 thousand dollars, up 12 percent, in 2026.")).toEqual([]);
-    expect(named("a landing page 40 percent faster")).toEqual([40]); // it says "page 40": nothing else can be told
+    expect(named("a landing page 40 percent faster")).toEqual([40]);
     expect(named("The page is blank")).toEqual([]);
     expect(named("")).toEqual([]);
   });
@@ -223,7 +223,6 @@ describe("selectCitedPages", () => {
 
   it("does not cite a page the answer names that the search did not return", () => {
     const out = selectCitedPages([hit(2, 0.58), hit(1, 0.08)], "The budget is on page 9.");
-    // None of the named pages is a hit: the answer is taken to rest on the best match.
     expect(out.map((h) => h.page)).toEqual([2]);
   });
 
@@ -378,7 +377,6 @@ describe("buildAllCitations", () => {
       },
     ];
     const out = await buildAllCitations(cited, mcp, intermediate);
-    // 1 widget + 1 web (mcp web + intermediate web both link to https://x → dedup keeps first)
     expect(out).toHaveLength(2);
   });
 

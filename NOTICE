@@ -1,8 +1,25 @@
 FINOS Workspace
-Copyright 2026 OpenBB, Inc. 
-Copyright 2026 FINOS 
+Copyright 2026 OpenBB, Inc.
+Copyright 2026 FINOS
 Copyright 2026 BrightQuery
 
 This product includes software developed at OpenBB, Inc. (https://openbb.co/).
 This product includes software developed at the Fintech Open Source Foundation (https://www.finos.org/).
-his product includes software developed at BrightQuery (https://www.brightquery.com/).
+This product includes software developed at BrightQuery (https://www.brightquery.com/).
+
+Dual-Licensed Dependency Selections:
+- jszip (3.10.1, 3.10.2): Selected MIT
+- dompurify (3.4.17): Selected Apache-2.0
+- json-schema (0.4.0): Selected BSD-3-Clause
+- zstd (1.5.7, compiled into Node.js in the agent images): Selected BSD-3-Clause
+- HdrHistogram (compiled into Node.js in the agent images): Selected BSD-2-Clause
+- rgbcolor (1.0.1, "MIT OR SEE LICENSE IN FEEL-FREE.md"): Selected MIT
+- cryptography (50.0.0): Selected Apache-2.0
+- packaging (26.3): Selected Apache-2.0
+- python-dateutil (2.9.0.post0): BSD-3-Clause, which covers all of its code. Apache-2.0
+  also covers its contributions since 2017-12-01. Both are Category A.
+
+Licences Not Stated in Package Metadata (from each package's LICENSE file):
+- duck (0.1.12, package.json says "BSD"): BSD-2-Clause
+- azure-core (1.41.0), azure-identity (1.25.3): MIT
+

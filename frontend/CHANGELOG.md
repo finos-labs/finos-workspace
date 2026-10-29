@@ -2,9 +2,9 @@
 
 ### New Features
 
-- #### Workspace as an open source project
+- #### FINOS Workspace as an open source project
 
-  The first release of the Workspace as an open source project, under the Apache License 2.0. Run all of it with `docker compose up`; the README says how.
+  The first release of the FINOS Workspace as an open source project, under the Apache License 2.0. Run all of it with `docker compose up`; the README says how.
 
 ---
 

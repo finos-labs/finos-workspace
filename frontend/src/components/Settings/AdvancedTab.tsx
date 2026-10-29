@@ -80,7 +80,7 @@ export default function AdvancedTab() {
                 <p className="body-sm-medium text-ds-text-heading">Delete Account</p>
                 <p className="body-xs-regular text-ds-text-body">
                   By selecting this option, you will permanently delete your account and
-                  all of its contents from the Workspace.
+                  all of its contents from the FINOS Workspace.
                   <br />
                   This action is not reversible, so please continue with caution.
                 </p>

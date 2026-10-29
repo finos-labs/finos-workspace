@@ -17,7 +17,6 @@ async def brand_new_account(
     information: schemas.RegisterAppUser,
     from_oauth: bool = False,
 ) -> None | UUID:
-    # No password: the account gets a random one when it is created (process_create_user)
     data = {"first_name": user.first_name, "last_name": user.last_name}
     select_query = select(UserInvite.uuid).where(
         UserInvite.email == user.email, UserInvite.used.is_(False)
@@ -59,7 +58,6 @@ async def register_app_user(
     if (await db.execute(query)).first():
         raise HTTPException(409, detail="A user with this email already exists")
 
-    # First check if an active invite exists
     new_invite_uuid = await brand_new_account(db, user, information, from_oauth)
     await db.commit()
 

@@ -1,7 +1,3 @@
-/**
- * A mono 16-bit PCM WAV file of `samples` (each from -1 to 1) at `sampleRate`: the audio every speech-to-text
- * model the agent can use takes.
- */
 export function encodeWav(
   samples: Float32Array,
   sampleRate: number,
@@ -15,13 +11,13 @@ export function encodeWav(
   view.setUint32(4, bytes.length - 8, true);
   text(8, "WAVE");
   text(12, "fmt ");
-  view.setUint32(16, 16, true); // size of the format chunk
-  view.setUint16(20, 1, true); // PCM
-  view.setUint16(22, 1, true); // mono
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
   view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true); // bytes per second
-  view.setUint16(32, 2, true); // bytes per sample
-  view.setUint16(34, 16, true); // bits per sample
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
   text(36, "data");
   view.setUint32(40, samples.length * 2, true);
   for (let i = 0; i < samples.length; i++) {

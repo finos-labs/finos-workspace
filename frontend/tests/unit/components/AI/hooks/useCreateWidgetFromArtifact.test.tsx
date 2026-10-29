@@ -9,7 +9,6 @@ import {
 import { useCopilotStore } from "~/lib/state/copilot";
 import { required } from "../../../mocks";
 
-// Mock sonner toast
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -19,7 +18,6 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock react-router-dom
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", () => ({
   useParams: () => ({ id: "dashboard-123" }),
@@ -27,13 +25,11 @@ vi.mock("react-router-dom", () => ({
   useSearchParams: () => [new URLSearchParams()],
 }));
 
-// Mock API
 const mockCreateMetaDataWidget = vi.fn();
 vi.mock("~/api/auth.api", () => ({
   createMetaDataWidget: (...args: unknown[]) => mockCreateMetaDataWidget(...args),
 }));
 
-// Mock app store
 const mockAddWidget = vi.fn();
 const mockAddTab = vi.fn();
 const mockGetLastInnerTab = vi.fn().mockReturnValue("");
@@ -46,13 +42,11 @@ vi.mock("~/lib/state/app", () => ({
     }),
 }));
 
-// Mock theme store
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ aiEnhancements: true }),
 }));
 
-// Mock copilotData store
 vi.mock("~/lib/state/copilotData", () => ({
   useShallowCopilotDataStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
@@ -60,13 +54,11 @@ vi.mock("~/lib/state/copilotData", () => ({
     }),
 }));
 
-// Mock fetch for AI widget info
 global.fetch = vi.fn();
 
 describe("useCreateWidgetFromArtifact", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // The API mints the agent token the default Copilot is called with
     vi.mocked(apiClient.post).mockResolvedValue({
       data: { token: "agent-token", expires_in: 1800 },
     });
@@ -266,19 +258,16 @@ describe("useCreateWidgetFromArtifact", () => {
         metadata: null,
       };
 
-      // Start widget creation but don't await - we want to click cancel during loading
       act(() => {
         result.current.createWidget(params);
       });
 
-      // Simulate clicking Edit metadata
       if (cancelCallback) {
         act(() => {
           required(cancelCallback)();
         });
       }
 
-      // Dialog should be opened in create mode
       await waitFor(() => {
         const dialogState = useCopilotStore.getState().createWidgetMetadataDialog;
         expect(dialogState).not.toBeNull();
@@ -286,7 +275,6 @@ describe("useCreateWidgetFromArtifact", () => {
         expect(dialogState?.pendingParams).toBeDefined();
       });
 
-      // Toast should be dismissed
       expect(toast.dismiss).toHaveBeenCalledWith("toast-id");
     });
   });
@@ -315,14 +303,12 @@ describe("useCreateWidgetFromArtifact", () => {
         });
       });
 
-      // Simulate clicking Edit metadata on success toast
       if (cancelCallback) {
         act(() => {
           required(cancelCallback)();
         });
       }
 
-      // Dialog should be opened in update mode
       await waitFor(() => {
         const dialogState = useCopilotStore.getState().createWidgetMetadataDialog;
         expect(dialogState).not.toBeNull();
@@ -391,14 +377,12 @@ describe("useCreateWidgetFromArtifact", () => {
         );
       });
 
-      // Simulate clicking Edit metadata on success toast
       if (cancelCallback) {
         act(() => {
           required(cancelCallback)();
         });
       }
 
-      // Dialog should be opened in update mode
       await waitFor(() => {
         const dialogState = useCopilotStore.getState().createWidgetMetadataDialog;
         expect(dialogState).not.toBeNull();
@@ -458,7 +442,6 @@ describe("useCreateWidgetFromArtifact", () => {
 
   describe("AbortController behavior", () => {
     it("does not show error toast when request is aborted", async () => {
-      // Make fetch hang so we can abort it
       (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
         () =>
           new Promise((_, reject) => {
@@ -477,7 +460,6 @@ describe("useCreateWidgetFromArtifact", () => {
 
       const { result } = renderHook(() => useCreateWidgetFromArtifact());
 
-      // Start widget creation
       act(() => {
         result.current.createWidget({
           widgetType: "html",
@@ -486,17 +468,14 @@ describe("useCreateWidgetFromArtifact", () => {
         });
       });
 
-      // Abort immediately
       if (cancelCallback) {
         act(() => {
           required(cancelCallback)();
         });
       }
 
-      // Wait a bit for any potential error handling
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Error toast should NOT be called because it was aborted
       expect(toast.error).not.toHaveBeenCalled();
     });
   });

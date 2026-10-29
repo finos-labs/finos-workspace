@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, beforeEach, mock } from "node:test";
+import { expect } from "expect";
 
 let nextLlm: () => Promise<string> = async () => "default";
 
-mock.module("../../../../../src/lib/llm", () => ({
+mock.module("../../../../../src/lib/llm.ts", { exports: {
   singleShotLlm: async () => nextLlm(),
   parseJsonResponse: <T>(raw: string, fallback: T): T => {
     try {
@@ -12,9 +13,9 @@ mock.module("../../../../../src/lib/llm", () => ({
     }
   },
   truncate: (s: string, max: number) => (s.length > max ? s.slice(0, max) + "..." : s),
-}));
+} });
 
-const { runEnhancePrompt } = await import("../../../../../src/agent/tools/enhance-prompt");
+const { runEnhancePrompt } = await import("../../../../../src/agent/tools/enhance-prompt.ts");
 
 beforeEach(() => {
   nextLlm = async () => "default";

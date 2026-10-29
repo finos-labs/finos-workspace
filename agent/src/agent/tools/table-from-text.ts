@@ -1,25 +1,12 @@
-/**
- * `create_table_from_text` — extract a tabular dataset from unstructured text.
- *
- * The model passes a chunk of free text (e.g. pasted from a press release) and
- * a target name/description; we call the cheap LLM helper to produce a JSON
- * array of objects, drop it into `pendingTables` for downstream SQL, and emit
- * an HTML table artifact so the workspace renders the result immediately.
- *
- * State-bound — closes over `pendingTables` + `artifactQueue` and reads no
- * MCP server state, satisfying the CLAUDE.md "execute only when state-bound
- * to in-process data" rule.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
-import { singleShotLlm, parseJsonResponse } from "../../lib/llm";
-import { messageArtifact } from "../../protocol/events";
-import { analyzeTable, type TableInfo } from "../../sql/loader";
-import { rememberRows } from "../row-cache";
-import { htmlTableArtifact } from "../../protocol/html-table";
-import type { SSEEvent } from "../../protocol/types";
-import { getLogger } from "../../lib/logger";
+import { singleShotLlm, parseJsonResponse } from "../../lib/llm.ts";
+import { messageArtifact } from "../../protocol/events.ts";
+import { analyzeTable, type TableInfo } from "../../sql/loader.ts";
+import { rememberRows } from "../row-cache.ts";
+import { htmlTableArtifact } from "../../protocol/html-table.ts";
+import type { SSEEvent } from "../../protocol/types.ts";
+import { getLogger } from "../../lib/logger.ts";
 
 const logger = getLogger(["app", "tools", "table_from_text"]);
 

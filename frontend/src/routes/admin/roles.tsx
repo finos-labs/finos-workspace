@@ -49,7 +49,6 @@ export default function AdminRoles() {
     initializePrompts();
   }, []);
 
-  // How many developers' shares wait for an admin, on the tab's label
   const { data: shareRequests = [] } = useQuery({
     queryKey: SHARE_REQUESTS_QUERY_KEY,
     queryFn: getShareRequests,

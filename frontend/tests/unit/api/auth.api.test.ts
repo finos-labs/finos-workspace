@@ -39,7 +39,6 @@ import { VERSION } from "~/lib/constants";
 import { mockConfig } from "../../mocks/runtimeConfig";
 import { malformed } from "../mocks";
 
-// Mock the apiClient
 vi.mock("~/api/api", () => ({
   setOnSessionRefused: vi.fn(),
   apiClient: {

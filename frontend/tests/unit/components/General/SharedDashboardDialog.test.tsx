@@ -48,7 +48,6 @@ describe("ShareDashboard", () => {
       [WAITING]: { first_name: "Wai", last_name: "Ting", shared: false },
       [OTHER]: { first_name: "Oth", last_name: "Er", shared: false },
     });
-    // A developer's share that waits for an admin
     (getDashboardShares as Mock).mockResolvedValue({
       [WAITING]: {
         first_name: "Wai",

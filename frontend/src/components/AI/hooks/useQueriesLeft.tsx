@@ -17,9 +17,6 @@ export default function useQueriesLeft(fromUsageInfo = false): {
 
   if (has_openai_key) return { queriesLeft: null, usage };
 
-  // Only apply limits to the default copilot (Ada)
-  // default-copilot is the only copilot without a holderUuid
-  // A null limit is no limit; 0 allows nothing
   const callsLimit = usage?.copilot_calls_limit ?? null;
   const tokensLimit = usage?.copilot_tokens_limit ?? null;
   if (
@@ -29,8 +26,6 @@ export default function useQueriesLeft(fromUsageInfo = false): {
   )
     return { queriesLeft: null, usage: {} };
 
-  // The token limit is checked before a query starts: once the day's tokens are used
-  // up, no query is left
   const tokensUsedUp =
     tokensLimit !== null && (usage.number_copilot_tokens_day_count ?? 0) >= tokensLimit;
 
@@ -56,7 +51,6 @@ export function QueryLimitReached() {
     showWelcome: s.showWelcome,
     selectedCopilot: s.selectedCopilot,
   }));
-  // A user whose roles grant nothing of the agent has no allowance either: say what is missing
   const granted = useCopilotAccessStore((s) =>
     isAgentGranted(s.access, selectedCopilot?.id ?? ""),
   );

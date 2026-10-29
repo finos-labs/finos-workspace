@@ -1,14 +1,6 @@
-/**
- * The store the agent keeps things in between requests.
- *
- * These exercise the process-local store, which is what a deployment without REDIS_URL uses and what
- * the Redis one falls back to when Redis cannot answer. The two are held to the same contract, so a
- * behaviour pinned here is the behaviour either of them has to have; what cannot be checked without a
- * Redis (that two replicas see one another's writes) is what Redis itself guarantees.
- */
-
-import { describe, it, expect } from "bun:test";
-import { createLocalStore, createStore, LEASE_TTL_MS } from "../../../../src/lib/store";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { createLocalStore, createStore, LEASE_TTL_MS } from "../../../../src/lib/store.ts";
 
 describe("values", () => {
   it("gives back what was put in, until the time it was given runs out", async () => {
@@ -33,8 +25,6 @@ describe("values", () => {
     expect(await store.get("k")).toBeNull();
   });
 
-  // Redis has one keyspace: DEL removes what is under the key whatever kind it is. A store that
-  // deleted only some kinds would end a turn in one deployment and not in the other.
   it("deletes a key whatever kind of thing is under it", async () => {
     const store = createLocalStore();
     await store.set("k", "v", 30);
@@ -76,9 +66,6 @@ describe("counting what happened in a window", () => {
     expect(await store.take("alice", 1, 60_000)).toBe(false);
   });
 
-  // `record` is for what is counted whether or not there was room, and `take` for what is only done
-  // when there is. Neither counts past the most: a user who keeps trying is let in when the window
-  // has passed, rather than pushing the window along in front of them.
   it("does not count past the most, so that trying again does not push the window along", async () => {
     let now = 0;
     const store = createLocalStore(() => now);
@@ -121,8 +108,6 @@ describe("places held while something runs", () => {
     expect(await store.lease("k", 1)).toBeNull();
   });
 
-  // A replica that stops without giving its places back must not hold them for ever, or the whole
-  // deployment would lose a place for every query that was running when it stopped.
   it("gives a place back by itself when whoever took it never does", async () => {
     let now = 0;
     const store = createLocalStore(() => now);
@@ -173,8 +158,6 @@ describe("records", () => {
     expect(await store.getRecord("k")).toEqual({ requests: "3" });
   });
 
-  // Otherwise a turn that ran out would be made again by the request that counts against it, and the
-  // new one would have no time to live.
   it("adds to nothing when there is no record, rather than making one", async () => {
     const store = createLocalStore();
     expect(await store.addToRecord("gone", "requests", 1)).toBeNull();
@@ -198,7 +181,6 @@ describe("which store a deployment gets", () => {
   });
 
   it("shares them when one is named", async () => {
-    // Nothing is asked of it here, so it is never connected to: this is which store was chosen.
     const store = createStore({ REDIS_URL: "redis://127.0.0.1:6399" } as NodeJS.ProcessEnv);
     expect(store.shared).toBe(true);
     await store.close();
@@ -206,8 +188,7 @@ describe("which store a deployment gets", () => {
 });
 
 describe("when the shared store cannot answer", () => {
-  it("falls back to this process rather than failing the request", async () => {
-    // A Redis that is not there: every operation has to answer anyway.
+  it("falls back to this process rather than failing the request", { timeout: 20_000 }, async () => {
     const store = createStore({ REDIS_URL: "redis://127.0.0.1:6399" } as NodeJS.ProcessEnv);
     try {
       await store.set("k", "v", 30);
@@ -225,7 +206,7 @@ describe("when the shared store cannot answer", () => {
     } finally {
       await store.close();
     }
-  }, 20_000);
+  });
 });
 
 describe("the store in Redis alone", () => {
@@ -234,7 +215,7 @@ describe("the store in Redis alone", () => {
     expect(createStore({} as NodeJS.ProcessEnv).sharedOnly()).toBeNull();
   });
 
-  it("fails when Redis cannot answer, and keeps nothing in this process", async () => {
+  it("fails when Redis cannot answer, and keeps nothing in this process", { timeout: 20_000 }, async () => {
     const store = createStore({ REDIS_URL: "redis://127.0.0.1:6399" } as NodeJS.ProcessEnv);
     try {
       const onlyRedis = store.sharedOnly();
@@ -246,11 +227,10 @@ describe("the store in Redis alone", () => {
       await expect(onlyRedis.get("k")).rejects.toThrow();
       await expect(onlyRedis.putRecord("r", { n: "1" }, 60)).rejects.toThrow();
       await expect(onlyRedis.getRecord("r")).rejects.toThrow();
-      // What could not go to Redis is not in this process either.
       expect(await store.get("k")).toBeNull();
       expect(await store.getRecord("r")).toBeNull();
     } finally {
       await store.close();
     }
-  }, 20_000);
+  });
 });

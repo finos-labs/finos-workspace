@@ -95,17 +95,14 @@ describe("AddSkillDialog", () => {
   it("clears the form when reopened via Add Skill after editing", async () => {
     render(<AddSkillDialog />);
 
-    // Open in edit mode
     act(() => {
       useSkillsLibraryStore.getState().setSkillDialogOpen(skillA.id);
     });
     expect(await screen.findByDisplayValue("my-skill")).toBeInTheDocument();
 
-    // Close the dialog
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByTestId("base-dialog")).not.toBeInTheDocument();
 
-    // Reopen via "Add Skill" (no skill being edited)
     act(() => {
       useSkillsLibraryStore.getState().setSkillDialogOpen(true);
     });
@@ -149,7 +146,6 @@ describe("AddSkillDialog", () => {
     expect(useSkillsLibraryStore.getState().skillDialogPrefill).toBeNull();
     expect(useSkillsLibraryStore.getState().skillDialogOpen).toBe(false);
 
-    // Reopening via "Add Skill" shows an empty form
     act(() => {
       useSkillsLibraryStore.getState().setSkillDialogOpen(true);
     });

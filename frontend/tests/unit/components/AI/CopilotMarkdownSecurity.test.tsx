@@ -173,7 +173,6 @@ describe("Copilot markdown security", () => {
     expect(screen.getByText(/Example/)).toBeInTheDocument();
     expect(screen.getByText(/chart/)).toBeInTheDocument();
     expect(screen.getByText(/pixel/)).toBeInTheDocument();
-    // The tag is not shown as text either, and no address of an image is shown as one.
     expect(screen.queryByText(/<img/)).not.toBeInTheDocument();
     expect(container.innerHTML).not.toContain("attacker.example/pixel.png");
     expect(container.innerHTML).not.toContain("onerror");
@@ -205,7 +204,6 @@ describe("Copilot markdown security", () => {
   });
 
   it("keeps the HTML of a table code block inert: it is read in a document that nothing runs or loads in", () => {
-    // An element made with `innerHTML` in the page starts to load its `src` and runs `onerror` at once.
     const innerHtml = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
     const assigned: string[] = [];
     Object.defineProperty(Element.prototype, "innerHTML", {
@@ -273,7 +271,6 @@ describe("Copilot markdown security", () => {
 
     expect(container.querySelector("table")).not.toBeInTheDocument();
     expect(container.querySelector("img")).not.toBeInTheDocument();
-    // Shown as the code's text
     expect(container.querySelector("pre")?.textContent).toMatch(
       /^<table><tr><td>.*<\/td><\/tr><\/table>$/,
     );

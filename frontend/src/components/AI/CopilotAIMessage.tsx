@@ -28,8 +28,6 @@ type CopilotAIMessageProps = {
   groupIndex?: number;
 };
 
-// A message is shown as it is in the chat, whole. Text that is still arriving is held by the stream
-// handler and put in the chat when it is complete, so nothing here renders partial text.
 function useMessageContent(message: AIMessage) {
   const getCurrentChatArtifact = useShallowCopilotStore(
     (state) => state.getCurrentChatArtifact,
@@ -109,7 +107,6 @@ export default function CopilotAIMessage(props: CopilotAIMessageProps) {
   const handleMouseEnter = useCallback(() => {
     if (!allGroups || typeof groupIndex !== "number") return;
 
-    // Use the datetime positioning strategy to determine what to show
     const strategy = getEnhancedDatetimePositionStrategy(
       message,
       allGroups,
@@ -123,7 +120,6 @@ export default function CopilotAIMessage(props: CopilotAIMessageProps) {
 
   const handleMouseLeave = useCallback(
     (e: ReactMouseEvent) => {
-      // check if the mouse left the message content area
       const target = e.currentTarget as HTMLElement;
       if (!target.closest("._message-title")) return hideDatetime();
     },
@@ -207,13 +203,10 @@ function preprocessText(text: string) {
   if (!text) return "";
   text = replaceRawImageTags(text);
 
-  // Replace <latex>...</latex> with fenced code block for latex
   text = text.replace(/<latex>([\s\S]*?)<\/latex>/g, (_match, equation) => {
     return `\n\`\`\`latex\n${equation}\n\`\`\`\n`;
   });
 
-  // Escape plain-text underscores to prevent markdown italics rendering, while
-  // preserving URLs and code exactly as returned.
   return escapeMarkdownUnderscores(text);
 }
 
@@ -283,7 +276,6 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** A raw `<img>` is not rendered, and its tag is not shown as text either: what is left of it is its alt text. */
 function replaceRawImageTags(text: string) {
   return text.replace(/<img\b[^>]*>/gi, (tag) => {
     const alt = /\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i.exec(tag);

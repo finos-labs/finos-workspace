@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { chunkDocument } from "../../../../../../mcp-server/src/tools/backend/documents/chunk";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { chunkDocument } from "../../../../../../mcp-server/src/tools/backend/documents/chunk.ts";
 
 const SHORT_PAGE = {
   text: "Hello world. This is a short doc. Only three sentences total.",
@@ -84,7 +85,6 @@ describe("chunkDocument — boundary behavior", () => {
       maxTokens: 60,
     });
     expect(out.length).toBeGreaterThan(1);
-    // Some sentence from the tail of chunk[0] should appear inside chunk[1].
     const lastTail = out[0].text.split(/\.\s+/).slice(-2)[0];
     if (lastTail) expect(out[1].text).toContain(lastTail);
   });

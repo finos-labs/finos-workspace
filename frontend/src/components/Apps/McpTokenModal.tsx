@@ -15,18 +15,10 @@ import { MCP_TOKEN_AUTH_FIELD, stripBearerPrefix } from "~/types/appMcpServer";
 interface McpTokenModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** MCP server name, used in copy. */
   serverName: string;
-  /**
-   * Whether a token is saved. Its value never comes back to the page: a new one replaces
-   * it.
-   */
   hasSavedToken?: boolean;
-  /** Receives the cleaned token (no `Bearer ` prefix). */
   onSave: (token: string) => void;
-  /** When provided, renders a destructive "Remove token" action. */
   onRemove?: () => void;
-  /** Optional connection error to surface (e.g. an invalid-token failure). */
   error?: string;
 }
 

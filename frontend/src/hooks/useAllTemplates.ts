@@ -151,8 +151,6 @@ export function useAllTemplates(isLoadingApiSources = false) {
         } as UnifiedTemplate;
       });
 
-    // Map user-generated apps to template format
-    // Apps other users shared appear only for those who may receive shared items
     const generatedAppTemplates = [
       ...userGeneratedApps,
       ...(mayReceive ? userSharedApps : []),
@@ -214,7 +212,6 @@ export function useAllTemplates(isLoadingApiSources = false) {
             gridLayout: app.gridLayout || {},
           } as const;
 
-          // Directly create a new tab with the user-generated app data
           const newTab = duplicateTabItem(
             {
               index: "",
@@ -229,7 +226,6 @@ export function useAllTemplates(isLoadingApiSources = false) {
           addTab(newTab, true);
 
           if (navigate) {
-            // Navigate to the new dashboard after a brief delay to ensure it's created
             setTimeout(() => {
               const tab = getTabById(index);
               if (!tab) return;
@@ -260,7 +256,6 @@ export function useAllTemplates(isLoadingApiSources = false) {
       } as UnifiedTemplate;
     });
 
-    // Type assertion needed here because the inferred type might be too wide
     return [
       ...sharedTemplates,
       ...userTemplates,

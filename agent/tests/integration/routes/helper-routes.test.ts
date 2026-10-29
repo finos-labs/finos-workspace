@@ -1,28 +1,18 @@
-/**
- * Tier 2 — the helper routes (/v1/generate/*, /v1/enhance_prompt) follow the rules of a question.
- *
- * They make a model call with the operator's provider keys on behalf of the signed-in user, so a client's
- * `model` is a request (the deployment must offer it and the user's roles must allow it), the tokens are
- * counted against the user, and a body that is not JSON or is far too long is refused or cut, not paid for.
- */
+import { describe, it, beforeEach, afterEach, mock } from "node:test";
+import { expect } from "expect";
 
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
-
-// What each model call was given. lib/llm is replaced rather than the providers it uses: a module mock lasts
-// for the whole run, so the file that loads first decides what the others see.
 interface Call {
   prompt: string;
   model?: string;
   maxTokens?: number;
 }
 const calls: Call[] = [];
-mock.module("../../../src/lib/llm", () => ({
+mock.module("../../../src/lib/llm.ts", { exports: {
   singleShotLlm: async (
     prompt: string,
     opts?: { model?: string; maxTokens?: number; onUsage?: (u: { inputTokens: number; outputTokens: number; totalTokens: number }) => void },
   ) => {
     calls.push({ prompt, model: opts?.model, maxTokens: opts?.maxTokens });
-    // As the real one: no model asked for and none configured is a failure.
     if (!(opts?.model || process.env.DEFAULT_MODEL)) throw new Error("No model configured: set DEFAULT_MODEL.");
     opts?.onUsage?.({ inputTokens: 1, outputTokens: 1, totalTokens: 2 });
     return "A title";
@@ -36,13 +26,13 @@ mock.module("../../../src/lib/llm", () => ({
     }
   },
   truncate: (s: string, max: number) => (s.length > max ? s.slice(0, max) + "..." : s),
-}));
+} });
 
-const { createApp } = await import("../../../src/app");
-const { loadConfig } = await import("../../../src/lib/config");
-const { createLimits } = await import("../../../src/auth/limits");
-const { createLocalStore } = await import("../../../src/lib/store");
-import type { Authorization, Result, WorkspaceClient } from "../../../src/auth/workspace-client";
+const { createApp } = await import("../../../src/app.ts");
+const { loadConfig } = await import("../../../src/lib/config.ts");
+const { createLimits } = await import("../../../src/auth/limits.ts");
+const { createLocalStore } = await import("../../../src/lib/store.ts");
+import type { Authorization, Result, WorkspaceClient } from "../../../src/auth/workspace-client.ts";
 
 const ENV = {
   WORKSPACE_API_URL: "http://api:8000",
@@ -130,7 +120,6 @@ describe("the model of a helper", () => {
     const t = setup();
     await post(t.app, TITLE, titleBody("openai:an-expensive-model"));
     expect(modelsUsed()).toEqual(["test-provider:test-model"]);
-    // The Workspace is not even asked about a model that is not offered here.
     expect(t.authorized).toHaveLength(0);
   });
 
@@ -249,7 +238,6 @@ describe("a helper with no model at all", () => {
     delete process.env.DEFAULT_MODEL;
     const res = await post(t.app, TITLE, titleBody("openai:not-offered"));
     expect(res.status).toBe(200);
-    // The call was made without a model: the real singleShotLlm refuses it, and the route answers its fallback.
     expect(modelsUsed()).toEqual([undefined]);
   });
 });
@@ -265,7 +253,6 @@ describe("how often a user may call a helper", () => {
     expect(refused.status).toBe(429);
     expect(refused.headers.get("retry-after")).toBe("60");
     expect(calls).toHaveLength(3);
-    // The tokens of the calls that were made are counted, none are for the one that was not.
     expect(t.tokens).toHaveLength(3);
   });
 
@@ -275,7 +262,6 @@ describe("how often a user may call a helper", () => {
     expect((await post(t.app, "/v1/enhance_prompt", { messages: [{ role: "human", content: "hello" }] })).status).toBe(200);
     expect((await post(t.app, TITLE, titleBody())).status).toBe(429);
     expect((await post(t.app, "/v1/generate/dashboard/title", { widgets: [] })).status).toBe(429);
-    // Another user has their own.
     expect((await post(t.app, TITLE, titleBody(), "bob-token")).status).toBe(200);
   });
 
@@ -300,7 +286,6 @@ describe("how much a helper is sent", () => {
     expect((await post(t.app, TITLE, big)).status).toBe(413);
     expect((await post(t.app, "/v1/enhance_prompt", big)).status).toBe(413);
     expect(calls).toHaveLength(0);
-    // The same text is not too large for a question (it is refused for its shape, which is read).
     const question = await t.app.request("/v1/query", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer alice-token" },

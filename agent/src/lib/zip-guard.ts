@@ -1,20 +1,7 @@
-/**
- * Looks at a ZIP (an .xlsx or .docx is one) before anything unpacks it, and refuses a "ZIP bomb": a small file
- * that unpacks to gigabytes. Reads only the central directory at the end of the file, which says what each
- * entry will unpack to; unpacks nothing.
- *
- * A file that cannot be read as a ZIP, or that uses ZIP64 (which no spreadsheet or document of a size we read
- * needs), or whose directory contradicts itself, is refused too: the parsers that come next trust the same
- * directory.
- */
-
 export interface ZipLimits {
   maxEntries: number;
-  /** Largest an entry may unpack to. */
   maxEntryBytes: number;
-  /** Largest all entries together may unpack to. */
   maxTotalBytes: number;
-  /** Largest ratio of unpacked to packed size of an entry that unpacks to more than 1 MB. */
   maxRatio: number;
 }
 
@@ -40,7 +27,6 @@ export function assertSafeZip(bytes: Uint8Array, limits: ZipLimits = OFFICE_ZIP_
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (bytes.byteLength < 22) throw new UnsafeZipError("This is not a ZIP file.");
 
-  // The end-of-central-directory record is in the last 64 KB + 22 bytes (a comment may follow it).
   let eocd = -1;
   for (let i = bytes.byteLength - 22; i >= Math.max(0, bytes.byteLength - 22 - 0xffff); i--) {
     if (view.getUint32(i, true) === EOCD_SIGNATURE) {

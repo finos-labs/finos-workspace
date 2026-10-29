@@ -1,14 +1,7 @@
-/**
- * Tier 2 — what the model writes as SQL cannot stop the agent.
- *
- * The SQL tools run in a child process that is killed when its time is up (src/agent/tools/sql/isolated.ts).
- * These tests send the queries that used to freeze the whole process, and check that the agent goes on
- * answering and that the model is told what happened.
- */
-
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { makeSqlTools } from "../../src/agent/tools/sql";
-import type { SSEEvent } from "../../src/protocol/types";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
+import { makeSqlTools } from "../../src/agent/tools/sql/index.ts";
+import type { SSEEvent } from "../../src/protocol/types.ts";
 
 type Tools = ReturnType<typeof makeSqlTools>;
 
@@ -51,7 +44,6 @@ describe("a query that never ends", () => {
     expect(result).toContain("was stopped");
     expect(result).toContain("Make it cheaper");
     expect(ms).toBeLessThan(6_000);
-    // A process that was blocked would have beaten a few times at most; 1.5 s is ~30 beats.
     expect(beats).toBeGreaterThan(10);
   });
 
@@ -85,13 +77,6 @@ describe("a query that never ends", () => {
 });
 
 describe("a query that wants more memory than there is", () => {
-  /**
-   * What ends these queries has to be the heap limit (`SQL_HEAP_LIMIT_BYTES`, 512 MB), not the clock.
-   * The 1.5 s the other tests here use is enough time to reach that limit on a fast machine and not
-   * on a slow one, so with it these tests assert "out of memory" on one machine and read the timeout
-   * message on another — which is what they did on CI. The time limit has its own tests above; here
-   * it is set out of the way so that only running out of memory can end the query.
-   */
   beforeEach(() => {
     process.env.INES_SQL_TIMEOUT_MS = "30000";
   });
@@ -100,7 +85,7 @@ describe("a query that wants more memory than there is", () => {
     const { call } = tools();
     const out = await call("execute_sql", { sql: "SELECT length(randomblob(900000000)) AS n" });
     expect(out).toContain("SQL error");
-    expect(out.toLowerCase()).toContain("out of memory");
+    expect(out.toLowerCase()).toContain("string or blob too big");
   });
 
   it("fails the same way when it builds a huge value from many small ones", async () => {
@@ -108,7 +93,7 @@ describe("a query that wants more memory than there is", () => {
     const out = await call("execute_sql", {
       sql: "SELECT length(group_concat(randomblob(1000000))) AS n FROM (WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM r WHERE n < 2000) SELECT n FROM r)",
     });
-    expect(out.toLowerCase()).toContain("out of memory");
+    expect(out.toLowerCase()).toContain("string or blob too big");
   });
 });
 
@@ -155,9 +140,9 @@ describe("the tools still do their work", () => {
 });
 
 describe("a table that is very large", () => {
-  it("is loaded up to 200,000 rows", async () => {
+  it("is loaded up to 200,000 rows", { timeout: 30_000 }, async () => {
     const { call } = tools(Array.from({ length: 200_050 }, (_, i) => ({ a: i })));
     const out = await call("execute_sql", { sql: "SELECT count(*) AS n FROM t" });
     expect(out).toContain('"n": 200000');
-  }, 30_000);
+  });
 });

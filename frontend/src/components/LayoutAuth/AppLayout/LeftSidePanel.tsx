@@ -22,15 +22,12 @@ export const LeftSidePanel = forwardRef((_, _ref) => {
     setWidth: s.setWidth,
   }));
 
-  // Get setting for expand button visibility on collapsed panels
   const collapsedPanelExpandOnHover = useShallowThemeStore(
     (state) => state.collapsedPanelExpandOnHover,
   );
 
-  // Track edge hover state for enhanced hover detection
   const [isEdgeHovered, setIsEdgeHovered] = useState(false);
 
-  // https://github.com/bvaughn/react-resizable-panels/issues/46#issuecomment-2405635715
   const minSizePercentage = Number.parseFloat(
     ((MIN_SIZE_LEFT_SIDEBAR_IN_PIXELS / screenSize.width) * 100).toFixed(4),
   );
@@ -100,10 +97,7 @@ export const LeftSidePanel = forwardRef((_, _ref) => {
           onCollapse={onCollapse}
           onResize={onResize}
           minSize={minSizePercentageMemo}
-          className={cn(
-            "relative max-h-screen",
-            // hiding because of new UI from rita/meg - expanded.left && "pr-[0.08rem]",
-          )}
+          className={cn("relative max-h-screen")}
         >
           {authBarPanelMemo}
         </ResizablePanel>
@@ -114,7 +108,6 @@ export const LeftSidePanel = forwardRef((_, _ref) => {
           onClick={toggleLeftSidebar}
           edgeHovered={isEdgeHovered}
         />
-        {/* Enhanced edge hover zone for expanding collapsed sidebar */}
         {expanded.collapsedLeft && collapsedPanelExpandOnHover && (
           <EdgeHoverZone side="left" onHoverChange={setIsEdgeHovered} />
         )}

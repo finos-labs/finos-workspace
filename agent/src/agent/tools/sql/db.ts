@@ -1,27 +1,9 @@
-/**
- * In-process SQL helpers for the read-widget-data tool family.
- *
- * Stateless per call: every tool invocation builds a fresh
- * `Database(":memory:")`, loads pendingTables from the agent's request
- * scope, runs its query, and lets the DB GC. No conversation state.
- *
- * Moved here from mcp-server/ as part of the agent in-process migration:
- * the tool now executes locally via a Vercel AI SDK `execute` function
- * (closure on `pendingTables`) rather than over MCP with decoration.
- */
+import { DatabaseSync } from "node:sqlite";
+import { FETCH_MISSING_TABLE_HINT, NO_TABLES_LOADED_MESSAGE } from "./error-hints.ts";
 
-import { Database } from "bun:sqlite";
-import { FETCH_MISSING_TABLE_HINT, NO_TABLES_LOADED_MESSAGE } from "./error-hints";
-
-/** The most rows of a table that go into the database a query runs on. */
 export const MAX_SQL_TABLE_ROWS = 200_000;
 
-/**
- * The most memory SQLite may use for one database. Past it an allocation fails, and the query ends with
- * an "out of memory" error instead of taking the memory of the machine (a query can build a gigabyte
- * out of nothing: `randomblob`, `group_concat`, a big sort).
- */
-export const SQL_HEAP_LIMIT_BYTES = 512 * 1024 * 1024;
+export const SQL_MAX_VALUE_BYTES = 64 * 1024 * 1024;
 
 export interface LoadedTable {
   tableName: string;
@@ -36,7 +18,6 @@ function sanitize(name: string): string {
     .toLowerCase();
 }
 
-// Mirror of `src/sql/loader.ts:TYPE_SAMPLE_LIMIT` — see that file's comment.
 const TYPE_SAMPLE_LIMIT = 500;
 
 function inferType(rows: unknown[], key: string): string {
@@ -51,7 +32,6 @@ function inferType(rows: unknown[], key: string): string {
   return "TEXT";
 }
 
-// Mirror of `src/sql/loader.ts:dedupColumnNames` — see that file's comment.
 function dedupColumnNames<T extends { name: string }>(cols: T[]): T[] {
   const seen = new Map<string, number>();
   return cols.map((col) => {
@@ -61,7 +41,7 @@ function dedupColumnNames<T extends { name: string }>(cols: T[]): T[] {
   });
 }
 
-function loadOne(db: Database, name: string, rows: unknown[]): LoadedTable {
+function loadOne(db: DatabaseSync, name: string, rows: unknown[]): LoadedTable {
   const tableName = sanitize(name) || "data";
   const first = rows[0] as Record<string, unknown> | undefined;
   const originalKeys = first ? Object.keys(first) : [];
@@ -74,12 +54,13 @@ function loadOne(db: Database, name: string, rows: unknown[]): LoadedTable {
   );
 
   const colDefs = columns.map((c) => `"${c.name}" ${c.type}`).join(", ");
-  db.run(`CREATE TABLE IF NOT EXISTS "${tableName}" (${colDefs})`);
+  db.exec(`CREATE TABLE IF NOT EXISTS "${tableName}" (${colDefs})`);
 
   const placeholders = columns.map(() => "?").join(", ");
   const insert = db.prepare(`INSERT INTO "${tableName}" VALUES (${placeholders})`);
-  const tx = db.transaction((data: unknown[]) => {
-    for (const row of data) {
+  db.exec("BEGIN");
+  try {
+    for (const row of rows) {
       const values = originalKeys.map((key) => {
         const v = (row as Record<string, unknown>)[key];
         if (v == null) return null;
@@ -87,23 +68,21 @@ function loadOne(db: Database, name: string, rows: unknown[]): LoadedTable {
         if (typeof v === "boolean") return v ? 1 : 0;
         return v as string | number;
       });
-      insert.run(...(values as (string | number | null)[]));
+      insert.run(...values);
     }
-  });
-  tx(rows);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 
   return { tableName, columns, rowCount: rows.length };
 }
 
-/**
- * Build a fresh per-call in-memory DB from a Map of tables.
- * Caller owns `db.close()` (defer in a `try/finally`).
- */
 export function buildDb(
   tables: ReadonlyMap<string, Record<string, unknown>[]> | undefined,
-): { db: Database; loaded: LoadedTable[] } {
-  const db = new Database(":memory:");
-  db.run(`PRAGMA hard_heap_limit = ${SQL_HEAP_LIMIT_BYTES}`);
+): { db: DatabaseSync; loaded: LoadedTable[] } {
+  const db = new DatabaseSync(":memory:", { limits: { length: SQL_MAX_VALUE_BYTES } });
   const loaded: LoadedTable[] = [];
   if (!tables) return { db, loaded };
   for (const [name, rows] of tables) {

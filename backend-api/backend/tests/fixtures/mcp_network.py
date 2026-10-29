@@ -1,13 +1,3 @@
-"""Fake hosts for the API's MCP traffic, without a network.
-
-The API sends its MCP requests through `routers.app.mcp_oauth.mcp_http`, whose transport
-resolves each host, refuses addresses that are not public and connects to the address it
-checked. These fakes stand in below that check: `FakeHosts.resolve` answers the DNS
-lookups, and `FakeNetwork` answers the connections with in-memory HTTP/1.1 servers that
-hand each request to the handler of its Host. Every connection is recorded, so a test can
-tell that a refused address was never reached.
-"""
-
 import ipaddress
 import socket
 from collections.abc import Callable
@@ -22,12 +12,9 @@ Handler = Callable[[httpx.Request], httpx.Response]
 
 
 class FakeHosts:
-    """The hosts the tests' MCP and authorization servers run on."""
-
     def __init__(self) -> None:
         self.addresses: dict[str, list[str]] = {}
         self.handlers: dict[str, Handler] = {}
-        # (address, port) of every connection, and the TLS server name of the https ones
         self.connections: list[tuple[str, int]] = []
         self.tls_names: list[str] = []
         self.requests: list[httpx.Request] = []
@@ -60,8 +47,6 @@ class FakeHosts:
 
 
 class _FakeStream(httpcore.AsyncNetworkStream):
-    """One connection to a fake host: an HTTP/1.1 server (h11) in memory."""
-
     def __init__(self, hosts: FakeHosts) -> None:
         self._hosts = hosts
         self._server = h11.Connection(h11.SERVER)
@@ -76,7 +61,6 @@ class _FakeStream(httpcore.AsyncNetworkStream):
         return data
 
     async def write(self, buffer: bytes, timeout: float | None = None) -> None:
-        # The client writes nothing at the end of a body; to h11 nothing is end of stream
         if not buffer:
             return
         self._server.receive_data(buffer)
@@ -131,8 +115,6 @@ class _FakeStream(httpcore.AsyncNetworkStream):
 
 
 class FakeNetwork(httpcore.AsyncNetworkBackend):
-    """The network below the API's address check: connections go to the fake hosts."""
-
     def __init__(self, hosts: FakeHosts) -> None:
         self._hosts = hosts
 

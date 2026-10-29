@@ -2,7 +2,6 @@ interface ExportProgressProps {
   current: number;
   total: number;
   label: string;
-  /** Sub-progress for nested operations (e.g., tabs within dashboards) */
   subProgress?: {
     current: number;
     total: number;

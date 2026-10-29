@@ -1,5 +1,3 @@
-"""Agent task delegation and skill content tools."""
-
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -17,7 +15,7 @@ from workspace_mcp.server._helpers import CommandRunner, ToolResponse
 def register(server: FastMCP, run: CommandRunner) -> None:
     @server.tool(
         description=describe_tool(
-            "Assign tasks to configured external Workspace agents.",
+            "Assign tasks to configured external FINOS Workspace agents.",
             (
                 "Get assigned_holder_url and assigned_agent_id from "
                 "get_workspace_snapshot; do not invent them."
@@ -35,7 +33,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ],
     ) -> ToolResponse:
-        """Delegate work to Workspace agents through the browser bridge."""
         return await run(
             AssignTasksToAgentsCommand(
                 command="assign_tasks_to_agents",
@@ -45,7 +42,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
 
     @server.tool(
         description=describe_tool(
-            "Load one skill body from the Workspace skill library.",
+            "Load one skill body from the FINOS Workspace skill library.",
         )
     )
     async def get_skill_content(
@@ -60,7 +57,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
         ],
         reason: str | None = None,
     ) -> ToolResponse:
-        """Load one skill from Workspace's skill library."""
         return await run(
             GetSkillContentCommand(
                 command="get_skill_content",

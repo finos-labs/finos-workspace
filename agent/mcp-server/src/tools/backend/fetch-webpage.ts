@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { textItem, webCitationItem, type ContentItem } from "../../lib/typed";
-import { describePage, fetchPage, MAX_PAGE_BYTES } from "../../../../src/lib/html-page";
-import { renderOverview } from "../../../../src/lib/page-text";
-import { getLogger } from "../../lib/logger";
-import { holdPage, pageIdFor } from "../../lib/page-store";
-import { scopeProblem, scopeSigSchema } from "../../lib/scope-check";
-import { urlProblem, urlSigSchema } from "../../lib/url-check";
+import { textItem, webCitationItem, type ContentItem } from "../../lib/typed.ts";
+import { describePage, fetchPage, MAX_PAGE_BYTES } from "../../../../src/lib/html-page.ts";
+import { renderOverview } from "../../../../src/lib/page-text.ts";
+import { getLogger } from "../../lib/logger.ts";
+import { holdPage, pageIdFor } from "../../lib/page-store.ts";
+import { scopeProblem, scopeSigSchema } from "../../lib/scope-check.ts";
+import { urlProblem, urlSigSchema } from "../../lib/url-check.ts";
 
 const logger = getLogger(["mcp", "fetch-webpage"]);
 
@@ -29,7 +29,6 @@ function hostOf(url: string): string {
   }
 }
 
-/** The chat to hold a page for: only one the agent signed (see scope-check.ts), and only when there is one. */
 function chatToHold(args: { "x-ines-conversation-id"?: string; "x-ines-scope-sig"?: string }): string | null {
   if (scopeProblem(args) !== null) return null;
   return args["x-ines-conversation-id"] || null;
@@ -46,7 +45,6 @@ export async function fetchWebpageHandler(args: {
   if (problem) return { content: [textItem(problem)] };
   try {
     const { page, status } = await fetchPage(url);
-    // Read in a process of its own: a page built to be slow to read cannot stop this server.
     const overview = await describePage(page, logger);
     const title = overview.title || hostOf(url);
 

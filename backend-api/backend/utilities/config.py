@@ -44,14 +44,11 @@ from api.crypto import decode_key_material
 
 _RedisCacheT = TypeVar("_RedisCacheT")
 
-# HMAC keys shorter than the SHA-256 output weaken it (RFC 7518 section 3.2)
 MIN_SECRET_BYTES = 32
-# An origin as a browser sends it in the Origin header: scheme, host and optional port
 CORS_ORIGIN = re.compile(r"https?://[A-Za-z0-9.-]+(:\d{1,5})?|https?://\[[0-9A-Fa-f:.]+\](:\d{1,5})?")
 
 
 def check_origins(name: str, origins: list[str]) -> list[str]:
-    """Refuse anything in a list of origins that is not an origin as browsers send it."""
     for origin in origins:
         if not CORS_ORIGIN.fullmatch(origin):
             raise ValueError(
@@ -62,7 +59,6 @@ def check_origins(name: str, origins: list[str]) -> list[str]:
 
 
 def check_strong_secret(name: str, value: str) -> str:
-    """Refuse an empty or short secret: the app does not start with one."""
     if len(value.encode("utf-8")) < MIN_SECRET_BYTES:
         raise ValueError(
             f"{name} must be at least {MIN_SECRET_BYTES} bytes; generate one with "
@@ -103,7 +99,6 @@ class DatabaseConnectArgs(BaseModel):
 DB_POOL_SIZE = {
     "mysql": {"max": 150, "default": 50, "overflow": 20},
     "postgresql": {"max": 100, "default": 50, "overflow": 10},
-    # SQLite doesn't support multiple concurrent connections
     "sqlite": {"max": 1, "default": 1, "overflow": 0},
 }
 
@@ -111,34 +106,20 @@ DB_POOL_SIZE = {
 class DatabaseEngineSettings(BaseModel):
     pool_pre_ping: bool = True
     pool_size: int = 50
-    max_overflow: int = 20  # allowed extra connections above pool_size
-    pool_timeout: int = 30  # this is in seconds
-    pool_recycle: int = 1800  # this is also in seconds
+    max_overflow: int = 20
+    pool_timeout: int = 30
+    pool_recycle: int = 1800
     echo: bool = False
     connect_args: DatabaseConnectArgs = DatabaseConnectArgs()
 
     @model_validator(mode="after")
     def _adjust_pool_size(self):
-        """Adjust pool_size and max_overflow based on DATABASE_TYPE and WORKERS to prevent connection starvation
-        or exceeding DB connection limits.
-
-        Example
-        -------
-        For MySQL with a max of 150 connections:
-            - If `WORKERS=4`
-            - Default `pool_size=50 and overflow=20` would allow up to 280 connections `(4*(50+20))`,
-            which exceeds the limit.
-            - The scale_factor would be `150/(4*70) = 0.535`, resulting in an adjusted
-            pool_size of 26 and max_overflow of 10, allowing up to 144 connections `(4*(26+10))`.
-        """
-
         limits = DB_POOL_SIZE[settings.DATABASE_TYPE]
         self.pool_size = limits["default"]
         self.max_overflow = limits["overflow"]
 
         total_connections_per_worker = limits["default"] + limits["overflow"]
         if settings.WORKERS * total_connections_per_worker > limits["max"]:
-            # Scale down pool_size and max_overflow proportionally
             scale_factor = limits["max"] / (
                 settings.WORKERS * total_connections_per_worker
             )
@@ -165,13 +146,8 @@ class DatabaseSessionManager:
         is_sqlite = host.startswith("sqlite")
         if is_sqlite:
             host = host.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
-            # A single connection serialized through pool checkout: concurrent
-            # sessions queue for it. StaticPool must not be used here — it hands
-            # the same connection to overlapping sessions, so their transactions
-            # interleave and one session's COMMIT persists another's partial writes.
             engine_kwargs["pool_size"] = 1
             engine_kwargs["max_overflow"] = 0
-            # timeout = SQLite busy_timeout (seconds): block on write-lock contention instead of erroring.
             engine_kwargs["connect_args"] = {"check_same_thread": False, "timeout": 5}
 
         self._engine = create_async_engine(
@@ -232,7 +208,6 @@ class DatabaseSettings(BaseModel):
 
     @model_validator(mode="after")
     def _validate_db_settings(self):
-        """Enforce that connection fields are set for MySQL/PostgreSQL."""
         if self.DATABASE_TYPE == "sqlite":
             return self
         required = [
@@ -253,18 +228,6 @@ class DatabaseSettings(BaseModel):
         return self
 
     def get_ssl_config(self) -> SSLContext | None:
-        """Build an SSLContext for the DB driver from env-configured paths.
-
-        Env vars consumed:
-            - SSL_CA: path to CA certificate file. Used to verify the server cert.
-                If unset, the system CA bundle is used.
-            - SSL_CERT: path to client certificate file (mTLS). Must be set with SSL_KEY.
-            - SSL_KEY:  path to client private key file (mTLS). Must be set with SSL_CERT.
-
-        Returns None when no SSL env vars are set (driver connects without TLS).
-        To tune other TLS knobs (verify_mode, check_hostname, ciphers, etc.),
-        configure them on the returned SSLContext at the call site.
-        """
         if not (self.SSL_CA or self.SSL_CERT or self.SSL_KEY):
             return None
         if bool(self.SSL_CERT) != bool(self.SSL_KEY):
@@ -279,21 +242,15 @@ class DatabaseSettings(BaseModel):
 
     @staticmethod
     def _sqlite_engine_kwargs() -> dict[str, Any]:
-        """Return engine kwargs appropriate for SQLite."""
         return {
-            # One connection serialized via pool checkout (see
-            # DatabaseSessionManager) — never StaticPool, which shares the
-            # connection across threads and interleaves transactions.
             "connect_args": {"check_same_thread": False, "timeout": 5},
             "pool_size": 1,
             "max_overflow": 0,
         }
 
     def _engine_kwargs(self, settings: DatabaseEngineSettings) -> dict[str, Any]:
-        """Engine kwargs for the synchronous driver of the configured database."""
         kwargs = settings.model_dump()
         if self.DATABASE_TYPE == "postgresql":
-            # pg8000 takes the TLS context as `ssl_context`; asyncpg and the MySQL drivers take `ssl`
             ssl_context = kwargs["connect_args"].pop("ssl", None)
             if ssl_context is not None:
                 kwargs["connect_args"]["ssl_context"] = ssl_context
@@ -341,7 +298,7 @@ class DatabaseSettings(BaseModel):
 
 
 class RedisSettings(BaseModel):
-    REDIS_HOST: str = "redis"
+    REDIS_HOST: str = "valkey"
     REDIS_USER: str | None = ""
     REDIS_PASS: str
     REDIS_PORT: int = 6379
@@ -428,9 +385,7 @@ class RedisSettings(BaseModel):
         if self.ssl_config:
             kwargs.update(self.ssl_config)
 
-        # Check if cluster mode is enabled
         if self.REDIS_CLUSTER_MODE:
-            # RedisCluster doesn't support db parameter
             return RedisCluster(**kwargs)
 
         kwargs["db"] = db_options[database]
@@ -439,11 +394,6 @@ class RedisSettings(BaseModel):
     def get_async_redis_session(
         self, database: Literal["app"]
     ) -> AsyncRedis | AsyncRedisCluster:
-        """Async counterpart of get_redis_session for non-blocking pub/sub and keyspace ops.
-
-        Mirrors the cluster/SSL/db branching so callers on the event loop avoid offloading
-        synchronous Redis calls to the thread pool.
-        """
         db_options = {
             "app": self.REDIS_DB_APP,
         }
@@ -459,7 +409,6 @@ class RedisSettings(BaseModel):
             kwargs.update(self.ssl_config)
 
         if self.REDIS_CLUSTER_MODE:
-            # RedisCluster doesn't support db parameter
             return AsyncRedisCluster(**kwargs)
 
         kwargs["db"] = db_options[database]
@@ -493,29 +442,6 @@ class RedisSettings(BaseModel):
         update: bool = False,
         delete: bool = False,
     ) -> "_RedisCacheT":
-        """Check if key is in redis cache.
-            If data is not None, set the data in the cache and return data.
-            If data is None and key is in cache, return the data.
-            If data is None and the key is not in the cache, return None.
-
-        Parameters
-        ----------
-        redis_key : str
-            Key to check in redis cache
-        data : object, optional
-            Data to add to redis cache. The default is None.
-        expire : int, optional
-            Expiration time in seconds. The default is redis_cache_seconds().
-        redis_client : redis.Redis, optional
-            Redis client. The default is imps.redis_conn.
-        update : bool, optional
-            If True, update the redis cache. The default is False.
-
-        Returns
-        -------
-        object
-            Data from redis cache if it exists, else data
-        """
         if not isinstance(expire, timedelta) and expire is not None:
             expire = timedelta(seconds=expire)
 
@@ -543,8 +469,6 @@ class RedisSettings(BaseModel):
 
 
 class AWSSettings(BaseModel):
-    # Empty keys are passed as None, so boto uses the default AWS credentials,
-    # such as the pod's role, instead of rejecting an empty key.
     S3_ACCESS_KEY: str = os.environ.get("S3_ACCESS_KEY", "")
     S3_SECRET_KEY: str = os.environ.get("S3_SECRET_KEY", "")
     S3_BUCKET_NAME: str | None = os.environ.get("S3_BUCKET_NAME")
@@ -622,7 +546,6 @@ class AWSSettings(BaseModel):
 
 class LocalStorageSettings(BaseModel):
     FOLDER_STORAGE_PATH: str = os.environ.get("FOLDER_STORAGE_PATH", "local_storage")
-    # Signs the presigned URLs of folder storage; required when STORAGE_PROVIDER=folder
     LOCAL_STORAGE_SECRET_KEY: str | None = None
 
     @field_validator("LOCAL_STORAGE_SECRET_KEY")
@@ -638,9 +561,6 @@ class LocalStorageSettings(BaseModel):
         return path
 
     def generate_signature(self, object_name: str, expiration: int) -> str:
-        """The signature is generated using HMAC with SHA256, using the secret key and the message containing
-        the object name and expiration time.
-        """
         import hashlib  # noqa: E117, PLC0415
         import hmac  # noqa: E117, PLC0415
 
@@ -652,7 +572,6 @@ class LocalStorageSettings(BaseModel):
     def validate_signature(
         self, object_name: str, expiration: int, signature: str
     ) -> bool:
-        """Validate the signature by comparing it to a freshly generated one."""
         import hmac  # noqa: E117, PLC0415
 
         expected_signature = self.generate_signature(object_name, expiration)
@@ -712,7 +631,6 @@ class AzureSettings(BaseModel):
 
 
 class AccessSettings(BaseModel):
-    # Key material of the encryption at rest (api/crypto.py): base64url, 32 bytes or more
     WORKSPACE_AES_KEY: str
 
     @field_validator("WORKSPACE_AES_KEY")
@@ -727,7 +645,6 @@ class PrometheusSettings(BaseModel):
 
 
 class NotificationSettings(BaseModel):
-    # Import path (`package.module:Class`) of the AdminNotifier transport; api/notifications.py
     ADMIN_NOTIFIER: str = "api.notifications:WebhookNotifier"
     ADMIN_NOTIFY_WEBHOOK_URL: str | None = None
     ADMIN_NOTIFY_WEBHOOK_SECRET: str | None = None
@@ -737,8 +654,6 @@ class NotificationSettings(BaseModel):
 
 class AppSettings(BaseModel):
     INVITE_EXPIRATION: timedelta = timedelta(weeks=52)
-    # The first organization's User map, which init writes to user_create.json: an invite
-    # without a user type and a first sign-in with a provider get it
     DEFAULT_USER_MAPPING: UUID | None = None
     APPURL: str
 
@@ -754,8 +669,6 @@ class AppSettings(BaseModel):
 
 
 class DefaultMCPServer(BaseModel):
-    """An MCP server that every user has without adding it."""
-
     id: str
     name: str
     url: str
@@ -769,27 +682,15 @@ class GeneralSettings(BaseModel):
     FRONTENDURL: str
     SELFURL: str
     MODE: Literal["production", "local", "test"]
-    # Requests carrying a valid X-Workspace-Authorization token skip rate limiting (development only)
     RATE_LIMIT_EXEMPT_ENABLED: bool = False
-    # Sign-in providers (/app/{provider}-auth): the public ids of this deployment's OAuth
-    # clients, to which every token the API accepts must have been issued. A provider whose
-    # client id is not set refuses every sign-in.
     GOOGLE_OAUTH_CLIENT_ID: str | None = None
     AZURE_CLIENT_ID: str | None = None
-    # The Microsoft Entra tenant whose users may sign in: its tenant id or domain, or
-    # "organizations" (every work or school tenant) or "common" (those and personal
-    # Microsoft accounts), the same value as the web app's MSAL authority
     AZURE_TENANT_ID: str | None = None
     OKTA_CLIENT_ID: str | None = None
-    # The Okta org (https://<your-org>.okta.com) whose authorization server issues the ID
-    # tokens
     OKTA_DOMAIN: str | None = None
-    # These are characters that cannot be in our url
     UNUSABLE_JSON_CHARACTERS: set[str] = {"?"}
     MAX_DICT_LEN: int = 100_000
     WORKERS: int = 3
-    # Per-worker address-space cap in GiB (RLIMIT_AS, applied in run.py).
-    # None = auto: 75% of the container's cgroup memory limit. 0 = disabled.
     WORKER_ADDRESS_SPACE_LIMIT_GB: float | None = None
     PORT: int = 8000
     LOGURU_COLORIZE: bool = True
@@ -798,24 +699,14 @@ class GeneralSettings(BaseModel):
     RQ_TIMEOUT: int = 10
     CLEAR_UNCONFIRMED_FILES_DATE: str = "2024-10-07"
     WORKSPACE_AUTH_TOKEN: str | None = None
-    # The origins of the web app, exactly as the browser sends them (scheme, host and
-    # port). Its session cookie is accepted only from them. Required: there is no default
-    # and no wildcard.
     BACKEND_CORS_ORIGINS: list[str] | str
-    # Origins matching this regular expression are allowed as well, for hosts that
-    # can't be listed ahead of time, such as a preview per pull request. The whole
-    # origin must match. Unset by default.
     BACKEND_CORS_ORIGIN_REGEX: str | None = None
-    # Addresses exempt from the duplicate-email checks in crud.check_new_user
     SPECIAL_EMAILS: set[EmailStr] = Field(default_factory=set)
     SUPPRESSED_API_ROUTERS: list[str] | None = Field(default_factory=list)
     SUPPRESSED_API_ROUTES: list[str] | None = Field(default_factory=list)
     STORAGE_PROVIDER: Literal["aws", "azure", "gcp", "folder"] = "folder"
     GCP_STORAGE_BUCKET: str | None = None
     ALLOWED_MCP_HOSTNAMES: list[str] = Field(default_factory=list)
-    # MCP servers that every user has, enabled, in addition to the ones they add: a JSON list
-    # of {"id", "name", "url"}. A server the user has stored under the same URL wins, so a user
-    # can still switch a default off.
     DEFAULT_MCP_SERVERS: list[DefaultMCPServer] = Field(default_factory=list)
 
     @field_validator("JWT_SECRET")
@@ -850,8 +741,33 @@ class GeneralSettings(BaseModel):
         self.IS_WORKER_CONTAINER = is_worker
 
 
+class WidgetPluginSettings(BaseModel):
+    WIDGET_PLUGINS_DIR: str | None = None
+    WIDGET_PLUGINS_PINS: dict[str, str] = Field(default_factory=dict)
+    WIDGET_PLUGINS_REQUIRE_PINS: bool = False
+    WIDGET_PLUGINS_MAX_UNPACKED_BYTES: int = 64 * 1024 * 1024
+    WIDGET_PLUGINS_MAX_FILES: int = 200
+    WIDGET_PLUGIN_SECRETS_DIR: str | None = None
+    WIDGET_PLUGIN_PROXY_MAX_BYTES: int = 5 * 1024 * 1024
+    WIDGET_PLUGIN_PROXY_TIMEOUT_MS: int = 30_000
+    WIDGET_PLUGIN_PROXY_CONCURRENCY: int = 8
+    WIDGET_PLUGIN_PROXY_RATE_PER_USER: str = "60/minute"
+    WIDGET_PLUGIN_PROXY_RATE_PER_PLUGIN: str = "600/minute"
+    WIDGET_PLUGIN_PROXY_CA_FILE: str | None = None
+    WIDGET_PLUGIN_BACKENDS: dict[str, str] = Field(default_factory=dict)
+    WIDGET_PLUGIN_BACKEND_MAX_BYTES: int = 5 * 1024 * 1024
+    WIDGET_PLUGIN_BACKEND_TIMEOUT_MS: int = 30_000
+    WIDGET_PLUGIN_BACKEND_CONCURRENCY: int = 8
+    WIDGET_PLUGIN_BACKEND_RATE_PER_USER: str = "60/minute"
+    WIDGET_PLUGIN_BACKEND_RATE_PER_PLUGIN: str = "600/minute"
+    WIDGET_PLUGIN_BACKEND_BREAKER_FAILURES: int = 5
+    WIDGET_PLUGIN_BACKEND_BREAKER_SECONDS: int = 30
+    WIDGET_PLUGIN_BACKEND_IDENTITY_SECONDS: int = 60
+
+
 class Settings(
     BaseSettings,
+    WidgetPluginSettings,
     AccessSettings,
     GeneralSettings,
     AppSettings,
@@ -888,13 +804,11 @@ class Settings(
         return self.GCP_STORAGE_BUCKET
 
     def setup_logging(self):
-        """Set up logging for the application."""
         from .log_helpers import setup_logging  # noqa: F401, PLC0415
 
         setup_logging(self)
 
     def is_https_deployment(self) -> bool:
-        """Determine if the current deployment is an HTTPS deployment."""
         return self.SELFURL.startswith("https://")
 
 

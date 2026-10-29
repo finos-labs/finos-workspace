@@ -26,17 +26,6 @@ async def validate_app_ownership(db: AsyncSession, app_uuid: UUID, user_uuid: UU
 async def get_user_apps(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Endpoint to retrieve user apps data.
-
-    Args:
-        db (AsyncSession): The database session.
-        user (User): The authenticated user.
-
-    Returns:
-        List[schemas.UserAppReturn]: A list of user apps data.
-    """
-
     result = await app_helpers.get_user_apps_complete(user=user)
     if not result:
         raise HTTPException(status_code=404, detail="User apps data not found")
@@ -50,17 +39,6 @@ async def post_user_app(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Endpoint to create or update user apps data.
-
-    Args:
-        user_app_data (schemas.UserAppCreate): The user app data to be created or updated.
-        db (AsyncSession): The database session.
-        user (User): The authenticated user.
-
-    Returns:
-        SuccessReturn: An instance indicating the operation was successful.
-    """
     query = (
         select(models.UserApp)
         .where(
@@ -102,17 +80,6 @@ async def delete_user_app(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Endpoint to delete user apps data.
-
-    Args:
-        app_uuid (UUID): The UUID of the app to be deleted.
-        db (AsyncSession): The database session.
-        user (User): The authenticated user.
-
-    Returns:
-        SuccessReturn: An instance indicating the operation was successful.
-    """
     delete_query = delete(models.UserApp).where(
         models.UserApp.user_uuid == user.uuid,
         models.UserApp.uuid == app_uuid,
@@ -348,7 +315,6 @@ async def see_available_users(
         )
     )
     all_users = (await db.execute(all_users_query)).mappings().all()
-    # Only users who may receive shared items can be shared with
     recipients = set(await crud.get_share_recipients(db, [x.uuid for x in all_users]))
     all_users = [x for x in all_users if x.uuid in recipients]
 
@@ -391,9 +357,6 @@ async def get_shared_app_viewed(
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     app_uuid: UUID | None = None,
 ):
-    """
-    Get the shared app viewed status.
-    """
     shared_app_query = select(
         UserAppShare.user_app_uuid.label("app_uuid"),
         UserAppShare.viewed,
@@ -419,9 +382,6 @@ async def patch_shared_app_viewed(
     db: AsyncSession = Depends(aget_read_db),
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Mark a shared app as viewed.
-    """
     update_query = (
         update(UserAppShare)
         .where(

@@ -196,37 +196,4 @@ describe("mergeExternalWidgetParamDefinitions", () => {
       show: true,
     });
   });
-
-  // it("updates refreshed external run-button behavior", () => {
-  //   const widget = makeWidget({
-  //     external: true,
-  //     runButton: true,
-  //     params: [
-  //       {
-  //         type: "text",
-  //         paramName: "sector",
-  //         label: "Sector",
-  //         show: false,
-  //       },
-  //     ],
-  //   });
-  //   const definitionWidget = makeWidget({
-  //     runButton: false,
-  //     params: [
-  //       {
-  //         type: "text",
-  //         paramName: "sector",
-  //         label: "Sector",
-  //         show: false,
-  //       },
-  //     ],
-  //   });
-
-  //   const mergedWidget = mergeExternalWidgetParamDefinitions(
-  //     widget,
-  //     definitionWidget,
-  //   ) as WidgetT;
-
-  //   expect(mergedWidget.runButton).toBe(false);
-  // });
 });

@@ -31,10 +31,6 @@ function Person({ user }: { user: ShareRequestUser }) {
   );
 }
 
-/**
- * The shares that developers of the organization asked for. Nobody gets a developer's
- * dashboard or app until an admin approves the share here.
- */
 export function ShareRequestsPage() {
   const queryClient = useQueryClient();
   const {
@@ -139,7 +135,6 @@ export function ShareRequestsPage() {
       value="share-requests"
       className="p-6 text-sm only-sm:h-screen"
     >
-      {/* The requests show when they are there: no loading animation in between */}
       {isLoading ? null : error ? (
         <p className="text-xs">Error loading share requests.</p>
       ) : requests.length === 0 ? (

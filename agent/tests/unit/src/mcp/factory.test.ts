@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { makeMcpTools } from "../../../../src/mcp/factory";
-import type { AgentTool } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { linkedToolName, makeMcpTools } from "../../../../src/mcp/factory.ts";
+import type { AgentTool } from "../../../../src/protocol/types.ts";
 
 function tool(overrides: Partial<AgentTool>): AgentTool {
   return {
@@ -44,6 +45,31 @@ describe("makeMcpTools — entries", () => {
   it("falls back description to the original tool name when missing", () => {
     const out = makeMcpTools([tool({ name: "x", description: undefined })]);
     expect(out.entries[0].description).toBe("x");
+  });
+});
+
+describe("linkedToolName — a widget's link to a tool of its own backend", () => {
+  const entries = makeMcpTools([
+    tool({ name: "Team_data_get_team_report", tool_name: "get_team_report", server_id: "team-data" }),
+    tool({ name: "Other_get_team_report", tool_name: "get_team_report", server_id: "other" }),
+    tool({ name: "Team_data_unnamed", server_id: "team-data" }),
+  ]).entries;
+
+  it("names the registered tool by its server and its own name, as the model calls it", () => {
+    expect(entries[0].serverToolName).toBe("get_team_report");
+    expect(linkedToolName({ server_id: "team-data", tool_name: "get_team_report" }, entries)).toBe(
+      "Team_data_get_team_report",
+    );
+    expect(linkedToolName({ server_id: "other", tool_name: "get_team_report" }, entries)).toBe(
+      "Other_get_team_report",
+    );
+  });
+
+  it("names nothing for a tool this request did not register, or no link", () => {
+    expect(linkedToolName({ server_id: "team-data", tool_name: "missing" }, entries)).toBeUndefined();
+    expect(linkedToolName({ server_id: "gone", tool_name: "get_team_report" }, entries)).toBeUndefined();
+    expect(linkedToolName({ server_id: "team-data", tool_name: "Team_data_unnamed" }, entries)).toBeUndefined();
+    expect(linkedToolName(undefined, entries)).toBeUndefined();
   });
 });
 
@@ -140,10 +166,6 @@ describe("makeMcpTools — agent-owned tool names filtered", () => {
     expect(out.entries.map((e) => e.toolName)).toEqual(["inesmcp_fetch_webpage"]);
   });
 
-  // The bridge mount names `update_widget_layout` differently from its wire
-  // command (`update_dashboard_layout`), and get_widget_data/get_skill_content
-  // are bridge commands with bespoke agent paths outside WORKSPACE_BRIDGE_COMMANDS.
-  // All three must still be deduped or they double-register against native tools.
   it("drops bridge-mount aliases and bespoke round-trip wrappers", () => {
     const out = makeMcpTools([
       tool({ name: "inesmcp_update_widget_layout", server_id: "ines" }),
@@ -155,13 +177,13 @@ describe("makeMcpTools — agent-owned tool names filtered", () => {
   });
 });
 
-describe("makeMcpTools — the Workspace's get_widget_data", () => {
-  it("is kept, under the name it has on the Workspace's server, with the schema and description the server gives it", () => {
+describe("makeMcpTools — the FINOS Workspace's get_widget_data", () => {
+  it("is kept, under the name it has on the FINOS Workspace's server, with the schema and description the server gives it", () => {
     const out = makeMcpTools([
       tool({
         name: "Workspace_get_widget_data",
         server_id: "workspace",
-        description: "Fetch current data for one Workspace data source.",
+        description: "Fetch current data for one FINOS Workspace data source.",
         input_schema: {
           properties: { origin: { type: "string" }, widget_id: { type: "string" }, data_args: { type: "object" }, widget_uuid: { type: "string" } },
           required: ["origin", "widget_id"],
@@ -173,7 +195,7 @@ describe("makeMcpTools — the Workspace's get_widget_data", () => {
         serverId: "workspace",
         toolName: "Workspace_get_widget_data",
         sanitizedName: "get_widget_data",
-        description: "Fetch current data for one Workspace data source.",
+        description: "Fetch current data for one FINOS Workspace data source.",
       },
     ]);
     expect(out.widgetDataEntry).toBe(out.entries[0]);
@@ -189,14 +211,14 @@ describe("makeMcpTools — the Workspace's get_widget_data", () => {
     expect(out.entries.map((e) => e.serverId)).toEqual(["workspace"]);
   });
 
-  it("is a tool of any server that has one of that name, whichever name the Workspace puts in front", () => {
+  it("is a tool of any server that has one of that name, whichever name the FINOS Workspace puts in front", () => {
     expect(makeMcpTools([tool({ name: "get_widget_data" })]).entries[0].sanitizedName).toBe("get_widget_data");
     expect(makeMcpTools([tool({ name: "Open Data Platform_get_widget_data" })]).entries[0].sanitizedName).toBe("get_widget_data");
     expect(makeMcpTools([tool({ name: "not_get_widget_data_at_all" })]).widgetDataEntry).toBeUndefined();
   });
 });
 
-describe("makeMcpTools — the Workspace's own tools", () => {
+describe("makeMcpTools — the FINOS Workspace's own tools", () => {
   const workspace = (name: string, overrides: Partial<AgentTool> = {}) =>
     tool({ name: `Workspace_${name}`, server_id: "workspace", ...overrides });
   const request = [
@@ -211,7 +233,7 @@ describe("makeMcpTools — the Workspace's own tools", () => {
     workspace("get_skill_content"),
   ];
 
-  it("are registered, with the schema and the description the Workspace gives them", () => {
+  it("are registered, with the schema and the description the FINOS Workspace gives them", () => {
     const out = makeMcpTools(request);
     expect(Object.keys(out.toolSet).sort()).toEqual([
       "Workspace_create_widget",
@@ -237,7 +259,7 @@ describe("makeMcpTools — the Workspace's own tools", () => {
     expect(out.entries.map((entry) => entry.toolName)).not.toContain("Workspace_get_skill_content");
   });
 
-  it("are the Workspace's by the id of their server, not by their name", () => {
+  it("are the FINOS Workspace's by the id of their server, not by their name", () => {
     const out = makeMcpTools(
       [
         tool({ name: "inesmcp_manage_dashboard", server_id: "ines" }),
@@ -252,7 +274,7 @@ describe("makeMcpTools — the Workspace's own tools", () => {
     ]);
   });
 
-  it("read the widgets with the Workspace's get_widget_data, whichever server lists one first", () => {
+  it("read the widgets with the FINOS Workspace's get_widget_data, whichever server lists one first", () => {
     const out = makeMcpTools(
       [tool({ name: "docs_get_widget_data", server_id: "docs" }), workspace("get_widget_data")],
     );
@@ -260,7 +282,7 @@ describe("makeMcpTools — the Workspace's own tools", () => {
     expect(out.entries.map((entry) => entry.serverId)).toEqual(["workspace"]);
   });
 
-  it("are offered, whatever of them is registered: the agent then has no function calls of its own for the Workspace", () => {
+  it("are offered, whatever of them is registered: the agent then has no function calls of its own for the FINOS Workspace", () => {
     expect(makeMcpTools(request).workspaceToolsOffered).toBe(true);
     expect(makeMcpTools([workspace("read_widget")]).workspaceToolsOffered).toBe(true);
     expect(makeMcpTools([tool({ name: "fetch_webpage", server_id: "ines" })]).workspaceToolsOffered).toBe(false);

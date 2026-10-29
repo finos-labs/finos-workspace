@@ -1,18 +1,9 @@
-"""add role access to copilot models and mcp tools
-
-Revision ID: c3a97e5d2b14
-Revises: 8b1d6f3a7c25
-Create Date: 2026-10-06
-
-"""
-
 import sqlalchemy as sa
 import sqlalchemy_utils
 
 import api.models.model_helpers
 from alembic import op  # type: ignore
 
-# revision identifiers, used by Alembic.
 revision = "c3a97e5d2b14"
 down_revision = "8b1d6f3a7c25"
 branch_labels = None

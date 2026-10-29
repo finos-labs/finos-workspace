@@ -1,14 +1,15 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import type { ModelMessage } from "ai";
-import { injectFromReboot, injectWidgetData, type RoundTripContext } from "../../../../src/agent/round-trip";
+import { injectFromReboot, injectWidgetData, type RoundTripContext } from "../../../../src/agent/round-trip.ts";
 import type {
   Citation,
   SSEEvent,
   ToolMessage,
   Widget,
-} from "../../../../src/protocol/types";
-import type { McpCitation } from "../../../../src/mcp/results";
-import type { WidgetItem } from "../../../../src/widgets/parse";
+} from "../../../../src/protocol/types.ts";
+import type { McpCitation } from "../../../../src/mcp/results.ts";
+import type { WidgetItem } from "../../../../src/widgets/parse.ts";
 
 function emptyCtx(): RoundTripContext {
   return {
@@ -29,7 +30,7 @@ async function drain<T>(gen: AsyncGenerator<T>): Promise<T[]> {
   for await (const v of gen) out.push(v);
   return out;
 }
-import { asCells, tableRows } from "../../../helpers/html-table";
+import { asCells, tableRows } from "../../../helpers/html-table.ts";
 
 describe("injectWidgetData — same widget, different params", () => {
   function priceItem(symbol: string, close: number): WidgetItem {
@@ -47,8 +48,6 @@ describe("injectWidgetData — same widget, different params", () => {
       [priceItem("AAPL", 189.99), priceItem("MSFT", 430.32), priceItem("NVDA", 113.9)],
       ctx,
     );
-    // Three pulls of the same widget with different symbols must not collapse
-    // into one table — each dataset stays independently queryable.
     expect(ctx.pendingTables.size).toBe(3);
     const closes = [...ctx.pendingTables.values()]
       .flat()
@@ -61,7 +60,6 @@ describe("injectWidgetData — same widget, different params", () => {
   it("reuses one table when the same widget is loaded with identical params", () => {
     const ctx = emptyCtx();
     injectWidgetData([priceItem("AAPL", 189.99), priceItem("AAPL", 190.5)], ctx);
-    // Same (widget, params) is a refresh, not a distinct dataset.
     expect(ctx.pendingTables.size).toBe(1);
   });
 });
@@ -82,7 +80,6 @@ describe("injectFromReboot — get_params_options", () => {
         },
       ] as unknown as ToolMessage["data"],
     };
-    // workspace shape varies; stuff a sample payload on `data` for the test
     (tool.data as unknown as Array<unknown>)[0] = {
       origin: "example",
       widget_id: "stocks",
@@ -95,7 +92,7 @@ describe("injectFromReboot — get_params_options", () => {
     const msg = ctx.messages[0];
     expect(msg.role).toBe("user");
     const content = msg.content as string;
-    expect(content).toContain("Workspace bridge result from get_params_options");
+    expect(content).toContain("FINOS Workspace bridge result from get_params_options");
     expect(content).toContain("AAPL");
     expect(content).toContain("MSFT");
     expect(events.length).toBe(1);
@@ -353,7 +350,7 @@ describe("injectFromReboot — workspace bridge results", () => {
       data: [
         {
           status: "success",
-          message: "Workspace snapshot loaded.",
+          message: "FINOS Workspace snapshot loaded.",
           data: {
             ok: true,
             command: "get_workspace_snapshot",
@@ -408,7 +405,7 @@ describe("injectFromReboot — workspace bridge results", () => {
 
     expect(ctx.messages).toHaveLength(1);
     expect(events).toHaveLength(1);
-    expect(events[0].data.message).toBe("Workspace snapshot loaded");
+    expect(events[0].data.message).toBe("FINOS Workspace snapshot loaded");
     expect(events[0].data.details).toEqual([
       {
         Dashboards: {
@@ -460,7 +457,7 @@ describe("injectFromReboot — workspace bridge results", () => {
     expect(ctx.messages).toHaveLength(1);
     expect(ctx.messages[0].role).toBe("user");
     const content = ctx.messages[0].content as string;
-    expect(content).toContain("Workspace bridge result from list_available_widgets");
+    expect(content).toContain("FINOS Workspace bridge result from list_available_widgets");
     expect(content).toContain("economy_fred_series_fred_obb");
     expect(content).not.toContain("config.data_args");
     expect(events).toHaveLength(1);
@@ -504,7 +501,7 @@ describe("injectFromReboot — workspace bridge results", () => {
 
     expect(ctx.messages).toHaveLength(1);
     const content = ctx.messages[0].content as string;
-    expect(content).toContain("Workspace bridge result from list_available_widgets");
+    expect(content).toContain("FINOS Workspace bridge result from list_available_widgets");
     expect(content).toContain('"origin": "ESG"');
     expect(content).not.toContain("retry discovery without the origin filter");
     expect(events).toHaveLength(1);
@@ -581,7 +578,7 @@ describe("injectFromReboot — workspace bridge results", () => {
 
     expect(ctx.messages).toHaveLength(1);
     const content = ctx.messages[0].content as string;
-    expect(content).toContain("Workspace bridge result from get_widget_schema");
+    expect(content).toContain("FINOS Workspace bridge result from get_widget_schema");
     expect(content).toContain('"widget_id": "economy_fred_series_fred_obb"');
     expect(content).not.toContain("Do not call search_widgets or get_workspace_snapshot");
     expect(content).toContain('"value": "m"');
@@ -668,7 +665,7 @@ describe("injectFromReboot — workspace bridge results", () => {
     expect(events).toHaveLength(1);
     expect(events[0].data.message).toBe("Widget creation result received");
     expect(events[0].data.details).toBeUndefined();
-    expect(ctx.messages[0].content).toContain("Workspace bridge result from add_widget_to_dashboard");
+    expect(ctx.messages[0].content).toContain("FINOS Workspace bridge result from add_widget_to_dashboard");
     expect(ctx.messages[0].content).toContain('"widget_uuid": "widget-1"');
     expect(ctx.messages[0].content).not.toContain("do not mention widget_uuid");
   });
@@ -704,7 +701,7 @@ describe("injectFromReboot — workspace bridge results", () => {
     expect(events).toHaveLength(1);
     expect(events[0].data.message).toBe("Dashboard created");
     expect(events[0].data.details).toBeUndefined();
-    expect(ctx.messages[0].content).toContain("Workspace bridge result from manage_dashboard");
+    expect(ctx.messages[0].content).toContain("FINOS Workspace bridge result from manage_dashboard");
     expect(ctx.messages[0].content).toContain('"dashboard_id": "dashboard-1"');
     expect(ctx.messages[0].content).not.toContain("Do not call manage_dashboard again");
   });
@@ -750,7 +747,7 @@ describe("injectFromReboot — workspace bridge results", () => {
     ]);
     const errorCtx = emptyCtx();
     await drain(injectFromReboot(errorTool, errorCtx));
-    expect(errorCtx.messages[0].content).toContain("Workspace bridge result from manage_navigation_bar");
+    expect(errorCtx.messages[0].content).toContain("FINOS Workspace bridge result from manage_navigation_bar");
     expect(errorCtx.messages[0].content).toContain("No navigation bar found");
     expect(errorCtx.messages[0].content).not.toContain("The dashboard does not have a navigation bar yet.");
   });
@@ -883,7 +880,7 @@ describe("injectFromReboot — workspace bridge results", () => {
 
     expect(events[0].data.message).toBe("Widget update succeeded");
     expect(events[0].data.details).toBeUndefined();
-    expect(ctx.messages[0].content).toContain("Workspace bridge result from update_widget_in_dashboard");
+    expect(ctx.messages[0].content).toContain("FINOS Workspace bridge result from update_widget_in_dashboard");
   });
 });
 
@@ -1077,7 +1074,6 @@ describe("injectFromReboot — widget data", () => {
     expect(events[0].data.message).toBe('Loaded "Energy Consumption, Renewables and Revenue" data.');
     expect((events[0].data as { artifacts?: unknown[] }).artifacts?.length).toBe(1);
     expect(events[1].data.message).toBe('Loaded "Executive ESG Change Narrative" data.');
-    // The text of a widget is not put in the chat: the status says that it loaded, and how much.
     expect((events[1].data as { artifacts?: unknown[] }).artifacts).toBeUndefined();
     expect(JSON.stringify(events[1].data.details)).toContain('"chars":41');
     expect(JSON.stringify(events[1].data)).not.toContain("Renewable energy share improved steadily.");

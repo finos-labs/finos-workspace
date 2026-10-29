@@ -35,9 +35,7 @@ async function getDescriptionsMap(
   files: File[],
   aiEnhancements = false,
 ): Promise<Map<string, { name: string; description: string }>> {
-  // Map stored_file_uuid to description
   const descriptionsMap = new Map<string, { name: string; description: string }>();
-  // Generate descriptions for AI supported files
   await Promise.all(
     uploadedFiles.map(async (uploadedFile) => {
       if (
@@ -74,11 +72,6 @@ async function getDescriptionsMap(
   return descriptionsMap;
 }
 
-/**
- * Uploads documents for the selected agent. The default Copilot's go to the Workspace API
- * (session cookie); a custom agent's go straight to its own upload endpoint with only
- * the headers configured for that agent, never a Workspace credential.
- */
 async function uploadToAgent(
   formData: FormData,
   uploadUrl: string,
@@ -112,7 +105,6 @@ export function useUploadDocuments() {
 
   const { mutateAsync: uploadDocuments } = useMutation<void, Error, File[]>({
     mutationFn: async (filesToUpload: File[]) => {
-      // Need to split files into chunks of 150MB or less
       const { fileChunks } = filesToUpload.reduce(
         ({ fileChunks, chunkSize }, file) => {
           if (file.size > 25 * MEGABYTE) {
@@ -145,7 +137,6 @@ export function useUploadDocuments() {
       }
 
       const toWorkspace = selectedCopilot.id === "default-copilot";
-      // The browser sets the multipart content type (with its boundary) itself
       const { "Content-Type": _json, ...agentHeaders } = getCopilotRequestHeaders();
 
       for (const files of fileChunks) {

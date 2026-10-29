@@ -4,7 +4,12 @@ import type { WidgetId } from "~/components/Widgets";
 type WidgetState = {
   paramOrder?: string[];
   params?: Record<string, StoredParamValue>;
-  storage?: { text?: string; html?: string; rawDataView?: boolean };
+  storage?: {
+    text?: string;
+    html?: string;
+    rawDataView?: boolean;
+    plugin?: { config?: Record<string, unknown> };
+  };
 };
 
 export type TabLayout<Extra = {}> = {
@@ -14,6 +19,5 @@ export type TabLayout<Extra = {}> = {
   w: number;
   h: number;
   state?: WidgetState;
-  /** Whether the widget starts minimized. */
   minimized?: boolean;
 } & Extra;

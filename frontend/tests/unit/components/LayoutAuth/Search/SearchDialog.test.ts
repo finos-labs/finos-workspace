@@ -14,8 +14,8 @@ describe("Search term filtering", () => {
     const result = runSearchTermFiltering("Alpha C");
 
     expect(result.searchTerms).toEqual(["Alpha", "C"]);
-    expect(result.validSearchTerms).toEqual(["Alpha"]); // "C" is filtered out
-    expect(result.termsToSearch).toEqual(["Alpha"]); // Should only search for "Alpha"
+    expect(result.validSearchTerms).toEqual(["Alpha"]);
+    expect(result.termsToSearch).toEqual(["Alpha"]);
   });
 
   it("should preserve all terms when all are valid length", () => {
@@ -30,31 +30,31 @@ describe("Search term filtering", () => {
     const result = runSearchTermFiltering("A B");
 
     expect(result.searchTerms).toEqual(["A", "B"]);
-    expect(result.validSearchTerms).toEqual([]); // Both are filtered out
-    expect(result.termsToSearch).toEqual(["A", "B"]); // Fallback to original
+    expect(result.validSearchTerms).toEqual([]);
+    expect(result.termsToSearch).toEqual(["A", "B"]);
   });
 
   it("should handle single short term correctly", () => {
     const result = runSearchTermFiltering("C");
 
     expect(result.searchTerms).toEqual(["C"]);
-    expect(result.validSearchTerms).toEqual([]); // "C" is filtered out
-    expect(result.termsToSearch).toEqual(["C"]); // Fallback to original
+    expect(result.validSearchTerms).toEqual([]);
+    expect(result.termsToSearch).toEqual(["C"]);
   });
 
   it("should handle empty string", () => {
     const result = runSearchTermFiltering("");
 
     expect(result.searchTerms).toEqual([""]);
-    expect(result.validSearchTerms).toEqual([]); // Empty string is filtered out
-    expect(result.termsToSearch).toEqual([""]); // Fallback to original
+    expect(result.validSearchTerms).toEqual([]);
+    expect(result.termsToSearch).toEqual([""]);
   });
 
   it("should handle mixed valid and invalid terms", () => {
     const result = runSearchTermFiltering("Chart A Widget B");
 
     expect(result.searchTerms).toEqual(["Chart", "A", "Widget", "B"]);
-    expect(result.validSearchTerms).toEqual(["Chart", "Widget"]); // "A" and "B" filtered out
+    expect(result.validSearchTerms).toEqual(["Chart", "Widget"]);
     expect(result.termsToSearch).toEqual(["Chart", "Widget"]);
   });
 

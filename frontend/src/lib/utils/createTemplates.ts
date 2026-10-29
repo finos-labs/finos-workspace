@@ -6,63 +6,17 @@ import {
 } from "~/components/DataConnectors/common/helpers";
 import type { GroupTypeT, WidgetJsonT, WidgetT } from "~/components/types";
 import { someTruthy } from "~/lib/utils/values";
-import type { AppState, GridLayout, Items, Ticker, Widget } from "../state/app";
+import type { AppState, GridLayout, Items, Widget } from "../state/app";
 import type { BackendTemplate, Source } from "../state/backendConnector";
 import { useCopilotStore } from "../state/copilot";
 import { useThemeStore } from "../state/theme";
 import type { TabLayout } from "../templates";
 import { backendTemplateSchema } from "../types/app";
-import {
-  addToWidgetParamGroups,
-  getGridData,
-  getTickerParamName,
-  recursiveCleanKeys,
-} from "./app";
+import { addToWidgetParamGroups, getGridData, recursiveCleanKeys } from "./app";
 import { COLORS, slugify, uuidv4 } from "./utils";
 import { getJsonWidget } from "./widget";
 import { currentDateModifier } from "./widgetParams";
 
-function getTickerSymbolsFromParams(
-  params: Record<string, unknown>,
-  paramName: string,
-) {
-  const value = params[paramName];
-  if (typeof value === "string") {
-    return value
-      .split(",")
-      .map((symbol) => symbol.trim())
-      .filter(Boolean);
-  }
-  if (value && typeof value === "object" && "symbol" in value) {
-    const symbol = String((value as { symbol?: unknown }).symbol || "").trim();
-    return symbol ? [symbol] : [];
-  }
-  return [];
-}
-
-function tickerFromSymbol(symbol: string): Ticker {
-  const normalizedSymbol = symbol.toUpperCase();
-  return {
-    id: normalizedSymbol,
-    symbol: normalizedSymbol,
-    name: normalizedSymbol,
-    category: "equity",
-    type: "stock",
-  };
-}
-
-/**
- * Checks if there are any existing dashboards for a given app that haven't been modified by the user.
- * If such a dashboard exists, it returns the corresponding tab information and navigation path.
- * If all existing dashboards have been modified, it generates a new unique tab name for the app.
- *
- * @param templateId - The unique identifier for the app template.
- * @param appName - The name of the app to be used in the tab name.
- * @param items - The current list of dashboard items to check against.
- *
- * @returns An object containing either the index and navigation path for an untouched dashboard,
- * or a new tab name for a modified app.
- */
 export function getUntouchedAppTabInfo(
   templateId: BackendTemplate["id"],
   appName: string,
@@ -116,11 +70,6 @@ export async function createCustomTemplateTab({
   source: Source;
   currentDashboard?: string;
   dashboardBehavior?: "auto" | "current" | "new";
-  /**
-   * Resolve the backend Source for a single widget id. When provided, each widget is
-   * resolved against its own Source (multi-origin apps); when omitted, the single
-   * `source` is used for every widget (the apps-gallery path).
-   */
   resolveWidgetSource?: (widgetId: string) => Source | undefined;
   resolveWidget?: (widgetId: string) => Widget | WidgetJsonT | WidgetT | undefined;
 }): Promise<string | undefined> {
@@ -168,13 +117,11 @@ export async function createCustomTemplateTab({
         id: groupId,
         color,
         name: group.name,
-        type: group.type ?? "endpointParam",
+        type: group.type,
         groupById: group.paramName,
-        // adding temporarily so i can match the widgets to the groups,
-        // we remove this later before creating the dashboard
         widgetIds: group.widgetIds,
         value: group.defaultValue,
-      } as GroupTypeT<"endpointParam" | "param" | "ticker"> & { widgetIds: string[] };
+      } as GroupTypeT<"endpointParam" | "param"> & { widgetIds: string[] };
     }) || [];
 
   let hasNavigationBar = false;
@@ -248,21 +195,7 @@ export async function createCustomTemplateTab({
             group.groupById = endpointParams?.[group?.groupById];
           }
 
-          if (group?.type === "param" || group?.type === "endpointParam") {
-            widget.paramGroups = addToWidgetParamGroups(widget?.paramGroups, group);
-          }
-
-          if (group?.type === "ticker") {
-            if (!group?.value?.symbol) {
-              group.value = tickerFromSymbol(group?.value as unknown as string);
-            }
-
-            widget.data = {
-              ...(widget.data ?? {}),
-              mainTicker: group.value,
-            };
-            widget.groupId = group.id;
-          }
+          widget.paramGroups = addToWidgetParamGroups(widget?.paramGroups, group);
         }
 
         widget.params = updateParamOrder(state?.paramOrder, widget.params ?? []);
@@ -278,31 +211,6 @@ export async function createCustomTemplateTab({
           };
         }
 
-        const tickerParamName = getTickerParamName(widget as Widget);
-        const tickerSymbols = tickerParamName
-          ? getTickerSymbolsFromParams(params, tickerParamName)
-          : [];
-        const tickerSymbol = tickerSymbols[0];
-        if (tickerParamName && tickerSymbol) {
-          const mainTicker = tickerFromSymbol(tickerSymbol);
-          widget.data = {
-            ...(widget.data ?? {}),
-            mainTicker,
-          };
-          widget.storage = {
-            ...(widget.storage ?? {}),
-            params: {
-              ...(widget.storage?.params ?? {}),
-              ...params,
-              [tickerParamName]:
-                typeof params[tickerParamName] === "string"
-                  ? tickerSymbols.join(",")
-                  : mainTicker.symbol,
-            },
-          };
-        }
-
-        // Create widget instance
         templateWidgets.push({
           ...widget,
           id: widgetUniqueId,
@@ -339,7 +247,6 @@ export async function createCustomTemplateTab({
     templateWidgets.push(navigationWidget);
   }
 
-  // we need to remove widgetIds from groups
   const newGroups = temporaryGroups.map((group) => {
     const { widgetIds, ...restGroup } = group;
     return restGroup;

@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { extractDocument } from "../../../../../../mcp-server/src/tools/backend/documents/extract";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { extractDocument } from "../../../../../../mcp-server/src/tools/backend/documents/extract.ts";
 
 function utf8(s: string): Uint8Array {
   return new TextEncoder().encode(s);
@@ -22,7 +23,7 @@ describe("extractDocument — text + markdown", () => {
   });
 
   it("rejects unknown formats with a clear error", async () => {
-    // @ts-expect-error — testing the runtime guard for unknown formats
+    // @ts-expect-error
     await expect(extractDocument("xls", new Uint8Array())).rejects.toThrow(
       /Unsupported document format/,
     );

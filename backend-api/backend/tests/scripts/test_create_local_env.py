@@ -24,8 +24,6 @@ ADMIN = ["--admin-email", "admin@mail.test"]
 
 @pytest.fixture
 def config(tmp_path, monkeypatch):
-    """Points the script's seed config, ``user_create.json`` and Ines's environment file at files of
-    its own, so that no test writes into the checkout."""
     path = tmp_path / "cfgs" / "config.toml"
     monkeypatch.setattr(local_env, "CONFIG", path)
     monkeypatch.setattr(local_env, "USER_CREATE", tmp_path / "user_create.json")
@@ -93,7 +91,7 @@ def test_the_settings_point_at_the_compose_services():
     values = local_env.settings("a-secret", "0123456789abcdef", "storage")
 
     assert values["DB_HOST"] == "mysql"
-    assert values["REDIS_HOST"] == "redis"
+    assert values["REDIS_HOST"] == "valkey"
     assert values["STORAGE_PROVIDER"] == "folder"
     assert values["FRONTENDURL"] == "http://localhost:3000"
     assert values["SELFURL"] == "http://localhost:8000"
@@ -113,7 +111,6 @@ def test_main_writes_secrets_that_differ_between_runs(tmp_path, monkeypatch, con
     assert runs[0]["JWT_SECRET"] != runs[1]["JWT_SECRET"]
     assert runs[0]["WORKSPACE_AES_KEY"] != runs[1]["WORKSPACE_AES_KEY"]
     assert runs[0]["JWT_SECRET"] != "placeholder"
-    # Strong enough for the API to start with them
     for run in runs:
         assert len(crypto.decode_key_material(run["WORKSPACE_AES_KEY"])) >= 32
         for name in ("JWT_SECRET", "LOCAL_STORAGE_SECRET_KEY"):
@@ -164,9 +161,8 @@ def test_the_seed_config_names_the_administrator_and_no_password(tmp_path, monke
     seed = tomllib.loads(config.read_text())
     assert seed["entity"]["name"] == "Acme"
     assert seed["admins"] == [
-        {"email": "admin@mail.test", "first_name": "Workspace", "last_name": "Administrator"}
+        {"email": "admin@mail.test", "first_name": "FINOS Workspace", "last_name": "Administrator"}
     ]
-    # init_users makes the password up when it creates the account; no file holds it
     assert "password" not in config.read_text()
     assert "password" not in (tmp_path / ".env").read_text().lower()
 
@@ -193,8 +189,6 @@ def test_the_web_app_is_an_allowed_origin():
 
 
 def _api_settings(monkeypatch, env_file) -> Settings:
-    """The API's settings from a written file alone: the test run's own variables would
-    win over the file."""
     for key in parse(env_file.read_text()):
         monkeypatch.delenv(key, raising=False)
     return Settings(_env_file=env_file)
@@ -293,7 +287,6 @@ INES_SCOPE_SECRET=
 
 @pytest.fixture
 def ines(tmp_path, monkeypatch, config):
-    """A checkout with an ``agent/`` directory and the example environment of the API."""
     example = tmp_path / ".env.example"
     example.write_text(EXAMPLE)
     monkeypatch.setattr(local_env, "EXAMPLE", example)
@@ -306,8 +299,6 @@ def ines(tmp_path, monkeypatch, config):
 def test_the_metering_token_is_what_the_api_expects(ines):
     values = local_env.ines_secrets("a-secret")
 
-    # The API requires an expiry and checks it (api.auth_helpers.check_metering), so decoding
-    # the way it does is what says the token this script writes is one the API will take.
     payload = jwt.decode(
         values["INES_METERING_TOKEN"],
         "a-secret",
@@ -321,8 +312,6 @@ def test_the_metering_token_is_what_the_api_expects(ines):
 
 
 def test_the_metering_token_runs_out(ines):
-    """A token that never ran out could only be withdrawn by changing JWT_SECRET, which signs
-    out every user at the same time."""
     long_ago = time.time() - local_env.METERING_TOKEN_DAYS * 24 * 60 * 60 - 60
     stale = local_env.metering_token("a-secret", now=long_ago)
 

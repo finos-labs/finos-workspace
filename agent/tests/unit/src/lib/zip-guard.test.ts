@@ -1,8 +1,9 @@
-import { describe, it, expect } from "bun:test";
-import { assertSafeZip, UnsafeZipError } from "../../../../src/lib/zip-guard";
-import { makeXlsx } from "../../../helpers/make-xlsx";
-import { makeZip } from "../../../helpers/make-zip";
-import { below, seeded } from "../../../helpers/rng";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { assertSafeZip, UnsafeZipError } from "../../../../src/lib/zip-guard.ts";
+import { makeXlsx } from "../../../helpers/make-xlsx.ts";
+import { makeZip } from "../../../helpers/make-zip.ts";
+import { below, seeded } from "../../../helpers/rng.ts";
 
 const refuses = (bytes: Uint8Array) => {
   try {
@@ -56,7 +57,7 @@ describe("assertSafeZip", () => {
   it("refuses a directory that points outside the file", () => {
     const zip = makeZip([{ name: "a", data: new Uint8Array(10) }]);
     const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
-    view.setUint32(zip.length - 22 + 16, 0x7fffffff, true); // directory offset
+    view.setUint32(zip.length - 22 + 16, 0x7fffffff, true);
     expect(refuses(zip)).toContain("damaged");
   });
 

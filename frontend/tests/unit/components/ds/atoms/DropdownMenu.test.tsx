@@ -39,7 +39,7 @@ vi.mock("@radix-ui/react-dropdown-menu", () => {
         </DropdownContext.Provider>
       );
     },
-    Trigger: ({ children, asChild }: { children?: ReactNode; asChild?: boolean }) => {
+    Trigger: ({ children }: { children?: ReactNode; asChild?: boolean }) => {
       const { setOpen } = React.useContext(DropdownContext);
       return (
         <div data-testid="trigger" onClick={() => setOpen(true)}>
@@ -49,7 +49,7 @@ vi.mock("@radix-ui/react-dropdown-menu", () => {
     },
     Portal: ({ children }: { children?: ReactNode }) => {
       const { open } = React.useContext(DropdownContext);
-      return open ? <>{children}</> : null;
+      return open ? children : null;
     },
     Content: ({
       children,

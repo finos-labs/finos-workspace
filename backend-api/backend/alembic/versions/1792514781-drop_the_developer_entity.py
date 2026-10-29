@@ -1,33 +1,8 @@
-"""drop the Developer organization and the On-Premise entity type
-
-Developer is a user type: the "Developer" permissions map that every organization has. The
-API used to make an organization of that name at every start (entity type "Default", code
-DEF), a bucket for the users of a hosted sign-up; nothing makes it any more. And init named
-the first organization's entity type "On-Premise", after a deployment mode that is gone.
-
-This revision deletes the Developer organization where nothing is in it or refers to it: no
-user in its maps, and no role, relationship, dashboard, backend, file share, theme or audit
-entry of it. Its maps go with it, and the invites made for them lose their map, as the key
-would have it. The entity type it had goes too when no organization has it any more. A
-Developer organization that something still refers to is left as it is. Entity types named
-"On-Premise" are renamed "Default".
-
-Everything asks the database first, so on a database made by the current code this changes
-nothing, and running it again is safe. downgrade() does not bring them back: nothing reads
-them.
-
-Revision ID: 8615f7e17679
-Revises: f11377401858
-Create Date: 2026-10-20
-
-"""
-
 import sqlalchemy as sa
 import sqlalchemy_utils
 
 from alembic import op  # type: ignore
 
-# revision identifiers, used by Alembic.
 revision = "8615f7e17679"
 down_revision = "f11377401858"
 branch_labels = None
@@ -40,7 +15,6 @@ DEVELOPER_ENTITY_TYPE_CODE = "DEF"
 ON_PREMISE = "On-Premise"
 DEFAULT = "Default"
 
-# What refers to an organization, besides its own permissions maps
 ENTITY_REFERENCES = [
     ("entity_relationship", "parent_uuid"),
     ("entity_relationship", "child_uuid"),
@@ -73,7 +47,6 @@ user_invite = sa.table("user_invite", sa.column("permissions_uuid", UUID))
 
 
 def _referred(bind: sa.Connection, inspector: sa.Inspector, entity_uuid) -> bool:
-    """Whether anything but the organization's own maps refers to it."""
     for table_name, column_name in ENTITY_REFERENCES:
         if not inspector.has_table(table_name):
             continue
@@ -127,7 +100,6 @@ def upgrade():
             bind.execute(permissions_map.delete().where(permissions_map.c.uuid.in_(maps)))
         bind.execute(entity.delete().where(entity.c.uuid == entity_uuid))
 
-    # The entity type the Developer organization had, once no organization has it
     in_use = sa.exists().where(entity.c.entity_type_uuid == entity_type.c.uuid)
     bind.execute(
         entity_type.delete().where(
@@ -143,4 +115,4 @@ def upgrade():
 
 
 def downgrade():
-    """Nothing: see the note above."""
+    ...

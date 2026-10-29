@@ -1,6 +1,8 @@
-import "./lib/logger";
-import { honoLogger, getLogger } from "./lib/logger";
+import "./lib/logger.ts";
+import { honoLogger, getLogger } from "./lib/logger.ts";
+import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import { WebSocketServer } from "ws";
 import { cors } from "hono/cors";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPTransport } from "@hono/mcp";
@@ -8,137 +10,130 @@ import {
   webSearchSchema,
   webSearchHandler,
   webSearchDescription,
-} from "./tools/backend/web-search";
+} from "./tools/backend/web-search.ts";
 import {
   fetchWebpageSchema,
   fetchWebpageHandler,
   fetchWebpageDescription,
-} from "./tools/backend/fetch-webpage";
+} from "./tools/backend/fetch-webpage.ts";
 import {
   inspectWebpageSchema,
   inspectWebpageHandler,
   inspectWebpageDescription,
-} from "./tools/backend/inspect-webpage";
+} from "./tools/backend/inspect-webpage.ts";
 import {
   queryDocumentsSchema,
   queryDocumentsHandler,
   queryDocumentsDescription,
-} from "./tools/backend/documents/query-documents";
+} from "./tools/backend/documents/query-documents.ts";
 import {
   listDocumentsSchema,
   listDocumentsHandler,
   listDocumentsDescription,
-} from "./tools/backend/documents/list-documents";
-import { embeddingProblem } from "./tools/backend/documents/retrieve";
-import { observed } from "./lib/observe";
-import { requireScope, scopeSecretProblem } from "./lib/scope-check";
-import { renderMetrics } from "../../src/lib/metrics";
-import { configureFetchPolicy } from "../../src/lib/safe-fetch";
-import { mountBridgeRoutes } from "./bridge/routes";
-import { bridgeManager } from "./bridge/singleton";
-import { registerWorkspacePrompts } from "./prompts/workspace";
-import { registerAppBuilderResources } from "./resources/app-builder";
+} from "./tools/backend/documents/list-documents.ts";
+import { embeddingProblem } from "./tools/backend/documents/retrieve.ts";
+import { observed } from "./lib/observe.ts";
+import { requireScope, scopeSecretProblem } from "./lib/scope-check.ts";
+import { renderMetrics } from "../../src/lib/metrics.ts";
+import { configureFetchPolicy } from "../../src/lib/safe-fetch.ts";
+import { mountBridgeRoutes } from "./bridge/routes.ts";
+import { bridgeManager } from "./bridge/singleton.ts";
+import { registerWorkspacePrompts } from "./prompts/workspace.ts";
+import { registerAppBuilderResources } from "./resources/app-builder.ts";
+import { registerWidgetsSchemaResource } from "./resources/widgets-schema.ts";
 import {
   getWorkspaceSnapshotSchema,
   getWorkspaceSnapshotHandler,
   getWorkspaceSnapshotDescription,
-} from "./tools/workspace/get-workspace-snapshot";
+} from "./tools/workspace/get-workspace-snapshot.ts";
 import {
   listAvailableWidgetsSchema,
   listAvailableWidgetsHandler,
   listAvailableWidgetsDescription,
-} from "./tools/workspace/list-available-widgets";
+} from "./tools/workspace/list-available-widgets.ts";
 import {
   getWidgetSchemaSchema,
   getWidgetSchemaHandler,
   getWidgetSchemaDescription,
-} from "./tools/workspace/get-widget-schema";
+} from "./tools/workspace/get-widget-schema.ts";
 import {
   readWidgetSchema,
   readWidgetHandler,
   readWidgetDescription,
-} from "./tools/workspace/read-widget";
+} from "./tools/workspace/read-widget.ts";
 import {
   deleteWidgetSchema,
   deleteWidgetHandler,
   deleteWidgetDescription,
-} from "./tools/workspace/delete-widget";
+} from "./tools/workspace/delete-widget.ts";
 import {
   manageDashboardSchema,
   manageDashboardHandler,
   manageDashboardDescription,
-} from "./tools/workspace/manage-dashboard";
+} from "./tools/workspace/manage-dashboard.ts";
 import {
   navigateWorkspaceSchema,
   navigateWorkspaceHandler,
   navigateWorkspaceDescription,
-} from "./tools/workspace/navigate-workspace";
+} from "./tools/workspace/navigate-workspace.ts";
 import {
   manageNavigationBarSchema,
   manageNavigationBarHandler,
   manageNavigationBarDescription,
-} from "./tools/workspace/manage-navigation-bar";
+} from "./tools/workspace/manage-navigation-bar.ts";
 import {
   createWidgetSchema,
   createWidgetHandler,
   createWidgetDescription,
-} from "./tools/workspace/create-widget";
+} from "./tools/workspace/create-widget.ts";
 import {
   updateWidgetSchema,
   updateWidgetHandler,
   updateWidgetDescription,
-} from "./tools/workspace/update-widget";
+} from "./tools/workspace/update-widget.ts";
 import {
   updateWidgetLayoutSchema,
   updateWidgetLayoutHandler,
   updateWidgetLayoutDescription,
-} from "./tools/workspace/update-widget-layout";
+} from "./tools/workspace/update-widget-layout.ts";
 import {
   addGenerativeWidgetSchema,
   addGenerativeWidgetHandler,
   addGenerativeWidgetDescription,
-} from "./tools/workspace/add-generative-widget";
+} from "./tools/workspace/add-generative-widget.ts";
 import {
   getWidgetDataSchema,
   getWidgetDataHandler,
   getWidgetDataDescription,
-} from "./tools/workspace/get-widget-data";
+} from "./tools/workspace/get-widget-data.ts";
 import {
   getParamsOptionsSchema,
   getParamsOptionsHandler,
   getParamsOptionsDescription,
-} from "./tools/workspace/get-params-options";
+} from "./tools/workspace/get-params-options.ts";
 import {
   assignTasksToAgentsSchema,
   assignTasksToAgentsHandler,
   assignTasksToAgentsDescription,
-} from "./tools/workspace/assign-tasks-to-agents";
+} from "./tools/workspace/assign-tasks-to-agents.ts";
 import {
   getSkillContentSchema,
   getSkillContentHandler,
   getSkillContentDescription,
-} from "./tools/workspace/get-skill-content";
+} from "./tools/workspace/get-skill-content.ts";
 import {
   manageBackendsSchema,
   manageBackendsHandler,
   manageBackendsDescription,
-} from "./tools/workspace/manage-backends";
+} from "./tools/workspace/manage-backends.ts";
 import {
   manageAppsSchema,
   manageAppsHandler,
   manageAppsDescription,
-} from "./tools/workspace/manage-apps";
+} from "./tools/workspace/manage-apps.ts";
 
 const logger = getLogger(["mcp", "server"]);
 
-// What keeps one user's chat from another: the scope key of every call that reaches a tool holding state
-// for a chat is signed by the agent with this secret, and these tools act on no other. A server that ran
-// without it would take any key a client sent, so it does not start without it (INES_AUTH=none, the
-// deployment that has no users, is the named opt-out — the same one the agent takes).
-//
-// Only when this file is the process, which is how it is served (see the Dockerfile): a test that imports
-// it for its `fetch` is not a server starting, and stopping the process would stop the test run. Such a
-// server would in any case refuse every scoped call, because `scopeProblem` makes the same judgement.
 if (import.meta.main) {
   const secretProblem = scopeSecretProblem();
   if (secretProblem) {
@@ -147,10 +142,6 @@ if (import.meta.main) {
   }
 }
 
-// The Workspace's links to its users' files are on the address the browser uses; these tools fetch them from
-// the API's address inside the deployment (see src/lib/safe-fetch.ts), with WORKSPACE_ORIGIN as their Origin:
-// the API refuses the calls of an origin it does not allow. Without WORKSPACE_PUBLIC_URL a link is fetched as
-// it is.
 const workspacePublicUrl = (process.env.WORKSPACE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
 if (workspacePublicUrl) {
   const internalUrl = (process.env.WORKSPACE_API_URL ?? "").trim().replace(/\/+$/, "") || workspacePublicUrl;
@@ -168,31 +159,20 @@ if (workspacePublicUrl) {
   } catch {}
   if (!isOrigin) {
     logger.fatal(
-      "WORKSPACE_ORIGIN is required with WORKSPACE_PUBLIC_URL: the web app's origin, which the Workspace API allows (BACKEND_CORS_ORIGINS), like https://workspace.example.com",
+      "WORKSPACE_ORIGIN is required with WORKSPACE_PUBLIC_URL: the web app's origin, which the FINOS Workspace API allows (BACKEND_CORS_ORIGINS), like https://workspace.example.com",
     );
     process.exit(1);
   }
   configureFetchPolicy({ workspace: { publicUrl: workspacePublicUrl, internalUrl, origin } });
 }
 
-// Which tools exist is decided once, at start, and said once. Each request then gets a server
-// that registers exactly these (see `buildMcpServer`).
 
-// Document RAG — uploaded PDF/DOCX/TXT/MD search via per-conversation
-// vector store. Needs INES_EMBED_MODEL to name the embedding model as
-// <provider>:<model> (no model id is baked in) and that provider's credentials,
-// so the tools are only registered when both are in place.
 const embedProblem = embeddingProblem();
 const docRagEnabled = embedProblem === null;
 if (!docRagEnabled) {
   logger.warn(`${embedProblem} query_documents/list_documents disabled (embeddings unavailable)`);
 }
 
-// Workspace bridge (companion) tools — require a Workspace browser
-// tab connected to /bridge/ws. Behind COMPANION_TOOLS_ENABLED (default off)
-// so a plain backend-tools deployment doesn't advertise 18 tools that need
-// a connected browser. Prompts and app-builder resources only describe
-// these tools, so they're gated together.
 const companionToolsEnabled = process.env.COMPANION_TOOLS_ENABLED === "true";
 if (!companionToolsEnabled) {
   logger.warn(
@@ -200,11 +180,6 @@ if (!companionToolsEnabled) {
   );
 }
 
-/**
- * A server with every tool that is enabled. One is built per request: a server and its transport
- * keep the JSON-RPC ids of the requests in flight, and every client counts its ids from the same
- * start, so one shared by all clients mixes up their answers.
- */
 async function buildMcpServer(): Promise<McpServer> {
   const mcp = new McpServer({
     name: "ines-tools",
@@ -220,8 +195,6 @@ async function buildMcpServer(): Promise<McpServer> {
     observed("inspect_webpage", requireScope(inspectWebpageHandler)),
   );
 
-  // Read-widget-data SQL family lives in the agent now (in-process,
-  // closure on pendingTables). It's no longer registered here.
 
   if (docRagEnabled) {
     mcp.tool(
@@ -337,11 +310,10 @@ async function buildMcpServer(): Promise<McpServer> {
       manageAppsHandler,
     );
 
-    // Workspace MCP prompts (workspace_tool_usage + workspace_session_context).
     registerWorkspacePrompts(mcp);
 
-    // App-builder MCP resources (16 markdown documents under workspace://*).
     await registerAppBuilderResources(mcp);
+    registerWidgetsSchemaResource(mcp);
   }
 
   return mcp;
@@ -368,8 +340,6 @@ app.use(
   }),
 );
 
-// Stateless: every request is answered by its own server and transport, and there is no session to
-// resume and no stream from the server to the client.
 app.post("/mcp", async (c) => {
   const mcp = await buildMcpServer();
   const transport = new StreamableHTTPTransport();
@@ -380,7 +350,7 @@ app.on(["GET", "DELETE"], "/mcp", (c) =>
   c.json({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed." }, id: null }, 405),
 );
 
-const { websocket } = mountBridgeRoutes(app, bridgeManager);
+mountBridgeRoutes(app, bridgeManager);
 
 app.get("/", (c) =>
   c.json({
@@ -434,11 +404,9 @@ app.get("/", (c) =>
 
 const PORT = Number(process.env.MCP_PORT ?? 8787);
 
-// Prometheus scrapes this on its own port (MCP_METRICS_PORT, 9465 unless set; 0 turns it off), which is
-// not published: the metrics are for the operator. Only when this file is the program that runs.
 const METRICS_PORT = Number(process.env.MCP_METRICS_PORT ?? 9465);
 if (import.meta.main && METRICS_PORT > 0) {
-  Bun.serve({
+  serve({
     port: METRICS_PORT,
     fetch(request) {
       return new URL(request.url).pathname === "/metrics"
@@ -449,13 +417,11 @@ if (import.meta.main && METRICS_PORT > 0) {
   logger.info("Metrics on port {port}", { port: METRICS_PORT });
 }
 
-export default {
-  fetch: app.fetch,
-  port: PORT,
-  idleTimeout: 255,
-  websocket,
-};
+if (import.meta.main) {
+  serve({ fetch: app.fetch, port: PORT, websocket: { server: new WebSocketServer({ noServer: true }) } });
+  logger.info(
+    `MCP server starting port=${PORT} docRagEnabled=${docRagEnabled} companionToolsEnabled=${companionToolsEnabled} bridgeMounted=true`,
+  );
+}
 
-logger.info(
-  `MCP server starting port=${PORT} docRagEnabled=${docRagEnabled} companionToolsEnabled=${companionToolsEnabled} bridgeMounted=true`,
-);
+export default { fetch: app.fetch };

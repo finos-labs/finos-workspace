@@ -6,24 +6,14 @@ import { useStoreWithEqualityFn } from "zustand/traditional";
 import type { Skill, SkillCatalogEntry, SkillCreate } from "~/types/auth.type";
 import type { Selector } from "./app";
 
-// Re-export types for convenience
 export type { Skill, SkillCatalogEntry, SkillPayload } from "~/types/auth.type";
 
-// Regex for valid slug format: lowercase letters, numbers, and hyphens only
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-/**
- * Validates a skill slug format.
- * Valid slugs: lowercase letters, numbers, and hyphens (no leading/trailing hyphens)
- */
 export function isValidSlug(slug: string): boolean {
   return SLUG_REGEX.test(slug) && slug.length >= 2 && slug.length <= 50;
 }
 
-/**
- * Converts a string to a valid slug format.
- * Converts to lowercase, replaces spaces and special chars with hyphens.
- */
 export function toSlug(input: string): string {
   return input
     .toLowerCase()
@@ -37,15 +27,10 @@ export function toSlug(input: string): string {
 
 interface SkillsLibraryState {
   skills: Skill[];
-  /** `boolean` or `skill ID` to open the add/edit dialog.
-   * If `string`, it represents the `skill ID` being edited. */
   skillDialogOpen: boolean | string;
   setSkillDialogOpen: (open: boolean | string) => void;
-  /** Prefilled values for the add-skill dialog when creating a new skill. */
   skillDialogPrefill: Partial<SkillCreate> | null;
-  /** Open the add-skill dialog in create mode with prefilled values (single atomic update). */
   openSkillDialogWithPrefill: (prefill: Partial<SkillCreate>) => void;
-  /** Close the dialog and clear any prefill (single atomic update). */
   closeSkillDialog: () => void;
   getSkillById: (id: string) => Skill | undefined;
   getSkillBySlug: (slug: string) => Skill | undefined;
@@ -64,10 +49,6 @@ export const useSkillsLibraryStore = create<SkillsLibraryState>()(
     openSkillDialogWithPrefill: (skillDialogPrefill) =>
       set({ skillDialogPrefill, skillDialogOpen: true }),
     closeSkillDialog: () => set({ skillDialogOpen: false, skillDialogPrefill: null }),
-    /**
-     * Check if a slug is unique among existing skills.
-     * Optionally exclude a specific skill ID (for editing).
-     */
     isSlugUnique: (slug, excludeId) => {
       const { skills } = get();
       return !skills.some(
@@ -75,9 +56,6 @@ export const useSkillsLibraryStore = create<SkillsLibraryState>()(
       );
     },
 
-    /**
-     * Get a lightweight catalog of all skills for sending with queries.
-     */
     getSkillsCatalog: () => {
       return get().skills.map((skill) => ({
         slug: skill.slug,

@@ -35,10 +35,6 @@ const modelKey = (agentId: string, modelId: string) => `${agentId}\u0000${modelI
 const mcpKey = (url: string, tool: string) => `${url}\u0000${tool}`;
 const splitKey = (key: string) => key.split("\u0000") as [string, string];
 
-/**
- * Lets an admin choose the Copilot models and the MCP servers and tools that the users of
- * a role may use. Users may use only what one of their roles grants.
- */
 export default function RoleCopilotAccessDialog({ open, onClose, role }: Props) {
   const queryClient = useQueryClient();
   const roleUuid = role?.uuid ?? "";
@@ -56,7 +52,6 @@ export default function RoleCopilotAccessDialog({ open, onClose, role }: Props) 
     staleTime: 0,
   });
 
-  // The chat loads the default agent's descriptor; this page has to read it itself
   const { data: defaultAgent } = useQuery({
     queryKey: ["defaultAgent"],
     queryFn: ({ signal }) => fetchDefaultAgent(signal),
@@ -72,7 +67,6 @@ export default function RoleCopilotAccessDialog({ open, onClose, role }: Props) 
     setMcp(new Set(granted.mcp.map((g) => mcpKey(g.server_url, g.tool_name))));
   }, [granted]);
 
-  // The agents and servers this admin can see, plus whatever the role already grants
   const agents = useMemo<AgentModels[]>(() => {
     const byId = new Map<string, AgentModels>();
     const copilots = [

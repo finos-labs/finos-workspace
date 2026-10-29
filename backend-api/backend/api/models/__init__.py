@@ -33,6 +33,16 @@ from .user_models import (
     UserSkills,
     UserUsage,
 )
+from .widget_plugin_models import (
+    EntityVizHandler,
+    EntityWidgetPlugin,
+    RoleWidgetPlugin,
+    WidgetPlugin,
+    WidgetPluginCspReport,
+    WidgetPluginEvent,
+    WidgetPluginSecret,
+    WidgetPluginVersion,
+)
 from .workspace_models import (
     ApiSource,
     ChatMessages,

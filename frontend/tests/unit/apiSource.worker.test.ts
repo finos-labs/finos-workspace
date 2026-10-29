@@ -58,7 +58,6 @@ type WorkerHandler = (e: MessageEvent) => Promise<void>;
 async function loadWorker(): Promise<WorkerHandler> {
   vi.resetModules();
   await import("~/apiSource.worker");
-  // The worker module assigns self.onmessage at top-level; in jsdom `self` === `globalThis`.
   const handler = (globalThis as unknown as { onmessage: WorkerHandler }).onmessage;
   if (!handler) throw new Error("Worker did not attach onmessage");
   return handler;
@@ -104,9 +103,8 @@ describe("apiSource.worker streaming partials", () => {
       }),
     );
 
-    // s2 finishes first.
     d2.resolve(okResult());
-    await new Promise((r) => setTimeout(r, 800)); // wait for debounced partial to flush
+    await new Promise((r) => setTimeout(r, 800));
 
     const partialsAfterS2 = postMessageSpy.mock.calls.filter(
       ([msg]) => msg?.__partial === true,
@@ -115,13 +113,11 @@ describe("apiSource.worker streaming partials", () => {
     expect(partialsAfterS2[0][0].apiSources).toHaveLength(1);
     expect(partialsAfterS2[0][0].apiSources[0].id).toBe("s2");
     expect(partialsAfterS2[0][0].apiSources[0].status).toBe("success");
-    // No final aggregate yet — s1 is still pending.
     const finalsAfterS2 = postMessageSpy.mock.calls.filter(
       ([msg]) => msg?.__partial !== true,
     );
     expect(finalsAfterS2).toHaveLength(0);
 
-    // Now s1 finishes.
     d1.resolve(okResult());
     await done;
 
@@ -144,7 +140,7 @@ describe("apiSource.worker streaming partials", () => {
       }),
     );
 
-    await new Promise((r) => setTimeout(r, 400)); // wait for debounced partial to flush
+    await new Promise((r) => setTimeout(r, 400));
 
     const finals = postMessageSpy.mock.calls.filter(([msg]) => msg?.__partial !== true);
     expect(finals).toHaveLength(1);

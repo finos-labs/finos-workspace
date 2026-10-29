@@ -17,6 +17,7 @@ import { useJsonData } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { cn, formatDate } from "~/lib/utils";
+import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
 
 type NewsData = {
   title: string;
@@ -33,7 +34,6 @@ function formatArticleDate(date: string) {
   return Number.isNaN(parsed.getTime()) ? date : formatDate(parsed);
 }
 
-/** A list of articles from the widget's endpoint; an article opens in a dialog. */
 export default function News() {
   const { widget } = useWidgetContext();
 
@@ -43,26 +43,14 @@ export default function News() {
   const [popupArticle, setPopupArticle] = useState<NewsData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const options = useMemo(() => {
-    const endpoint = widget.endpoint;
-    const params = Object.fromEntries(
-      Object.entries({
-        ...credentials.query,
-        ...(widget?.storage?.params ?? {}),
-      }).filter(([_key, value]) => value !== "" && value !== undefined),
-    );
-
-    return {
-      url: endpoint?.url ?? "",
-      endpointHeaders: credentials.headers,
-      method: endpoint?.method ?? "GET",
-      params,
-    };
-  }, [widget?.endpoint, widget?.storage?.params, credentials]);
+  const request = useMemo(
+    () => buildWidgetRequest(widget, credentials),
+    [widget.endpoint, widget.params, widget.storage?.params, credentials],
+  );
 
   const { data, isLoading, error, dataUpdatedAt } = useJsonData(
     {
-      ...options,
+      request,
       responseCb: async (response, resolve) => {
         const dataKey = widget?.data?.dataKey;
         const json = await response.json();

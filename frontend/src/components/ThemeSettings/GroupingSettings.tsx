@@ -22,15 +22,15 @@ import {
 } from "./ThemeSettingsLayout";
 
 const DEFAULT_COLORS = [
-  "#00B5E2", // FINOS light blue
-  "#EF6689", // pink
-  "#16A34A", // green
-  "#FB923C", // orange
-  "#CCBE00", // yellow
-  "#0086BF", // FINOS dark blue
-  "#998E00", // dark yellow
-  "#917DB0", // purple
-  "#FB923C", // orange
+  "#00B5E2",
+  "#EF6689",
+  "#16A34A",
+  "#FB923C",
+  "#CCBE00",
+  "#0086BF",
+  "#998E00",
+  "#917DB0",
+  "#FB923C",
 ];
 
 const MIN_COLORS = 5;
@@ -273,9 +273,6 @@ export function GroupingSettings() {
   );
 }
 
-// Preview component showing mock groups. The background must reflect the
-// locally-selected theme mode (not the global app theme), so colors are driven
-// off `themeMode` with primitive classes rather than `dark:` variants.
 function GroupingPreview({
   palette,
   themeMode,
@@ -372,7 +369,6 @@ function GroupingPreview({
   );
 }
 
-// Helper to determine if color is light
 function isLight(color: string): boolean {
   const hex = color.replace("#", "");
   const r = Number.parseInt(hex.substr(0, 2), 16);

@@ -1,13 +1,13 @@
-import { describe, it, expect } from "bun:test";
-import { asWidgetDataMessage, isWidgetDataMcpResult, isWidgetDataToolName } from "../../../../src/agent/workspace-widget-data";
-import type { ToolMessage, Widget } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { asWidgetDataMessage, isWidgetDataMcpResult, isWidgetDataToolName } from "../../../../src/agent/workspace-widget-data.ts";
+import type { ToolMessage, Widget } from "../../../../src/protocol/types.ts";
 
 const widget = (overrides: Partial<Widget> = {}): Widget =>
   ({ uuid: "w-1", origin: "ODP", widget_id: "asset_info", name: "Asset Info", description: "", params: [], ...overrides }) as Widget;
 
 const ROWS = [{ symbol: "AAPL", price: 336.64 }];
 
-/** What the browser re-POSTs for a call of the Workspace's MCP tool: the tool's JSON result, as the list of its text items, as one JSON string. */
 function mcpMessage(result: unknown, parameters: Record<string, unknown> = { origin: "ODP", widget_id: "asset_info", widget_uuid: "w-1" }): ToolMessage {
   return {
     role: "tool",
@@ -31,14 +31,13 @@ describe("isWidgetDataToolName", () => {
 });
 
 describe("asWidgetDataMessage", () => {
-  it("reads the result of the Workspace's tool as the tool message of a widget-data round trip", () => {
+  it("reads the result of the FINOS Workspace's tool as the tool message of a widget-data round trip", () => {
     const message = asWidgetDataMessage(mcpMessage(OK), [widget()]);
     expect(message).toMatchObject({
       role: "tool",
       function: "get_widget_data",
       input_arguments: { data_sources: [{ widget_uuid: "w-1", origin: "ODP", id: "asset_info", input_args: {} }] },
     });
-    // The rows are the JSON text that the widget parsers read.
     expect(message?.data).toEqual([{ items: [{ content: JSON.stringify(ROWS) }] }]);
   });
 
@@ -56,7 +55,6 @@ describe("asWidgetDataMessage", () => {
   });
 
   it("finds a file attached to the chat when the model names it by the stored file's uuid alone", () => {
-    // An attachment has no uuid of its own: the request carries `file-<stored file uuid>` as its id and uuid.
     const stored = "98569980-e380-46d4-b3c6-c23db2e75180";
     const attachment = widget({ uuid: `file-${stored}`, origin: "the backend", widget_id: `file-${stored}`, name: "notes.txt" });
     const message = asWidgetDataMessage(mcpMessage(OK, { origin: "the backend", widget_id: "file", widget_uuid: stored }), [widget(), attachment]);
@@ -90,7 +88,7 @@ describe("asWidgetDataMessage", () => {
     expect(asWidgetDataMessage({ ...mcpMessage(OK), data: [] } as unknown as ToolMessage, [widget()])).toBeNull();
   });
 
-  it("is only for the Workspace's widget-data tool", () => {
+  it("is only for the FINOS Workspace's widget-data tool", () => {
     const other = { ...mcpMessage(OK), input_arguments: { server_id: "x", tool_name: "x_web_search", parameters: {} } } as unknown as ToolMessage;
     expect(isWidgetDataMcpResult(other)).toBe(false);
     expect(asWidgetDataMessage(other, [widget()])).toBeNull();

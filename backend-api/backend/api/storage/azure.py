@@ -1,5 +1,3 @@
-"""Functions to help with Azure"""
-
 from datetime import UTC, datetime, timedelta
 from mimetypes import guess_type
 from typing import Any, BinaryIO

@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it, type Mock, vi } from "vitest";
 import ExportWidgetModal from "~/components/General/ExportWidgetModal";
 import { useThemeStore } from "~/lib/state/theme";
 
-// Mock the necessary hooks and modules
 vi.mock("~/lib/state/theme", () => ({
   useThemeStore: vi.fn(() => ({
     exportWidgetData: {
@@ -34,10 +33,8 @@ describe("ExportWidgetModal", () => {
   beforeEach(() => {
     vi.useFakeTimers();
 
-    // Reset mocks before each test
     vi.clearAllMocks();
 
-    // Mock the return values of the hooks
     (useThemeStore as unknown as Mock).mockReturnValue({
       exportWidgetData: {
         widgetName: "Test Widget",
@@ -103,7 +100,6 @@ describe("ExportWidgetModal", () => {
     const { setExportWidgetData } = useThemeStore();
     render(<ExportWidgetModal />);
 
-    // Find the cancel button
     const cancelButton = screen.getByRole("button", { name: /cancel/i });
     fireEvent.click(cancelButton);
 

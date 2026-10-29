@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import type Redis from "ioredis";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
+import type { Redis } from "ioredis";
 import {
   upsertDocument,
   listDocuments,
@@ -9,8 +10,8 @@ import {
   _resetDocStoreState,
   MAX_DOCS_PER_CHAT,
   type StoredDocument,
-} from "../../../../../../mcp-server/src/tools/backend/documents/store";
-import { _setRedisClientForTest } from "../../../../../../mcp-server/src/lib/redis";
+} from "../../../../../../mcp-server/src/tools/backend/documents/store.ts";
+import { _setRedisClientForTest } from "../../../../../../mcp-server/src/lib/redis.ts";
 
 function makeDoc(id: string, chunks: number): StoredDocument {
   return {
@@ -149,7 +150,6 @@ describe("doc store — redis persistence", () => {
     const doc = makeDoc("doc-r1", 1);
     mock.hashes.set("ines:doc:c2", new Map([["doc-r1", JSON.stringify(doc)]]));
 
-    // Fresh state — nothing in-memory for c2 yet
     expect(listDocuments("c2")).toEqual([]);
 
     await ensureHydrated("c2");
@@ -164,7 +164,6 @@ describe("doc store — redis persistence", () => {
     mock.hashes.set("ines:doc:c3", new Map([["doc-once", JSON.stringify(doc)]]));
 
     await ensureHydrated("c3");
-    // Mutate redis after first hydration — second call must not reload
     mock.hashes.set(
       "ines:doc:c3",
       new Map([["doc-twice", JSON.stringify(makeDoc("doc-twice", 1))]]),

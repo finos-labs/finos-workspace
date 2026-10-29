@@ -7,7 +7,6 @@ import {
   useRef,
 } from "react";
 
-// Any function, whatever its parameters
 type GenericFunc = (...args: never[]) => unknown;
 type ObjectType<T> = { [K in keyof T]: T[K] };
 type RecordRefsType<T> = MutableRefObject<ObjectType<T>>;
@@ -32,14 +31,6 @@ export function useCreateRef<T>(initialValue: T): MutableRefObject<T> {
   return ref;
 }
 
-/**
- * Stabilize a callback with React.useRef
- *
- * A custom hook that converts a callback to a ref to avoid triggering re-renders when passed as a
- * prop or avoid re-executing effects when passed as a dependency
- *
- * Ref: https://github.com/radix-ui/primitives/tree/main/packages/react/use-callback-ref
- */
 export const useCallbackRef = <T extends GenericFunc>(callback: T | undefined): T => {
   const callbackRef = useRef(callback);
 

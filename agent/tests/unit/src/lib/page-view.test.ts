@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { overviewOf, viewOf, type PageRequest } from "../../../../src/lib/page-view";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { overviewOf, viewOf, type PageRequest } from "../../../../src/lib/page-view.ts";
 
 const URL_ = "https://news.example/2026/q3/";
 

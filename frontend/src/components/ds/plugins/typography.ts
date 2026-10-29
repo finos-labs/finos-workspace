@@ -98,7 +98,6 @@ const WEIGHT = {
 type Style = keyof typeof STYLE;
 type Size<T extends Style> = keyof (typeof SIZE)[T];
 type Weight = keyof typeof WEIGHT;
-// type TypographyClass = `${Style}-${Size<Style>}-${Weight}`; //? not sure I need it
 type TypographyObject = Record<string, string>;
 
 const classMap = new Map<string, TypographyObject>();

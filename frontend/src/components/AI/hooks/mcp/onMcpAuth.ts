@@ -7,11 +7,6 @@ import {
   type McpAuthCallbackMessage,
 } from "./mcpServerAuth";
 
-/**
- * Hands the authorization server's answer to the API, which exchanges the code and keeps
- * the grant, then tells the page that opened the sign-in popup. Rejects with what went
- * wrong, which the opener hears too.
- */
 export async function finishMcpSignIn(params: URLSearchParams) {
   const channel = new BroadcastChannel(MCP_AUTH_CHANNEL);
   const notify = (message: McpAuthCallbackMessage) => channel.postMessage(message);
@@ -39,14 +34,9 @@ export async function finishMcpSignIn(params: URLSearchParams) {
   }
 }
 
-/**
- * The /oauth/callback page in the sign-in popup: finishes the sign-in once and closes the
- * window. Returns the error to show when it fails.
- */
 export function useMcpAuthCallback() {
   const [searchParams] = useSearchParams();
   const [error, setError] = useState<string | null>(null);
-  // The answer is single-use: a second run (a re-render, React's strict mode) would fail it
   const started = useRef(false);
 
   useEffect(() => {

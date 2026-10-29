@@ -14,7 +14,10 @@ vi.mock("~/api/auth.api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("~/api/auth.api")>()),
   getApiSources: vi.fn(async () => []),
 }));
-vi.mock("~/api/dashboard.api", () => ({ saveDashboards: vi.fn() }));
+vi.mock("~/api/dashboard.api", () => ({
+  saveDashboards: vi.fn(),
+  saveDashboardsOnExit: vi.fn(),
+}));
 vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
   useGetAppWidgets: vi.fn(),
 }));
@@ -31,7 +34,6 @@ function renderAt(path: string) {
 
 describe("useSyncItems after a reload", () => {
   beforeEach(() => {
-    // The page's color-scheme meta, which applying the synced theme updates
     if (!document.querySelector('meta[name="color-scheme"]')) {
       const meta = document.createElement("meta");
       meta.name = "color-scheme";
@@ -55,7 +57,6 @@ describe("useSyncItems after a reload", () => {
     expect(apiClient.get).not.toHaveBeenCalled();
   });
 
-  // Data backend credentials are never persisted, so only this refetch restores them
   it.each([
     "/app",
     "/app/dashboard-1",

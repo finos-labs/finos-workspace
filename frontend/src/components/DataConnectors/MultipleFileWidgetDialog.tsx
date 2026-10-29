@@ -91,7 +91,7 @@ export function FileExtraSettings(props: FileExtraSettingsProps) {
                 <FormTextarea
                   className="min-h-[173px] max-h-[173px]"
                   label={<p className="">Description</p>}
-                  placeholder="Investment report on NVDA written by Bobby Axelrod at Axe Capital"
+                  placeholder="What this file contains"
                   {...field}
                 />
               </div>
@@ -144,9 +144,6 @@ export function FileFormElement(props: FileFormElementProps) {
                   if (status === 200) {
                     setFiles((prevFiles) => {
                       const newFiles = prevFiles.filter((f) => f.uuid !== file.uuid);
-                      /*       if (newFiles.length === 0) {
-                          setSearchParams({ currentTab });
-                        }*/
                       return newFiles;
                     });
                   }

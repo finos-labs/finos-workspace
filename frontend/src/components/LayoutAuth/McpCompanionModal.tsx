@@ -36,11 +36,8 @@ export const McpCompanionModal = memo(() => {
 
   useEffect(() => {
     const previousStatus = previousStatusRef.current;
-    // Only celebrate user-initiated connects (attempting -> connected).
-    // Automatic reconnects recover silently — a flaky bridge would otherwise
-    // spam a success toast on every recovery.
     if (status === "connected" && previousStatus === "attempting") {
-      toast.success("Workspace MCP companion connected", {
+      toast.success("FINOS Workspace MCP companion connected", {
         description: "Your agent can now access this session via MCP.",
       });
     }
@@ -52,8 +49,6 @@ export const McpCompanionModal = memo(() => {
     const isConnecting = status === "attempting" || status === "reconnecting";
     const isDropped = status === "disabled" && lastError !== null;
 
-    // Map the bridge status to the shared connection-dot vocabulary. coloredLabel
-    // tints the dot + label one color.
     let dotStatus: ConnectionStatus = "disconnected";
     let statusLabel = "Not connected";
     if (isConnected) {
@@ -81,8 +76,6 @@ export const McpCompanionModal = memo(() => {
   );
 
   const handleClose = useCallback(() => {
-    // Closing mid-attempt cancels the in-flight bootstrap; an established
-    // connection is left running.
     if (status === "attempting" || status === "reconnecting") {
       disconnect();
     }
@@ -96,10 +89,10 @@ export const McpCompanionModal = memo(() => {
       className="max-w-[440px] sm:max-w-[440px]"
     >
       <DialogHeader>
-        <DialogTitle>Workspace MCP Companion</DialogTitle>
+        <DialogTitle>FINOS Workspace MCP Companion</DialogTitle>
         <DialogDescription>
-          Connect this Workspace session so an external MCP agent can reach it. Toggle
-          the connection on, then create a token for your agent.{" "}
+          Connect this FINOS Workspace session so an external MCP agent can reach it.
+          Toggle the connection on, then create a token for your agent.{" "}
           {docsHref && (
             <a
               href={docsHref}

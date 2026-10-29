@@ -30,14 +30,10 @@ export function useTextSuggestions(
         return { question, matchCount, idsLength: ids.length };
       });
 
-      // Check for the prompts that make sense for function calling based on the widgets in the dashboard
-      // Randomize the order of these prompts (if there are messages)
       const exactMatchedPrompts = matchedPrompts
         .filter(({ matchCount, idsLength }) => matchCount === idsLength)
-        // No randomize if empty (avoids spamming while dashboard is loading)
         .sort(() => (hasMessages ? Math.random() - 0.5 : 0));
 
-      // Check that the prompt hasn't already been used in the conversation
       const exactMatchedPromptsUnused = exactMatchedPrompts.filter(
         (item) =>
           !messages.some(
@@ -45,9 +41,6 @@ export function useTextSuggestions(
           ),
       );
 
-      // Sort them based on the number of matches of widgets matches
-      // E.g. if a prompt relies on having 3 widgets on the dashboard, this is obviously
-      // much more targeted than a prompt than just relies on 1, thus the former takes priority
       return exactMatchedPromptsUnused.sort((a, b) => b.matchCount - a.matchCount);
     }
     return [];

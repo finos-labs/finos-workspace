@@ -1,17 +1,10 @@
-/**
- * get_params_options — fetch parameter options for one widget input.
- *
- * Mirrors workspace_mcp/server.py:601-628. Only call after get_widget_schema
- * shows the exact param has requires_options_lookup=true.
- */
-
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
-import { parseJsonObject, JsonArgumentError } from "../../bridge/json-args";
-import { paramOptionsPayloads } from "../../bridge/translate";
-import { describeTool, PARAM_OPTIONS_SHAPE } from "../../bridge/instructions";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
+import { parseJsonObject, JsonArgumentError } from "../../bridge/json-args.ts";
+import { paramOptionsPayloads } from "../../bridge/translate.ts";
+import { describeTool, PARAM_OPTIONS_SHAPE } from "../../bridge/instructions.ts";
 
 export const getParamsOptionsSchema = {
   origin: z.string().describe(

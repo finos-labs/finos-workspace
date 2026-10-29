@@ -1,25 +1,7 @@
-/**
- * Reading a web page that someone else wrote, in parts.
- *
- * A page is not a thing to put in front of a model whole (a few hundred KB of markup that was mostly not
- * written to be read), and a markdown copy of it throws away what the work may need: the links, the tables,
- * the data a page carries for its scripts, the markup itself. So a page is held as it was fetched and read
- * through views, each of which returns a bounded amount: an overview (what the page is and what it
- * contains), its readable text from an offset, the elements a CSS selector names, its links, its tables,
- * the JSON it embeds, its source. See the `fetch_webpage` and `inspect_webpage` tools.
- *
- * This file parses and walks the DOM, and runs in a child process (html-child.ts): a page built to be deep,
- * wide or slow cannot stop the agent or the tool server. The functions are plain, so tests run them here.
- * Nothing in what a view returns repeats what the caller asked for: a result is only the page's, so that a
- * model cannot get its own text back as something that came from a page.
- */
-
 import { createRequire } from "node:module";
 import TurndownService from "turndown";
-import { collapseSpace, cut } from "./page-text";
+import { collapseSpace, cut } from "./page-text.ts";
 
-// The part of the DOM that is read. domino's own typings declare a module under another name, and the DOM
-// types are not in this project's libs.
 interface DomElement {
   tagName: string;
   textContent: string | null;
@@ -36,7 +18,6 @@ const domino = createRequire(import.meta.url)("@mixmark-io/domino") as {
   createDocument(html?: string, force?: boolean): DomDocument;
 };
 
-/** The most readable text kept of a page (a page's text, not its markup). */
 export const MAX_MARKDOWN_CHARS = 1_500_000;
 const MAX_REGION_ELEMENTS = 50;
 const MAX_JSON_SOURCE_CHARS = 5_000_000;
@@ -59,7 +40,6 @@ export interface PageOverview {
   outline: Array<{ level: number; text: string }>;
   counts: { links: number; tables: number; images: number; forms: number };
   data: DataSource[];
-  /** The readable text of the page, as markdown. */
   markdown: string;
 }
 
@@ -71,11 +51,8 @@ export type PageRequest =
   | { view: "data"; path?: string; limit: number };
 
 export interface PageViewResult {
-  /** What the view found, as text for the model. */
   text: string;
-  /** For `region`: the markdown of the part of the page. */
   markdown?: string;
-  /** For `tables`: the tables, to be loaded for SQL. */
   tables?: Array<{ name: string; rows: Record<string, string>[] }>;
 }
 
@@ -94,7 +71,6 @@ function parse(html: string): DomDocument {
 }
 
 function toMarkdown(html: string): string {
-  // A fresh TurndownService per call: .remove() mutates the instance.
   const td = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
   td.remove(NOT_READ);
   return td.turndown(html).slice(0, MAX_MARKDOWN_CHARS);
@@ -108,7 +84,6 @@ function all(root: DomElement, selector: string): DomElement[] {
   return Array.from(root.querySelectorAll(selector));
 }
 
-/** A selector that does not parse is a caller's mistake, not a failure of the page. */
 function select(root: DomElement, selector: string): DomElement[] | null {
   try {
     return all(root, selector);
@@ -126,7 +101,6 @@ function jsonSources(doc: DomDocument, html: string, contentType: string | undef
       try {
         found.push({ kind: "JSON", value: JSON.parse(html), bytes: html.length });
       } catch {
-        // not JSON after all
       }
     }
     return found;
@@ -142,7 +116,6 @@ function jsonSources(doc: DomDocument, html: string, contentType: string | undef
         bytes: text.length,
       });
     } catch {
-      // a script that is not JSON is not a source
     }
   }
   return found;
@@ -167,7 +140,6 @@ function describeSource(kind: string, value: unknown): string {
   return typeof value;
 }
 
-/** What a page is and what it contains: the first thing to know before reading any of it. */
 export function overviewOf(html: string, _url: string, contentType?: string): PageOverview {
   if (!isHtml(contentType)) {
     const doc = parse("");
@@ -221,7 +193,6 @@ function pageBase(doc: DomDocument, url: string): string {
     try {
       return new URL(href, url).href;
     } catch {
-      // fall through
     }
   }
   return url;
@@ -247,7 +218,6 @@ function jsonValue(sourceValue: unknown, path: string): { found: true; value: un
   return { found: true, value: current };
 }
 
-/** A value for a model to read: shallow, with long strings and long lists cut, and the cuts said. */
 function compact(value: unknown, depth = 0): unknown {
   if (typeof value === "string") return value.length > 300 ? `${value.slice(0, 300)}… (${value.length} characters)` : value;
   if (Array.isArray(value)) {
@@ -297,7 +267,6 @@ function tablesOf(root: DomElement): Array<{ caption: string; rows: Record<strin
   return out;
 }
 
-/** One view of a page: see PageRequest. */
 export function viewOf(html: string, url: string, request: PageRequest, contentType?: string): PageViewResult {
   const doc = parse(isHtml(contentType) ? html : "");
 

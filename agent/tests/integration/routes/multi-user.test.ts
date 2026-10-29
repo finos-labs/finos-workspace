@@ -1,32 +1,24 @@
-/**
- * Tier 2 — the agent with users: sign-in, role access, usage counting, limits, and keeping one
- * user's chat away from another's.
- *
- * Drives the whole app (src/app.ts) and the real loop, with a mocked model and a stub of the
- * Workspace API, which is what the agent asks about users, roles and usage.
- */
-
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
-import { llmCallsTool, llmEmitsText, makeMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm";
+import { describe, it, beforeEach, afterEach, mock } from "node:test";
+import { expect } from "expect";
+import { llmCallsTool, llmEmitsText, makeMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm.ts";
 
 let currentModel = makeMockLlm(llmEmitsText("ok"));
-// Only resolveModel is replaced; the module's other exports are used by the loop and must stay.
-const realProviders = await import("../../../src/lib/providers");
-mock.module("../../../src/lib/providers", () => ({
+const realProviders = await import("../../../src/lib/providers.ts");
+mock.module("../../../src/lib/providers.ts", { exports: {
   ...realProviders,
   resolveModel: () => currentModel,
-}));
+} });
 
-const { createApp } = await import("../../../src/app");
-const { loadConfig } = await import("../../../src/lib/config");
-const { createLimits } = await import("../../../src/auth/limits");
-const { createLocalStore } = await import("../../../src/lib/store");
-const { verifyScope, signScope, signUrl, verifyUrl } = await import("../../../src/lib/scope");
-const { readSse } = await import("../../helpers/sse-reader");
-const { clearAllModuleState } = await import("../../helpers/clear-state");
-import type { Authorization, Result, WorkspaceClient } from "../../../src/auth/workspace-client";
-import { modelKnowsTool } from "../../helpers/offered-tools";
-import { logicalUrl } from "../../helpers/logical-url";
+const { createApp } = await import("../../../src/app.ts");
+const { loadConfig } = await import("../../../src/lib/config.ts");
+const { createLimits } = await import("../../../src/auth/limits.ts");
+const { createLocalStore } = await import("../../../src/lib/store.ts");
+const { verifyScope, signScope, signUrl, verifyUrl } = await import("../../../src/lib/scope.ts");
+const { readSse } = await import("../../helpers/sse-reader.ts");
+const { clearAllModuleState } = await import("../../helpers/clear-state.ts");
+import type { Authorization, Result, WorkspaceClient } from "../../../src/auth/workspace-client.ts";
+import { modelKnowsTool } from "../../helpers/offered-tools.ts";
+import { logicalUrl } from "../../helpers/logical-url.ts";
 
 const SECRET = "0123456789abcdef0123";
 const ENV = {
@@ -139,7 +131,6 @@ const chatText = (blocks: { event: string; data: unknown }[]) =>
     .map((b) => (b.data as { delta: string }).delta)
     .join("");
 
-/** The names of the tools a model call was given. */
 
 const functionCall = (blocks: { event: string; data: unknown }[]) =>
   blocks.find((b) => b.event === "copilotFunctionCall")?.data as
@@ -153,7 +144,6 @@ const toolResult = {
   data: [{ items: [{ text: "[No output]" }] }],
 };
 
-// The route reads DEFAULT_MODEL from the environment, as the deployment's config does.
 const savedDefaultModel = process.env.DEFAULT_MODEL;
 beforeEach(() => {
   clearAllModuleState();
@@ -174,7 +164,7 @@ describe("signing in", () => {
     expect(stub.authorized).toHaveLength(0);
   });
 
-  it("refuses a token the Workspace API does not know", async () => {
+  it("refuses a token the FINOS Workspace API does not know", async () => {
     const res = await ask(appFor(workspaceStub()), { token: "forged" });
     expect(res.status).toBe(401);
   });
@@ -186,7 +176,7 @@ describe("signing in", () => {
     expect((await app.request("/ready")).status).toBe(200);
   });
 
-  it("is not ready while the Workspace API does not answer", async () => {
+  it("is not ready while the FINOS Workspace API does not answer", async () => {
     const stub = workspaceStub();
     stub.setReady(false);
     expect((await appFor(stub).request("/ready")).status).toBe(503);
@@ -229,7 +219,7 @@ describe("a user's query", () => {
     expect(stub.authorized[0].request.model).toBe("test-provider:other-model");
   });
 
-  it("is refused with the Workspace's own wording once the daily limit is used up, and the model is not called", async () => {
+  it("is refused with the FINOS Workspace's own wording once the daily limit is used up, and the model is not called", async () => {
     const stub = workspaceStub();
     stub.setCounting({ ok: false, reason: "limit", message: "Cannot increment usage beyond the maximum limit of 50" });
     const spy = makeSpyMockLlm(llmEmitsText("should not be said"));
@@ -270,7 +260,7 @@ describe("a user's query", () => {
     expect(modelKnowsTool(spy.calls[0], "query_documents")).toBe(true);
   });
 
-  it("is refused for a model the deployment does not offer, before the Workspace is asked anything", async () => {
+  it("is refused for a model the deployment does not offer, before the FINOS Workspace is asked anything", async () => {
     const stub = workspaceStub();
     const res = await ask(appFor(stub), { model: "test-provider:forbidden-model" });
     expect(chatText(await readSse(res))).toContain("not available here");
@@ -278,7 +268,7 @@ describe("a user's query", () => {
     expect(stub.counted).toHaveLength(0);
   });
 
-  it("fails closed with a 503 when the Workspace API cannot be asked about access", async () => {
+  it("fails closed with a 503 when the FINOS Workspace API cannot be asked about access", async () => {
     const stub = workspaceStub();
     stub.setAuthorization({ ok: false, reason: "unavailable" });
     expect((await ask(appFor(stub))).status).toBe(503);
@@ -291,19 +281,16 @@ describe("a turn that needs a tool", () => {
     const stub = workspaceStub();
     const app = appFor(stub);
 
-    // The question: the model asks the browser to run a tool.
     currentModel = makeMockLlm(llmCallsTool("Ines_Tools_query_documents", { query: "revenue" }));
     const first = await readSse(await ask(app));
     expect(functionCall(first)?.function).toBe("execute_agent_tool");
     expect(stub.counted).toHaveLength(1);
 
-    // The tool's result comes back and the model answers: the same turn, not counted again.
     currentModel = makeMockLlm(llmEmitsText("the answer"));
     const second = await readSse(await ask(app, { messages: [{ role: "human", content: "hello" }, toolResult] }));
     expect(chatText(second)).toBe("the answer");
     expect(stub.counted).toHaveLength(1);
 
-    // The turn is over. A request that claims to continue it is a new turn.
     const third = await readSse(await ask(app, { messages: [{ role: "human", content: "hello" }, toolResult] }));
     expect(chatText(third)).toBe("the answer");
     expect(stub.counted).toHaveLength(2);
@@ -336,7 +323,6 @@ describe("keeping users apart", () => {
     const signature = params["x-ines-scope-sig"] as string;
     expect(verifyScope(SECRET, key, signature)).toBe(true);
     expect(signature).toBe(signScope(SECRET, "alice:chat-1"));
-    // A user who puts another user's chat in the call has no signature for it.
     expect(verifyScope(SECRET, "bob:chat-1", signature)).toBe(false);
   });
 });
@@ -407,7 +393,6 @@ describe("what an administrator switched off for a user: the web", () => {
         body: JSON.stringify({ messages: [{ role: "human", content: "read https://example.com/report" }], urls: ["https://example.com/report"] }),
       });
 
-    // Not switched off: the address is read before the model is asked (this is what the next case must not do).
     currentModel = makeMockLlm(llmEmitsText("done"));
     await readSse(await post(workspaceStub()));
     expect(requested.some((u) => u.startsWith("https://example.com/report"))).toBe(true);
@@ -486,9 +471,7 @@ describe("limits", () => {
     const app = appFor(workspaceStub(), { INES_MAX_CONCURRENT_QUERIES: "1" });
     const first = await ask(app);
     expect(first.status).toBe(200);
-    // The first stream has not been read: its query is still running.
     expect((await ask(app)).status).toBe(429);
-    // Another user is not held up by it.
     expect((await ask(app, { token: "bob-token", chat: "bobs-chat" })).status).toBe(200);
     await readSse(first);
     expect((await ask(app)).status).toBe(200);
@@ -497,7 +480,6 @@ describe("limits", () => {
   it("turns a query away before its body is read, so that a refused request costs no parsing", async () => {
     const app = appFor(workspaceStub(), { INES_MAX_CONCURRENT_QUERIES: "1" });
     const first = await ask(app);
-    // A body that is not JSON would be a 400 if it were read; it is not read.
     const refused = await app.request("/v1/query", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Trace-Id": "chat-1", Authorization: "Bearer alice-token" },
@@ -505,7 +487,6 @@ describe("limits", () => {
     });
     expect(refused.status).toBe(429);
     await readSse(first);
-    // The place of a request that was turned down for its body (400) is given back.
     const bad = await app.request("/v1/query", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Trace-Id": "chat-1", Authorization: "Bearer alice-token" },
@@ -526,9 +507,7 @@ describe("limits", () => {
     expect((await send("{ not json")).status).toBe(400);
     expect((await send(JSON.stringify({ messages: "no" }))).status).toBe(400);
     expect((await send("[1,2,3]")).status).toBe(400);
-    // Three were not questions: the next, which is one, is not read.
     expect((await ask(app)).status).toBe(429);
-    // Another user is not held up by it.
     expect((await ask(app, { token: "bob-token", chat: "bobs-chat" })).status).toBe(200);
   });
 
@@ -551,8 +530,12 @@ describe("limits", () => {
     const abandoned = await ask(app);
     expect((await ask(app)).status).toBe(429);
     await abandoned.body!.cancel();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect((await ask(app)).status).toBe(200);
+    let status = 429;
+    for (let tries = 0; status === 429 && tries < 100; tries++) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      status = (await ask(app)).status;
+    }
+    expect(status).toBe(200);
   });
 
   it("runs only so many queries in all, and says that the agent is busy rather than using all its memory", async () => {
@@ -572,14 +555,13 @@ describe("limits", () => {
     const stub = workspaceStub();
     const app = appFor(stub, { INES_MAX_TURN_REQUESTS: "3" });
     currentModel = makeMockLlm(llmCallsTool("Ines_Tools_query_documents", { query: "revenue" }));
-    expect(functionCall(await readSse(await ask(app)))?.function).toBe("execute_agent_tool"); // request 1
+    expect(functionCall(await readSse(await ask(app)))?.function).toBe("execute_agent_tool");
     const continuation = () => ask(app, { messages: [{ role: "human", content: "hello" }, toolResult] });
-    expect(functionCall(await readSse(await continuation()))?.function).toBe("execute_agent_tool"); // request 2
-    expect(functionCall(await readSse(await continuation()))?.function).toBe("execute_agent_tool"); // request 3
-    const refused = await readSse(await continuation()); // request 4: one too many
+    expect(functionCall(await readSse(await continuation()))?.function).toBe("execute_agent_tool");
+    expect(functionCall(await readSse(await continuation()))?.function).toBe("execute_agent_tool");
+    const refused = await readSse(await continuation());
     expect(chatText(refused)).toContain("more steps than one question may take");
     expect(functionCall(refused)).toBeUndefined();
-    // It cost the user one query, not four.
     expect(stub.counted).toHaveLength(1);
   });
 
@@ -588,7 +570,6 @@ describe("limits", () => {
     const body = JSON.stringify({ messages: [{ role: "human", content: "x".repeat(1_200_000) }] });
     const res = await app.request("/v1/query", {
       method: "POST",
-      // A client states the size of what it sends.
       headers: {
         "Content-Type": "application/json",
         "Content-Length": String(body.length),

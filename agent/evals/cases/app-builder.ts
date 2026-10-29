@@ -1,23 +1,10 @@
-/**
- * Tier 3 — create_app behavior.
- *
- * Proves the model (a) discovers widgets via search_widgets and (b) assembles
- * them into an app via create_app using ONLY real (origin, widget_id) pairs
- * from the workspace — never invented ones. The last grader enforces the
- * "model never invents widget ids absent from search_widgets" invariant right
- * at the create_app boundary.
- *
- * Uses the real eval model; no mock LLM.
- */
-
-import type { EvalCase } from "../runner";
-import type { GraderSpec } from "../graders";
-import { noBadState, toolCalled } from "../graders";
-import { techWorkspace } from "../fixtures/workspaces";
+import type { EvalCase } from "../runner.ts";
+import type { GraderSpec } from "../graders/index.ts";
+import { noBadState, toolCalled } from "../graders/index.ts";
+import { techWorkspace } from "../fixtures/workspaces.ts";
 
 const VALID_WIDGET_IDS = new Set(techWorkspace.primary.map((w) => w.widget_id));
 
-// Every widget the model places in the app must be a real workspace widget.
 const appWidgetRefsValid: GraderSpec = {
   name: "create_app refs in workspace (no hallucinated widget ids)",
   grader: (trace) => {

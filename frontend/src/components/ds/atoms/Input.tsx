@@ -32,7 +32,6 @@ export const groupVariants = cva(
         default: "",
       },
       size: {
-        //! Keep pl and pr, don't use px! It's overriding below.
         xs: "gap-1 pr-1 pl-1 [&_.BB-Icon]:size-3 [&_button]:max-h-3",
         sm: "gap-1 pr-2 pl-2 [&_button]:max-h-4",
         md: "gap-2 pr-3 pl-3 [&_button]:max-h-6",
@@ -85,44 +84,29 @@ export interface InputProps<
   T extends InputValue = string,
   TValue = T extends `${infer V}` ? V : T,
 > extends Omit<ReactInputProps, "defaultValue"> {
-  /** Add floating label. Requires `placeholder`. */
   label?: React.ReactNode;
-  /** When value is not empty, x icon appears to clear input. */
   clearable?: boolean;
-  /** Show copy icon appears to copy input value. */
   copiable?: boolean;
-  /** Show eye icon to reveal and hide password. Password is hidden by default. */
   revealable?: boolean;
-  /** Add React element inside border before input. */
   prefix?: React.ReactNode;
-  /** Add React element inside border after input. */
   suffix?: React.ReactNode;
   size?: "xs" | "sm" | "md" | "lg";
   value?: T;
   defaultValue?: T;
-  /** Text below input */
   message?: React.ReactNode;
-  /** Make it red and display error message */
   error?: boolean;
-  /** TODO: Replace password with 🦋. */
-  // butterflies?: boolean;
   onChange?: (value: TValue) => void;
-  /** Input className */
   inputClassName?: string;
-  /** Prevent browsers from prompting to save password. Only applies when type="password". */
   noPasswordSave?: boolean;
 }
 
-/** Plain input component, can be used in form or outside it */
 const InputBase = React.forwardRef<HTMLInputElement, InputProps>((props, fwRef) => {
   const {
-    // default props
     className,
     type: defaultType = "text",
     placeholder,
     onFocus,
     onBlur,
-    // custom props
     label,
     prefix,
     suffix,
@@ -137,11 +121,9 @@ const InputBase = React.forwardRef<HTMLInputElement, InputProps>((props, fwRef) 
     error,
     inputClassName,
     noPasswordSave,
-    // butterflies = revealable,
     ...rest
   } = props;
 
-  // Uncontrolled state support
   const localRef = useRef<HTMLInputElement>(null);
   const ref = (fwRef as React.RefObject<HTMLInputElement>) ?? localRef;
   const autoId = useId();
@@ -290,11 +272,8 @@ export const Input = InputBase as <T extends InputValue = string>(
   props: InputProps<T> & { ref?: ForwardedRef<HTMLInputElement> },
 ) => ReactElement;
 
-/* Form */
-
 type FormInputProps<T extends InputValue = string> = InputProps<T>;
 
-/** Input field used inside <Form> only. */
 const FormInputBase = React.forwardRef<HTMLInputElement, FormInputProps>(
   (props, ref) => {
     const { label, message, ...rest } = props;

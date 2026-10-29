@@ -26,6 +26,9 @@ const mockState = vi.hoisted(() => {
     allWidget,
     selectedCopilot,
     temporaryWidgets: [] as CopilotWidget[],
+    tools: [] as Record<string, unknown>[],
+    servers: [] as Record<string, unknown>[],
+    catalog: {} as Record<string, Record<string, unknown>>,
     customFeatureStates: {} as Record<string, boolean | string>,
   };
 });
@@ -88,9 +91,18 @@ vi.mock("~/lib/state/copilotData", () => ({
 vi.mock("~/lib/state/mcpTools", () => ({
   useShallowMcpToolsStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
-      getEnabledToolsForAgent: vi.fn(async () => []),
-      getEnabledToolCount: () => 0,
+      getEnabledToolsForAgent: vi.fn(async () => mockState.tools),
+      getEnabledToolCount: () => mockState.tools.length,
     }),
+  useMcpToolsStore: { getState: () => ({ servers: mockState.servers }) },
+}));
+vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
+  useGetWidgetsStore: {
+    getState: () => ({
+      getAppWidget: (widgetId: string, origin: string) =>
+        mockState.catalog[`${origin}/${widgetId}`],
+    }),
+  },
 }));
 vi.mock("~/lib/state/skillsLibrary", () => ({
   useShallowSkillsLibraryStore: (
@@ -128,8 +140,6 @@ async function getPayloads() {
   ];
 }
 
-// Chat attachments become temporary widgets without a `uuid` (only `widget_id`),
-// mirroring useGetCopilotWidgets' temporaryWidgets.
 const makeAttachmentWidget = (uuid: string, name: string) => ({
   origin: "the backend",
   widget_id: `file-${uuid}`,
@@ -143,6 +153,10 @@ describe("useAiFetchRequestInit", () => {
   beforeEach(() => {
     mockState.selectedCopilot.features["widget-global-search"] = true;
     mockState.temporaryWidgets = [];
+    mockState.tools = [];
+    mockState.servers = [];
+    mockState.catalog = {};
+    mockState.selectedCopilot.features["mcp-tools"] = false;
     mockState.customFeatureStates = {};
     delete (mockState.selectedCopilot.features as Record<string, unknown>).model;
     useCopilotAccessStore.setState({ access: null });
@@ -239,6 +253,53 @@ describe("useAiFetchRequestInit", () => {
       ]);
     }
   });
+
+  it("tells the agent of a widget's MCP link when its tool is in the request", async () => {
+    mockState.selectedCopilot.features["mcp-tools"] = true;
+    mockState.servers = [
+      {
+        id: "srv-1",
+        name: "Renamed by the user",
+        declaredName: "Team data",
+        sourceId: "src-1",
+      },
+    ];
+    mockState.tools = [
+      {
+        server_id: "srv-1",
+        name: "srv-1_get_report",
+        tool_name: "get_report",
+        url: "https://mcp.example",
+      },
+    ];
+    mockState.catalog = {
+      "Sandbox/global_widget": {
+        sourceId: "src-1",
+        mcp_tool: {
+          mcp_server: "Team data",
+          tool_id: "get_report",
+          args: { id: "$team" },
+        },
+      },
+    };
+
+    for (const payload of await getPayloads())
+      expect(payload.widgets.extra).toEqual([
+        {
+          ...mockState.allWidget,
+          mcp_tool: {
+            server_id: "srv-1",
+            tool_name: "get_report",
+            args: { id: "$team" },
+          },
+        },
+      ]);
+
+    mockState.selectedCopilot.features["mcp-tools"] = false;
+    for (const payload of await getPayloads())
+      expect(payload.widgets.extra).toEqual([mockState.allWidget]);
+  });
+
   it("sends a picked skill of the agent's by its slug, without instructions", async () => {
     const { result } = renderHook(() => useAiFetchRequestInit());
     const [getQueryFetchParams] = result.current;

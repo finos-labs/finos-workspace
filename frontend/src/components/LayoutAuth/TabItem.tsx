@@ -28,26 +28,15 @@ function getItemTooltip(item: SideBarItem, collapsed: boolean) {
   if (!collapsed) {
     if (item.isFolder) return item.data?.name;
 
-    // Show extended info for dashboards
     return <TooltipContent item={item} />;
   }
-  // it should return the folder name if it's a folder
-  // and the dashboard name if it's a dashboard
-  // but they both need to include the folders path
-  // e.g., "Folder 1 / Folder 2 / Dashboard 1"
-  // or "Folder 1 / Dashboard 1"
-  // or "Dashboard 1"
-  let path = item.data?.name; // start with the current item's name
+  let path = item.data?.name;
   const items = useAppStore.getState().items ?? {};
-  // find the parent of the current item
   let parentItem = item.parentId ? items[item.parentId] : undefined;
 
-  // while there is a parent item and it's not the root folder
   while (parentItem && !parentItem.isRoot) {
-    // prepend the parent item's name to the path
     path = `${parentItem.data?.name} / ${path}`;
 
-    // find the next parent
     parentItem = parentItem.parentId ? items[parentItem.parentId] : undefined;
   }
 
@@ -76,7 +65,6 @@ function getNotificationId(
 ): NotificationId | undefined {
   if (isFolder) return undefined;
 
-  // If the item is shared, we check if the item is marked do not show again
   if (
     isShared &&
     !useToastStore
@@ -85,8 +73,6 @@ function getNotificationId(
   )
     return NotificationId.DeleteDashboardShared;
 
-  // We return non-shares IDs if the item is not shared, or if the shared has already
-  // been marked 'do not show again'
   return NotificationId.DeleteDashboard;
 }
 
@@ -365,7 +351,7 @@ export const TabItem = forwardRef<
               (context.isDraggingOver && context.canDropOn && item.isFolder),
             "drag-over": context.isDraggingOver && context.canDropOn && item.isFolder,
             "folder-drop-target":
-              context.isDraggingOver && context.canDropOn && item.isFolder, // Added class for drag over state
+              context.isDraggingOver && context.canDropOn && item.isFolder,
             hidden: sidebarCollapsed && !isActive,
           },
         )}
@@ -453,9 +439,6 @@ export const TabItem = forwardRef<
 
   const tooltipMemo = useMemo(
     () => (
-      // Own provider with skipDelayDuration={0} so closing the row's dropdown
-      // never leaves us in the global skip window — the tooltip always waits the
-      // full delay instead of showing instantly after the menu closes.
       <TooltipProvider delayDuration={TOOLTIP_OPEN_DELAY_MS} skipDelayDuration={0}>
         <Tooltip
           id={`tab-${item.index}-tooltip`}

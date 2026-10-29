@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   activeToolNames,
   buildToolCatalog,
@@ -7,8 +8,8 @@ import {
   makeLoadToolsTool,
   renderToolCatalog,
   renderToolNotes,
-} from "../../../../src/agent/tool-groups";
-import type { McpToolEntry } from "../../../../src/mcp/factory";
+} from "../../../../src/agent/tool-groups.ts";
+import type { McpToolEntry } from "../../../../src/mcp/factory.ts";
 
 const entry = (sanitizedName: string, description = "Does a thing. More detail follows."): McpToolEntry => ({
   serverId: "s",
@@ -63,7 +64,7 @@ describe("the web group of a user who has only one of the web tools", () => {
   });
 });
 
-describe("the group of the Workspace's own tools", () => {
+describe("the group of the FINOS Workspace's own tools", () => {
   const workspace = (name: string): McpToolEntry => ({
     serverId: "workspace",
     toolName: `Workspace_${name}`,
@@ -74,7 +75,7 @@ describe("the group of the Workspace's own tools", () => {
   const catalogOf = (mcp: McpToolEntry[], agentTools: string[] = AGENT_TOOLS) =>
     buildToolCatalog([...agentTools, ...mcp.map((e) => e.sanitizedName)], mcp);
 
-  it("holds every tool of the Workspace's server but the one that reads a widget, which every question can need", () => {
+  it("holds every tool of the FINOS Workspace's server but the one that reads a widget, which every question can need", () => {
     const group = catalogOf(TOOLS).groups.find((g) => g.id === "workspace");
     expect(group?.tools).toEqual(["Workspace_create_widget", "Workspace_update_widget", "Workspace_manage_dashboard"]);
     expect(catalogOf(TOOLS).groupOf.has("get_widget_data")).toBe(false);
@@ -115,7 +116,7 @@ describe("the group of the Workspace's own tools", () => {
     expect(loaded.size).toBe(0);
   });
 
-  it("is no group when the request has none of the Workspace's tools but the one that reads a widget", () => {
+  it("is no group when the request has none of the FINOS Workspace's tools but the one that reads a widget", () => {
     expect(catalogOf([workspace("get_widget_data")]).groups.find((g) => g.id === "workspace")).toBeUndefined();
   });
 });
@@ -138,7 +139,7 @@ describe("buildToolCatalog", () => {
     expect(group("planning")?.tools).toEqual(["_llm_think", "enhance_prompt"]);
   });
 
-  it("groups MCP tools by their canonical name, however the Workspace prefixed it", () => {
+  it("groups MCP tools by their canonical name, however the FINOS Workspace prefixed it", () => {
     expect(group("web")?.tools).toEqual(["Ines_Tools_web_search"]);
     expect(group("documents")?.tools).toEqual(["Ines_Tools_query_documents"]);
   });
@@ -146,7 +147,6 @@ describe("buildToolCatalog", () => {
   it("does not take an MCP tool for an agent tool of the same name, nor the other way round", () => {
     const c = buildToolCatalog(["execute_sql", "Other_execute_sql"], [entry("Other_execute_sql")]);
     expect(c.groupOf.get("execute_sql")).toBe("sql");
-    // An MCP tool that no group claims is never deferred.
     expect(c.groupOf.has("Other_execute_sql")).toBe(false);
   });
 

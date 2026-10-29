@@ -1,23 +1,23 @@
 [![badge-labs](https://user-images.githubusercontent.com/327285/230928932-7c75f8ed-e57b-41db-9fb7-a292a13a1e58.svg)](https://community.finos.org/docs/governance/lifecycle-stages/labs)
 
-# Workspace
+# FINOS Workspace
 
-Source code for Workspace and the components that build and run it.
+Source code for FINOS Workspace and the components that build and run it.
 
 ## Layout
 
 | Directory | What it is |
 |---|---|
-| `frontend/` | The Workspace frontend (React 18 + TypeScript + Vite) |
+| `frontend/` | The FINOS Workspace frontend (React 18 + TypeScript + Vite) |
 | `backend-api/` | Backend API (FastAPI + SQLAlchemy), admin CLI, and admin dashboard |
-| `agent/` | Ines, the Copilot's agent, and `agent/mcp-server/`, the tools she uses (Bun + TypeScript); see [agent/README.md](agent/README.md) |
+| `agent/` | Ines, the Copilot's agent, and `agent/mcp-server/`, the tools she uses (Node + TypeScript); see [agent/README.md](agent/README.md) |
 | `local/` | Development stack with hot reload for the frontend and the API (`make up`); see [local/LOCAL_SETUP.md](local/LOCAL_SETUP.md) |
 
 Each component keeps its own README with setup and development instructions.
 
 ## Running the whole stack
 
-`docker-compose.yml` builds and starts everything: MySQL, Redis, the API, the background
+`docker-compose.yml` builds and starts everything: MySQL, Valkey, the API, the background
 worker, the web app, Ines, the Copilot's agent, and the MCP server with the tools she uses.
 
 ```bash
@@ -91,7 +91,7 @@ the code, so the API does not start without them.
 
 | Variable | Written by `create_local_env` | What it is |
 |---|---|---|
-| `MODE` | `production` | One of `production`, `local` or `test`. |
+| `MODE` | `production` | One of `production`, `local` or `test`. `local` is a developer's own machine: `local/compose.yaml` sets it, and it lets a superuser develop widget plugin versions in place (`docs/widget-plugins/README.md`, 5.1). |
 | `FRONTENDURL` | `http://localhost:3000` | Address of the web app. |
 | `APPURL` | `http://localhost:3000` | Address of the web app that the API uses for links back to it, such as login redirects. |
 | `SELFURL` | `http://localhost:8000` | The API's own address, used to build links to files. |
@@ -100,7 +100,7 @@ the code, so the API does not start without them.
 | `WORKSPACE_AUTH_TOKEN` | a JWT signed with `JWT_SECRET` | The deployment's service token: requests that carry it are exempt from rate limits. |
 | `LOCAL_STORAGE_SECRET_KEY` | random | Signs the links to uploaded files. The code's own default is a fixed string, so always set it. |
 | `STORAGE_PROVIDER` | `folder` | Where uploaded files go: `folder` (the `storage` volume), `aws`, `azure` or `gcp`. |
-| `DB_HOST`, `DB_NAME`, `REDIS_HOST` | `mysql`, `workspace`, `redis` | The compose services. The `api`, `init` and `worker` services also set `DB_HOST` and `REDIS_HOST` themselves, and compose's value wins. |
+| `DB_HOST`, `DB_NAME`, `REDIS_HOST` | `mysql`, `workspace`, `valkey` | The compose services. The `api`, `init` and `worker` services also set `DB_HOST` and `REDIS_HOST` themselves, and compose's value wins. |
 
 The rest of `envs/.env.example` stays as it is: `DATABASE_TYPE=mysql`, `DB_PORT=3306`, the `root`/`root` database login (the
 `mysql` service in `docker-compose.yml` is created with the same password; change both or neither), the `REDIS_*` settings,
@@ -144,7 +144,7 @@ an origin it does not allow: with `DISABLE_CORS=0`, list it in `BACKEND_CORS_ORI
 
 | Variable | Set it | What it is |
 |---|---|---|
-| `DEFAULT_MODEL` | always; no default | The model, written `<provider>:<model>` where `<model>` is whatever that provider calls it. Every call the agent makes uses it unless the user picks another model in the Workspace settings. |
+| `DEFAULT_MODEL` | always; no default | The model, written `<provider>:<model>` where `<model>` is whatever that provider calls it. Every call the agent makes uses it unless the user picks another model in the FINOS Workspace settings. |
 | `NVIDIA_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY` | the one of the provider `DEFAULT_MODEL` names | Registers the provider with the prefix `nvidia:`, `openai:`, `openrouter:` or `groq:`. A provider without a key is left out, and a model that names it fails with "No provider for model". |
 | `OLLAMA_BASE_URL` | for `ollama:` models | Default `http://localhost:11434/api`. Inside the container `localhost` is the container itself, so for Ollama on your machine use `http://host.docker.internal:11434/api`. |
 | `INES_MODELS` | optional | More models users may pick, comma-separated, written the same way. Ines offers `DEFAULT_MODEL` and these, and refuses any other: the keys are the operator's, so a user cannot spend them on a model the operator did not choose. The role grants (Admin → Roles, a role's Copilot access) choose among them. |
@@ -166,13 +166,13 @@ start which are not and why.
 | Variable | What it enables |
 |---|---|
 | `INES_EMBED_MODEL` | `query_documents` and `list_documents`: search of the documents a user attached, with the page of each hit. Written `<provider>:<model>` like `DEFAULT_MODEL`, with that provider's key (`openai`, `openrouter`, `nvidia` and `ollama` embed). |
-| `COMPANION_TOOLS_ENABLED` | The tools that drive a Workspace browser tab (`true`; off by default). |
+| `COMPANION_TOOLS_ENABLED` | The tools that drive a FINOS Workspace browser tab (`true`; off by default). |
 
 `mermaid_diagram` needs Chromium, which the image does not contain.
 
 ## Users, roles and limits
 
-The Workspace owns the users, their roles and their usage limits, and Ines asks the API instead of keeping users of her own.
+The FINOS Workspace owns the users, their roles and their usage limits, and Ines asks the API instead of keeping users of her own.
 Every request to Ines (apart from `/agents.json`, `/status` and `/ready`) carries the user's session token, and the API says whose
 it is. For each question Ines then asks the API, with the token it trusts only the operator and Ines to hold:
 
@@ -185,27 +185,27 @@ it is. For each question Ines then asks the API, with the token it trusts only t
 The tools that keep state for a chat (the document store, the fetched pages) file it under the user and the chat, and accept only
 a chat scope that Ines has signed with `INES_SCOPE_SECRET`: a user's browser makes the calls to the tools, so without the
 signature it could name another user's chat. The MCP server publishes no port, and the API's MCP proxy checks the user's roles
-on every tool call. Both services fetch only public addresses on behalf of a client (the Workspace's own file links are the one
+on every tool call. Both services fetch only public addresses on behalf of a client (the FINOS Workspace's own file links are the one
 exception, fetched from `WORKSPACE_API_URL`), so a user cannot make them read the deployment's internal services.
 
-**What the model is given.** The Workspace sends the whole chat with every request, and Ines gives the model only the current turn, plus a note that earlier messages exist and a tool, `recall_conversation`, with which it reads them when a question needs them. So a question costs about the same at the 300th exchange as at the 5th, instead of growing with the chat, and a long chat does not end in a request the model refuses. The tokens a question uses count against the user's daily limit.
+**What the model is given.** The FINOS Workspace sends the whole chat with every request, and Ines gives the model only the current turn, plus a note that earlier messages exist and a tool, `recall_conversation`, with which it reads them when a question needs them. So a question costs about the same at the 300th exchange as at the 5th, instead of growing with the chat, and a long chat does not end in a request the model refuses. The tokens a question uses count against the user's daily limit.
 
-**The Workspace's own tools.** Ines reads and changes the Workspace with the Workspace's own tools: reading a widget, adding,
-updating or moving one, editing the tabs, navigating, and the rest of what the Workspace MCP server offers external hosts. The
-Workspace describes them to the agent with its other tools (the same names, descriptions and schemas as an external host gets, from
+**The FINOS Workspace's own tools.** Ines reads and changes the FINOS Workspace with the FINOS Workspace's own tools: reading a widget, adding,
+updating or moving one, editing the tabs, navigating, and the rest of what the FINOS Workspace MCP server offers external hosts. The
+FINOS Workspace describes them to the agent with its other tools (the same names, descriptions and schemas as an external host gets, from
 the same server: `GET /app/workspace-tools`), and when the agent calls one, the user's own tab runs it, as the user who is signed
 in: nothing is handed to the agent but the call's result, and no token or bridge session is involved. The API checks every call
 (`POST /app/workspace-tools/prepare`) against what the user's roles grant, as it does for any MCP tool, with the address of the
 tools' endpoint as the server's. The agent always has all of them, whatever page the user is on. Each widget in a request advertises its current
 parameters, and these are what the widget is showing: a parameter that belongs to one of the dashboard's parameter groups is
 advertised with the group's value, which is what the widget shows, not with the value it stored. A widget that embeds a page of its
-own backend (`iframe`) is advertised as such, and Ines reads its state from those parameters and changes it with the Workspace's `update_widget`, which
+own backend (`iframe`) is advertised as such, and Ines reads its state from those parameters and changes it with the FINOS Workspace's `update_widget`, which
 hands the value to the page through the iframe protocol and confirms it. External hosts do not use any of this: they
 connect to `/mcp` with a personal access token and a bridge session that the user opens.
 
-The tools are given in two ways. The tools that the Workspace supplies are always given in full, each with its description and its parameters, because that is what says how a tool is used and the model reads it before it acts: those of the servers the user has connected, and the Workspace's own. The agent's own tools are given the few every question can need, and a short catalog of the rest by what they are for (query tables, search the web, read a document, run Python, …). The model loads the group it needs with `load_tools`, and the instructions for those tools are in its prompt only while they are loaded; the agent loads the SQL tools itself once there are tables to query, and the document tools when there is a PDF to read.
+The tools are given in two ways. The tools that the FINOS Workspace supplies are always given in full, each with its description and its parameters, because that is what says how a tool is used and the model reads it before it acts: those of the servers the user has connected, and the FINOS Workspace's own. The agent's own tools are given the few every question can need, and a short catalog of the rest by what they are for (query tables, search the web, read a document, run Python, …). The model loads the group it needs with `load_tools`, and the instructions for those tools are in its prompt only while they are loaded; the agent loads the SQL tools itself once there are tables to query, and the document tools when there is a PDF to read.
 
-**PDFs and other documents.** A PDF or DOCX, whether it is attached to the chat or is a PDF widget on the dashboard, is never put in front of the model and never handed to it as a file (providers refuse a request that carries one). When the model loads the file widget, the Workspace gives Ines a signed link to it; Ines passes the link to `ines-mcp`, which fetches the file from where it is kept, reads it page by page, and keeps it for the chat. The model reads it with `query_documents` (its question and the file's id): each passage it gets back says which page it is on. The answer's citations are the file at the pages the answer names, so "Go to reference" opens the file at that page. A PDF that is only pictures has no text to read, and the answer says so. The search needs `INES_EMBED_MODEL` (and its provider's key); without it the answer says that the file cannot be read.
+**PDFs and other documents.** A PDF or DOCX, whether it is attached to the chat or is a PDF widget on the dashboard, is never put in front of the model and never handed to it as a file (providers refuse a request that carries one). When the model loads the file widget, the FINOS Workspace gives Ines a signed link to it; Ines passes the link to `ines-mcp`, which fetches the file from where it is kept, reads it page by page, and keeps it for the chat. The model reads it with `query_documents` (its question and the file's id): each passage it gets back says which page it is on. The answer's citations are the file at the pages the answer names, so "Go to reference" opens the file at that page. A PDF that is only pictures has no text to read, and the answer says so. The search needs `INES_EMBED_MODEL` (and its provider's key); without it the answer says that the file cannot be read.
 
 Ines holds her state (the rows of a chat's widgets, its documents) in memory and files each chat under its user. It does not
 survive a restart and is not shared between replicas, so run one replica, or send a chat's requests to the same one: a request
@@ -233,11 +233,12 @@ it does not answer.
 
 - The workflows in the root `.github/workflows/` are the ones GitHub Actions runs: the checks on pull requests
   (`frontend-checks.yml`, `backend-checks.yml`, `pr-description.yml`), the end-to-end tests (`e2e.yml`), the Docker images and build check (`backend-image.yml`,
-  `frontend-image.yml`, `pr-build-check.yml`), the deployment to the dev environment (`deploy-dev.yml`, which builds
-  the images and deploys them) and the production frontend deployment (`prod-deploy.yml`). The app's settings are
-  defaults in its code; the values the dev environment sets differently are in the infrastructure repository. Each deployment file's header lists the repository variables and
-  secrets it reads. The `.github/workflows/` files left inside `frontend/` are kept for reference; GitHub Actions only
-  executes workflows from a repository's root `.github/` directory, so none of them run here as-is.
+  `frontend-image.yml`, `pr-build-check.yml`) and the deployment to the dev environment (`deploy-dev.yml`, which builds
+  the images and deploys them). The app's settings are
+  defaults in its code; the values the dev environment sets differently are in the infrastructure repository. The image
+  workflows and `deploy-dev.yml` read the repository variables `AWS_REGION` and `AWS_IMAGE_PUSH_ROLE_ARN`;
+  `deploy-dev.yml` also reads `ECR_REGISTRY`, `INFRA_APP_ID`, `INFRA_REPO` and `DEV_VALUES_FILE`, and the secret
+  `INFRA_APP_PRIVATE_KEY`.
 
 ## License
 
@@ -246,3 +247,5 @@ Copyright 2026 FINOS
 Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 SPDX-License-Identifier: [Apache-2.0](https://spdx.org/licenses/Apache-2.0)
+
+Individual components may carry additional notices in their own directories.

@@ -9,6 +9,7 @@ import { Form } from "~/components/ds/molecules/Form";
 import { entityAdminKeys } from "~/hooks/useEntityAdmin";
 import type { Entity } from "~/types/entity.type";
 import { EntityBaseFields } from "./EntityFields";
+import { EntityPluginsLine } from "./EntityPluginsLine";
 import {
   type EntityFormValues,
   entityBody,
@@ -58,6 +59,7 @@ export function EntityEditDialog({
         error={error}
       >
         <EntityBaseFields />
+        <EntityPluginsLine entityUuid={entity.uuid} />
       </FormDialog>
     </Form>
   );

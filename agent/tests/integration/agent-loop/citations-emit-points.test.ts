@@ -1,19 +1,6 @@
-/**
- * Tier 2 — citations are baked into `extra_state.intermediate_citations`
- * at every round-trip emit point in the loop.
- *
- * Why this exists: there are 3 round-trip emit sites in `src/agent/loop.ts`
- * (executeAgentTool, getSkillContent, getWidgetData) plus
- * the terminal citation collection. Each one is independently responsible
- * for baking accumulated citations onto its outbound payload — if a
- * future emit site is added without baking, citations vanish across the
- * re-POST. This test fans out across every emit path with a synthetic
- * stashed citation and asserts it survives. Adding a 4th emit point
- * without baking will fail this suite.
- */
-
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
 import type {
   AgentTool,
   Citation,
@@ -21,10 +8,10 @@ import type {
   SSEEvent,
   ToolMessage,
   Widget,
-} from "../../../src/protocol/types";
-import { llmCallsTool, llmEmitsText, makeMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+} from "../../../src/protocol/types.ts";
+import { llmCallsTool, llmEmitsText, makeMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 
@@ -177,9 +164,6 @@ describe("citations bake into extra_state at every round-trip emit point", () =>
 
 describe("citations baked: regression — no double-bake on identical re-POSTs", () => {
   it("regression: same stashed citation arriving twice still surfaces once after dedup", async () => {
-    // The stash arrives via prior tool message AND would be re-baked by the
-    // emit. dedupeCitations is keyed on widget_uuid|input_args for widget
-    // cites and link for web cites — so a duplicate web cite collapses.
     const dupePrior = priorToolMessage();
     const events = await collectGenerator(
       runAgentLoop({

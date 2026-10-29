@@ -1,19 +1,9 @@
-/**
- * Helper for workspace tool handlers: dispatch a WorkspaceCommand through
- * the bridge to the connected browser, await the result, and shape it into
- * an MCP ContentItem envelope.
- *
- * PoC default: when no `sessionId` is passed, route to the first connected
- * browser. Production: agent-side decoration injects `x-ines-bridge-session-id`
- * (deferred — see plan unresolved questions).
- */
-
-import { errorItem, textItem, type ContentItem } from "../lib/typed";
+import { errorItem, textItem, type ContentItem } from "../lib/typed.ts";
 import {
   BrowserUnavailableError,
   type BridgeSessionManager,
-} from "./state";
-import type { WorkspaceCommand, WorkspaceCommandResult } from "./wire";
+} from "./state.ts";
+import type { WorkspaceCommand, WorkspaceCommandResult } from "./wire.ts";
 
 export interface ExecuteBridgeOpts {
   sessionId?: string;
@@ -31,7 +21,7 @@ export async function executeBridgeCommand(
         errorItem({
           code: "unavailable",
           message:
-            "No connected Workspace browser. Open the workspace and connect the bridge before calling this tool.",
+            "No connected FINOS Workspace browser. Open the workspace and connect the bridge before calling this tool.",
           retryable: true,
         }),
       ],

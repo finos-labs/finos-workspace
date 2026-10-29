@@ -1,4 +1,5 @@
-import { describe, expect, it } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   formatToolInputRejectedStatus,
   formatToolResultStatus,
@@ -7,9 +8,9 @@ import {
   formatWidgetDataLoadedStatus,
   formatWidgetDataRequestStatus,
   formatWidgetDataRequestStatuses,
-} from "../../../../src/agent/tool-status";
-import type { TableInfo } from "../../../../src/sql/loader";
-import { asCells, tableRows } from "../../../helpers/html-table";
+} from "../../../../src/agent/tool-status.ts";
+import type { TableInfo } from "../../../../src/sql/loader.ts";
+import { asCells, tableRows } from "../../../helpers/html-table.ts";
 
 describe("tool status formatting", () => {
   it("uses direct progress summaries and keeps code details renderable", () => {
@@ -63,12 +64,12 @@ describe("tool status formatting", () => {
       {
         name: "Product Offerings Flowchart",
         description: "A flowchart diagram of product offerings.",
-        code: "flowchart TD\n  A[Platform] --> B[Workspace]",
+        code: "flowchart TD\n  A[Platform] --> B[FINOS Workspace]",
       },
       { isMcp: true, actualToolName: "mermaid_diagram" },
     );
     expect(mermaid.details).toBe(
-      "```mermaid\nflowchart TD\n  A[Platform] --> B[Workspace]\n```",
+      "```mermaid\nflowchart TD\n  A[Platform] --> B[FINOS Workspace]\n```",
     );
     expect(JSON.stringify(mermaid.details)).not.toContain('"code"');
     expect(JSON.stringify(mermaid.details)).not.toContain('"name"');

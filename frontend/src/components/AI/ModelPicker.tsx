@@ -19,7 +19,6 @@ export default function ModelPicker() {
 
   const access = useCopilotAccessStore((s) => s.access);
   const agentId = selectedCopilot?.id;
-  // Only the models the user's roles grant are offered
   const models = useMemo(
     () =>
       agentId
@@ -33,7 +32,6 @@ export default function ModelPicker() {
     storedModelId && models?.some((m) => m.id === storedModelId);
   const currentModel = isStoredModelValid ? storedModelId : (models?.[0]?.id ?? "");
 
-  // Correct stale stored model
   useEffect(() => {
     if (agentId && storedModelId && !isStoredModelValid && models?.[0]?.id) {
       setSelectedModelForAgent(agentId, models[0].id);

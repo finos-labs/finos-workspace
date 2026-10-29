@@ -142,8 +142,6 @@ const HTMLArtifact = memo<ArtifactProps<"html">>(({ artifact, inAiMessage }) => 
     const injectedStyle =
       "<style>body{margin:0;padding:0}table{display:block;overflow-x:auto;max-width:100%}</style>";
 
-    // The app's own script (it reports the height of the document) carries the nonce that the policy allows.
-    // Nothing in the artifact can: it is written before the nonce exists, and scripts are sanitized away anyway.
     const nonce = allowJsExecution ? artifactNonce() : undefined;
     const injectedScript = nonce
       ? `<script nonce="${nonce}">
@@ -168,8 +166,6 @@ const HTMLArtifact = memo<ArtifactProps<"html">>(({ artifact, inAiMessage }) => 
   }, [artifact.content, allowJsExecution]);
 
   const handleIframeLoad = useCallback(() => {
-    // With scripts on, the document is on an opaque origin (no allow-same-origin), so there is no
-    // contentDocument to read: the script injected into it posts the height instead.
     if (allowJsExecution) return;
 
     const iframe = iframeRef.current;
@@ -201,8 +197,6 @@ const HTMLArtifact = memo<ArtifactProps<"html">>(({ artifact, inAiMessage }) => 
     if (!allowJsExecution) return;
 
     const handleMessage = (event: MessageEvent) => {
-      // The only thing taken from the message is a height, and only from this very frame: the
-      // artifact is on an opaque origin, so `event.origin` is "null" and says nothing.
       if (event.source !== iframeRef.current?.contentWindow) return;
       if (event.data?.type === "artifactHeight") {
         const h = Number(event.data.height);
@@ -302,7 +296,6 @@ const TextArtifact = memo<ArtifactProps<"text">>(({ artifact, inAiMessage }) => 
     (s) => s.hoveredCitationWidgetId === artifact.name,
   );
 
-  // Markdown needs double spaces to create a line break
   const content = useMemo(
     () => artifact.content.replace(/\n/g, "  \n"),
     [artifact.content],
@@ -406,7 +399,6 @@ const AppArtifact = memo<ArtifactProps<"app">>(({ artifact, inAiMessage }) => {
   const handleOpen = useCallback(
     async (action: "open" | "update") => {
       if (!isInDashboard && action === "update") {
-        // dont allow update if not in a dashboard, since we wouldnt know which dashboard to update
         toast.warning("No active dashboard to update", {
           description: "Please open a dashboard first",
         });

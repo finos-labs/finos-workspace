@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { observed } from "../../../../mcp-server/src/lib/observe";
-import { renderMetrics } from "../../../../src/lib/metrics";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { observed } from "../../../../mcp-server/src/lib/observe.ts";
+import { renderMetrics } from "../../../../src/lib/metrics.ts";
 
 const line = (text: string, prefix: string) => text.split("\n").find((l) => l.startsWith(prefix));
 

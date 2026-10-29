@@ -84,7 +84,7 @@ describe("McpCreateTokenDialog", () => {
     render(<McpCreateTokenDialog open onClose={vi.fn()} endpoint={ENDPOINT} />);
 
     expect(
-      screen.getByText("Generate a token to connect your Workspace"),
+      screen.getByText("Generate a token to connect your FINOS Workspace"),
     ).toBeInTheDocument();
   });
 
@@ -130,8 +130,6 @@ describe("McpCreateTokenDialog", () => {
       <McpCreateTokenDialog open={false} onClose={vi.fn()} endpoint={ENDPOINT} />,
     );
 
-    // Closing must also reset, so the raw token does not linger in the
-    // mutation cache while the dialog is hidden.
     expect(mutationRef.current.reset).toHaveBeenCalledTimes(2);
   });
 
@@ -141,7 +139,7 @@ describe("McpCreateTokenDialog", () => {
 
     expect(screen.getAllByTestId("icon-mdi-loading").length).toBeGreaterThan(0);
     expect(
-      screen.queryByText("Generate a token to connect your Workspace"),
+      screen.queryByText("Generate a token to connect your FINOS Workspace"),
     ).not.toBeInTheDocument();
   });
 

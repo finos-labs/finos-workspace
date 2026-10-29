@@ -1,12 +1,13 @@
-import { describe, it, expect } from "bun:test";
-import type { Message } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import type { Message } from "../../../../src/protocol/types.ts";
 import {
   conversationNote,
   currentTurnStart,
   earlierEntries,
   sanitizeAssistantContent,
   transcriptOf,
-} from "../../../../src/agent/history";
+} from "../../../../src/agent/history.ts";
 
 const human = (content: string): Message => ({ role: "human", content });
 const ai = (content: string): Message => ({ role: "ai", content });

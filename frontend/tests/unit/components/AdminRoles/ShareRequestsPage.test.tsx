@@ -109,7 +109,6 @@ describe("ShareRequestsPage", () => {
       expect(decideShareRequest).toHaveBeenCalledWith("r1", decision),
     );
     expect(toastSuccess).toHaveBeenCalledWith(message);
-    // The list is read again
     await waitFor(() => expect(getShareRequests).toHaveBeenCalledTimes(2));
   });
 

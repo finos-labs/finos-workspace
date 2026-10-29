@@ -20,7 +20,6 @@ describe("AuthedAppNotFound", () => {
   it("renders the SearchResultsNotFound component with icon", () => {
     render(<AuthedAppNotFound />);
 
-    // The component should render in a container with specific styling
     const container = screen.getByText("Page not found").closest("div");
     expect(container).toBeInTheDocument();
   });

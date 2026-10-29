@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { runExecuteSql } from "../../../../../../src/agent/tools/sql/execute-sql";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { runExecuteSql } from "../../../../../../src/agent/tools/sql/execute-sql.ts";
 
 const prices = [
   { symbol: "NVDA", close: 100 },
@@ -104,8 +105,6 @@ describe("runExecuteSql — errors", () => {
     expect(text).toContain("SQL error");
     expect(text).toContain("Available tables:");
     expect(text).toContain('"prices"');
-    // The listing alone reads as terminal state; the model must be told the
-    // missing table may just be an unfetched widget.
     expect(text).toContain("call get_widget_data");
   });
 
@@ -207,9 +206,6 @@ describe("runExecuteSql — security regressions", () => {
   });
 
   it("regression: explicit denylist blocks multi-statement smuggling (`SELECT ... ; DROP ...`)", () => {
-    // bun:sqlite happens to only execute the first prepared statement,
-    // so a trailing DROP/INSERT/etc would silently no-op today. Don't
-    // rely on that — reject any `;` followed by a SQL keyword.
     for (const sql of [
       "SELECT * FROM prices; DROP TABLE prices",
       "SELECT 1; INSERT INTO prices VALUES ('X', 0)",

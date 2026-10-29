@@ -1,7 +1,7 @@
 ---
 title: Convert an Existing Endpoint to a Widget
 uri: workspace://guides/convert-endpoint-to-widget
-use_when: You already have an HTTP endpoint that returns JSON and want to expose its response as a Workspace widget.
+use_when: You already have an HTTP endpoint that returns JSON and want to expose its response as a FINOS Workspace widget.
 language_specific: false
 related:
   - workspace://specs/widget-types
@@ -12,7 +12,7 @@ related:
 
 # Convert an Existing Endpoint to a Widget
 
-Use this when the backend already exists and you need to wrap one of its endpoints as a Workspace widget. The work is mostly metadata authoring, not code.
+Use this when the backend already exists and you need to wrap one of its endpoints as a FINOS Workspace widget. The work is mostly metadata authoring, not code.
 
 ## 1. Inspect a sample response
 
@@ -43,11 +43,12 @@ If the shape doesn't match any widget type cleanly, change the endpoint to fit t
 
 - `widget_id` (the dict key in `widgets.json`) should be stable, snake-cased, descriptive. It's referenced from `apps.json` layouts.
 - `name` is the user-visible widget title.
-- `endpoint` is the path Workspace calls. It's typically the same path your existing handler is on; it doesn't have to match the widget id.
+- `endpoint` is the path FINOS Workspace calls. It's typically the same path your existing handler is on; it doesn't have to match the widget id. A path parameter becomes a `{name}` placeholder (`/teams/{team}/report`); the path has no `?` or `#`.
+- `method` is `POST` when the handler takes a JSON body; it is `GET` otherwise.
 
 ## 4. Translate query params to widget params
 
-Every query param the endpoint accepts becomes a `params` entry in `widgets.json`. Pick the right `type`:
+Every input the endpoint accepts becomes a `params` entry in `widgets.json`: a path parameter (named by its placeholder, with no `in`), a query param (the default), a header (`"in": "header"`) or a key of the JSON body (`"in": "body"`, with `"method": "POST"`). Credentials are not params: they belong to the backend connection. Pick the right `type`:
 
 - `boolean` for toggles (don't use `text` with `"true"`/`"false"` options).
 - `number` for free-form integers.
@@ -61,7 +62,7 @@ If a param depends on another (e.g. `city` depends on `country`), wire it via `o
 
 ## 5. Shape the response
 
-- `markdown`: return the markdown string. If the endpoint returns JSON, set `"data": { "dataKey": "path.to.text" }` on the widget so Workspace reads the string from that path.
+- `markdown`: return the markdown string. If the endpoint returns JSON, set `"data": { "dataKey": "path.to.text" }` on the widget so FINOS Workspace reads the string from that path.
 - `html`: return a complete HTML document that reads well without scripts, and honor `theme=dark|light`. If the document is built from rows, set `"raw": true` on the widget and return those rows (JSON array of objects) when called with `raw=true`.
 - `newsfeed`: return a JSON array of articles `{ "title", "date", "author", "excerpt", "body" }`, with `body` in markdown and `date` as an ISO 8601 string. If the array sits inside an object, set `"data": { "dataKey": "path.to.articles" }` on the widget.
 - `pdf`: return `application/pdf`, or JSON `{ "data_format": { "data_type": "pdf", "filename": "report.pdf" }, "content": "<base64>" }` (or `"url"` instead of `"content"`).

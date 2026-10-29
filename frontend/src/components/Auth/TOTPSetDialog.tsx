@@ -19,15 +19,10 @@ export default function TOTPSetDialog({
   fromSettings = false,
   activate = activateTotp,
 }: {
-  // The calls ride the session cookie, or at sign-in the API's enrollment cookie
   open: boolean;
   setOpen: (open: boolean) => void;
   onCancel: () => void;
   fromSettings?: boolean;
-  /**
-   * Turns the authenticator on with a code and answers the HTTP status. The login page
-   * passes its own: there the API starts the session with it, and the code is used up.
-   */
   activate?: (totp_token: number) => Promise<number>;
 }) {
   const [token, setToken] = useState<{ uri: string; secret: string }>({

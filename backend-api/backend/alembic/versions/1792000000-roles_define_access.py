@@ -1,23 +1,3 @@
-"""roles define access
-
-Drops the tier, default_tier, data_bundle, entity_entitlement and entitlement tables,
-entity.seats, entity.expiration_date and user.billing_active, and renames
-entitlement_usage to user_usage. Adds the organization's sharing switch
-(entity.sharing_enabled, on) and the role settings: sharing level, daily Copilot calls
-and tokens, upload size and the Copilot's web tools (search_web, fetch_from_web). Every
-organization without a "Developer" permissions map gets one.
-
-The roles that exist share nothing and have no limits, as a new role. Their web tools are
-on, except where their organization's entitlement had switched them off; the switches set
-for one user (entitlement) are not carried over. downgrade() restores the schema without
-data.
-
-Revision ID: 4f1c8a2d9e63
-Revises: b6dd1da576b6
-Create Date: 2026-10-14
-
-"""
-
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -27,13 +7,11 @@ import sqlalchemy_utils
 import api.models.model_helpers
 from alembic import op  # type: ignore
 
-# revision identifiers, used by Alembic.
 revision = "4f1c8a2d9e63"
 down_revision = "b6dd1da576b6"
 branch_labels = None
 depends_on = None
 
-# In foreign key order: each table only refers to the ones after it.
 REMOVED_TABLES = [
     "entitlement",
     "entity_entitlement",
@@ -101,7 +79,6 @@ def upgrade():
 
 
 def _copy_web_switches():
-    """Switch a role's web tools off where its organization's entitlement had them off"""
     uuid_type = sqlalchemy_utils.types.uuid.UUIDType()
     role = sa.table(
         "role",
@@ -123,13 +100,9 @@ def _copy_web_switches():
 
 
 def _rename_usage_keys(old: str, new: str):
-    """Name the primary key, index and foreign key of the usage table, renamed from
-    `old` to `new`, after `new` as the naming convention does"""
     if op.get_bind().dialect.name == "postgresql":
         op.execute(f"ALTER TABLE {new} RENAME CONSTRAINT {old}_pkey TO {new}_pkey")
 
-    # The index comes before the foreign key, so that MySQL does not add an index of
-    # its own for the foreign key.
     with op.batch_alter_table(new, schema=None) as batch_op:
         batch_op.drop_constraint(f"fk_{old}_user_uuid_user", type_="foreignkey")
         batch_op.drop_index(f"ix_{old}_user_uuid")
@@ -220,8 +193,6 @@ def _base_columns() -> list[sa.Column]:
 
 
 def _limit_columns() -> list[sa.Column]:
-    """The limit and feature columns that default_tier, entity_entitlement and
-    entitlement share"""
     return [
         sa.Column("number_copilot_calls_day", sa.Integer(), nullable=True),
         sa.Column("number_copilot_tokens_day", sa.BigInteger(), nullable=True),
@@ -245,7 +216,6 @@ def _feature_columns() -> list[sa.Column]:
 
 
 def _entitlement_columns() -> list[sa.Column]:
-    """The columns that entity_entitlement and entitlement share after their owner"""
     return [
         sa.Column("tier_id", sa.Integer(), nullable=False),
         *_limit_columns(),

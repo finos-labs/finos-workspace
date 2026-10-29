@@ -131,7 +131,6 @@ describe("getReachableArtifacts", () => {
 
 describe("createWidgetMetadataDialog state", () => {
   beforeEach(() => {
-    // Reset dialog state before each test
     useCopilotStore.setState({ createWidgetMetadataDialog: null });
   });
 
@@ -183,7 +182,6 @@ describe("createWidgetMetadataDialog state", () => {
   });
 
   it("should close dialog by setting state to null", () => {
-    // First open the dialog
     useCopilotStore.getState().setCreateWidgetMetadataDialog({
       mode: "create",
       initialValues: { name: "Test" },
@@ -192,21 +190,18 @@ describe("createWidgetMetadataDialog state", () => {
 
     expect(useCopilotStore.getState().createWidgetMetadataDialog).not.toBeNull();
 
-    // Close the dialog
     useCopilotStore.getState().closeCreateWidgetMetadataDialog();
 
     expect(useCopilotStore.getState().createWidgetMetadataDialog).toBeNull();
   });
 
   it("should allow updating dialog state", () => {
-    // Set initial state
     useCopilotStore.getState().setCreateWidgetMetadataDialog({
       mode: "create",
       initialValues: { name: "Initial" },
       pendingParams: {},
     });
 
-    // Update to different state
     useCopilotStore.getState().setCreateWidgetMetadataDialog({
       mode: "update",
       initialValues: { name: "Updated" },

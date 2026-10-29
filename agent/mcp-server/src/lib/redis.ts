@@ -1,14 +1,5 @@
-/**
- * Lazy ioredis client factory. Returns a singleton when `REDIS_URL` is set,
- * otherwise null — the doc store and any future cache use the null branch to
- * fall back to in-memory. Errors on the client are logged, never thrown, so a
- * Redis outage does not take the MCP server down.
- *
- * Test hook `_setRedisClientForTest` lets unit tests inject a mock or null.
- */
-
-import Redis from "ioredis";
-import { getLogger } from "./logger";
+import { Redis } from "ioredis";
+import { getLogger } from "./logger.ts";
 
 const logger = getLogger(["mcp", "redis"]);
 
@@ -40,7 +31,6 @@ export function getRedisClient(): Redis | null {
   }
 }
 
-/** Test-only hook. Pass `undefined` to reset to lazy-init. */
 export function _setRedisClientForTest(c: Redis | null | undefined): void {
   client = c;
 }

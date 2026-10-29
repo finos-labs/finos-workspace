@@ -14,7 +14,6 @@ const wrapper = ({ children }: { children: ReactNode }) => (
   <MemoryRouter initialEntries={["/app/dash-1"]}>{children}</MemoryRouter>
 );
 
-/** The hook, plus where the router is after it ran. */
 function renderPrivateRoute(shouldValidate?: boolean) {
   return renderHook(
     () => {

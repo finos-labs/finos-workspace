@@ -28,7 +28,6 @@ const flushEffects = () => act(async () => {});
 describe("OktaTokenRestore", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // No Okta session in the browser: a user who signed in some other way
     mockGetWithoutPrompt.mockRejectedValue(new Error("login_required"));
     useAuthStore.setState({ user: mockUser, logout: mockLogout });
     clearIdpTokens();

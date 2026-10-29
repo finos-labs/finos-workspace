@@ -5,14 +5,11 @@ import type { Copilot } from "~/lib/state/copilot";
 import { encodeWav } from "~/lib/utils/wav";
 import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
 
-/** The longest recording: two minutes, the most the agent takes for one question. */
 export const MAX_RECORDING_MS = 120_000;
-/** The rate the recording is sent at: what speech models are made for, and a third of the size of 48 kHz. */
 const SAMPLE_RATE = 16_000;
 
 export type DictationState = "idle" | "recording" | "transcribing";
 
-/** The agent's /v1/transcribe, next to its /v1/query. */
 export function transcribeUrl(agent: Copilot | null | undefined): string | null {
   const query = agent?.endpoints?.query;
   if (!query) return null;
@@ -23,7 +20,6 @@ export function transcribeUrl(agent: Copilot | null | undefined): string | null 
   }
 }
 
-/** The recording, whatever the browser recorded it as, as 16 kHz mono samples. */
 async function toMono16k(recording: Blob): Promise<Float32Array> {
   const context = new AudioContext();
   try {
@@ -40,10 +36,6 @@ async function toMono16k(recording: Blob): Promise<Float32Array> {
   }
 }
 
-/**
- * Dictation: records from the microphone the browser lets the page use, and asks the agent for the text of
- * what was said. Works in every browser that records audio, which the browser's own speech recognition does not.
- */
 export function useDictation(
   agent: Copilot | null | undefined,
   onText: (text: string) => void,
@@ -62,7 +54,6 @@ export function useDictation(
       const headers = new Headers(
         getCopilotRequestHeaders(undefined, agent ?? undefined),
       );
-      // A form says its own type, with the boundary of its parts.
       headers.delete("Content-Type");
       const form = new FormData();
       form.set("audio", new Blob([wav], { type: "audio/wav" }), "dictation.wav");
@@ -91,7 +82,6 @@ export function useDictation(
     }
     let stream: MediaStream;
     try {
-      // The browser asks the user for the microphone here.
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (error) {
       toast.error(
@@ -130,7 +120,6 @@ export function useDictation(
     stopTimerRef.current = setTimeout(stop, MAX_RECORDING_MS);
   }, [send, stop]);
 
-  // Leaving the chat stops the microphone, and what it heard goes nowhere.
   useEffect(
     () => () => {
       clearTimeout(stopTimerRef.current);

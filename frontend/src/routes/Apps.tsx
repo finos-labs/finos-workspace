@@ -86,7 +86,6 @@ const FUSE_KEYS: AppsFuseKey<UnifiedTemplate>[] = [
 const fuseOptions = createAppsFuseOptions(FUSE_KEYS);
 
 export default function AppsPage() {
-  // The Connections page is an Admin's or a Developer's, who bring their own
   const mayAddConnections = useShallowAccessStore((s) => canAddConnections(s.access));
   return (
     <SettingsLayout
@@ -166,7 +165,6 @@ function MyAppsTab() {
   });
   const allTemplates = useAllTemplates(isLoadingApiSources);
 
-  // Backend filter options - only show active (connected) backends
   const backendOptions = useMemo(() => {
     return apiSources
       .filter((source) => source.status === "success" || source.status === "rehydrated")
@@ -181,7 +179,6 @@ function MyAppsTab() {
     [backendOptions],
   );
 
-  // Filtered backend options based on search
   const filteredBackendOptions = useMemo(() => {
     if (!state.backendSearch.trim()) return backendOptions;
     const searchLower = state.backendSearch.toLowerCase();
@@ -190,7 +187,6 @@ function MyAppsTab() {
     );
   }, [backendOptions, state.backendSearch]);
 
-  // Handle dropdown open/close - clear search when closing
   const handleBackendDropdownChange = useCallback((backendDropdownOpen: boolean) => {
     dispatch({
       backendDropdownOpen,
@@ -198,7 +194,6 @@ function MyAppsTab() {
     });
   }, []);
 
-  // Pre-select backend from URL param (e.g., from Connections page)
   useEffect(() => {
     if (!backendParam || apiSources.length === 0) return;
     const matchedBackend = apiSources.find(
@@ -215,9 +210,6 @@ function MyAppsTab() {
   const allBackendsSelected = isAllBackendsSelected(selectedBackends, allBackendIds);
   const noneBackendsSelected = isNoneBackendsSelected(selectedBackends, allBackendIds);
 
-  // Clean up selected backends if they no longer exist. If none remain, fall
-  // back to the "all" sentinel rather than the "none" state (the user did not
-  // explicitly clear — their selection was just invalidated).
   useEffect(() => {
     if (selectedBackends === null || selectedBackends.length === 0) return;
     const validBackendIds = new Set(apiSources.map((s) => s.id));
@@ -229,7 +221,6 @@ function MyAppsTab() {
     }
   }, [apiSources, selectedBackends, handleSetOptions]);
 
-  // Backend filter display text
   const backendFilterText = useMemo(() => {
     if (selectedBackends === null) return "All Backends";
     if (selectedBackends.length === 0) return "No Backends";
@@ -254,10 +245,6 @@ function MyAppsTab() {
     [selectedBackends, allBackendIds, handleSetOptions],
   );
 
-  // Toggle the "Select All" checkbox:
-  //   - all-selected (null) -> [] so the user can pick a single backend without
-  //     manually unchecking the rest.
-  //   - none / partial -> null (back to "all").
   const handleSelectAllBackends = useCallback(() => {
     handleSetOptions({ selectedBackends: allBackendsSelected ? [] : null });
   }, [allBackendsSelected, handleSetOptions]);
@@ -301,7 +288,6 @@ function MyAppsTab() {
     return searched
       .filter((template) => {
         const { type } = template;
-        // "My Apps" filter includes "user" and "generated"
         const matchesFilter =
           filterBy === "all" ||
           type === filterBy ||

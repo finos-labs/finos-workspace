@@ -1,16 +1,7 @@
-"""add copilot token limits and usage
-
-Revision ID: 8b1d6f3a7c25
-Revises: 0d4a342f4c26
-Create Date: 2026-10-05
-
-"""
-
 import sqlalchemy as sa
 
 from alembic import op  # type: ignore
 
-# revision identifiers, used by Alembic.
 revision = "8b1d6f3a7c25"
 down_revision = "0d4a342f4c26"
 branch_labels = None

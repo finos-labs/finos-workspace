@@ -8,18 +8,11 @@ import {
   signInProviderOfThisTab,
 } from "~/lib/state/idpTokens";
 
-/**
- * Okta keeps its tokens in page memory, so a reload drops the Okta ID token. When the
- * deployment forwards it, Okta is asked for it again without a prompt. A tab that signed
- * in with Okta and cannot get it back is signed out, so its backends are never called
- * without it.
- */
 export default function OktaTokenRestore({ children }: { children: ReactNode }) {
   const { user, logout } = useShallowAuthStore((s) => ({
     user: s.user,
     logout: s.logout,
   }));
-  // Tried once per user: a failure must not loop
   const tried = useRef<string | null>(null);
 
   useEffect(() => {

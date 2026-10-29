@@ -1,20 +1,10 @@
 import { z } from "zod";
 import type { LanguageModelUsage } from "ai";
-import type { SSEEvent } from "../protocol/types";
+import type { SSEEvent } from "../protocol/types.ts";
 
-/**
- * Token counts for one or more model calls.
- *
- * `cachedInputTokens` and `cacheWriteTokens` are SUBSETS of `inputTokens`, not
- * additions to it — every provider reports prompt-cache reads as a slice of
- * the prompt it already billed. Treating them as separate would double-count
- * both the token total and the cost.
- */
 export interface UsageCounts {
   inputTokens: number;
-  /** Input tokens served from the provider's prompt cache (subset of `inputTokens`). */
   cachedInputTokens: number;
-  /** Input tokens written INTO an explicit cache (Anthropic-style; subset of `inputTokens`). */
   cacheWriteTokens: number;
   outputTokens: number;
   totalTokens: number;
@@ -41,17 +31,6 @@ export const TokenUsageSchema = z.object({
 
 export type TokenUsage = z.infer<typeof TokenUsageSchema>;
 
-/**
- * Normalize one call's usage into `UsageCounts`.
- *
- * Cache reads come from `inputTokenDetails.cacheReadTokens`, falling back to
- * the deprecated flat `cachedInputTokens` so a provider adapter that has not
- * moved to the detailed shape still reports hits instead of silent zeros.
- *
- * Both cache figures are clamped into `inputTokens`. A provider reporting more
- * cached tokens than prompt tokens is a bug on their side, but left unclamped
- * it produces a hit rate above 100% and a negative uncached-token count.
- */
 export function flattenUsage(usage: LanguageModelUsage): UsageCounts {
   const input = usage.inputTokens ?? 0;
   const output = usage.outputTokens ?? 0;
@@ -79,18 +58,6 @@ export function accumulateUsage(acc: UsageCounts, next: UsageCounts): UsageCount
   };
 }
 
-/**
- * Share of input tokens served from the prompt cache, 0..1.
- *
- * This is the number that says whether the system-prompt prefix is holding: a
- * multi-step turn re-sends the same system-prompt-plus-tools prefix on every
- * step and every re-POST, so a healthy turn trends toward 1 as it goes. A rate
- * that collapses mid-turn means something in `buildSystemPrompt` changed
- * between calls and invalidated the prefix.
- *
- * Returns 0 rather than NaN for a turn with no input tokens, so the value is
- * always safe to hand to a span attribute.
- */
 export function cacheHitRate(usage: {
   inputTokens: number;
   cachedInputTokens: number;
@@ -99,18 +66,6 @@ export function cacheHitRate(usage: {
   return Number((usage.cachedInputTokens / usage.inputTokens).toFixed(4));
 }
 
-/**
- * Token usage for a whole logical turn — i.e. summed across every re-POST the
- * round-trip protocol produced, not just the current request. Rides
- * `extra_state.turn_usage` so it survives the browser hop.
- *
- * Input tokens grow on each re-POST because `buildMessages` re-renders the
- * conversation (including earlier tool results) every time. The turn total is
- * therefore the sum of a growing series, which is what you actually pay and
- * what per-request logging structurally hides. Cached input is what makes that
- * growth affordable, so it rides along: the raw turn total reads far more
- * alarming than the invoice once a warm cache is serving most of the prefix.
- */
 export interface TurnUsage {
   inputTokens: number;
   cachedInputTokens: number;
@@ -129,11 +84,6 @@ export const ZERO_TURN_USAGE: TurnUsage = Object.freeze({
   postCount: 0,
 });
 
-/**
- * Cache fields default to 0 rather than being required: a turn already in
- * flight when this deploy lands echoes the older four-field shape, and
- * rejecting it would zero a running turn's counter mid-conversation.
- */
 const TurnUsageSchema = z.object({
   inputTokens: z.number().int().nonnegative(),
   cachedInputTokens: z.number().int().nonnegative().default(0),
@@ -143,11 +93,6 @@ const TurnUsageSchema = z.object({
   postCount: z.number().int().nonnegative(),
 });
 
-/**
- * Read the echoed turn total. Untrusted (browser-echoed) input: anything
- * malformed resets to zero rather than throwing, because a bad counter must
- * never cost the user their turn.
- */
 export function readTurnUsage(raw: unknown): TurnUsage {
   const parsed = TurnUsageSchema.safeParse(raw);
   return parsed.success ? parsed.data : { ...ZERO_TURN_USAGE };

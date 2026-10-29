@@ -27,7 +27,6 @@ const map = (uuid: string, of: Entity, name: EntityMapItem["name"]): EntityMapIt
 
 const ACME_USER = map("a1a1a1a1-0000-4000-8000-000000000001", ACME, "User");
 const ACME_ADMIN = map("a1a1a1a1-0000-4000-8000-000000000002", ACME, "Admin");
-// Beta has no Admin type
 const BETA_USER = map("b2b2b2b2-0000-4000-8000-000000000001", BETA, "User");
 const BETA_DEVELOPER = map("b2b2b2b2-0000-4000-8000-000000000002", BETA, "Developer");
 const MAPS = [ACME_USER, ACME_ADMIN, BETA_USER, BETA_DEVELOPER];
@@ -86,7 +85,6 @@ describe("UserMoveDialog", () => {
     renderDialog();
 
     await choose(entitySelect(), "Beta");
-    // The user's Admin type is not one of Beta's
     expect(typeSelect()).not.toHaveTextContent("Admin");
     fireEvent.click(typeSelect());
 

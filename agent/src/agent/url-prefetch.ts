@@ -1,22 +1,6 @@
-/**
- * Eager URL prefetch.
- *
- * Workspace extracts URLs from the user's message (linkify-it, cap 4) and
- * forwards them in `request.urls`. The loop fetches them server-side before
- * the first model call and gives the model an OVERVIEW of each page (what it
- * is, what it contains, the start of its text), not the page: a model that
- * needs more calls `fetch_webpage` and reads the part it needs with
- * `inspect_webpage`. Each prefetch also produces a web citation that flows
- * through the normal citation aggregator.
- *
- * Failures are logged and silently dropped — a single bad URL must not block
- * the entire request. `Promise.allSettled` + a per-URL timeout keeps the total
- * added latency bounded by the slowest URL (not the sum).
- */
-
-import { getLogger } from "../lib/logger";
-import { describePage, fetchPage } from "../lib/html-page";
-import { renderOverview } from "../lib/page-text";
+import { getLogger } from "../lib/logger.ts";
+import { describePage, fetchPage } from "../lib/html-page.ts";
+import { renderOverview } from "../lib/page-text.ts";
 
 const logger = getLogger(["app", "agent", "url-prefetch"]);
 
@@ -25,7 +9,6 @@ const MAX_URLS = 4;
 export interface UrlPrefetchResult {
   url: string;
   title: string;
-  /** What the model is given of the page: see `renderOverview`. */
   overview: string;
 }
 
@@ -39,7 +22,6 @@ function hostOf(url: string): string {
 
 async function fetchOne(url: string): Promise<UrlPrefetchResult> {
   const { page, status } = await fetchPage(url);
-  // The page is the user's link, and may be made to be slow to read: that is done in a process of its own.
   const overview = await describePage(page, logger);
   const title = overview.title || hostOf(url);
   return {
@@ -81,8 +63,6 @@ export async function prefetchUrls(
   return out;
 }
 
-/** Stable citation id derived from the URL, so re-fetching the same URL
- * dedupes through the existing citation aggregator. */
 export async function urlCitationId(url: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(`url:${url}`));
   const b = new Uint8Array(buf);

@@ -1,5 +1,3 @@
-"""User models"""
-
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -36,11 +34,6 @@ from api.models.model_helpers import (
 
 
 class User(Base, UUIDMixin, DateMixin):
-    """
-    A unique user on our platform.
-    Users must have unique emails and can delete their accounts
-    """
-
     __tablename__ = "user"
 
     microsoft_id: Mapped[None | str] = mapped_column(String(100), default=None)
@@ -53,12 +46,10 @@ class User(Base, UUIDMixin, DateMixin):
     totp_secret: Mapped[None | str] = mapped_column(
         EncryptedStringType("user.totp_secret"), default=None
     )
-    # The last authenticator time step accepted, so that no code is accepted twice
     totp_last_step: Mapped[None | int] = mapped_column(BigInteger, default=None)
     totp_active: Mapped[bool] = mapped_column(Boolean, default=False)
     two_factor_auth: Mapped[bool] = mapped_column(Boolean, default=False)
     temporary_password: Mapped[None | bool] = mapped_column(Boolean, default=False)
-    # The user's own Copilot provider keys; never returned to a browser
     openai_api_key: Mapped[None | str] = mapped_column(
         EncryptedStringType("user.openai_api_key")
     )
@@ -68,11 +59,9 @@ class User(Base, UUIDMixin, DateMixin):
 
     logins = relationship("Login", back_populates="user")
 
-    # JSON columns
     display_settings = Column(UserDisplaySettingsType)
 
     referred_by = Column(String(100), default=None)
-    # The below tracks whether the user the referred them has been rewarded
     referred_by_sent = Column(Boolean, default=False)
     referral_code = Column(
         String(100), unique=True, nullable=False, default=base.random_string
@@ -83,7 +72,6 @@ class User(Base, UUIDMixin, DateMixin):
     confirmed = Column(Boolean, default=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    # App fields
     permissions_uuid: Mapped[None | UUID] = mapped_column(
         ForeignKey("permissions_entity_map.uuid"), index=True
     )
@@ -96,12 +84,6 @@ class User(Base, UUIDMixin, DateMixin):
 
 
 class Session(Base, UUIDMixin, DateMixin):
-    """A login session for a user.
-
-    The client holds a random token (256 bits) and the table only its SHA-256 hash, which
-    every request looks the session up by. The row's uuid never leaves the server.
-    """
-
     __tablename__ = "session"
 
     token_hash: Mapped[str] = mapped_column(
@@ -117,8 +99,6 @@ class Session(Base, UUIDMixin, DateMixin):
 
 
 class PersonalAccessToken(Base, UUIDMixin, DateMixin):
-    "A durable user-owned API credential for scoped integrations"
-
     __tablename__ = "personal_access_token"
     __table_args__ = (
         UniqueConstraint("token_hash", name="uq_personal_access_token_token_hash"),
@@ -138,8 +118,6 @@ class PersonalAccessToken(Base, UUIDMixin, DateMixin):
 
 
 class Login(Base, UUIDMixin, DateMixin):
-    "A record of when and where users log in"
-
     __tablename__ = "login"
 
     user_uuid: Mapped[None | UUID] = mapped_column(
@@ -153,11 +131,8 @@ class Login(Base, UUIDMixin, DateMixin):
 
 
 class UserInvite(Base, UUIDMixin, DateMixin):
-    "Invitations that provision a user before their first sign-in"
-
     __tablename__ = "user_invite"
 
-    # None for a user who signs up through single sign-on
     inviting_user_uuid: Mapped[None | UUID] = mapped_column(
         ForeignKey("user.uuid"), index=True
     )
@@ -170,8 +145,6 @@ class UserInvite(Base, UUIDMixin, DateMixin):
 
 
 class UserPrompts(Base, UUIDMixin, DateMixin):
-    "Stores the user's prompts"
-
     __tablename__ = "user_prompts"
 
     user_uuid: Mapped[UUID] = mapped_column(ForeignKey("user.uuid"), index=True)
@@ -181,8 +154,6 @@ class UserPrompts(Base, UUIDMixin, DateMixin):
 
 
 class UserSkills(Base, UUIDMixin, DateMixin):
-    "Stores the user's skills"
-
     __tablename__ = "user_skills"
     __table_args__ = (
         UniqueConstraint("user_uuid", "slug", name="uq_user_skills_user_uuid_slug"),
@@ -195,8 +166,6 @@ class UserSkills(Base, UUIDMixin, DateMixin):
 
 
 class UserRole(Base, UUIDMixin, DateMixin):
-    "Stores the user's role"
-
     __tablename__ = "user_role"
 
     user_uuid: Mapped[UUID] = mapped_column(ForeignKey("user.uuid"), index=True)
@@ -208,8 +177,6 @@ class UserRole(Base, UUIDMixin, DateMixin):
 
 
 class UserUsage(Base, UUIDMixin, DateMixin):
-    """What a user has used today, metered against the limits of their roles."""
-
     __tablename__ = "user_usage"
 
     user_uuid: Mapped[UUID] = mapped_column(

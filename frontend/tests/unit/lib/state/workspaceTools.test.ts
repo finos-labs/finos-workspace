@@ -1,9 +1,3 @@
-/**
- * The Workspace's own tools, which the agent in the app is given with the tools of the MCP servers the user
- * connected. They come from the Workspace, once for each signed-in session, and what the user's roles grant
- * applies to them as it does to any tool.
- */
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getWorkspaceTools } from "~/api/workspaceTools.api";
 import { useAuthStore } from "~/lib/state/auth";
@@ -48,15 +42,15 @@ afterEach(() => {
 });
 
 describe("the name of a tool", () => {
-  it("is the one the Workspace's server gives it, without the server's name in front", () => {
+  it("is the one the FINOS Workspace's server gives it, without the server's name in front", () => {
     expect(workspaceToolName("Workspace_get_widget_data")).toBe("get_widget_data");
     expect(workspaceToolName("get_widget_data")).toBe("get_widget_data");
     expect(workspaceToolName("Other_get_widget_data")).toBe("Other_get_widget_data");
   });
 });
 
-describe("the tools of the Workspace for an agent request", () => {
-  it("are the tools the Workspace describes, as tools of its own server", async () => {
+describe("the tools of the FINOS Workspace for an agent request", () => {
+  it("are the tools the FINOS Workspace describes, as tools of its own server", async () => {
     expect(await getWorkspaceAgentTools()).toEqual([
       {
         server_id: WORKSPACE_SERVER_ID,
@@ -97,7 +91,7 @@ describe("the tools of the Workspace for an agent request", () => {
     expect(getWorkspaceTools).toHaveBeenCalledTimes(2);
   });
 
-  it("leave the agent without them when the Workspace cannot say, and the next request asks again", async () => {
+  it("leave the agent without them when the FINOS Workspace cannot say, and the next request asks again", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.mocked(getWorkspaceTools).mockRejectedValueOnce(new Error("offline"));
 
@@ -116,7 +110,7 @@ describe("the tools of the agent request", () => {
     mcp,
   });
 
-  it("have the Workspace's tools after those of the servers the user connected", async () => {
+  it("have the FINOS Workspace's tools after those of the servers the user connected", async () => {
     useMcpToolsStore.setState({
       servers: [
         {
@@ -146,8 +140,10 @@ describe("the tools of the agent request", () => {
     ]);
   });
 
-  it("have the Workspace's tools for a user who connected no server", async () => {
-    useCopilotAccessStore.getState().setAccess(grants([{ server_url: URL, tool_name: "*" }]));
+  it("have the FINOS Workspace's tools for a user who connected no server", async () => {
+    useCopilotAccessStore
+      .getState()
+      .setAccess(grants([{ server_url: URL, tool_name: "*" }]));
     const tools = await useMcpToolsStore.getState().getEnabledToolsForAgent();
     expect(tools.map((t) => t.name)).toEqual([
       "Workspace_get_widget_data",
@@ -160,7 +156,7 @@ describe("the tools of the agent request", () => {
     expect(await useMcpToolsStore.getState().getEnabledToolsForAgent()).toEqual([]);
   });
 
-  it("have only the Workspace's tools that the user's roles grant", async () => {
+  it("have only the FINOS Workspace's tools that the user's roles grant", async () => {
     useCopilotAccessStore
       .getState()
       .setAccess(grants([{ server_url: URL, tool_name: "read_widget" }]));

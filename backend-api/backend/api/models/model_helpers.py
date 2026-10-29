@@ -1,5 +1,3 @@
-"""Model helpers"""
-
 import gzip
 import json
 from datetime import UTC, datetime  # type: ignore[attr-defined]
@@ -46,8 +44,6 @@ class JSONType(TypeDecorator):
 
 
 class AwareDateTime(TypeDecorator):
-    "A datetime that takes timezones into account"
-
     impl = DateTime
     cache_ok = True
 
@@ -106,8 +102,6 @@ class GzipType(TypeDecorator):
             try:
                 return gzip.decompress(value).decode("utf-8")
             except (gzip.BadGzipFile, UnicodeDecodeError, EOFError):
-                # If decompression fails, return None
-                # This can happen if the data is not compressed or is corrupted
                 return None
         return None
 
@@ -150,8 +144,6 @@ def process_json_result_value(value: None | bytes) -> None | dict:  # noqa: PLR6
     try:
         decompressed = gzip.decompress(value).decode("utf-8")
     except (gzip.BadGzipFile, UnicodeDecodeError, EOFError):
-        # If decompression fails, return None
-        # This can happen if the data is not compressed or is corrupted
         return None
     return json.loads(decompressed)
 
@@ -211,8 +203,6 @@ class GzipStringType(TypeDecorator):
         try:
             return gzip.decompress(value).decode("utf-8")
         except (gzip.BadGzipFile, UnicodeDecodeError, EOFError):
-            # If decompression fails, return None
-            # This can happen if the data is not compressed or is corrupted
             return None
 
     @classmethod
@@ -226,9 +216,6 @@ class GzipStringType(TypeDecorator):
 
 
 class _BoundToColumn(TypeDecorator):
-    """A value stored AES-GCM encrypted (see api/crypto.py) for its column: `context` is
-    "<table>.<column>", the associated data that binds each ciphertext to that column."""
-
     impl = Text
     cache_ok = True
 
@@ -241,8 +228,6 @@ class _BoundToColumn(TypeDecorator):
 
 
 class EncryptedType(_BoundToColumn):
-    """A dict or list stored as AES-GCM encrypted JSON."""
-
     cache_ok = True
 
     def process_bind_param(self, value: None | dict | list, _):
@@ -259,8 +244,6 @@ class EncryptedType(_BoundToColumn):
 
 
 class EncryptedMediumType(EncryptedType):
-    """An EncryptedType for values beyond the 64 KB of MySQL's TEXT: MEDIUMTEXT there."""
-
     cache_ok = True
 
     def load_dialect_impl(self, dialect):  # noqa: PLR6301
@@ -270,8 +253,6 @@ class EncryptedMediumType(EncryptedType):
 
 
 class EncryptedStringType(_BoundToColumn):
-    """A string stored AES-GCM encrypted."""
-
     cache_ok = True
 
     def process_bind_param(self, value: None | str, _):
@@ -347,12 +328,9 @@ class UserDisplaySettingsType(BasePydanticType):
 
 
 class UUIDMixin:
-    "Add a UUID primary key to a table"
-
     uuid: Mapped[UUID] = mapped_column(UUIDType, primary_key=True, default=uuid4)
 
     def __eq__(self, other: object) -> bool:
-        """We check if different objects are equal by comparing their uuids"""
         if not isinstance(other, self.__class__):
             return False
         return self.uuid == other.uuid
@@ -362,8 +340,6 @@ class UUIDMixin:
 
 
 class DateMixin:
-    "Add created and updated dates to a table"
-
     created_date: Mapped[None | datetime] = mapped_column(
         AwareDateTime(), default=base.get_now
     )

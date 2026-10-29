@@ -1,16 +1,5 @@
-/**
- * What keeps one bad moment from taking the agent down for everybody, and lets it go down politely when it
- * has to.
- *
- *  - A promise that nobody waited for and that failed is logged and counted; the agent goes on.
- *  - An exception that nobody caught leaves the state of the process in doubt: it is logged, and the process
- *    exits so that its supervisor starts a clean one.
- *  - A request to stop (SIGTERM at a deploy) stops taking new work, lets what is running finish for a while,
- *    and then exits; a second request exits at once.
- */
-
 import type { Logger } from "@logtape/logtape";
-import { metrics } from "./metrics";
+import { metrics } from "./metrics.ts";
 
 interface ProcessLike {
   on(event: string, listener: (...args: any[]) => void): unknown;
@@ -24,20 +13,15 @@ export function installErrorGuards(proc: ProcessLike, log: Logger, exit: (code: 
   proc.on("uncaughtException", (error: Error) => {
     metrics.unhandled.inc({ kind: "exception" });
     log.fatal("An exception was not caught: {error}", { error: error.stack ?? error.message });
-    // Time for the log line to be written.
     setTimeout(() => exit(1), 200).unref?.();
   });
 }
 
 export interface ShutdownOptions {
   signals?: readonly string[];
-  /** Stops taking new connections. */
   stopAccepting: () => void;
-  /** How many queries are running. */
   inFlight: () => number;
-  /** Longest to wait for them. */
   graceMs: number;
-  /** Flushes whatever has to be (telemetry). */
   finish: () => Promise<void>;
   exit: (code: number) => void;
   log: Logger;

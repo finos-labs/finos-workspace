@@ -7,40 +7,15 @@ import { getEndpointParamName } from "~/lib/utils";
 
 export type ParamGroupBinding = [string, GroupTypeT<"endpointParam" | "param">];
 
-/** Stable empty reference so the store selector does not thrash shallow equality. */
 const EMPTY_GROUPS: Group[] = [];
 
-/**
- * Resolves the widget param name that a group writes to.
- *
- * Endpoint-param groups key off `groupById` (a stable id) which we map back to
- * the live param name via the widget's param defs; plain `param` groups already
- * store the param name in `groupById`. Returns undefined for ticker groups since
- * they are not bound to a single widget param.
- */
-export function getGroupParamName(
-  group: Group,
-  paramDefs: ParamDef[],
-): string | undefined {
+export function getGroupParamName(group: Group, paramDefs: ParamDef[]): string {
   if (group.type === "endpointParam") {
     return getEndpointParamName(paramDefs, group.groupById) ?? group.groupById;
   }
-  if (group.type === "param") {
-    return group.groupById;
-  }
-  return undefined;
+  return group.groupById;
 }
 
-/**
- * Builds the `[paramName, group]` bindings between a widget's params and the
- * dashboard groups that drive them, and returns writers that push param changes
- * back into those groups. Reads from the shared or local app store based on the
- * widget context's `isShared` flag.
- *
- * Bindings are deduped by group id (not param name) so the rare case of two
- * distinct groups bound to the same param name still yields both — they should
- * each receive updates.
- */
 export function useParamGroupBindings(params?: {
   includeDashboardGroups?: boolean;
   endpointParamsOnly?: boolean;
@@ -85,7 +60,6 @@ export function useParamGroupBindings(params?: {
     const seenGroupIds = new Set<string>();
 
     const addGroupBinding = (group: Group) => {
-      if (group.type !== "endpointParam" && group.type !== "param") return;
       if (seenGroupIds.has(group.id)) return;
 
       const paramName = getGroupParamName(group, widgetFromJSON?.params ?? []);
@@ -108,7 +82,6 @@ export function useParamGroupBindings(params?: {
     filterAllowedParams,
   ]);
 
-  /** Writes a single param value into its bound group. Returns whether a group matched. */
   const updateGroupedParam = useCallback(
     (paramName: string, value: StoredParamValue) => {
       const group = bindings.find(([name]) => name === paramName)?.[1];
@@ -120,7 +93,6 @@ export function useParamGroupBindings(params?: {
     [activeDashboardId, bindings, updateGroup],
   );
 
-  /** Writes each provided param value into its bound group, skipping unchanged values. */
   const updateGroupedParams = useCallback(
     (params: Record<string, StoredParamValue>) => {
       for (const [paramName, group] of bindings) {

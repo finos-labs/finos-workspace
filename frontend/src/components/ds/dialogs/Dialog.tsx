@@ -58,10 +58,6 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
 >(({ className, children, hasOverlay = true, ...props }, ref) => {
-  // Check if children contain a DialogDescription or DialogTitle
-  // If not, we will add a default DialogTitle for accessibility,
-  // and remove the aria-describedby attribute from the DialogContent
-  // Reasoning: emits warning in console (only runs on mount)
   const { dialogContentProps, hasTitle } = React.useMemo(() => {
     const checks = { hasDescription: false, hasTitle: false };
     for (const child of React.Children.toArray(children)) {

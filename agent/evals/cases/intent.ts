@@ -1,22 +1,12 @@
-/**
- * Intent-understanding cases. Probe whether the model correctly classifies
- * the user's question before deciding which tool to use.
- *
- * Three buckets:
- *  - Knowledge-only: no widget/tool needed → answer directly
- *  - Multi-target: query mentions multiple entities → fetch all
- *  - Vague: ambiguous query → search_widgets first
- */
-
-import type { EvalCase } from "../runner";
-import { techWorkspace } from "../fixtures/workspaces";
+import type { EvalCase } from "../runner.ts";
+import { techWorkspace } from "../fixtures/workspaces.ts";
 import {
   toolCalled,
   toolNeverCalled,
   argContains,
   noBadState,
   llmJudge,
-} from "../graders";
+} from "../graders/index.ts";
 
 void toolCalled;
 
@@ -32,11 +22,6 @@ export const intentCases: EvalCase[] = [
     ],
     workspace: techWorkspace,
     trials: 3,
-    // CEO guidance: assert the OUTCOME (correct definition) rather than
-    // the path. `toolNeverCalled` was reasoning-process pinning — Gemini
-    // Flash sometimes over-fetches even when the system prompt forbids
-    // it, but the final answer is still correct. Judge the answer; let
-    // tool-routing cases catch routing regressions.
     passRate: 0.6,
     graders: [
       llmJudge({
@@ -91,8 +76,6 @@ export const intentCases: EvalCase[] = [
     trials: 3,
     passRate: 0.6,
     graders: [
-      // PRIMARY tier already includes tech-news; model can skip search.
-      // Either path is valid as long as it grounded its answer in widgets.
       llmJudge({
         criterion:
           "The agent took action grounded in the workspace — either by calling search_widgets to explore, or by fetching a relevant widget like tech-news. It did NOT just answer with a generic disclaimer or hallucinate sector data.",

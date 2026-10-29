@@ -1,21 +1,15 @@
 import type { ImagePart, FilePart } from "ai";
-import type { Widget, ToolMessage } from "../protocol/types";
-import { getLogger } from "../lib/logger";
-import { runInChild } from "../lib/isolate";
-import { fetchClientUrl } from "../lib/safe-fetch";
-import { assertSafeZip } from "../lib/zip-guard";
-import type { XlsxChildInput } from "./xlsx-child";
+import type { Widget, ToolMessage } from "../protocol/types.ts";
+import { getLogger } from "../lib/logger.ts";
+import { runInChild } from "../lib/isolate.ts";
+import { fetchClientUrl } from "../lib/safe-fetch.ts";
+import { assertSafeZip } from "../lib/zip-guard.ts";
+import type { XlsxChildInput } from "./xlsx-child.ts";
 
 const logger = getLogger(["app", "widgets"]);
 
 export type FileKind = "image" | "pdf" | "docx" | "csv" | "xlsx" | "text";
 
-/**
- * Test-only export. Internal classification is the contract worth pinning:
- * data_type wins; CSV/XLSX/DOCX inferred from URL suffix when no data_format;
- * html / unknown types fall through to the text path. PDF and DOCX are
- * documents: they are not read here but searched by the MCP query_documents tool.
- */
 export function _classifyItem(
   dataFormat?: Record<string, string>,
   url?: string,
@@ -35,23 +29,19 @@ export function _classifyItem(
   return "text";
 }
 
-/** Test-only export. */
 export function _xlsxToJson(buf: ArrayBuffer | Buffer): Promise<string> {
   return xlsxToJson(buf);
 }
 
-// Read in a process of its own (see lib/isolate.ts): a crafted file cannot stop or exhaust the agent.
 const XLSX_CHILD = new URL("./xlsx-child.ts", import.meta.url).pathname;
 const XLSX_TIMEOUT_MS = 30_000;
 
 async function xlsxToJson(buf: ArrayBuffer | Buffer): Promise<string> {
   const bytes = Buffer.isBuffer(buf) ? buf : Buffer.from(buf);
-  // Refused before a process is started when it is plainly not worth reading.
   assertSafeZip(bytes);
   return runInChild<XlsxChildInput, string>(XLSX_CHILD, { base64: bytes.toString("base64") }, { timeoutMs: XLSX_TIMEOUT_MS, label: "xlsx read" });
 }
 
-/** Test-only export — see `_classifyItem`. */
 export function _imageMediaType(dt: string): "image/jpeg" | "image/png" {
   if (dt === "png") return "image/png";
   return "image/jpeg";
@@ -66,10 +56,6 @@ export interface WidgetItem {
   uuid: string;
   content: string;
   parts?: MediaPart[];
-  /**
-   * Set when the item is a document (PDF, DOCX). Its text is not in `content`: the model searches it with
-   * query_documents, which is given the file by reference (see agent/file-docs.ts).
-   */
   documentFormat?: "pdf" | "docx";
   widget?: Widget;
   inputArgs?: Record<string, unknown>;
@@ -78,12 +64,6 @@ export interface WidgetItem {
 const classifyItem = _classifyItem;
 const imageMediaType = _imageMediaType;
 
-/**
- * Test-only export. Inline minimal CSV → JSON converter. Note: does NOT
- * handle escaped double-quotes (`""` inside a quoted field) — the bare
- * `"` flips inQuotes state. Documented gap; covered by a regression
- * test pinning current behavior.
- */
 export function _csvToJson(csv: string): string {
   return csvToJson(csv);
 }
@@ -186,7 +166,6 @@ export async function extractWidgetItems(
             });
           }
         } else if (kind === "pdf" || kind === "docx") {
-          // Not read here, and not shown to the model as a file: it searches the document by question.
           documentFormat = kind;
           logger.debug("Inline document", { format: kind, filename: dataFormat?.filename ?? "unknown" });
         } else if (kind === "xlsx") {
@@ -203,8 +182,6 @@ export async function extractWidgetItems(
         }
       } else if (url) {
         if (kind === "image") {
-          // Fetched here and handed over as bytes: the link is the Workspace's, signed, and the model
-          // provider can neither reach it nor should it be given it.
           logger.debug("Fetching image URL");
           try {
             const res = await fetchClientUrl(url, { signal: AbortSignal.timeout(30_000) });
@@ -220,7 +197,6 @@ export async function extractWidgetItems(
             logger.error("Failed to fetch image", { url, error: e });
           }
         } else if (kind === "pdf" || kind === "docx") {
-          // The file stays where it is: the document search is given its link and fetches it itself.
           documentFormat = kind;
           logger.debug("Document URL", { format: kind });
         } else if (kind === "xlsx") {

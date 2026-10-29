@@ -1,10 +1,11 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   createArtifactDescription,
   createArtifactSchema,
   runCreateArtifact,
-} from "../../../../../../src/agent/tools/sql/create-artifact";
-import type { SSEEvent } from "../../../../../../src/protocol/types";
+} from "../../../../../../src/agent/tools/sql/create-artifact.ts";
+import type { SSEEvent } from "../../../../../../src/protocol/types.ts";
 
 const prices = [
   { symbol: "NVDA", close: 100 },
@@ -23,7 +24,6 @@ function ctx(tables: Record<string, Record<string, unknown>[]> = {}) {
   };
 }
 
-// The Workspace has no table artifact, so a table is an HTML artifact; these read it back.
 function cells(html: string, tag: "th" | "td"): string[] {
   return [...html.matchAll(new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, "g"))].map((m) => m[1]);
 }
@@ -143,8 +143,6 @@ describe("runCreateArtifact — guards", () => {
       },
       c,
     );
-    // Internal state names must not leak into tool output — the model echoes
-    // them back to the user. Route through the shared not-found contract.
     expect(text).not.toContain("pendingTables");
     expect(text).toContain('Table "missing" not loaded');
     expect(text).toContain("prices");

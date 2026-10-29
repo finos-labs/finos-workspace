@@ -1,16 +1,3 @@
-/**
- * Tests for copilotData Zustand store
- *
- * Tests the copilot data state management including:
- * - Widget data management (dashboard widgets, selected widgets)
- * - Signature tracking for widgets
- * - Mention tracking for @mentions
- * - Pre-selected widget tracking
- * - Widget subset data management
- * - Runtime state for widgets
- * - Toggle state (extra widgets)
- */
-
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WidgetT } from "~/components/types";
@@ -22,7 +9,6 @@ import {
 } from "~/lib/state/copilotData";
 import { malformed, partial } from "../../mocks";
 
-// Mock external dependencies
 vi.mock("~/components/AI/hooks/utils", () => ({
   compareSignatures: vi.fn((a, b) => JSON.stringify(a) === JSON.stringify(b)),
   createSignatureMap: vi.fn((widgets, data) => {
@@ -50,10 +36,6 @@ const createMockWidget = (overrides: Partial<WidgetT> = {}): WidgetT =>
     widgetId: "html",
     name: "Chart Widget",
     innerTab: "overview",
-    groupId: null,
-    data: {
-      mainTicker: { symbol: "AAPL", id: "AAPL", category: "equity", type: "stock" },
-    },
     ...overrides,
   }) as WidgetT;
 
@@ -1030,7 +1012,6 @@ describe("useCopilotDataStore", () => {
             .setWidgetCopilotDraftParams("widget-1", { query: "same" });
         });
 
-        // widgetsLastUpdated should be equal since no actual change occurred
         expect(useCopilotDataStore.getState().widgetsLastUpdated).toBe(
           stateBefore.widgetsLastUpdated,
         );

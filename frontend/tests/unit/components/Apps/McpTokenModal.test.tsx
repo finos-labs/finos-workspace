@@ -100,7 +100,6 @@ describe("McpTokenModal", () => {
 
     expect(screen.getByRole("heading", { name: "Replace token" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Replace" })).toBeDisabled();
-    // The saved value never comes back to the page: the field starts empty
     expect(screen.getByPlaceholderText("•••••••• (saved)")).toHaveValue("");
   });
 

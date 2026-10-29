@@ -15,7 +15,6 @@ type ExecuteWorkspaceTool = (
   parameters?: Record<string, unknown>,
 ) => Promise<CopilotDataT[]>;
 
-/** What the agent is handed back: the tool's result, as the text of an MCP tool result is. */
 function asToolResult(result: unknown): CopilotDataT[] {
   return [{ items: [{ content: JSON.stringify(result) }] }];
 }
@@ -38,11 +37,6 @@ function reasonOf(error: unknown): string {
   return toError(error).message;
 }
 
-/**
- * Runs a tool of the Workspace for the agent, in this tab, as the user who is signed in. The Workspace
- * checks the call and says what command it is (the tools are the same ones that external hosts have, and
- * what they check is the same); the tab runs the command, and the agent gets what it came to.
- */
 export function useWorkspaceToolExecutor(): ExecuteWorkspaceTool {
   const runCommand = useWorkspaceBridgeCommandHandler();
 

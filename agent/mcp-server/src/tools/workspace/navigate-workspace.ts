@@ -1,16 +1,9 @@
-/**
- * navigate_workspace — push the Workspace router to a dashboard or inner tab.
- *
- * Mirrors workspace_mcp/server.py:1186-1227 with operation-specific required
- * fields enforced inline.
- */
-
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
-import { invalidRequestItem } from "../../bridge/validators";
-import { describeTool, DASHBOARD_TARGETING_GUIDANCE } from "../../bridge/instructions";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
+import { invalidRequestItem } from "../../bridge/validators.ts";
+import { describeTool, DASHBOARD_TARGETING_GUIDANCE } from "../../bridge/instructions.ts";
 
 export const navigateWorkspaceSchema = {
   operation: z
@@ -24,12 +17,12 @@ export const navigateWorkspaceSchema = {
     .string()
     .optional()
     .describe(
-      "Tab id (slug-form, e.g. 'aapl-analysis'). Required when operation='tab'.",
+      "Tab id (slug-form, e.g. 'quarterly-review'). Required when operation='tab'.",
     ),
 } as const;
 
 export const navigateWorkspaceDescription = describeTool(
-  "Navigate the Workspace browser to an existing dashboard or inner tab.",
+  "Navigate the FINOS Workspace browser to an existing dashboard or inner tab.",
   "Requires operation from {dashboard, tab}.",
   "For dashboard, pass dashboard_id. For tab, pass tab_id.",
   DASHBOARD_TARGETING_GUIDANCE,
@@ -59,7 +52,6 @@ export async function navigateWorkspaceHandler(args: {
     return { content };
   }
 
-  // tab
   if (!args.tab_id) {
     return {
       content: [

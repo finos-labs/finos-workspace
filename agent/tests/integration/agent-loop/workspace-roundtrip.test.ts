@@ -1,18 +1,10 @@
-/**
- * Tier 2 — workspace bridge native SSE round-trip.
- *
- * When the model picks one of the SSE-surfaced bridge commands the loop must
- * emit a `copilotFunctionCall` whose `function` equals the command name and
- * whose `input_arguments` are normalized to the Workspace wire shape (see
- * normalizeBridgeArgs). No `execute_agent_tool` (MCP detour) for these.
- */
-
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { QueryRequest, SSEEvent, ToolMessage, Widget } from "../../../src/protocol/types";
-import { llmCallsTool, llmEmitsText, makeMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { QueryRequest, SSEEvent, ToolMessage, Widget } from "../../../src/protocol/types.ts";
+import { llmCallsTool, llmEmitsText, makeMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 
@@ -97,10 +89,6 @@ describe("workspace bridge — generic dispatch", () => {
     expect(fc).toBeDefined();
     const data = fc!.data as { input_arguments: unknown; extra_state?: Record<string, unknown> };
     expect(data.input_arguments).toEqual(args);
-    // turn_usage rides every round-trip emission so the next request can add
-    // to it — a turn's token total is otherwise unrecoverable once this
-    // generator exits. The mock LLM reports 1 in / 1 out per call and no cache
-    // details, so the cache counters stay at zero.
     expect(data.extra_state).toEqual({
       copilot_function_call_arguments: args,
       turn_usage: {
@@ -202,10 +190,6 @@ describe("workspace bridge — generic dispatch", () => {
   });
 
   it("emits update_widget_in_dashboard, one bridge command per round-trip", async () => {
-    // The browser executes each copilotFunctionCall and re-POSTs immediately,
-    // so a second emission in the same turn would fork the conversation into
-    // duplicate continuations. Only the first bridge call goes out; the model
-    // re-issues the rest after seeing its result.
     const events = await collectGenerator(
       runAgentLoop({
         request: {
@@ -282,11 +266,6 @@ describe("workspace bridge — generic dispatch", () => {
       };
     };
     expect(data.function).toBe("add_widget_to_dashboard");
-    // The browser executes one copilotFunctionCall per turn. The rest of the
-    // step's bridge calls must ride extra_state so the continuation can keep
-    // executing them — dropping them silently loses model-decided mutations.
-    // The queue stores the raw (pre-normalization) tool input; it is normalized
-    // when the drain emits it.
     expect(data.extra_state?.pending_bridge_calls).toEqual([
       {
         function: "manage_navigation_bar",
@@ -336,21 +315,14 @@ describe("workspace bridge — generic dispatch", () => {
       extra_state?: Record<string, unknown>;
     };
     expect(data.function).toBe("update_widget_in_dashboard");
-    // The raw queued input is normalized to the Workspace data_sources shape.
     expect(data.input_arguments).toEqual({
       data_sources: [{ widget_uuid: "w-2", input_args: { sector: "technology" } }],
     });
-    // Queue exhausted — the next re-POST runs the model with all results.
     expect(data.extra_state?.pending_bridge_calls).toBeUndefined();
-    // The model must NOT run while calls are still owed to the browser.
     expect(events.some((e) => e.event === "copilotMessageChunk")).toBe(false);
   });
 
   it("carries continuation extra_state on bridge emissions (document delta survives the round-trip)", async () => {
-    // The workspace echoes extra_state back on the re-POST and the loop
-    // restores from the LAST tool message only. A bridge emission that drops
-    // documents_shipped would silently wipe the document delta-ship state
-    // mid-turn.
     const priorBridgeResult: ToolMessage = {
       role: "tool",
       function: "manage_dashboard",

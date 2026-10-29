@@ -15,12 +15,7 @@ function extractCustomProperties(block: string): string[] {
   return props;
 }
 
-/**
- * Grab the *second* :root { … } block (Layer 1 — light semantic tokens)
- * and the .dark { … } block.
- */
 function getSemanticBlocks(src: string) {
-  // Match all :root { ... } blocks (not dark)
   const rootBlocks: string[] = [];
   const rootRe = /:root\s*\{([^}]+)\}/g;
   let m: RegExpExecArray | null;
@@ -28,10 +23,8 @@ function getSemanticBlocks(src: string) {
     rootBlocks.push(m[1]);
   }
 
-  // The second :root block is Layer 1 (semantic tokens for light mode)
   const lightBlock = rootBlocks[1] ?? "";
 
-  // Match .dark { ... } block
   const darkRe = /\.dark\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/s;
   const darkMatch = darkRe.exec(src);
   const darkBlock = darkMatch?.[1] ?? "";
@@ -44,7 +37,6 @@ describe("tokens.css light/dark parity", () => {
   const lightTokens = extractCustomProperties(lightBlock);
   const darkTokens = new Set(extractCustomProperties(darkBlock));
 
-  // Filter out primitives (--color-*) — only check semantic tokens
   const semanticLight = lightTokens.filter((t) => !t.startsWith("--color-"));
 
   it("should have parsed semantic tokens from the light block", () => {

@@ -26,17 +26,15 @@ export function ParametersDialog(props: Props) {
   const { open, setOpen } = props;
   const { widget, widgetFromJSON, updateWidget } = useWidgetContext();
 
-  // Get params from widget or widgetFromJSON
   const params = useMemo(() => {
     return widget?.params ?? widgetFromJSON?.params ?? [];
   }, [widget?.params, widgetFromJSON?.params]);
 
-  // Initialize temporary state from current params
   const initialVisibility = useMemo(() => {
     return params.map((param) => ({
       paramName: param.paramName,
-      show: param.show ?? true, // Default to true if not specified
-      hidden: param.hidden ?? false, // Default to false if not specified
+      show: param.show ?? true,
+      hidden: param.hidden ?? false,
       label: param.label || param.paramName,
     }));
   }, [params]);
@@ -44,11 +42,9 @@ export function ParametersDialog(props: Props) {
   const [paramVisibility, setParamVisibility] =
     useState<ParamVisibility[]>(initialVisibility);
 
-  // Reset state when dialog opens or params change
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
       if (newOpen) {
-        // Reset to current state when opening
         setParamVisibility(initialVisibility);
       }
       setOpen(newOpen);
@@ -56,7 +52,6 @@ export function ParametersDialog(props: Props) {
     [initialVisibility, setOpen],
   );
 
-  // Handle toggle for a specific parameter
   const handleToggle = useCallback((paramName: string, checked: boolean) => {
     setParamVisibility((prev) =>
       prev.map((p) =>
@@ -65,14 +60,11 @@ export function ParametersDialog(props: Props) {
     );
   }, []);
 
-  // Handle reorder
   const handleReorder = useCallback((newOrder: ParamVisibility[]) => {
     setParamVisibility(newOrder);
   }, []);
 
-  // Save changes to widget
   const handleSave = useCallback(() => {
-    // Create updated params array in the new order
     const updatedParams: ParamDef[] = paramVisibility
       .map((pv) => {
         const originalParam = params.find((p) => p.paramName === pv.paramName);
@@ -86,7 +78,6 @@ export function ParametersDialog(props: Props) {
       })
       .filter(Boolean) as ParamDef[];
 
-    // Update the widget with new params (with new order and visibility)
     updateWidget(
       (prev) => ({
         ...prev,

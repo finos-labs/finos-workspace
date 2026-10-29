@@ -27,7 +27,6 @@ vi.mock("~/lib/state/toast", () => ({
   },
 }));
 
-// Mock DOM for ID lookup
 vi.spyOn(document, "getElementById").mockReturnValue(
   partial<HTMLElement>({
     getAttribute: vi.fn(() => "checked"),

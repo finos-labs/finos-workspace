@@ -11,12 +11,8 @@ import { useShallowCopilotStore } from "~/lib/state/copilot";
 import Icon from "../Icon";
 import { useShallowStreamingStore } from "./hooks/useStreaming";
 
-// How far from the bottom (px) the user can be for us to still hide the scroll button.
-// Generous so the button doesn't flicker when citations expand, etc.
 const BUTTON_VISIBILITY_THRESHOLD = 100;
 
-// How far from the absolute bottom (px) we consider "at the bottom" for auto-scroll purposes.
-// Tight so we never forcefully snap the viewport while the user is still scrolling.
 const AUTO_SCROLL_THRESHOLD = 10;
 
 export type ScrollButtonProps = {
@@ -31,19 +27,14 @@ export function ScrollButton(props: ScrollButtonProps) {
     loading: s.loading,
   }));
 
-  // New content is put in the chat whole, so it is a new message that moves the view.
   const messageCount = useShallowCopilotStore(
     (s) => s.getCurrentChat().messages.length,
   );
 
   const showWelcome = useShallowCopilotStore((s) => s.showWelcome);
 
-  // Ref controls auto-scroll suppression. Using a ref (not state) is intentional:
-  // scroll events fire at high frequency and we must NOT trigger React effects/re-renders
-  // every time the user crosses the threshold — that was the source of the snap-to-bottom bug.
   const userScrolledAwayRef = useRef(false);
 
-  // State controls button visibility — the only scroll-derived value that needs a re-render.
   const [showScrollButton, setShowScrollButton] = useState(false);
 
   const handleUserScroll = useCallback(() => {
@@ -64,7 +55,6 @@ export function ScrollButton(props: ScrollButtonProps) {
     return () => scrollElement.removeEventListener("scroll", handleUserScroll);
   }, [handleUserScroll, messagesRef]);
 
-  // Auto-scroll while the answer is being worked on, only when the user hasn't scrolled away
   useEffect(() => {
     if ((loading || limitReached) && !userScrolledAwayRef.current) {
       const animationFrame = requestAnimationFrame(() => {
@@ -77,8 +67,6 @@ export function ScrollButton(props: ScrollButtonProps) {
     }
   }, [loading, limitReached, messageCount, messagesRef]);
 
-  // Keep the user at the bottom when new content arrives (e.g. new message, loading state change)
-  // but only if they haven't intentionally scrolled away.
   useEffect(() => {
     if (!userScrolledAwayRef.current || limitReached) {
       if (messagesRef.current) {

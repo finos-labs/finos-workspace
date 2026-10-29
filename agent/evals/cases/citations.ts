@@ -1,22 +1,10 @@
-/**
- * Citations cases. Validates that intermediate citations registered on
- * a prior round-trip survive the next emit and the terminal collection.
- *
- * The single-shot eval runner cuts at the first round-trip emit, so each
- * case here either:
- *   (a) primes a citation via `extra_state.intermediate_citations` and
- *       expects the next emit to re-bake it, or
- *   (b) primes a citation via a typed MCP `$ines_kind: "citation"` payload
- *       and expects the terminal `citationCollection` SSE to carry it.
- */
-
-import type { EvalCase } from "../runner";
-import type { ToolMessage } from "../../src/protocol/types";
-import { techWorkspace } from "../fixtures/workspaces";
+import type { EvalCase } from "../runner.ts";
+import type { ToolMessage } from "../../src/protocol/types.ts";
+import { techWorkspace } from "../fixtures/workspaces.ts";
 import {
   intermediateCitationContains,
   noBadState,
-} from "../graders";
+} from "../graders/index.ts";
 
 const STASH_ID = "stashed-eval-citation";
 
@@ -67,10 +55,6 @@ const SEARCH_TOOL = {
   },
 };
 
-// Graders deliberately do NOT assert which tool the model picks next.
-// Citation survival is a protocol contract — it must hold regardless of
-// whether the model fetches another page, picks a widget, or answers
-// directly. Tool-choice assertions belong in widget-selection / tool-routing.
 export const citationsCases: EvalCase[] = [
   {
     id: "citation-survives-next-emit",

@@ -1,20 +1,14 @@
-/**
- * Bridge integration test: boot a minimal Hono app with the bridge routes,
- * connect a mock browser, and drive each of the 5 PoC workspace commands
- * end-to-end. Asserts wire-level command shape + round-trip result delivery.
- *
- * Mini-app pattern (no full server.ts boot) keeps tests independent of the
- * MCP transport layer and avoids module-scope side-effect ordering issues.
- */
-
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { describe, test, before as beforeAll, after as afterAll } from "node:test";
+import { expect } from "expect";
+import { serve, type ServerType } from "@hono/node-server";
 import { Hono } from "hono";
-import { makeBridgeSessionManager } from "../../src/bridge/state";
-import { mountBridgeRoutes } from "../../src/bridge/routes";
-import { executeBridgeCommand } from "../../src/bridge/execute";
-import { startMockBrowser, type MockBrowser } from "./mock-browser";
+import { WebSocketServer } from "ws";
+import { makeBridgeSessionManager } from "../../src/bridge/state.ts";
+import { mountBridgeRoutes } from "../../src/bridge/routes.ts";
+import { executeBridgeCommand } from "../../src/bridge/execute.ts";
+import { startMockBrowser, type MockBrowser } from "./mock-browser.ts";
 
-let server: ReturnType<typeof Bun.serve>;
+let server: ServerType;
 let manager: ReturnType<typeof makeBridgeSessionManager>;
 let baseUrl: string;
 let mock: MockBrowser;
@@ -26,16 +20,21 @@ beforeAll(async () => {
     websocketPath: "/bridge/ws",
     commandTimeoutMs: 2_000,
   });
-  const { websocket } = mountBridgeRoutes(app, manager);
-  server = Bun.serve({ fetch: app.fetch, port: 0, websocket });
-  baseUrl = `http://127.0.0.1:${server.port}`;
+  mountBridgeRoutes(app, manager);
+  const port = await new Promise<number>((resolve) => {
+    server = serve(
+      { fetch: app.fetch, port: 0, hostname: "127.0.0.1", websocket: { server: new WebSocketServer({ noServer: true }) } },
+      (info) => resolve(info.port),
+    );
+  });
+  baseUrl = `http://127.0.0.1:${port}`;
   mock = await startMockBrowser({ baseUrl, clientName: "integration-test" });
   await mock.waitReady();
 });
 
 afterAll(() => {
   mock?.close();
-  server?.stop();
+  server?.close();
 });
 
 describe("bridge integration — 5 PoC workspace commands", () => {
@@ -123,7 +122,6 @@ describe("bridge integration — 5 PoC workspace commands", () => {
   });
 
   test("no connected browser → unavailable error", async () => {
-    // Simulate by passing an unknown sessionId.
     const { content, result } = await executeBridgeCommand(
       manager,
       { command: "get_workspace_snapshot" },
@@ -142,17 +140,12 @@ describe("bridge integration — 5 PoC workspace commands", () => {
     mock.on("get_workspace_snapshot", () => {
       throw new Error("ignored — overridden by silent handler below");
     });
-    // Replace the WS so it eats messages without sending a result.
-    // Easier: override the handler to a function that returns nothing
-    // and patch the mock to suppress send. Instead use a fresh manager
-    // that has very short timeout and a session with no connected socket.
     const m2 = makeBridgeSessionManager({
       baseUrl: "http://127.0.0.1:0",
       websocketPath: "/bridge/ws",
       commandTimeoutMs: 50,
     });
     const start = m2.startSession({ client_name: "silent" });
-    // Connect a fake socket that never replies
     m2.connectBrowser({
       sessionId: start.session.session_id,
       token: start.session.token,
@@ -174,7 +167,6 @@ describe("bridge state — session lifecycle", () => {
       type: "session_context_changed",
       session: { current_dashboard_id: "dash-9", current_tab_id: "tab-3" },
     });
-    // Allow event loop to process the message.
     await new Promise((r) => setTimeout(r, 50));
     const ctx = manager.getSessionContext(mock.sessionId);
     expect(ctx?.current_dashboard_id).toBe("dash-9");
@@ -184,14 +176,12 @@ describe("bridge state — session lifecycle", () => {
   test("ping is no-op", async () => {
     mock.sendRaw({ type: "ping" });
     await new Promise((r) => setTimeout(r, 30));
-    // No assertion fires — just confirms ping does not crash the manager.
     expect(manager.health().connected).toBeGreaterThanOrEqual(1);
   });
 });
 
 describe("Phase A: snapshot validation + session_context injection + invalid-payload semantics", () => {
   test("session_context injected on ok command result with object data", async () => {
-    // Set context first so injection has values.
     mock.sendRaw({
       type: "session_context_changed",
       session: { current_dashboard_id: "dash-A", current_tab_id: "tab-A" },
@@ -293,14 +283,13 @@ describe("Phase A: snapshot validation + session_context injection + invalid-pay
     expect(result?.ok).toBe(true);
     const data = result?.data as { generated_at: number; session_context: unknown };
     expect(data.generated_at).toBe(1_700_000_000);
-    // Snapshot path also gets session_context injection.
     expect(data.session_context).toBeDefined();
   });
 
   test("get_workspace_snapshot with invalid envelope returns invalid_request", async () => {
     mock.on("get_workspace_snapshot", () => ({
       ok: true,
-      data: { generated_at: "not-a-number" }, // bad type, schema fails
+      data: { generated_at: "not-a-number" },
     }));
     const { result } = await executeBridgeCommand(
       manager,
@@ -313,7 +302,6 @@ describe("Phase A: snapshot validation + session_context injection + invalid-pay
   });
 
   test("invalid browser payload fails ALL pending commands without disconnect", async () => {
-    // Use isolated manager + fake silent socket so we can fire multiple commands.
     const m2 = makeBridgeSessionManager({
       baseUrl: "http://127.0.0.1:0",
       websocketPath: "/bridge/ws",
@@ -327,7 +315,6 @@ describe("Phase A: snapshot validation + session_context injection + invalid-pay
       socket: { send: (data) => sent.push(data), close: () => {} },
     });
 
-    // Fire two commands (don't await — they will resolve via fail-pending).
     const p1 = m2.executeCommand(start.session.session_id, {
       command: "delete_widget",
       widget_uuid: "w-1",
@@ -341,10 +328,8 @@ describe("Phase A: snapshot validation + session_context injection + invalid-pay
       dashboard_id: null,
     });
 
-    // Tick so the executeCommand body schedules the timeouts/sends.
     await new Promise((r) => setTimeout(r, 10));
 
-    // Inject malformed payload (missing required fields).
     m2.handleBrowserMessage(start.session.session_id, { type: "totally-bogus" });
 
     const [r1, r2] = await Promise.all([p1, p2]);
@@ -352,7 +337,6 @@ describe("Phase A: snapshot validation + session_context injection + invalid-pay
     expect(r1.error?.code).toBe("invalid_request");
     expect(r2.ok).toBe(false);
     expect(r2.error?.code).toBe("invalid_request");
-    // Socket NOT closed: subsequent valid messages would still be processed.
     expect(m2.health().connected).toBe(1);
   });
 });

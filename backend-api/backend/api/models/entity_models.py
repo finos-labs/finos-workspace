@@ -1,5 +1,3 @@
-"""Entity models"""
-
 from datetime import UTC, datetime
 from typing import Self
 from uuid import UUID
@@ -28,16 +26,12 @@ from api.models.model_helpers import (
     UUIDMixin,
 )
 
-# A user's type is the name of their permissions map. Admins administer their
-# organization; admins and developers may bring their own connections (data connectors,
-# MCP servers, custom Copilots and file uploads); users work with what roles give them.
 ADMIN_TYPE = "Admin"
 DEVELOPER_TYPE = "Developer"
 USER_TYPE = "User"
 USER_TYPES = (ADMIN_TYPE, DEVELOPER_TYPE, USER_TYPE)
 CONNECTION_TYPES = (ADMIN_TYPE, DEVELOPER_TYPE)
 
-# What a role lets its users do with shared items, from least to most.
 SHARING_NONE = "none"
 SHARING_RECEIVE = "receive"
 SHARING_SHARE = "share"
@@ -45,12 +39,6 @@ SHARING_LEVELS = (SHARING_NONE, SHARING_RECEIVE, SHARING_SHARE)
 
 
 async def entity_get_supreme(db: AsyncSession, self_uuid: UUID) -> None | UUID:
-    """Get the supreme entity for an entity. In a tree, every item will appear as a child
-    Somewhere except the first item, and an unknown number of items will never appear as
-    parents. To be the most efficient first we check for a child with the given id, then
-    we check for any parent with the id.
-    """
-
     query = select(EntityRelationship.supreme_uuid).where(
         EntityRelationship.child_uuid == self_uuid
     )
@@ -67,31 +55,22 @@ async def entity_get_supreme(db: AsyncSession, self_uuid: UUID) -> None | UUID:
 
 
 class Entity(Base, UUIDMixin, DateMixin):
-    """An organization: its name, and the switches that act on it"""
-
     __tablename__ = "entity"
 
     name: Mapped[None | str] = mapped_column(String(100), unique=True)
     require_authenticator: Mapped[bool] = mapped_column(Boolean, default=False)
-    # The superuser's switch; on, the organization's roles decide who shares
     sharing_enabled: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=true()
     )
 
     async def get_all_children(self, db: AsyncSession) -> list["Entity"]:
-        """Returns self, children, and children of children recursively"""
-
-        # First we need to look at the child of the base element
         children = [self]
         stack = [self]
 
-        # Then we fetch ALL relationships, in the future we might want to do smart
-        # filter or caching, but this is fine until we see performance issues
         all_rels: list[EntityRelationship] = (
             (await db.execute(select(EntityRelationship))).scalars().all()
         )
 
-        # Then we iterate through the stack, adding children to the list and stack
         while stack:
             current = stack.pop()
             temp = [x for x in all_rels if x.parent_uuid == current.uuid]
@@ -104,8 +83,6 @@ class Entity(Base, UUIDMixin, DateMixin):
 
 
 class EntityRelationship(Base, UUIDMixin, DateMixin):
-    """Stores the parent and child relationships for entities"""
-
     __tablename__ = "entity_relationship"
 
     parent_uuid: Mapped[UUID] = mapped_column(ForeignKey("entity.uuid"), index=True)
@@ -119,8 +96,6 @@ class EntityRelationship(Base, UUIDMixin, DateMixin):
 
 
 class PermissionsEntityMap(Base, UUIDMixin, DateMixin):
-    """Combines an entity with various permissions"""
-
     __tablename__ = "permissions_entity_map"
 
     entity_uuid: Mapped[UUID] = mapped_column(
@@ -131,8 +106,6 @@ class PermissionsEntityMap(Base, UUIDMixin, DateMixin):
 
 
 class AuditEntityRolesPermissions(Base, UUIDMixin, DateMixin):
-    """Stores the audit logs for entity roles and permissions"""
-
     __tablename__ = "audit_entity_roles_permissions"
 
     entity_uuid: Mapped[UUID] = mapped_column(
@@ -150,11 +123,8 @@ class AuditEntityRolesPermissions(Base, UUIDMixin, DateMixin):
 
 
 class Role(Base, UUIDMixin, DateMixin):
-    """Stores the roles of entities"""
-
     __tablename__ = "role"
     __table_args__ = (
-        # Modified unique constraint to consider deleted_at
         UniqueConstraint(
             "entity_uuid", "name", "deleted_at", name="uix_role_entity_name_deleted_at"
         ),
@@ -168,11 +138,9 @@ class Role(Base, UUIDMixin, DateMixin):
     sharing: Mapped[str] = mapped_column(
         String(10), default=SHARING_NONE, server_default=SHARING_NONE
     )
-    # Daily limits; NULL is no limit, which a new role has.
     copilot_calls_day: Mapped[int | None] = mapped_column(Integer)
     copilot_tokens_day: Mapped[int | None] = mapped_column(BigInteger)
     upload_size_gb: Mapped[int | None] = mapped_column(Integer)
-    # The Copilot's web tools: on for a user when any of their roles allows them
     search_web: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=true()
     )
@@ -188,15 +156,12 @@ class Role(Base, UUIDMixin, DateMixin):
     )
 
     async def soft_delete(self, db: AsyncSession) -> Self:
-        """Soft delete this role"""
         self.deleted_at = datetime.now(UTC)
         await db.flush()
         return self
 
 
 class RoleBackend(Base, UUIDMixin, DateMixin):
-    """Stores the roles of entities"""
-
     __tablename__ = "role_backend"
 
     role_uuid: Mapped[UUID] = mapped_column(
@@ -213,8 +178,6 @@ class RoleBackend(Base, UUIDMixin, DateMixin):
 
 
 class RoleFile(Base, UUIDMixin, DateMixin):
-    """Stores the roles of entities"""
-
     __tablename__ = "role_file"
 
     role_uuid: Mapped[UUID] = mapped_column(
@@ -229,8 +192,6 @@ class RoleFile(Base, UUIDMixin, DateMixin):
 
 
 class RolePrompt(Base, UUIDMixin, DateMixin):
-    """Stores the roles of entities"""
-
     __tablename__ = "role_prompt"
 
     role_uuid: Mapped[UUID] = mapped_column(
@@ -245,8 +206,6 @@ class RolePrompt(Base, UUIDMixin, DateMixin):
 
 
 class RoleCopilotModel(Base, UUIDMixin, DateMixin):
-    """A Copilot model that a role may use."""
-
     __tablename__ = "role_copilot_model"
     __table_args__ = (
         UniqueConstraint(
@@ -263,11 +222,6 @@ class RoleCopilotModel(Base, UUIDMixin, DateMixin):
 
 
 class RoleMcpAccess(Base, UUIDMixin, DateMixin):
-    """An MCP server, or one tool of it, that a role may use.
-
-    ``tool_name`` is ``*`` for every tool of the server.
-    """
-
     __tablename__ = "role_mcp_access"
     __table_args__ = (
         UniqueConstraint(
@@ -284,8 +238,6 @@ class RoleMcpAccess(Base, UUIDMixin, DateMixin):
 
 
 class EntityThemeSettings(Base, UUIDMixin, DateMixin):
-    """Stores the theme settings for an entity"""
-
     __tablename__ = "entity_theme_settings"
 
     entity_uuid: Mapped[UUID] = mapped_column(

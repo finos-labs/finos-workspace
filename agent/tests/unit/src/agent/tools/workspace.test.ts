@@ -1,13 +1,10 @@
-/**
- * Tier 1 — workspace bridge tool factory.
- */
-
-import { describe, it, expect } from "bun:test";
-import { makeWorkspaceTools } from "../../../../../src/agent/tools/workspace";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { makeWorkspaceTools } from "../../../../../src/agent/tools/workspace.ts";
 import {
   WORKSPACE_BRIDGE_COMMANDS,
   WORKSPACE_BRIDGE_COMMAND_NAMES,
-} from "../../../../../src/protocol/bridge-commands";
+} from "../../../../../src/protocol/bridge-commands.ts";
 
 describe("makeWorkspaceTools — registry coverage", () => {
   it("registers one no-execute tool per bridge command by default", () => {

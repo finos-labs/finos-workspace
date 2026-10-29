@@ -34,7 +34,6 @@ const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
-//! Didn't touch
 interface DropdownMenuSubTriggerProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> {
   inset?: boolean;
@@ -58,7 +57,6 @@ const DropdownMenuSubTrigger = React.forwardRef<
 ));
 DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;
 
-//! Didn't touch
 interface DropdownMenuSubContentProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent> {}
 const DropdownMenuSubContent = React.forwardRef<
@@ -109,7 +107,6 @@ const DropdownMenuItem = React.forwardRef<
 ));
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 
-//! Didn't touch
 interface DropdownMenuCheckboxItemProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem> {}
 const DropdownMenuCheckboxItem = React.forwardRef<
@@ -135,7 +132,6 @@ const DropdownMenuCheckboxItem = React.forwardRef<
 ));
 DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displayName;
 
-//! Didn't touch
 interface DropdownMenuRadioItemProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem> {}
 const DropdownMenuRadioItem = React.forwardRef<
@@ -176,7 +172,6 @@ const DropdownMenuLabel = React.forwardRef<
 ));
 DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
 
-//! Didn't touch
 interface DropdownMenuSeparatorProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator> {}
 const DropdownMenuSeparator = React.forwardRef<
@@ -191,7 +186,6 @@ const DropdownMenuSeparator = React.forwardRef<
 ));
 DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 
-//! Didn't touch
 interface DropdownMenuShortcutProps extends React.HTMLAttributes<HTMLSpanElement> {}
 const DropdownMenuShortcut = ({ className, ...props }: DropdownMenuShortcutProps) => {
   return (

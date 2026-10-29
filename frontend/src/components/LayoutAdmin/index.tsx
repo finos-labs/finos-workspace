@@ -34,7 +34,6 @@ function useAuthKeyPresses() {
   useEffect(() => {
     const handleKeypress = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.keyCode === 77) {
-        // cmd + m
         e.preventDefault();
         themeStore.toggleTheme();
         themeStore.debouncedUpdateSettings();
@@ -78,8 +77,8 @@ function useHasAdminAccess() {
     queryKey: ["admin", "validate-access"],
     queryFn: validateAdminAccess,
     enabled: true,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 1000 * 60 * 15, // 15 minutes
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 15,
     notifyOnChangeProps: ["error", "isLoading"],
   });
 

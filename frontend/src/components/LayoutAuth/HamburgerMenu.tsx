@@ -45,7 +45,7 @@ function UserInformation({ toggleHamburgerMenu }: { toggleHamburgerMenu: () => v
         (pathname.startsWith("/admin") ? (
           <Link to="/app" className="ws-dropdown-item" onClick={toggleHamburgerMenu}>
             <Icon id="layout" />
-            <span>Workspace</span>
+            <span>FINOS Workspace</span>
           </Link>
         ) : (
           <Link to="/admin" className="ws-dropdown-item" onClick={toggleHamburgerMenu}>
@@ -57,7 +57,6 @@ function UserInformation({ toggleHamburgerMenu }: { toggleHamburgerMenu: () => v
   );
 }
 
-// The help page is a list of links to the documentation, so it needs a documentation site.
 const uiShowHelpDocumentationFF = getConfig().ui.showHelpDocumentation && !!docsUrl();
 const showCompanionModeFF = getConfig().ui.showCompanionMode;
 
@@ -189,10 +188,7 @@ function HamburgerMenu({ isMobile = false }: { isMobile?: boolean }) {
       </Tooltip>
       <DropdownMenuPortal>
         <DropdownMenuContent
-          className="space-y-2 max-h-fit" // dark:border dark:border-dark-300"
-          /*style={{
-            boxShadow: "0px 2px 10px 0px rgba(0, 0, 0, 0.4)",
-          }}*/
+          className="space-y-2 max-h-fit"
           sideOffset={5}
           alignOffset={0}
           side="bottom"

@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { getWidgetComponent } from "~/components/Widgets";
-import { isWidgetVizType, WidgetVizTypes } from "~/lib/types/app";
-import { partitionSupportedWidgets } from "~/lib/utils/validateBackend";
+import {
+  isBuiltInVizType,
+  isRenderableVizType,
+  isWellFormedVizType,
+  WidgetVizTypes,
+} from "~/lib/types/app";
+import { validateWidgetItems } from "~/lib/utils/validateBackend";
+import { widgetsSchema } from "../../../mocks/widgetsSchema";
 
 const widget = (type?: string) => ({
   name: "A widget",
@@ -10,8 +16,8 @@ const widget = (type?: string) => ({
   ...(type ? { type } : {}),
 });
 
-describe("the widget types this Workspace renders", () => {
-  it("renders markdown, html, iframe, newsfeed and pdf", () => {
+describe("the widget types this FINOS Workspace renders", () => {
+  it("renders markdown, html, iframe, newsfeed and pdf itself", () => {
     expect([...WidgetVizTypes].sort()).toEqual([
       "html",
       "iframe",
@@ -21,15 +27,30 @@ describe("the widget types this Workspace renders", () => {
     ]);
   });
 
-  it("does not know note, rich_note or table as a widget type of a backend", () => {
+  it("does not build in note, rich_note or table", () => {
     for (const type of ["note", "rich_note", "table"]) {
-      expect(isWidgetVizType(type)).toBe(false);
+      expect(isBuiltInVizType(type)).toBe(false);
     }
-    expect(isWidgetVizType("markdown")).toBe(true);
-    expect(isWidgetVizType("newsfeed")).toBe(true);
+    expect(isBuiltInVizType("markdown")).toBe(true);
+    expect(isBuiltInVizType("newsfeed")).toBe(true);
   });
 
-  it("has a component for each widget the Workspace renders", () => {
+  it("renders another type only when an available widget plugin handles it", () => {
+    expect(isRenderableVizType("table")).toBe(false);
+    expect(isRenderableVizType("table", new Set(["table"]))).toBe(true);
+    expect(isRenderableVizType("chart", new Set(["table"]))).toBe(false);
+    expect(isRenderableVizType("markdown", new Set())).toBe(true);
+  });
+
+  it("accepts any lowercase type name as well formed", () => {
+    expect(isWellFormedVizType("plotly_chart")).toBe(true);
+    expect(isWellFormedVizType("Table")).toBe(false);
+    expect(isWellFormedVizType("x")).toBe(false);
+    expect(isWellFormedVizType("")).toBe(false);
+    expect(isWellFormedVizType(undefined)).toBe(false);
+  });
+
+  it("has a component for each widget the FINOS Workspace renders itself", () => {
     for (const type of WidgetVizTypes) {
       expect(getWidgetComponent(type)).toBeDefined();
     }
@@ -37,27 +58,31 @@ describe("the widget types this Workspace renders", () => {
     expect(getWidgetComponent("rss_viewer" as never)).toBeUndefined();
   });
 
-  it("keeps a backend's markdown and newsfeed widgets and leaves out the types it cannot render", () => {
-    const { supported, unsupported } = partitionSupportedWidgets({
-      notes: widget("markdown"),
-      headlines: widget("newsfeed"),
-      memo: widget("note"),
-      prices: widget("table"),
-      untyped: widget(),
-    } as never);
+  it("leaves out the types nothing enabled for the entity renders, and names them", () => {
+    const { valid, unsupported, unrendered, invalid } = validateWidgetItems(
+      {
+        notes: widget("markdown"),
+        headlines: widget("newsfeed"),
+        memo: widget("note"),
+        prices: widget("table"),
+        chart: widget("test_chart"),
+        untyped: widget(),
+        bad: widget("Bad Type"),
+      },
+      { schema: widgetsSchema },
+    );
 
-    expect(Object.keys(supported)).toEqual(["notes", "headlines"]);
-    expect(unsupported).toEqual(["memo", "prices", "untyped"]);
+    expect(Object.keys(valid)).toEqual(["notes", "headlines", "chart"]);
+    expect(unsupported).toEqual(["memo", "prices"]);
+    expect(unrendered).toEqual(["chart"]);
+    expect(invalid.map((item) => item.id)).toEqual(["untyped", "bad"]);
   });
 
-  it("hands an entry that is not a widget on, to be reported as invalid", () => {
-    const { supported, unsupported } = partitionSupportedWidgets({
-      notes: widget("markdown"),
-      nothing: null,
-      text: "just a string",
-    } as never);
-
-    expect(Object.keys(supported)).toEqual(["notes", "nothing", "text"]);
-    expect(unsupported).toEqual([]);
+  it("does not name a type an available plugin renders", () => {
+    const { unrendered } = validateWidgetItems(
+      { chart: widget("test_chart") },
+      { schema: widgetsSchema, pluginTypes: new Set(["test_chart"]) },
+    );
+    expect(unrendered).toEqual([]);
   });
 });

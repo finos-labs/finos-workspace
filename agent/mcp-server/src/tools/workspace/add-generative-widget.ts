@@ -1,36 +1,28 @@
-/**
- * add_generative_widget — render a generative widget (note/table/chart/html).
- *
- * Mirrors workspace_mcp/server.py:945-991. data_json shape varies by
- * widget_type; chart additionally requires chart_params_json with
- * {chartType, xKey, non-empty yKey}.
- */
-
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
 import {
   invalidRequestItem,
   validateAddGenerativeWidgetRequest,
-} from "../../bridge/validators";
+} from "../../bridge/validators.ts";
 import {
   parseGenerativeData,
   parseJsonObject,
   JsonArgumentError,
-} from "../../bridge/json-args";
+} from "../../bridge/json-args.ts";
 import {
   describeTool,
   GENERATIVE_WIDGET_GUIDANCE,
   DASHBOARD_TARGETING_GUIDANCE,
-} from "../../bridge/instructions";
+} from "../../bridge/instructions.ts";
 
 export const addGenerativeWidgetSchema = {
   widget_type: z
     .enum(["note", "table", "chart", "html"])
     .describe("Generative widget kind."),
   dashboard_id: z.string().optional().describe(
-    "Target dashboard UUID. Omit to target the current Workspace route.",
+    "Target dashboard UUID. Omit to target the current FINOS Workspace route.",
   ),
   data_json: z.string().optional().describe(
     "Widget content. note/html: plain string OR JSON-quoted string. " +
@@ -87,7 +79,6 @@ export async function addGenerativeWidgetHandler(args: {
     return { content: [invalidRequestItem(validationError)] };
   }
 
-  // Wire schema accepts data as list[dict] | string | null.
   const dataValue =
     data === null
       ? null

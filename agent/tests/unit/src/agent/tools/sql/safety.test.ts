@@ -1,12 +1,6 @@
-/**
- * SQL safety gates — defense-in-depth checks shared by execute_sql,
- * peek_table, and peek_column_values. Every match is a regression of a
- * real attack class (information disclosure via sqlite_master, escape via
- * ATTACH/DETACH, etc).
- */
-
-import { describe, it, expect } from "bun:test";
-import { rejectUnsafeSql, rejectUnsafeTableName } from "../../../../../../src/agent/tools/sql/safety";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { rejectUnsafeSql, rejectUnsafeTableName } from "../../../../../../src/agent/tools/sql/safety.ts";
 
 describe("rejectUnsafeSql — prefix check", () => {
   const allowed = [
@@ -43,9 +37,6 @@ describe("rejectUnsafeSql — prefix check", () => {
 });
 
 describe("rejectUnsafeSql — sqlite internals (information disclosure)", () => {
-  // regression: sqlite_master / sqlite_schema and the temp/sequence siblings
-  // expose the entire DB schema; an LLM that learns this name from web
-  // training data could probe past the widget tables.
   const denied = [
     "SELECT name FROM sqlite_master",
     "select * from sqlite_schema",
@@ -82,10 +73,6 @@ describe("rejectUnsafeSql — PRAGMA / ATTACH / DETACH", () => {
 });
 
 describe("rejectUnsafeSql — multi-statement smuggling", () => {
-  // regression: `db.query(sql).all()` only runs the first prepared
-  // statement today, but trailing destructive SQL is still semantically
-  // dangerous if the runtime contract changes. Reject any `;` followed by
-  // a SQL keyword we don't accept at statement start.
   const cases = [
     "SELECT 1; DROP TABLE x",
     "SELECT 1; INSERT INTO x VALUES (1)",
@@ -103,8 +90,6 @@ describe("rejectUnsafeSql — multi-statement smuggling", () => {
 });
 
 describe("rejectUnsafeTableName", () => {
-  // regression: peek_table / peek_column_values accepted any string —
-  // could be aimed at sqlite_master to dump the schema.
   const denied = ["sqlite_master", "sqlite_schema", "SQLITE_MASTER", "Sqlite_Sequence"];
   for (const name of denied) {
     it(`rejects ${JSON.stringify(name)}`, () => {

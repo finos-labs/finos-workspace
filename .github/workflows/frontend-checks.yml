@@ -23,11 +23,11 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: actions/setup-node@v4
         with:
-          bun-version: 1.4.2
-      - run: bun install --frozen-lockfile
-      - run: bunx @biomejs/biome ci src
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      - run: npx biome ci .
 
   typecheck:
     name: Types
@@ -40,11 +40,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.2
-      - run: bun install --frozen-lockfile
-      - run: bun run typecheck
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
 
   unit-tests:
     name: Unit tests
@@ -57,18 +54,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.2
-      - run: bun install --frozen-lockfile
-      - run: bun run test:unit
+      - run: npm ci --ignore-scripts
+      - run: npm run test:unit
 
   typos:
     name: Spelling
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: crate-ci/typos@7f9d0819ca1c008ade73f4b41fa9d258d48f605b # v1.51.1
+      - uses: crate-ci/typos@7f9d0819ca1c008ade73f4b41fa9d258d48f605b
         with:
           files: frontend/src frontend/CHANGELOG.md
           config: frontend/_typos.toml

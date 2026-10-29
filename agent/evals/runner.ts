@@ -1,28 +1,8 @@
-#!/usr/bin/env bun
-/**
- * Tier 3 eval runner.
- *
- * Loads cases from evals/cases/, runs each N times against a real LLM,
- * applies graders, and writes per-trial traces + a summary report.
- *
- * Usage:
- *   bun run evals                           # run all cases
- *   bun run evals -- --filter=widget        # filter case ids
- *   bun run evals -- --group=widget-selection
- *   EVAL_MODEL=<provider>:<model> bun run evals
- *
- * Env:
- *   EVAL_MODEL        — model id passed to resolveModel (default: DEFAULT_MODEL)
- *   EVAL_JUDGE_MODEL  — judge model for llmJudge graders (default: EVAL_MODEL)
- *   EVAL_TRIALS       — overrides per-case trials
- *   EVAL_OUT_DIR      — output dir for trace JSONs (default evals/runs)
- *
- * The runner is idempotent: each run lands under evals/runs/<ISO-date>/.
- */
+#!/usr/bin/env node
 
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
-import { resolveModel } from "../src/lib/providers";
+import { resolveModel } from "../src/lib/providers.ts";
 import type {
   Widget,
   ChatMessage,
@@ -32,12 +12,12 @@ import type {
   SkillCatalogEntry,
   SkillPayload,
   UploadedDocument,
-} from "../src/protocol/types";
+} from "../src/protocol/types.ts";
 import type { LanguageModel } from "ai";
-import { runEvalCase, type Trace } from "./trace";
-import type { GraderSpec, GradeResult } from "./graders";
-import { ALL_CASES, CASE_GROUPS } from "./cases";
-import { renderReport, type CaseReport, type TrialReport } from "./report";
+import { runEvalCase, type Trace } from "./trace.ts";
+import type { GraderSpec, GradeResult } from "./graders/index.ts";
+import { ALL_CASES, CASE_GROUPS } from "./cases/index.ts";
+import { renderReport, type CaseReport, type TrialReport } from "./report.ts";
 
 export interface EvalCase {
   id: string;
@@ -70,7 +50,6 @@ interface RunSummary {
   cases: CaseReport[];
 }
 
-// The model under test comes from EVAL_MODEL, else DEFAULT_MODEL; none is baked in.
 const configuredModel = process.env.EVAL_MODEL || process.env.DEFAULT_MODEL;
 if (!configuredModel) {
   console.error("Set EVAL_MODEL (or DEFAULT_MODEL) to the model to evaluate.");

@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { readParseAs, routeForParseAs } from "../../../../src/widgets/parse-as";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { readParseAs, routeForParseAs } from "../../../../src/widgets/parse-as.ts";
 
 describe("readParseAs", () => {
   it("returns the canonical lowercased value for valid kinds", () => {

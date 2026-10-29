@@ -10,12 +10,16 @@ import { renderWidget } from "../WidgetTestWrapper";
 
 type JsonDataResult = ReturnType<typeof useJsonData>;
 
-/** A query result with only the fields the widget reads. */
 const jsonData = (
   result: Partial<
     Pick<JsonDataResult, "data" | "isLoading" | "error" | "dataUpdatedAt">
   >,
 ): JsonDataResult => result as JsonDataResult;
+
+const rawQueryValue = (options: Parameters<typeof useJsonData>[0]) =>
+  options.request?.ok
+    ? new URL(options.request.request.url).searchParams.get("raw")
+    : null;
 
 const appStoreMock = vi.hoisted(() => ({
   getWidgetGroups: vi.fn<(tabId: string, widgetId: string | undefined) => Group[]>(
@@ -38,13 +42,15 @@ vi.mock("~/components/DraggableCard", () => ({
     loading,
     error,
     extraNavbarElements,
+    aiData,
   }: {
     children?: ReactNode;
     loading?: boolean;
     error?: boolean;
     extraNavbarElements?: ReactNode;
+    aiData?: unknown;
   }) => (
-    <div data-testid="draggable-card">
+    <div data-testid="draggable-card" data-ai={JSON.stringify(aiData ?? null)}>
       {extraNavbarElements}
       {loading && <span data-testid="loading">Loading...</span>}
       {error && <span data-testid="error">Error</span>}
@@ -77,6 +83,18 @@ vi.mock("~/lib/state/sharedApp", () => ({
       getDashboardById: sharedAppStoreMock.getDashboardById,
       getWidgetGroups: sharedAppStoreMock.getWidgetGroups,
     }),
+}));
+
+const rowsPluginMock = vi.hoisted(() => ({
+  useRowsPlugin: vi.fn<(rawType: string | undefined) => unknown>(() => null),
+}));
+
+vi.mock("~/plugins/registry", () => ({ useRowsPlugin: rowsPluginMock.useRowsPlugin }));
+
+vi.mock("~/plugins/PluginWidget", () => ({
+  PluginRowsCard: ({ viewName }: { viewName: string }) => (
+    <div data-testid="plugin-rows-card">{viewName}</div>
+  ),
 }));
 
 vi.mock("~/components/WidgetParams/QueryParams", () => ({
@@ -138,7 +156,7 @@ describe("HtmlViewer - raw data query", () => {
     );
   });
 
-  it("uses a stale raw query so entering raw view refetches the endpoint", async () => {
+  it("asks for raw=true whenever the widget declares raw, not only in the rows view", async () => {
     const { useJsonData } = vi.mocked(await import("~/lib/api"));
 
     renderWidget(<HtmlViewer />, {
@@ -150,14 +168,13 @@ describe("HtmlViewer - raw data query", () => {
       },
     });
 
-    // The second useJsonData call is the raw-data query
     const [rawOptions, rawQueryOptions] = nthLastCall(useJsonData);
-    expect(rawOptions.params?.raw).toBe(true);
+    expect(rawQueryValue(rawOptions)).toBe("true");
+    expect(rawQueryOptions?.enabled).toBe(true);
     expect(rawOptions.queryKey).toBeUndefined();
-    expect(rawQueryOptions?.staleTime).toBe(0);
   });
 
-  it("does not share the html run-button query key with the raw query", async () => {
+  it("keeps the run-button keys of the html and the rows apart", async () => {
     const { useJsonData } = vi.mocked(await import("~/lib/api"));
 
     renderWidget(<HtmlViewer />, {
@@ -172,12 +189,75 @@ describe("HtmlViewer - raw data query", () => {
 
     const htmlOptions = nthLastCall(useJsonData, 2)[0];
     const rawOptions = nthLastCall(useJsonData)[0];
-    expect(htmlOptions.queryKey).toBeDefined();
-    expect(rawOptions.queryKey).toBeUndefined();
+    expect(htmlOptions.queryKey?.[0]).toBe("html");
+    expect(rawOptions.queryKey?.[0]).toBe("raw");
+    expect(rawOptions.queryKey).toContain(
+      "https://api.example.com/html?theme=dark&raw=true",
+    );
   });
 
-  it("requests raw data in raw view and keeps showing the HTML", async () => {
+  it("reads the rows at data.rawDataKey, else results, else the whole response", async () => {
     const { useJsonData } = vi.mocked(await import("~/lib/api"));
+    const response = { results: { chart: "<p>", records: [{ month: "Jan", a: 43 }] } };
+    const rowsOf = async (rawDataKey?: string) => {
+      useJsonData.mockClear();
+      renderWidget(<HtmlViewer />, {
+        widgetOverrides: {
+          id: `html-raw-key-${rawDataKey ?? "none"}`,
+          raw: true,
+          data: { rawDataKey },
+          endpoint: { url: "https://api.example.com/html" },
+          storage: { params: {} },
+        },
+      });
+      const [rawOptions] = nthLastCall(useJsonData);
+      const resolve = vi.fn();
+      await rawOptions.responseCb?.(Response.json(response), resolve, vi.fn());
+      return resolve.mock.calls[0][0];
+    };
+    expect(await rowsOf("results.records")).toEqual([{ month: "Jan", a: 43 }]);
+    expect(await rowsOf()).toEqual(response.results);
+  });
+
+  it("gives the AI Agent the rows whenever raw is set", async () => {
+    const { useJsonData } = vi.mocked(await import("~/lib/api"));
+    const rows = [{ month: "Jan", a: 43 }];
+    useJsonData.mockImplementation((options) =>
+      jsonData({
+        data: rawQueryValue(options) === "true" ? rows : "<div>html</div>",
+        isLoading: false,
+        error: null,
+        dataUpdatedAt: HTML_DATA_UPDATED_AT,
+      }),
+    );
+
+    renderWidget(<HtmlViewer />, {
+      widgetOverrides: {
+        id: "html-raw-ai",
+        raw: true,
+        endpoint: { url: "https://api.example.com/html" },
+        storage: { params: {} },
+      },
+    });
+
+    expect(JSON.parse(screen.getByTestId("draggable-card").dataset.ai ?? "")).toEqual(
+      rows,
+    );
+  });
+
+  it("shows the rows in a table in the rows view, not the HTML", async () => {
+    const { useJsonData } = vi.mocked(await import("~/lib/api"));
+    useJsonData.mockImplementation((options) =>
+      jsonData({
+        data:
+          rawQueryValue(options) === "true"
+            ? [{ month: "Jan", a: 43 }]
+            : "<div>html</div>",
+        isLoading: false,
+        error: null,
+        dataUpdatedAt: HTML_DATA_UPDATED_AT,
+      }),
+    );
 
     renderWidget(<HtmlViewer />, {
       widgetOverrides: {
@@ -189,15 +269,28 @@ describe("HtmlViewer - raw data query", () => {
       },
     });
 
-    const htmlQueryOptions = nthLastCall(useJsonData, 2)[1];
-    const [rawOptions, rawQueryOptions] = nthLastCall(useJsonData);
-    expect(htmlQueryOptions?.enabled).toBe(true);
-    expect(rawOptions.params?.raw).toBe(true);
-    expect(rawQueryOptions?.enabled).toBe(true);
-    expect(screen.getByTitle("Raw Widget")).toHaveAttribute(
-      "srcdoc",
-      expect.stringContaining("<div>html</div>"),
-    );
+    const table = screen.getByTestId("raw-rows-table");
+    expect(table).toHaveTextContent("month");
+    expect(table).toHaveTextContent("Jan");
+    expect(screen.queryByTitle("Raw Widget")).not.toBeInTheDocument();
+  });
+
+  it("shows the rows with the plugin of data.rawType when the user may use it", async () => {
+    rowsPluginMock.useRowsPlugin.mockReturnValue({ vizType: "table_x" });
+
+    renderWidget(<HtmlViewer />, {
+      widgetOverrides: {
+        id: "html-raw-type",
+        raw: true,
+        data: { rawType: "table_x" },
+        endpoint: { url: "https://api.example.com/html" },
+        storage: { params: {}, rawDataView: true },
+      },
+    });
+
+    expect(rowsPluginMock.useRowsPlugin).toHaveBeenLastCalledWith("table_x");
+    expect(await screen.findByTestId("plugin-rows-card")).toHaveTextContent("HTML");
+    rowsPluginMock.useRowsPlugin.mockReturnValue(null);
   });
 
   it("toggles the raw data view from the navbar button", () => {
@@ -279,13 +372,9 @@ describe("HtmlViewer - iframe params bridge", () => {
       },
     });
 
-    // The html query is the one before the raw-data query
     const [options] = nthLastCall(useJsonData, 2);
     expect(options.queryKey).toContain(
-      JSON.stringify({
-        use_categories: "correctional_facilities",
-        theme: "dark",
-      }),
+      "https://api.example.com/html?use_categories=correctional_facilities&theme=dark",
     );
   });
 
@@ -563,8 +652,6 @@ describe("HtmlViewer - iframe params bridge", () => {
 
     window.dispatchEvent(
       new MessageEvent("message", {
-        // Source is this top-level window, not the iframe's contentWindow,
-        // and no bridge token is included.
         source: window,
         data: {
           type: "workspace:widget-params:update",

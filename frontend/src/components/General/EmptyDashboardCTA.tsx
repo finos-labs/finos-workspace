@@ -8,14 +8,10 @@ import { Button } from "../ds/atoms/Button";
 import { useDragAndDropFiles } from "../GridLayout.hooks";
 import Icon from "../Icon";
 
-// temporary until first empty dashboard mockup cta is implemented
 const isFirstLogin = false;
 
 export default function EmptyDashboardCTA({ locked = false }: { locked?: boolean }) {
   const navigate = useNavigate();
-  /*const { isFirstLogin } = useAuthStore((state) => ({
-    isFirstLogin: state.isFirstLogin,
-  }));*/
   const { changeSearch, setInitialSelectedSearchTab } = useShallowThemeStore(
     (state) => ({
       changeSearch: state.changeSearch,
@@ -33,7 +29,6 @@ export default function EmptyDashboardCTA({ locked = false }: { locked?: boolean
   }
 
   const { getRootProps, getInputProps, isDragActive } = useDragAndDropFiles(locked);
-  // Files are a connection the user brings
   const mayUpload = useShallowAccessStore((s) => canAddConnections(s.access));
 
   return (

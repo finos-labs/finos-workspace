@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import { Hono } from "hono";
 import {
   ANONYMOUS,
@@ -8,10 +9,10 @@ import {
   servicesMiddleware,
   type AppEnv,
   type Services,
-} from "../../../../src/auth/middleware";
-import { createLimits } from "../../../../src/auth/limits";
-import { createLocalStore } from "../../../../src/lib/store";
-import type { Result, WorkspaceClient } from "../../../../src/auth/workspace-client";
+} from "../../../../src/auth/middleware.ts";
+import { createLimits } from "../../../../src/auth/limits.ts";
+import { createLocalStore } from "../../../../src/lib/store.ts";
+import type { Result, WorkspaceClient } from "../../../../src/auth/workspace-client.ts";
 
 function workspaceStub(users: Record<string, Result<{ userId: string }>>) {
   const asked: string[] = [];
@@ -52,7 +53,7 @@ function appWith(workspace: WorkspaceClient | null, cacheSeconds = 30, now = Dat
 const bearer = (token: string) => ({ headers: { Authorization: `Bearer ${token}` } });
 
 describe("authMiddleware — workspace auth", () => {
-  it("lets in a user the Workspace API recognises and tells the route who they are", async () => {
+  it("lets in a user the FINOS Workspace API recognises and tells the route who they are", async () => {
     const { workspace } = workspaceStub({ good: { ok: true, value: { userId: "user-1" } } });
     const res = await appWith(workspace).request("/v1/me", bearer("good"));
     expect(res.status).toBe(200);
@@ -67,7 +68,7 @@ describe("authMiddleware — workspace auth", () => {
     expect(asked).toHaveLength(0);
   });
 
-  it("refuses a token the Workspace API rejects, and anything that is not a bearer token", async () => {
+  it("refuses a token the FINOS Workspace API rejects, and anything that is not a bearer token", async () => {
     const { workspace } = workspaceStub({});
     expect((await appWith(workspace).request("/v1/me", bearer("forged"))).status).toBe(401);
     expect((await appWith(workspace).request("/v1/me", { headers: { Authorization: "Basic abc" } })).status).toBe(401);
@@ -81,7 +82,7 @@ describe("authMiddleware — workspace auth", () => {
     expect(((await res.json()) as { userId: string }).userId).toBe("user-1");
   });
 
-  it("fails closed with a 503 when the Workspace API cannot be asked", async () => {
+  it("fails closed with a 503 when the FINOS Workspace API cannot be asked", async () => {
     const { workspace } = workspaceStub({ t: { ok: false, reason: "unavailable" } });
     const res = await appWith(workspace).request("/v1/me", bearer("t"));
     expect(res.status).toBe(503);
@@ -92,7 +93,7 @@ describe("authMiddleware — workspace auth", () => {
     expect((await appWith(workspace).request("/open")).status).toBe(200);
   });
 
-  it("asks the Workspace API once for a token it saw a moment ago, and again after the cache expires", async () => {
+  it("asks the FINOS Workspace API once for a token it saw a moment ago, and again after the cache expires", async () => {
     let now = 1_000_000;
     const { workspace, asked } = workspaceStub({ good: { ok: true, value: { userId: "user-1" } } });
     const app = appWith(workspace, 30, () => now);
@@ -111,7 +112,7 @@ describe("authMiddleware — workspace auth", () => {
     const app = appWith(workspace, 30, () => now);
     expect((await app.request("/v1/me", bearer("late"))).status).toBe(401);
     users.late = { ok: true, value: { userId: "user-1" } };
-    expect((await app.request("/v1/me", bearer("late"))).status).toBe(401); // still the answer of a moment ago
+    expect((await app.request("/v1/me", bearer("late"))).status).toBe(401);
     expect(asked).toHaveLength(1);
     now += 11_000;
     expect((await app.request("/v1/me", bearer("late"))).status).toBe(200);
@@ -127,7 +128,7 @@ describe("authMiddleware — workspace auth", () => {
   });
 });
 
-describe("authMiddleware — without a Workspace API", () => {
+describe("authMiddleware — without a FINOS Workspace API", () => {
   it("treats everyone as anonymous", async () => {
     const res = await appWith(null).request("/v1/me");
     expect(res.status).toBe(200);
@@ -149,7 +150,6 @@ describe("createAuthCache", () => {
     const store = createLocalStore();
     const cache = createAuthCache(store, 30);
     await cache.set("a-secret-session-token", "alice");
-    // Asked under the token itself, the store has nothing; only the cache knows how to look it up.
     expect(await store.get("auth:a-secret-session-token")).toBeNull();
     expect(await cache.get("a-secret-session-token")).toBe("alice");
   });
@@ -210,7 +210,7 @@ describe("signing in callers the cache does not know", () => {
         return { ok: true, value: { userId: "alice" } };
       },
     };
-    const app = appWith(slow, 0); // no memory of users: only the single flight is in the way
+    const app = appWith(slow, 0);
     const answers = await Promise.all(Array.from({ length: 50 }, () => app.request("/v1/me", bearer("same-token"))));
     expect(answers.every((a) => a.status === 200)).toBe(true);
     expect(calls).toBe(1);
@@ -235,9 +235,8 @@ describe("signing in callers the cache does not know", () => {
     const results = await Promise.all(Array.from({ length: 30 }, (_, i) => signIn(`token-${i}`)));
     expect(mostInFlight).toBe(4);
     const busy = results.filter((r) => !r.ok && r.reason === "busy").length;
-    expect(calls).toBe(10); // 4 running and 6 waiting
+    expect(calls).toBe(10);
     expect(busy).toBe(20);
-    // And when it is over, it asks again.
     expect(await signIn("token-again")).toEqual({ ok: false, reason: "rejected" });
   });
 
@@ -261,13 +260,11 @@ describe("signing in callers the cache does not know", () => {
     app.use("/v1/*", servicesMiddleware(services), authMiddleware(services, cache));
     app.get("/v1/me", (c) => c.json({ userId: c.get("principal").userId }));
 
-    // 32 asking and 256 waiting is all there is room for: the next one is told to try again.
     const flood = Array.from({ length: 32 + 256 }, (_, i) => app.request("/v1/me", bearer(`made-up-${i}`)));
     await new Promise((r) => setTimeout(r, 50));
     const refused = await app.request("/v1/me", bearer("one-more"));
     expect(refused.status).toBe(503);
     expect(refused.headers.get("retry-after")).toBe("1");
-    // A user the agent remembers does not wait for the API at all.
     const remembered = await app.request("/v1/me", bearer("remembered"));
     expect(remembered.status).toBe(200);
     release();

@@ -103,7 +103,6 @@ export function MetadataDialog(props: Props) {
     },
   });
 
-  // Track previous open state to only reset form when dialog opens, not on background changes
   const wasOpenRef = useRef(false);
   useEffect(() => {
     const justOpened = open && !wasOpenRef.current;
@@ -125,9 +124,8 @@ export function MetadataDialog(props: Props) {
       dispatchSaveState();
       dispatch({ isLoading: true });
       try {
-        let updateOtherDashboardsWidgets = true; // we need this for when creating a metadata item from inside a dashboard. we cannot update all the other elements with widgetId because core widgets created from the search will have widgetId as iframe or html, so they would all be updated which is not what we want
+        let updateOtherDashboardsWidgets = true;
         if (isMetadataType(widget, metadata, "file")) {
-          // Handle file widget update
           const cleanData = {
             stored_file_uuid: metadata?.uuid,
             originalFileName: metadata?.originalFileName,
@@ -146,7 +144,6 @@ export function MetadataDialog(props: Props) {
             throw new Error("Failed to update file widget");
           }
 
-          // Update file widgets
           const fileWidgets = await getFileWidgets();
           setStoredFiles(fileWidgets);
         } else {
@@ -169,7 +166,6 @@ export function MetadataDialog(props: Props) {
             widgetMetadata.subCategory = undefined;
             const id = uuidv4();
 
-            // TODO: We should be getting the widgetType explicitly from the widget
             const widgetType = widgetInfo.cleanWidgetId as MetaDataWidgetType;
             const result = await postWidgetMetadata({
               ...widgetMetadata,

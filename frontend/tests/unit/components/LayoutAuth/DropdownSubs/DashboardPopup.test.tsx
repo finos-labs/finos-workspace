@@ -25,7 +25,6 @@ vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: (selector: (state: typeof theme) => unknown) => selector(theme),
 }));
 
-// A dashboard with a backend widget, which Export apps.json needs
 const dashboard = makeItem({
   index: "dash-1",
   data: { widgets: [makeWidget({ connectionType: "advanced-backend" })] },

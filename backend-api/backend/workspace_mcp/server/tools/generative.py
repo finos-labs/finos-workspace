@@ -1,5 +1,3 @@
-"""Generated note/HTML widget tool."""
-
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -61,7 +59,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ] = None,
     ) -> ToolResponse:
-        """Create a generative widget from inline content."""
         allowed_widget_types = literal_values(GenerativeWidgetType)
         if widget_type not in allowed_widget_types:
             return invalid_request(

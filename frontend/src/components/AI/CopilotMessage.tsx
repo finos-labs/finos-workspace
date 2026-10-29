@@ -44,7 +44,6 @@ export default function CopilotMessage(props: CopilotMessageProps) {
         />
       );
     }
-    // If message type is not recognized, do not render anything
     return null;
   }, [
     message,

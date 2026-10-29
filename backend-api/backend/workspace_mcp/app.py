@@ -1,5 +1,3 @@
-"""ASGI application for the Workspace MCP sidecar."""
-
 import contextlib
 import re
 
@@ -24,8 +22,6 @@ LOCALHOST_ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
 
 def is_allowed_origin(settings: Settings, origin: str | None) -> bool:
-    """Whether a page of `origin` may drive the bridge: a configured origin, or without
-    any configured, a local one."""
     if origin is None:
         return False
     if settings.cors_allow_origins:
@@ -34,7 +30,6 @@ def is_allowed_origin(settings: Settings, origin: str | None) -> bool:
 
 
 def create_app(settings: Settings | None = None) -> Starlette:
-    """Create the ASGI application hosting MCP and browser bridge endpoints."""
     settings = settings or Settings.from_env()
     state = BridgeSessionManager(
         base_url=settings.base_url,
@@ -55,7 +50,6 @@ def create_app(settings: Settings | None = None) -> Starlette:
             allow_headers=["*"],
         )
     else:
-        # Without configured origins only local development origins are allowed
         app.add_middleware(
             CORSMiddleware,
             allow_origin_regex=LOCALHOST_ORIGIN_REGEX,
@@ -67,7 +61,6 @@ def create_app(settings: Settings | None = None) -> Starlette:
         return JSONResponse(await state.health())
 
     async def start_session(request: Request) -> Response:
-        # A form post from another site needs no preflight, so the origin is checked here
         if not is_allowed_origin(settings, request.headers.get("origin")):
             return JSONResponse({"detail": "Origin not allowed"}, status_code=403)
         payload = BrowserSessionStartRequest.model_validate(await request.json())
@@ -75,8 +68,6 @@ def create_app(settings: Settings | None = None) -> Starlette:
         return JSONResponse(session.model_dump(mode="json"))
 
     async def bridge_socket(websocket: WebSocket) -> None:
-        # Refused before the handshake is accepted: a socket from another origin, or for
-        # a session that is not the current one
         session_id = websocket.query_params.get("session_id", "")
         if not is_allowed_origin(settings, websocket.headers.get("origin")):
             await websocket.close(code=1008)

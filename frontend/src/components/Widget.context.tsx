@@ -20,125 +20,6 @@ export interface WidgetState extends WidgetStoreProps {
   updateWidget: (newWidget: NewWidgetT, forceStoreUpdate?: boolean) => void;
 }
 
-// const createWidgetStore = (initialProps: Partial<WidgetStoreProps>) => {
-//   const { widget, widgetFromJSON, activeDashboardId, isShared, uuid } = initialProps;
-
-//   const endpointParams = widget?.params
-//     ?.filter((p): p is ParamDefT<"endpoint"> => p.type === "endpoint")
-//     ?.reduce((acc, p) => {
-//       acc[p.groupById] = p?.paramName;
-//       return acc;
-//     }, {});
-
-//   return createWithEqualityFn<WidgetState>()(
-//     subscribeWithSelector((set, get) => ({
-//       widget: widget,
-//       storageParams: widget.storage?.params ?? {},
-//       storage: widget.storage ?? {},
-//       columnsDefs: widget.data?.table?.columnsDefs ?? [],
-//       widgetFromJSON: widgetFromJSON ?? getJsonWidget(widget),
-//       activeDashboardId: activeDashboardId,
-//       isShared: isShared ?? false,
-//       uuid: uuid ?? "",
-//       needsUpdate: false,
-//       endpointParams: endpointParams,
-//       stateKey: getStateKey(widget),
-//       getParamName: (groupById: string) =>
-//         get().endpointParams?.[groupById] ?? groupById,
-//       updateWidget: (newWidget, forceStoreUpdate = false) => {
-//         const currentWidget = structuredClone(get().widget);
-//         set(
-//           produce((state: WidgetState) => {
-//             if (typeof newWidget === "function") {
-//               newWidget(state.widget);
-//             } else {
-//               state.widget = newWidget;
-//             }
-
-//             const currentMainTicker = currentWidget.data?.mainTicker?.symbol;
-//             const newMainTicker = state.widget.data?.mainTicker?.symbol;
-//             const currentParams = currentWidget.storage?.params;
-//             const newParams = state.widget.storage?.params;
-//             let updateStore = forceStoreUpdate;
-
-//             if (!state.needsUpdate)
-//               state.needsUpdate = !isEqual(currentWidget, newWidget);
-
-//             if (!updateStore && state.widget.paramGroups) {
-//               const paramNames = Object.keys(state.widget.paramGroups);
-
-//               updateStore = paramNames.some((groupById) => {
-//                 const paramName = state.getParamName(groupById);
-
-//                 return newParams?.[paramName] !== currentParams?.[paramName];
-//               });
-//             }
-
-//             if (!updateStore && (currentWidget.groupId || state.widget.groupId)) {
-//               const paramName = getEndpointParamName(
-//                 state.widget.params,
-//                 state.widget.groupById,
-//               );
-//               if (
-//                 currentWidget.groupId !== state.widget.groupId ||
-//                 currentMainTicker !== newMainTicker ||
-//                 (paramName && currentParams?.[paramName] !== newParams?.[paramName])
-//               ) {
-//                 updateStore = true;
-//               }
-//             }
-
-//             state.stateKey = getStateKey(state.widget);
-
-//             if (!isShared && (updateStore || forceStoreUpdate)) {
-//               useAppStore
-//                 .getState()
-//                 .updateWidget(state.activeDashboardId, state.widget);
-//             }
-//           }),
-//         );
-//       },
-//     })),
-//     (prev, next) => isEqual(prev, next),
-//   );
-// };
-
-// type WidgetStore = ReturnType<typeof createWidgetStore>;
-// const WidgetStoreContext = createContext<WidgetStore | null>(null);
-
-// export function useWidgetStoreContext<T>(
-//   selector?: (store: WidgetState) => T,
-//   equalityFn: (a: T, b: T) => boolean = (prev, next) => isEqual(prev, next),
-// ) {
-//   const store = useContext(WidgetStoreContext);
-
-//   if (!store) {
-//     throw new Error("useWidgetStoreContext must be used within a WidgetStoreProvider");
-//   }
-
-//   return useStoreWithEqualityFn(store, selector, equalityFn);
-// }
-
-// type WidgetStoreProviderProps = PropsWithChildren<WidgetStoreProps>;
-
-// function WidgetStoreProvider({ children, ...rest }: PropsWithChildren<WidgetProps>) {
-//   const getWidget = useTabContext()?.getWidget;
-
-//   const storeRef = useRef<WidgetStore>();
-//   if (!storeRef.current) {
-//     storeRef.current = createWidgetStore({ widget: getWidget(rest.uuid), ...rest });
-//   }
-
-//   const childrenMemo = useMemo(() => children, [children]);
-
-//   return (
-//     <WidgetStoreContext.Provider value={storeRef.current}>
-//       {childrenMemo}
-//     </WidgetStoreContext.Provider>
-//   );
-// }
-
-/** Outside of a WidgetProvider there is no widget; see `useWidgetContext(true)`. */
 export const WidgetContext = createContext<Partial<WidgetContextType>>({
   widgetFromJSON: null,
   activeDashboardId: "",
@@ -150,10 +31,6 @@ export const WidgetContext = createContext<Partial<WidgetContextType>>({
 
 WidgetContext.displayName = "WidgetContext";
 
-/**
- * The widget a component is rendered in. Components that can also render outside of a
- * widget (a dialog, a preview) ask for it with `nullable`, and get every field optional.
- */
 export function useWidgetContext(
   nullable: true,
   contextOverride?: Partial<WidgetContextType>,

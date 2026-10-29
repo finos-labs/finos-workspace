@@ -1,18 +1,8 @@
-/**
- * `create_html_artifact` — emit a workspace HTML artifact rendered in a
- * sandboxed iframe (`Artifact.tsx:119`). Use for one-off inline reports the
- * model assembles from text + table data; do NOT use as a substitute for a
- * proper table/chart artifact.
- *
- * State-bound — closes over `artifactQueue` and validates the payload before
- * pushing. Size cap mirrors Ada's `llm_create_html_artifact` (50 KB).
- */
-
 import { tool } from "ai";
 import { z } from "zod";
-import { messageArtifact } from "../../protocol/events";
-import type { HtmlArtifact, SSEEvent } from "../../protocol/types";
-import { getLogger } from "../../lib/logger";
+import { messageArtifact } from "../../protocol/events.ts";
+import type { HtmlArtifact, SSEEvent } from "../../protocol/types.ts";
+import { getLogger } from "../../lib/logger.ts";
 
 const logger = getLogger(["app", "tools", "html_artifact"]);
 
@@ -38,7 +28,7 @@ export const htmlArtifactDescription =
   "Render a one-off HTML report or layout in the workspace conversation. " +
   "Use sparingly — prefer a table or chart artifact when the data is structured. " +
   "For flowcharts or other diagrams, use a diagram tool if one is listed; otherwise draw them here. " +
-  "Workspace renders the HTML in a sandboxed iframe that may load nothing by address and runs no script.";
+  "FINOS Workspace renders the HTML in a sandboxed iframe that may load nothing by address and runs no script.";
 
 export type HtmlArtifactArgs = z.infer<typeof htmlArtifactSchema>;
 

@@ -50,15 +50,12 @@ export default function CopilotSystemMessage(props: CopilotSystemMessageProps) {
   const [isMessageExpanded, setIsMessageExpanded] = useState(false);
 
   const handleMouseEnter = useCallback(() => {
-    // Only handle hover if not part of a step-by-step group (parent handles it)
     if (currentGroupId && !isPartOfStepByStepGroup) {
-      // For system messages, show datetime above the current group
       showDatetime(message.timestamp, currentGroupId);
     }
   }, [message.timestamp, currentGroupId, isPartOfStepByStepGroup]);
 
   const handleMouseLeave = useCallback(() => {
-    // Only handle hover if not part of a step-by-step group (parent handles it)
     if (!isPartOfStepByStepGroup) hideDatetime();
   }, [isPartOfStepByStepGroup]);
 
@@ -78,7 +75,6 @@ export default function CopilotSystemMessage(props: CopilotSystemMessageProps) {
   return (
     <div
       className="flex flex-col w-full rounded group relative"
-      // Only add hover handlers if not part of a step-by-step group
       {...(!isPartOfStepByStepGroup && {
         onMouseEnter: handleMouseEnter,
         onMouseLeave: handleMouseLeave,

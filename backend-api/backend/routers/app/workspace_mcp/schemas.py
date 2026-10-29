@@ -40,9 +40,6 @@ class BrowserSessionContext(Model):
 
 
 class BrowserSession(Model):
-    """A page's bridge session. Its websocket authenticates with the web session cookie,
-    so the id is no secret."""
-
     session_id: str
     client_name: str
     current_dashboard_id: str | None = None
@@ -75,6 +72,7 @@ class WorkspaceCommandResult(Model):
     message: str
     data: Any | None = None
     error: BridgeError | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class BrowserCommandResultMessage(Model):

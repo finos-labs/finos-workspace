@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "~/api/api";
 import TOTPSetDialog from "~/components/Auth/TOTPSetDialog";
 
-// The code entry (input-otp) needs layout APIs jsdom lacks; this one submits a code
 vi.mock("~/components/Auth/TOTPEnterForm", () => ({
   default: ({ handleSubmit }: { handleSubmit: (code: number) => Promise<number> }) => (
     <button type="button" onClick={() => handleSubmit(123456)}>

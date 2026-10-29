@@ -1,6 +1,6 @@
-import type { SSEEvent } from "./types";
-import { liveDebugLevel } from "../lib/debug-traces";
-import { getLogger } from "../lib/logger";
+import type { SSEEvent } from "./types.ts";
+import { liveDebugLevel } from "../lib/debug-traces.ts";
+import { getLogger } from "../lib/logger.ts";
 
 const logger = getLogger(["app", "sse"]);
 const encoder = new TextEncoder();
@@ -64,18 +64,9 @@ function flushTraceFinal(finalText: { chunks: string[] }): void {
   if (text) console.error(`[ines:final]\n${text}\n[/ines:final]`);
 }
 
-/**
- * `onClose` runs once when the stream is over, however it ends: the generator finished, it threw, or the
- * client went away. A generator that was never started does not run its `finally` when it is returned, so
- * what has to be undone for every stream (a user's query slot) cannot be left to one.
- */
 export function sseResponse(
   generator: AsyncGenerator<SSEEvent> | (() => AsyncGenerator<SSEEvent>),
   onClose?: () => void,
-  /**
-   * Runs at once when the client goes away, before the generator is asked to stop: a generator that is in the
-   * middle of a model call only stops after it, so what is to cut that call short (an abort signal) goes here.
-   */
   onCancel?: () => void,
 ): Response {
   const gen = typeof generator === "function" ? generator() : generator;
@@ -123,7 +114,6 @@ export function sseResponse(
           controller.enqueue(encoder.encode(line));
           controller.close();
         } catch {
-          // Controller already closed (client disconnected)
         }
         notifyClose();
       }
@@ -136,7 +126,6 @@ export function sseResponse(
       } catch (error) {
         logger.error("The stream's cancel handler failed", { error });
       }
-      // Once the generator has finished what it was doing (it may be in the middle of a model call).
       gen.return(undefined).then(notifyClose, notifyClose);
     },
   });

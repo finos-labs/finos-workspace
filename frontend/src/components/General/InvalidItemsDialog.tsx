@@ -41,10 +41,6 @@ function ItemCard({ item }: { item: InvalidItem }) {
   );
 }
 
-/**
- * What is wrong with the widgets and apps of a backend that were skipped. Opened from the toast
- * that reports them.
- */
 export default function InvalidItemsDialog() {
   const { sourceName, items, close } = useInvalidItemsStore((s) => ({
     sourceName: s.sourceName,

@@ -1,18 +1,11 @@
-/**
- * manage_backends — list/add/update/refresh/remove Workspace data backends.
- *
- * Mirrors workspace_mcp/server.py:1052-1123 with operation-specific
- * required-field checks and BackendEndpointHeader validation.
- */
-
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
-import { invalidRequestItem } from "../../bridge/validators";
-import { parseJsonList, JsonArgumentError } from "../../bridge/json-args";
-import { BackendEndpointHeaderSchema } from "../../bridge/wire";
-import { describeTool } from "../../bridge/instructions";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
+import { invalidRequestItem } from "../../bridge/validators.ts";
+import { parseJsonList, JsonArgumentError } from "../../bridge/json-args.ts";
+import { BackendEndpointHeaderSchema } from "../../bridge/wire.ts";
+import { describeTool } from "../../bridge/instructions.ts";
 
 export const manageBackendsSchema = {
   operation: z
@@ -33,7 +26,7 @@ export const manageBackendsSchema = {
 } as const;
 
 export const manageBackendsDescription = describeTool(
-  "Manage Workspace data backends (the connections that power widgets).",
+  "Manage FINOS Workspace data backends (the connections that power widgets).",
   "Requires operation from {list, add, update, refresh, remove}.",
   "For list, returns each backend with id, name, url, status, and widget/app/agent counts.",
   "For add, requires name and url. Optional endpoint_headers_json is a JSON array of " +

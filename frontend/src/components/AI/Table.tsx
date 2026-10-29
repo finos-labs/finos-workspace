@@ -112,7 +112,6 @@ function jsonTable(json: JsonObject, disableAutoLink = false, depth = 0): ReactN
 }
 
 function formatValue(text = "", disableAutoLink = false, depth = 0) {
-  // Check if text contains markdown code blocks
   if (text.includes("```")) {
     return (
       <Markdown
@@ -145,7 +144,7 @@ function formatValue(text = "", disableAutoLink = false, depth = 0) {
         isValidUrl(word) ? (
           <span key={`${index}-${depth}-value`}>
             <a
-              href={word.replace(/[?.]$/, "")} // Extract the link and remove punctuation
+              href={word.replace(/[?.]$/, "")}
               className="rounded py-[0.5px] text-alert-informative"
               target="_blank"
               rel="noopener noreferrer"

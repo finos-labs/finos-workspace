@@ -1,13 +1,3 @@
-"""Admin notifications: a pluggable transport for events administrators should hear about.
-
-`ADMIN_NOTIFIER` names the transport class by import path (`package.module:Class`); the default is
-`WebhookNotifier`, which POSTs each notification as JSON to `ADMIN_NOTIFY_WEBHOOK_URL`. With no
-webhook URL configured, notifications are logged and dropped.
-
-Events:
-- `entity.created`: an entity was created; the payload carries `admin_email` and `entity_name`.
-"""
-
 import hashlib
 import hmac
 import json
@@ -25,8 +15,6 @@ SIGNATURE_HEADER = "X-Admin-Notification-Signature"
 
 
 class AdminNotifier(Protocol):
-    """A notification transport. `notify` returns True when the notification was delivered."""
-
     @property
     def configured(self) -> bool: ...
 
@@ -36,12 +24,6 @@ class AdminNotifier(Protocol):
 
 
 class WebhookNotifier:
-    """POSTs `{event, subject, text, payload, occurred_at}` as JSON to the configured URL.
-
-    When `ADMIN_NOTIFY_WEBHOOK_SECRET` is set, the body is signed with HMAC-SHA256 and the
-    signature is sent as `X-Admin-Notification-Signature: sha256=<hex digest>`.
-    """
-
     timeout_seconds = 10.0
 
     def __init__(self, url: str | None = None, secret: str | None = None):
@@ -87,7 +69,6 @@ class WebhookNotifier:
 
 @cache
 def get_notifier() -> AdminNotifier:
-    """The transport named by `ADMIN_NOTIFIER`."""
     module_name, _, class_name = settings.ADMIN_NOTIFIER.partition(":")
     return getattr(import_module(module_name), class_name)()
 
@@ -95,11 +76,6 @@ def get_notifier() -> AdminNotifier:
 async def notify_admins(
     event: str, subject: str, text: str, payload: dict[str, Any]
 ) -> bool | None:
-    """Send an admin notification.
-
-    Returns None when no notifier is configured, otherwise whether it was delivered. The
-    configured recipient and sender travel in the payload for transports that need them.
-    """
     notifier = get_notifier()
     if not notifier.configured:
         logger.info(f"Admin notification {event} not sent: no notifier configured")

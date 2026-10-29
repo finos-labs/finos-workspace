@@ -3,7 +3,6 @@ import type { DraggableState } from "../DraggableCard";
 import type { ExtraActionT } from "../DraggableCard/NavBar";
 import type { Widget } from "../types";
 
-/** A dashboard a widget can be copied to; a folder's children are not needed for that. */
 export type MoveTarget = Omit<MoveToTabs, "children">;
 
 export type InnerTabsMenuProps = {
@@ -41,6 +40,7 @@ export type EllipsisDropdownMenuProps = {
   dispatch: (value: Partial<DraggableState>) => void;
   settings?: EllipsisSettings;
   exportFns?: ExportFns;
+  onExport?: () => void;
   extraSettings?: ExtraActionT[];
   isMinimized?: boolean;
   onMinimizeToggle?: () => void;

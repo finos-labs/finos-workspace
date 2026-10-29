@@ -25,7 +25,7 @@ const FEEDBACK_OPTIONS = [
   "Not factually correct / Hallucinations / Inaccurate",
   "Didn't use the correct data (although it's available)",
   "Didn't fully follow instructions / Lazy / Incomplete",
-  "Workspace didn't have the right data for the agent to answer correctly",
+  "FINOS Workspace didn't have the right data for the agent to answer correctly",
   "Other",
 ] as const;
 
@@ -69,7 +69,6 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
     [message.voteStatus, dispatch],
   );
 
-  // Update the feedback submission logic in the onClick handler
   const handleFeedback = useCallback(
     async (vote: "thumbs_up" | "thumbs_down") => {
       const updatedState = {} as AIMessageFeedback;

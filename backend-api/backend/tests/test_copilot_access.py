@@ -1,12 +1,3 @@
-"""
-Integration tests for admin-assigned access to Copilot models and MCP tools.
-
-Roles grant models and MCP tools, and a user may use what their roles grant and nothing
-else: without a grant there is no access. The service that serves the Copilot enforces this
-through ``POST /app/copilot/authorize``, and the MCP proxy refuses tool calls that are not
-granted.
-"""
-
 import os
 import sys
 from uuid import UUID
@@ -35,7 +26,6 @@ METERING = {"X-Metering-Authorization": "Bearer " + create_metering_token()[0]}
 MCP_URL = "https://mcp.example.com/mcp"
 OTHER_MCP_URL = "https://tools.example.com/mcp"
 
-# What a user without a role that allows the Copilot's web tools has switched off
 WEB_OFF = ["SEARCH_WEB", "FETCH_FROM_WEB"]
 WEB_SEARCH = {"url": MCP_URL, "tool_name": "web_search"}
 FETCH_PAGE = {"url": MCP_URL, "tool_name": "fetch_webpage"}
@@ -73,7 +63,6 @@ class TestNothingWithoutAGrant:
             "disabled_capabilities": WEB_OFF,
         }
 
-        # Leaving the model to the agent needs a grant for that agent too
         result = await _authorize(auth_client, agent_id="default-copilot")
         assert result.json()["allowed"] is False
 
@@ -108,7 +97,6 @@ class TestAdminAssignsAccess:
             ("default-copilot", "fast"),
             ("default-copilot", "smart"),
         }
-        # Server URLs are kept in one form, so they compare equal whatever the spelling
         assert {(m["server_url"], m["tool_name"]) for m in stored["mcp"]} == {
             (MCP_URL, "*"),
             (OTHER_MCP_URL, "search"),
@@ -188,7 +176,6 @@ class TestUsersGetWhatTheirRolesGrant:
             "disabled_capabilities": [],
         }
 
-        # The same model id of another agent is another model
         other_agent = await _authorize(auth_client, agent_id="custom", model="fast")
         assert other_agent.json()["allowed"] is False
 
@@ -410,7 +397,6 @@ class TestEnforcement:
 
         calls = [
             request({"method": "tools/call", "params": {"name": "search"}}),
-            # The same proxy carries the server's other requests, the handshake among them
             request({"method": "tools/list"}),
             request({"method": "initialize", "params": {}}),
             request(None),
@@ -428,9 +414,6 @@ class TestEnforcement:
 
 
 class TestWebToolsOfTheCopilot:
-    """SEARCH_WEB and FETCH_FROM_WEB are role settings: on for a user when any of their roles
-    allows them. A new role allows both."""
-
     @pytest.mark.asyncio
     async def test_a_new_role_allows_both(self, organization, admin_client, auth_client):
         response = await admin_client.post(
@@ -509,7 +492,6 @@ class TestWebToolsOfTheCopilot:
             f"/admin/role/{role}/copilot-access",
             json=_grants(mcp=[(MCP_URL, "*"), (OTHER_MCP_URL, "*")]),
         )
-        # The same tool on another server, as a user who adds it again would have it
         elsewhere = {"url": OTHER_MCP_URL, "tool_name": "web_search"}
 
         result = (
@@ -548,7 +530,6 @@ class TestWebToolsOfTheCopilot:
                 body={"method": "tools/call", "params": {"name": name}},
             )
 
-        # Reading a page that was fetched is the same capability as fetching it.
         for url in (MCP_URL, OTHER_MCP_URL):
             for name in ("fetch_webpage", "inspect_webpage"):
                 with pytest.raises(HTTPException) as refused:

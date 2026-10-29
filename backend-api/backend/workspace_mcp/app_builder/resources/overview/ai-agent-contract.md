@@ -1,7 +1,7 @@
 ---
 title: AI Agent Contract
 uri: workspace://overview/ai-agent-contract
-use_when: You are writing widget descriptions, parameter metadata, response shapes, or apps.json prompts and want them to be usable by Workspace's AI Agent.
+use_when: You are writing widget descriptions, parameter metadata, response shapes, or apps.json prompts and want them to be usable by FINOS Workspace's AI Agent.
 language_specific: false
 related:
   - workspace://overview/what-is-workspace
@@ -12,7 +12,7 @@ related:
 
 # AI Agent Contract
 
-Workspace ships a built-in AI Agent that reads the widgets on a Dashboard and answers questions across them — running calculations, identifying patterns, and dropping artifacts (text and HTML reports) back into the Dashboard. It does this by reading the same `widgets.json` metadata you author and the same data endpoints the renderer hits.
+FINOS Workspace ships a built-in AI Agent that reads the widgets on a Dashboard and answers questions across them — running calculations, identifying patterns, and dropping artifacts (text and HTML reports) back into the Dashboard. It does this by reading the same `widgets.json` metadata you author and the same data endpoints the renderer hits.
 
 This means metadata you might treat as "tooltip text" is **agent discoverability text**. A widget with a vague `description` will not be picked up reliably when a user asks a question that should be answered by it.
 
@@ -71,5 +71,5 @@ Empty `"prompts": []` is valid; ship at least 3–5 if you want the App to feel 
 
 ## Out of scope here
 
-- **Building your own AI Agent backend.** That's a separate backend surface (`/agents.json` + `/query` SSE). The Agent described here is the one Workspace ships and runs against your widgets.
+- **Building your own AI Agent backend.** That's a separate backend surface (`/agents.json` + `/query` SSE). The Agent described here is the one FINOS Workspace ships and runs against your widgets.
 - **External agent-skill packaging.** The generated `app-builder` skill is only a compatibility package for clients that cannot read MCP resources directly; the canonical app-builder content remains this resource catalog.

@@ -1,9 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { htmlTableArtifact, renderHtmlTable } from "../../../../src/protocol/html-table";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { htmlTableArtifact, renderHtmlTable } from "../../../../src/protocol/html-table.ts";
 
-// The Workspace has no table artifact: a table is an html artifact, styled per
-// Ines's own `html-table` skill (its exact colors, no borders, no title
-// repeated inside the HTML, theme background on the outermost element).
 describe("renderHtmlTable", () => {
   const html = renderHtmlTable([
     { ticker: "AAPL", price: 190.5, note: null },

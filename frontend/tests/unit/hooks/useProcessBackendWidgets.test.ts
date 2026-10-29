@@ -7,10 +7,9 @@ import type {
   Source,
   ValidateBackend,
 } from "~/lib/state/backendConnector";
-import type { WidgetType } from "~/utils/zodForms";
+import type { WidgetsType } from "~/utils/zodForms";
 import { type DeepPartial, malformed } from "../mocks";
 
-// Mock getApiSourceWidgets from backendConnector
 const mockGetApiSourceWidgets = vi.fn();
 vi.mock("~/lib/state/backendConnector", async () => {
   const actual = await vi.importActual("~/lib/state/backendConnector");
@@ -32,7 +31,6 @@ vi.mock("~/lib/utils/validateBackend", async () => {
   };
 });
 
-// Mock permissions store
 const mockHasAccess = vi.fn();
 const mockPermissions = {
   backends: [],
@@ -48,7 +46,6 @@ vi.mock("~/lib/state/permissions", () => ({
   ),
 }));
 
-// Mock createSourceWidget
 const mockCreateSourceWidget = vi.fn(
   (widget: object, source: Source, hasAccess: boolean) => ({
     ...widget,
@@ -64,17 +61,12 @@ vi.mock("~/components/DataConnectors/common/helpers", () => ({
     mockCreateSourceWidget(widget, source, hasAccess),
 }));
 
-// Mock someTruthy
-
-// Mock cleanURL
 vi.mock("~/lib/utils/widgetParams", () => ({
   cleanURL: (url: string) => url?.replace(/([^:]\/)\/+/g, "$1"),
 }));
 
-// Mock getApiSourceById
 const mockGetApiSourceById = vi.fn();
 
-// Helper to create a mock BackendPermissionsT
 function createMockBackend(
   overrides: Partial<BackendPermissionsT> = {},
 ): BackendPermissionsT {
@@ -100,8 +92,7 @@ function createMockBackend(
   };
 }
 
-// Helper to create mock widgets from backend
-function createMockWidgets(): Record<string, DeepPartial<WidgetType>> {
+function createMockWidgets(): Record<string, DeepPartial<WidgetsType[string]>> {
   return {
     "widget-1": {
       widgetId: "widget-1",
@@ -118,7 +109,6 @@ function createMockWidgets(): Record<string, DeepPartial<WidgetType>> {
   };
 }
 
-// Helper to create mock templates
 function createMockTemplates(): BackendTemplate[] {
   return [
     {
@@ -217,7 +207,6 @@ describe("useProcessBackendWidgets", () => {
 
       await result.current(mockBackend);
 
-      // Should not call getApiSourceWidgets when existing source is found
       expect(mockGetApiSourceWidgets).not.toHaveBeenCalled();
     });
 
@@ -252,7 +241,6 @@ describe("useProcessBackendWidgets", () => {
         errorMessage: null,
       });
 
-      // Deny access to widget-2
       mockHasAccess.mockImplementation((_sourceId, widgetId) => {
         return widgetId !== "widget-2";
       });
@@ -488,7 +476,6 @@ describe("useProcessBackendWidgets", () => {
 
       const processed = await result.current(mockBackend);
 
-      // Should use template's prompts as fallback since backend.templates prompts is undefined
       expect(processed.templates[0].prompts).toEqual(["fallback-prompt"]);
     });
 
@@ -516,7 +503,6 @@ describe("useProcessBackendWidgets", () => {
 
       const processed = await result.current(mockBackend);
 
-      // Empty array is truthy, so no fallback occurs - this tests actual behavior
       expect(processed.templates[0].prompts).toEqual([]);
     });
 
@@ -539,7 +525,6 @@ describe("useProcessBackendWidgets", () => {
 
       const processed = await result.current(mockBackend);
 
-      // Template should be filtered out since no matching access entry
       expect(processed.templates).toHaveLength(0);
     });
   });
@@ -633,7 +618,6 @@ describe("useProcessBackendWidgets", () => {
 
         const processed = await result.current(mockBackend);
 
-        // Should handle undefined templates gracefully
         expect(processed.status).toBe("success");
       });
     });
@@ -675,7 +659,6 @@ describe("useProcessBackendWidgets", () => {
           errorMessage: null,
         });
 
-        // Only allow widget-1 and widget-3
         mockHasAccess.mockImplementation((_, widgetId) => {
           return widgetId === "widget-1" || widgetId === "widget-3";
         });
@@ -874,7 +857,6 @@ describe("useProcessBackendWidgets", () => {
 
       const processed = await result.current(mockBackend);
 
-      // Verify all expected fields are present
       expect(processed).toHaveProperty("status");
       expect(processed).toHaveProperty("id");
       expect(processed).toHaveProperty("widgets");

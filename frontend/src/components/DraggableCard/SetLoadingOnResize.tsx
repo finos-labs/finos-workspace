@@ -23,6 +23,7 @@ type LoadingElementProps = {
   children?: ReactNode;
   failingUrl?: string;
   icon?: boolean | IconId;
+  keepMounted?: boolean;
 };
 
 interface ChildrenProps {
@@ -60,6 +61,7 @@ export const LoadingElement = forwardRef<HTMLElement, LoadingElementProps>(
       loading,
       failingUrl,
       icon = true,
+      keepMounted = false,
     } = props;
 
     const childrenExist = !!children;
@@ -79,10 +81,11 @@ export const LoadingElement = forwardRef<HTMLElement, LoadingElementProps>(
       );
     }, [props.className]);
 
-    if (failingUrl && !isMinimized) return <UnfetchableURL url={failingUrl} />;
-
-    if (errorMessage && !isMinimized) {
-      return (
+    let cover: ReactNode = null;
+    if (failingUrl && !isMinimized) {
+      cover = <UnfetchableURL url={failingUrl} />;
+    } else if (errorMessage && !isMinimized) {
+      cover = (
         <SearchResultsNotFound
           icon={Boolean(icon)}
           iconClassName={typeof icon === "string" ? icon : ""}
@@ -92,11 +95,19 @@ export const LoadingElement = forwardRef<HTMLElement, LoadingElementProps>(
           {errorChildren}
         </SearchResultsNotFound>
       );
+    } else if (showLoading) {
+      cover = loadingElement;
     }
 
-    if (childrenExist && !showLoading) return children;
-
-    if (showLoading) return loadingElement;
+    if (keepMounted) {
+      return (
+        <>
+          {cover}
+          <div className={cover ? "hidden" : "contents"}>{children}</div>
+        </>
+      );
+    }
+    return cover ?? children;
   },
 );
 

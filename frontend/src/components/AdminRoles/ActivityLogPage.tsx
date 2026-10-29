@@ -213,7 +213,6 @@ export function ActivityLogPage() {
     [],
   );
 
-  // The log shows when it is there: no loading animation in between
   if (isLoading) {
     return (
       <TabsPrimitive.Content
@@ -274,7 +273,6 @@ export function ActivityLogPage() {
         getRowId={(entry) => entry.uuid}
       />
 
-      {/* Pagination Controls */}
       <div className="mt-4 flex items-center justify-between">
         <div className="text-sm text-ds-text-caption">
           Showing {Math.min(filteredActivityLog.length, state.itemsPerPage)} of{" "}
@@ -315,6 +313,9 @@ const getActivityTypeStyle = (type: string) => {
   }
   if (type.includes("user")) {
     return "bg-tag-blue-bg text-tag-blue-label";
+  }
+  if (type.includes("widget plugin")) {
+    return "bg-tag-green-bg text-tag-green-label";
   }
   return "";
 };

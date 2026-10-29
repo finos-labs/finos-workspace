@@ -4,7 +4,6 @@ import { Switch } from "~/components/ds/atoms/Switch";
 import { FormField } from "~/components/ds/molecules/Form";
 import type { EntityFormValues, NewEntityFormValues } from "./entityForms";
 
-/** The fields every entity has. Has to be inside a form that holds `EntityFormValues`. */
 export function EntityBaseFields() {
   const { control } = useFormContext<EntityFormValues>();
   return (
@@ -35,7 +34,6 @@ export function EntityBaseFields() {
   );
 }
 
-/** The administrator that a new entity starts with. */
 export function EntityAdminFields() {
   const { control } = useFormContext<NewEntityFormValues>();
   return (

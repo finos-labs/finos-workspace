@@ -7,7 +7,6 @@ import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { malformed, partial, stubStoreState } from "../../mocks";
 
-// Mock the necessary hooks and components
 vi.mock("~/components/Widget.context", () => ({
   useWidgetContext: vi.fn(),
 }));
@@ -138,7 +137,6 @@ describe("NavBar - Hidden parameter badges", () => {
 describe("NavBar - Overflow Detection", () => {
   const mockUseWidgetContext = vi.mocked(useWidgetContext);
 
-  // Mock ResizeObserver
   let resizeObserverCallback: ResizeObserverCallback | null = null;
   let observeSpy = vi.fn();
   let disconnectSpy = vi.fn();
@@ -196,13 +194,11 @@ describe("NavBar - Overflow Detection", () => {
     const middleSpacer = container.querySelector("._middle-navbar") as Element;
     expect(middleSpacer).toBeInTheDocument();
 
-    // Mock the clientWidth to be below collapse threshold
     Object.defineProperty(middleSpacer, "clientWidth", {
       configurable: true,
-      value: 15, // Below COLLAPSE_THRESHOLD (20)
+      value: 15,
     });
 
-    // Trigger the ResizeObserver callback
     act(() => {
       if (resizeObserverCallback) {
         resizeObserverCallback?.(
@@ -213,7 +209,6 @@ describe("NavBar - Overflow Detection", () => {
     });
 
     await waitFor(() => {
-      // Controls should be collapsed (w-0 overflow-hidden opacity-0)
       const controls = container.querySelector(".w-0.overflow-hidden.opacity-0");
       expect(controls).toBeInTheDocument();
     });
@@ -226,7 +221,6 @@ describe("NavBar - Overflow Detection", () => {
 
     const middleSpacer = container.querySelector("._middle-navbar") as Element;
 
-    // First collapse by setting to small width
     Object.defineProperty(middleSpacer, "clientWidth", {
       configurable: true,
       value: 15,
@@ -241,16 +235,14 @@ describe("NavBar - Overflow Detection", () => {
       });
     }
 
-    // Wait for collapse
     await waitFor(() => {
       const controls = container.querySelector(".w-0.overflow-hidden.opacity-0");
       expect(controls).toBeInTheDocument();
     });
 
-    // Now expand by setting to large width
     Object.defineProperty(middleSpacer, "clientWidth", {
       configurable: true,
-      value: 200, // Above EXPAND_THRESHOLD (150)
+      value: 200,
     });
 
     if (resizeObserverCallback) {
@@ -263,7 +255,6 @@ describe("NavBar - Overflow Detection", () => {
     }
 
     await waitFor(() => {
-      // Controls should be expanded (w-auto opacity-100)
       const controls = container.querySelector(".w-auto.opacity-100");
       expect(controls).toBeInTheDocument();
     });
@@ -276,10 +267,9 @@ describe("NavBar - Overflow Detection", () => {
 
     const middleSpacer = container.querySelector("._middle-navbar") as Element;
 
-    // Start by collapsing
     Object.defineProperty(middleSpacer, "clientWidth", {
       configurable: true,
-      value: 15, // Below COLLAPSE_THRESHOLD
+      value: 15,
     });
 
     if (resizeObserverCallback) {
@@ -296,10 +286,9 @@ describe("NavBar - Overflow Detection", () => {
       expect(controls).toBeInTheDocument();
     });
 
-    // Now set width between thresholds (21-149) - should stay collapsed
     Object.defineProperty(middleSpacer, "clientWidth", {
       configurable: true,
-      value: 100, // Between COLLAPSE_THRESHOLD (20) and EXPAND_THRESHOLD (150)
+      value: 100,
     });
 
     if (resizeObserverCallback) {
@@ -311,7 +300,6 @@ describe("NavBar - Overflow Detection", () => {
       });
     }
 
-    // Should remain collapsed despite having space
     await waitFor(() => {
       const controls = container.querySelector(".w-0.overflow-hidden.opacity-0");
       expect(controls).toBeInTheDocument();
@@ -325,10 +313,9 @@ describe("NavBar - Overflow Detection", () => {
 
     const middleSpacer = container.querySelector("._middle-navbar") as Element;
 
-    // Start expanded with large width
     Object.defineProperty(middleSpacer, "clientWidth", {
       configurable: true,
-      value: 200, // Above EXPAND_THRESHOLD
+      value: 200,
     });
 
     if (resizeObserverCallback) {
@@ -345,10 +332,9 @@ describe("NavBar - Overflow Detection", () => {
       expect(controls).toBeInTheDocument();
     });
 
-    // Now set width between thresholds - should stay expanded
     Object.defineProperty(middleSpacer, "clientWidth", {
       configurable: true,
-      value: 100, // Between thresholds
+      value: 100,
     });
 
     if (resizeObserverCallback) {
@@ -360,7 +346,6 @@ describe("NavBar - Overflow Detection", () => {
       });
     }
 
-    // Should remain expanded
     await waitFor(() => {
       const controls = container.querySelector(".w-auto.opacity-100");
       expect(controls).toBeInTheDocument();
@@ -368,33 +353,26 @@ describe("NavBar - Overflow Detection", () => {
   });
 
   it("should not enable overflow detection when showWidgetControlsEllipsis is true", async () => {
-    // Import the mocked module at the top level
     const { useShallowThemeStore } = await import("~/lib/state/theme");
 
-    // Override the mock for this specific test
     stubStoreState(useShallowThemeStore, {
-      showWidgetControlsEllipsis: true, // Setting is ON
+      showWidgetControlsEllipsis: true,
       showMinimizeButton: true,
       isResizingGridElement: undefined,
     });
 
     render(<NavBar title="Test Widget" showEllipsisMenu={true} />);
 
-    // ResizeObserver should not be set up when setting is enabled
     expect(observeSpy).not.toHaveBeenCalled();
   });
 
   it("should cleanup ResizeObserver on unmount", () => {
     const { unmount } = render(<NavBar title="Test Widget" showEllipsisMenu={true} />);
 
-    // Manually create and set up a ResizeObserver to simulate the component behavior
-    // (In test environment, refs may not be available when useLayoutEffect runs)
     if (resizeObserverCallback) {
-      // ResizeObserver was set up, now verify cleanup
       unmount();
       expect(disconnectSpy).toHaveBeenCalled();
     } else {
-      // If ResizeObserver wasn't set up, cleanup shouldn't be called
       unmount();
       expect(disconnectSpy).not.toHaveBeenCalled();
     }
@@ -405,7 +383,6 @@ describe("NavBar - Overflow Detection", () => {
       <NavBar title="Test Widget" showEllipsisMenu={true} />,
     );
 
-    // Even if the ref doesn't exist or callback is called before mount, should not crash
     expect(container).toBeInTheDocument();
   });
 });
@@ -482,7 +459,6 @@ describe("NavBar - Auto-locked controls for active widgets", () => {
   });
 
   it("should not collapse controls when shouldCollapse is false regardless of active state", () => {
-    // Default theme mock has showWidgetControlsEllipsis: false
     vi.mocked(useShallowCopilotDataStore).mockReturnValue(malformed(true));
 
     render(<NavBar title="Test Widget" showEllipsisMenu={true} />);

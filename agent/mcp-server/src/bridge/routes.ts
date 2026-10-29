@@ -1,48 +1,25 @@
-/**
- * Bridge HTTP + WebSocket routes for the ines MCP server.
- *
- * - POST /bridge/session/start: mints session_id + token, returns WS URL
- * - GET  /bridge/ws:            WebSocket upgrade for the Workspace tab
- * - GET  /bridge/health:        liveness + counts (sessions, pending commands)
- *
- * StreamableHTTPTransport handles `/mcp` separately and does not consume
- * `/bridge/ws` upgrade frames — paths are independent in Hono's router.
- */
-
+import { upgradeWebSocket } from "@hono/node-server";
 import type { Hono } from "hono";
-import { createBunWebSocket } from "hono/bun";
-import type { ServerWebSocket } from "bun";
 
-import { getLogger } from "../lib/logger";
+import { getLogger } from "../lib/logger.ts";
 import {
   BrowserSessionStartRequestSchema,
   type BrowserSessionStartResponse,
-} from "./types";
+} from "./types.ts";
 import {
   BrowserUnavailableError,
   type BridgeSessionManager,
   type BridgeSocket,
-} from "./state";
+} from "./state.ts";
 
 const logger = getLogger(["mcp", "bridge", "routes"]);
 
-export interface MountBridgeResult {
-  /** Bun.serve websocket handler — must be included in the default export. */
-  websocket: ReturnType<typeof createBunWebSocket<ServerWebSocket>>["websocket"];
-}
-
-export function mountBridgeRoutes(
-  app: Hono,
-  manager: BridgeSessionManager,
-): MountBridgeResult {
-  const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
-
+export function mountBridgeRoutes(app: Hono, manager: BridgeSessionManager): void {
   app.post("/bridge/session/start", async (c) => {
     let body: unknown = {};
     try {
       body = await c.req.json();
     } catch {
-      // Empty body OK — schema fills in defaults.
     }
     const parsed = BrowserSessionStartRequestSchema.safeParse(body);
     if (!parsed.success) {
@@ -137,6 +114,4 @@ export function mountBridgeRoutes(
   );
 
   app.get("/bridge/health", (c) => c.json(manager.health()));
-
-  return { websocket };
 }

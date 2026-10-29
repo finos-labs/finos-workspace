@@ -25,10 +25,6 @@ function resetError(status: number, detail?: string): string {
   }
 }
 
-/** The page of the link an admin gives a user to set a new password with. The link's
- * token is its fragment, which no request carries; the page takes it off the address at
- * once, so that the browser's history keeps no copy. A link opened in a tab already on
- * this page changes only the fragment, and the page takes that token instead. */
 export default function ResetPasswordPage() {
   const { hash, pathname } = useLocation();
   const navigate = useNavigate();
@@ -115,7 +111,6 @@ export default function ResetPasswordPage() {
                     />
                   )}
                 />
-                {/* The rule, until the password field says it itself */}
                 {!form.formState.errors.password && (
                   <p className="text-light-800 body-xs-regular">{invalidPassword}</p>
                 )}

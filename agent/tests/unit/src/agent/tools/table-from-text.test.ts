@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test";
-import type { SSEEvent, CopilotArtifact } from "../../../../../src/protocol/types";
-import type { TableInfo } from "../../../../../src/sql/loader";
+import { describe, it, beforeEach, mock } from "node:test";
+import { expect } from "expect";
+import type { SSEEvent, CopilotArtifact } from "../../../../../src/protocol/types.ts";
+import type { TableInfo } from "../../../../../src/sql/loader.ts";
 
 let nextLlm: () => Promise<string> = async () => "[]";
 
-mock.module("../../../../../src/lib/llm", () => ({
+mock.module("../../../../../src/lib/llm.ts", { exports: {
   singleShotLlm: async () => nextLlm(),
   parseJsonResponse: <T>(raw: string, fallback: T): T => {
     const cleaned = raw.replace(/^```json\n?/, "").replace(/\n?```$/, "");
@@ -15,10 +16,10 @@ mock.module("../../../../../src/lib/llm", () => ({
     }
   },
   truncate: (s: string, max: number) => (s.length > max ? s.slice(0, max) + "..." : s),
-}));
+} });
 
 const { runTableFromText } = await import(
-  "../../../../../src/agent/tools/table-from-text"
+  "../../../../../src/agent/tools/table-from-text.ts"
 );
 
 beforeEach(() => {
@@ -49,7 +50,6 @@ describe("runTableFromText", () => {
     expect(pendingTables.get(tableName)).toHaveLength(2);
     expect(artifactQueue).toHaveLength(1);
     const artifact = artifactQueue[0].data as unknown as CopilotArtifact;
-    // The Workspace has no table artifact; the table is an HTML artifact.
     expect(artifact.type).toBe("html");
     expect((artifact as { content: string }).content).toContain("<table>");
   });

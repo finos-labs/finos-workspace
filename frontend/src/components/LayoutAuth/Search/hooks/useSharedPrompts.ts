@@ -2,13 +2,11 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { useUserResourcePermissions } from "~/hooks/useUserResourcePermissions";
 
-/** A prompt shared with the user, on its own or from a template of a backend. */
 type SharedPrompt = {
   uuid: string;
   access: string;
   prompt: string;
   tooltip?: string;
-  /** Only the prompts that stand on their own have one. */
   createdAt?: string;
 };
 
@@ -28,7 +26,6 @@ export default function useSharedPrompts(isSharedResource = false) {
     if (!data) return [];
     const { backends = [], prompts = [] } = data;
 
-    // Get standalone prompts
     const standalonePrompts = prompts.map((p) => ({
       uuid: p.uuid,
       access: p.access,
@@ -37,7 +34,6 @@ export default function useSharedPrompts(isSharedResource = false) {
       createdAt: p.prompt.createdAt,
     }));
 
-    // Get prompts from templates within backends
     const templatePrompts = backends.flatMap((backend) =>
       backend.templates.flatMap((template) =>
         (template.prompts ?? []).map((p) => ({

@@ -16,7 +16,6 @@ type InterceptorHandler<V> = {
   rejected: (error: AxiosError) => unknown;
 };
 
-// The interceptors registered on the real axios instance
 const requestHandler = () =>
   (
     apiClient.interceptors.request as unknown as {
@@ -30,7 +29,6 @@ const responseHandler = () =>
     }
   ).handlers[0];
 
-// The test runtime config puts the API at http://localhost:3000
 function send(config: Partial<InternalAxiosRequestConfig>) {
   return requestHandler().fulfilled({
     headers: new AxiosHeaders(),
@@ -62,7 +60,7 @@ describe("apiClient requests", () => {
     expect(config.headers.has("Authorization")).toBe(false);
   });
 
-  it("sends no Workspace credential or client header to another origin", async () => {
+  it("sends no FINOS Workspace credential or client header to another origin", async () => {
     const config = await send({
       url: "https://agent.example.test/upload",
       headers: new AxiosHeaders({ "X-Workspace-Client": "web" }),

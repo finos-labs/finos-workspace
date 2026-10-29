@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { redactRecord, redactString, redactValue } from "../../../../src/lib/redact";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { redactRecord, redactString, redactValue } from "../../../../src/lib/redact.ts";
 
 describe("redactString", () => {
   it("hides bearer tokens, JWTs and provider keys", () => {
@@ -39,13 +40,11 @@ describe("redactString", () => {
   });
 
   it("reads a text made to be slow for its patterns in bounded time, and still cuts it and says so", () => {
-    // The pattern for an e-mail address starts again at every character of these, which takes minutes for a megabyte.
     for (const unit of ["a.", "a.b-", "a@", "sk-", "eyJabcde.", "data:a;base64,", "Bearer ", "?key="]) {
       const text = unit.repeat(Math.ceil(1_000_000 / unit.length));
       const start = performance.now();
       const out = redactString(text);
       expect(performance.now() - start).toBeLessThan(500);
-      // A text that is all base64 characters is reported by its size, and the rest is cut.
       expect(out).toMatch(/more chars\]|^\[base64 \d+ chars\]$/);
       expect(out.length).toBeLessThan(2100);
     }

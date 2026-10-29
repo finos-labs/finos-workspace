@@ -9,12 +9,10 @@ interface FormDialogProps {
   onSubmit: FormEventHandler<HTMLFormElement>;
   submitLabel: string;
   isSubmitting: boolean;
-  /** What went wrong the last time the form was submitted. */
   error: string | null;
   children: ReactNode;
 }
 
-/** The frame the entity forms share: a title, the fields, the error, Cancel and Save. */
 export function FormDialog({
   title,
   onClose,

@@ -27,16 +27,11 @@ describe("BaseDialog", () => {
       </BaseDialog>,
     );
 
-    // Closest way to trigger onOpenChange(false) in our mock is to change the open prop
     rerender(
       <BaseDialog open={false} onClose={onClose}>
         <div>Content</div>
       </BaseDialog>,
     );
-
-    // BaseDialog calls onOpenChange which calls onClose if !open
-    // But wait, BaseDialog handles onOpenChange from Dialog.
-    // In our mock, we need to trigger onOpenChange(false).
   });
 });
 
@@ -65,8 +60,6 @@ vi.mock("./Dialog", () => {
     },
     DialogTrigger: ({
       children,
-      asChild,
-      onClick,
     }: {
       children?: ReactNode;
       asChild?: boolean;

@@ -1,13 +1,3 @@
-"""
-Integration tests for sharing.
-
-Users share dashboards and apps with named users of their organization, and dashboards
-with the whole organization. Sharing needs a role that allows it, every recipient needs a
-role that lets them receive shared items, and the organization must have sharing switched
-on. When a user's roles or their organization's switch no longer allow what was shared,
-the shares are revoked.
-"""
-
 import os
 import sys
 
@@ -54,14 +44,12 @@ def _share_table(kind: str):
 
 
 async def _recipients(db_session, kind: str, item: UUID) -> set[UUID]:
-    """The users an item is actively shared with."""
     table, item_column = _share_table(kind)
     query = select(table.shared_user_uuid).where(item_column == item, table.active.is_(True))
     return set((await db_session.execute(query)).scalars())
 
 
 async def _add_share_row(db_session, kind: str, item: UUID, user_uuid: UUID) -> None:
-    """A share as it was made while the users' roles allowed it."""
     table, item_column = _share_table(kind)
     db_session.add(
         table(**{item_column.key: item, "shared_user_uuid": user_uuid, "permissions": "view"})
@@ -215,7 +203,6 @@ class TestRecipientsMustReceive:
 
         assert response.status_code == 403
         assert response.json()["detail"] == _cannot_receive(ADMIN_EMAIL, refused.email)
-        # Nobody gets it, not even the users who could receive it
         assert await _recipients(db_session, kind, item) == set()
 
     @pytest.mark.asyncio
@@ -308,7 +295,6 @@ class TestUnsharing:
 class TestOrganizationWideDashboards:
     @pytest.fixture
     async def org_wide(self, organization):
-        """A dashboard the admin shared with the whole organization, and one they did not."""
         shared = await organization.dashboard(ADMIN_UUID, entity_share=True)
         private = await organization.dashboard(ADMIN_UUID)
         return shared, private
@@ -341,7 +327,6 @@ class TestOrganizationWideDashboards:
         synced = (await auth_client.get("/app/dash/validate-and-sync")).json()
         assert set(synced["entity_shared"]) == {str(shared)}
         assert (await auth_client.get(f"/app/dash/{shared}/versions")).status_code == 200
-        # Another organization-wide dashboard does not open this one
         assert (await auth_client.get(f"/app/dash/{private}/versions")).status_code == 403
 
     @pytest.mark.asyncio
@@ -359,9 +344,6 @@ class TestOrganizationWideDashboards:
 
 @dataclass
 class Shared:
-    """What the test user shared: a dashboard with the admin, another user and the whole
-    organization, and an app with the admin."""
-
     sharers: UUID
     receivers: UUID
     other: models.User
@@ -393,7 +375,6 @@ async def shared(organization, auth_client) -> Shared:
 
 
 async def _state(db_session, shared: Shared) -> dict:
-    """Who the test user's items are shared with, and their sharing flags."""
     dashboard = (
         await db_session.execute(
             select(models.DashboardItem.entity_share, models.DashboardItem.is_shared).where(
@@ -443,8 +424,6 @@ NOTHING = {
     "app_is_shared": False,
 }
 
-# What is left when the recipients lose what they received: the test user still shares
-# the dashboard with the organization
 NOTHING_RECEIVED = {**NOTHING, "entity_share": True}
 
 

@@ -1,6 +1,5 @@
 import { Input } from "~/components/ds/atoms/Input";
 
-/** The link an admin gives a user to set their password with, and when it stops working. */
 export default function PasswordLink({
   link,
   expiresAt,

@@ -1,14 +1,3 @@
-"""The shape of the migration chain.
-
-The API applies the migrations at every start, with ``upgrade head``. Alembic refuses that
-when the revisions form more than one head, so a branch whose new revision names the same
-parent as a revision already on the integration branch does not merge into a stack that
-starts: it merges into one that does not. Reviewing a revision file on its own does not
-show it, because each one is correct by itself — only the set has the fault.
-
-These tests read the revision files, so they need no database.
-"""
-
 import re
 from pathlib import Path
 
@@ -19,7 +8,6 @@ _DOWN_REVISION = re.compile(r"^down_revision\s*=\s*(?:[\"']([^\"']+)[\"']|None)"
 
 
 def _chain() -> dict[str, str | None]:
-    """Every revision, to the revision it follows (None for the first)."""
     chain: dict[str, str | None] = {}
     for path in sorted(VERSIONS.glob("*.py")):
         text = path.read_text()
@@ -52,7 +40,6 @@ def test_every_revision_follows_one_that_exists():
 
 
 def test_no_two_revisions_share_a_parent():
-    """The shape that makes a second head. Named on its own so a failure says which pair."""
     chain = _chain()
     seen: dict[str, str] = {}
 
@@ -66,7 +53,6 @@ def test_no_two_revisions_share_a_parent():
 
 
 def test_the_chain_reaches_every_revision_from_the_first():
-    """No revision is stranded on a chain of its own that `upgrade head` never walks."""
     chain = _chain()
     firsts = [revision for revision, down in chain.items() if down is None]
     assert len(firsts) == 1, f"Expected one first revision, found {firsts}"

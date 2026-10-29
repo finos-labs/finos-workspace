@@ -1,26 +1,18 @@
-/**
- * create_widget — place a catalog widget on a target dashboard.
- *
- * Mirrors workspace_mcp/server.py:725-766. Rejects rich_note (must use
- * add_generative_widget). config built lazily so omitted args don't ship
- * an empty {data_args:null,ui_args:null} payload.
- */
-
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
 import {
   invalidRequestItem,
   isGenerativeOnlyWidget,
-} from "../../bridge/validators";
-import { parseJsonObject, JsonArgumentError } from "../../bridge/json-args";
+} from "../../bridge/validators.ts";
+import { parseJsonObject, JsonArgumentError } from "../../bridge/json-args.ts";
 import {
   describeTool,
   DASHBOARD_TARGETING_GUIDANCE,
   EXISTING_DASHBOARD_GUIDANCE,
   CREATE_WIDGET_GUIDANCE,
-} from "../../bridge/instructions";
+} from "../../bridge/instructions.ts";
 
 export const createWidgetSchema = {
   origin: z
@@ -37,20 +29,20 @@ export const createWidgetSchema = {
     .string()
     .optional()
     .describe(
-      "Target dashboard UUID. Omit to target the current Workspace route. " +
+      "Target dashboard UUID. Omit to target the current FINOS Workspace route. " +
         "Resolve from session_context.current_dashboard_uuid in the prior response.",
     ),
   data_args_json: z
     .string()
     .optional()
     .describe(
-      "JSON object string. Widget data inputs from get_widget_schema params.",
+      "JSON object string. Widget data inputs, as data_args_schema from get_widget_schema defines them.",
     ),
   ui_args_json: z
     .string()
     .optional()
     .describe(
-      "JSON object string. Widget UI inputs from get_widget_schema. " +
+      "JSON object string. Widget UI inputs, as ui_args_schema from get_widget_schema defines them. " +
         "Do not include layout fields (x/y/w/h/grid_data) — use update_widget_layout.",
     ),
 } as const;

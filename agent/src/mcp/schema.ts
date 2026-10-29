@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { AgentTool } from "../protocol/types";
+import type { AgentTool } from "../protocol/types.ts";
 
 export function sanitizeMcpToolName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
@@ -100,13 +100,6 @@ function buildSingleTypeSchema(type: string, prop: JsonSchemaProp): z.ZodTypeAny
   }
 }
 
-/**
- * Keys with this prefix are agent-managed decoration (e.g.
- * x-ines-conversation-id, x-ines-documents). They MUST NOT be exposed
- * to the LLM — the agent injects them on the way out, the MCP server reads
- * them on the way in. Stripping them from the model-facing schema avoids the
- * model hallucinating values for them.
- */
 const INTERNAL_PARAM_PREFIX = "x-ines-";
 const DISPLAY_SUMMARY_DESCRIPTION =
   "Display-only progress summary shown to the user before the tool runs. " +

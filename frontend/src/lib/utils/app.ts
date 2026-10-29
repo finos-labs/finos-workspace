@@ -10,7 +10,6 @@ import type {
   ParamDef,
   ParamDefT,
   StoredParamValue,
-  Ticker,
   WidgetT as Widget,
   WidgetJsonT,
   WidgetT,
@@ -26,11 +25,10 @@ import {
   useBackendConnectorStore,
 } from "../state/backendConnector";
 import { useCopilotDataStore } from "../state/copilotData";
-import { DEFAULT_TICKERS } from "../types";
 import {
   ExternalWidgetSchema,
   InternalWidgetSchema,
-  isWidgetVizType,
+  isWellFormedVizType,
 } from "../types/app";
 import {
   ensureArray,
@@ -38,40 +36,18 @@ import {
   generateGroupingColor,
   generateRandomName,
 } from "./utils";
-import { getJsonWidget, getSupportedAssetClasses } from "./widget";
+import { getJsonWidget } from "./widget";
 import {
-  cleanSearchParams,
-  convertHeadersToRecord,
   createParamDefs,
   createWidgetEndpoint,
   createWidgetInitParams,
 } from "./widgetParams";
-
-export function checkIfWidgetsHaveMainTickerAndAreTheSame(widgets: Widget[]) {
-  let mainTicker: Ticker | undefined;
-  let someHaveMainTicker = false;
-  let allTheSame = true;
-  for (const widget of widgets) {
-    if (widget.data?.mainTicker) {
-      someHaveMainTicker = true;
-      if (mainTicker) {
-        if (
-          widget.data.mainTicker.id !== mainTicker.id ||
-          widget.data.mainTicker.type !== mainTicker.type
-        ) {
-          allTheSame = false;
-        }
-      } else {
-        mainTicker = widget.data.mainTicker;
-      }
-    }
-  }
-  return {
-    someHaveMainTicker,
-    allTheSame,
-    mainTicker,
-  };
-}
+import {
+  type BuiltRequest,
+  buildOptionsRequest,
+  requestInit,
+  requestKey,
+} from "./widgetRequest";
 
 export function createTab(addTab: AppState["addTab"]) {
   const id = uuidv4();
@@ -82,7 +58,6 @@ export function createTab(addTab: AppState["addTab"]) {
       type: "custom",
     },
   });
-  //navigate(`/app/${id}`);
   setTimeout(() => {
     document.getElementById(`tab-${id}`)?.click();
   }, 100);
@@ -134,7 +109,6 @@ export function removeDuplicateNavBarWidgets(item: Item) {
     if (!gridLayout[tab.id]) gridLayout[tab.id] = [];
   }
 
-  // Make sure the innerTab of the nav bar widget is valid
   const navBarInnerTab = navBarWidgets[0].innerTab;
   if (navBarInnerTab === undefined || !gridLayout[navBarInnerTab]) {
     navBarWidgets[0].innerTab = tabs?.[0]?.id || "";
@@ -182,7 +156,6 @@ function getConnectionType(
   return "single";
 }
 
-/** Strips "_undefined" from the keys of an object and everything nested in it, in place. */
 export function recursiveCleanKeys<T>(data: T): T {
   if (Array.isArray(data) || !(typeof data === "object" && isTruthy(data))) return data;
 
@@ -224,7 +197,6 @@ export function getValidItems(items: Items) {
 
       if (hasWidgets) {
         items[child].data.widgets = items[child].data.widgets.map((widget) => {
-          // makes sure internal widgets have most up-to-date params
           const params = createParamDefs(getJsonWidget(widget) ?? {});
           if (
             !Array.isArray(widget?.params) ||
@@ -244,7 +216,6 @@ export function getValidItems(items: Items) {
             return { ...widget, connectionType };
           }
 
-          // adds the sourceId to external widgets that have a sourceName
           if (widget?.external && widget?.sourceName && !widget?.sourceId) {
             const sources = useBackendConnectorStore.getState().apiSources;
             const sourceId = sources.find(
@@ -288,41 +259,10 @@ export function getValidItems(items: Items) {
 
       if (items[child]?.data?.name && !items[child]?.isFolder) {
         items[child].data.gridLayout = items[child]?.data?.gridLayout || {};
-
-        // if (
-        //   hasWidgets &&
-        //   Object.keys(gridLayout).length === 2 &&
-        //   gridLayout?.[""]?.length > 0
-        // ) {
-        //   const sortedGrid = { ...gridLayout, "": gridLayout[""] };
-
-        //   const widgetsInGrid = Object.values(sortedGrid).reduce(
-        //     (acc, curr) => {
-        //       for (const grid of curr) {
-        //         acc[grid.i] = grid;
-        //       }
-        //       return acc;
-        //     },
-        //     {} as { [key: string]: GridData },
-        //   );
-
-        //   const otherTab = Object.keys(gridLayout).find((key) => key !== "");
-        //   if (otherTab) {
-        //     items[child].data.widgets = items[child].data.widgets.map((widget) => {
-        //       widget.innerTab = otherTab;
-        //       return widget;
-        //     });
-        //     gridLayout = { [otherTab]: Object.values(widgetsInGrid) };
-        //     items[child].data.currentTab = otherTab;
-        //   }
-        // }
-
-        // items[child].data.gridLayout = gridLayout;
       }
 
       const tabWidgetIds = childWidgets?.map((widget) => widget.id) || [];
 
-      // Removes invalid widgets from the gridLayout
       if (tabWidgetIds.length > 0) {
         items[child].data.gridLayout = Object.fromEntries(
           Object.entries(items[child]?.data?.gridLayout || {}).map(([key, value]) => [
@@ -406,7 +346,6 @@ export function addDuplicateWidgetToItem(item: Item, widget: Widget) {
     ...(cloneDeep(widget) as Widget),
     id,
     innerTab: widget.innerTab || "",
-    groupId: "",
   };
 
   const gridLayout = updateWidgetGridLayout({
@@ -432,8 +371,6 @@ export function addDuplicateWidgetToItem(item: Item, widget: Widget) {
 export function duplicateTabItem(item: Item, rootId?: string, rename = true): Item {
   const { isShared, ...tabToDuplicate } = cloneDeep({ ...item });
 
-  // Create a map to store the old groupId to new groupId mapping
-  const groupIdMap = new Map<string, string>();
   const paramGroupIdMap = new Map<string, string>();
 
   const gridLayout = { ...(tabToDuplicate.data.gridLayout || {}) } as GridLayout;
@@ -460,7 +397,6 @@ export function duplicateTabItem(item: Item, rootId?: string, rename = true): It
 
         const newId = uuidv4();
 
-        // Only update gridLayout if the widget exists in it
         if (
           w.innerTab !== undefined &&
           gridDataIndex !== undefined &&
@@ -470,7 +406,6 @@ export function duplicateTabItem(item: Item, rootId?: string, rename = true): It
         }
 
         if (w.widgetId === "navigation_bar") {
-          // update old nav bar widget id to new id in all tabs
           for (const tabId in gridLayout) {
             gridLayout[tabId] = gridLayout[tabId].map((grid) => {
               if (grid.i === w.id) grid.i = newId;
@@ -502,45 +437,11 @@ export function duplicateTabItem(item: Item, rootId?: string, rename = true): It
           }
         }
 
-        if (!w.groupId) return { ...w, id: newId };
-
-        if (groupIdMap.has(w.groupId)) {
-          return {
-            ...w,
-            id: newId,
-            groupId: groupIdMap.get(w.groupId),
-          };
-        }
-
-        // Generate a new groupId for each widget
-        const newGroupId = uuidv4();
-        groupIdMap.set(w.groupId, newGroupId);
-
-        return {
-          ...w,
-          id: newId,
-          groupId: newGroupId, // Assign the new groupId to the widget
-        };
+        return { ...w, id: newId };
       }),
-      // Create new groups in the duplicated tab
       groups: tabToDuplicate.data.groups.map((g) => {
         const pGroupId = paramGroupIdMap.get(g.id);
-        if (["param", "endpointParam"].includes(g.type) && pGroupId) {
-          return {
-            ...g,
-            id: pGroupId,
-            color: generateGroupingColor(),
-          };
-        }
-
-        const newGroupId = groupIdMap.get(g.id);
-        return newGroupId
-          ? {
-              ...g,
-              id: newGroupId,
-              color: generateGroupingColor(),
-            }
-          : g;
+        return pGroupId ? { ...g, id: pGroupId, color: generateGroupingColor() } : g;
       }),
     },
   };
@@ -559,18 +460,6 @@ export function needsGroupValueUpdate(widget: Widget, group: Group) {
     const current =
       paramName === undefined ? undefined : widget?.storage?.params?.[paramName];
     return current !== group.value;
-  }
-
-  if (group?.type === "ticker" && group?.value?.symbol) {
-    const supportedTypes = getSupportedAssetClasses(widget.widgetId);
-    const category = group?.value?.category ?? widget?.data?.mainTicker?.category;
-    const isOptions = supportedTypes.includes("options") && group?.value?.has_options;
-
-    const validTicker =
-      [category, "all"].some((type) => supportedTypes.includes(type)) ||
-      widget?.external;
-
-    return validTicker || isOptions;
   }
 
   if (group?.type === "param" && group?.groupById) {
@@ -601,22 +490,6 @@ export function updateWidgetGroupValues(widget: Widget, groups: Group[]): Widget
             [paramName]: group.value,
           },
         };
-        return w;
-      }
-
-      if (group?.type === "ticker" && group?.value?.symbol) {
-        w.data = { ...w.data, mainTicker: group.value };
-
-        const tickerParam = getTickerParamName(w);
-
-        w.storage = {
-          ...(w.storage ?? {}),
-          params: {
-            ...(w.storage?.params ?? {}),
-            ...(tickerParam ? { [tickerParam]: group.value.symbol } : {}),
-          },
-        };
-
         return w;
       }
 
@@ -656,7 +529,6 @@ export function updateWidgetGroupValue(widget: Widget, group: Group | null) {
 }
 
 export function getGroupLabel(group: Group) {
-  if (group?.type === "ticker") return group?.value?.symbol;
   return group?.value;
 }
 
@@ -664,7 +536,7 @@ export function getGroupInfo(group: Group | null, paramDef?: ParamDef) {
   const output = { valueLabel: "", paramLabel: paramDef?.label || paramDef?.paramName };
   if (!group) return output;
 
-  const rawValue = group.type === "ticker" ? group.value?.symbol : group.value;
+  const rawValue = group.value;
   if (!rawValue) return { ...output, valueLabel: "" };
 
   output.valueLabel = ensureArray(rawValue)
@@ -679,27 +551,16 @@ export function getGroupInfo(group: Group | null, paramDef?: ParamDef) {
   return output;
 }
 
-export function getEndpointParamRequestArgs(
+export function endpointOptionsRequest(
   widget: Widget,
   param: ParamDefT<"endpoint">,
   currentParams: Record<string, unknown>,
-) {
-  const credentials = getSourceCredentials(widget.sourceId, param.optionsEndpoint);
-  const { headers, newParams } = convertHeadersToRecord<Record<string, unknown>>(
-    credentials.headers,
-    { ...credentials.query },
+): BuiltRequest | null {
+  return buildOptionsRequest(
+    param,
+    { params: widget.params ?? [], values: currentParams },
+    getSourceCredentials(widget.sourceId, param.optionsEndpoint),
   );
-
-  for (const [key, value] of Object.entries(param.optionsParams ?? {})) {
-    if (value?.toString()?.startsWith("$")) {
-      newParams[key] = currentParams?.[value.slice(1)];
-    } else newParams[key] = value;
-  }
-
-  const url = cleanSearchParams(param.optionsEndpoint, newParams);
-  const reqInit = { headers } as RequestInit;
-
-  return { url, reqInit };
 }
 
 export function getEndpointParams(widget: Partial<Widget>): ParamDefT<"endpoint">[] {
@@ -726,12 +587,7 @@ export function getEndpointParamName(params: ParamDef[], paramId: string | undef
   return param?.paramName;
 }
 
-/**
- * What a group groups, for a label: the param it came from when a template made it, else
- * the type of the group, and "country" for the tickers that are countries.
- */
 export function getGroupKindLabel(group: Group): string {
-  if (group.type === "ticker" && group.value?.category === "country") return "country";
   return "paramName" in group && typeof group.paramName === "string"
     ? group.paramName
     : group.type;
@@ -739,27 +595,14 @@ export function getGroupKindLabel(group: Group): string {
 
 export function getWidgetGroupValue(
   widget: Widget,
-  group: GroupTypeT<"ticker">,
-): Ticker | null | undefined;
-export function getWidgetGroupValue(
-  widget: Widget,
-  group: GroupTypeT<"param" | "endpointParam">,
-): StoredParamValue | undefined;
-export function getWidgetGroupValue(
-  widget: Widget,
   group: Group | undefined,
-): Ticker | StoredParamValue | undefined;
-export function getWidgetGroupValue(widget: Widget, group: Group | undefined) {
+): StoredParamValue | undefined {
   if (group?.id === undefined) return null;
 
   if (group?.type === "endpointParam") {
     const params = getEndpointParams(widget);
     const paramName = getEndpointParamName(params, group?.groupById);
     return paramName === undefined ? undefined : widget?.storage?.params?.[paramName];
-  }
-
-  if (group?.type === "ticker") {
-    return widget?.data?.mainTicker;
   }
 
   if (group?.type === "param" && group?.groupById) {
@@ -850,35 +693,21 @@ function _getWidgetParamsWithGroupMap(widget: Widget, groupsMap: Map<string, Gro
   return currentParams;
 }
 
-function _getEndpointParamRequestCacheKey(url: string, reqInit: RequestInit) {
-  const headers =
-    reqInit.headers instanceof Headers
-      ? Object.fromEntries(reqInit.headers.entries())
-      : (reqInit.headers ?? {});
-
-  return JSON.stringify({
-    url,
-    method: reqInit.method ?? "GET",
-    headers,
-    body: reqInit.body ?? "",
-  });
-}
-
 async function _fetchEndpointParamOptions(
   widget: Widget,
   param: ParamDefT<"endpoint">,
   currentParams: Record<string, unknown>,
   requestCache?: EndpointParamOptionsRequestCache,
 ) {
-  if (!param.optionsEndpoint) return [];
+  const built = endpointOptionsRequest(widget, param, currentParams);
+  if (!built?.ok) return [];
 
-  const { url, reqInit } = getEndpointParamRequestArgs(widget, param, currentParams);
-  const cacheKey = _getEndpointParamRequestCacheKey(url, reqInit);
+  const cacheKey = JSON.stringify(requestKey(built));
   const cachedRequest = requestCache?.get(cacheKey);
   if (cachedRequest) return cachedRequest;
 
   const request = (async () => {
-    const response = await fetch(url, reqInit);
+    const response = await fetch(built.request.url, requestInit(built.request));
     if (!response.ok) return [];
 
     const data = await response.json();
@@ -1019,11 +848,6 @@ export async function updateDependentEndpointParamGroups(
   await updateDependentsForGroup(sourceGroup);
 }
 
-/**
- * The endpoint params of a widget whose options depend on `paramName` (`optionsParams` with
- * `$paramName`) and that are not in a group. The ones in a group follow their group, see
- * `updateDependentEndpointParamGroups`.
- */
 export function getUngroupedDependentEndpointParams(
   widget: Partial<Widget>,
   paramName: string,
@@ -1035,18 +859,12 @@ export function getUngroupedDependentEndpointParams(
   );
 }
 
-/** Whether the options of an endpoint param are those of another param's value. */
 export function endpointParamDependsOnAnotherParam(param: ParamDefT<"endpoint">) {
   return Object.values(param.optionsParams ?? {}).some(
     (value) => typeof value === "string" && value.startsWith("$"),
   );
 }
 
-/**
- * What an endpoint param takes when it holds a value that its options do not offer, as when
- * it was saved with another provider: the option the backend marks as selected, else nothing.
- * `undefined` when the value is fine or there is none.
- */
 export function getOfferedEndpointParamValue(
   param: ParamDefT<"endpoint">,
   options: unknown[],
@@ -1062,12 +880,6 @@ export function getOfferedEndpointParamValue(
   return param.multiSelect ? selected : (selected[0] ?? "");
 }
 
-/**
- * Once a param of a widget changed, the value each endpoint param that depends on it has to
- * take: a value that is not among the options of the new value (a feed of another provider)
- * is replaced by the option the backend marks as selected, or cleared when there is none.
- * Returns only the params that change.
- */
 export async function getDependentEndpointParamValues(
   widget: Widget,
   changedParamName: string,
@@ -1128,12 +940,6 @@ export function isValidParamOption(
   }
 
   return false;
-}
-
-export function getTickerParamName(widget: Partial<Widget | WidgetJsonT>) {
-  const isEconomyGroup = widget?.data?.mainTicker?.category === "country";
-  const param = widget?.params?.find((param) => param?.type === "ticker");
-  return param?.paramName || (isEconomyGroup ? "country" : null);
 }
 
 export function getEndpointParamGroupByIds(widget: Partial<Widget>) {
@@ -1228,12 +1034,10 @@ export function getGridData(
     const ensuredValidY =
       lastWidgetY !== undefined && Number.isFinite(lastWidgetY) ? lastWidgetY : 0;
 
-    // Check if there's enough space to the right of the last widget
     if (lastWidgetX + lastWidgetCols + (widgetGridData.w ?? 0) <= tabCols) {
       gridData.x = lastWidgetX + lastWidgetCols;
       gridData.y = ensuredValidY;
     } else {
-      // If not enough space, place the new widget below the last widget
       gridData.x = 0;
       gridData.y = ensuredValidY + lastWidgetRows;
     }
@@ -1250,11 +1054,6 @@ export function getInnerTabsGridLayout(gridLayout: GridLayout | undefined) {
   );
 }
 
-/**
- * Resolves the `tab` search param a dashboard route should be showing.
- * Returns `null` when the current URL already matches, so the caller never issues a
- * navigation that leaves the URL unchanged.
- */
 export function resolveInnerTabParams(props: {
   gridLayout: GridLayout | undefined;
   currentTab: string;
@@ -1362,7 +1161,6 @@ export function updateWidgetGridLayout(params: UpdateWidgetGridLayoutParams) {
   finalGridData.i = widget.id;
   if (isNavigationBar && !ignoreLastWidgetGridData) finalGridData.y = 0;
 
-  // if the widget is already in the layout, update its gridData and layoutKey if needed
   for (const key in gridLayout) {
     for (const w of gridLayout[key]) {
       if (w.i === widget.id && layoutKey !== key) {
@@ -1379,89 +1177,17 @@ export function updateWidgetGridLayout(params: UpdateWidgetGridLayoutParams) {
   return gridLayout;
 }
 
-type MainTickerByCategoryParams = {
-  widget?: (NewWidget | WidgetJsonT) & { dependsOn?: string[] };
-  defaultTicker?: Ticker;
-  defaultCategory?: Ticker["category"];
-};
-
-export function MainTickerByCategory(props: MainTickerByCategoryParams): Ticker {
-  const { widget, defaultTicker = DEFAULT_TICKERS.AAPL, defaultCategory } = props;
-  const mainTicker = widget?.data?.mainTicker || defaultTicker;
-
-  const widgetTypes = getSupportedAssetClasses(widget?.widgetId);
-  const hasOptions = widgetTypes.includes("options") && mainTicker?.has_options;
-
-  const supportedTypes = widgetTypes?.length
-    ? widgetTypes
-    : [
-        widget?.defaultAssetClass,
-        widget?.category?.toLowerCase(),
-        defaultCategory,
-        defaultTicker?.category,
-      ];
-
-  const tickerCategories: Record<string, Ticker> = {
-    etf: DEFAULT_TICKERS.SPY,
-    equity: DEFAULT_TICKERS.AAPL,
-    stock: DEFAULT_TICKERS.AAPL,
-    [defaultTicker?.category]: defaultTicker,
-    all: mainTicker,
-    [mainTicker?.category]: mainTicker,
-  };
-
-  if (hasOptions) {
-    return widget?.data?.mainTicker || defaultTicker;
-  }
-
-  const categoryTicker = (category: string | undefined) =>
-    category === undefined ? undefined : tickerCategories[category];
-
-  return (
-    supportedTypes
-      .map(
-        (assetClass) =>
-          categoryTicker(widget?.defaultAssetClass) ||
-          categoryTicker(assetClass) ||
-          categoryTicker(defaultCategory),
-      )
-      .find((ticker) => ticker) || tickerCategories.all
-  );
-}
-
-export function getWidgetData(params: {
-  widget: (NewWidget | WidgetJsonT) & { dependsOn?: string[] };
-  defaultTicker?: Ticker;
-}): Widget {
-  const { widget, defaultTicker = DEFAULT_TICKERS.AAPL } = params;
-
-  const mainTicker = MainTickerByCategory({ widget, defaultTicker });
+export function getWidgetData(params: { widget: NewWidget | WidgetJsonT }): Widget {
+  const { widget } = params;
 
   widget.params = createParamDefs(widget);
   widget.storage = widget.storage || {};
   widget.storage.params = widget?.storage?.params || {};
 
-  const tickerParam = getTickerParamName(widget);
-
   if (widget?.params?.length > 0) {
-    const initialParams = createWidgetInitParams(widget, mainTicker);
+    const initialParams = createWidgetInitParams(widget);
 
     widget.storage = { ...widget.storage, params: initialParams };
-  }
-
-  if (
-    !widget.data?.mainTicker &&
-    widget.dependsOn?.includes("mainTicker") &&
-    tickerParam
-  ) {
-    widget.data = {
-      ...widget.data,
-      mainTicker,
-    };
-    widget.storage = {
-      ...widget.storage,
-      params: { ...widget.storage.params, [tickerParam]: mainTicker.symbol },
-    };
   }
 
   if (widget.dataKey) {
@@ -1476,8 +1202,6 @@ export function getWidgetData(params: {
     const innerTab = widget.innerTab || "overview";
     widget.innerTab = innerTab;
 
-    // Fixes disappearing widgets when adding navigation bar
-    // to custom backend apps with innerTab defined
     widget.storage = {
       ...widget.storage,
       tabs: widget.storage?.tabs || [
@@ -1488,27 +1212,10 @@ export function getWidgetData(params: {
     };
   }
 
-  if (
-    widget.dependsOn?.includes("mainTicker") &&
-    tickerParam &&
-    !widget?.storage?.params?.[tickerParam]
-  ) {
-    widget.data = { ...widget.data, mainTicker };
-    widget.storage = {
-      ...widget.storage,
-      params: { ...widget.storage?.params, [tickerParam]: mainTicker.symbol },
-    };
-  }
-
-  if (widget?.data?.mainTicker === null) {
-    widget.data.mainTicker = undefined;
-  }
-
   const finalWidgetData: Partial<Widget> = {
     id: widget.id || uuidv4(),
-    groupId: widget.groupId ?? "",
     widgetId: widget.widgetId,
-    name: widget.name ?? "", // IMPROVE: remove name if not needed (all but single news, etc)
+    name: widget.name ?? "",
     external: widget.external,
     innerTab: widget.innerTab ?? "",
     storage: widget.storage,
@@ -1522,14 +1229,11 @@ export function getWidgetData(params: {
     showTitle: widget?.showTitle !== false,
     exportable: widget?.exportable !== false,
     disableRetrievalForCopilot: widget?.disableRetrievalForCopilot,
+    ...(widget.plugin ? { plugin: widget.plugin } : {}),
   };
 
-  if (isWidgetVizType(widget.type)) {
+  if (isWellFormedVizType(widget.type)) {
     finalWidgetData.type = widget.type;
-  }
-
-  if (widget.defaultViz) {
-    finalWidgetData.type = widget.defaultViz;
   }
 
   if (widget.external) {
@@ -1549,21 +1253,8 @@ export function getWidgetData(params: {
       }
     }
     if (widget.endpoint) {
-      // The source's credentials are looked up when the widget fetches, never saved with it
       const { url, method } = createWidgetEndpoint(widget.endpoint);
       finalWidgetData.endpoint = { url, method };
-    }
-
-    const uniqueParam = widget?.params?.find((param) => param.type === "ticker");
-
-    if (uniqueParam?.type === "ticker") {
-      if (finalWidgetData.storage?.params) {
-        finalWidgetData.storage.params[uniqueParam.paramName] = mainTicker.symbol;
-      }
-      finalWidgetData.data = {
-        ...finalWidgetData.data,
-        mainTicker,
-      };
     }
 
     if (
@@ -1577,23 +1268,11 @@ export function getWidgetData(params: {
     if (import.meta.env.DEV) console.log(widget, finalWidgetData);
   }
 
-  if (!widget.external) {
-    const mainTickerFields: Record<string, unknown> | undefined =
-      widget.data?.mainTicker;
-    if (tickerParam && mainTickerFields?.[tickerParam]) {
-      finalWidgetData.data = {
-        ...finalWidgetData.data,
-        mainTicker: widget.data?.mainTicker,
-      };
-    }
-  }
-
   const result = finalWidgetData.external
     ? ExternalWidgetSchema.safeParse(finalWidgetData)
     : InternalWidgetSchema.safeParse(finalWidgetData);
   if (result.success) {
     if (import.meta.env.DEV) console.log("Widget is valid", result.data);
-    // If the code reaches this point, the widget is valid
     const validatedWidget = result.data as WidgetT;
     if (widget?.isMinimized || widget?.originalH) {
       validatedWidget.isMinimized = widget.isMinimized;
@@ -1614,17 +1293,13 @@ export const diffItemsWithRemote = (currentState: Items, remoteState: Items | nu
   if (!currentState) throw new Error("Current state is empty");
   const diff: Record<string, Item | "DELETE"> = {};
 
-  // Iterate over each item in the current state
   for (const [key, value] of Object.entries(currentState)) {
-    // If the item doesn't exist in the remote state or is different, add it to the diff
     if (!(remoteState[key] && isEqual(value, remoteState[key]))) {
       diff[key] = value;
     }
   }
 
-  // Iterate over each item in the remote state
   for (const key of Object.keys(remoteState)) {
-    // If the item doesn't exist in the current state, mark it as "DELETE" in the diff
     if (!currentState[key]) {
       diff[key] = "DELETE";
     }

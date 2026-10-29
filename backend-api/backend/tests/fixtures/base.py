@@ -1,5 +1,3 @@
-"""Shared helpers and configuration for backend test fixtures."""
-
 from __future__ import annotations
 
 import logging
@@ -17,8 +15,6 @@ from sqlalchemy import delete, text
 from sqlalchemy.sql import Executable
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# The origin of the web app in the tests; requests are sent to
-# https://test, so that the client keeps and sends the API's secure session cookies
 TEST_ORIGIN = "http://test"
 TEST_BASE_URL = "https://test"
 
@@ -35,7 +31,6 @@ _BASE_TEST_ENV = {
 }
 for key, value in _BASE_TEST_ENV.items():
     os.environ.setdefault(key, value)
-# The service token the API holds for the /app routes, as create_local_env writes it
 os.environ.setdefault(
     "WORKSPACE_AUTH_TOKEN",
     jwt.encode({"sub": "workspace"}, os.environ["JWT_SECRET"], algorithm="HS256"),
@@ -46,7 +41,6 @@ from api.models import User  # noqa: E402
 from utilities.config import settings  # noqa: E402
 from main import app  # noqa: E402
 
-# What the web app sends with every request; its session cookie comes on top
 WEB_HEADERS = {auth_helpers.CLIENT_HEADER: "web", "Origin": TEST_ORIGIN}
 
 logger = logging.getLogger(__name__)
@@ -54,7 +48,6 @@ logger = logging.getLogger(__name__)
 
 @contextmanager
 def superuser_override():
-    """Bypass the is_superuser DB check so admin endpoints are callable."""
     app.dependency_overrides[auth_helpers.get_current_superuser] = lambda: None
     try:
         yield
@@ -156,8 +149,6 @@ _DELETE_PERMISSIONS_BY_UUID = text(
 )
 _DELETE_ENTITY_BY_UUID = text("DELETE FROM `entity` WHERE uuid = :uuid")
 
-# The default organization: init makes the first one, and users nobody placed get its User map
-# (settings.DEFAULT_USER_MAPPING, which user_create.json sets in a stack)
 _DEFAULT_USER_MAP_UUID = "22222222-2222-2222-2222-222222222222"
 _DEFAULT_ENTITY_UUID = "33333333-3333-3333-3333-333333333333"
 settings.DEFAULT_USER_MAPPING = UUID(_DEFAULT_USER_MAP_UUID)
@@ -170,7 +161,6 @@ def _configure_test_settings(
     redis_host: str,
     redis_port: int,
 ) -> None:
-    """Update environment and settings for MySQL/Redis containers."""
     os.environ["DATABASE_TYPE"] = "mysql"
     os.environ["DB_HOST"] = mysql_host
     os.environ["DB_PORT"] = str(mysql_port)
@@ -215,7 +205,6 @@ def _configure_test_settings(
 
 
 def _reinitialize_rq_queue() -> None:
-    """Recreate the RQ queue connection after Redis settings change."""
     try:
         from rq import worker_registration
         from utilities import rq_results
@@ -235,12 +224,10 @@ def _reinitialize_rq_queue() -> None:
             failure_ttl=5,
         )
     except Exception:
-        # If RQ isn't available, tests will still run but queue-backed features will fail with a timeout.
         pass
 
 
 async def _set_fk_checks(session: AsyncSession, *, enabled: bool) -> None:
-    """Enable or disable MySQL foreign key checks for a session."""
     await session.execute(
         text("SET FOREIGN_KEY_CHECKS = 1" if enabled else "SET FOREIGN_KEY_CHECKS = 0")
     )
@@ -250,7 +237,6 @@ async def _execute_cleanup_statements(
     session: AsyncSession,
     statements: Sequence[CleanupStatement],
 ) -> None:
-    """Execute a list of SQL statements, ignoring failures for missing tables."""
     for statement, params in statements:
         try:
             await session.execute(statement, params)
@@ -261,7 +247,6 @@ async def _execute_cleanup_statements(
 async def _cleanup_test_user_records(
     cleanup_session: AsyncSession, user_uuid: str
 ) -> None:
-    """Remove test-user related rows from all relevant tables."""
     await _set_fk_checks(cleanup_session, enabled=False)
 
     statements: list[CleanupStatement] = [
@@ -281,7 +266,6 @@ async def _cleanup_user_fixture_records(
     db_session: AsyncSession,
     user_config: UserConfig,
 ) -> None:
-    """Remove fixture-specific rows for a user setup (hex UUID tables + entities)."""
     from api.models.entity_models import Entity, PermissionsEntityMap
 
     await _set_fk_checks(db_session, enabled=False)
@@ -326,7 +310,6 @@ async def _cleanup_user_fixture_records(
 async def _create_user_fixture(
     db_session: AsyncSession, user_config: UserConfig
 ) -> User:
-    """Create Entity, Permissions map, and User for a fixture."""
     from api.models.entity_models import Entity, PermissionsEntityMap
 
     entity = Entity(uuid=user_config["entity_uuid"], name=user_config["entity_name"])
@@ -365,8 +348,6 @@ async def _create_session_record(
     app_session: bool = True,
     lifetime_seconds: int = 3600,
 ) -> str:
-    """Create a session row for auth-based fixtures and return its token, which the
-    table stores as a hash only, as sign-in does."""
     from api.models import Session as SessionModel
     from datetime import datetime, timedelta
 
@@ -388,7 +369,6 @@ async def _create_session_record(
 
 
 def _build_service_jwt() -> str:
-    """Generate a service JWT for Workspace auth header checks."""
     import jwt
     from datetime import datetime, timedelta
 
@@ -401,15 +381,11 @@ def _build_service_jwt() -> str:
 
 
 def web_session_headers(session_token: str) -> dict[str, str]:
-    """The headers of the web app's requests with this session: its cookie, its client
-    header and its origin."""
     return {**WEB_HEADERS, "Cookie": f"{auth_helpers.SESSION_COOKIE}={session_token}"}
 
 
 @asynccontextmanager
 async def bearer_client(session_token: str, origin: str | None = TEST_ORIGIN):
-    """Yield an AsyncClient that is a client other than a browser (the default Copilot with
-    an agent token): it sends a bearer token, and it has no cookies."""
     headers = {"Authorization": f"Bearer {session_token}"}
     if origin is not None:
         headers["Origin"] = origin
@@ -422,7 +398,6 @@ async def bearer_client(session_token: str, origin: str | None = TEST_ORIGIN):
 
 @asynccontextmanager
 async def _make_auth_client(session_token: str):
-    """Yield an AsyncClient that is the web app signed in with this session."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url=TEST_BASE_URL) as auth_ac:
         auth_ac.headers.update(web_session_headers(session_token))
@@ -435,7 +410,6 @@ def _get_or_create_entity(
     uuid: str,
     name: str,
 ):
-    """Ensure an Entity row exists for a given UUID."""
     from api.models.entity_models import Entity
 
     entity = session.query(Entity).filter(Entity.uuid == uuid).first()
@@ -455,7 +429,6 @@ def _get_or_create_permission(
     entity_uuid: str,
     name: str,
 ) -> None:
-    """Ensure a PermissionsEntityMap row exists for a given UUID."""
     from api.models.entity_models import PermissionsEntityMap
 
     existing = (
@@ -472,7 +445,6 @@ def _get_or_create_permission(
 
 
 def _seed_entities() -> None:
-    """Seed required entities for /app endpoints after migrations."""
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
 
@@ -497,7 +469,6 @@ def _seed_entities() -> None:
 
 
 def _get_test_db_url_async() -> str:
-    """Build async DB URL using dynamic container ports."""
     return (
         f"mysql+aiomysql://{settings.WRITE_DB_USER}:{settings.WRITE_DB_PASSWORD}"
         f"@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
@@ -505,7 +476,6 @@ def _get_test_db_url_async() -> str:
 
 
 def _get_test_db_url_sync() -> str:
-    """Build sync DB URL using dynamic container ports."""
     return (
         f"mysql+pymysql://{settings.WRITE_DB_USER}:{settings.WRITE_DB_PASSWORD}"
         f"@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"

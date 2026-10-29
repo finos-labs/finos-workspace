@@ -17,8 +17,10 @@ import type { WidgetId } from "~/components/Widgets";
 import { getFileWidgetType } from "~/lib/constants";
 import type { BackendConnectorStore, Source } from "~/lib/state/backendConnector";
 import { useBackendConnectorStore } from "~/lib/state/backendConnector";
+import { isRenderableVizType } from "~/lib/types/app";
 import { createURLString } from "~/lib/utils";
 import WIDGETS from "~/lib/widgets.json";
+import { getPluginVizTypes } from "~/plugins/registry";
 import type { WidgetType } from "~/utils/zodForms";
 import type { Widget } from "../state/app";
 import {
@@ -29,16 +31,13 @@ import {
   MultipleCopilotDataItemSchema,
 } from "../state/copilot";
 
-/** The built-in widgets every entity can add (the widget search shows them under "All"). */
 export const CORE_WIDGET_IDS = ["navigation_bar", "iframe", "html"];
 
 // biome-ignore format: off
 export type WidgetsIds = Extract<keyof typeof WIDGETS, string> | `${string}-${number | string}`;
 
-/** The built-in widget catalog (`lib/widgets.json`), keyed by widget id. */
 const WIDGET_CATALOG = WIDGETS as unknown as Record<string, WidgetJsonT>;
 
-/** A widget of the built-in catalog (`lib/widgets.json`), if there is one with this id. */
 export function getCatalogWidget(
   widgetId: string | undefined,
 ): WidgetJsonT | undefined {
@@ -54,28 +53,6 @@ export function getJsonWidget(widget: WidgetId | Partial<Widget>): WidgetT | nul
   const { id, widgetId } = widget;
   const fromCatalog = widgetId ? WIDGET_CATALOG[widgetId] : undefined;
   return cloneDeep({ ...(fromCatalog ?? widget), id, widgetId } as WidgetT);
-}
-
-export function getSupportedAssetClasses(
-  widgetId: WidgetsIds | string | undefined,
-): string[] {
-  return cloneDeep((widgetId && WIDGET_CATALOG[widgetId]?.supportedAssetClasses) || []);
-}
-
-export function getWidgetsWithSupportedAssetClass(
-  assetClass: string,
-  onlyIds: true,
-): WidgetJsonT["widgetId"][];
-export function getWidgetsWithSupportedAssetClass(
-  assetClass: string,
-  onlyIds?: false,
-): WidgetJsonT[];
-export function getWidgetsWithSupportedAssetClass(assetClass: string, onlyIds = false) {
-  return cloneDeep(
-    Object.values(WIDGET_CATALOG)
-      .filter((widget) => widget?.supportedAssetClasses?.includes(assetClass))
-      .map((widget) => (onlyIds ? widget.widgetId : widget)),
-  );
 }
 
 export function getWidgetSourceInfo(widget: Widget | null) {
@@ -105,18 +82,9 @@ export function getWidgetDataSource(widget: Partial<WidgetT> | null): string[] {
 }
 
 export function useWidgetDataSource(): string[] {
-  const mainTicker = useWidgetContext()?.widget?.data?.mainTicker;
-  const widgetFromJSON = useWidgetContext()?.widgetFromJSON;
+  const widgetFromJSON = useWidgetContext()?.widgetFromJSON ?? null;
 
-  const widgetDataSource = useMemo(() => {
-    const widget = {
-      ...widgetFromJSON,
-      data: { ...widgetFromJSON?.data, mainTicker },
-    };
-    return getWidgetDataSource(widget);
-  }, [widgetFromJSON?.widgetId, mainTicker?.exchange]);
-
-  return widgetDataSource;
+  return useMemo(() => getWidgetDataSource(widgetFromJSON), [widgetFromJSON]);
 }
 
 export function extractColumns(data: unknown): string[] | null {
@@ -153,12 +121,17 @@ export function getAdvancedBackendChildren(id: string): string[] {
 
 export function convertAdvancedBackend(source: Source): WidgetT[] {
   const widgets = source.widgets ?? {};
-  return Object.keys(widgets).map((widgetId) => {
+  const pluginTypes = getPluginVizTypes();
+  return Object.keys(widgets).flatMap((widgetId) => {
     const widget = widgets[widgetId];
+    if (!isRenderableVizType(widget.type, pluginTypes)) return [];
     const newWidget = {
       ...cloneDeep({ ...widget }),
-      type: widget.type ?? widget.defaultViz,
-      endpoint: createURLString(widget.endpoint, source.url),
+      type: widget.type,
+      endpoint: {
+        url: createURLString(widget.endpoint, source.url),
+        method: widget.method ?? "GET",
+      },
       external: true,
       widgetType: "backend",
       sourceId: source.id,
@@ -167,7 +140,7 @@ export function convertAdvancedBackend(source: Source): WidgetT[] {
       connectionType: "advanced-backend",
     } as unknown as WidgetT;
 
-    return newWidget;
+    return [newWidget];
   });
 }
 
@@ -249,43 +222,27 @@ export function getAllWidgets(
   return cloneDeep([...result]);
 }
 
-/**
- * Converts widgetId to clean widgetId because some widgetIds have the widgetId as suffix and then the uuid
- * e.g., files will have file- as prefix so they will be file-uuid
- * iframe saved to backend will have iframe- as prefix so they will be iframe-uuid
- * This function removes the prefix and returns the cleaned widgetId
- * @param widgetId
- */
 export function getCleanWidgetId(
   widgetId: string,
   connectionType?: WidgetT["connectionType"],
 ) {
-  if (connectionType === "advanced-backend") return widgetId;
+  if (connectionType === "advanced-backend" || connectionType === "plugin")
+    return widgetId;
   return widgetId
-    ?.replace(/shared_file-.*/, "file")
-    ?.replace(/file-.*/, "file")
-    ?.replace(/iframe-.*/, "iframe")
-    ?.replace(/html-.*/, "html");
+    ?.replace(/^shared_file-.*/, "file")
+    ?.replace(/^file-.*/, "file")
+    ?.replace(/^iframe-.*/, "iframe")
+    ?.replace(/^html-.*/, "html");
 }
 
 const WIDGET_ID_CLEANING = ["iframe-", "shared_file-", "file-", "html-"];
 
 const WIDGET_ID_CLEANING_REGEX = new RegExp(`^(${WIDGET_ID_CLEANING.join("|")})`);
 
-/**
- * Removes the prefix from the widgetId, i.e., if widgetId is file-uuid, it will return uuid
- * @param widgetId
- * @returns widgetId without the prefix
- */
 export function getUUIDFromWidgetId(widgetId: string) {
   return widgetId.replace(WIDGET_ID_CLEANING_REGEX, "");
 }
 
-/**
- * Processes a widgetId to extract both the UUID and the clean widget ID.
- * @param widgetId - The original widget ID to process.
- * @returns An object containing the UUID and clean widget ID.
- */
 export function processWidgetId(
   widgetId: string,
   connectionType?: WidgetT["connectionType"],
@@ -304,16 +261,6 @@ export function processWidgetId(
 
 export const METADATA_WIDGETS = ["websites", "website", "html"];
 
-/**
- * Handles the deletion of a widget based on its type and ID.
- * @param type - The type of widget to delete
- * @param id - The ID of the widget
- * @param parent - Optional parent flag for database types
- * @param backendConnector - The backend connector store instance
- * @param deleteWidgets - Function to delete widgets
- * @param deleteWidgetsConnection - Function to delete widget connections
- * @param setDatabases - Function to set databases
- */
 export async function handleWidgetDeletion({
   type,
   id,
@@ -378,7 +325,6 @@ export async function handleMultiFileResponse(
         const item = parsedResponse[index];
         let fileResponse: FileResponse | null = null;
         if ("data_format" in item && item.data_format?.data_type === "pdf") {
-          // Base64 encoded PDF
           if ("content" in item && item.content) {
             const byteArray = base64ToUint8Array(item.content);
             fileResponse = {
@@ -426,7 +372,6 @@ export async function handleFileResponse(
       "data_format" in parsedResponse &&
       parsedResponse.data_format?.data_type === "pdf"
     ) {
-      // Base64 encoded PDF
       if ("content" in parsedResponse && parsedResponse.content) {
         const byteArray = base64ToUint8Array(parsedResponse.content);
         return {
@@ -437,7 +382,6 @@ export async function handleFileResponse(
         };
       }
 
-      // URL to PDF
       if ("url" in parsedResponse && parsedResponse.url) {
         const blob = await fetch(parsedResponse.url).then((res) => res.blob());
         return {
@@ -448,7 +392,6 @@ export async function handleFileResponse(
       throw new Error("Invalid data");
     }
   }
-  // PDF file blob
   if (contentType === "application/pdf") {
     const blob = await response.blob();
     return {
@@ -463,8 +406,6 @@ export async function handleFileResponse(
 }
 
 function base64ToUint8Array(base64: string) {
-  // Create a buffer directly from the decoded base64 string
-  // This approach avoids potential ArrayBuffer detachment issues
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
 

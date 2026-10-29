@@ -1,20 +1,11 @@
-/**
- * Tier 2 — file widget round-trip through the loop.
- *
- * Asserts: when a tool re-POST carries an image / PDF widget item, the
- * loop's `injectFromReboot` builds a multi-part user message containing
- * the media `parts`, and the surfaced messages reach the LLM unmodified.
- * Mirrors the production flow when the workspace returns a chart image
- * or PDF report from `get_widget_data`.
- */
-
-import { describe, it, expect, beforeEach } from "bun:test";
-import { makeXlsx } from "../../helpers/make-xlsx";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { QueryRequest, ToolMessage, Widget } from "../../../src/protocol/types";
-import { llmEmitsText, makeSpyMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { makeXlsx } from "../../helpers/make-xlsx.ts";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { QueryRequest, ToolMessage, Widget } from "../../../src/protocol/types.ts";
+import { llmEmitsText, makeSpyMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 
@@ -40,7 +31,6 @@ interface LlmCall {
 }
 
 function findUserPartsMessage(call: LlmCall): unknown[] | undefined {
-  // Find the most recent user message whose content is a parts array.
   const msgs = call.messages ?? [];
   for (let i = msgs.length - 1; i >= 0; i--) {
     const m = msgs[i];
@@ -84,8 +74,6 @@ describe("file widget — image inline content reaches the LLM as ImagePart", ()
     expect(spy.calls.length).toBeGreaterThan(0);
     const parts = findUserPartsMessage(spy.calls[0] as LlmCall);
     expect(parts).toBeDefined();
-    // The Vercel AI SDK normalizes ImagePart to a file-typed entry with
-    // an image/* mediaType for V3 wire compat. Match on mediaType, not type.
     const imagePart = (parts as Array<Record<string, unknown>>).find(
       (p) => typeof p.mediaType === "string" && (p.mediaType as string).startsWith("image/"),
     );
@@ -153,10 +141,8 @@ describe("file widget — a PDF is searched, not shown", () => {
     expect(prompt).toContain("[FILE: pdf]");
     expect(prompt).toContain("This PDF file is loaded for searching");
     expect(prompt).toContain("query_documents");
-    // (the prompt is JSON here, so its quotes are escaped)
     expect(prompt).toContain('doc_ids [\\"pdf-1\\"]');
     expect(prompt).toContain("which page it is on");
-    // The signed link is not shown to the model either.
     expect(prompt).not.toContain("Signature");
   });
 

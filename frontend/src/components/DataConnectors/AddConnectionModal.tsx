@@ -55,7 +55,6 @@ export const DataConnectionTabs = ({
   showIcons?: boolean;
 }) => {
   const { dcTab, setTab, mode } = useDataConnectorContext();
-  // Users who may not bring connections can only add iframes
   const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
   const showApps = showAppsSection && mayAdd;
 
@@ -147,7 +146,7 @@ const AddConnectionModal = () => {
             : `Edit Data — ${dcTab}`}
       </DialogTitle>
       <DialogDescription className="sr-only">
-        Add data connections to Workspace
+        Add data connections to FINOS Workspace
       </DialogDescription>
       <div className="h-[calc(100%-30px)]">
         <DataConnectionTabs />

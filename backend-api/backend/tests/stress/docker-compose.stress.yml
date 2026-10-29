@@ -1,12 +1,3 @@
-# Parameterized stress overlay — replaces the old per-scenario override files.
-# Layered on top of docker-compose-local-dev.yml. Driven by env vars set by run_stress.sh:
-#
-#   STRESS_WORKERS    number of uvicorn worker processes (default 1)
-#   STRESS_HOST_PORT  host port to publish on (default 8001)
-#
-# It runs N native uvicorn workers (no --reload) on container port 8000, turns on Prometheus +
-# a fast metrics sample interval, and `!override`s the published port so the host always lands
-# on STRESS_HOST_PORT regardless of what the base stack mapped (lists otherwise merge/append).
 services:
   fastapi:
     command:
@@ -16,8 +7,6 @@ services:
     environment:
       WORKERS: "${STRESS_WORKERS:-1}"
       PROMETHEUS: "1"
-      # The simulated users share one address: they send the stack's service token, which
-      # skips rate limiting on this development stack only
       RATE_LIMIT_EXEMPT_ENABLED: "1"
       RUNTIME_METRICS_INTERVAL: "0.25"
     ports: !override

@@ -1,17 +1,12 @@
-/**
- * App-builder resource catalog smoke test.
- *
- * Asserts that all 16 markdown files declared in resources/app-builder.ts
- * exist on disk and resolve via the same import.meta.dir path the server
- * uses at boot.
- */
-
-import { describe, test, expect } from "bun:test";
+import { describe, test } from "node:test";
+import { expect } from "expect";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { listAppBuilderResourceUris } from "../../src/resources/app-builder";
+import { listAppBuilderResourceUris } from "../../src/resources/app-builder.ts";
 
-const RESOURCE_DIR = join(import.meta.dir, "../../src/resources/app-builder");
+const RESOURCE_DIR = join(import.meta.dirname, "../../src/resources/app-builder");
 
 describe("app-builder resources", () => {
   test("16 URIs registered", () => {
@@ -45,13 +40,12 @@ describe("app-builder resources", () => {
     ];
     let totalBytes = 0;
     for (const p of filePaths) {
-      const file = Bun.file(join(RESOURCE_DIR, p));
-      expect(await file.exists()).toBe(true);
-      const text = await file.text();
+      const file = join(RESOURCE_DIR, p);
+      expect(existsSync(file)).toBe(true);
+      const text = await readFile(file, "utf8");
       expect(text.length).toBeGreaterThan(0);
       totalBytes += text.length;
     }
-    // Sanity: the guides are shipped whole, not as stubs.
     expect(totalBytes).toBeGreaterThan(30_000);
   });
 });

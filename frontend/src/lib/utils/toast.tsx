@@ -53,7 +53,6 @@ export interface ShowNotificationProps {
 }
 
 interface WithRememberMeProps extends Omit<ShowNotificationProps, "withClose"> {
-  /** Folders have no remember-me id, so their confirmation always shows. */
   id?: NotificationId | `${NotificationId}:${string}`;
   rememberOptionLabel?: string;
   action?: {
@@ -85,7 +84,7 @@ export function showNotificationWithRememberMe(props: WithRememberMeProps) {
   if (toastDontShowAgain) {
     action.onClick(toastDontShowAgain);
   } else {
-    const toastFunction = (toastType && toast[toastType]) || toast.warning; // Default to warning if type is not valid
+    const toastFunction = (toastType && toast[toastType]) || toast.warning;
 
     toastFunction(message, {
       id,
@@ -138,7 +137,7 @@ export function showNotification(props: ShowNotificationProps) {
     };
   }
 
-  const toastFunction = (toastType && toast[toastType]) || toast.warning; // Default to warning if type is not valid
+  const toastFunction = (toastType && toast[toastType]) || toast.warning;
 
   toastFunction(message, {
     id: id ?? message,

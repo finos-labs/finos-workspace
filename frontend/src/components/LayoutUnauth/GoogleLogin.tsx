@@ -18,9 +18,6 @@ export const GoogleLogin = ({
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       dispatch({ oauthLoading: true, error: null });
-      // handleGoogleSuccess owns the outcome: it dispatches the backend error
-      // message itself (403, 404, ...). Only clear the spinner here - writing
-      // `error: null` afterwards would erase the message it just set.
       await handleGoogleSuccess({ credential: tokenResponse.access_token });
       dispatch({ oauthLoading: false });
     },

@@ -1,26 +1,3 @@
-"""Write what a fresh checkout needs to start with ``docker compose``.
-
-``envs/.env`` holds the settings that compose hands to the API and the worker. It starts from
-``envs/.env.example``, points the settings at the compose services and fills the secrets with
-random values. ``scripts/cfgs/config.toml`` names the organization and the administrator that
-the first start creates (``scripts.init_users`` reads it), without a password; nothing prints
-or keeps one, and ``scripts.init_users --new-password`` sets it. ``user_create.json`` starts
-empty: compose mounts it into the containers, and without a file on the host Docker would put
-a directory there.
-
-Ines, the Copilot's agent, takes two secrets from ``agent/.env``: the token with which she reports
-usage to the API (signed with the API's ``JWT_SECRET``) and the secret that signs the chat scopes she
-hands to the tools. They are written there, into the file that holds her model settings, which is
-created from ``agent/.env.example`` when it is missing and otherwise only has these two set.
-
-    python -m scripts.create_local_env --admin-email <your-email>   # refuses to overwrite
-    python -m scripts.create_local_env --admin-email <your-email> --force
-    python -m scripts.create_local_env --admin-email <your-email> --config-only   # only the seed config
-
-The web app is served on port 3000 and the API on port 8000, as in ``docker-compose.yml``.
-Only the standard library is needed.
-"""
-
 import argparse
 import base64
 import hashlib
@@ -44,8 +21,6 @@ INES_TARGET = INES / ".env"
 
 WEB_URL = "http://localhost:3000"
 API_URL = "http://localhost:8000"
-# The browsers' origins the API serves: docker-compose.yml's web app and the dev server of
-# local/compose.yaml.
 BACKEND_CORS_ORIGINS = [WEB_URL, "http://localhost:1420"]
 
 
@@ -54,22 +29,16 @@ def _b64(data: bytes) -> str:
 
 
 def jwt_hs256(payload: dict[str, object], secret: str) -> str:
-    """A JWT signed with HS256, as ``jwt.encode`` writes it."""
     header = _b64(json.dumps({"alg": "HS256", "typ": "JWT"}, separators=(",", ":")).encode())
     body = _b64(json.dumps(payload, separators=(",", ":")).encode())
     signature = hmac.new(secret.encode(), f"{header}.{body}".encode(), hashlib.sha256)
     return f"{header}.{body}.{_b64(signature.digest())}"
 
 
-# How long the token Ines reports usage with is accepted for. The API refuses one that never runs
-# out (``api.auth_helpers.check_metering``), because it is pasted into another service's
-# configuration and could otherwise only be withdrawn by changing JWT_SECRET, which signs out every
-# user. ``scripts.create_metering_token`` mints a replacement; keep the two in step.
 METERING_TOKEN_DAYS = 365
 
 
 def metering_token(jwt_secret: str, now: float | None = None) -> str:
-    """The token Ines reports usage with, good for ``METERING_TOKEN_DAYS``."""
     issued = int(time.time() if now is None else now)
     return jwt_hs256(
         {
@@ -84,7 +53,6 @@ def metering_token(jwt_secret: str, now: float | None = None) -> str:
 def secrets_for(
     jwt_secret: str, aes_key: str, storage_secret: str
 ) -> dict[str, str]:
-    """The settings that every kind of stack has to generate."""
     return {
         "JWT_SECRET": jwt_secret,
         "WORKSPACE_AES_KEY": aes_key,
@@ -98,11 +66,10 @@ def secrets_for(
 def settings(
     jwt_secret: str, aes_key: str, storage_secret: str
 ) -> dict[str, str]:
-    """What differs from ``.env.example`` for a stack run by ``docker compose``."""
     return {
         "DB_HOST": "mysql",
         "DB_NAME": "workspace",
-        "REDIS_HOST": "redis",
+        "REDIS_HOST": "valkey",
         "STORAGE_PROVIDER": "folder",
         "MODE": "production",
         "FRONTENDURL": WEB_URL,
@@ -114,22 +81,18 @@ def settings(
 
 
 def seed_config(entity_name: str, email: str) -> str:
-    """The TOML that ``scripts.init_users`` reads: one organization and its administrator."""
     return f"""\
 [entity]
 name = {json.dumps(entity_name)}
 
 [[admins]]
 email = {json.dumps(email)}
-first_name = "Workspace"
+first_name = "FINOS Workspace"
 last_name = "Administrator"
 """
 
 
 def ines_secrets(jwt_secret: str, current_scope_secret: str = "") -> dict[str, str]:
-    """What Ines needs that comes from the API's secrets: the token with which she reports usage
-    (what ``scripts.create_metering_token`` prints, and which runs out after
-    ``METERING_TOKEN_DAYS``) and a secret of her own, which stays as it was when she has one."""
     return {
         "INES_METERING_TOKEN": metering_token(jwt_secret),
         "INES_SCOPE_SECRET": current_scope_secret or secrets.token_urlsafe(32),
@@ -137,8 +100,6 @@ def ines_secrets(jwt_secret: str, current_scope_secret: str = "") -> dict[str, s
 
 
 def write_ines_env(jwt_secret: str) -> Path | None:
-    """Set her two secrets in ``agent/.env``, which starts from ``agent/.env.example`` and is otherwise
-    left as it is (it holds her model settings). None when this checkout has no ``agent/``."""
     if not INES_EXAMPLE.exists():
         return None
     text = INES_TARGET.read_text() if INES_TARGET.exists() else INES_EXAMPLE.read_text()
@@ -149,7 +110,6 @@ def write_ines_env(jwt_secret: str) -> Path | None:
 
 
 def render(example: str, values: dict[str, str]) -> str:
-    """The example with each of ``values`` set; keys that are not in it are appended."""
     lines = example.splitlines()
     remaining = dict(values)
     for index, line in enumerate(lines):
@@ -167,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--admin-email", required=True, help="Email address of the first administrator"
     )
-    parser.add_argument("--entity-name", default="Workspace", help="Name of the organization")
+    parser.add_argument("--entity-name", default="FINOS Workspace", help="Name of the organization")
     parser.add_argument(
         "--sqlite",
         action="store_true",
@@ -187,7 +147,6 @@ def main(argv: list[str] | None = None) -> int:
             sys.stderr.write(f"{path} exists; pass --force to replace it\n")
             return 1
 
-    # 256 bits or more each; the API refuses shorter secrets
     generated = dict(
         jwt_secret=secrets.token_urlsafe(48),
         aes_key=secrets.token_urlsafe(32),

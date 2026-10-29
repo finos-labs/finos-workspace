@@ -1,14 +1,10 @@
-/**
- * Ines's own skills (src/skills/) are read by the agent; the user's skills
- * come from the Workspace with a `get_skill_content` round trip.
- */
-
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { QueryRequest, SSEEvent } from "../../../src/protocol/types";
-import { llmCallsTool, llmEmitsText, makeSequencedSpyMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { QueryRequest, SSEEvent } from "../../../src/protocol/types.ts";
+import { llmCallsTool, llmEmitsText, makeSequencedSpyMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 
@@ -43,10 +39,10 @@ describe("Ines's own skills", () => {
     expect(findFunctionCall(events, "get_skill_content")).toBeUndefined();
     expect(statusMessages(events)).toContain('Skill "html-chart" loaded');
     expect(JSON.stringify(spy.calls[0].messages)).toContain('slug=\\"html-chart\\"');
-    expect(JSON.stringify(spy.calls.at(-1)?.messages)).toContain("Workspace chart colors skill");
+    expect(JSON.stringify(spy.calls.at(-1)?.messages)).toContain("FINOS Workspace chart colors skill");
   });
 
-  it("give way to a user's skill of the same slug, which the Workspace loads", async () => {
+  it("give way to a user's skill of the same slug, which the FINOS Workspace loads", async () => {
     const spy = makeSequencedSpyMockLlm([llmCallsTool("get_skill_content", { slug: "html-chart" })]);
     const events = await collectGenerator(
       runAgentLoop({

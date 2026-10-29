@@ -1,16 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
 import ExcelJS from "exceljs";
-import { makeXlsx } from "../../../helpers/make-xlsx";
-import { logicalUrl } from "../../../helpers/logical-url";
-import { makeZip } from "../../../helpers/make-zip";
+import { makeXlsx } from "../../../helpers/make-xlsx.ts";
+import { logicalUrl } from "../../../helpers/logical-url.ts";
+import { makeZip } from "../../../helpers/make-zip.ts";
 import {
   extractWidgetItems,
   _classifyItem,
   _imageMediaType,
   _csvToJson,
   _xlsxToJson,
-} from "../../../../src/widgets/parse";
-import type { ToolMessage, Widget } from "../../../../src/protocol/types";
+} from "../../../../src/widgets/parse.ts";
+import type { ToolMessage, Widget } from "../../../../src/protocol/types.ts";
 
 const makeXlsxBuffer = makeXlsx;
 
@@ -225,11 +226,7 @@ describe("_csvToJson", () => {
   });
 
   it("regression: documented limitation — escaped double-quotes (`\"\"`) flip inQuotes (no escape support)", () => {
-    // Pinning current behavior. If we add proper RFC-4180 escape handling
-    // later, update parse.ts AND replace this test.
     const out = JSON.parse(_csvToJson('a,b\n"he said ""hi""",ok'));
-    // The escaped `""` toggles inQuotes off then on, so the comma inside
-    // is treated as a delimiter. We get more cells than expected.
     expect(out[0]).not.toEqual({ a: 'he said "hi"', b: "ok" });
   });
 

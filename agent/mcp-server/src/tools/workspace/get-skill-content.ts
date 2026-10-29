@@ -1,14 +1,8 @@
-/**
- * get_skill_content — load one skill body from the Workspace skill library.
- *
- * Mirrors workspace_mcp/server.py:1026-1037.
- */
-
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
-import { describeTool } from "../../bridge/instructions";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
+import { describeTool } from "../../bridge/instructions.ts";
 
 export const getSkillContentSchema = {
   slug: z.string().describe(
@@ -20,7 +14,7 @@ export const getSkillContentSchema = {
 } as const;
 
 export const getSkillContentDescription = describeTool(
-  "Load one skill body from the Workspace skill library.",
+  "Load one skill body from the FINOS Workspace skill library.",
   "Pass the exact skill slug from the latest workspace snapshot.",
 );
 

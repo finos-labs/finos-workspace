@@ -1,27 +1,19 @@
-# The whole app on one machine, with hot reload. Run `make up` in this folder;
-# LOCAL_SETUP.md explains each part. docker-compose.yml at the repository root
-# runs the built images instead.
 name: workspace-local
 
-# Shared by the backend services: same code, same settings. envs/.env is the
-# file that scripts.create_local_env writes for the root docker-compose.yml.
 x-backend: &backend
   build:
     context: ../backend-api/backend
     dockerfile: fastapi.Dockerfile
-    args:
-      PLATFORM: ${PLATFORM:-linux/amd64}
+  platform: ${PLATFORM:-linux/amd64}
   env_file: ../backend-api/backend/envs/.env
-  # These take priority over envs/.env: the containers' hosts, and the address of
-  # the Vite dev server in links the backend builds.
   environment:
+    MODE: local
     DB_HOST: mysql
-    REDIS_HOST: redis
+    REDIS_HOST: valkey
     FOLDER_STORAGE_PATH: /opt/code/local_storage
     FRONTENDURL: http://localhost:1420
     APPURL: http://localhost:1420
   volumes:
-    # The source is mounted, so edits reach the containers without a rebuild.
     - ../backend-api/backend:/opt/code
 
 services:
@@ -34,8 +26,6 @@ services:
       MYSQL_DATABASE: workspace
     ports:
       - "3306:3306"
-    # Pinged over TCP: on a first start the entrypoint runs a temporary server on the socket only,
-    # while it creates the database, and a socket ping would call that healthy too early.
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -P 3306 -u root -proot --silent"]
       interval: 5s
@@ -45,36 +35,34 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
 
-  redis:
-    image: redis:alpine
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
     ports:
       - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
 
-  # Runs to completion before the backend starts: applies the migrations, then
-  # creates the organization and administrator from scripts/cfgs/config.toml
-  # (printing the administrator's password once, in this service's log) and
-  # writes user_create.json, which the backend reads at start. Safe to re-run;
-  # it keeps what exists.
   init:
     <<: *backend
     command:
-      - sh
+      - python
       - -c
-      - echo '{}' > user_create.json && python -m alembic upgrade head && python -m scripts.init_users
+      - |
+        import pathlib, subprocess, sys
+        pathlib.Path("user_create.json").write_text("{}")
+        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+        subprocess.run([sys.executable, "-m", "scripts.init_users"], check=True)
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
 
   backend:
     <<: *backend
-    # Restarts itself when a file under backend-api/backend changes.
     command:
       [
         "python", "-m", "uvicorn", "main:app",
@@ -87,33 +75,24 @@ services:
       init:
         condition: service_completed_successfully
 
-  # Runs background jobs. Does not reload by itself: after changing worker
-  # code, run `make restart s=backend-worker`.
   backend-worker:
     <<: *backend
     build:
       context: ../backend-api/backend
       dockerfile: rqworker.Dockerfile
-      args:
-        PLATFORM: ${PLATFORM:-linux/amd64}
     depends_on:
       init:
         condition: service_completed_successfully
 
   frontend:
-    # Same Node and Bun versions as frontend/Dockerfile. node-gyp is installed
-    # up front because some packages (bufferutil) have no prebuilt binary for
-    # Linux on ARM and compile during `bun install` on Apple Silicon.
     image: node:22
     working_dir: /app
     command:
       [
         "sh",
         "-c",
-        "npm install --global --silent bun@1.4.2 node-gyp && bun install --frozen-lockfile && exec bun run dev",
+        "npm install --ignore-scripts --no-audit --no-fund && exec npm run dev",
       ]
-    # These take priority over the values in frontend/.env. The browser calls
-    # the URLs, so they are host addresses.
     environment:
       VITE_BACKEND_URL: http://localhost:8000
       VITE_AI_API_URL: ""
@@ -121,7 +100,6 @@ services:
       - "1420:1420"
     volumes:
       - ../frontend:/app
-      # Linux packages for the container, kept apart from any node_modules on the host.
       - frontend-node-modules:/app/node_modules
     healthcheck:
       test: ["CMD", "curl", "-fs", "-o", "/dev/null", "http://localhost:1420"]

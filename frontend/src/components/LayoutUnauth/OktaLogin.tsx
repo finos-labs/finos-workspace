@@ -11,7 +11,6 @@ export default function OktaLogin({
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const okta = useOktaAuth();
-  // Without a valid issuer there is no Okta context, and so no Okta sign-in
   if (!okta) return null;
   const { oktaAuth } = okta;
 

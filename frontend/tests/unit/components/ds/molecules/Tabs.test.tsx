@@ -60,7 +60,6 @@ describe("Tabs Molecule", () => {
       </Tabs>,
     );
 
-    // Check if the trigger has the filled variant classes
     const trigger = screen.getByText("Tab 1");
     expect(trigger).toHaveClass("bg-tab-bg-secondary");
   });

@@ -35,8 +35,11 @@ import {
   getApiSourceWidgets,
   processWorkerResults,
   type WorkerResult,
+  widgetsSchemaReady,
 } from "~/lib/utils/validateBackend";
 import { addExtraHeaders } from "~/lib/utils/widgetParams";
+import type { ComposedWidgetsSchema } from "~/lib/utils/widgetsSchemaValidation";
+import { getPluginVizTypes } from "~/plugins/registry";
 import { mcpServerUsesTokenAuth } from "~/types/appMcpServer";
 import type { MetaDataWidgetType } from "~/types/auth.type";
 import {
@@ -52,9 +55,6 @@ import { createParamDefs, dispatchSaveState, getJsonWidget } from "../utils";
 
 let validateApiSourceWorker: Worker | null = null;
 
-// Register MCP servers declared on a custom backend's apps.json templates so
-// they show up under "MCP Servers" in the AI tab. Idempotent — re-running on
-// refresh is a no-op if a server with the same sourceId+url is already present.
 export function autoRegisterMcpForSource(source: Source) {
   const sourceId = source.id;
   if (!sourceId) return;
@@ -69,17 +69,16 @@ export function autoRegisterMcpForSource(source: Source) {
   }, {});
 
   for (const entry of mcpEntries) {
-    const alreadyRegistered = store.servers.some(
-      (s) => s.sourceId === sourceId && s.url === entry.url,
-    );
+    const alreadyRegistered = useMcpToolsStore
+      .getState()
+      .servers.some((s) => s.sourceId === sourceId && s.declaredName === entry.name);
     if (alreadyRegistered) continue;
 
     store.addServer({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name: entry.name,
+      declaredName: entry.name,
       url: entry.url,
-      // A token-auth server has no OAuth fallback, so connecting before the user
-      // has supplied a token just fails. Stay disabled until `saveToken` runs.
       enabled: !mcpServerUsesTokenAuth(entry) || !!customHeaders.Authorization,
       autoReconnect: true,
       tools: [],
@@ -91,12 +90,11 @@ export function autoRegisterMcpForSource(source: Source) {
 }
 
 // biome-ignore format: off
-export const ConnectionTypes= ["file", "single", "advanced-backend", "database", "widgetMetadata"] as const;
+export const ConnectionTypes= ["file", "single", "advanced-backend", "database", "widgetMetadata", "plugin"] as const;
 
 export type ConnectionType = (typeof ConnectionTypes)[number];
 
 export type WidgetMetadataItem = {
-  // not to be confused with WidgetMetadata, these are the items in the MyWidgetsTab that come from the backend
   widgetId: string;
   widgetType: MetaDataWidgetType;
   name: string;
@@ -150,7 +148,7 @@ export interface BackendTemplate {
     paramName?: string;
     type: GroupTypes;
     widgetIds?: string[];
-    defaultValue: string; // we can probably remove this later and infer from the widget
+    defaultValue: string;
   }[];
   prompts?: string[];
   mcpServers?: {
@@ -159,7 +157,6 @@ export interface BackendTemplate {
     url: string;
     authType?: "oauth" | "token";
   }[];
-  // Included so unrecognized-keys detection does not flag it as unknown.
   allowCustomization?: boolean;
 }
 
@@ -260,15 +257,13 @@ export type ValidateBackend = {
   totalFailed: number;
   templates: BackendTemplate[];
   agents: BackendAgent[];
-  /** IDs of widgets.json entries left out because this Workspace does not render their type */
   unsupportedWidgets?: string[];
-  /** The widgets and apps that pass validation, whatever else is invalid */
+  unrenderedWidgets?: string[];
   validWidgets?: WidgetsType;
   validTemplates?: BackendTemplate[];
-  /** Entries of widgets.json and apps.json that fail validation, each left out on its own */
   invalidItems?: InvalidItem[];
-  /** What leaves nothing usable: widgets.json is not a map of widgets, or endpoints fail */
   fatalErrorMessage?: string | null;
+  uncheckedRoutes?: string[];
 };
 
 export interface BackendConnectorStore {
@@ -278,7 +273,6 @@ export interface BackendConnectorStore {
   hasApiSources: () => boolean;
   apiSources: Source[];
   isLoadingBackends: boolean;
-  /** Whether the API's list of the user's data backends, with their credentials, is in memory. */
   sourcesLoaded: boolean;
   checkExistingBackend: (params: Record<"name" | "url" | "id", string>) => {
     name?: string;
@@ -315,7 +309,6 @@ export interface BackendConnectorStore {
   updateQueuedRefreshId: (id: string, refresh?: boolean) => void;
 }
 
-// This is for data connectors that sync with the backend
 export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorStore>()(
   subscribeWithSelector(
     persist(
@@ -396,7 +389,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             await get().updateApiSource(source);
 
           if (errorMessage || templateErrorMessage) {
-            // Mark backend as inactive when refresh fails
             get().addApiSource({ ...source, status: "error" });
             toast.error("Backend connection failed", {
               id: `refresh-${source.id}`,
@@ -429,8 +421,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           const { templateWarningMessage, unrecognizedKeysMessage, invalidItems } =
             validated;
 
-          // An invalid widget or app is skipped and reported, the backend still loads. Only a
-          // backend with nothing usable (unreachable, not a widgets.json) is an error.
           const loadsWithInvalidItems = !!validated.validWidgets;
           const errorMessage = loadsWithInvalidItems
             ? validated.fatalErrorMessage || null
@@ -452,12 +442,10 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             const updatedWidgets = Object.entries(widgets).reduce<WidgetsType>(
               (acc, [key, widget]) => {
                 widget.params = createParamDefs(widget, source.url);
-                const subCategory = widget.sub_category ?? widget.subCategory;
 
                 acc[key] = {
                   ...widget,
                   widgetId: key,
-                  subCategory,
                 };
                 return acc;
               },
@@ -492,7 +480,7 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
                   get().addApiSource(updatedSource);
                   return resolve();
                 }
-                setTimeout(checkLoading, 100); // check again after 100ms
+                setTimeout(checkLoading, 100);
               };
               checkLoading();
             });
@@ -531,8 +519,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
 
           set({ apiSources });
 
-          // Only fire on first connect, not on refresh. If the user removed the
-          // MCP server manually, refreshing the backend must not bring it back.
           if (isNewSource && source.status === "success") {
             autoRegisterMcpForSource(source);
           }
@@ -573,6 +559,22 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           });
 
           if (apiSources.length === 0) return true;
+
+          let widgetsSchema: ComposedWidgetsSchema;
+          try {
+            widgetsSchema = await widgetsSchemaReady();
+          } catch (error) {
+            set({
+              isLoadingBackends: false,
+              apiSources: apiSources.map((source) => ({ ...source, status: "error" })),
+            });
+            toast.error("Your backends could not be checked", {
+              id: "widgets-schema-unavailable",
+              description: error instanceof Error ? error.message : String(error),
+            });
+            return false;
+          }
+          const pluginVizTypes = [...getPluginVizTypes()];
           const needsSaveState = false;
           const saveState = () => needsSaveState && dispatchSaveState();
 
@@ -582,9 +584,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
 
             const { toastErrors, unrecognizedKeysMessages, invalidItems } = data;
 
-            // Streaming partial: merge validated sources into existing
-            // apiSources without disrupting the rest. Slow sources don't block
-            // the UI swap for already-finished ones.
             if (data.__partial) {
               const updatedMap = new Map(finalSources.map((s) => [s.id, s]));
               const mergedSources = get().apiSources.map((s) => {
@@ -608,8 +607,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
               }
             }
 
-            // Skipped items are announced on every load, once per distinct problem, because
-            // otherwise they are silently missing. A refresh the user asked for announces again.
             const withInvalidItems = new Set(
               invalidItems.map(({ source }) => source.id),
             );
@@ -635,14 +632,16 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           const fallbackToMainThread = async () => {
             const results = await Promise.all(
               apiSources.map(async (source) => {
-                const result = await getApiSourceWidgets(source);
+                const result = await getApiSourceWidgets(source, {
+                  widgetsSchema,
+                  pluginVizTypes,
+                });
                 return { source, result };
               }),
             );
             onMessage({ data: processWorkerResults(results) } as MessageEvent);
           };
 
-          // In tests, we want to bypass the worker and validate sources immediately
           if (import.meta.env.VITEST) {
             await fallbackToMainThread();
             return true;
@@ -659,13 +658,18 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           };
 
           const extraHeaders = addExtraHeaders();
-          validateApiSourceWorker.postMessage({ apiSources, extraHeaders });
+          validateApiSourceWorker.postMessage({
+            apiSources,
+            extraHeaders,
+            pluginVizTypes,
+            widgetsSchema,
+          });
 
           return new Promise((resolve) => {
             const checkLoading = () => {
               if (!get().isLoadingBackends) return resolve(true);
 
-              setTimeout(checkLoading, 100); // check again after 100ms
+              setTimeout(checkLoading, 100);
             };
             checkLoading();
           });
@@ -683,8 +687,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
       {
         name: "backend-connector",
         storage: createIndexedDBStorage(),
-        // A source's credentials stay in page memory: the API sends them again with the
-        // source list. Its widgets are written without any rows of their own either.
         partialize: (state) =>
           ({
             apiSources: state.apiSources
@@ -707,7 +709,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
   shallow,
 );
 
-/** A data backend a role shares with the user, which the API lists with its credentials. */
 function getRoleSharedBackend(
   permissions: PermissionsT,
   sourceId: string,
@@ -717,12 +718,6 @@ function getRoleSharedBackend(
   );
 }
 
-/**
- * The credentials of the data backend a widget fetches from, looked up in page memory by
- * the widget's source id when it fetches: one of the user's own backends, or one a role
- * shares with them. Dashboards and apps never save them. They are given only for a `url`
- * on that backend's origin.
- */
 export function getSourceCredentials(
   sourceId: string | null | undefined,
   url: string | null | undefined,
@@ -738,7 +733,6 @@ export function getSourceCredentials(
   return splitEndpointHeaders(rowsOf(own) ?? rowsOf(shared));
 }
 
-/** {@link getSourceCredentials} for a component, which renders again when they change. */
 export function useSourceCredentials(
   sourceId: string | null | undefined,
   url: string | null | undefined,
@@ -761,22 +755,11 @@ export function useSourceCredentials(
   return useMemo(() => splitEndpointHeaders(rows), [rows]);
 }
 
-/**
- * Whether a widget can fetch from its data backend in this page:
- * - "none": it has no data backend (a file, an iframe, content of its own);
- * - "available": the backend is one of the user's own, or a role shares it with them;
- * - "pending": the user's backends are not loaded yet;
- * - "unavailable": the backend is not the user's, as in a dashboard someone else shared
- *   from a backend of their own. Saved content never carries credentials, so the widget
- *   shows that the connection is not available instead of fetching without them.
- */
 export type WidgetSourceState = "none" | "available" | "pending" | "unavailable";
 
-/** What a widget shows when its data backend is not one of the viewer's. */
 export const SOURCE_UNAVAILABLE_MESSAGE =
   "This data connection is not available to you";
 
-/** Whether a widget in this {@link WidgetSourceState} may fetch now. */
 export const canFetchFromSource = (state: WidgetSourceState) =>
   state === "none" || state === "available";
 
@@ -789,7 +772,6 @@ function sourceStateOf(
 ): WidgetSourceState {
   const sourceId = widget?.connectionType === "file" ? null : widget?.sourceId;
   if (!sourceId) return "none";
-  // A widget a role shares is let through, or not, by the role's access check
   if (widget?.isSharedWidget) return "available";
   if (
     connector.getApiSourceById(sourceId) ||
@@ -799,7 +781,6 @@ function sourceStateOf(
   return connector.sourcesLoaded ? "unavailable" : "pending";
 }
 
-/** {@link WidgetSourceState} of a widget, from what the page holds now. */
 export function getWidgetSourceState(widget: SourcedWidget | null | undefined) {
   return sourceStateOf(
     widget,
@@ -808,7 +789,6 @@ export function getWidgetSourceState(widget: SourcedWidget | null | undefined) {
   );
 }
 
-/** {@link getWidgetSourceState} for a component, which renders again when it changes. */
 export function useWidgetSourceState(widget: SourcedWidget | null | undefined) {
   const { sourceId, connectionType, isSharedWidget } = widget ?? {};
   const permissions = useShallowPermissionsStore((state) => state.permissions);

@@ -192,7 +192,6 @@ describe("GroupContext Component", () => {
       </BrowserRouter>,
     );
 
-    // Simulate right-click on the "Test Content"
     await userEvent.pointer({
       target: screen.getByText("Test Content"),
       keys: "[MouseRight]",
@@ -259,6 +258,4 @@ describe("GroupContext Component", () => {
 
     expect(screen.queryByText("Export Template")).not.toBeInTheDocument();
   });
-
-  // TODO: Add tests for Refresh Backend and Export Template - I dont know how to get backendSources to be > 0
 });

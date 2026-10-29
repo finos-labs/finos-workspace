@@ -14,7 +14,6 @@ describe("Checkbox", () => {
     const onCheckedChange = vi.fn();
     render(<Checkbox label="Accept terms" onCheckedChange={onCheckedChange} />);
 
-    // In JSDOM with Radix, we might need to click the checkbox root
     const checkbox = screen.getByRole("checkbox");
     await user.click(checkbox);
 

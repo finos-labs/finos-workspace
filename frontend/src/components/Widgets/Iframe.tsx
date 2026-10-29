@@ -15,6 +15,8 @@ import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
 import { getServerName } from "~/lib/utils/mcp";
+import { buildWidgetRequest, type RequestProblem } from "~/lib/utils/widgetRequest";
+import { placeholders } from "~/lib/utils/widgetsContractChecks";
 import { type urlForm, urlSchema } from "~/utils/zodForms";
 import { Button } from "../ds/atoms/Button";
 import { FormInput } from "../ds/atoms/Input";
@@ -41,14 +43,6 @@ function normalizeParamRecord(params?: Record<string, unknown>) {
   );
 }
 
-/**
- * Shallow equality for the flat `{ paramName: stringValue }` records that the
- * iframe-protocol pipeline produces. Used to short-circuit storage writes and
- * postMessage sends when nothing changed. We don't use `lodash.isEqual` because
- * (a) every value here is already a string (no recursion needed) and (b) one
- * side may legitimately be `null` (no prior snapshot yet) which we treat as
- * "not equal" so the first sync always fires.
- */
 function paramsEqual(a: Record<string, string> | null, b: Record<string, string>) {
   if (!a) return false;
   const aKeys = Object.keys(a);
@@ -179,9 +173,6 @@ export default function Iframe() {
     });
   }, []);
 
-  // [paramName, group] for each widget group that binds to a widget param.
-  // Shared by `updateGroupedParams` (writes group.value back) and
-  // `visibleParamDefs` (hides param controls already driven by a group).
   const { bindings, updateGroupedParams } =
     useParamGroupBindings(GROUP_BINDINGS_PARAMS);
 
@@ -233,19 +224,10 @@ export default function Iframe() {
     };
   }, [paramDefs, widget.params]);
 
-  // Mirror the memoized set into a ref so `persistIframeParams` can read the
-  // latest value without taking it as a dep (which would rebuild the callback
-  // every time params change).
   useEffect(() => {
     supportedIframeParamNamesRef.current = supportedIframeParamNames;
   }, [supportedIframeParamNames]);
 
-  // Initialize storage params from defaults when paramDefs first arrive.
-  // We read existing params from `prev.storage` inside the updater rather than
-  // depending on `effectiveIframeParams`, so this effect only re-runs when the
-  // actual trigger (`paramDefs`) changes. Sending the params to the iframe is
-  // owned by the "send on change" effect below, which fires once the storage
-  // update propagates.
   const paramDefsInitializedRef = useRef(false);
   useEffect(() => {
     if (supportedIframeParamNames) {
@@ -307,7 +289,6 @@ export default function Iframe() {
     });
   }, [paramDefs, supportedIframeParamNames, paramDefsInitializedRef]);
 
-  // Sync iframe params to the MCP server so Ada sees current selections
   const { mcpServerId, updateMcpServer, addMcpServer, removeMcpServer } =
     useShallowMcpToolsStore((s) => ({
       addMcpServer: s.addServer,
@@ -329,7 +310,6 @@ export default function Iframe() {
     };
   }, [mcpServerIdRef]);
 
-  // Auto-connect MCP server pre-configured via widgets.json (storage.mcpUrl)
   const storedMcpUrl = widget.storage?.mcpUrl?.trim();
   useEffect(() => {
     if (!storedMcpUrl || mcpServerId) return;
@@ -387,29 +367,45 @@ export default function Iframe() {
     [prevIframeParamsRef, persistIframeParams, sendParamsUpdate, updateGroupedParams],
   );
 
-  const addressWithParams = useMemo(() => {
-    if (!state.url) return "";
-    const paramEntries = Object.entries(effectiveIframeParams);
-    if (paramEntries.length === 0) return state.url;
-    try {
-      const url = new URL(state.url);
-      for (const [key, val] of paramEntries) {
-        url.searchParams.set(key, val);
-      }
-      return url.toString();
-    } catch {
-      return state.url;
+  const addressWithParams = useMemo<{ src: string; problems: RequestProblem[] }>(() => {
+    if (!state.url) return { src: "", problems: [] };
+    const fromBackend = hasManagedEndpoint && state.url === endpointUrl;
+    const pathNames = new Set(fromBackend ? placeholders(state.url) : []);
+    let page = state.url;
+    if (pathNames.size) {
+      const built = buildWidgetRequest(
+        {
+          endpoint: { url: state.url, method: "GET" },
+          params: (widget.params ?? []).filter((param) =>
+            pathNames.has(param.paramName),
+          ),
+          storage: { params: effectiveIframeParams },
+        },
+        undefined,
+      );
+      if (!built?.ok) return { src: "", problems: built?.problems ?? [] };
+      page = built.request.url;
     }
-  }, [state.url, effectiveIframeParams]);
+    try {
+      const url = new URL(page);
+      for (const [key, val] of Object.entries(effectiveIframeParams))
+        if (!pathNames.has(key)) url.searchParams.set(key, val);
+      return { src: url.toString(), problems: [] };
+    } catch {
+      return { src: page, problems: [] };
+    }
+  }, [
+    state.url,
+    hasManagedEndpoint,
+    endpointUrl,
+    widget.params,
+    effectiveIframeParams,
+  ]);
 
-  // A page that speaks the iframe protocol is told of a parameter change with `workspace-params-update`
-  // and applies it with its own code. A new address would reload it instead, and every reload is a new page,
-  // for which its backend starts a new instance. So once the page has connected, the address stays the one it
-  // was loaded with; a new URL or a refresh (the `key` below) are what reload it, and take the current params.
   const loadedRef = useRef<{ key: string; src: string } | null>(null);
   const loadKey = `${state.url}|${widget.refreshQuery ?? ""}`;
   if (!hasProtocol || loadedRef.current?.key !== loadKey) {
-    loadedRef.current = { key: loadKey, src: addressWithParams };
+    loadedRef.current = { key: loadKey, src: addressWithParams.src };
   }
   const iframeSrc = loadedRef.current.src;
 
@@ -590,7 +586,12 @@ export default function Iframe() {
           </form>
         </Form>
       </BaseDialog>
-      {state.url ? (
+      {addressWithParams.problems.length ? (
+        <SearchResultsNotFound
+          firstMessage="The page cannot be opened"
+          secondMessage={addressWithParams.problems.map((p) => p.message).join(". ")}
+        />
+      ) : state.url ? (
         <div className="w-full h-full overflow-auto">
           <div
             className="w-full h-full"

@@ -1,16 +1,6 @@
-/**
- * Grader: assert the next round-trip SSE re-bakes a stashed citation id
- * into `extra_state.intermediate_citations`. Reads raw events from the
- * trace because per-call `parameters` doesn't expose extra_state.
- *
- * Use when an eval case starts with a prior tool message carrying
- * `intermediate_citations` — this verifies the loop preserves them on
- * the next emit instead of dropping silently.
- */
-
-import type { Trace } from "../trace";
-import type { GraderSpec } from "./index";
-import type { SSEEvent } from "../../src/protocol/types";
+import type { Trace } from "../trace.ts";
+import type { GraderSpec } from "./index.ts";
+import type { SSEEvent } from "../../src/protocol/types.ts";
 
 interface ExtraStateShape {
   intermediate_citations?: Array<{ id?: string }>;
@@ -36,8 +26,6 @@ export function intermediateCitationContains(id: string): GraderSpec {
           };
         }
       }
-      // Also check terminal collection (no extra_state, lives on its own
-      // event so the round-trip emit assertion above is still primary).
       for (const event of trace.events as SSEEvent[]) {
         if (event.event !== "copilotCitationCollection") continue;
         const cits = (event.data as { citations?: Array<{ id?: string }> }).citations ?? [];

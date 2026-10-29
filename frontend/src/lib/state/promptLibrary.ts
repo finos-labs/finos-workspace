@@ -11,7 +11,7 @@ import type { Selector } from "./app";
 export interface Prompt {
   id: string;
   prompt: string;
-  widgets?: string[]; // array of widgetId
+  widgets?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -66,10 +66,6 @@ export const usePromptLibraryStore = create<PromptLibraryState>()(
           }));
           get().debounceUpdatePrompts();
         },
-        /**
-         * Removes multiple prompts by their IDs in a single batch operation.
-         * Uses a Set for O(1) lookup performance when filtering.
-         */
         removePrompts: (ids) => {
           const idsSet = new Set(ids);
           set((state) => ({
@@ -105,26 +101,21 @@ export const usePromptLibraryStore = create<PromptLibraryState>()(
           try {
             const dbPrompts = await getUserPrompts();
             set((state) => {
-              // Create a map of existing prompts by ID for quick lookup
               const existingPromptsMap = new Map(
                 state.prompts.map((prompt) => [prompt.id, prompt]),
               );
 
-              // For each prompt from DB, either keep existing or add new
               dbPrompts.forEach((dbPrompt) => {
                 const existingPrompt = existingPromptsMap.get(dbPrompt.id);
                 if (existingPrompt) {
-                  // If local version is more recent, keep it
                   if (
                     new Date(existingPrompt.updatedAt) > new Date(dbPrompt.updatedAt)
                   ) {
                     existingPromptsMap.set(dbPrompt.id, existingPrompt);
                   } else {
-                    // Otherwise use DB version
                     existingPromptsMap.set(dbPrompt.id, dbPrompt);
                   }
                 } else {
-                  // If prompt doesn't exist locally, add it
                   existingPromptsMap.set(dbPrompt.id, dbPrompt);
                 }
               });

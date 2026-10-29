@@ -5,7 +5,6 @@ import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
 import type { ArtifactT } from "~/lib/state/copilot";
 import { malformed } from "../../mocks";
 
-// Global mocks
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -13,7 +12,6 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock dependencies
 vi.mock("~/lib/contexts/CopilotChatContext", () => ({
   useCopilotContext: vi.fn(),
 }));
@@ -29,7 +27,6 @@ vi.mock("~/components/AI/hooks/utils", async (importActual) => {
 });
 
 describe("Artifact Component", () => {
-  // Scoped mocks
   beforeEach(() => {
     vi.clearAllMocks();
     (useCopilotContext as Mock).mockReturnValue({ hoveredCitationElementId: "" });

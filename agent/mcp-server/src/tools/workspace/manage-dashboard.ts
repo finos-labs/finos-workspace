@@ -1,23 +1,16 @@
-/**
- * manage_dashboard — create / read / update one Workspace dashboard.
- *
- * Mirrors workspace_mcp/server.py:639-686 with operation-specific required
- * fields enforced inline.
- */
-
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
-import { invalidRequestItem } from "../../bridge/validators";
-import { describeTool } from "../../bridge/instructions";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
+import { invalidRequestItem } from "../../bridge/validators.ts";
+import { describeTool } from "../../bridge/instructions.ts";
 
 export const manageDashboardSchema = {
   operation: z
     .enum(["create", "read", "update"])
     .describe("Operation to perform on the dashboard."),
   dashboard_id: z.string().optional().describe(
-    "Dashboard UUID. Omit on read to target the current Workspace route. " +
+    "Dashboard UUID. Omit on read to target the current FINOS Workspace route. " +
       "Required for update.",
   ),
   name: z.string().optional().describe(
@@ -29,7 +22,7 @@ export const manageDashboardSchema = {
 } as const;
 
 export const manageDashboardDescription = describeTool(
-  "Create, read, or update one Workspace dashboard.",
+  "Create, read, or update one FINOS Workspace dashboard.",
   "Requires operation from {create, read, update}.",
   "For create, pass name and optional dashboard_id and activate.",
   "For read, pass optional dashboard_id; omitted dashboard_id targets the current dashboard route.",
@@ -73,7 +66,6 @@ export async function manageDashboardHandler(args: {
     return { content };
   }
 
-  // update
   if (!args.dashboard_id || args.name === undefined) {
     return {
       content: [

@@ -4,15 +4,6 @@ import { useShallowUserAppsStore } from "~/lib/state/userApps";
 
 const CUSTOM_PREFIX = "custom-";
 
-/**
- * Returns the prompts associated with a dashboard's templateId.
- *
- * Merges two sources because they live in different stores:
- * - Backend-app prompts on `apiSources[].templates[].prompts`
- *   (templateId: `custom-${sourceId}-${slug}`)
- * - User-app prompts on `userApps[uuid].content.prompts` (owned + shared)
- *   (templateId: `custom-${userAppUuid}`)
- */
 export function useTemplatePrompts(templateId: string): string[] {
   const backendPrompts = useShallowBackendConnectorStore((s) =>
     s.getTemplatePrompts(templateId),

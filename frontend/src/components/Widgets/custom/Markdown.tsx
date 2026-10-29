@@ -27,6 +27,7 @@ import type { ArtifactT, Citation as CitationT } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { protectAiMarkers } from "~/lib/utils/citationMarkers";
 import { HTML_SANITIZE_CONFIG } from "~/lib/utils/sanitize";
+import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
 
 const AICitation = lazy(() => import("~/components/AI/Citation"));
 const AIArtifact = lazy(() => import("~/components/AI/Artifact"));
@@ -134,8 +135,6 @@ async function convertDocxToHtml(docx: ArrayBuffer) {
   }
 }
 
-// backend can't have space idents in the markdown otherwise it will render as a code block
-// we need to add this to the docs
 export default function Markdown() {
   const addWidget = useShallowAppStore((state) => state.addWidget);
   const { widget, activeDashboardId } = useWidgetContext();
@@ -152,28 +151,14 @@ export default function Markdown() {
   const validEndpoint = !!widget?.endpoint?.url;
   const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
 
-  const options = useMemo(() => {
-    const endpoint = widget.endpoint;
-    const newParams = Object.fromEntries(
-      Object.entries({
-        ...credentials.query,
-        ...(widget?.storage?.params ?? {}),
-      }).filter(([_key, value]) => value !== "" && value !== undefined),
-    );
-
-    newParams.theme = theme;
-
-    return {
-      url: endpoint?.url ?? "",
-      endpointHeaders: credentials.headers,
-      method: endpoint?.method ?? "GET",
-      params: newParams,
-    };
-  }, [widget?.endpoint, widget?.storage?.params, theme, credentials]);
+  const request = useMemo(
+    () => buildWidgetRequest(widget, credentials, { theme }),
+    [widget.endpoint, widget.params, widget.storage?.params, theme, credentials],
+  );
 
   const { data, isLoading, error, dataUpdatedAt } = useJsonData(
     {
-      ...options,
+      request,
       responseCb: async (data, resolve) => {
         const clonedData = data.clone();
         if (extension === "docx") {
@@ -197,7 +182,6 @@ export default function Markdown() {
     },
   );
 
-  // Without an endpoint the widget holds its own text (what the Copilot wrote), which can change.
   const body = validEndpoint ? data : widget.storage?.text;
 
   const markdownPayload = useMemo(() => {

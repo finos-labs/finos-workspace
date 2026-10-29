@@ -1,21 +1,14 @@
-/**
- * Reads the first sheet of a spreadsheet as JSON rows. Runs in the child process of xlsx-child.ts, never in the
- * agent itself.
- */
-
 import ExcelJS from "exceljs";
-import { getLogger } from "../lib/logger";
-import { assertSafeZip } from "../lib/zip-guard";
+import { getLogger } from "../lib/logger.ts";
+import { assertSafeZip } from "../lib/zip-guard.ts";
 
 const logger = getLogger(["app", "widgets", "xlsx"]);
 
-// A sheet is read as a table: no more rows and columns than a model, or a table in memory, can use.
 const MAX_SHEET_ROWS = 100_000;
 const MAX_SHEET_COLUMNS = 200;
 
 type SheetValue = string | number | boolean | null;
 
-/** What a cell holds, as a plain value: the result of a formula, the text of a link or of rich text, a date as ISO text. */
 function sheetValue(value: ExcelJS.CellValue | undefined): SheetValue {
   if (value === null || value === undefined) return null;
   if (typeof value === "number" || typeof value === "string" || typeof value === "boolean") return value;
@@ -27,15 +20,9 @@ function sheetValue(value: ExcelJS.CellValue | undefined): SheetValue {
   return null;
 }
 
-/**
- * The first sheet of a workbook as a JSON array of rows, keyed by the first row. A heading that is empty is
- * named for its column, a repeated one gets a number, and a row with nothing in it is left out.
- */
 export async function xlsxToJsonText(buf: Buffer): Promise<string> {
-  // Checked again here: this is the one place that unpacks it.
   assertSafeZip(buf);
   const workbook = new ExcelJS.Workbook();
-  // (ExcelJS types its input as the Buffer of Node's typings, which Bun's Buffer is not assignable to.)
   await workbook.xlsx.load(buf as unknown as Parameters<typeof workbook.xlsx.load>[0]);
   const sheet = workbook.worksheets[0];
   if (!sheet || sheet.rowCount < 1) return "[]";

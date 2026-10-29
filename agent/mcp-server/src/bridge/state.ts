@@ -1,28 +1,15 @@
-/**
- * BridgeSessionManager — multi-session WebSocket bridge between MCP tool
- * handlers and connected Workspace browser tabs.
- *
- * Each session = one browser tab (auth'd via session_id + token UUID pair).
- * Each session owns its own pending-command map. Tool handlers call
- * `executeCommand(sessionId, command)` and await a `WorkspaceCommandResult`
- * that the browser sends back over the same socket.
- *
- * Single-threaded JS event loop = no async lock needed (Pydantic side uses
- * asyncio.Lock to guard mutations between awaits; we get this for free).
- */
-
-import { getLogger } from "../lib/logger";
+import { getLogger } from "../lib/logger.ts";
 import {
   BrowserMessageSchema,
   type BrowserSession,
   type BrowserSessionContext,
-} from "./types";
+} from "./types.ts";
 import {
   WorkspaceCommandResultSchema,
   WorkspaceSnapshotSchema,
   type WorkspaceCommand,
   type WorkspaceCommandResult,
-} from "./wire";
+} from "./wire.ts";
 
 const logger = getLogger(["mcp", "bridge", "state"]);
 
@@ -74,8 +61,6 @@ export interface BridgeSessionManager {
 
   getSessionContext(sessionId: string): BrowserSessionContext | null;
 
-  /** Returns first connected session id, or null. PoC default for tools that
-   * don't (yet) carry an explicit session id in their decoration. */
   getFirstConnectedSessionId(): string | null;
 
   health(): {
@@ -108,6 +93,7 @@ export function makeBridgeSessionManager(opts: {
         request_id: requestId,
         message,
         data: null,
+        warnings: [],
         error: { code, message, retryable: code === "timeout", details },
       });
     }
@@ -116,17 +102,6 @@ export function makeBridgeSessionManager(opts: {
   const newRequestId = (): string =>
     `cmd_${crypto.randomUUID().replace(/-/g, "")}`;
 
-  /**
-   * Mirror workspace_mcp/state.py:274-322 — `_normalize_result` +
-   * `_inject_session_context`. Two responsibilities:
-   *
-   *   1. For `get_workspace_snapshot` ok=true results, validate `data` against
-   *      WorkspaceSnapshotSchema. On failure, replace with an `invalid_request`
-   *      error result so callers see schema-driven feedback instead of garbage.
-   *   2. For every ok=true result with object `data`, merge a `session_context`
-   *      sub-object (current_dashboard_uuid, current_tab_id) so the agent
-   *      doesn't have to round-trip another snapshot before its next write.
-   */
   const normalizeResult = (
     browser: ConnectedBrowser,
     commandName: string,
@@ -145,6 +120,7 @@ export function makeBridgeSessionManager(opts: {
           request_id: normalized.request_id ?? null,
           message,
           data: null,
+          warnings: [],
           error: {
             code: "invalid_request",
             message,
@@ -228,7 +204,7 @@ export function makeBridgeSessionManager(opts: {
       failPending(
         browser,
         "unavailable",
-        "Workspace browser disconnected before the command completed.",
+        "FINOS Workspace browser disconnected before the command completed.",
       );
       browsers.delete(sessionId);
       logger.info("Browser disconnected", {
@@ -245,9 +221,6 @@ export function makeBridgeSessionManager(opts: {
       }
       const parsed = BrowserMessageSchema.safeParse(raw);
       if (!parsed.success) {
-        // Mirror workspace_mcp/state.py:130-148: an invalid wire frame fails
-        // ALL pending commands with `invalid_request`. Socket stays open;
-        // callers see schema feedback instead of hanging until timeout.
         logger.warn("Invalid browser message — failing all pending", {
           sessionId,
           pendingCount: browser.pending.size,
@@ -256,7 +229,7 @@ export function makeBridgeSessionManager(opts: {
         failPending(
           browser,
           "invalid_request",
-          "Workspace browser sent an invalid websocket payload. " +
+          "FINOS Workspace browser sent an invalid websocket payload. " +
             "This can happen when the connected browser build does not " +
             "implement the requested bridge command.",
           { errors: parsed.error.issues },
@@ -279,9 +252,6 @@ export function makeBridgeSessionManager(opts: {
             msg.result,
           );
           if (!resultParsed.success) {
-            // Same semantics as outer parse failure — Python's discriminated
-            // union catches malformed result bodies in the outer parse, so we
-            // mirror by failing all pending here.
             logger.warn(
               "Invalid command_result body — failing all pending",
               {
@@ -293,7 +263,7 @@ export function makeBridgeSessionManager(opts: {
             failPending(
               browser,
               "invalid_request",
-              "Workspace browser sent an invalid command_result body.",
+              "FINOS Workspace browser sent an invalid command_result body.",
               { errors: resultParsed.error.issues },
             );
             return;
@@ -328,17 +298,13 @@ export function makeBridgeSessionManager(opts: {
       }
       if (!browser.socket) {
         throw new BrowserUnavailableError(
-          "Workspace browser is not connected to this session.",
+          "FINOS Workspace browser is not connected to this session.",
         );
       }
 
       const requestId = command.request_id ?? newRequestId();
       const stamped = { ...command, request_id: requestId };
 
-      // Pending resolutions go through `normalizeResult` from
-      // `handleBrowserMessage`; timeout/send-failure paths bypass that since
-      // they are already structured `error` results that don't need
-      // session_context injection.
       return new Promise<WorkspaceCommandResult>((resolve) => {
         const timeoutId = setTimeout(() => {
           if (!browser.pending.has(requestId)) return;
@@ -347,8 +313,9 @@ export function makeBridgeSessionManager(opts: {
             ok: false,
             command: command.command,
             request_id: requestId,
-            message: "Workspace command timed out waiting for the browser.",
+            message: "FINOS Workspace command timed out waiting for the browser.",
             data: null,
+            warnings: [],
             error: {
               code: "timeout",
               message: `No response within ${opts.commandTimeoutMs}ms.`,
@@ -378,6 +345,7 @@ export function makeBridgeSessionManager(opts: {
             request_id: requestId,
             message: `Failed to send command to browser: ${msg}`,
             data: null,
+            warnings: [],
             error: {
               code: "unavailable",
               message: msg,

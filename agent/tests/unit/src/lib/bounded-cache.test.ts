@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { createBoundedCache } from "../../../../src/lib/bounded-cache";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { createBoundedCache } from "../../../../src/lib/bounded-cache.ts";
 
 function clock(start = 1_000) {
   let t = start;
@@ -43,7 +44,7 @@ describe("createBoundedCache", () => {
     cache.set("a", 1);
     cache.set("b", 2);
     cache.set("c", 3);
-    cache.get("a"); // a is now the newest
+    cache.get("a");
     cache.set("d", 4);
     expect(cache.has("b")).toBe(false);
     expect(cache.has("a")).toBe(true);
@@ -65,7 +66,6 @@ describe("createBoundedCache", () => {
     cache.set("small", "xx");
     expect(cache.set("big", "x".repeat(11))).toBe(false);
     expect(cache.has("big")).toBe(false);
-    // ...and does not push out what was there.
     expect(cache.has("small")).toBe(true);
   });
 

@@ -376,7 +376,6 @@ const mcpServerSchema = z.object({
       }),
     )
     .default([]),
-  // Saved headers to delete: the API never sends their values back
   removedHeaders: z.array(z.string()).default([]),
 });
 
@@ -563,8 +562,6 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
         customHeaders: undefined,
       };
 
-      // Header values are write-only: a value sets the header, null deletes a saved one,
-      // and a saved header left alone keeps its value
       const headersObject: Record<string, string | null> = {};
       for (const name of server.removedHeaders) headersObject[name] = null;
       for (const header of server.customHeaders) {
@@ -634,7 +631,7 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
         <DialogDescription>
           {existingServerId
             ? "Update your MCP server details. Supports streamable HTTP only (stdio and SSE are not supported)."
-            : "Connect Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported)."}
+            : "Connect FINOS Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported)."}
         </DialogDescription>
       </DialogHeader>
 
@@ -669,7 +666,7 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
             render={({ field, fieldState }) => (
               <FormInput
                 label="Client Name (Optional)"
-                placeholder="Workspace"
+                placeholder="FINOS Workspace"
                 {...field}
                 message={fieldState.error?.message}
               />

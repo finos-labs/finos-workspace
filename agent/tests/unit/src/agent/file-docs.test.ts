@@ -1,7 +1,8 @@
-import { describe, it, expect } from "bun:test";
-import { extractFileTierDocs } from "../../../../src/agent/file-docs";
-import { buildDocumentsDecoration } from "../../../../src/agent/documents";
-import type { ToolMessage, Widget } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { extractFileTierDocs } from "../../../../src/agent/file-docs.ts";
+import { buildDocumentsDecoration } from "../../../../src/agent/documents.ts";
+import type { ToolMessage, Widget } from "../../../../src/protocol/types.ts";
 
 const widget = (uuid: string, name: string, extension: string): Widget => ({
   uuid,

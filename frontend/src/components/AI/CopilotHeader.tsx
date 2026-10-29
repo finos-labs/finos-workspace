@@ -32,7 +32,6 @@ import { useMentions } from "./hooks/useMentions";
 import { useShallowStreamingStore } from "./hooks/useStreaming";
 import { dispatchCollapseCopilotPanel, dispatchCopilotCommand } from "./hooks/utils";
 
-/** The message of a rich tooltip element, or the name when the tooltip is not one. */
 function getTooltipMessage(tooltip: ReactNode, name: string): ReactNode {
   return isValidElement<{ message?: ReactNode }>(tooltip)
     ? (tooltip.props.message ?? name)
@@ -75,7 +74,6 @@ function DashboardButton() {
     setIsDropdownOpen: () => {},
   });
 
-  // Only show dashboard button on actual dashboard pages
   const isDashboardPage = useMemo(() => isTabPath(pathname), [isTabPath(pathname)]);
 
   const appStore = useShallowAppStore((state) => ({
@@ -87,7 +85,6 @@ function DashboardButton() {
   const { getTabById, lastUpdated, finalDashboardName } = useShallowSharedAppStore(
     (state) => {
       const sharedItem = state?.sharedItems?.[currentDashboardId];
-      // If no shared item, fallback to app store
       if (!sharedItem) return appStore;
       return {
         getTabById: state.getDashboardById,
@@ -104,7 +101,6 @@ function DashboardButton() {
       addDataOnDashboardWidget: state.addDataOnDashboardWidget,
     }));
 
-  // Extract widget info with names and UUIDs, grouped by tabs
   const getWidgetsByTabs = useCallback((): WidgetData => {
     const dashboard = getTabById(currentDashboardId);
     if (!dashboard?.data?.widgets) return { hasTabs: false, widgets: [] };
@@ -169,14 +165,11 @@ function DashboardButton() {
     };
   }, [getWidgetsByTabs, lastUpdated]);
 
-  // Initialize all tabs as expanded when widget data changes
-
   useEffect(() => {
     if (widgetData.hasTabs) {
       setExpandedTabs((prev) => {
         const newState = { ...prev };
         tabIds.forEach((tabId) => {
-          // Only set to true if not already defined (preserve user's collapse/expand state)
           if (!(tabId in newState)) {
             newState[tabId] = true;
           }
@@ -237,7 +230,7 @@ function DashboardButton() {
   );
 
   if (!isDashboardPage) {
-    return <div className="min-h-[32px]" />; // Maintain height when not on dashboard
+    return <div className="min-h-[32px]" />;
   }
 
   return (
@@ -248,7 +241,7 @@ function DashboardButton() {
       align="start"
       id="ws-copilot-dashboard-button"
       className="p-0! bg-general-bg-primary border border-general-border-secondary rounded-lg shadow-lg z-50 max-h-90 overflow-y-auto"
-      style={{ minWidth: "16rem", maxWidth: "32rem" }} // min-w-64, max-w-[512px]
+      style={{ minWidth: "16rem", maxWidth: "32rem" }}
       onOpenAutoFocus={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -426,23 +419,17 @@ export function CopilotHeader({
   const clearChatContext = useCallback(() => {
     dispatch({ files: [] });
 
-    // Get current widgets before clearing them to handle text cleanup
     const currentWidgets = copilotData.getCopilotWidgets().selectedWidgets || [];
 
-    // Clear all widgets and data
     copilotData.clearSelectedWidgets();
 
-    // Clear the UI state of selected widgets
     copilotData.setCopilotWidgets({ selectedWidgets: [] });
 
-    // Remove each widget's data and its mention from the text
     for (const widget of currentWidgets) {
       if (widget?.uuid) {
         copilotData.removeDataFromDashboardWidget(widget.uuid, true);
 
-        // If this widget was added via @ mention, we need to remove the mention from the text
         if (copilotData.isMentionTrackedWidget?.(widget.uuid)) {
-          // Update the command using the global dispatch
           dispatchCopilotCommand((prev) => {
             const updatedText = removeMentionFromText(prev, widget.uuid ?? "");
             if (updatedText !== prev) return updatedText;
@@ -511,8 +498,6 @@ export function CopilotHeader({
                   copilot.removeUnreachableArtifacts();
 
                   const currentChatData = copilot.getCurrentChat();
-                  // only update the title if it hasn't been manually updated by the user
-                  // and if it's not a new chat already
                   if (
                     !(
                       currentChatData.titleManuallyUpdated ||
@@ -552,8 +537,6 @@ export function CopilotHeader({
           >
             <button
               onClick={() => {
-                // Signal that this is a button-triggered change
-                // Had to do this to avoid a race condition with the onResize event
                 copilot.setIsButtonTriggered(true);
                 setTimeout(() => {
                   copilot.setIsButtonTriggered(false);
@@ -563,7 +546,6 @@ export function CopilotHeader({
                   copilot.setIsIntentionallyCollapsed(false);
                 }
 
-                // Store last panel state
                 copilot.setLastPanelState(copilot.isFullscreen ? "fullscreen" : "open");
                 copilot.toggleFullscreen();
               }}
@@ -616,21 +598,18 @@ export function CopilotHeader({
                 className="w-full flex items-center justify-between gap-2"
                 id="ws-copilot-header"
               >
-                {/* Left: Dashboard Button */}
                 {showChatActions && (
                   <div className="flex items-center gap-2 min-h-[32px] flex-shrink-0 min-w-0">
                     <DashboardButton />
                   </div>
                 )}
 
-                {/* Center: Copilot and Chat */}
                 {showChatActions && (
                   <div className="flex items-center justify-center min-w-0 flex-1">
                     <ChatSelection />
                   </div>
                 )}
 
-                {/* Right: Action Buttons */}
                 <div className="ml-auto flex items-center gap-0.5 flex-shrink-0">
                   {buttons}
                 </div>

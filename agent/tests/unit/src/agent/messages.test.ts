@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { buildMessages } from "../../../../src/agent/messages";
-import type { QueryRequest } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { buildMessages } from "../../../../src/agent/messages.ts";
+import type { QueryRequest } from "../../../../src/protocol/types.ts";
 
 function req(overrides: Partial<QueryRequest> = {}): QueryRequest {
   return { messages: [], ...overrides };
@@ -30,7 +31,7 @@ describe("buildMessages", () => {
     expect(c).toContain("beta body");
   });
 
-  it("gives a picked skill of Ines's its instructions, which the Workspace does not send", () => {
+  it("gives a picked skill of Ines's its instructions, which the FINOS Workspace does not send", () => {
     const out = buildMessages(
       req({
         selected_skills: [
@@ -41,7 +42,7 @@ describe("buildMessages", () => {
     );
     const c = out[1].content as string;
     expect(c).toContain('<skill name="html-chart">');
-    expect(c).toContain("# Workspace chart colors skill");
+    expect(c).toContain("# FINOS Workspace chart colors skill");
     expect(c).not.toContain("not-a-skill");
   });
 
@@ -239,8 +240,6 @@ describe("buildMessages — earlier tool results rendered into history", () => {
     expect(hist).toBeDefined();
     expect(hist).toContain('[Artifact "Diagram" (html) delivered to the user');
     expect(hist).toContain("Parse error on line 2");
-    // The live (last) tool result is injected by the loop with full fidelity,
-    // not by buildMessages — no double injection.
     expect(userContents.join("\n")).not.toContain("LIVE RESULT MARKER");
   });
 
@@ -301,8 +300,6 @@ describe("buildMessages — earlier workspace bridge results rendered into histo
     expect(hist).toBeDefined();
     expect(hist).toContain("w-1");
     expect(hist).toContain("success: Widget updated.");
-    // The live (last) bridge result is injected by the loop via injectFromReboot,
-    // not by buildMessages — w-2 must NOT be double-rendered here.
     expect(userContents.some((c) => c.includes("w-2"))).toBe(false);
   });
 

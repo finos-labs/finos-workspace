@@ -1,14 +1,9 @@
-/**
- * SQL family — read-widget-data tools that run in-process on the agent.
- * Stateless per call, no MCP detour, no decoration.
- */
-
 import type { ToolSet } from "ai";
-import type { SSEEvent } from "../../../protocol/types";
-import { makeExecuteSqlTool } from "./execute-sql";
-import { makePeekTableTool } from "./peek-table";
-import { makePeekColumnValuesTool } from "./peek-column-values";
-import { makeCreateArtifactTool } from "./create-artifact";
+import type { SSEEvent } from "../../../protocol/types.ts";
+import { makeExecuteSqlTool } from "./execute-sql.ts";
+import { makePeekTableTool } from "./peek-table.ts";
+import { makePeekColumnValuesTool } from "./peek-column-values.ts";
+import { makeCreateArtifactTool } from "./create-artifact.ts";
 
 export interface SqlToolsContext {
   pendingTables: Map<string, Record<string, unknown>[]>;

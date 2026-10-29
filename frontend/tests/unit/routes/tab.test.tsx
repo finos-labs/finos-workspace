@@ -64,8 +64,6 @@ vi.mock("~/lib/state/theme", () => ({
 }));
 
 vi.mock("~/lib/utils", async () => {
-  // Use the real implementations: the inner-tab param resolution is the logic under
-  // test here, so a hand-rolled stub would make these assertions meaningless.
   const actual =
     await vi.importActual<typeof import("~/lib/utils/app")>("~/lib/utils/app");
   return {

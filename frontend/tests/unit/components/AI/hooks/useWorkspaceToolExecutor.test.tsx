@@ -1,8 +1,3 @@
-/**
- * A tool of the Workspace, called by the agent, is run by this tab: the Workspace checks the call and says
- * what command it is, the tab runs the command, and the agent is handed what it came to.
- */
-
 import { renderHook } from "@testing-library/react";
 import { AxiosError, type AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,7 +18,6 @@ const run = (toolName: string, parameters?: Record<string, unknown>) => {
   return result.current(toolName, parameters);
 };
 
-/** What the agent is handed: the text of the one item of the result. */
 const resultOf = async (call: ReturnType<typeof run>) => {
   const data = await call;
   expect(data).toHaveLength(1);
@@ -36,8 +30,8 @@ beforeEach(() => {
   runCommand.mockReset();
 });
 
-describe("running a tool of the Workspace", () => {
-  it("runs the command the Workspace says the call is, and hands the agent what it came to", async () => {
+describe("running a tool of the FINOS Workspace", () => {
+  it("runs the command the FINOS Workspace says the call is, and hands the agent what it came to", async () => {
     const command = { command: "get_widget_data", request_id: null, data_sources: [] };
     const outcome = {
       ok: true,
@@ -60,7 +54,7 @@ describe("running a tool of the Workspace", () => {
     expect(result).toEqual(outcome);
   });
 
-  it("asks about a tool by its name on the Workspace's server", async () => {
+  it("asks about a tool by its name on the FINOS Workspace's server", async () => {
     vi.mocked(prepareWorkspaceToolCall).mockResolvedValue({
       command: { command: "read_widget" },
       result: null,
@@ -72,7 +66,7 @@ describe("running a tool of the Workspace", () => {
     expect(prepareWorkspaceToolCall).toHaveBeenCalledWith("read_widget", {});
   });
 
-  it("hands the agent the Workspace's answer, and runs nothing, for a call that is not valid", async () => {
+  it("hands the agent the FINOS Workspace's answer, and runs nothing, for a call that is not valid", async () => {
     const answer = {
       ok: false,
       command: "read_widget",
@@ -88,7 +82,7 @@ describe("running a tool of the Workspace", () => {
     expect(runCommand).not.toHaveBeenCalled();
   });
 
-  it("says why when the Workspace refuses the call, and runs nothing", async () => {
+  it("says why when the FINOS Workspace refuses the call, and runs nothing", async () => {
     vi.mocked(prepareWorkspaceToolCall).mockRejectedValue(
       new AxiosError(
         "Request failed with status code 403",
@@ -113,7 +107,7 @@ describe("running a tool of the Workspace", () => {
     expect(runCommand).not.toHaveBeenCalled();
   });
 
-  it("says what went wrong when the Workspace cannot be asked", async () => {
+  it("says what went wrong when the FINOS Workspace cannot be asked", async () => {
     vi.mocked(prepareWorkspaceToolCall).mockRejectedValue(new Error("Network Error"));
 
     const result = await resultOf(run("Workspace_read_widget", { widget_uuid: "w" }));

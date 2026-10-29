@@ -10,7 +10,6 @@ MCP_HEADERS = {"Accept": "application/json, text/event-stream"}
 
 @asynccontextmanager
 async def mcp_running():
-    """Starts the MCP app's session manager, which httpx's ASGI transport does not do."""
     from main import workspace_mcp_asgi_app
 
     async with workspace_mcp_asgi_app.lifespan(workspace_mcp_asgi_app):
@@ -18,7 +17,6 @@ async def mcp_running():
 
 
 def rpc_message(response) -> dict:
-    """The JSON-RPC message of a streamable-HTTP response (plain JSON or one SSE event)."""
     if response.headers["content-type"].startswith("text/event-stream"):
         data = [line for line in response.text.splitlines() if line.startswith("data:")]
         return json.loads(data[-1].removeprefix("data:").strip())
@@ -86,7 +84,7 @@ async def test_unknown_path_returns_404_not_credential_error(client):
     )
 
     assert response.status_code == 404
-    assert "Could not validate Workspace MCP credentials" not in response.text
+    assert "Could not validate FINOS Workspace MCP credentials" not in response.text
 
 
 @pytest.mark.asyncio
@@ -134,7 +132,6 @@ async def test_mcp_tool_call_with_valid_token_returns_no_browser_connected(
             },
         )
 
-    # An MCP tool call always answers 200; the tool reports that no browser is connected
     assert response.status_code == 200
     result = rpc_message(response)["result"]
     assert result["structuredContent"]["ok"] is False

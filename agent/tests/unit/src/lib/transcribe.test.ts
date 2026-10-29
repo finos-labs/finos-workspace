@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from "bun:test";
-import { readWav, transcribe, transcribeModel, transcribeModelProblem } from "../../../../src/lib/transcribe";
-import { wav } from "../../../helpers/wav";
+import { afterEach, describe, it } from "node:test";
+import { expect } from "expect";
+import { readWav, transcribe, transcribeModel, transcribeModelProblem } from "../../../../src/lib/transcribe.ts";
+import { wav } from "../../../helpers/wav.ts";
 
 describe("INES_TRANSCRIBE_MODEL", () => {
   it("is optional: unset, there is no dictation and nothing is wrong", () => {
@@ -29,7 +30,7 @@ describe("readWav", () => {
   it("refuses what is not a 16-bit PCM WAV", () => {
     expect(readWav(new TextEncoder().encode("not audio at all, just some words in a file"))).toBeNull();
     expect(readWav(wav({ bits: 8 }))).toBeNull();
-    expect(readWav(wav({ format: 3, bits: 32 }))).toBeNull(); // float
+    expect(readWav(wav({ format: 3, bits: 32 }))).toBeNull();
     expect(readWav(wav({ samples: 0 }))).toBeNull();
     expect(readWav(wav().subarray(0, 30))).toBeNull();
   });

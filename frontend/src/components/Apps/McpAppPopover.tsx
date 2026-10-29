@@ -8,15 +8,9 @@ import { McpTokenModal } from "./McpTokenModal";
 import { useMcpServerConnection } from "./useMcpServerConnection";
 
 interface McpAppPopoverProps {
-  /** Custom backend source id */
   sourceId?: string;
   mcpServer: AppMcpServer;
   isSubscribed: boolean;
-  /**
-   * When the parent owns the token entry point (e.g. the app details modal
-   * surfaces it beside the API key action), suppress this popover's own
-   * add/edit-token buttons and modal so the flow isn't duplicated.
-   */
   tokenActionExternal?: boolean;
 }
 
@@ -52,7 +46,6 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
   const { title, description, action } = useMemo(() => {
     if (isTokenAuth) {
       const tokenLabel = hasToken ? "Replace token" : "Add token";
-      // When the parent owns the token entry point, this popover is status-only.
       const tokenButton = tokenActionExternal ? null : (
         <Button variant="ghost" size="xs" onClick={openTokenModal}>
           {tokenLabel}

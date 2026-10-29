@@ -6,8 +6,6 @@ import {
 } from "~/components/AI/hooks/useMcpToolSuggestions";
 import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 
-// --- Mocks ---
-
 const mockServers = [
   {
     id: "server-1",
@@ -89,12 +87,9 @@ vi.mock("~/lib/state/mcpTools", async (importOriginal) => {
   };
 });
 
-// --- Tests ---
-
 describe("useMcpToolSuggestions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // A role grants every tool of the servers these tests use.
     useCopilotAccessStore.getState().setAccess({
       models: [],
       mcp: [
@@ -104,7 +99,6 @@ describe("useMcpToolSuggestions", () => {
         "https://widget.example.com/mcp",
       ].map((server_url) => ({ server_url, tool_name: "*" })),
     });
-    // Reset getMCPConnection to default behavior
     mockGetMCPConnection.mockImplementation((serverId: string) => {
       const server = mockServers.find((s) => s.id === serverId);
       if (!server || !server.enabled) return null;
@@ -134,7 +128,6 @@ describe("useMcpToolSuggestions", () => {
     it("returns tools from enabled and connected servers", () => {
       const { result } = renderHook(() => useMcpToolSuggestions());
 
-      // Should have 3 tools: 2 from server-1 + 1 from server-2 (server-3 is disabled)
       expect(result.current.mcpToolOptions).toHaveLength(3);
     });
 
@@ -434,7 +427,6 @@ describe("useMcpToolSuggestions", () => {
     it("performs fuzzy matching", () => {
       const { result } = renderHook(() => useMcpToolSuggestions());
 
-      // "stoc" should fuzzy match "stock"
       const suggestions = result.current.searchMcpTools("/stoc");
 
       expect(suggestions.length).toBeGreaterThanOrEqual(1);

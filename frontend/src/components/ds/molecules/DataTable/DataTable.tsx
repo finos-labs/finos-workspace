@@ -23,21 +23,14 @@ import type {
 const SELECT_WIDTH = 44;
 const DEFAULT_ACTIONS_WIDTH = 96;
 const DEFAULT_ROW_GAP = 10;
-// A hugging `"auto"` column can't content-measure in a flex row (each row would
-// size independently and misalign), so it falls back to this px width.
 const GRID_HUG_WIDTH = 160;
 
 function isFlex(width: ColumnWidth): boolean {
   return width === "fill" || (typeof width === "string" && width.endsWith("%"));
 }
 
-// Every column is a flex track. This is why fixed px, proportional `%`, and
-// `fill` columns coexist in one row without the CSS table-layout overflow that
-// `px + %` hits in a real `<table>`. `minWidth` is the shrink floor.
 function flexSizing(width: ColumnWidth, minWidth?: number): CSSProperties {
   if (width === "fill") return { flex: "1 1 0%" };
-  // Percent = proportional share: grow by the number so flexible columns split
-  // the free space in proportion (e.g. 13% : 19% : ...), filling the width.
   if (typeof width === "string" && width.endsWith("%")) {
     const weight = Number.parseFloat(width) || 1;
     return { flex: `${weight} 1 0%` };
@@ -47,11 +40,10 @@ function flexSizing(width: ColumnWidth, minWidth?: number): CSSProperties {
   return { flex: "0 0 auto" };
 }
 
-// Floor each column contributes to the table's min/hug width.
 function trackFloor(col: { width: ColumnWidth; minWidth?: number }): number {
   if (typeof col.width === "number") return col.width;
   if (col.width === "auto") return col.minWidth ?? GRID_HUG_WIDTH;
-  return col.minWidth ?? 0; // fill / %
+  return col.minWidth ?? 0;
 }
 
 function cellStyle(
@@ -88,15 +80,10 @@ function SortIcon({ active, dir }: { active: boolean; dir?: "asc" | "desc" }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Row — memoized so a single selection toggle re-renders only the toggled row
-// ---------------------------------------------------------------------------
-
 interface RowProps<T> {
   row: T;
   rowId: string;
   columns: DataTableColumn<T>[];
-  /** Windowed (absolutely positioned) vs. normal document flow. */
   virtualized: boolean;
   rowHeight?: number;
   rowGap: number;
@@ -139,7 +126,6 @@ function DataTableRowInner<T>(props: RowProps<T>) {
 
   useEffect(() => {
     if (!isHighlighted) return;
-    // Delay past any expand animation so the row is at its final position.
     const scrollT = window.setTimeout(() => {
       rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       setFlash(true);
@@ -160,8 +146,6 @@ function DataTableRowInner<T>(props: RowProps<T>) {
   const cellBase = "px-3 py-3 body-xs-regular text-ds-text-body";
   const cellRole = virtualized ? "gridcell" : "cell";
 
-  // Windowed rows are absolutely positioned within the virtualizer canvas;
-  // non-virtualized rows flow normally (the tbody spaces them with a flex gap).
   const rowStyle: CSSProperties = virtualized
     ? {
         display: "flex",
@@ -245,10 +229,6 @@ function DataTableRowInner<T>(props: RowProps<T>) {
 
 const DataTableRow = memo(DataTableRowInner) as typeof DataTableRowInner;
 
-// ---------------------------------------------------------------------------
-// DataTable
-// ---------------------------------------------------------------------------
-
 export function DataTable<T>(props: DataTableProps<T>) {
   const {
     columns,
@@ -276,8 +256,6 @@ export function DataTable<T>(props: DataTableProps<T>) {
 
   const hasSelect = !!(selectedIds && onToggleRow);
   const hasActions = !!renderRowActions;
-  // Any flexible column (`"fill"` or a `%`) makes the table span its container
-  // so those columns can take up the width; an all-fixed table hugs instead.
   const hasFlex = useMemo(() => columns.some((c) => isFlex(c.width)), [columns]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -314,8 +292,6 @@ export function DataTable<T>(props: DataTableProps<T>) {
     [onSortChange, sortState],
   );
 
-  // Floor width so columns never collapse. Also the exact table width when the
-  // table hugs (no flexible column): every track resolves to a concrete px floor.
   const minTableWidth = useMemo(() => {
     let w = (hasSelect ? SELECT_WIDTH : 0) + (hasActions ? actionsWidth : 0);
     for (const col of columns) w += trackFloor(col);
@@ -360,9 +336,6 @@ export function DataTable<T>(props: DataTableProps<T>) {
         className={virtualized ? "min-h-0 flex-1 overflow-auto" : "overflow-x-auto"}
         style={virtualized && maxHeight != null ? { maxHeight } : undefined}
       >
-        {/* One flex layout for both modes. Fill: span the container so flexible
-            columns absorb the slack. Hug (no flexible column): width = the sum of
-            tracks, so the table sizes to content and scrolls instead of stretching. */}
         <table
           role={virtualized ? "grid" : "table"}
           style={{
@@ -457,8 +430,6 @@ export function DataTable<T>(props: DataTableProps<T>) {
               virtualized
                 ? {
                     display: "grid",
-                    // `+ rowGap` reserves a leading gap between the sticky header
-                    // and the first row (matching the non-virtualized spacing).
                     height: rowVirtualizer.getTotalSize() + rowGap,
                     position: "relative",
                   }
