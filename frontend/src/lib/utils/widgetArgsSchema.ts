@@ -67,6 +67,8 @@ export function dataArgsSchema(widget: Pick<WidgetT, "params">): JsonSchema {
   return {
     type: "object",
     additionalProperties: false,
+    description:
+      "One property for each parameter of the widget, named by its paramName. A form parameter has none",
     properties: Object.fromEntries(
       params.map((param) => [param.paramName, paramValueSchema(param)]),
     ),
@@ -123,9 +125,22 @@ function renderedAs(widget: RenderedWidget): string | undefined {
 
 export function uiArgsSchema(widget: RenderedWidget): JsonSchema {
   const properties: Record<string, JsonSchema> = {
-    name: { type: "string", minLength: 1, maxLength: LIMITS.name },
-    description: { type: "string", maxLength: LIMITS.description },
-    source: { type: ["string", "array"], items: { type: "string" } },
+    name: {
+      type: "string",
+      minLength: 1,
+      maxLength: LIMITS.name,
+      description: "The title the widget shows",
+    },
+    description: {
+      type: "string",
+      maxLength: LIMITS.description,
+      description: "What the widget shows",
+    },
+    source: {
+      type: ["string", "array"],
+      items: { type: "string" },
+      description: "Where the data comes from: a label, or a list of labels",
+    },
     innerTab: {
       type: "string",
       description: "create_widget only: the navigation bar tab, by id or name",
@@ -152,7 +167,13 @@ export function uiArgsSchema(widget: RenderedWidget): JsonSchema {
     };
   const settings = pluginSettings(widget);
   if (settings) properties.config = settingsJsonSchema(settings);
-  return { type: "object", additionalProperties: false, properties };
+  return {
+    type: "object",
+    additionalProperties: false,
+    description:
+      "The keys that a widget accepts in ui_args, which depend on the component that renders it",
+    properties,
+  };
 }
 
 const ajv = new Ajv({ allErrors: true, allowUnionTypes: true, strictTypes: false });

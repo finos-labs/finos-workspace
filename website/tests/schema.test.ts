@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { describeSchema } from "../scripts/lib/schema.mts";
+import { describeCases, describeSchema } from "../scripts/lib/schema.mts";
 
 const definitions = {
   Param: {
@@ -52,4 +52,22 @@ test("expands a referenced object inline and keeps it a link otherwise", () => {
     ["box"],
   );
   assert.deepEqual(linked.properties[0]?.type, [{ ref: "Box" }]);
+});
+
+test("describes the schemas of several cases as one row with a list by case", () => {
+  const object = (properties: Record<string, unknown>) => ({ type: "object", properties });
+  const doc = describeCases("args", [
+    { label: "text", schema: object({ value: { type: "string" } }) },
+    { label: "number", schema: object({ value: { type: "number" } }) },
+    { label: "form", schema: object({}) },
+  ]);
+  assert.deepEqual(
+    doc.properties.map((row) => row.name),
+    ["value"],
+  );
+  assert.deepEqual(
+    doc.properties[0]?.variants?.map((variant) => variant.applies),
+    ["text", "number"],
+  );
+  assert.ok(doc.notes.includes("no property for form"));
 });

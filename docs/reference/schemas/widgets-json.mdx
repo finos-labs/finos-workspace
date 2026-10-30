@@ -31,6 +31,23 @@ FINOS Workspace checks the widget against the plugin's `definition`. A widget th
   ]}
 />
 
+<SchemaDocs
+  set="widgetArgs"
+  root={false}
+  show={[
+    {
+      name: "data_args_schema",
+      title: <code>data_args_schema</code>,
+      description: "Returned by `get_widget_schema` for the `data_args` of `create_widget` and `update_widget`. It is built from the `params` of the widget definition.",
+    },
+    {
+      name: "ui_args_schema",
+      title: <code>ui_args_schema</code>,
+      description: "Returned by `get_widget_schema` for the `ui_args` of `create_widget` and `update_widget`. It is built from the widget definition and from the component that renders the widget.",
+    },
+  ]}
+/>
+
 ## Examples
 
 These examples come from the reference backend in `docs/examples/reference-backend/widgets.json`.
@@ -386,15 +403,6 @@ The route `GET /app/widget-plugins/widgets-schema` answers for the signed-in use
 - The schema is closed. Every object has `additionalProperties: false` or a defined value schema, every string has a `maxLength`, an `enum`, a `const` or a `pattern`, and every array has `maxItems`. The web app reads a failed `additionalProperties: false` as a key to ignore, unless it falls inside a `oneOf` or an `anyOf` that no branch matched.
 - A plugin's `definition` must be closed and bounded in the same way. FINOS Workspace checks it when it discovers the plugin, and a definition that is not closed and bounded blocks the version and names the offending node.
 - The web app fetches the schema together with the plugin list and hands it to the worker that loads backends. A new `$id` makes the worker validate the connected backends again.
-
-## Schemas for one widget
-
-An MCP client creates or changes a widget through the FINOS Workspace MCP, and each of these calls takes two argument objects. The tool `get_widget_schema` returns a closed schema for each of them:
-
-- The schema `data_args_schema` has one property for each declared parameter. A parameter with static options takes an enum of those options. A number also accepts a numeric string. A date accepts `YYYY-MM-DD` or `$currentDate` with a modifier. A `multiSelect` or `multiple` parameter accepts a list or a comma-separated string. FINOS Workspace ignores a value that the schema refuses and issues a warning that names the key.
-- The schema `ui_args_schema` has the keys `name`, `description` and `source`, plus `innerTab` and `gridData` for `create_widget`. It also has the keys of the component that renders the widget: `text` for markdown, `html` for HTML, and `config` for a plugin widget. The `config` object follows the plugin's settings and is stored in `storage.plugin.config`. An undefined key or a wrong value refuses the whole call with `invalid_request` and names each path, and a dry run returns `valid: false` together with the problems.
-
-Every parameter row also carries `in`, whose value is `path`, `query`, `header` or `body`, and `get_widget_schema` returns the widget's `method` and `mcp_tool` as well.
 
 ## The JSON Schema file
 

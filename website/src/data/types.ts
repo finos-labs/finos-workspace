@@ -149,6 +149,7 @@ export interface SchemaVariant {
   required: boolean;
   enum?: string[];
   notes: string[];
+  description?: string;
 }
 
 export interface SchemaProperty {

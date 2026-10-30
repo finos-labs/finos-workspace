@@ -2,7 +2,7 @@ import Link from "@docusaurus/Link";
 import type { AgentField, SchemaProperty, TypeLabel } from "../../data/types";
 import { type FieldNode, type FlatField, fieldTree, labelText, splitNotes } from "./fieldtree";
 import { Chip } from "./kit";
-import { Prose } from "./prose";
+import { InlineText, Prose } from "./prose";
 import styles from "./styles.module.css";
 
 const ENUM_INLINE_LIMIT = 4;
@@ -24,6 +24,7 @@ export function fromSchema(properties: SchemaProperty[]): FlatField[] {
             required: variant.required,
             constraints: variant.notes,
             ...(variant.enum === undefined ? {} : { enumValues: variant.enum }),
+            ...(variant.description === undefined ? {} : { description: variant.description }),
           })),
         }),
   }));
@@ -101,6 +102,7 @@ function FieldItem({ node, schemaPage }: { node: FieldNode; schemaPage: string }
               {variant.constraints.map((constraint) => (
                 <Chip key={constraint}>{constraint}</Chip>
               ))}
+              {variant.description === undefined ? null : <InlineText text={variant.description} />}
             </li>
           ))}
         </ul>

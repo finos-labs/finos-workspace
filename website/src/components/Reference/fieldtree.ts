@@ -6,6 +6,7 @@ export interface FieldVariant {
   required: boolean;
   constraints: string[];
   enumValues?: string[];
+  description?: string;
 }
 
 export interface FlatField {

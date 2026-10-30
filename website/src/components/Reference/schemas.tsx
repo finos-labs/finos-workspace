@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { SchemaDoc } from "../../data/types";
 import { databaseData, schemaSets } from "./data";
 import { Fields, fromSchema, TypeLabelText } from "./fields";
@@ -13,7 +14,7 @@ const RULE_LENGTH = 30;
 
 interface Heading {
   name: string;
-  title: string;
+  title: ReactNode;
   description?: string;
 }
 
@@ -24,7 +25,7 @@ function SchemaBlock({ doc, id, heading }: { doc: SchemaDoc; id: string; heading
       id={id}
       level={heading ? 2 : 3}
       title={heading ? heading.title : <code>{doc.name}</code>}
-      description={heading?.description ?? doc.description}
+      description={[heading?.description, doc.description].filter((text) => text !== undefined).join("\n\n")}
       chips={
         <>
           <TypeLabelText label={doc.type} />

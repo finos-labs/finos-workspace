@@ -12,6 +12,7 @@ import plugins from "../../generated/plugins.json";
 import settings from "../../generated/settings.json";
 import web from "../../generated/web.json";
 import webConfig from "../../generated/webConfig.json";
+import widgetArgs from "../../generated/widgetArgs.json";
 import widgetsSchema from "../../generated/widgetsSchema.json";
 import type {
   AgentData,
@@ -43,10 +44,12 @@ export const pluginsData = plugins as unknown as PluginsData;
 export const settingsData = settings as unknown as SettingsData;
 export const webConfigData = webConfig as unknown as WebConfigData;
 export const webData = web as unknown as WebData;
+const widgetArgsData = widgetArgs as unknown as SchemaSet;
 const widgetsSchemaData = widgetsSchema as unknown as SchemaSet;
 
 export const schemaSets = {
   widgets: widgetsSchemaData,
+  widgetArgs: widgetArgsData,
   apps: appsSchemaData,
   manifest: manifestSchemaData,
   api: { source: "openapi.json", title: "FINOS Workspace API", definitions: apiData.schemas } as SchemaSet,

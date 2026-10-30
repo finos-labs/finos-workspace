@@ -5,6 +5,7 @@ type Json = Record<string, unknown>;
 const MAX_DEPTH = 3;
 const MAX_ENUM = 12;
 const MAX_PATTERN = 140;
+const MAX_UNION_PARTS = 6;
 
 function isObject(value: unknown): value is Json {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -240,8 +241,8 @@ function topLevelParts(text: string): string[] {
 
 function unionType(types: TypeLabel[]): TypeLabel {
   if (types.every((type) => type.every((part) => typeof part === "string"))) {
-    const parts = types.flatMap((type) => topLevelParts(type.join("")));
-    return [[...new Set(parts)].join(" | ")];
+    const parts = [...new Set(types.flatMap((type) => topLevelParts(type.join(""))))];
+    return [parts.length > MAX_UNION_PARTS ? "varies by type" : parts.join(" | ")];
   }
   const distinct = types.filter((type, index) => types.findIndex((other) => JSON.stringify(other) === JSON.stringify(type)) === index);
   return joinLabels(distinct, " | ");
@@ -251,7 +252,6 @@ function mergedRow(name: string, groups: { row: SchemaProperty; labels: string[]
   const [first] = groups;
   const common = (first?.row.notes ?? []).filter((note) => groups.every((group) => group.row.notes.includes(note)));
   const covered = groups.flatMap((group) => group.labels);
-  const values = [...new Set(groups.flatMap((group) => group.row.enum ?? []))];
   const row: SchemaProperty = {
     name,
     type: unionType(groups.map((group) => group.row.type)),
@@ -264,22 +264,29 @@ function mergedRow(name: string, groups: { row: SchemaProperty; labels: string[]
         required: group.row.required,
         notes: group.row.notes.filter((note) => !common.includes(note)),
         ...(group.row.enum === undefined ? {} : { enum: group.row.enum }),
+        ...(group.row.description === undefined || group.row.description === first?.row.description ? {} : { description: group.row.description }),
       }),
     ),
   };
   const note = appliesTo([...new Set(covered)], labels, false);
   if (note !== undefined) row.notes.push(note);
   if (first?.row.description !== undefined) row.description = first.row.description;
-  if (values.length > 0) row.enum = values;
   return row;
 }
 
-function unionRows(branches: Json[], definitions: Json, options: Options): { properties: SchemaProperty[]; notes: string[] } {
-  const key = discriminatorOf(branches);
-  const labels = branches.map((branch, index) => {
-    const property = key === undefined ? undefined : propertiesOf(branch)[key];
-    return isObject(property) ? String(property.const) : `variant ${index + 1}`;
-  });
+function unionRows(
+  branches: Json[],
+  definitions: Json,
+  options: Options,
+  given?: string[],
+): { properties: SchemaProperty[]; notes: string[] } {
+  const key = given === undefined ? discriminatorOf(branches) : undefined;
+  const labels =
+    given ??
+    branches.map((branch, index) => {
+      const property = key === undefined ? undefined : propertiesOf(branch)[key];
+      return isObject(property) ? String(property.const) : `variant ${index + 1}`;
+    });
   const byName = new Map<string, { row: SchemaProperty; labels: string[] }[]>();
   branches.forEach((branch, index) => {
     for (const row of rows(branch, "", 0, definitions, options)) {
@@ -314,6 +321,21 @@ function unionRows(branches: Json[], definitions: Json, options: Options): { pro
   }
   const notes = [...new Set(branches.flatMap(ruleNotes))];
   return { properties, notes };
+}
+
+export function describeCases(name: string, cases: { label: string; schema: unknown }[]): SchemaDoc {
+  const usable = cases.filter(({ schema }) => isObject(schema) && hasProperties(schema));
+  const skipped = cases.filter((item) => !usable.includes(item)).map(({ label }) => label);
+  const branches = usable.map(({ schema }) => schema as Json);
+  const [first] = branches;
+  const doc: SchemaDoc = {
+    name,
+    type: ["object"],
+    ...unionRows(branches, {}, { inline: false }, usable.map(({ label }) => label)),
+  };
+  doc.notes = [...(first === undefined ? [] : constraintNotes(first)), ...skipped.map((label) => `no property for ${label}`), ...doc.notes];
+  if (first !== undefined && typeof first.description === "string") doc.description = first.description;
+  return doc;
 }
 
 export function describeSchema(name: string, schema: unknown, definitions: Json = {}, options: Options = { inline: false }): SchemaDoc {
