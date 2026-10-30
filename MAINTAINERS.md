@@ -7,6 +7,7 @@ For information about maintainer responsibilities and resources, see the [FINOS 
 ## Current maintainers
 
 | GitHub Username | Name | Organization | Email (Optional) |
+| ---- | ---- | ---- | ---- |
 | @saracgil | Ihsan Saracgil | BrightQuery | saracgil@gmail.com |
 | @deeleeramone | Darren Lee | BrightQuery | dlee@brightquery.com | 
 | @jethin-bq | Jethin Abraham | BrightQuery | jabraham@brightquery.com |

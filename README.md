@@ -240,6 +240,21 @@ it does not answer.
   `deploy-dev.yml` also reads `ECR_REGISTRY`, `INFRA_APP_ID`, `INFRA_REPO` and `DEV_VALUES_FILE`, and the secret
   `INFRA_APP_PRIVATE_KEY`.
 
+
+## Steering and Advisory Committee
+
+A Steering and Advisory Committee has been formed to ensure the roadmap reflects the needs of buy-side and sell-side institutions. The committee brings together maintainers, global banks, and consultancy partners to guide architectural decisions and open-standards integration. The current members are listed below:
+
+- Alexandru Dumitru, Engineering Lead, Global UI Platform at Citi
+- Kris West, FDC3 Lead Maintainer
+- Chris Watson, Lead Sail Maintainer and Head of Interoperability at AlphaFMC
+- Jorge Vasquez, Global Product Manager, Bank of America
+
+## Get involved
+
+- Subscribe to the FINOS Workspace mailing list by sending an email to  `workspace-dev+subscribe@lists.finos.org`
+- Intrested in joining the advisory committe? Email [help@finos.org](mailto:help@finos.org) about joining.
+
 ## License
 
 Copyright 2026 FINOS
