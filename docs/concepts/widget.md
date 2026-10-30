@@ -12,6 +12,8 @@ A widget shows data from one source on a [dashboard](dashboard.md). The source i
 - The connector defines a widget in its `widgets.json`. A widget is a catalog entry until someone adds it to a dashboard.
 - A widget stores no data. The browser asks the connector each time.
 
+## Where to go
+
 - **Use it:** [Widget types](../features/widgets/widget-types.md), [Link the parameters of widgets](../features/widgets/link-the-parameters-of-widgets.md)
 - **Build it:** [Write the widgets.json of a backend](../tutorials/build-a-backend/write-widgets-json.md)
 - **Look it up:** [widgets.json](../reference/schemas/widgets-json.mdx), [Widget requests](../reference/protocols/widget-requests.mdx)

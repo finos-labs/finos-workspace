@@ -12,6 +12,8 @@ An app is a template for dashboards. It remembers which widgets to place, where,
 - A person can save a dashboard of their own as an app. It carries the tag Saved App.
 - Both kinds appear on the Apps page.
 
+## Where to go
+
 - **Use it:** [Browse and open apps](../features/apps/browse-and-open-apps.md), [Save a dashboard as an app](../features/apps/save-a-dashboard-as-an-app.mdx)
 - **Build it:** [Offer an app from your backend](../tutorials/build-a-backend/offer-an-app-from-your-backend.mdx)
 - **Look it up:** [apps.json](../reference/schemas/apps-json.mdx)

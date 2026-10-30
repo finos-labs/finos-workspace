@@ -12,6 +12,8 @@ The Agent answers questions about your dashboards. It is Ines, which runs a lang
 - The roles of an [admin](admin.md) decide which models and tools a person can use.
 - The Agent runs in its own service, and your browser runs the tools that need your session.
 
+## Where to go
+
 - **Use it:** [Ask the Agent about a dashboard](../features/agent/ask-the-agent-about-a-dashboard.md), [Attach files to a question](../features/agent/attach-files-to-a-question.mdx), [Use and write skills for the Agent](../features/agent/use-and-write-skills.mdx)
 - **Set it up:** [Choose the Agent's model and provider](../features/agent/choose-the-agent-model.mdx)
 - **Look it up:** [Agent query protocol](../reference/protocols/ines-query.mdx), [Ines HTTP API](../reference/http-api/ines-api.mdx), [Ines MCP server](../reference/mcp/ines-mcp.mdx)
