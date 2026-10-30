@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "~/api/api";
 import {
   activateTotp,
@@ -8,6 +8,7 @@ import {
   deleteUploadedFile,
   deleteUploadedFiles,
   deleteWidgetMetadata,
+  fetchAgentsData,
   fetchDefaultAgent,
   generateQRCode,
   getAgentConnectionErrorMessage,
@@ -15,25 +16,23 @@ import {
   getCopilotChat,
   getFileWidgets,
   getSession,
-  getSignInNonce,
   getUsage,
   getWidgetMetadata,
   googleLogin,
   login,
   logout,
-  microsoftLogin,
-  oktaLogin,
   patchWidgetMetadata,
   postApiSource,
   postFileWidget,
   postUserChats,
   postWidgetMetadata,
+  putCustomCopilot,
   resetPassword,
-  SIGN_IN_EXPIRED,
   searchChats,
+  startSignIn,
+  tryAgentsData,
   updatePassword,
   validateUser,
-  withSignInNonce,
 } from "~/api/auth.api";
 import { VERSION } from "~/lib/constants";
 import { mockConfig } from "../../mocks/runtimeConfig";
@@ -148,33 +147,21 @@ describe("API Client Functions", () => {
     });
   });
 
-  describe("identity provider sign-in", () => {
-    it("sends Microsoft's ID token for the API to verify", async () => {
-      vi.spyOn(apiClient, "post").mockResolvedValue({ status: 200, data: {} });
+  describe("startSignIn", () => {
+    it.each([
+      "microsoft",
+      "okta",
+    ] as const)("asks the API where to send the browser for %s", async (provider) => {
+      vi.spyOn(apiClient, "post").mockResolvedValue({
+        data: { authorization_url: "https://idp.example.com/authorize" },
+      });
 
-      await microsoftLogin("graph-access-token", "ms-id-token");
-
-      expect(apiClient.post).toHaveBeenCalledWith(
-        "/app/microsoft-auth",
-        expect.objectContaining({
-          token: "graph-access-token",
-          id_token: "ms-id-token",
-        }),
+      await expect(startSignIn(provider)).resolves.toBe(
+        "https://idp.example.com/authorize",
       );
-    });
-
-    it("sends Okta's ID token for the API to verify", async () => {
-      vi.spyOn(apiClient, "post").mockResolvedValue({ status: 200, data: {} });
-
-      await oktaLogin("okta-access-token", "okta-id-token");
-
-      expect(apiClient.post).toHaveBeenCalledWith(
-        "/app/okta-auth",
-        expect.objectContaining({
-          token: "okta-access-token",
-          id_token: "okta-id-token",
-        }),
-      );
+      expect(apiClient.post).toHaveBeenCalledWith(`/app/sign-in/${provider}/start`, {
+        version: VERSION,
+      });
     });
   });
 
@@ -261,40 +248,152 @@ describe("API Client Functions", () => {
     });
   });
 
-  describe("getSignInNonce", () => {
-    it("gets a nonce from the API, which binds it to this browser", async () => {
-      vi.mocked(apiClient.post).mockResolvedValue({ data: { nonce: "n-1" } });
+  describe("agents whose credentials the API keeps", () => {
+    const file = {
+      support: {
+        name: "Support",
+        description: "Helps",
+        endpoints: { query: "/v1/query" },
+      },
+    };
 
-      await expect(getSignInNonce()).resolves.toBe("n-1");
-      expect(apiClient.post).toHaveBeenCalledWith("/app/sign-in/nonce");
+    beforeEach(() => {
+      vi.stubGlobal("fetch", vi.fn());
     });
-  });
 
-  describe("withSignInNonce", () => {
-    it("starts the sign-in once more, with a new nonce, when the first one expired", async () => {
-      vi.mocked(apiClient.post)
-        .mockResolvedValueOnce({ data: { nonce: "old" } })
-        .mockResolvedValueOnce({ data: { nonce: "new" } });
-      const signIn = vi
-        .fn()
-        .mockResolvedValueOnce({ response: { status: 400, detail: SIGN_IN_EXPIRED } })
-        .mockResolvedValueOnce({ response: { status: 202, detail: "" } });
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
 
-      await expect(withSignInNonce(signIn)).resolves.toEqual({
-        response: { status: 202, detail: "" },
+    it("reads a saved agent's agents.json through the API, by id, and never itself", async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({
+        data: { status: 200, agents: file },
       });
-      expect(signIn.mock.calls).toEqual([["old"], ["new"]]);
+
+      const agents = await fetchAgentsData({
+        uuid: "holder-1",
+        url: "https://agents.test/api",
+        headers: { "X-Api-Key": "" },
+      });
+
+      expect(apiClient.post).toHaveBeenCalledWith(
+        "/app/custom-copilot/discover",
+        {
+          id: "holder-1",
+          url: "https://agents.test/api",
+          headers: { "X-Api-Key": "" },
+        },
+        { signal: undefined },
+      );
+      expect(fetch).not.toHaveBeenCalled();
+      expect(agents).toHaveLength(1);
+      expect(agents[0]).toMatchObject({
+        id: "support",
+        holderUuid: "holder-1",
+        endpoints: { query: "https://agents.test/api/v1/query" },
+      });
     });
 
-    it("does not start again for any other refusal", async () => {
-      vi.mocked(apiClient.post).mockResolvedValue({ data: { nonce: "n" } });
-      const signIn = vi
-        .fn()
-        .mockResolvedValue({ response: { status: 400, detail: "Invalid ID token" } });
+    it("tries a new agent with what was typed and no id", async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({
+        data: { status: 200, agents: file },
+      });
 
-      await withSignInNonce(signIn);
+      await tryAgentsData({
+        url: "https://agents.test",
+        headers: { "X-Api-Key": "typed" },
+      });
 
-      expect(signIn).toHaveBeenCalledTimes(1);
+      expect(apiClient.post).toHaveBeenCalledWith(
+        "/app/custom-copilot/discover",
+        { url: "https://agents.test", headers: { "X-Api-Key": "typed" } },
+        { signal: undefined },
+      );
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [401, "Unauthorized access to the agent URL."],
+      [404, "A valid /agents.json was not found."],
+      [500, "Internal server error."],
+      [418, "Unknown error occurred while validating URL."],
+    ])("says what the agent's %s means", async (status, message) => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: { status, agents: null } });
+
+      await expect(tryAgentsData({ url: "https://agents.test" })).rejects.toThrow(
+        message,
+      );
+    });
+
+    it("says so when the agent answered something that is not an agents file", async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({
+        data: { status: 200, agents: null },
+      });
+
+      await expect(tryAgentsData({ url: "https://agents.test" })).rejects.toThrow(
+        "Invalid response from the agent server.",
+      );
+    });
+
+    it("shows the reason when the API refused to call the address", async () => {
+      vi.mocked(apiClient.post).mockRejectedValue({
+        response: {
+          data: {
+            detail:
+              "a connection kept by a user who is not a superuser must be a public https address",
+          },
+        },
+      });
+
+      await expect(tryAgentsData({ url: "http://10.0.0.1" })).rejects.toThrow(
+        "must be a public https address",
+      );
+    });
+
+    it("still reads a public agents.json straight from its address when it names no saved agent", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        new Response(JSON.stringify(file), { status: 200 }),
+      );
+
+      const agents = await fetchAgentsData({ url: "https://public.test" });
+
+      expect(agents).toHaveLength(1);
+      expect(apiClient.post).not.toHaveBeenCalled();
+    });
+
+    it("saves with the typed credentials and gives back the agent with their names only", async () => {
+      vi.mocked(apiClient.put).mockResolvedValue({ data: { success: true } });
+
+      const saved = await putCustomCopilot({
+        uuid: "holder-1",
+        url: "https://agents.test",
+        headers: { "X-Api-Key": "typed", Authorization: "Bearer typed" },
+        copilots: [],
+      });
+
+      expect(apiClient.put).toHaveBeenCalledWith(
+        "/app/custom-copilot",
+        expect.objectContaining({
+          headers: { "X-Api-Key": "typed", Authorization: "Bearer typed" },
+        }),
+      );
+      expect(saved.headerNames).toEqual(["X-Api-Key", "Authorization"]);
+      expect(JSON.stringify(saved)).not.toContain("typed");
+      expect(saved).not.toHaveProperty("headers");
+    });
+
+    it("saves without credentials when it has none to change and keeps the names it knew", async () => {
+      vi.mocked(apiClient.put).mockResolvedValue({ data: { success: true } });
+
+      const saved = await putCustomCopilot({
+        uuid: "holder-1",
+        url: "https://agents.test",
+        headerNames: ["X-Api-Key"],
+        copilots: [],
+      });
+
+      expect(vi.mocked(apiClient.put).mock.calls[0][1]).not.toHaveProperty("headers");
+      expect(saved.headerNames).toEqual(["X-Api-Key"]);
     });
   });
 

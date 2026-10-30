@@ -120,8 +120,9 @@ if __name__ == "__main__":
         "worker_class": "uvicorn_worker.UvicornWorker",
         "logger_class": StubbedGunicornLogger,
         "timeout": 120,
-        "max_requests": 2048,
-        "max_requests_jitter": 512,
+        "graceful_timeout": 120,
+        "max_requests": 1_000_000,
+        "max_requests_jitter": 100_000,
         "keepalive": 75,
         "forwarded_allow_ips": TRUSTED_PROXIES,
         "secure_scheme_headers": {

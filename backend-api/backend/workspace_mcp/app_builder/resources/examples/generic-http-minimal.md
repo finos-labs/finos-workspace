@@ -98,7 +98,7 @@ That's it. Add more data routes for each widget you expose.
 
 ## CORS
 
-Allow the origin the FINOS Workspace is served from, and `http://localhost:1420` for local development, on every route:
+Allow the origin the FINOS Workspace is served from, and `http://localhost:1420` for local development, on every route, and answer `OPTIONS` on each:
 
 ```text
 Access-Control-Allow-Origin: <the origin of your FINOS Workspace>

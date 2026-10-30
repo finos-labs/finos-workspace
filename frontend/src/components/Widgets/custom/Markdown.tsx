@@ -22,7 +22,6 @@ import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams"
 import { buildIframeWidget } from "~/components/Widgets/custom/buildIframeWidget";
 import { useJsonData } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
-import { useSourceCredentials } from "~/lib/state/backendConnector";
 import type { ArtifactT, Citation as CitationT } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { protectAiMarkers } from "~/lib/utils/citationMarkers";
@@ -149,11 +148,10 @@ export default function Markdown() {
     [widget.endpoint?.url],
   );
   const validEndpoint = !!widget?.endpoint?.url;
-  const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
 
   const request = useMemo(
-    () => buildWidgetRequest(widget, credentials, { theme }),
-    [widget.endpoint, widget.params, widget.storage?.params, theme, credentials],
+    () => buildWidgetRequest(widget, { theme }),
+    [widget.endpoint, widget.params, widget.storage?.params, theme, widget.sourceId],
   );
 
   const { data, isLoading, error, dataUpdatedAt } = useJsonData(

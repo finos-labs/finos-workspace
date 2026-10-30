@@ -16,7 +16,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
 from sqlalchemy import delete, func, insert, or_, select, update
 
-from api import base, crud
+from api import base, crud, provider_tokens
 from api.database import AsyncReadSessionLocal, AsyncWriteSessionLocal
 from api.models import (
     DashboardSave,
@@ -270,7 +270,13 @@ async def reset_copilot_calls_task():
     )
 
 
+@repeat_every(seconds=timedelta(minutes=1), wait_first=True)
+async def release_provider_tokens_task():
+    await provider_tokens.sweep()
+
+
 async def start_background_tasks():
+    await release_provider_tokens_task()
     await reset_copilot_calls_task()
     await user_usage_task()
     await delete_old_saves_task()

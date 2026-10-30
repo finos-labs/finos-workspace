@@ -102,6 +102,7 @@ const defaultEditGroup = {
   uuid: "test-uuid",
   url: "https://example.com/agents.json",
   headerPairs: [] as { key: string; value: string }[],
+  saved: [] as string[],
 };
 
 describe("AgentEditDialog", () => {
@@ -169,8 +170,46 @@ describe("AgentEditDialog", () => {
     });
 
     expect(mockFetchAgentsData).toHaveBeenCalledWith({
+      uuid: "test-uuid",
       url: "https://example.com/agents.json",
       headers: {},
+    });
+  });
+
+  it("shows a saved credential by name, blank, and tests it with a blank value to keep it", async () => {
+    const user = userEvent.setup();
+    mockFetchAgentsData.mockResolvedValue([{ name: "agent1" }]);
+    const editGroup = {
+      ...defaultEditGroup,
+      headerPairs: [
+        { key: "X-Api-Key", value: "" },
+        { key: "X-New", value: "typed" },
+      ],
+      saved: ["X-Api-Key"],
+    };
+
+    render(
+      <AgentEditDialog
+        editGroup={editGroup}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    expect(screen.getByDisplayValue("X-Api-Key")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Saved. Leave blank to keep it")).toHaveValue(
+      "",
+    );
+    expect(screen.getByPlaceholderText("Bearer token...")).toHaveValue("typed");
+
+    await user.click(screen.getByRole("button", { name: "Test" }));
+
+    await waitFor(() => {
+      expect(mockFetchAgentsData).toHaveBeenCalledWith({
+        uuid: "test-uuid",
+        url: "https://example.com/agents.json",
+        headers: { "X-Api-Key": "", "X-New": "typed" },
+      });
     });
   });
 

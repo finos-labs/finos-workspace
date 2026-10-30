@@ -13,6 +13,7 @@ const { Hono } = await import("hono");
 const { queryRouter } = await import("../../../src/routes/query.ts");
 const { readSse } = await import("../../helpers/sse-reader.ts");
 const { clearAllModuleState } = await import("../../helpers/clear-state.ts");
+const { bodyBudget } = await import("../../../src/lib/body-budget.ts");
 
 function app() {
   const a = new Hono();
@@ -93,5 +94,52 @@ describe("POST /v1/query — validation", () => {
       body: JSON.stringify({ messages: [] }),
     });
     expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /v1/query — memory held by requests", () => {
+  const post = (headers: Record<string, string> = {}) =>
+    app().request("/v1/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Trace-Id": "budget", ...headers },
+      body: JSON.stringify({ messages: [{ role: "human", content: "hello" }] }),
+    });
+
+  it("turns a request away with 503 and Retry-After when the requests already held leave no room", async () => {
+    const held = bodyBudget.reserve(Math.floor(bodyBudget.capacity / 3));
+    try {
+      const res = await post({ "Content-Length": String(Math.floor(bodyBudget.capacity / 3)) });
+      expect(res.status).toBe(503);
+      expect(res.headers.get("Retry-After")).toBe("5");
+      expect(((await res.json()) as { error: string }).error).toContain("busy");
+    } finally {
+      held?.();
+    }
+  });
+
+  it("holds the room for the life of the answer and gives it back when the answer ends", async () => {
+    const res = await post({ "Content-Length": "1000" });
+    expect(res.status).toBe(200);
+    expect(bodyBudget.held).toBe(3000);
+    await readSse(res);
+    expect(bodyBudget.held).toBe(0);
+  });
+
+  it("gives the room back when the request is refused before an answer starts", async () => {
+    const res = await app().request("/v1/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Content-Length": "2" },
+      body: "{}",
+    });
+    expect(res.status).toBe(400);
+    expect(bodyBudget.held).toBe(0);
+  });
+
+  it("counts a request without a declared size as the largest body that may be sent", async () => {
+    const res = await post();
+    expect(res.status).toBe(200);
+    expect(bodyBudget.held).toBeGreaterThanOrEqual(64 * 1024 * 1024 * 3);
+    await readSse(res);
+    expect(bodyBudget.held).toBe(0);
   });
 });

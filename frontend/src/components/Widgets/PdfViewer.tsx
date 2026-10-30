@@ -3,7 +3,6 @@ import DraggableCard, { SetLoadingOnResize } from "~/components/DraggableCard";
 import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useJsonData } from "~/lib/api";
-import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { type FileResponse, handleFileResponse } from "~/lib/utils";
 import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
@@ -37,10 +36,9 @@ export default function PdfViewer() {
     pageScale: { x: 1, y: 1 },
   });
 
-  const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
   const request = useMemo(
-    () => buildWidgetRequest(widget, credentials),
-    [widget.endpoint, widget.params, widget.storage?.params, credentials],
+    () => buildWidgetRequest(widget),
+    [widget.endpoint, widget.params, widget.storage?.params, widget.sourceId],
   );
   const {
     data: widgetData,

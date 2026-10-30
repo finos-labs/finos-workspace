@@ -15,7 +15,6 @@ import { buildIframeWidget } from "~/components/Widgets/custom/buildIframeWidget
 import { MarkdownContent } from "~/components/Widgets/custom/Markdown";
 import { useJsonData } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
-import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { cn, formatDate } from "~/lib/utils";
 import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
 
@@ -38,14 +37,13 @@ export default function News() {
   const { widget } = useWidgetContext();
 
   const validEndpoint = !!widget?.endpoint?.url;
-  const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
 
   const [popupArticle, setPopupArticle] = useState<NewsData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const request = useMemo(
-    () => buildWidgetRequest(widget, credentials),
-    [widget.endpoint, widget.params, widget.storage?.params, credentials],
+    () => buildWidgetRequest(widget),
+    [widget.endpoint, widget.params, widget.storage?.params, widget.sourceId],
   );
 
   const { data, isLoading, error, dataUpdatedAt } = useJsonData(

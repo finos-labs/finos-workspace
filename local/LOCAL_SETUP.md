@@ -71,7 +71,7 @@ The backend reads `backend-api/backend/envs/.env`, the same file the root `docke
 
 | Setting | Value | Why |
 |---|---|---|
-| `MODE` | `production` | The value the root `docker-compose.yml` runs with; `compose.yaml` sets `local` for this stack (Widget plugins) |
+| `MODE` | `production` | What `create_local_env` writes; both compose files set `local`, which wins (Widget plugins, Your own data backend) |
 | `SELFURL` | `http://localhost:8000` | Links the backend builds point at the API |
 | `DB_HOST`, `REDIS_HOST` | `mysql`, `valkey` | The container names |
 | `DB_NAME` | `workspace` | The database the MySQL container creates |
@@ -91,25 +91,18 @@ A new backend setting needs adding in more places than this folder: `envs/.env.e
 
 Widget plugins are packages built outside this repository (`docs/widget-plugins/`). Nothing installs from the app: on your own stack you are the deployer and the administrator. This stack runs with `MODE=local`, so you can also develop a new version of an approved plugin in place, which no deployment allows.
 
-1. Pick a directory on your machine for packages. In `compose.yaml`, give the `backend` service its own `volumes`. They replace the shared ones, so keep the source mount. The plugins directory is writable here, so that the app can start a new version in it:
-
-   ```yaml
-   backend:
-     volumes:
-       - ../backend-api/backend:/opt/code
-       - <plugins directory>:/opt/widget-plugins
-   ```
-
-   In `envs/.env`, set `WIDGET_PLUGINS_DIR=/opt/widget-plugins`. Then `make up`: a new mount needs the container recreated, which `make restart` does not do.
-2. Build the plugin into `<plugins directory>/<plugin-id>/<version>/`, with its `plugin.json`.
+1. Nothing to configure: `compose.yaml` mounts `widget-plugins/` at the repository root (git ignores it) into the backend as `/opt/widget-plugins` and sets `WIDGET_PLUGINS_DIR`. The mount is writable, so that the app can start a new version in it. To keep your packages elsewhere, set `WORKSPACE_PLUGINS_DIR=<folder>` in your shell or in a `.env` next to `compose.yaml`, and `make up`.
+2. Build the plugin into `widget-plugins/<plugin-id>/<version>/`, with its `plugin.json`.
 3. Check it with the server's own validator, from `backend-api/backend`: `python -m scripts.plugin_check <plugins directory>/<plugin-id>/<version>`. `--digest` prints the checksum for the manifest and the version digest.
 4. Sign in as the administrator, open Admin, Widgets, Deployment: Rescan, review what the version asks for, approve it, and enable it for your organization. Under Plugin widgets, enable it, and under Roles and Access grant it to a role you hold: a role is the only way to a plugin. `python -m scripts.workspace_admin plugin ...`, run in the backend container, does the same from a terminal.
 5. To change the plugin, open its Deployment page and choose Patch, Minor or Major. The app copies the active version to `<plugins directory>/<plugin-id>/<next version>/` and serves that copy from its files as they are: edit them or build into the directory, and a dashboard picks the change up when its window gets focus. When it is done, write its `checksum` (`plugin_check --digest`, or your build) and approve it, or commit the directory and open a pull request. An approved version is never edited: changing its files blocks it.
-6. A plugin that calls a keyed service through a proxy needs its secret: set it on the plugin's page under Deployment (the value is never shown again), or put it in a file `<secrets directory>/<plugin-id>/<secret-name>`, add `- <secrets directory>:/run/secrets/widget-plugins:ro` to the `backend` volumes of step 1, and set `WIDGET_PLUGIN_SECRETS_DIR=/run/secrets/widget-plugins`. The API refuses to call an address that is not public, which includes your own machine: to let a plugin reach a service there, override its server network on the same page and confirm private hosts. A service whose certificate your own authority signs needs that authority's file mounted and named by `WIDGET_PLUGIN_PROXY_CA_FILE`.
+6. A plugin that calls a keyed service through a proxy needs its secret: set it on the plugin's page under Deployment (the value is never shown again), or put it in a file `<secrets directory>/<plugin-id>/<secret-name>`, add `- <secrets directory>:/run/secrets/widget-plugins:ro` to the `volumes` of `x-backend` in `compose.yaml`, and set `WIDGET_PLUGIN_SECRETS_DIR=/run/secrets/widget-plugins`. The API refuses to call an address that is not public, which includes your own machine: to let a plugin reach a service there, override its server network on the same page and confirm private hosts. A service whose certificate your own authority signs needs that authority's file mounted and named by `WIDGET_PLUGIN_PROXY_CA_FILE`.
 
-### A deployed data backend
+### Your own data backend
 
-A widget can read a data backend that a deployment uses: add it under Connections with your own key, read-only where the backend has such keys, and have the backend allow `http://localhost:1420` as an origin. The browser calls it directly, and this stack has its own database, so nothing is written to the deployment's FINOS Workspace. A deployment's agent and plugin backends accept only that deployment's sessions and call tokens; run them on your machine instead (the root `docker-compose.yml` runs the agent, `docs/examples/sql-explorer/examples/compose.yaml` a plugin backend).
+Add it under Connections with the address you use in your browser, for example `http://localhost:9000`. This stack runs with `MODE=local`, so the API accepts a private or plain `http` address for any user's connection, and for `localhost`, `127.0.0.1` and `[::1]` it calls your machine through `host.docker.internal`, which `compose.yaml` maps for the backend. You need no CORS settings, and the keys you type stay in this stack's database, encrypted, and are added by the API. On Linux the backend must listen on `0.0.0.0`, not only on `127.0.0.1`.
+
+A deployment's data backend works the same way as long as it has a public `https` address: add it with your own key, read-only where the backend has such keys. The key is stored in this stack's database, so nothing is written to the deployment's FINOS Workspace. A deployment's agent and plugin backends accept only that deployment's sessions and call tokens; run them on your machine instead (the root `docker-compose.yml` runs the agent, `docs/examples/sql-explorer/examples/compose.yaml` a plugin backend). The reverse does not work: a deployed Workspace cannot call a backend on your machine, so develop against a local backend on this stack.
 
 ## What does not work locally
 

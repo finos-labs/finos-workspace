@@ -4,7 +4,6 @@ import { getAgentToken } from "~/lib/state/agentToken";
 import { useAuthStore } from "~/lib/state/auth";
 import { useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useCopilotStore } from "~/lib/state/copilot";
-import { setIdpTokens } from "~/lib/state/idpTokens";
 import { useSharedAppStore } from "~/lib/state/sharedApp";
 import { useThemeStore } from "~/lib/state/theme";
 import { useUserAppsStore } from "~/lib/state/userApps";
@@ -14,8 +13,6 @@ import { partial } from "../mocks";
 
 const SECRETS = {
   agentToken: "SECRET-AGENT-TOKEN",
-  microsoftIdToken: "SECRET-MS-ID-TOKEN",
-  oktaIdToken: "SECRET-OKTA-ID-TOKEN",
   dataBackendKey: "SECRET-DATA-BACKEND-KEY",
   widgetCopyKey: "SECRET-WIDGET-COPY-KEY",
   agentKey: "SECRET-CUSTOM-AGENT-KEY",
@@ -72,10 +69,6 @@ describe("browser storage after a session full of credentials", () => {
         user: { first_name: "Ada", last_name: "L", display_settings: {} },
       }),
     );
-    setIdpTokens({
-      microsoftIdToken: SECRETS.microsoftIdToken,
-      oktaIdToken: SECRETS.oktaIdToken,
-    });
     await getAgentToken();
 
     useBackendConnectorStore.setState({

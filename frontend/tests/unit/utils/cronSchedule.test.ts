@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  CRON_JITTER_MS,
   describeCronExpression,
   getMillisecondsUntilNextCron,
   getNextCronDate,
@@ -103,5 +104,24 @@ describe("cronSchedule", () => {
 
     const cronInterval = resolveCronRefetchInterval("*/5 * * * *", false);
     expect(typeof cronInterval).toBe("function");
+  });
+
+  it("spreads cron refreshes over fifteen seconds, so that every user's do not land together", () => {
+    const query = {
+      state: { dataUpdatedAt: new Date("2026-10-29T10:00:00Z").getTime() },
+    };
+    const cronInterval = resolveCronRefetchInterval("*/5 * * * *", false) as (
+      q: typeof query,
+    ) => number;
+    const exact = getMillisecondsUntilNextCron(
+      "*/5 * * * *",
+      query.state.dataUpdatedAt,
+    ) as number;
+    const random = vi.spyOn(Math, "random");
+    random.mockReturnValue(0);
+    expect(cronInterval(query)).toBe(exact);
+    random.mockReturnValue(0.999999);
+    expect(cronInterval(query)).toBe(exact + CRON_JITTER_MS - 1);
+    random.mockRestore();
   });
 });

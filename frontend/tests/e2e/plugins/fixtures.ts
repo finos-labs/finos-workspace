@@ -1,12 +1,8 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
-import {
-  createServer as createHttpsServer,
-  type Server as HttpsServer,
-} from "node:https";
+import { createServer as createHttpsServer } from "node:https";
 import { dirname, join } from "node:path";
-import { localhostTls } from "../tls";
 
 const sha256 = (data: string | Buffer) =>
   createHash("sha256").update(data).digest("hex");
@@ -340,16 +336,14 @@ const ROWS: Record<string, unknown[]> = {
   ],
 };
 
-export function startBackend(port: number, origin: string): Promise<HttpsServer> {
-  const server = createHttpsServer(localhostTls(), (request, response) => {
-    const url = new URL(request.url ?? "/", `https://localhost:${port}`);
-    response.setHeader("Access-Control-Allow-Origin", origin);
-    response.setHeader("Access-Control-Allow-Headers", "*");
-    response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    if (request.method === "OPTIONS") {
-      response.writeHead(204).end();
-      return;
-    }
+export function startBackend(
+  port: number,
+  listen: string,
+): Promise<{ server: Server; received: { path: string; query: string }[] }> {
+  const received: { path: string; query: string }[] = [];
+  const server = createServer((request, response) => {
+    const url = new URL(request.url ?? "/", `http://localhost:${port}`);
+    received.push({ path: url.pathname, query: url.search.slice(1) });
     const send = (status: number, body: unknown) => {
       response
         .writeHead(status, { "Content-Type": "application/json" })
@@ -375,7 +369,7 @@ export function startBackend(port: number, origin: string): Promise<HttpsServer>
     else send(404, { detail: "not found" });
   });
   return new Promise((resolve) =>
-    server.listen(port, "127.0.0.1", () => resolve(server)),
+    server.listen(port, listen, () => resolve({ server, received })),
   );
 }
 

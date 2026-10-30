@@ -1,6 +1,5 @@
 import cloneDeep from "lodash/cloneDeep";
 import isEqual from "lodash.isequal";
-import { useMemo } from "react";
 import { toast } from "sonner";
 import { persist, subscribeWithSelector } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
@@ -17,17 +16,14 @@ import type { GroupTypes, WidgetT } from "~/components/types";
 import type { WidgetId } from "~/components/Widgets";
 import type { ProcessedBackendT } from "~/hooks/useProcessBackendWidgets";
 import type { ProcessedTemplate, SharedPromptT } from "~/hooks/useSharedTemplates";
+import { getConfig } from "~/lib/runtimeConfig";
 import type { Selector } from "~/lib/state/app";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
 import {
   usePermissionsStore,
   useShallowPermissionsStore,
 } from "~/lib/state/permissions";
-import {
-  type EndpointHeaderRows,
-  splitEndpointHeaders,
-} from "~/lib/utils/endpointCredentials";
-import { isOnSourceOrigin } from "~/lib/utils/fetch";
+import { setSourceUrlLookup } from "~/lib/utils/fetch";
 import { createIndexedDBStorage } from "~/lib/utils/indexDB";
 import type { InvalidItem } from "~/lib/utils/invalidItems";
 import { type ShowNotificationProps, showNotification } from "~/lib/utils/toast";
@@ -37,7 +33,6 @@ import {
   type WorkerResult,
   widgetsSchemaReady,
 } from "~/lib/utils/validateBackend";
-import { addExtraHeaders } from "~/lib/utils/widgetParams";
 import type { ComposedWidgetsSchema } from "~/lib/utils/widgetsSchemaValidation";
 import { getPluginVizTypes } from "~/plugins/registry";
 import { mcpServerUsesTokenAuth } from "~/types/appMcpServer";
@@ -55,6 +50,21 @@ import { createParamDefs, dispatchSaveState, getJsonWidget } from "../utils";
 
 let validateApiSourceWorker: Worker | null = null;
 
+const SOURCE_FRESH_MS = 30 * 60 * 1000;
+
+function validationKey(source: Source, schemaId: string, pluginVizTypes: string[]) {
+  return JSON.stringify([
+    source.url,
+    source.updatedDate,
+    (source.endpointHeaders ?? []).map(({ key, location }) => [
+      key,
+      location ?? "headers",
+    ]),
+    schemaId,
+    [...pluginVizTypes].sort(),
+  ]);
+}
+
 export function autoRegisterMcpForSource(source: Source) {
   const sourceId = source.id;
   if (!sourceId) return;
@@ -62,11 +72,9 @@ export function autoRegisterMcpForSource(source: Source) {
   if (mcpEntries.length === 0) return;
 
   const store = useMcpToolsStore.getState();
-  const headers = source.endpointHeaders ?? [];
-  const customHeaders = headers.reduce<Record<string, string>>((acc, h) => {
-    if (h.location === "headers" && h.key && h.value) acc[h.key] = h.value;
-    return acc;
-  }, {});
+  const hasAuthorization = (source.endpointHeaders ?? []).some(
+    (h) => h.location !== "query" && h.key.toLowerCase() === "authorization",
+  );
 
   for (const entry of mcpEntries) {
     const alreadyRegistered = useMcpToolsStore
@@ -79,10 +87,9 @@ export function autoRegisterMcpForSource(source: Source) {
       name: entry.name,
       declaredName: entry.name,
       url: entry.url,
-      enabled: !mcpServerUsesTokenAuth(entry) || !!customHeaders.Authorization,
+      enabled: !mcpServerUsesTokenAuth(entry) || hasAuthorization,
       autoReconnect: true,
       tools: [],
-      customHeaders: Object.keys(customHeaders).length > 0 ? customHeaders : undefined,
       sourceId,
       authType: entry.authType,
     });
@@ -165,6 +172,25 @@ export type BackendAgent = {
   name: string;
 };
 
+export function withoutHeaderValues<
+  T extends { endpointHeaders?: Source["endpointHeaders"] },
+>(source: T): T {
+  if (!source.endpointHeaders) return source;
+  return {
+    ...source,
+    endpointHeaders: source.endpointHeaders.map(({ key, location }) => ({
+      key,
+      value: "",
+      ...(location ? { location } : {}),
+    })),
+  };
+}
+
+const hasAuthorizationHeader = (headers: Source["endpointHeaders"] | undefined) =>
+  !!headers?.some(
+    (h) => h.location !== "query" && h.key.toLowerCase() === "authorization",
+  );
+
 export type Source = {
   endpointHeaders:
     | { key: string; value: string; location?: "headers" | "query" }[]
@@ -174,6 +200,8 @@ export type Source = {
   name: string;
   url: string;
   status?: "success" | "error" | "pending" | "rehydrated";
+  validatedAt?: number;
+  validatedWith?: string;
   widgets?: WidgetsType;
   templates?: BackendTemplate[];
   agents?: BackendAgent[];
@@ -285,6 +313,7 @@ export interface BackendConnectorStore {
     notify?: ShowNotificationProps,
   ) => Promise<boolean>;
   updateApiSources: (values: Source[], showToastOnError?: boolean) => Promise<boolean>;
+  forgetValidation: () => void;
   updateApiSource: <PT extends boolean = false>(
     source: PT extends false
       ? Source
@@ -359,6 +388,13 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
         isLoadingBackends: false,
         sourcesLoaded: false,
         storedFiles: [],
+        forgetValidation: () =>
+          set({
+            apiSources: get().apiSources.map((source) => ({
+              ...source,
+              validatedAt: 0,
+            })),
+          }),
         getApiSourceById: (id) => get().apiSources.find((source) => source.id === id),
         deleteApiSource: async (source, notify) => {
           const sourceId = source.sourceId || source.id;
@@ -505,14 +541,12 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             agents,
           };
         },
-        addApiSource: (source: Source) => {
+        addApiSource: (incoming: Source) => {
+          const source = withoutHeaderValues(incoming);
           const apiSources = cloneDeep(get().apiSources);
           const existingSource = apiSources.find((s) => s.id === source.id);
           const isNewSource = !existingSource;
-          source.hasApiKey = source.endpointHeaders?.some(
-            (h) =>
-              h.key.toLowerCase() === "authorization" && h.value.startsWith("Bearer "),
-          );
+          source.hasApiKey = hasAuthorizationHeader(source.endpointHeaders);
 
           if (existingSource) Object.assign(existingSource, source);
           else apiSources.push(source);
@@ -534,7 +568,8 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             {} as Record<string, Source>,
           );
 
-          const apiSources = values.map((source) => {
+          const apiSources = values.map((value) => {
+            const source = withoutHeaderValues(value);
             const { endpointHeaders = [] } = source;
             const curr = currentApiSources[source.id];
             return {
@@ -544,11 +579,9 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
               templates: curr?.templates || [],
               agents: curr?.agents || [],
               status: curr?.status || "pending",
-              hasApiKey: endpointHeaders?.some(
-                (h) =>
-                  h.key.toLowerCase() === "authorization" &&
-                  h.value.startsWith("Bearer "),
-              ),
+              validatedAt: curr?.validatedAt,
+              validatedWith: curr?.validatedWith,
+              hasApiKey: hasAuthorizationHeader(endpointHeaders),
             } as Source;
           });
 
@@ -575,6 +608,32 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             return false;
           }
           const pluginVizTypes = [...getPluginVizTypes()];
+          const now = Date.now();
+          const keyOf = (source: Source) =>
+            validationKey(source, widgetsSchema.$id, pluginVizTypes);
+          const isFresh = (source: Source) =>
+            (source.status === "success" || source.status === "rehydrated") &&
+            source.validatedWith === keyOf(source) &&
+            now - (source.validatedAt ?? 0) < SOURCE_FRESH_MS;
+          const stamp = (source: Source): Source =>
+            source.status === "success"
+              ? { ...source, validatedAt: Date.now(), validatedWith: keyOf(source) }
+              : source;
+          const freshById = new Map(
+            apiSources
+              .filter(isFresh)
+              .map((source) => [source.id, { ...source, status: "success" as const }]),
+          );
+          const stale = apiSources.filter((source) => !freshById.has(source.id));
+          if (stale.length === 0) {
+            set({
+              isLoadingBackends: false,
+              apiSources: apiSources.map(
+                (source) => freshById.get(source.id) ?? source,
+              ),
+            });
+            return true;
+          }
           const needsSaveState = false;
           const saveState = () => needsSaveState && dispatchSaveState();
 
@@ -584,14 +643,13 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
 
             const { toastErrors, unrecognizedKeysMessages, invalidItems } = data;
 
-            if (data.__partial) {
-              const updatedMap = new Map(finalSources.map((s) => [s.id, s]));
-              const mergedSources = get().apiSources.map((s) => {
-                const updated = updatedMap.get(s.id);
-                return updated ? { ...s, ...updated } : s;
-              });
-              finalSources = mergedSources;
-            }
+            const checked = new Map(finalSources.map((s) => [s.id, stamp(s)]));
+            finalSources = data.__partial
+              ? get().apiSources.map((s) => {
+                  const updated = checked.get(s.id);
+                  return updated ? { ...s, ...updated } : s;
+                })
+              : apiSources.map((s) => checked.get(s.id) ?? freshById.get(s.id) ?? s);
 
             if (showToastOnWarning) {
               for (const { source, message } of toastErrors) {
@@ -613,7 +671,12 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             if (!data.__partial) {
               forgetInvalidItems(
                 finalSources
-                  .filter((s) => s.status === "success" && !withInvalidItems.has(s.id))
+                  .filter(
+                    (s) =>
+                      checked.has(s.id) &&
+                      s.status === "success" &&
+                      !withInvalidItems.has(s.id),
+                  )
                   .map((s) => s.id),
               );
             }
@@ -631,7 +694,7 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
 
           const fallbackToMainThread = async () => {
             const results = await Promise.all(
-              apiSources.map(async (source) => {
+              stale.map(async (source) => {
                 const result = await getApiSourceWidgets(source, {
                   widgetsSchema,
                   pluginVizTypes,
@@ -657,10 +720,9 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             await fallbackToMainThread();
           };
 
-          const extraHeaders = addExtraHeaders();
           validateApiSourceWorker.postMessage({
-            apiSources,
-            extraHeaders,
+            config: getConfig(),
+            apiSources: stale,
             pluginVizTypes,
             widgetsSchema,
           });
@@ -718,42 +780,11 @@ function getRoleSharedBackend(
   );
 }
 
-export function getSourceCredentials(
-  sourceId: string | null | undefined,
-  url: string | null | undefined,
-) {
-  if (!sourceId) return splitEndpointHeaders(null);
-  const own = useBackendConnectorStore.getState().getApiSourceById(sourceId);
-  const shared = getRoleSharedBackend(
-    usePermissionsStore.getState().permissions,
-    sourceId,
-  );
-  const rowsOf = (source?: { url: string; endpointHeaders: EndpointHeaderRows }) =>
-    source && isOnSourceOrigin(url, source.url) ? source.endpointHeaders : null;
-  return splitEndpointHeaders(rowsOf(own) ?? rowsOf(shared));
-}
-
-export function useSourceCredentials(
-  sourceId: string | null | undefined,
-  url: string | null | undefined,
-) {
-  const own = useShallowBackendConnectorStore((state) => {
-    const source = sourceId ? state.getApiSourceById(sourceId) : undefined;
-    return source && isOnSourceOrigin(url, source.url)
-      ? (source.endpointHeaders ?? null)
-      : null;
-  });
-  const shared = useShallowPermissionsStore((state) => {
-    const source = sourceId
-      ? getRoleSharedBackend(state.permissions, sourceId)
-      : undefined;
-    return source && isOnSourceOrigin(url, source.url)
-      ? (source.endpointHeaders ?? null)
-      : null;
-  });
-  const rows = own ?? shared;
-  return useMemo(() => splitEndpointHeaders(rows), [rows]);
-}
+setSourceUrlLookup(
+  (sourceId) =>
+    useBackendConnectorStore.getState().getApiSourceById(sourceId)?.url ??
+    getRoleSharedBackend(usePermissionsStore.getState().permissions, sourceId)?.url,
+);
 
 export type WidgetSourceState = "none" | "available" | "pending" | "unavailable";
 

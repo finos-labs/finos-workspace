@@ -22,6 +22,7 @@ export function AgentEditDialog({
     uuid: string;
     url: string;
     headerPairs: { key: string; value: string }[];
+    saved: string[];
   };
   onClose: () => void;
   onSave: (editGroup: NonNullable<AgentManagementState["editGroup"]>) => Promise<void>;
@@ -41,11 +42,12 @@ export function AgentEditDialog({
     try {
       const headers: Record<string, string> = {};
       for (const pair of localEditGroup.headerPairs) {
-        if (pair.key && pair.value) {
+        if (pair.key) {
           headers[pair.key] = pair.value;
         }
       }
       const agents = await fetchAgentsData({
+        uuid: localEditGroup.uuid,
         url: localEditGroup.url,
         headers,
       });
@@ -125,7 +127,11 @@ export function AgentEditDialog({
                   </label>
                   <Input
                     size="sm"
-                    placeholder="Bearer token..."
+                    placeholder={
+                      localEditGroup.saved.includes(pair.key)
+                        ? "Saved. Leave blank to keep it"
+                        : "Bearer token..."
+                    }
                     defaultValue={pair.value}
                     onChange={(newValue: string) => {
                       setLocalEditGroup((prev) => {
