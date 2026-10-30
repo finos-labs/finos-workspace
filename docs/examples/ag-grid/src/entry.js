@@ -1,10 +1,13 @@
 import * as agGridCommunity from "ag-grid-community";
+import { fieldsOf, inferColumnType, inferType } from "./infer.js";
+import { createChartView } from "./ag-table-chart/chartView.js";
+import { changeTrackedColumns, agTableChartColumnDefs, transpose } from "./ag-table-chart/columns.js";
 
 let agGridEnterprise = null;
-let AgChart = null;
 
 const THEME_LIGHT = "ag-theme-quartz";
 const THEME_DARK = "ag-theme-quartz-dark";
+const CHANGE_FLASH_MS = 1500;
 
 function themeClass(mode) {
   return mode === "light" ? THEME_LIGHT : THEME_DARK;
@@ -16,70 +19,60 @@ function chartThemesFor(mode) {
   return mode === "light" ? CHART_THEMES : CHART_THEMES.map((name) => `${name}-dark`);
 }
 
-function rowIdOf(row, index) {
-  if (row && typeof row === "object" && row.id !== undefined) return String(row.id);
+function rowIdOf(row, index, idField = "id") {
+  if (row && typeof row === "object" && row[idField] !== undefined && row[idField] !== null) return String(row[idField]);
   return String(index);
 }
 
-function diffRows(oldRows, newRows) {
+function diffRows(oldRows, newRows, idField = "id") {
   const add = [];
   const update = [];
   const remove = [];
   const oldById = new Map();
-  oldRows.forEach((r, i) => oldById.set(rowIdOf(r, i), { row: r, index: i }));
+  oldRows.forEach((r, i) => oldById.set(rowIdOf(r, i, idField), { row: r, index: i }));
   const seenNew = new Set();
   newRows.forEach((r, i) => {
-    const id = rowIdOf(r, i);
+    const id = rowIdOf(r, i, idField);
     seenNew.add(id);
     const old = oldById.get(id);
     if (old === undefined) add.push(r);
     else if (JSON.stringify(old.row) !== JSON.stringify(r)) update.push(r);
   });
   oldRows.forEach((r, i) => {
-    const id = rowIdOf(r, i);
+    const id = rowIdOf(r, i, idField);
     if (!seenNew.has(id)) remove.push(r);
   });
   return { add, update, remove };
 }
 
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/;
-
-function inferType(value) {
-  if (value === null || value === undefined) return "empty";
-  if (typeof value === "boolean") return "boolean";
-  if (typeof value === "number") return Number.isFinite(value) ? "numeric" : "empty";
-  if (typeof value === "string") {
-    if (value === "") return "empty";
-    if (ISO_DATE_RE.test(value)) return "date";
-    return "string";
-  }
-  return "object";
-}
-
-function inferColumnType(values) {
-  const counts = {};
-  for (const v of values) {
-    const t = inferType(v);
-    counts[t] = (counts[t] || 0) + 1;
-  }
-  const order = ["boolean", "numeric", "date", "string", "object"];
-  let best = "string";
-  let bestCount = 0;
-  for (const t of order) {
-    const c = counts[t] || 0;
-    if (c > bestCount) { best = t; bestCount = c; }
-  }
-  return best;
+/** The direction each tracked cell moved between two versions of the rows, by `<row id>|<field>`. */
+function cellChanges(oldRows, newRows, tracked, idField = "id") {
+  const changes = new Map();
+  if (!tracked.length) return changes;
+  const oldById = new Map(oldRows.map((r, i) => [rowIdOf(r, i, idField), r]));
+  newRows.forEach((row, i) => {
+    const id = rowIdOf(row, i, idField);
+    const old = oldById.get(id);
+    if (!old || !row) return;
+    for (const { field, compareField } of tracked) {
+      const before = old[compareField];
+      const after = row[compareField];
+      if (typeof before === "number" && typeof after === "number" && before !== after) {
+        changes.set(`${id}|${field}`, after > before ? "up" : "down");
+      }
+    }
+  });
+  return changes;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Enterprise modules (charts, sparklines)                           */
+/*  Enterprise modules (integrated charts, sparklines, tool panels)    */
 /* ------------------------------------------------------------------ */
 
 async function loadEnterprise(licenseKey) {
   if (agGridEnterprise) return agGridEnterprise;
   try {
-    agGridEnterprise = await import("ag-grid-enterprise");
+    agGridEnterprise = await import("ag-grid-charts-enterprise");
   } catch {
     return null;
   }
@@ -90,101 +83,6 @@ async function loadEnterprise(licenseKey) {
     console.warn("ag-grid enterprise license:", e.message);
   }
   return agGridEnterprise;
-}
-
-async function loadAgChart() {
-  if (AgChart) return AgChart;
-  try {
-    const mod = await import("ag-charts-community");
-    // ag-charts-community exports AgCharts (named) + setupCommunityModules
-    const AgCharts = mod.AgCharts || mod.default?.AgCharts;
-    if (AgCharts && mod.setupCommunityModules) {
-      mod.setupCommunityModules();
-    }
-    AgChart = AgCharts;
-  } catch {
-    AgChart = null;
-  }
-  return AgChart;
-}
-
-function normalizeData(data, definition) {
-  const def = definition && typeof definition === "object" ? definition : {};
-  const config = {
-    groupBy: Array.isArray(def.groupBy) ? def.groupBy : [],
-    rowSpan: Array.isArray(def.rowSpan) ? def.rowSpan : [],
-    pivot: Array.isArray(def.pivot) ? def.pivot : [],
-    format: def.format || "auto",
-  };
-
-  /* Ag-grid-ready object: { columnDefs, rowData, gridOptions? } */
-  if (
-    data && typeof data === "object" && !Array.isArray(data) &&
-    (Array.isArray(data.columnDefs) || Array.isArray(data.rowData))
-  ) {
-    const cd = Array.isArray(data.columnDefs) ? data.columnDefs : [];
-    const rd = Array.isArray(data.rowData) ? data.rowData : [];
-    return { rowData: rd, columnDefs: compactColumnDefs(cd, rd), config, gridOptions: data.gridOptions || {} };
-  }
-
-  let payload = data;
-  let columns = [];
-
-  /* List of records: pandas to_dict('records') -> [{a:1}, {a:2}] */
-  if (Array.isArray(payload)) {
-    columns = payload.length > 0 ? Object.keys(payload[0]) : [];
-    return { rowData: payload, columnDefs: buildColumnDefs(payload, columns, config), config, gridOptions: {} };
-  }
-
-  /* Object forms */
-  if (payload && typeof payload === "object") {
-    /* Pandas split: { columns, index, data } */
-    if (Array.isArray(payload.columns) && Array.isArray(payload.data)) {
-      columns = payload.columns;
-      const rowData = payload.data.map((row) => {
-        const obj = {};
-        columns.forEach((c, j) => { obj[c] = row[j]; });
-        return obj;
-      });
-      return { rowData, columnDefs: buildColumnDefs(rowData, columns, config), config, gridOptions: {} };
-    }
-
-    /* Dict of columns: pandas to_dict('list') -> {a: [1,2], b: [3,4]} */
-    /* Also: { data: {...}, columns: [...] } */
-    const colData = payload.data && typeof payload.data === "object" && !Array.isArray(payload.data)
-      ? payload.data
-      : payload;
-
-    columns = Object.keys(colData);
-    if (columns.length > 0) {
-      const firstCol = columns[0];
-      const len = colData[firstCol] && Array.isArray(colData[firstCol]) ? colData[firstCol].length : 0;
-      const rowData = Array.from({ length: len }, (_, i) => {
-        const obj = {};
-        columns.forEach((c) => { obj[c] = colData[c] && colData[c][i]; });
-        return obj;
-      });
-      return { rowData, columnDefs: buildColumnDefs(rowData, columns, config), config, gridOptions: {} };
-    }
-  }
-
-  return { rowData: [], columnDefs: [], config, gridOptions: {} };
-}
-
-function buildColumnDefs(rowData, columns, config) {
-  return columns.map((field) => {
-    const values = rowData.map((r) => r[field]);
-    const type = inferColumnType(values);
-    const def = { field, headerName: field.charAt(0).toUpperCase() + field.slice(1), resizable: true, sortable: true, filter: true };
-    if (type === "numeric") { def.filter = "agNumberColumnFilter"; def.type = ["numericColumn"]; def.valueFormatter = formatNumber; }
-    else if (type === "date") { def.filter = "agDateColumnFilter"; }
-    else if (type === "boolean") { def.filter = "agTextColumnFilter"; def.cellRenderer = (params) => (params.value ? "Yes" : "No"); }
-    if (config.groupBy.includes(field)) { def.rowGroup = true; def.hide = true; }
-    if (config.rowSpan.includes(field)) {
-      def.cellClassRules = { "row-span": (params) => params.data && params.data[field] !== undefined };
-    }
-    return def;
-  });
 }
 
 const numberFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 6 });
@@ -204,6 +102,54 @@ function compactColumnDefs(defs, rows) {
   });
 }
 
+function rowsOf(data) {
+  /* List of records: pandas to_dict('records') -> [{a:1}, {a:2}] */
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== "object") return [];
+
+  /* Pandas split: { columns, index, data } */
+  if (Array.isArray(data.columns) && Array.isArray(data.data)) {
+    return data.data.map((row) => Object.fromEntries(data.columns.map((c, j) => [c, row[j]])));
+  }
+
+  /* Dict of columns: pandas to_dict('list') -> {a: [1,2], b: [3,4]}, or the same under `data` */
+  const columns = data.data && typeof data.data === "object" && !Array.isArray(data.data) ? data.data : data;
+  const names = Object.keys(columns);
+  const length = names.length && Array.isArray(columns[names[0]]) ? columns[names[0]].length : 0;
+  return Array.from({ length }, (_, i) => Object.fromEntries(names.map((c) => [c, columns[c] && columns[c][i]])));
+}
+
+/**
+ * The grid for the endpoint's JSON and the widget's `data["ag-grid"]` object, an OpenBB table
+ * configuration (columnsDefs, formatterFn, transpose, showAll, chartView, ...).
+ * `columnsKey` changes when the columns must be set again.
+ */
+function normalizeData(data, definition) {
+  const table = definition && typeof definition === "object" ? definition : {};
+
+  /* Ag-grid-ready object: { columnDefs, rowData, gridOptions? } */
+  if (data && typeof data === "object" && !Array.isArray(data) && Array.isArray(data.columnDefs)) {
+    const rowData = Array.isArray(data.rowData) ? data.rowData : [];
+    return {
+      rowData,
+      columnDefs: compactColumnDefs(data.columnDefs, rowData),
+      gridOptions: data.gridOptions || {},
+      table,
+      transposed: false,
+      columnsKey: JSON.stringify(data.columnDefs),
+    };
+  }
+
+  const rows = data && typeof data === "object" && !Array.isArray(data) && Array.isArray(data.rowData) ? data.rowData : rowsOf(data);
+  const gridOptions = data && typeof data === "object" && !Array.isArray(data) && data.gridOptions ? data.gridOptions : {};
+  const columnDefs = agTableChartColumnDefs(rows, table);
+  const columnsKey = JSON.stringify({ table, fields: fieldsOf(rows) });
+  if (table.transpose === true) {
+    return { ...transpose(rows, columnDefs), gridOptions, table, transposed: true, columnsKey: `${columnsKey}|${rows.length}` };
+  }
+  return { rowData: rows, columnDefs, gridOptions, table, transposed: false, columnsKey };
+}
+
 function numericStats(rows, columns) {
   const stats = {};
   for (const col of columns) {
@@ -215,15 +161,10 @@ function numericStats(rows, columns) {
   return stats;
 }
 
-export { chartThemesFor, themeClass, rowIdOf, diffRows, inferType, inferColumnType, normalizeData, numericStats, compactColumnDefs };
+export { chartThemesFor, themeClass, rowIdOf, diffRows, cellChanges, inferType, inferColumnType, normalizeData, numericStats, compactColumnDefs };
 
 let api = null;
 let licensePromise = null;
-let currentRowData = [];
-let currentColumnDefs = [];
-let currentGridOptions = {};
-let container = null;
-let resizeObserver = null;
 
 /* --- Module-level state shared by initialize + render --- */
 const gridState = {
@@ -234,7 +175,8 @@ const gridState = {
   filterModel: null,
   sortModel: null,
   columnState: null,
-  charts: [],
+  chartView: null,
+  agentPrompt: null,
 };
 
 const persistState = (model) => {
@@ -247,211 +189,147 @@ const recordEvent = (model, kind, detail) => {
   persistState(model);
 };
 
+function displayedRows(limit = 5000) {
+  const rows = [];
+  api?.forEachNodeAfterFilterAndSort((node) => {
+    if (node.data && rows.length < limit) rows.push(node.data);
+  });
+  return rows;
+}
+
+function element(doc, className, style = {}) {
+  const node = doc.createElement("div");
+  node.className = className;
+  Object.assign(node.style, style);
+  return node;
+}
+
 export default {
-  initialize({ model, signal, experimental }) {
+  initialize({ model }) {
     const adminSettings = model.get("adminSettings") || {};
     const config = model.get("config") || {};
     const licenseKey = config.licenseKey || adminSettings.licenseKey || "";
     licensePromise = loadEnterprise(licenseKey);
 
+    const saved = model.get("state");
+    if (saved && typeof saved === "object" && saved.chartView) gridState.chartView = saved.chartView;
+
     const exportOptions = () => [{ id: "csv", label: "Rows (CSV)", extension: "csv", mime: "text/csv" }];
 
     const exportData = (id) => {
       if (id !== "csv" || !api) return null;
-      try { return api.exportDataAsCsv({ fileName: "ag-grid-export.csv" }); }
-      catch (e) { console.warn("ag-grid exportData:", e); return null; }
+      try {
+        return api.getDataAsCsv({
+          processCellCallback: (p) => (p.value instanceof Date ? p.node?.data?.[p.column.getColDef().field] : Array.isArray(p.value) ? p.value.join(" ") : p.value),
+        });
+      } catch (e) { console.warn("ag-grid exportData:", e); return null; }
     };
 
     const copilotContext = () => {
       if (!api) return null;
-      let rd = [];
-      if (typeof api.getRowData === "function") {
-        try { rd = api.getRowData() || []; } catch { rd = []; }
-      } else if (typeof api.getRows === "function") {
-        try { rd = api.getRows() || []; } catch { rd = []; }
-      }
-      const cols = typeof api.getColumnDefs === "function" ? api.getColumnDefs() : [];
+      const rows = displayedRows();
+      const columns = (api.getColumns?.() ?? []).map((c) => ({ field: c.getColDef().field, headerName: c.getColDef().headerName })).filter((c) => c.field);
       return {
-        rowCount: rd.length, columnCount: cols.length,
-        columns: cols.map((c) => c.field).filter(Boolean),
+        rowCount: rows.length,
+        columnCount: columns.length,
+        columns,
         selectionCount: gridState.selection.length,
-        filterModel: gridState.filterModel, sortModel: gridState.sortModel,
-        stats: numericStats(rd, cols.map((c) => c.field).filter(Boolean)),
+        filterModel: gridState.filterModel,
+        sortModel: gridState.sortModel,
+        chartView: gridState.chartView ? { open: gridState.chartView.open } : null,
+        lastAgentPrompt: gridState.agentPrompt,
+        stats: numericStats(rows, columns.map((c) => c.field)),
+        rows: rows.slice(0, 200),
       };
-    };
-
-    let currentRowData = [];
-    let currentColumnDefs = [];
-    let currentGridOptions = {};
-    let container = null;
-    let resizeObserver = null;
-
-    const applyStreamingUpdate = (newRowData) => {
-      if (!api) return;
-      const next = Array.isArray(newRowData) ? newRowData : [];
-      const { add, update, remove } = diffRows(currentRowData, next);
-      if (add.length === 0 && update.length === 0 && remove.length === 0) { currentRowData = next; return; }
-      try { api.applyTransaction({ add, update, remove }); }
-      catch (e) { console.warn("ag-grid applyTransaction:", e.message); api.setRowData(next); }
-      currentRowData = next;
-    };
-
-    const onSelectionChanged = () => {
-      const nodes = api.getSelectedNodes();
-      gridState.selection = nodes.map((n) => ({ id: n.id, data: n.data }));
-      gridState.rowCount = api.getDisplayedRowCount();
-      recordEvent(model, "selectionChanged", { count: nodes.length });
-    };
-
-    const onCellValueChanged = async (event) => {
-      const field = event.colDef?.colDef?.field ?? event.colDef?.field;
-      const rowIndex = event.rowIndex;
-      const oldValue = event.oldValue;
-      const newValue = event.newValue;
-
-      // Record local event
-      recordEvent(model, "cellValueChanged", {
-        rowIndex,
-        colDef: field,
-        oldValue,
-        newValue,
-      });
-
-      // Get the row data to find the row ID
-      const rowNode = api.getDisplayedRowAtIndex(rowIndex);
-      if (!rowNode || !rowNode.data) return;
-      const rowData = rowNode.data;
-      const rowId = rowData.id ?? rowIndex;
-
-      // Call backend to persist the edit
-      if (experimental && experimental.invoke) {
-        try {
-          const result = await experimental.invoke("core:backend:call", {
-            method: "POST",
-            path: "/sales/edit",
-            body: { rowId, field, newValue },
-          });
-          // Backend returns the updated row - apply it
-          if (result && result.updated) {
-            // Find and update the row in currentRowData
-            const idx = currentRowData.findIndex((r) => (r.id ?? currentRowData.indexOf(r)) === rowId);
-            if (idx >= 0) {
-              currentRowData[idx] = { ...currentRowData[idx], [field]: newValue };
-              api.applyTransaction({ update: [currentRowData[idx]] });
-            }
-          }
-        } catch (e) {
-          console.warn("cell edit invoke failed:", e.message);
-        }
-      }
-    };
-
-    const onRowDataChanged = () => {
-      gridState.rowCount = api.getDisplayedRowCount();
-      gridState.columnCount = (api.getColumnDefs() || []).length;
-      recordEvent(model, "rowDataChanged", { rowCount: gridState.rowCount });
-    };
-
-    const onFilterChanged = () => {
-      const fm = api.getFilterModel();
-      gridState.filterModel = fm;
-      recordEvent(model, "filterChanged", { filterModel: fm });
-    };
-
-    const onSortChanged = () => {
-      const sm = api.getSortModel();
-      gridState.sortModel = sm;
-      recordEvent(model, "sortChanged", { sortModel: sm });
-    };
-
-    const onColumnResized = () => {
-      gridState.columnState = api.getColumnState();
-      recordEvent(model, "columnResized", { columnState: gridState.columnState });
-    };
-
-    const onColumnMoved = () => {
-      gridState.columnState = api.getColumnState();
-      recordEvent(model, "columnMoved", { columnState: gridState.columnState });
-    };
-
-    const onCellClicked = (event) => {
-      recordEvent(model, "cellClicked", {
-        rowIndex: event.rowIndex,
-        colDef: event.colDef?.colDef?.field ?? event.colDef?.field,
-        value: event.value,
-      });
     };
 
     return { exportOptions, exportData, copilotContext };
   },
 
-  async render({ model, el, signal }) {
+  async render({ model, el, signal, experimental }) {
     await licensePromise;
 
     el.replaceChildren();
+    const doc = el.ownerDocument ?? document;
 
     const theme = model.get("theme") || {};
-    const mode = theme?.mode ?? "light";
+    let mode = theme?.mode ?? "light";
 
-    const data = model.get("data") || {};
-    const definition = model.get("definition") || {};
-    const config = model.get("config") || {};
+    const idFieldOf = (definition) => (definition && typeof definition.wsRowIdColumn === "string" ? definition.wsRowIdColumn : "id");
+    const initial = normalizeData(model.get("data") || {}, model.get("definition") || {});
+    const { rowData, columnDefs, gridOptions, table } = initial;
+    let idField = idFieldOf(table);
+    let currentRowData = rowData;
+    let currentColumnsKey = initial.columnsKey;
+    let currentGridOptions = gridOptions;
+    let tracked = initial.transposed ? [] : changeTrackedColumns(table.columnsDefs);
+    const flashTimers = new Set();
 
-    const { rowData, columnDefs: inferredColumnDefs, config: inferredConfig, gridOptions: inferredGridOptions } = normalizeData(data, definition);
-    const gridOptions = inferredGridOptions || {};
+    const invoke = async (command, message) => {
+      if (!experimental?.invoke) throw new Error("host commands are unavailable");
+      return experimental.invoke(command, message);
+    };
+    const notify = (level, text) => invoke("core:ui:notify", { level, text }).catch(() => {});
 
-    currentColumnDefs = inferredColumnDefs;
-    currentRowData = rowData;
-    currentGridOptions = gridOptions;
+    const actions = {
+      groupBy(paramName, value, forceUpdate) {
+        const params = model.get("params") || {};
+        if (!Object.hasOwn(params, paramName)) {
+          console.warn(`ag-grid cellOnClick: ${paramName} is not a param of this widget`);
+          notify("warning", `${paramName} is not a parameter of this widget.`);
+          return;
+        }
+        model.set("params", { ...params, [paramName]: value });
+        model.save_changes();
+        recordEvent(model, "cellOnClick", { actionType: "groupBy", paramName, value, forceUpdate });
+      },
+      openUrl(url) {
+        if (!/^(https|mailto):/i.test(url)) {
+          notify("warning", "Only https: and mailto: links can be opened.");
+          return;
+        }
+        invoke("core:ui:open-link", { url }).catch((e) => console.warn("ag-grid openUrl:", e.message));
+        recordEvent(model, "cellOnClick", { actionType: "openUrl", url });
+      },
+      sendToAgent(markdown, agentId) {
+        gridState.agentPrompt = { markdown, agentId: agentId ?? null, timestamp: Date.now() };
+        recordEvent(model, "cellOnClick", { actionType: "sendToAgent", agentId: agentId ?? null });
+        invoke("core:clipboard:write", { text: markdown })
+          .then(() => notify("info", "Prompt copied. Paste it into the AI agent."))
+          .catch(() => notify("info", "The prompt is in the widget's context for the AI agent."));
+      },
+    };
 
-    const chartConfig = definition.chart || config.chart || {};
-    const showChart = chartConfig.enabled && (agGridEnterprise || AgChart);
-    const gridPct = showChart ? chartConfig.gridWidth ?? 70 : 100;
+    const context = { locale: theme.locale, decimals: theme.decimals, actions, changes: new Map() };
 
-    container = document.createElement("div");
-    container.className = "ag-grid-container";
-    container.style.height = "100%";
-    container.style.width = "100%";
-    container.style.display = "flex";
-    container.style.flexDirection = "row";
+    const container = element(doc, "ag-grid-container", { height: "100%", width: "100%", display: "flex", flexDirection: "column" });
     el.appendChild(container);
+    const body = element(doc, "ag-table-chart-body", { position: "relative", flex: "1 1 auto", minHeight: "0" });
+    const gridEl = element(doc, themeClass(mode), { position: "absolute", inset: "0" });
+    const chartEl = element(doc, `ag-table-chart-chart ${themeClass(mode)}`, { position: "absolute", inset: "0", visibility: "hidden" });
+    body.append(gridEl, chartEl);
 
-    const gridWrapper = document.createElement("div");
-    gridWrapper.className = "ag-grid-wrapper";
-    gridWrapper.style.flex = `0 0 ${gridPct}%`;
-    gridWrapper.style.height = "100%";
-    container.appendChild(gridWrapper);
+    const chartsAvailable = Boolean(agGridEnterprise);
+    const chartsOn = chartsAvailable && table.enableCharts !== false;
+    const wantsChartView = chartsOn && !initial.transposed && (table.enableCharts === true || Boolean(table.chartView));
 
-    const gridEl = document.createElement("div");
-    gridEl.className = themeClass(mode);
-    gridEl.style.height = "100%";
-    gridEl.style.width = "100%";
-    gridWrapper.appendChild(gridEl);
-
-
-    let chartContainer = null;
-    let chart = null;
-    let standaloneChart = null;
-
-    if (showChart) {
-      chartContainer = document.createElement("div");
-      chartContainer.className = "ag-grid-chart-container";
-      chartContainer.style.flex = `0 0 ${100 - gridPct}%`;
-      chartContainer.style.height = "100%";
-      chartContainer.style.borderLeft = "1px solid var(--border, #e2e8f0)";
-      container.appendChild(chartContainer);
+    let toolbar = null;
+    if (wantsChartView) {
+      toolbar = element(doc, `ag-table-chart-toolbar ${themeClass(mode)}`);
+      container.appendChild(toolbar);
     }
+    container.appendChild(body);
 
-    const enterpriseOptions = agGridEnterprise
+    const enterpriseOptions = chartsAvailable
       ? {
-          sideBar: { toolPanels: ["columns", "filters"], defaultToolPanel: "" },
+          sideBar: table.enableAdvanced === false ? false : { toolPanels: ["columns", "filters"], defaultToolPanel: table.enableAdvanced === true ? "columns" : "" },
           rowGroupPanelShow: "onlyWhenGrouping",
           pivotPanelShow: "onlyWhenPivoting",
           suppressAggFuncInHeader: true,
           cellSelection: true,
-          enableCharts: true,
+          enableCharts: chartsOn,
           chartThemes: chartThemesFor(mode),
-          popupParent: document.body,
+          popupParent: doc.body,
           statusBar: {
             statusPanels: [
               { statusPanel: "agTotalAndFilteredRowCountComponent", align: "left" },
@@ -460,7 +338,8 @@ export default {
           },
         }
       : {};
-    const hasIds = rowData.length > 0 && rowData.every((r) => r && r.id !== undefined);
+    const hasIds = (rows) => rows.length > 0 && rows.every((r) => r && r[idField] !== undefined && r[idField] !== null);
+    const useIds = !initial.transposed && hasIds(rowData);
     const mergedOptions = {
       pagination: rowData.length > 100,
       paginationAutoPageSize: true,
@@ -468,13 +347,15 @@ export default {
       suppressDragLeaveHidesColumns: true,
       stopEditingWhenCellsLoseFocus: true,
       tooltipShowDelay: 400,
+      tooltipInteraction: true,
       ...enterpriseOptions,
-      ...(hasIds ? { getRowId: (params) => String(params.data.id) } : {}),
-      columnDefs: inferredColumnDefs,
+      ...(useIds ? { getRowId: (params) => String(params.data[idField]) } : {}),
+      columnDefs,
       rowData,
       ...gridOptions,
+      context,
       animateRows: true,
-      enableCellTextSelection: !agGridEnterprise,
+      enableCellTextSelection: !chartsAvailable,
       suppressScrollOnNewData: true,
       groupDefaultExpanded: 1,
       autoGroupColumnDef: { headerName: "Group", minWidth: 160 },
@@ -486,12 +367,12 @@ export default {
         flex: 1,
         minWidth: 70,
         suppressHeaderFilterButton: true,
-        ...(agGridEnterprise ? { enableRowGroup: true, enablePivot: true, enableValue: true } : {}),
+        ...(chartsAvailable ? { enableRowGroup: true, enablePivot: true, enableValue: true } : {}),
         ...(gridOptions.defaultColDef || {}),
       },
     };
 
-    /* --- Event handlers (defined here so they close over render() scope) --- */
+    /* --- Grid events, recorded to the state trait --- */
     const onSelectionChanged = () => {
       const nodes = api.getSelectedNodes();
       gridState.selection = nodes.map((n) => ({ id: n.id, data: n.data }));
@@ -501,228 +382,163 @@ export default {
     const onCellValueChanged = (event) => {
       recordEvent(model, "cellValueChanged", {
         rowIndex: event.rowIndex,
-        colDef: event.colDef?.colDef?.field ?? event.colDef?.field,
+        colDef: event.colDef?.field,
         oldValue: event.oldValue, newValue: event.newValue,
       });
     };
-    const onRowDataChanged = () => {
+    const onRowDataUpdated = () => {
       gridState.rowCount = api.getDisplayedRowCount();
-      gridState.columnCount = (api.getColumnDefs() || []).length;
+      gridState.columnCount = (api.getColumns?.() ?? []).length;
       recordEvent(model, "rowDataChanged", { rowCount: gridState.rowCount });
     };
     const onFilterChanged = () => {
-      const fm = api.getFilterModel();
-      gridState.filterModel = fm;
-      recordEvent(model, "filterChanged", { filterModel: fm });
+      gridState.filterModel = api.getFilterModel();
+      recordEvent(model, "filterChanged", { filterModel: gridState.filterModel });
     };
     const onSortChanged = () => {
-      const sm = api.getSortModel();
-      gridState.sortModel = sm;
-      recordEvent(model, "sortChanged", { sortModel: sm });
+      gridState.sortModel = api.getColumnState().filter((c) => c.sort).map((c) => ({ colId: c.colId, sort: c.sort, sortIndex: c.sortIndex }));
+      recordEvent(model, "sortChanged", { sortModel: gridState.sortModel });
     };
-    const onColumnResized = () => {
+    const onColumnChanged = (event) => {
+      if (event.type === "columnResized" && !event.finished) return;
       gridState.columnState = api.getColumnState();
-      recordEvent(model, "columnResized", { columnState: gridState.columnState });
-    };
-    const onColumnMoved = () => {
-      gridState.columnState = api.getColumnState();
-      recordEvent(model, "columnMoved", { columnState: gridState.columnState });
+      recordEvent(model, event.type, { columnCount: gridState.columnState.length });
     };
     const onCellClicked = (event) => {
+      const value = event.value;
       recordEvent(model, "cellClicked", {
         rowIndex: event.rowIndex,
-        colDef: event.colDef?.colDef?.field ?? event.colDef?.field,
-        value: event.value,
+        colDef: event.colDef?.field,
+        value: value instanceof Date ? value.toISOString() : Array.isArray(value) ? null : value,
       });
     };
-
-    const gridApi = agGridCommunity.createGrid(gridEl, mergedOptions);
-    api = gridApi;
-    api.addEventListener("selectionChanged", onSelectionChanged);
-    api.addEventListener("cellValueChanged", onCellValueChanged);
-    api.addEventListener("rowDataChanged", onRowDataChanged);
-    api.addEventListener("filterChanged", onFilterChanged);
-    api.addEventListener("sortChanged", onSortChanged);
-    api.addEventListener("columnResized", onColumnResized);
-    api.addEventListener("columnMoved", onColumnMoved);
-    api.addEventListener("cellClicked", onCellClicked);
-
-    gridState.rowCount = api.getDisplayedRowCount();
-    gridState.columnCount = inferredColumnDefs.length;
-    persistState(model);
-
-    if (showChart && chartContainer) {
-      /* Path 1: AG Grid Enterprise integrated charts (createRangeChart) */
-      if (agGridEnterprise && api.createRangeChart) {
-        try {
-          const chartDefaults = {
-            chartType: chartConfig.chartType || "groupedColumn",
-            chartTheme: mode === "light" ? "quarts" : "ag-dark",
-            container: chartContainer,
-          };
-
-          const cellRange = chartConfig.cellRange || {
-            rowStartIndex: 0,
-            rowEndIndex: rowData.length - 1,
-            columns: inferredColumnDefs.map((c) => c.field).filter((f) => f !== "id"),
-          };
-
-          chart = api.createRangeChart({ ...chartDefaults, cellRange });
-          gridState.charts.push({ id: chart.getChartId(), type: chartDefaults.chartType, source: "enterprise" });
-          persistState(model);
-
-          chart.addEventListener("chartRangeChanged", () => {
-            gridState.charts = gridState.charts.map((c) => c.id === chart.getChartId() ? { ...c, lastEvent: "chartRangeChanged", timestamp: Date.now() } : c);
-            persistState(model);
-          });
-        } catch (e) {
-          console.warn("ag-grid enterprise chart creation:", e.message);
-        }
-      }
-      /* Path 2: AG Charts Community standalone charts (free, no license key) */
-      if (!chart && AgChart) {
-        try {
-          const agChart = await loadAgChart();
-          if (agChart) {
-            const seriesCols = inferredColumnDefs
-              .map((c) => c.field)
-              .filter((f) => f !== "id" && f !== "group")
-              .slice(0, 4);
-            const categoryCol = inferredColumnDefs.find((c) => c.field !== "id")?.field || inferredColumnDefs[0]?.field;
-
-            standaloneChart = agChart.create({
-              container: chartContainer,
-              title: { text: chartConfig.title || "Chart" },
-              data: rowData,
-              series: seriesCols.map((col) => ({ type: "line", xKey: categoryCol, yKey: col })),
-              theme: mode === "light" ? "quarts" : "ag-dark",
-              width: chartContainer.clientWidth || 300,
-              height: chartContainer.clientHeight || 300,
-            });
-            gridState.charts.push({ id: "standalone-" + Date.now(), type: chartConfig.chartType || "line", source: "community" });
-            persistState(model);
-          }
-        } catch (e) {
-          console.warn("ag-charts-community chart creation:", e.message);
-        }
-      }
-    }
-
-    const onDataChange = () => {
-      const data = model.get("data") || {};
-      const definition = model.get("definition") || {};
-      const next = normalizeData(data, definition);
-      const nextRowData = next.rowData;
-      const nextInferredColumnDefs = next.columnDefs;
-      const nextGridOptions = next.gridOptions || {};
-      if (JSON.stringify(nextInferredColumnDefs) !== JSON.stringify(currentColumnDefs)) {
-        currentColumnDefs = nextInferredColumnDefs;
-        api.setColumnDefs(nextInferredColumnDefs);
-      }
-      if (JSON.stringify(nextGridOptions) !== JSON.stringify(currentGridOptions)) {
-        currentGridOptions = nextGridOptions;
-        Object.entries(nextGridOptions).forEach(([k, v]) => { try { api.setGridOption(k, v); } catch { } });
-      }
-      applyStreamingUpdate(nextRowData);
+    const listeners = {
+      selectionChanged: onSelectionChanged,
+      cellValueChanged: onCellValueChanged,
+      rowDataUpdated: onRowDataUpdated,
+      filterChanged: onFilterChanged,
+      sortChanged: onSortChanged,
+      columnResized: onColumnChanged,
+      columnMoved: onColumnChanged,
+      cellClicked: onCellClicked,
     };
 
-    const onThemeChange = async () => {
-      const theme = model.get("theme") || {};
-      const mode = theme?.mode ?? "light";
-      gridEl.classList.remove(THEME_LIGHT, THEME_DARK);
-      gridEl.classList.add(themeClass(mode));
-      if (agGridEnterprise) api.setGridOption("chartThemes", chartThemesFor(mode));
+    api = agGridCommunity.createGrid(gridEl, mergedOptions);
+    for (const [name, listener] of Object.entries(listeners)) api.addEventListener(name, listener);
 
-      /* Recreate enterprise chart */
-      if (chart) {
-        try { chart.destroy(); } catch { }
-        chart = null;
-        if (showChart && chartContainer && agGridEnterprise && api.createRangeChart) {
-          try {
-            chart = api.createRangeChart({
-              chartType: chartConfig.chartType || "groupedColumn",
-              chartTheme: mode === "light" ? "quarts" : "ag-dark",
-              container: chartContainer,
-              cellRange: chartConfig.cellRange || {
-                rowStartIndex: 0,
-                rowEndIndex: rowData.length - 1,
-                columns: inferredColumnDefs.map((c) => c.field).filter((f) => f !== "id"),
-              },
-            });
-            gridState.charts = gridState.charts.filter((c) => c.source !== "enterprise");
-            gridState.charts.push({ id: chart.getChartId(), type: chartConfig.chartType || "groupedColumn", source: "enterprise" });
-            persistState(model);
-          } catch (e) {
-            console.warn("ag-grid chart recreation:", e.message);
-          }
-        }
+    gridState.rowCount = api.getDisplayedRowCount();
+    gridState.columnCount = columnDefs.length;
+    persistState(model);
+
+    /* --- ChartView: the table as a chart, switched from the toolbar --- */
+    let chartView = null;
+    if (wantsChartView && typeof api.createRangeChart === "function") {
+      const buttons = {};
+      const setPressed = () => {
+        buttons.table.setAttribute("aria-pressed", String(!chartView.isOpen));
+        buttons.chart.setAttribute("aria-pressed", String(chartView.isOpen));
+      };
+      for (const [key, label] of [["table", "Table"], ["chart", "Chart"]]) {
+        const button = doc.createElement("button");
+        button.type = "button";
+        button.className = "ag-table-chart-toolbar-button";
+        button.textContent = label;
+        button.addEventListener("click", () => {
+          if (key === "chart") chartView.open(); else chartView.close();
+          setPressed();
+        });
+        buttons[key] = button;
+        toolbar.appendChild(button);
       }
+      chartView = createChartView({
+        api,
+        gridEl,
+        chartEl,
+        chartView: table.chartView ?? {},
+        saved: gridState.chartView,
+        mode,
+        onChange: (value) => {
+          gridState.chartView = value;
+          persistState(model);
+        },
+      });
+      setPressed();
+    } else if (toolbar) {
+      toolbar.remove();
+    }
 
-      /* Recreate community standalone chart */
-      if (standaloneChart) {
-        try { standaloneChart.destroy(); } catch { }
-        standaloneChart = null;
-        if (showChart && chartContainer && AgChart) {
-          try {
-            const agChart = await loadAgChart();
-            if (agChart) {
-              const seriesCols = inferredColumnDefs
-                .map((c) => c.field)
-                .filter((f) => f !== "id" && f !== "group")
-                .slice(0, 4);
-              const categoryCol = inferredColumnDefs.find((c) => c.field !== "id")?.field || inferredColumnDefs[0]?.field;
+    const flash = (changes) => {
+      if (!changes.size) return;
+      for (const [key, direction] of changes) context.changes.set(key, direction);
+      const columns = [...new Set(tracked.map((t) => t.field))];
+      api.refreshCells({ columns, force: true });
+      const timer = setTimeout(() => {
+        flashTimers.delete(timer);
+        for (const key of changes.keys()) if (context.changes.get(key) === changes.get(key)) context.changes.delete(key);
+        api?.refreshCells({ columns, force: true });
+      }, CHANGE_FLASH_MS);
+      flashTimers.add(timer);
+    };
 
-              standaloneChart = agChart.create({
-                container: chartContainer,
-                title: { text: chartConfig.title || "Chart" },
-                data: rowData,
-                series: seriesCols.map((col) => ({ type: "line", xKey: categoryCol, yKey: col })),
-                theme: mode === "light" ? "quarts" : "ag-dark",
-                width: chartContainer.clientWidth || 300,
-                height: chartContainer.clientHeight || 300,
-              });
-              gridState.charts = gridState.charts.filter((c) => c.source !== "community");
-              gridState.charts.push({ id: "standalone-" + Date.now(), type: chartConfig.chartType || "line", source: "community" });
-              persistState(model);
-            }
-          } catch (e) {
-            console.warn("ag-charts-community chart recreation:", e.message);
-          }
+    const applyStreamingUpdate = (next, transposed) => {
+      const changes = transposed ? new Map() : cellChanges(currentRowData, next, tracked, idField);
+      if (!transposed && api.getGridOption("getRowId") && hasIds(next)) {
+        const { add, update, remove } = diffRows(currentRowData, next, idField);
+        if (add.length || update.length || remove.length) {
+          try { api.applyTransaction({ add, update, remove }); }
+          catch (e) { console.warn("ag-grid applyTransaction:", e.message); api.setGridOption("rowData", next); }
         }
+      } else if (JSON.stringify(currentRowData) !== JSON.stringify(next)) {
+        api.setGridOption("rowData", next);
       }
+      currentRowData = next;
+      flash(changes);
+    };
 
-      api.sizeColumnsToFit();
+    const onDataChange = () => {
+      const definition = model.get("definition") || {};
+      const next = normalizeData(model.get("data") || {}, definition);
+      idField = idFieldOf(next.table);
+      tracked = next.transposed ? [] : changeTrackedColumns(next.table.columnsDefs);
+      if (next.columnsKey !== currentColumnsKey) {
+        currentColumnsKey = next.columnsKey;
+        api.setGridOption("columnDefs", next.columnDefs);
+      }
+      if (JSON.stringify(next.gridOptions) !== JSON.stringify(currentGridOptions)) {
+        currentGridOptions = next.gridOptions;
+        Object.entries(next.gridOptions).forEach(([k, v]) => { try { api.setGridOption(k, v); } catch { /* not settable */ } });
+      }
+      applyStreamingUpdate(next.rowData, next.transposed);
+    };
+
+    const onThemeChange = () => {
+      const nextTheme = model.get("theme") || {};
+      mode = nextTheme?.mode ?? "light";
+      for (const node of [gridEl, chartEl, toolbar].filter(Boolean)) {
+        node.classList.remove(THEME_LIGHT, THEME_DARK);
+        node.classList.add(themeClass(mode));
+      }
+      context.locale = nextTheme.locale;
+      context.decimals = nextTheme.decimals;
+      if (chartsAvailable) api.setGridOption("chartThemes", chartThemesFor(mode));
+      api.refreshCells({ force: true });
+      chartView?.setMode(mode);
     };
 
     model.on("change:data", onDataChange);
+    model.on("change:definition", onDataChange);
     model.on("change:theme", onThemeChange);
-
-    resizeObserver = new ResizeObserver(() => { if (api) api.sizeColumnsToFit(); });
-    resizeObserver.observe(el);
 
     signal.addEventListener("abort", () => {
       model.off("change:data", onDataChange);
+      model.off("change:definition", onDataChange);
       model.off("change:theme", onThemeChange);
-      api.removeEventListener("selectionChanged", onSelectionChanged);
-      api.removeEventListener("cellValueChanged", onCellValueChanged);
-      api.removeEventListener("rowDataChanged", onRowDataChanged);
-      api.removeEventListener("filterChanged", onFilterChanged);
-      api.removeEventListener("sortChanged", onSortChanged);
-      api.removeEventListener("columnResized", onColumnResized);
-      api.removeEventListener("columnMoved", onColumnMoved);
-      api.removeEventListener("cellClicked", onCellClicked);
-      if (chart) {
-        try { chart.destroy(); } catch { }
-        chart = null;
-      }
-      if (standaloneChart) {
-        try { standaloneChart.destroy(); } catch { }
-        standaloneChart = null;
-      }
-      resizeObserver.disconnect();
+      for (const timer of flashTimers) clearTimeout(timer);
+      flashTimers.clear();
+      for (const [name, listener] of Object.entries(listeners)) api.removeEventListener(name, listener);
+      chartView?.destroy();
       api.destroy();
       api = null;
-      container = null;
     });
   },
 };

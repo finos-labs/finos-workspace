@@ -20,7 +20,7 @@ globalThis.ResizeObserver = class {
   disconnect() {}
 };
 
-const { default: widget, themeClass, rowIdOf, diffRows, inferType, inferColumnType, normalizeData, numericStats, compactColumnDefs, chartThemesFor } = await import("../src/entry.js");
+const { default: widget, themeClass, rowIdOf, diffRows, cellChanges, inferType, inferColumnType, normalizeData, numericStats, compactColumnDefs, chartThemesFor } = await import("../src/entry.js");
 
 test("themeClass returns quartz theme names", () => {
   assert.equal(themeClass("light"), "ag-theme-quartz");
@@ -86,6 +86,7 @@ test("numericStats ignores null and NaN", () => {
 test("widget default export has initialize and render", () => {
   assert.equal(typeof widget.initialize, "function");
   assert.equal(typeof widget.render, "function");
+});
 
 test("inferType detects booleans, numbers, dates, strings", () => {
   assert.equal(inferType(true), "boolean");
@@ -94,6 +95,7 @@ test("inferType detects booleans, numbers, dates, strings", () => {
   assert.equal(inferType("hello"), "string");
   assert.equal(inferType(null), "empty");
   assert.equal(inferType(undefined), "empty");
+  assert.equal(inferType([1, 2]), "array");
 });
 
 test("inferColumnType picks dominant type", () => {
@@ -105,16 +107,16 @@ test("inferColumnType picks dominant type", () => {
 });
 
 test("normalizeData handles list of records", () => {
-  const { rowData, columnDefs, config } = normalizeData([
+  const { rowData, columnDefs } = normalizeData([
     { region: "EMEA", sales: 100 },
     { region: "APAC", sales: 200 },
   ]);
   assert.equal(rowData.length, 2);
   assert.equal(columnDefs.length, 2);
   assert.equal(columnDefs[0].field, "region");
+  assert.equal(columnDefs[0].headerName, "Region");
   assert.equal(columnDefs[1].field, "sales");
   assert.equal(columnDefs[1].filter, "agNumberColumnFilter");
-  assert.deepEqual(config.groupBy, []);
 });
 
 test("normalizeData handles dict of columns (pandas to_dict list)", () => {
@@ -142,16 +144,30 @@ test("normalizeData handles pandas split format", () => {
   assert.equal(columnDefs.length, 2);
 });
 
-test("normalizeData applies groupBy from definition", () => {
-  const { columnDefs, config } = normalizeData(
-    [{ region: "EMEA", sales: 100 }, { region: "APAC", sales: 200 }],
-    { groupBy: ["region"], rowSpan: ["region"] }
+test("normalizeData applies a table chart configuration from the definition", () => {
+  const rows = [{ name: "Ethereum", tvl: 45e9, change_1d: 2.5 }];
+  const { columnDefs } = normalizeData(rows, {
+    showAll: false,
+    columnsDefs: [
+      { field: "name", headerName: "Asset", pinned: "left" },
+      { field: "tvl", formatterFn: "int" },
+    ],
+  });
+  assert.deepEqual(columnDefs.map((c) => c.field), ["name", "tvl"]);
+  assert.equal(columnDefs[0].headerName, "Asset");
+  assert.equal(columnDefs[0].pinned, "left");
+  assert.equal(columnDefs[1].valueFormatter({ value: 45e9, context: { locale: "en-US" } }), "45,000,000,000");
+});
+
+test("normalizeData transposes when the definition asks", () => {
+  const { rowData, columnDefs, transposed } = normalizeData(
+    [{ name: "A", x: 1 }, { name: "B", x: 2 }],
+    { transpose: true },
   );
-  assert.deepEqual(config.groupBy, ["region"]);
-  assert.deepEqual(config.rowSpan, ["region"]);
-  const regionDef = columnDefs.find((c) => c.field === "region");
-  assert.equal(regionDef.rowGroup, true);
-  assert.equal(regionDef.hide, true);
+  assert.equal(transposed, true);
+  assert.deepEqual(columnDefs.map((c) => c.headerName), ["Name", "A", "B"]);
+  assert.equal(rowData.length, 1);
+  assert.equal(rowData[0].__field, "X");
 });
 
 test("normalizeData passes through ag-grid ready objects", () => {
@@ -160,12 +176,28 @@ test("normalizeData passes through ag-grid ready objects", () => {
     rowData: [{ x: 1 }],
     gridOptions: { pagination: true },
   };
-  const { rowData, columnDefs } = normalizeData(input);
+  const { rowData, columnDefs, gridOptions } = normalizeData(input);
   assert.equal(rowData.length, 1);
   assert.equal(columnDefs.length, 1);
   assert.equal(columnDefs[0].field, "x");
+  assert.equal(gridOptions.pagination, true);
 });
+
+test("cellChanges finds up and down moves by row id", () => {
+  const before = [{ id: "a", price: 10, qty: 1 }, { id: "b", price: 5, qty: 1 }];
+  const after = [{ id: "a", price: 11, qty: 1 }, { id: "b", price: 4, qty: 1 }];
+  const changes = cellChanges(before, after, [{ field: "price", compareField: "price" }, { field: "qty", compareField: "qty" }]);
+  assert.equal(changes.get("a|price"), "up");
+  assert.equal(changes.get("b|price"), "down");
+  assert.equal(changes.has("a|qty"), false);
 });
+
+test("rowIdOf and diffRows take the row id field", () => {
+  assert.equal(rowIdOf({ symbol: "AAPL" }, 3, "symbol"), "AAPL");
+  const { update } = diffRows([{ symbol: "A", p: 1 }], [{ symbol: "A", p: 2 }], "symbol");
+  assert.equal(update.length, 1);
+});
+
 test("compactColumnDefs formats numeric columns and leaves the rest alone", () => {
   const rows = [{ name: "a", units: 1234567, note: null }];
   const defs = [

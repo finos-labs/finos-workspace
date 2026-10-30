@@ -425,6 +425,23 @@ describe("WidgetMenu - Category Headers", () => {
       expect(categoryHeaders.length).toBeGreaterThan(0);
     });
   });
+
+  it("keeps a widget row one class when its id has spaces, so words like `table` add no utilities", async () => {
+    const widget = createMockWidget({
+      widgetId: "chart",
+      uniqueId: "chart-AgGrid table chart examples-My backend",
+      name: "Table To Chart",
+      category: "AgGrid table chart examples",
+    });
+    renderWidgetMenu({ widgets: [widget], allCategories: ["AgGrid table chart examples"] });
+
+    const title = await screen.findByText("Table To Chart");
+    const row = title.closest<HTMLElement>("[id$='-0']") ?? title.closest<HTMLElement>(".cursor-pointer");
+    expect(row).not.toBeNull();
+    expect(row!.classList).toContain("widget-chart-AgGrid-table-chart-examples-My-backend");
+    expect(row!.classList).not.toContain("table");
+    expect(row!.classList).toContain("flex");
+  });
 });
 
 describe("WidgetMenu - Recently Added Section", () => {

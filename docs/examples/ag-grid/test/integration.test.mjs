@@ -20,8 +20,24 @@ globalThis.fetch = dom.window.fetch;
 globalThis.URL = dom.window.URL;
 globalThis.MouseEvent = dom.window.MouseEvent;
 globalThis.Event = dom.window.Event;
+for (const name of ["DocumentFragment", "Element", "SVGElement", "HTMLCanvasElement", "CustomEvent", "KeyboardEvent", "FocusEvent", "getComputedStyle"]) {
+  if (globalThis[name] === undefined && dom.window[name] !== undefined) {
+    globalThis[name] = typeof dom.window[name] === "function" && name === "getComputedStyle" ? dom.window[name].bind(dom.window) : dom.window[name];
+  }
+}
 dom.window.requestAnimationFrame = (cb) => setTimeout(cb, 0);
 globalThis.requestAnimationFrame = dom.window.requestAnimationFrame;
+
+// jsdom has no canvas: a no-op 2D context and Path2D let AG Charts build its scene.
+const noop = new Proxy(function () {}, {
+  get: (_t, key) => (key === Symbol.toPrimitive ? () => 0 : key === "width" || key === "actualBoundingBoxAscent" || key === "actualBoundingBoxDescent" ? 10 : noop),
+  apply: () => noop,
+  construct: () => noop,
+  set: () => true,
+});
+dom.window.HTMLCanvasElement.prototype.getContext = () => noop;
+dom.window.HTMLCanvasElement.prototype.toDataURL = () => "";
+globalThis.Path2D = dom.window.Path2D = class { constructor() { return noop; } };
 
 // ResizeObserver polyfill (jsdom doesn't provide it)
 globalThis.ResizeObserver = class {
@@ -155,9 +171,95 @@ assert(typeof mockSignal.addEventListener === "function", "signal supports addEv
 
 el.remove();
 
+console.log("\n--- Table chart configuration ---");
+const listeners = {};
+const aborts = [];
+const agTableChartModel = {
+  data: [
+    { id: "eth", name: { value: "Ethereum", description: "Smart contracts" }, tvl: 45e9, change_1d: 2.5, history: [1, 3, 2, 5] },
+    { id: "btc", name: { value: "Bitcoin", description: "The first" }, tvl: 35e9, change_1d: -1.2, history: [4, 2, 6, 1] },
+  ],
+  definition: {
+    enableCharts: true,
+    chartView: { enabled: false, chartType: "column" },
+    columnsDefs: [
+      { field: "name", headerName: "Asset", chartDataType: "category", renderFn: ["hoverCard", "cellOnClick"], renderFnParams: { actionType: "groupBy", groupBy: { paramName: "asset" }, hoverCard: { cellField: "value", title: "Details", markdown: "{description}" } } },
+      { field: "tvl", chartDataType: "series", formatterFn: "int" },
+      { field: "change_1d", formatterFn: "percent", renderFn: ["greenRed", "showCellChange"] },
+      { field: "history", sparkline: { type: "line", options: { pointsOfInterest: { maximum: { fill: "green" } } } } },
+    ],
+  },
+  params: { asset: null },
+  theme: { mode: "dark", locale: "en-US" },
+  config: {},
+  adminSettings: {},
+  state: null,
+  get(k) { return this[k]; },
+  set(k, v) { this[k] = v; },
+  save_changes() {},
+  on(k, cb) { (listeners[k] = listeners[k] || []).push(cb); },
+  off(k, cb) { listeners[k] = (listeners[k] || []).filter((c) => c !== cb); },
+};
+const agTableChartSignal = { addEventListener(_name, cb) { aborts.push(cb); } };
+const el2 = document.createElement("div");
+el2.style.width = "800px";
+el2.style.height = "600px";
+document.body.appendChild(el2);
+plugin.initialize({ model: agTableChartModel, signal: agTableChartSignal });
+await plugin.render({ model: agTableChartModel, signal: agTableChartSignal, el: el2, experimental: { invoke: async () => [null, []] } });
+await new Promise((r) => setTimeout(r, 150));
+
+assert(el2.querySelector(".ag-theme-quartz-dark .ag-root-wrapper") !== null, "dark grid rendered");
+const headers = [...el2.querySelectorAll(".ag-header-cell-text")].map((h) => h.textContent);
+assert(headers.includes("Asset") && headers.includes("Change 1d"), `configured headers shown (${headers.join(", ")})`);
+const tvlCell = el2.querySelector('.ag-cell[col-id="tvl"]');
+assert(tvlCell && tvlCell.textContent === "45,000,000,000", `formatterFn int applied (${tvlCell?.textContent})`);
+const nameCell = el2.querySelector('.ag-cell[col-id="name"]');
+assert(nameCell && nameCell.textContent === "Ethereum", `hover card cellField shown in cell (${nameCell?.textContent})`);
+assert(nameCell?.classList.contains("ag-table-chart-clickable"), "cellOnClick cell is styled as clickable");
+const changeCell = el2.querySelector('.ag-row[row-id="btc"] .ag-cell[col-id="change_1d"]');
+assert(changeCell && changeCell.style.color !== "", `greenRed colours the cell (${changeCell?.style.color})`);
+assert(el2.querySelector('.ag-cell[col-id="history"]') !== null, "sparkline column rendered");
+
+const buttons = [...el2.querySelectorAll(".ag-table-chart-toolbar-button")].map((b) => b.textContent);
+assert(buttons.join() === "Table,Chart", `ChartView toolbar shown (${buttons.join()})`);
+
+nameCell.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+await new Promise((r) => setTimeout(r, 50));
+assert(agTableChartModel.params.asset === "Ethereum", `cellOnClick groupBy wrote the param (${agTableChartModel.params.asset})`);
+
+agTableChartModel.data = agTableChartModel.data.map((r) => (r.id === "btc" ? { ...r, change_1d: -2.0 } : r));
+(listeners["change:data"] || []).forEach((cb) => cb());
+await new Promise((r) => setTimeout(r, 50));
+const flashed = el2.querySelector('.ag-row[row-id="btc"] .ag-cell[col-id="change_1d"]');
+assert(flashed?.classList.contains("ag-table-chart-cell-down"), "showCellChange flashes a falling cell");
+
+el2.querySelector(".ag-table-chart-toolbar-button:last-child").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+await new Promise((r) => setTimeout(r, 100));
+assert(agTableChartModel.state?.chartView?.open === true, "ChartView opens and is saved to state");
+assert(el2.querySelector(".ag-table-chart-chart").children.length > 0, "integrated chart created in the chart view");
+
+// Not torn down here: AG Charts keeps drawing asynchronously, which jsdom's stub canvas cannot
+// survive after a destroy. In a browser the abort destroys the chart and the grid.
+el2.remove();
+
+console.log("\n--- Table chart transpose ---");
+const el3 = document.createElement("div");
+el3.style.width = "800px";
+el3.style.height = "600px";
+document.body.appendChild(el3);
+const transposeModel = { ...agTableChartModel, state: null, definition: { transpose: true, columnsDefs: [{ field: "name", renderFn: "hoverCard" }, { field: "tvl", formatterFn: "int" }] } };
+await plugin.render({ model: transposeModel, signal: { addEventListener() {} }, el: el3 });
+await new Promise((r) => setTimeout(r, 100));
+const transposedHeaders = [...el3.querySelectorAll(".ag-header-cell-text")].map((h) => h.textContent);
+assert(transposedHeaders.includes("Ethereum") && transposedHeaders.includes("Bitcoin"), `rows became columns (${transposedHeaders.join(", ")})`);
+const transposedCell = el3.querySelector('.ag-cell[col-id="__r0"]');
+assert(transposedCell?.textContent === "45,000,000,000", `transposed cells keep their column's format (${transposedCell?.textContent})`);
+el3.remove();
+
 console.log("\n" + "=".repeat(60));
 console.log(`RESULTS: ${passed} passed, ${failed} failed`);
 console.log("=".repeat(60));
 
-if (failed > 0) process.exit(1);
+process.exit(failed > 0 ? 1 : 0);
 assert(opts[0].id === "csv", "exportOptions first item is csv");

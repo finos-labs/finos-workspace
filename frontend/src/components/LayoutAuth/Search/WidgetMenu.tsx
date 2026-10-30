@@ -509,7 +509,8 @@ const WidgetItem = memo(
           "rounded",
           "bg-search-widget-bg",
           "cursor-pointer",
-          `widget-${displayId}`,
+          // One class: a category or source name with spaces would otherwise add utility classes such as `table`.
+          `widget-${displayId.replace(/[^\w-]/g, "-")}`,
         )}
         onClick={handleClick}
       >

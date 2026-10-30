@@ -54,9 +54,16 @@ copyFileSync(join(root, "src/assets/icon.svg"), join(out, "assets/icon.svg"));
 const agGridPkg = JSON.parse(readFileSync(join(agGridDir, "package.json"), "utf8"));
 const agGridLicensePath = join(agGridDir, "LICENSE.txt");
 const agGridLicense = readFileSync(agGridLicensePath, "utf8").trim();
+const enterpriseNotices = ["ag-grid-charts-enterprise", "ag-charts-enterprise", "ag-charts-community"].map((name) => {
+  const dir = join(root, "node_modules", name);
+  const meta = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+  const licenseFile = ["LICENSE.txt", "LICENSE", "LICENSE.md"].map((f) => join(dir, f)).find((f) => { try { return statSync(f).isFile(); } catch { return false; } });
+  const text = licenseFile ? readFileSync(licenseFile, "utf8").trim() : `See ${meta.homepage ?? "https://www.ag-grid.com/"}`;
+  return `${name} ${meta.version} (${meta.license}): ${meta.description ?? ""}\n\n${text}\n`;
+});
 writeFileSync(
   join(out, "assets/THIRD-PARTY-LICENSES.txt"),
-  `ag-grid-community ${agGridPkg.version} (${agGridPkg.license}): The ag-grid Community data grid\n\n${agGridLicense}\n`
+  [`ag-grid-community ${agGridPkg.version} (${agGridPkg.license}): The ag-grid Community data grid\n\n${agGridLicense}\n`, ...enterpriseNotices].join("\n---\n\n")
 );
 
 /* ---- Checksum & manifest ---- */

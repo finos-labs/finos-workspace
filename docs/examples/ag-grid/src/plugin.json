@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "ag-grid",
   "name": "AgGrid table",
-  "description": "Renders the ag-grid widget type with ag-grid Community: sorting, filtering, grouping, selection, editing, pagination, streaming row updates, and grid events.",
+  "description": "Renders the ag-grid widget type with AG Grid: OpenBB-style column definitions, render functions, hover cards, sparklines, ChartView, streaming row updates and grid events.",
   "publisher": {
     "name": "dlee-bq"
   },
@@ -38,24 +38,587 @@
       {
         "id": "grid",
         "name": "AgGrid table",
-        "description": "A backend's tabular data, rendered as an ag-grid Community table with streaming and grid events.",
+        "description": "A backend's tabular data as an AG Grid table, configured like OpenBB Workspace's table widget, with charts, sparklines and streaming.",
         "category": "Data",
         "handles": [
           {
             "type": "ag-grid",
             "response": {
               "accepts": "json",
-              "description": "A grid as JSON: an ag-grid-ready object ({ columnDefs, rowData, gridOptions }) or pandas-style data (a list of records, a dict of columns, or {columns, index, data}). The endpoint gets theme=dark or theme=light."
+              "description": "Rows as JSON: a list of records, a dict of columns, pandas split, or an ag-grid-ready object ({ columnDefs, rowData, gridOptions }). data[\"ag-grid\"] in widgets.json takes OpenBB's table configuration. The endpoint gets theme=dark or theme=light."
+            },
+            "definition": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "OpenBB Workspace's table configuration (data.table there).",
+              "properties": {
+                "enableCharts": {
+                  "type": "boolean"
+                },
+                "showAll": {
+                  "type": "boolean"
+                },
+                "transpose": {
+                  "type": "boolean"
+                },
+                "enableAdvanced": {
+                  "type": "boolean"
+                },
+                "formatterFn": {
+                  "type": "string",
+                  "enum": [
+                    "int",
+                    "none",
+                    "percent",
+                    "normalized",
+                    "normalizedPercent",
+                    "dateToYear"
+                  ]
+                },
+                "wsRowIdColumn": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "chartView": {
+                  "$ref": "#/$defs/chartView"
+                },
+                "columnsDefs": {
+                  "type": "array",
+                  "maxItems": 200,
+                  "items": {
+                    "$ref": "#/$defs/column"
+                  }
+                }
+              },
+              "$defs": {
+                "pointStyle": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "fill": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "stroke": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 20
+                    },
+                    "size": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 40
+                    }
+                  }
+                },
+                "sparklineOptions": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "stroke": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 20
+                    },
+                    "fill": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "fillOpacity": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "min": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    },
+                    "direction": {
+                      "type": "string",
+                      "enum": [
+                        "vertical",
+                        "horizontal"
+                      ]
+                    },
+                    "markers": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "size": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 40
+                        },
+                        "fill": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "description": "A hex colour or a CSS colour name."
+                        },
+                        "stroke": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "description": "A hex colour or a CSS colour name."
+                        },
+                        "strokeWidth": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 20
+                        }
+                      }
+                    },
+                    "pointsOfInterest": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "firstLast": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "minimum": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "maximum": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "highlighted": {
+                          "$ref": "#/$defs/pointStyle"
+                        },
+                        "positiveNegative": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "positive": {
+                              "$ref": "#/$defs/pointStyle"
+                            },
+                            "negative": {
+                              "$ref": "#/$defs/pointStyle"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "customFormatter": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "description": "An arrow function in a string, (params) => ({ fill, stroke, ... }). Evaluated without eval: literals, params.*, operators, ?: and Math functions."
+                    },
+                    "padding": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "top": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "right": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "bottom": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "left": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 50
+                        }
+                      }
+                    }
+                  }
+                },
+                "sparkline": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "line",
+                        "area",
+                        "bar"
+                      ]
+                    },
+                    "dataField": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "options": {
+                      "$ref": "#/$defs/sparklineOptions"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                "colorRule": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "condition": {
+                      "type": "string",
+                      "enum": [
+                        "eq",
+                        "ne",
+                        "gt",
+                        "lt",
+                        "gte",
+                        "lte",
+                        "between",
+                        "contains",
+                        "notContains"
+                      ]
+                    },
+                    "value": {
+                      "type": [
+                        "number",
+                        "string"
+                      ],
+                      "maxLength": 200
+                    },
+                    "range": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "min": {
+                          "type": "number"
+                        },
+                        "max": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    "color": {
+                      "type": "string",
+                      "maxLength": 64,
+                      "description": "A hex colour or a CSS colour name."
+                    },
+                    "fill": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "condition",
+                    "color"
+                  ]
+                },
+                "renderFnParams": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "actionType": {
+                      "type": "string",
+                      "enum": [
+                        "groupBy",
+                        "sendToAgent",
+                        "openUrl"
+                      ]
+                    },
+                    "groupBy": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "paramName": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "valueField": {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        "forceUpdate": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "paramName"
+                      ]
+                    },
+                    "sendToAgent": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "markdown": {
+                          "type": "string",
+                          "maxLength": 4000
+                        },
+                        "agentId": {
+                          "type": "string",
+                          "maxLength": 128
+                        }
+                      }
+                    },
+                    "url": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "description": "openUrl: the link, with {field} placeholders. Without it, the cell's value is the link."
+                    },
+                    "colorValueKey": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "hoverCardData": {
+                      "type": "array",
+                      "maxItems": 50,
+                      "items": {
+                        "type": "string",
+                        "maxLength": 128
+                      }
+                    },
+                    "colorRules": {
+                      "type": "array",
+                      "maxItems": 50,
+                      "items": {
+                        "$ref": "#/$defs/colorRule"
+                      }
+                    },
+                    "hoverCard": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "cellField": {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        "title": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "markdown": {
+                          "type": "string",
+                          "maxLength": 4000
+                        }
+                      }
+                    }
+                  }
+                },
+                "column": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "headerName": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "headerTooltip": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "chartDataType": {
+                      "type": "string",
+                      "enum": [
+                        "category",
+                        "series",
+                        "time",
+                        "excluded"
+                      ]
+                    },
+                    "cellDataType": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "number",
+                        "boolean",
+                        "date",
+                        "dateString",
+                        "object"
+                      ]
+                    },
+                    "align": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "center",
+                        "right"
+                      ]
+                    },
+                    "enableCellChangeWs": {
+                      "type": "boolean"
+                    },
+                    "formatterFn": {
+                      "type": "string",
+                      "enum": [
+                        "int",
+                        "none",
+                        "percent",
+                        "normalized",
+                        "normalizedPercent",
+                        "dateToYear"
+                      ]
+                    },
+                    "decimalPlaces": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 12
+                    },
+                    "renderFn": {
+                      "type": [
+                        "string",
+                        "array"
+                      ],
+                      "maxLength": 32,
+                      "maxItems": 6,
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "greenRed",
+                          "titleCase",
+                          "hoverCard",
+                          "cellOnClick",
+                          "columnColor",
+                          "showCellChange"
+                        ]
+                      },
+                      "description": "One of greenRed, titleCase, hoverCard, cellOnClick, columnColor, showCellChange, or a list of them."
+                    },
+                    "renderFnParams": {
+                      "$ref": "#/$defs/renderFnParams"
+                    },
+                    "width": {
+                      "type": "number",
+                      "minimum": 10,
+                      "maximum": 4000
+                    },
+                    "minWidth": {
+                      "type": "number",
+                      "minimum": 10,
+                      "maximum": 4000
+                    },
+                    "maxWidth": {
+                      "type": "number",
+                      "minimum": 10,
+                      "maximum": 4000
+                    },
+                    "hide": {
+                      "type": "boolean"
+                    },
+                    "pinned": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "right"
+                      ]
+                    },
+                    "prefix": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "suffix": {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    "sparkline": {
+                      "$ref": "#/$defs/sparkline"
+                    }
+                  },
+                  "required": [
+                    "field"
+                  ]
+                },
+                "chartView": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "chartType": {
+                      "type": "string",
+                      "enum": [
+                        "column",
+                        "groupedColumn",
+                        "stackedColumn",
+                        "normalizedColumn",
+                        "bar",
+                        "groupedBar",
+                        "stackedBar",
+                        "normalizedBar",
+                        "line",
+                        "scatter",
+                        "bubble",
+                        "pie",
+                        "donut",
+                        "doughnut",
+                        "area",
+                        "stackedArea",
+                        "normalizedArea",
+                        "histogram",
+                        "radarLine",
+                        "radarArea",
+                        "nightingale",
+                        "radialColumn",
+                        "radialBar",
+                        "sunburst",
+                        "rangeBar",
+                        "rangeArea",
+                        "boxPlot",
+                        "treemap",
+                        "heatmap",
+                        "waterfall",
+                        "columnLineCombo",
+                        "areaColumnCombo",
+                        "customCombo"
+                      ]
+                    },
+                    "cellRangeCols": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "maxItems": 50,
+                        "items": {
+                          "type": "string",
+                          "maxLength": 128
+                        }
+                      }
+                    },
+                    "ignoreCellRange": {
+                      "type": "boolean"
+                    },
+                    "chartNavigatorEnabled": {
+                      "type": "boolean"
+                    },
+                    "chartMiniChartEnabled": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
             }
           }
         ],
         "permissions": [
           "core:data:read",
+          "core:params:write",
           "core:export:provide",
           "core:copilot:context",
           "core:clipboard:write",
           "core:download:save",
-          "core:state:write"
+          "core:state:write",
+          "core:ui:notify",
+          "core:ui:open-link"
         ],
         "model": {
           "traits": {
@@ -82,6 +645,14 @@
             "state": {
               "bind": "state",
               "access": "readwrite"
+            },
+            "params": {
+              "bind": "params",
+              "access": "readwrite"
+            },
+            "capabilities": {
+              "bind": "capabilities",
+              "access": "read"
             }
           }
         },
