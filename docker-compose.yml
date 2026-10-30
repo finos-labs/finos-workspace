@@ -112,10 +112,9 @@ services:
 
   worker:
     <<: *backend
-    build:
-      context: ./backend-api/backend
-      dockerfile: rqworker.Dockerfile
-    image: workspace-worker:local
+    image: workspace-api:local
+    pull_policy: never
+    command: ["python", "base_workers.py"]
     restart: unless-stopped
     volumes:
       - ./backend-api/backend/user_create.json:/opt/code/user_create.json:ro

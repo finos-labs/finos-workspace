@@ -20,12 +20,12 @@ export const Tabs = React.forwardRef<
   TabsProps
 >(({ className, variant, ...props }, ref) => (
   <TabsContext.Provider value={{ variant }}>
-    <TabsPrimitive.Root ref={ref} className={cn("BB-Tabs", className)} {...props} />
+    <TabsPrimitive.Root ref={ref} className={cn(className)} {...props} />
   </TabsContext.Provider>
 ));
 Tabs.displayName = TabsPrimitive.Root.displayName;
 
-export const TabListVariants = cva(["BB-TabList flex"], {
+export const TabListVariants = cva(["flex"], {
   variants: {
     variant: {
       default: "body-sm-medium gap-6",
@@ -55,7 +55,7 @@ export const TabsList = React.forwardRef<
 });
 TabsList.displayName = TabsPrimitive.List.displayName;
 
-export const TabTriggerVariants = cva(["BB-TabTrigger transition"], {
+export const TabTriggerVariants = cva(["transition"], {
   variants: {
     variant: {
       default: [
@@ -63,7 +63,7 @@ export const TabTriggerVariants = cva(["BB-TabTrigger transition"], {
         "disabled:pointer-events-none disabled:opacity-50",
         "text-ds-text-body",
         "hover:text-general-label-hover",
-        "radix-state-active:border-current radix-state-active:text-tab-action-active",
+        "data-[state=active]:border-current data-[state=active]:text-tab-action-active",
         "[&.active]:border-current [&.active]:text-tab-action-active",
       ],
       filled: [
@@ -71,17 +71,17 @@ export const TabTriggerVariants = cva(["BB-TabTrigger transition"], {
         "disabled:pointer-events-none disabled:opacity-50",
         "bg-tab-bg-secondary text-ds-text-caption",
         "hover:text-general-label",
-        "radix-state-active:bg-tab-filled-primary-bg-active radix-state-active:text-tab-filled-primary-text-active",
+        "data-[state=active]:bg-tab-filled-primary-bg-active data-[state=active]:text-tab-filled-primary-text-active",
         "[&.active]:bg-tab-filled-primary-bg-active [&.active]:text-tab-filled-primary-text-active",
       ],
       filled_secondary: [
         "whitespace-nowrap rounded truncate",
         "px-2.5 py-[7px]",
         "w-full",
-        "radix-state-active:font-medium",
+        "data-[state=active]:font-medium",
         "text-tab-filled-secondary-text",
-        "radix-state-active:text-tab-action-active radix-state-active:bg-tab-bg-primary",
-        "hover:radix-state-inactive:bg-tab-filled-secondary-bg-hover",
+        "data-[state=active]:text-tab-action-active data-[state=active]:bg-tab-bg-primary",
+        "hover:data-[state=inactive]:bg-tab-filled-secondary-bg-hover",
       ],
     },
   },

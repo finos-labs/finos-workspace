@@ -278,7 +278,7 @@ A widget may name one MCP tool of its own backend: the tool the agent uses to qu
 
 ### 5.1 Servers
 
-A backend declares MCP servers on the templates of its `apps.json` (`mcpServers`: `name`, `description`, `url`, `authType`). Connecting the backend registers each declared server once, recording its declared name and the backend's id, without the backend's credentials, which the browser does not hold; the declared name cannot be edited, unlike the server's display name. The agent's tools are the enabled tools of the connected servers that the user's roles grant, sent when the agent has MCP tools on. The browser makes each call through `/app/mcp-proxy`, which checks the roles again for every `tools/call`.
+A backend declares MCP servers on the templates of its `apps.json` (`mcpServers`: `name`, `description`, `url`, `authType`). Connecting the backend registers each declared server once, recording its declared name and the backend's id, without the backend's credentials, which the browser does not hold; the declared name cannot be edited, unlike the server's display name. The agent's tools are the enabled tools of the connected servers that the user may use, sent when the agent has MCP tools on. A user may use every server that one of their roles grants and every server declared by a backend they can use: the `mcpServers` of its `apps.json` and the `storage.mcpUrl` of its `iframe` widgets. Using the backend is the approval; no server is granted one by one. The browser makes each call through `/app/mcp-proxy`, which checks the same access again for every `tools/call`.
 
 ### 5.2 The key
 
@@ -298,25 +298,26 @@ A backend declares MCP servers on the templates of its `apps.json` (`mcpServers`
 
 ### 5.3 Rules
 
-1. **Opt-in.** A widget without `mcp_tool` has no linked tool. The link adds nothing to the agent's tool list: the server's tools are there when the server is registered, enabled and granted.
+1. **Opt-in.** A widget without `mcp_tool` has no linked tool. The link adds nothing to the agent's tool list: the server's tools are there when the server is registered, enabled and allowed.
 2. **Same backend.** A widget whose `mcp_server` names no server of its backend's `apps.json` is reported with `[mcp_tool/mcp_server]` and left out. The check runs only when `apps.json` loaded with no invalid app. A backend with no `apps.json` declares no server. One name for two servers (different URLs) in one backend makes the later app invalid.
 3. **Identity.** A call is attributed to a widget only when the server was registered for the widget's backend, its declared name equals `mcp_server`, and the tool equals `tool_id`.
-4. **Active.** The link is active when the tool is in the request's tool list: the server connected and enabled, the tool on, granted by the user's roles, and MCP tools on for the agent. Otherwise the widget behaves as if it had no link.
+4. **Active.** The link is active when the tool is in the request's tool list: the server connected and enabled, the tool on, the server allowed to the user, and MCP tools on for the agent. Otherwise the widget behaves as if it had no link.
 5. **Several widgets, one tool.** A call is cited to the widget whose literal `args` all equal the call's arguments, the one with the most literals first, then the first the backend declares.
 6. **Not with `disableRetrievalForCopilot: true`**, which keeps the widget from the agent.
 7. **Host-only.** A plugin's frame gets no trait for the link and has no command or permission to call the tool.
-8. **`iframe`.** `storage.mcpUrl` binds a server of the iframe's own to the instance, without the backend's credentials. It does not use or conflict with `mcp_tool`.
+8. **`iframe`.** `storage.mcpUrl` binds a server of the iframe's own to the instance, without the backend's credentials. It does not use or conflict with `mcp_tool`. The backend that declares it is the approval: whoever can use the backend can use the server's tools, and a changed URL needs no new approval.
 
 ### 5.4 What the web app and the agent do
 
 1. **The agent is told.** Where the request is assembled (`lib/utils/mcpLink.ts`, used in `useAiFetchRequestInit.tsx`), a widget row gains `mcp_tool: { server_id, tool_name, args }` when the request's tools include the linked tool; `server_id` and `tool_name` come from that list, never from the widget's strings.
 2. **Ines shows it.** Her `search_widgets` rows carry `mcp_tool: { tool, args }` with the tool named as the model calls it (`linkedToolName`, `agent/src/mcp/factory.ts`), and her prompt's widget lists tag the widget `[query tool: <name>]`. Nothing is routed by it: the model chooses.
-3. **A call cites the widget** (`citeMcpCall`, used by `useMcpExecutor`). Only widgets of the server's own backend that name its declared name and the tool are candidates; `input_args` are built through the mapping in reverse, and arguments that map to no param go in the citation's `details`.
+3. **A call cites the widget** (`citeMcpCall`, used by `useMcpExecutor`). Only widgets of the server's own backend that name its declared name and the tool are candidates; `input_args` are built through the mapping in reverse, and arguments that map to no param go in the citation's `details`. An answer cites a widget once, however many calls cited it: the first citation of a widget is kept, for the calls of a linked tool and for those of an `iframe` widget's own server.
 4. **The FINOS Workspace MCP** returns the link in `list_available_widgets` and `get_widget_schema`.
 
 ### 5.5 Security
 
-- **The link grants nothing.** The call uses the user's own connection to the server, the roles decide (`RoleMcpAccess`), and the proxy checks every `tools/call`.
+- **The owner reports the declared servers.** The web app sends the URLs a backend declares to `PUT /app/data-connectors/api-source/{source_uuid}/mcp-servers` whenever it loads the backend. The API accepts the report from the backend's owner, and from a superuser for an entity backend; anyone else gets 404. The API grants the reported servers, with every tool, to the users who can read the backend: the entity's backends, the backends a role of the user approves, and the user's own backends when the account type may add connections.
+- **The link grants nothing.** The call uses the user's own connection to the server, the user's roles (`RoleMcpAccess`) and the backends the user can use decide, and the proxy checks every `tools/call`.
 - **`args` is a mapping, not a policy.** The model chooses the arguments and the server decides what a call may do.
 - **Only the backend's own servers.** The name resolves against the same backend's declarations, so a widget cannot have another backend's results cited as its own, or point the backend's credentials at a host the backend did not declare.
 - **No tool call at validation.** Validate Widgets never calls a tool.

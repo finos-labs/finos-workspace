@@ -42,7 +42,7 @@ export function useDictation(
 ) {
   const [state, setState] = useState<DictationState>("idle");
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const stopTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const discardRef = useRef(false);
   const getCopilotRequestHeaders = useGetCopilotRequestHeaders();
 

@@ -16,7 +16,6 @@ import "react-resizable/css/styles.css";
 import { createBrowserRouter, Link, useRouteError } from "react-router-dom";
 import Icon from "~/components/Icon";
 import "./index.css";
-import { registerSW } from "virtual:pwa-register";
 import { ErrorBoundary } from "react-error-boundary";
 import { useMcpAuthCallback } from "./components/AI/hooks/mcp/onMcpAuth";
 import AuthRedirect from "./components/LayoutAuth/AuthRedirect";
@@ -299,10 +298,6 @@ function Root() {
   }, []);
 
   return <Suspense fallback={null}>{RootContent}</Suspense>;
-}
-
-if ("serviceWorker" in navigator) {
-  registerSW({ immediate: true });
 }
 
 function bootstrap() {

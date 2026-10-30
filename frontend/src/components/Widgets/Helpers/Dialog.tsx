@@ -1,9 +1,9 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
-import { useUpdateEffect } from "usehooks-ts";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
+import { useIsFirstRender } from "~/hooks/useIsFirstRender";
 
 type DialogProps = {
   title?: string | ReactNode;
@@ -76,7 +76,10 @@ export default function Dialog({
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = externalSetOpen !== undefined ? externalSetOpen : setInternalOpen;
 
-  useUpdateEffect(() => {
+  const isFirstRender = useIsFirstRender();
+
+  useEffect(() => {
+    if (isFirstRender) return;
     if (!open) {
       if (handleDialogClose) {
         handleDialogClose();

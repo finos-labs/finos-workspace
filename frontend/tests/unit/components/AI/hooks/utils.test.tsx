@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ParamDef, WidgetT } from "~/components/types";
-import type { WidgetSignature } from "~/lib/state/copilot";
+import type { Citation, WidgetSignature } from "~/lib/state/copilot";
 import type { DashboardWidgetData } from "~/lib/state/copilotData";
 
 vi.mock("~/lib/utils/widgetParams", () => ({
@@ -12,6 +12,7 @@ import {
   createSignatureMap,
   detectQueryMismatch,
   normalizeCitations,
+  withoutCitedWidgets,
 } from "~/components/AI/hooks/utils";
 import { currentDateModifier } from "~/lib/utils/widgetParams";
 import { malformed, partial } from "../../../mocks";
@@ -697,5 +698,53 @@ describe("normalizeCitations", () => {
     expect(normalizeCitations(null)).toEqual([]);
     expect(normalizeCitations(undefined)).toEqual([]);
     expect(normalizeCitations("string")).toEqual([]);
+  });
+});
+
+describe("withoutCitedWidgets", () => {
+  const widgetCitation = (id: string, widget: string, details: unknown[] = []) =>
+    ({
+      id,
+      signature: "",
+      source_info: { type: "widget", name: "Map", uuid: widget, widget_id: widget },
+      details,
+    }) as Citation;
+  const fileCitation = (id: string) =>
+    ({
+      id,
+      signature: "",
+      source_info: { type: "direct retrieval", name: "File" },
+    }) as Citation;
+
+  it("keeps one citation for a widget however many calls cited it", () => {
+    const calls = [
+      widgetCitation("a", "map-1"),
+      widgetCitation("b", "map-1", [{ Sql: "SELECT 1" }]),
+      widgetCitation("c", "map-1", [{ Sql: "SELECT 2" }]),
+    ];
+
+    expect(withoutCitedWidgets([], calls).map((citation) => citation.id)).toEqual([
+      "a",
+    ]);
+  });
+
+  it("keeps a citation for each different widget", () => {
+    const calls = [widgetCitation("a", "map-1"), widgetCitation("b", "map-2")];
+
+    expect(withoutCitedWidgets([], calls)).toHaveLength(2);
+  });
+
+  it("drops a widget an earlier citation already names", () => {
+    const earlier = [widgetCitation("a", "map-1")];
+
+    expect(withoutCitedWidgets(earlier, [widgetCitation("b", "map-1")])).toEqual([]);
+  });
+
+  it("drops a citation it already has, and leaves other sources alone", () => {
+    const earlier = [fileCitation("f1")];
+
+    const kept = withoutCitedWidgets(earlier, [fileCitation("f1"), fileCitation("f2")]);
+
+    expect(kept.map((citation) => citation.id)).toEqual(["f2"]);
   });
 });

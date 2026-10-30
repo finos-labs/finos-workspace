@@ -57,7 +57,7 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
     uploadProgress: null as number | null,
     message: null as string | null,
   });
-  const abortControllerRef = useRef<AbortController>();
+  const abortControllerRef = useRef<AbortController>(undefined);
 
   const { files, setFiles } = useFileContext();
   const filesRef = useRef(files);

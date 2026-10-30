@@ -81,9 +81,7 @@ services:
 
   backend-worker:
     <<: *backend
-    build:
-      context: ../backend-api/backend
-      dockerfile: rqworker.Dockerfile
+    command: ["python", "base_workers.py"]
     depends_on:
       init:
         condition: service_completed_successfully

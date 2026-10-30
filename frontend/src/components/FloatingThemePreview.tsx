@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Draggable from "react-draggable";
 import { useDebounceValue } from "usehooks-ts";
 import { Select } from "~/components/ds/atoms/Select";
@@ -15,6 +15,7 @@ const FloatingThemePreview = () => {
   );
   const [debouncedColor] = useDebounceValue(color, 300);
   const [showPreview, setShowPreview] = useState(false);
+  const nodeRef = useRef<HTMLDivElement>(null);
 
   const handleColorChange = (newColor: string) => {
     setColor(newColor);
@@ -40,8 +41,16 @@ const FloatingThemePreview = () => {
   if (!showFloatingPreview) return null;
 
   return (
-    <Draggable handle=".drag-handle" defaultPosition={{ x: 0, y: 0 }} bounds="parent">
-      <div className="fixed top-4 right-4 z-50 bg-white dark:bg-dark-600 border border-light-200 dark:border-dark-300 rounded-lg shadow-lg overflow-hidden">
+    <Draggable
+      nodeRef={nodeRef}
+      handle=".drag-handle"
+      defaultPosition={{ x: 0, y: 0 }}
+      bounds="parent"
+    >
+      <div
+        ref={nodeRef}
+        className="fixed top-4 right-4 z-50 bg-white dark:bg-dark-600 border border-light-200 dark:border-dark-300 rounded-lg shadow-lg overflow-hidden"
+      >
         <div className="p-3 space-y-3">
           <div className="flex items-center justify-between drag-handle cursor-move select-none">
             <div className="flex items-center gap-2">
