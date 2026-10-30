@@ -2,7 +2,7 @@
 slug: /features/plugins
 title: Plugins
 sidebar_position: 0
-sidebar_label: Overview
+sidebar_label: Plugins
 ---
 
 # Plugins

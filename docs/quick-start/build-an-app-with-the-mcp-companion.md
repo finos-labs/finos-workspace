@@ -76,7 +76,7 @@ You can also select **Apps** in the sidebar and then the card of the app.
 
 ## If a step fails
 
-- The AI tool says that no browser is connected: open FINOS Workspace and check that the icon of the companion is green. [Connect your AI tool](connect-your-ai-tool.mdx#if-a-call-fails) lists the other errors and their causes.
+- The AI tool says that no browser is connected: open FINOS Workspace and check that the icon of the companion is green. [Security and troubleshooting](../features/mcp-companion/security-and-troubleshooting.md#if-a-call-fails) lists the other errors and their causes.
 - The widget is not in the list: check that the backend is still running and that **Connections** shows it as connected.
 
 ## Next
