@@ -51,7 +51,7 @@ Four parts of the system use the link:
 
 ## Security
 
-The web app reports the servers that a backend declares to the API, with `PUT /app/data-connectors/api-source/{source_uuid}/mcp-servers`, each time that it loads the backend. The API accepts the report from the backend's owner, and from a superuser for an organization's backend, and it answers 404 to anyone else. The API grants the reported servers, with every tool, to the users who can read the backend. A user can read the backends of the organization, the backends that one of the user's roles approves, and the user's own backends when the user's type may add connections.
+The web app reports the servers that a backend declares to the API, with `PUT /app/data-connectors/api-source/{source_uuid}/mcp-servers`, each time that it loads the backend. The API accepts the report from the backend's owner, and from a superuser for an organization's backend, and it answers 404 to anyone else. The API grants the reported servers, with every tool, to the users who can read the backend. A user can read the backends that one of the user's roles approves, and the user's own backends when the user's type may add connections. A backend that an admin added for the organization grants no server until a role approves it.
 
 The link grants no access. The call uses the user's own connection to the server, the user's roles and the backends that the user can use decide whether the tool is available, and the proxy checks every `tools/call` request. The `args` mapping describes how parameters fill arguments but sets no policy, because the model chooses the arguments and the server decides what a call may do.
 
