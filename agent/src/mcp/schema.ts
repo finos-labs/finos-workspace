@@ -19,7 +19,7 @@ type JsonSchemaProp = Record<string, unknown> & {
   required?: string[];
 };
 
-function jsonSchemaToZod(prop: JsonSchemaProp): z.ZodTypeAny {
+export function jsonSchemaToZod(prop: JsonSchemaProp): z.ZodTypeAny {
   if (prop.const !== undefined) {
     const literal = z.literal(prop.const as string | number | boolean);
     return prop.description ? literal.describe(prop.description) : literal;

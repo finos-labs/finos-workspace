@@ -92,6 +92,7 @@ A manifest that asks for the permission `core:data:query` or has `signatures` is
     }
   ],
   "standalone": false,
+  "artifact": { "description": "<when the agent shows it>", "data": { "type": "object", "additionalProperties": false, "properties": {} } },
   "permissions": ["core:data:read"],
   "server": { "proxies": [] },
   "model": { "traits": {} },
@@ -107,6 +108,7 @@ A manifest that asks for the permission `core:data:query` or has `signatures` is
 | `name`, `description`, `category`, `subCategory` | What Add widget shows. |
 | `handles` | Up to 8 viz types this widget renders for backend widgets (`"type"` in a backend's `widgets.json`). A type is 2 to 32 lowercase characters and cannot be a built-in type (`markdown`, `html`, `iframe`, `newsfeed`, `pdf`). `definition` is the JSON Schema of the `data.<type>` object a backend writes for it (section 9); `response` describes the JSON the backend's endpoint returns. |
 | `standalone` | `true` lists the widget in Add widget on its own, with no backend. A widget handles at least one type or is standalone. |
+| `artifact` | Lets the AI Agent show the widget in the chat with data it chooses (section 3.3). |
 | `permissions` | The host permissions it asks for (section 5). |
 | `server.proxies` | The ids of the proxies it may call; it then needs `core:proxy:call`, and only then. |
 | `server.routes` | The ids of the backend routes it may call; it then needs `core:backend:call`, and only then. |
@@ -139,6 +141,38 @@ A plugin can give the agent skills: instructions it follows for one kind of task
 | `file` | `skills/<name>.md`, UTF-8 text that is not empty and is at most 32 KiB. Unique in the plugin. |
 
 The skills of a plugin that is approved and enabled for an organization appear in the Skills tab of every user of that organization, with the plugin's name and without edit or delete. They need no role grant. They go when the plugin is disabled or a later version drops them. A skill the user made with the same slug wins, and when two plugins use one slug the one whose id comes first in the alphabet wins. A skill file is part of the package: the version's checksum covers it, the reviewer sees each skill in the review and acknowledges it, and a file that differs from the approved one is not given out. A skill is text for the model, so it cannot run code or call tools by itself.
+
+### 3.3 Artifacts
+
+A widget with `artifact` is a component the AI Agent can use in the chat: it shows the widget under its answer, filled with data it has from the conversation or from the tables it loaded. The user can add the card to a dashboard as a widget of the plugin, which keeps that data.
+
+```jsonc
+"artifact": {
+  "description": "Bars of x labels and y values, for a comparison across a few categories",
+  "data": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["rows"],
+    "properties": {
+      "title": { "type": "string", "maxLength": 80 },
+      "rows": {
+        "type": "array",
+        "maxItems": 200,
+        "items": { "type": "object", "additionalProperties": false, "required": ["x", "y"], "properties": { "x": { "type": "string", "maxLength": 40 }, "y": { "type": "number" } } }
+      }
+    }
+  }
+}
+```
+
+| Key | What it is |
+|---|---|
+| `description` | At most 300 characters. Tells the agent when the component fits the question. |
+| `data` | The JSON Schema of the data the agent gives, in the form of a `definition` (section 9): an object, closed and bounded. The agent reads it to build the data, the agent drops what it does not name, and data over 256 KiB is refused. |
+
+The widget reads the data through its `data` trait, so it needs the permission `core:data:read` and, when it declares `model.traits`, a trait bound to `data` (4.2). Its `settings` (section 9) are the agent's `config`. In the chat the widget is read-only and runs with `core:data:read`, `core:ui:notify`, `core:clipboard:write` and `core:asset:read`; a proxy or backend call, a write to params or state, a link or a download work once the widget is on a dashboard. A widget on a dashboard made from an artifact has no endpoint, so its `data` trait is the data it was made with.
+
+The artifact is part of the version the reviewer approves: the review lists it, and a change to its description or its data schema is asked for again. Only users whose roles grant the widget (section 5) are offered it, and the agent is told of the components of the plugins that are approved and enabled for the user's organization.
 
 ## 4. The module
 

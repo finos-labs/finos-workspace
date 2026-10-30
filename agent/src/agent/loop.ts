@@ -749,6 +749,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         artifactQueue,
         tables,
         conversationId,
+        pluginArtifacts: request.plugin_artifacts ?? [],
       });
       const widgetDataToolEnabled =
         hasWidgets &&

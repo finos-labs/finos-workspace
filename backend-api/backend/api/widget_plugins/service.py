@@ -534,6 +534,19 @@ def review_items(
                 "added": previous is None or widget_id not in old_widgets,
             }
         )
+        if widget.get("artifact"):
+            items.append(
+                {
+                    "key": f"artifact:{widget_id}",
+                    "family": "artifacts",
+                    "label": f"{widget_id}: the agent can show it in the chat with data it chooses, "
+                    f"and a user can add it to a dashboard: {widget['artifact']['description']}",
+                    "risk": "medium",
+                    "added": previous is None or (old_widgets.get(widget_id) or {}).get("artifact") != widget["artifact"],
+                }
+            )
+        elif (old_widgets.get(widget_id) or {}).get("artifact"):
+            items.append(_removed(f"artifact:{widget_id}", "artifacts", widget_id))
         old_permissions = set((old_widgets.get(widget_id) or {}).get("permissions", []))
         for permission in widget.get("permissions", []):
             items.append(
@@ -1185,6 +1198,7 @@ async def entity_listing(db: AsyncSession, entity_uuid: UUID) -> list[dict[str, 
                         "description": w.get("description", ""),
                         "handles": [h["type"] for h in w.get("handles", [])],
                         "standalone": bool(w.get("standalone")),
+                        "artifact": bool(w.get("artifact")),
                         "permissions": (active.approved or {}).get("permissions", {}).get(w["id"], []),
                     }
                     for w in _widgets(manifest)
@@ -1637,6 +1651,7 @@ async def user_listing(db: AsyncSession, user_uuid: UUID) -> dict[str, Any]:
                         "routes": (w.get("server") or {}).get("routes", [])
                         if "core:backend:call" in w["permissions"]
                         else [],
+                        "artifact": w.get("artifact"),
                         "model": w.get("model"),
                         "params": w.get("params", []),
                         "settings": w.get("settings"),

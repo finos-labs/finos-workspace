@@ -383,7 +383,14 @@ export type AppArtifactT = BaseArtifact & {
   widget_refs: AppArtifactWidgetRef[];
 };
 
-export type ArtifactT = TextArtifact | HtmlArtifact | AppArtifactT;
+export type PluginArtifactT = BaseArtifact & {
+  type: "plugin";
+  plugin: { id: string; widget: string };
+  data: unknown;
+  config?: Record<string, unknown>;
+};
+
+export type ArtifactT = TextArtifact | HtmlArtifact | AppArtifactT | PluginArtifactT;
 
 export type ArtifactType<T extends ArtifactT["type"]> = Extract<ArtifactT, { type: T }>;
 

@@ -66,6 +66,12 @@ export const PluginWidgetSchema = z.object({
   subCategory: z.string().nullish(),
   handles: z.array(HandleSchema).default([]),
   standalone: z.boolean().default(false),
+  artifact: z
+    .object({
+      description: z.string(),
+      data: z.record(z.string(), z.unknown()),
+    })
+    .nullish(),
   permissions: z.array(z.enum(PERMISSIONS)),
   proxies: z.array(z.string()).default([]),
   routes: z.array(z.string()).default([]),
@@ -130,6 +136,7 @@ export interface ResolvedPluginWidget {
 }
 
 export interface PluginInstanceStorage {
+  data?: unknown;
   state?: unknown;
   config?: Record<string, unknown>;
 }

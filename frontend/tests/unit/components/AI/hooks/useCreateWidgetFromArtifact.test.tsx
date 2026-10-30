@@ -7,6 +7,8 @@ import {
   useCreateWidgetFromArtifact,
 } from "~/components/AI/hooks/useCreateWidgetFromArtifact";
 import { useCopilotStore } from "~/lib/state/copilot";
+import { usePluginRegistryStore } from "~/plugins/registry";
+import { PluginListingSchema } from "~/plugins/types";
 import { required } from "../../../mocks";
 
 vi.mock("sonner", () => ({
@@ -114,6 +116,65 @@ describe("useCreateWidgetFromArtifact", () => {
           }),
         );
       });
+    });
+
+    it("adds a plugin artifact as a plugin widget that holds its data, without asking the agent for a name", async () => {
+      usePluginRegistryStore.getState().setListing(
+        PluginListingSchema.parse({
+          enabled: true,
+          etag: "1",
+          plugins: [
+            {
+              id: "chart-kit",
+              version: "1.0.0",
+              name: "Chart kit",
+              digest: `sha256-${"A".repeat(43)}`,
+              entry: { module: "entry.js", styles: [] },
+              files: { "entry.js": { size: 10, sha256: "a".repeat(64) } },
+              csp: {},
+              widgets: [
+                {
+                  id: "bars",
+                  name: "Bars",
+                  permissions: ["core:data:read"],
+                  grid: { w: 20, h: 10 },
+                  artifact: { description: "Bars", data: { type: "object" } },
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      const { result } = renderHook(() => useCreateWidgetFromArtifact());
+
+      await act(async () => {
+        await result.current.createWidget({
+          widgetType: "plugin",
+          content: "",
+          pluginArtifact: {
+            plugin: { id: "chart-kit", widget: "bars" },
+            data: { rows: [{ x: "a", y: 1 }] },
+            config: { color: "red" },
+          },
+          metadata: { name: "Sales bars", description: "Sales by month" },
+        });
+      });
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockAddWidget).toHaveBeenCalledWith(
+        "dashboard-123",
+        expect.objectContaining({
+          name: "Sales bars",
+          description: "Sales by month",
+          widgetId: "plugin:chart-kit:bars",
+          connectionType: "plugin",
+          plugin: { id: "chart-kit", widget: "bars" },
+          gridData: { w: 20, h: 10 },
+          storage: {
+            plugin: { data: { rows: [{ x: "a", y: 1 }] }, config: { color: "red" } },
+          },
+        }),
+      );
     });
 
     it("shows error toast when creation fails", async () => {

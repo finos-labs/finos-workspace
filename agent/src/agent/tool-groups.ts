@@ -57,6 +57,9 @@ const RENDER_NOTES =
   "- create_html_artifact: render a small inline HTML report or chart (max 50 KB) for a one-off layout; after create_artifact-style rendering succeeds, do not repeat the markup in the answer. For flowchart-like renders prefer a Mermaid diagram tool when one is listed, with `flowchart TD`.\n" +
   "- create_table_from_text: extract a JSON table from pasted unstructured text; the result is queryable with execute_sql (the `sql` group).";
 
+const COMPONENT_NOTES =
+  "- show_plugin_artifact shows a plugin's component (the `component` list in the tool says which, what each is for, and the data each takes) in the chat, filled with data you have. Give `data` as the component's schema says. For rows you loaded, use `sql` or `from_table_id` with `rows_key` instead of copying them. The user can add the card to a dashboard as a widget. Call it once per component shown, then go to the final answer and do not repeat the data.";
+
 const PLANNING_NOTES =
   "- _llm_think: show a short plan before a multi-step workflow: `summary` is one concise sentence, the step-by-step plan goes only in `plan`. One workflow-level plan, not repeated planning between routine tool calls. Do not name tools, ids or tables in it.\n" +
   "- enhance_prompt: rewrite a vague user query into a sharper one; only when the wording is genuinely ambiguous.";
@@ -133,6 +136,12 @@ const STATIC_GROUPS: readonly StaticGroup[] = [
     summary: "draw one-off HTML/SVG (also charts) or turn pasted text into a table",
     notes: RENDER_NOTES,
     names: ["create_html_artifact", "create_table_from_text"],
+  },
+  {
+    id: "components",
+    summary: "show a plugin's chart or other component in the chat, filled with your data (the user can add it to a dashboard)",
+    notes: COMPONENT_NOTES,
+    names: ["show_plugin_artifact"],
   },
   {
     id: "planning",

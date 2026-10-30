@@ -110,6 +110,15 @@ export interface UploadedDocument {
   url?: string;
 }
 
+export interface PluginArtifactEntry {
+  plugin: string;
+  widget: string;
+  name: string;
+  description: string;
+  data_schema: Record<string, unknown>;
+  config_schema?: Record<string, unknown>;
+}
+
 export interface QueryRequest {
   messages: Message[];
   context?: unknown[];
@@ -123,6 +132,7 @@ export interface QueryRequest {
   workspace_state?: unknown;
   workspace_options?: Record<string, boolean | string>;
   skills_catalog?: SkillCatalogEntry[];
+  plugin_artifacts?: PluginArtifactEntry[];
   selected_skills?: SkillPayload[];
   model?: string;
   tools?: AgentTool[];
@@ -192,7 +202,17 @@ export interface AppArtifact {
   widget_refs: AppArtifactWidgetRef[];
 }
 
-export type CopilotArtifact = HtmlArtifact | AppArtifact;
+export interface PluginArtifact {
+  type: "plugin";
+  uuid: string;
+  name: string;
+  description: string;
+  plugin: { id: string; widget: string };
+  data: Record<string, unknown>;
+  config?: Record<string, unknown>;
+}
+
+export type CopilotArtifact = HtmlArtifact | AppArtifact | PluginArtifact;
 
 export interface WidgetCitationSourceInfo {
   type: "widget";
