@@ -35,12 +35,17 @@ export function typeLabel(schema: unknown): TypeLabel {
   if (!isObject(schema)) return ["any"];
   if (typeof schema.$ref === "string") return [{ ref: refName(schema.$ref) }];
   if ("const" in schema) return [literal(schema.const)];
+  if (isObject(schema.then) && isObject(schema.else)) return joinLabels([typeLabel(schema.else), typeLabel(schema.then)], " | ");
   if (Array.isArray(schema.enum)) {
     const shown = schema.enum.slice(0, MAX_ENUM).map(literal).join(" | ");
     return [schema.enum.length > MAX_ENUM ? `${shown} | … (${schema.enum.length} values)` : shown];
   }
   const alternatives = list(schema.anyOf).length > 0 ? list(schema.anyOf) : list(schema.oneOf);
-  if (alternatives.length > 0) return joinLabels(alternatives.map(typeLabel), " | ");
+  if (alternatives.length > 0) {
+    const labels = alternatives.map(typeLabel);
+    const distinct = labels.filter((label, index) => labels.findIndex((other) => JSON.stringify(other) === JSON.stringify(label)) === index);
+    return joinLabels(distinct, " | ");
+  }
   const combined = list(schema.allOf).filter((item) => item.$ref !== undefined || item.type !== undefined);
   if (combined.length > 0) return joinLabels(combined.map(typeLabel), " & ");
   if (Array.isArray(schema.type)) return [schema.type.join(" | ")];
@@ -137,62 +142,147 @@ function referencedDescription(property: Json, definitions: Json): string | unde
   return undefined;
 }
 
-function rows(schema: Json, prefix: string, depth: number, definitions: Json): SchemaProperty[] {
+interface Options {
+  inline: boolean;
+}
+
+function follow(schema: Json, definitions: Json, hops = 0): Json {
+  if (typeof schema.$ref !== "string" || hops > 8) return schema;
+  const found = definitions[refName(schema.$ref)];
+  if (!isObject(found)) return schema;
+  const { $ref: _ref, ...own } = schema;
+  return { ...follow(found, definitions, hops + 1), ...own };
+}
+
+function hasProperties(schema: Json): boolean {
+  return Object.keys(propertiesOf(schema)).length > 0;
+}
+
+function branchesOf(schema: Json, definitions: Json): Json[] | undefined {
+  const direct = list(schema.oneOf).length > 0 ? list(schema.oneOf) : list(schema.anyOf);
+  const nested = list(schema.allOf).flatMap((item) => list(item.oneOf));
+  const found = (direct.length > 0 ? direct : nested).map((branch) => follow(branch, definitions));
+  return found.length > 1 && found.every(hasProperties) ? found : undefined;
+}
+
+function elementOf(schema: Json, definitions: Json): Json | undefined {
+  if (!isObject(schema.items)) return undefined;
+  return follow(schema.items, definitions);
+}
+
+function rows(schema: Json, prefix: string, depth: number, definitions: Json, options: Options): SchemaProperty[] {
   const result: SchemaProperty[] = [];
   const required = requiredOf(schema);
   for (const [name, value] of Object.entries(propertiesOf(schema))) {
     const property = isObject(value) ? value : {};
+    const target = options.inline ? follow(property, definitions) : property;
+    const expanded = options.inline && typeof property.$ref === "string" && hasProperties(target) && branchesOf(target, definitions) === undefined;
     const row: SchemaProperty = {
       name: `${prefix}${name}`,
-      type: typeLabel(property),
+      type: expanded ? ["object"] : typeLabel(property),
       required: required.has(name),
-      notes: constraintNotes(property),
+      notes: constraintNotes(target),
     };
-    const description = typeof property.description === "string" ? property.description : referencedDescription(property, definitions);
+    const description = typeof target.description === "string" ? target.description : referencedDescription(property, definitions);
     if (description !== undefined) row.description = description;
-    const values = enumValues(property);
+    const values = enumValues(target);
     if (values !== undefined) row.enum = values;
     result.push(row);
     if (depth < MAX_DEPTH) {
-      if (property.type === "object" && Object.keys(propertiesOf(property)).length > 0) {
-        result.push(...rows(property, `${prefix}${name}.`, depth + 1, definitions));
+      if (target.type === "object" && hasProperties(target) && (expanded || typeof property.$ref !== "string")) {
+        result.push(...rows(target, `${prefix}${name}.`, depth + 1, definitions, options));
       }
-      if (isObject(property.items) && property.items.type === "object" && Object.keys(propertiesOf(property.items)).length > 0) {
-        result.push(...rows(property.items, `${prefix}${name}[].`, depth + 1, definitions));
+      const element = elementOf(target, definitions);
+      if (element !== undefined && element.type === "object" && hasProperties(element) && branchesOf(element, definitions) === undefined) {
+        result.push(...rows(element, `${prefix}${name}[].`, depth + 1, definitions, options));
       }
     }
   }
   return result;
 }
 
-export function describeSchema(name: string, schema: unknown, definitions: Json = {}): SchemaDoc {
+function discriminatorOf(branches: Json[]): string | undefined {
+  const first = branches[0];
+  if (first === undefined) return undefined;
+  return Object.keys(propertiesOf(first)).find((key) =>
+    branches.every((branch) => {
+      const property = propertiesOf(branch)[key];
+      return isObject(property) && "const" in property;
+    }),
+  );
+}
+
+function appliesTo(labels: string[], all: string[], shared: boolean): string | undefined {
+  if (labels.length === all.length) return undefined;
+  if (shared || labels.length * 2 <= all.length) return `for ${labels.join(", ")}`;
+  return `not for ${all.filter((label) => !labels.includes(label)).join(", ")}`;
+}
+
+function unionRows(branches: Json[], definitions: Json, options: Options): { properties: SchemaProperty[]; notes: string[] } {
+  const key = discriminatorOf(branches);
+  const labels = branches.map((branch, index) => {
+    const property = key === undefined ? undefined : propertiesOf(branch)[key];
+    return isObject(property) ? String(property.const) : `variant ${index + 1}`;
+  });
+  const byName = new Map<string, { row: SchemaProperty; labels: string[] }[]>();
+  branches.forEach((branch, index) => {
+    for (const row of rows(branch, "", 0, definitions, options)) {
+      const groups = byName.get(row.name) ?? [];
+      if (!byName.has(row.name)) byName.set(row.name, groups);
+      const same = groups.find(
+        (group) => JSON.stringify([group.row.type, group.row.required, group.row.description, group.row.notes, group.row.enum]) === JSON.stringify([row.type, row.required, row.description, row.notes, row.enum]),
+      );
+      if (same !== undefined) same.labels.push(labels[index] as string);
+      else groups.push({ row, labels: [labels[index] as string] });
+    }
+  });
+  const properties: SchemaProperty[] = [];
+  for (const [name, groups] of byName) {
+    if (name === key) {
+      const merged = branches.map((branch) => literal((propertiesOf(branch)[name] as Json).const));
+      const descriptions = new Set(groups.map((group) => group.row.description));
+      const row: SchemaProperty = { name, type: [merged.join(" | ")], required: groups.every((group) => group.row.required), notes: [], enum: merged };
+      const [only] = [...descriptions];
+      if (descriptions.size === 1 && only !== undefined) row.description = only;
+      properties.push(row);
+      continue;
+    }
+    for (const group of groups) {
+      const note = appliesTo(group.labels, labels, groups.length > 1);
+      properties.push(note === undefined ? group.row : { ...group.row, notes: [...group.row.notes, note] });
+    }
+  }
+  const notes = [...new Set(branches.flatMap(ruleNotes))];
+  return { properties, notes };
+}
+
+export function describeSchema(name: string, schema: unknown, definitions: Json = {}, options: Options = { inline: false }): SchemaDoc {
   const json = isObject(schema) ? schema : {};
-  const doc: SchemaDoc = {
-    name,
-    type: typeLabel(json),
-    properties: rows(json, "", 0, definitions),
-    notes: [...constraintNotes(json), ...ruleNotes(json)],
-  };
+  const branches = options.inline ? branchesOf(json, definitions) : undefined;
+  const doc: SchemaDoc = branches
+    ? { name, type: ["object"], ...unionRows(branches, definitions, options) }
+    : { name, type: typeLabel(json), properties: rows(json, "", 0, definitions, options), notes: [...constraintNotes(json), ...ruleNotes(json)] };
   if (typeof json.description === "string") doc.description = json.description;
   const extended = list(json.allOf).filter((item) => typeof item.$ref === "string");
   for (const item of extended) doc.notes.unshift(`extends ${refName(item.$ref as string)}`);
   return doc;
 }
 
-export function describeSet(source: string, title: string, schema: unknown, definitionsKey: string): SchemaSet {
+export function describeSet(source: string, title: string, schema: unknown, definitionsKey: string, options: Options = { inline: false }): SchemaSet {
   const json = isObject(schema) ? schema : {};
   const definitions = isObject(json[definitionsKey]) ? (json[definitionsKey] as Json) : {};
+  const keep = (doc: SchemaDoc, original: unknown): SchemaDoc => (options.inline ? { ...doc, json: original } : doc);
   const set: SchemaSet = {
     source,
     title,
     definitions: Object.keys(definitions)
       .sort()
-      .map((name) => describeSchema(name, definitions[name], definitions)),
+      .map((name) => keep(describeSchema(name, definitions[name], definitions, options), definitions[name])),
   };
   if (typeof json.description === "string") set.description = json.description;
   const { [definitionsKey]: _omitted, ...rest } = json;
   if (rest.properties !== undefined || rest.type !== undefined || rest.items !== undefined || rest.$ref !== undefined) {
-    set.root = describeSchema(title, rest, definitions);
+    set.root = keep(describeSchema(title, rest, definitions, options), rest);
   }
   return set;
 }

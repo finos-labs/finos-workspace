@@ -158,6 +158,7 @@ export interface SchemaDoc {
   type: TypeLabel;
   properties: SchemaProperty[];
   notes: string[];
+  json?: unknown;
 }
 
 export interface SchemaSet {

@@ -3,12 +3,16 @@ import { databaseData, schemaSets } from "./data";
 import { Fields, fromSchema, TypeLabelText } from "./fields";
 import { Chip, Entry, Index, Section } from "./kit";
 import { TableWrap } from "./shared";
+import styles from "./styles.module.css";
 
 function SchemaFields({ doc, schemaPage }: { doc: SchemaDoc; schemaPage: string }) {
   return <Fields fields={fromSchema(doc.properties)} schemaPage={schemaPage} empty="This schema has no named properties." />;
 }
 
+const RULE_LENGTH = 48;
+
 function SchemaBlock({ doc, id }: { doc: SchemaDoc; id: string }) {
+  const rules = doc.notes.filter((note) => note.length > RULE_LENGTH);
   return (
     <Entry
       id={id}
@@ -17,15 +21,26 @@ function SchemaBlock({ doc, id }: { doc: SchemaDoc; id: string }) {
       chips={
         <>
           <TypeLabelText label={doc.type} />
-          {doc.notes.map((note) => (
-            <Chip key={note}>{note}</Chip>
-          ))}
+          {doc.notes
+            .filter((note) => note.length <= RULE_LENGTH)
+            .map((note) => (
+              <Chip key={note}>{note}</Chip>
+            ))}
         </>
       }
     >
       {doc.properties.length > 0 ? (
         <Section title="Properties">
           <SchemaFields doc={doc} schemaPage="" />
+        </Section>
+      ) : null}
+      {rules.length > 0 ? (
+        <Section title="Rules">
+          <ul>
+            {rules.map((rule) => (
+              <li key={rule}>{rule}</li>
+            ))}
+          </ul>
         </Section>
       ) : null}
     </Entry>
@@ -39,17 +54,38 @@ export function SchemaTable({ set, name, schemaPage }: { set: keyof typeof schem
   return <SchemaFields doc={doc} schemaPage={schemaPage} />;
 }
 
-export function SchemaDocs({ set }: { set: keyof typeof schemaSets }) {
+export function SchemaSource({ set }: { set: keyof typeof schemaSets }) {
   const data = schemaSets[set];
+  const docs = [...(data.root ? [{ ...data.root, name: data.title }] : []), ...data.definitions].filter((doc) => doc.json !== undefined);
+  return (
+    <>
+      {docs.map((doc) => (
+        <details key={doc.name} className={styles.source}>
+          <summary>
+            <code>{doc.name}</code>
+          </summary>
+          <pre className={styles.json}>
+            <code>{JSON.stringify(doc.json, null, 2)}</code>
+          </pre>
+        </details>
+      ))}
+    </>
+  );
+}
+
+export function SchemaDocs({ set, show }: { set: keyof typeof schemaSets; show?: string[] }) {
+  const data = schemaSets[set];
+  const definitions =
+    show === undefined ? data.definitions : show.flatMap((name) => data.definitions.filter((doc) => doc.name === name));
   const items = [
     ...(data.root ? [{ id: "schema-root", label: <code>{data.title}</code> }] : []),
-    ...data.definitions.map((doc) => ({ id: `schema-${doc.name}`, label: <code>{doc.name}</code> })),
+    ...definitions.map((doc) => ({ id: `schema-${doc.name}`, label: <code>{doc.name}</code> })),
   ];
   return (
     <>
       <Index items={items} />
       {data.root ? <SchemaBlock doc={{ ...data.root, name: data.title }} id="schema-root" /> : null}
-      {data.definitions.map((doc) => (
+      {definitions.map((doc) => (
         <SchemaBlock key={doc.name} doc={doc} id={`schema-${doc.name}`} />
       ))}
     </>

@@ -110,7 +110,7 @@ export function collectApi(): ApiData {
 }
 
 export function collectWidgetsSchema(): SchemaSet {
-  return describeSet(referencePath("backend", "widgets_schema.json"), "widgets.json", readReference("backend", "widgets_schema.json"), "definitions");
+  return describeSet(referencePath("backend", "widgets_schema.json"), "widgets.json", readReference("backend", "widgets_schema.json"), "definitions", { inline: true });
 }
 
 export function collectAppsSchema(): SchemaSet {

@@ -81,7 +81,7 @@ function FieldItem({ node, schemaPage }: { node: FieldNode; schemaPage: string }
         </div>
       ) : null}
       {node.children.length > 0 ? (
-        <details className={styles.nested}>
+        <details className={styles.nested} open>
           <summary>{node.children.length === 1 ? "1 nested property" : `${node.children.length} nested properties`}</summary>
           <FieldList nodes={node.children} schemaPage={schemaPage} />
         </details>
@@ -93,8 +93,8 @@ function FieldItem({ node, schemaPage }: { node: FieldNode; schemaPage: string }
 function FieldList({ nodes, schemaPage }: { nodes: FieldNode[]; schemaPage: string }) {
   return (
     <ul className={styles.fields}>
-      {nodes.map((node) => (
-        <FieldItem key={node.field.path} node={node} schemaPage={schemaPage} />
+      {nodes.map((node, index) => (
+        <FieldItem key={`${node.field.path}:${index}`} node={node} schemaPage={schemaPage} />
       ))}
     </ul>
   );

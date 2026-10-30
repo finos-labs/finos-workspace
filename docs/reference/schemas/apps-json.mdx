@@ -50,6 +50,10 @@ This file offers one app. It places two widgets of the backend side by side, sta
 
 **It connects the MCP servers.** When a user connects the backend, FINOS Workspace adds each server of `mcpServers` to the user's MCP servers. A server whose `authType` is `token` starts enabled only when the connection sends an `Authorization` header. A widget refers to a server by its `name` in `mcp_tool.mcp_server`, as [The MCP tool link](../protocols/mcp-tool-link.md) describes, and FINOS Workspace refuses the widget when no app of the backend declares that server. Apps of one backend may reuse a server's name only for the same address.
 
+## Plugin widget configuration
+
+A layout item of an `apps.json` template can set a plugin widget's configuration in `state.storage.plugin.config`. When a backend loads, FINOS Workspace reports an app and leaves it out if one of its layout items sets this configuration for a widget of a built-in type, or sets a value that the plugin's settings refuse (`PluginConfig_<type>`). The report names the path of each problem. When a user opens an app, FINOS Workspace merges the template's state into the widget's storage, and the plugin widget reads the configuration from there.
+
 ## Where the schema comes from
 
 The web app's Zod schema `templateSpecificationSchema` in `frontend/src/lib/types/app.ts` defines the file, and the description of every field is part of that schema. The page below is generated from the JSON Schema (draft-07) that the web app's reference test writes to `frontend/reference-data/apps-schema.json`, as [Regenerate the reference data](../../tutorials/contribute/regenerate-reference-data.md) describes. A test fails when a field has no description.
