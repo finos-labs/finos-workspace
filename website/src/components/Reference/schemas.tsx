@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { SchemaDoc } from "../../data/types";
 import { databaseData, schemaSets } from "./data";
 import { Fields, fromSchema, TypeLabelText } from "./fields";
-import { Chip, Entry, Index, Section } from "./kit";
+import { Chip, Entry, Section } from "./kit";
 import { TableWrap } from "./shared";
 import styles from "./styles.module.css";
 
@@ -94,14 +94,9 @@ export function SchemaDocs({
   const headings = show?.map((item) => (typeof item === "string" ? { name: item, title: item } : item));
   const definitions =
     headings === undefined ? data.definitions.map((doc) => ({ doc, heading: undefined })) : headings.flatMap((heading) => data.definitions.filter((doc) => doc.name === heading.name).map((doc) => ({ doc, heading })));
-  const items = [
-    ...(root && data.root ? [{ id: "schema-root", label: <code>{data.title}</code> }] : []),
-    ...definitions.map(({ doc }) => ({ id: `schema-${doc.name}`, label: <code>{doc.name}</code> })),
-  ];
   const named = show?.some((item) => typeof item !== "string") ?? false;
   return (
     <>
-      {named ? null : <Index items={items} />}
       {root && data.root ? <SchemaBlock doc={{ ...data.root, name: data.title }} id="schema-root" /> : null}
       {definitions.map(({ doc, heading }) => (
         <SchemaBlock key={doc.name} doc={doc} id={`schema-${doc.name}`} heading={named ? heading : undefined} />
@@ -113,7 +108,6 @@ export function SchemaDocs({
 export function DatabaseTables() {
   return (
     <>
-      <Index items={databaseData.tables.map((table) => ({ id: `table-${table.name}`, label: <code>{table.name}</code> }))} />
       {databaseData.tables.map((table) => (
         <Entry key={table.name} id={`table-${table.name}`} title={<code>{table.name}</code>}>
           <Section title="Columns">

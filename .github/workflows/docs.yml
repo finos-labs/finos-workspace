@@ -181,6 +181,12 @@ jobs:
             node_modules/@docusaurus/core/bin/docusaurus.mjs build
       - name: Check that the build wrote llms.txt
         run: test -s website/build/llms.txt
+      - name: Check that every page with headings has a table of contents
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo/website "$NODE_IMAGE" /usr/local/bin/node \
+            --disable-warning=ExperimentalWarning scripts/check-toc.mts
       - name: Keep the built site for the deploy
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4

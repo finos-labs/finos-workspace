@@ -92,7 +92,7 @@ export function HtmlSurfaces() {
   return (
     <>
       {htmlSurfacesData.map((surface) => (
-        <Entry key={surface.name} id={surface.name.toLowerCase().replace(/[^a-z]+/g, "-")} level={2} title={surface.name} description={surface.draws}>
+        <Entry key={surface.name} id={surface.name.toLowerCase().replace(/[^a-z]+/g, "-")} level={3} title={surface.name} description={surface.draws}>
           <Cases
             columns={["Item", "Value"]}
             rows={[
