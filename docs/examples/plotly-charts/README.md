@@ -110,6 +110,14 @@ An endpoint that answers both in one shape, `{"results": {"chart": <figure>, "re
 - **LaTeX.** Text plotly.js reads as LaTeX, `$...$`, is typeset with MathJax 4, read
   from the package the first time a figure has some.
 
+- **Chat.** The widget declares an `artifact` (`src/plugin.json`): the AI agent can show a
+  chart under its answer, from a bounded subset of a Plotly figure (up to eight traces of
+  `bar`, `scatter` or `pie`, with names, x/y or labels/values, and a title, axis titles and
+  `barmode`). The user adds the card to a dashboard as a full-width widget that keeps the
+  figure. A figure with no `template`, `paper_bgcolor` or `plot_bgcolor`, as an agent writes
+  it, is drawn in the site's light or dark mode, and again when the mode changes; a figure
+  that sets any of them is drawn as its author made it.
+
 It asks for `core:data:read`, `core:export:provide` and `core:copilot:context`. It
 declares no network access, proxies or backend: everything it draws comes from the
 widget's own endpoint through FINOS Workspace, and the outlines and MathJax from its package.

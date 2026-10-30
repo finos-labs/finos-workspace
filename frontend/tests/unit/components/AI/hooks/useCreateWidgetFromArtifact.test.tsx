@@ -118,7 +118,7 @@ describe("useCreateWidgetFromArtifact", () => {
       });
     });
 
-    it("adds a plugin artifact as a plugin widget that holds its data, without asking the agent for a name", async () => {
+    it("adds a plugin artifact as a full-width plugin widget that holds its data, without asking the agent for a name", async () => {
       usePluginRegistryStore.getState().setListing(
         PluginListingSchema.parse({
           enabled: true,
@@ -169,7 +169,7 @@ describe("useCreateWidgetFromArtifact", () => {
           widgetId: "plugin:chart-kit:bars",
           connectionType: "plugin",
           plugin: { id: "chart-kit", widget: "bars" },
-          gridData: { w: 20, h: 10 },
+          gridData: { w: 40, h: 12 },
           storage: {
             plugin: { data: { rows: [{ x: "a", y: 1 }] }, config: { color: "red" } },
           },

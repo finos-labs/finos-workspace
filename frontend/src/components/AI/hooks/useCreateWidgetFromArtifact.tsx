@@ -227,15 +227,15 @@ export function useCreateWidgetFromArtifact() {
         const { plugin, data, config } = params.pluginArtifact;
         const found = resolvePluginWidget(plugin);
         if (!found) throw new Error("This plugin component is not available to you");
-        const { w, h, minW, minH } = found.widget.grid;
+        const { h, minW, minH } = found.widget.grid;
         widget.widgetId = pluginWidgetId(plugin.id, plugin.widget);
         widget.type = "custom";
         widget.connectionType = "plugin";
         widget.plugin = plugin;
         widget.params = found.widget.params as unknown as ParamDef[];
         widget.gridData = {
-          w,
-          h,
+          w: 40,
+          h: Math.max(h, 12),
           ...(minW ? { minW } : {}),
           ...(minH ? { minH } : {}),
         };

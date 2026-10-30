@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { McpToolEntry } from "../mcp/factory.ts";
+import type { PluginArtifactEntry } from "../protocol/types.ts";
 import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server.ts";
 
 export const CORE_TOOLS: ReadonlySet<string> = new Set([
@@ -85,13 +86,36 @@ function describeWebGroup(tools: readonly string[]): { summary: string; notes: s
   return { summary: "search the web, or read a web page", notes: WEB_NOTES };
 }
 
+const MAX_LISTED_COMPONENTS = 12;
+const MAX_COMPONENT_CHARS = 140;
+
+function describeComponentsGroup(
+  _tools: readonly string[],
+  components: readonly PluginArtifactEntry[],
+): { summary: string; notes: string } {
+  const listed = components
+    .slice(0, MAX_LISTED_COMPONENTS)
+    .map((c) => {
+      const text = `${c.name}: ${c.description}`;
+      return text.length > MAX_COMPONENT_CHARS ? `${text.slice(0, MAX_COMPONENT_CHARS - 1)}…` : text;
+    })
+    .join(" | ");
+  return {
+    summary: `show one of the user's plugin components in the chat, filled with your data (the user can add it to a dashboard): ${listed}`,
+    notes: COMPONENT_NOTES,
+  };
+}
+
 interface StaticGroup {
   id: string;
   summary: string;
   notes: string;
   names: readonly string[];
   mcp?: true;
-  describe?: (tools: readonly string[]) => { summary: string; notes: string };
+  describe?: (
+    tools: readonly string[],
+    components: readonly PluginArtifactEntry[],
+  ) => { summary: string; notes: string };
   server?: string;
   always?: true;
 }
@@ -139,9 +163,10 @@ const STATIC_GROUPS: readonly StaticGroup[] = [
   },
   {
     id: "components",
-    summary: "show a plugin's chart or other component in the chat, filled with your data (the user can add it to a dashboard)",
+    summary: "show a plugin component in the chat, filled with your data",
     notes: COMPONENT_NOTES,
     names: ["show_plugin_artifact"],
+    describe: describeComponentsGroup,
   },
   {
     id: "planning",
@@ -170,7 +195,11 @@ function endsWithCanonical(name: string, canonical: string): boolean {
   return name === canonical || name.endsWith(`_${canonical}`);
 }
 
-export function buildToolCatalog(toolNames: readonly string[], mcpEntries: readonly McpToolEntry[]): ToolCatalog {
+export function buildToolCatalog(
+  toolNames: readonly string[],
+  mcpEntries: readonly McpToolEntry[],
+  components: readonly PluginArtifactEntry[] = [],
+): ToolCatalog {
   const mcpByName = new Map(mcpEntries.map((entry) => [entry.sanitizedName, entry]));
   const groups: ToolGroup[] = [];
   const groupOf = new Map<string, string>();
@@ -187,7 +216,7 @@ export function buildToolCatalog(toolNames: readonly string[], mcpEntries: reado
     groups.push({
       id: spec.id,
       tools,
-      ...(spec.describe?.(tools) ?? { summary: spec.summary, notes: spec.notes }),
+      ...(spec.describe?.(tools, components) ?? { summary: spec.summary, notes: spec.notes }),
       ...(spec.always ? { always: true as const } : {}),
     });
     for (const name of tools) groupOf.set(name, spec.id);

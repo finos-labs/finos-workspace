@@ -791,7 +791,11 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         ...(workspaceToolSet ?? {}),
       };
 
-      const catalog: ToolCatalog = buildToolCatalog(Object.keys(allTools), mcpToolsResult?.entries ?? []);
+      const catalog: ToolCatalog = buildToolCatalog(
+        Object.keys(allTools),
+        mcpToolsResult?.entries ?? [],
+        request.plugin_artifacts ?? [],
+      );
       const tools: ToolSet =
         catalog.groups.some((g) => !g.always)
           ? { ...allTools, load_tools: makeLoadToolsTool({ catalog, loaded: loadedGroups }) }

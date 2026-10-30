@@ -23,6 +23,45 @@
             }
           }
         ],
+        "artifact": {
+          "description": "A chart drawn with Plotly from data you give it: bars, lines or points, or a pie. Use it for any chart of a few series over categories or over time.",
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["data"],
+            "properties": {
+              "data": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["type"],
+                  "properties": {
+                    "type": { "enum": ["bar", "scatter", "pie"] },
+                    "name": { "type": "string", "maxLength": 80 },
+                    "mode": { "enum": ["lines", "markers", "lines+markers"] },
+                    "orientation": { "enum": ["v", "h"] },
+                    "x": { "type": "array", "maxItems": 500, "items": { "type": ["string", "number"], "maxLength": 80 } },
+                    "y": { "type": "array", "maxItems": 500, "items": { "type": ["string", "number"], "maxLength": 80 } },
+                    "labels": { "type": "array", "maxItems": 100, "items": { "type": "string", "maxLength": 80 } },
+                    "values": { "type": "array", "maxItems": 100, "items": { "type": "number" } }
+                  }
+                }
+              },
+              "layout": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "title": { "type": "string", "maxLength": 120 },
+                  "barmode": { "enum": ["group", "stack"] },
+                  "xaxis": { "type": "object", "additionalProperties": false, "properties": { "title": { "type": "string", "maxLength": 80 } } },
+                  "yaxis": { "type": "object", "additionalProperties": false, "properties": { "title": { "type": "string", "maxLength": 80 } } }
+                }
+              }
+            }
+          }
+        },
         "permissions": ["core:data:read", "core:export:provide", "core:copilot:context"],
         "grid": { "w": 20, "h": 12, "minW": 8, "minH": 6 }
       }

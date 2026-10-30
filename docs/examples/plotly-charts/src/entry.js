@@ -261,6 +261,33 @@ function tableOf(rows, mode) {
   };
 }
 
+const FIGURE_COLORS = {
+  light: { paper: "white", plot: "#E5ECF6", font: "#2a3f5f", grid: "white" },
+  dark: { paper: "rgb(17,17,17)", plot: "rgb(17,17,17)", font: "#f2f5fa", grid: "#506784" },
+};
+
+export function followsTheme(figure) {
+  const { layout } = figure;
+  return !(layout.template || layout.paper_bgcolor || layout.plot_bgcolor);
+}
+
+export function themedFigure(figure, mode) {
+  if (!followsTheme(figure)) return figure;
+  const colors = FIGURE_COLORS[mode === "light" ? "light" : "dark"];
+  const axis = (own) => ({ gridcolor: colors.grid, zerolinecolor: colors.grid, linecolor: colors.grid, ...(own && typeof own === "object" ? own : {}) });
+  return {
+    ...figure,
+    layout: {
+      ...figure.layout,
+      paper_bgcolor: colors.paper,
+      plot_bgcolor: colors.plot,
+      font: { color: colors.font, ...(figure.layout.font ?? {}) },
+      xaxis: axis(figure.layout.xaxis),
+      yaxis: axis(figure.layout.yaxis),
+    },
+  };
+}
+
 function csvLine(row) {
   return row
     .map((value) => {
@@ -391,13 +418,17 @@ export default {
     let pending = false;
     let latest = 0;
     let onBase = false;
+    let followsMode = false;
     const draw = async () => {
       pending = !el.clientWidth || !el.clientHeight;
       if (pending) return;
       const turn = ++latest;
       const response = model.get("data");
       const table = rowsOf(response);
-      const figure = table ? tableOf(table, model.get("theme")?.mode) : figureOf(response);
+      const mode = model.get("theme")?.mode;
+      const authored = table ? null : figureOf(response);
+      followsMode = Boolean(table) || Boolean(authored && followsTheme(authored));
+      const figure = table ? tableOf(table, mode) : authored && themedFigure(authored, mode);
       if (!figure) {
         Plotly.purge(graph);
         message.textContent = "The endpoint did not return a Plotly figure.";
@@ -437,7 +468,7 @@ export default {
       }
     };
     model.on("change:data", draw);
-    model.on("change:theme", () => (rowsOf(model.get("data")) || onBase) && draw());
+    model.on("change:theme", () => (followsMode || onBase) && draw());
     draw();
 
     const resize = new ResizeObserver(() => (pending ? draw() : Plotly.Plots.resize(graph)));
