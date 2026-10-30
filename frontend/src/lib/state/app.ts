@@ -1,7 +1,7 @@
 import cloneDeep from "lodash/cloneDeep";
 import debounce from "lodash/debounce";
 import isEqual from "lodash.isequal";
-import type { Layout } from "react-grid-layout";
+import type { LayoutItem } from "react-grid-layout";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { subscribeWithSelector } from "zustand/middleware";
@@ -195,7 +195,7 @@ export type AppState = {
   updateWidget: (tabId: string, widget: Widget) => void;
   updateTabWidgetsLayout: (
     tabId: string,
-    widgetsLayout: Layout[],
+    widgetsLayout: LayoutItem[],
     currentTab?: string,
   ) => void;
   moveFolderToFolder: (folderId: string, newFolderId: string, newName: string) => void;
