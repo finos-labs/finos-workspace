@@ -143,6 +143,14 @@ export interface EnvData {
   agent: AgentEnvVariable[];
 }
 
+export interface SchemaVariant {
+  applies: string;
+  type: TypeLabel;
+  required: boolean;
+  enum?: string[];
+  notes: string[];
+}
+
 export interface SchemaProperty {
   name: string;
   type: TypeLabel;
@@ -150,6 +158,7 @@ export interface SchemaProperty {
   description?: string;
   enum?: string[];
   notes: string[];
+  variants?: SchemaVariant[];
 }
 
 export interface SchemaDoc {

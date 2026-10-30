@@ -13,16 +13,30 @@ const definitions = {
   Box: { type: "object", properties: { size: { type: "integer", minimum: 1 } } },
 };
 
-test("merges the variants of a union and says which variant has each field", () => {
+test("merges the variants of a union into one row for each field", () => {
   const doc = describeSchema("Param", definitions.Param, definitions, { inline: true });
-  const rows = doc.properties.map((row) => `${row.name}:${row.notes.join(",")}`);
-  assert.deepEqual(rows, ["name:for text, number", "name:for form", "type:", "value:for text", "value:for number", "step:for number"]);
+  assert.deepEqual(
+    doc.properties.map((row) => row.name),
+    ["name", "type", "value", "step"],
+  );
   const type = doc.properties.find((row) => row.name === "type");
   assert.deepEqual(type?.enum, ['"text"', '"number"', '"form"']);
+  const name = doc.properties.find((row) => row.name === "name");
+  assert.equal(name?.required, false);
   assert.deepEqual(
-    doc.properties.filter((row) => row.name === "name").map((row) => row.required),
-    [true, false],
+    name?.variants?.map((variant) => [variant.applies, variant.required]),
+    [
+      ["text, number", true],
+      ["form", false],
+    ],
   );
+  const value = doc.properties.find((row) => row.name === "value");
+  assert.deepEqual(value?.type, ["string | number"]);
+  assert.deepEqual(
+    value?.variants?.map((variant) => variant.applies),
+    ["text", "number"],
+  );
+  assert.deepEqual(doc.properties.find((row) => row.name === "step")?.notes, ["for number"]);
 });
 
 test("expands a referenced object inline and keeps it a link otherwise", () => {

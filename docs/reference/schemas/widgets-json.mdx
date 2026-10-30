@@ -4,6 +4,7 @@ sidebar_position: 1
 ---
 
 import { SchemaDocs, SchemaSource } from "@site/src/components/Reference/schemas";
+import { Fields } from "@site/src/components/Reference/fields";
 
 # widgets.json
 
@@ -11,11 +12,33 @@ A backend lists its widgets in a file named `widgets.json`. The file is an objec
 
 The fields below come from the JSON Schema that the backend's exporter writes to `backend-api/backend/reference-data/widgets_schema.json` for the built-in types `markdown`, `html`, `newsfeed`, `pdf` and `iframe`. A note such as `for html` means that only widgets of that type have the field. [The JSON Schema file](#the-json-schema-file) shows the schema as validators read it.
 
+<SchemaDocs set="widgets" root={false} show={[{ name: "Widget", title: "Widget definition", description: "The value of each key of the file." }]} />
+
+## The data key
+
+The object `data` describes the response of the endpoint, so that FINOS Workspace knows where the data is in it and what to do with it. The keys `dataKey`, `rawDataKey` and `rawType` are listed under Widget definition. A widget of a plugin type has one more key, which is named after the type:
+
+<Fields
+  fields={[
+    {
+      path: "data.<type>",
+      type: ["object"],
+      required: false,
+      constraints: ["for plugin types"],
+      description:
+        "The object that a backend writes for a widget of a plugin type, such as `data.plotly` for the type `plotly`. It tells the plugin how to read and show the data of the response. The plugin declares the schema of this object as its `definition` in `plugin.json`.",
+    },
+  ]}
+/>
+
+FINOS Workspace checks the widget against the plugin's `definition`. A widget that fails the check is left out of the catalog, and the problem is reported with its JSON pointer. The plugin module receives the checked object as its `definition` trait, as [Plugin module contract](../plugins/module-contract.mdx) describes, and the AI Agent reads the `definition` when it builds widgets of the type. [Plugin package and manifest](../plugins/package-and-manifest.mdx) describes how a plugin writes the `definition`. When a source refreshes, FINOS Workspace copies `data.<type>`, together with `dataKey`, `rawDataKey` and `rawType`, onto the widgets that are already on dashboards.
+
+The built-in schema above has no `data.<type>` key because it covers only the built-in types. The schema that the API serves adds the key for each plugin type that the organization has enabled.
+
 <SchemaDocs
   set="widgets"
   root={false}
   show={[
-    { name: "Widget", title: "Widget definition", description: "The value of each key of the file." },
     {
       name: "ParamDef",
       title: "Parameter",
@@ -356,8 +379,6 @@ The `type` of a definition decides which component renders the widget and which 
 The `data` object always accepts `dataKey`, and some types accept more keys. The types `html` and every plugin type also accept `raw`, which [Widget rows](../protocols/raw-rows.md) describes, and `iframe` accepts `storage`. The key `mcp_tool` links the widget to an MCP tool, as [The MCP tool link](../protocols/mcp-tool-link.md) describes.
 
 A plugin type exists for an organization when the organization has enabled a plugin that handles it. When two enabled plugins handle the same type, the organization admin's choice decides which of them renders it, and without a choice the plugin with the lowest id wins. A widget whose type nobody handles for the user does not appear in that user's catalog.
-
-A plugin type keeps its own configuration in `data.<type>`. For a type named `plotly`, that is the object at `data.plotly`. The plugin declares the schema of this object as its `definition`, as [Plugin package and manifest](../plugins/package-and-manifest.mdx) describes, and the plugin reads the object as the `definition` trait. When a source refreshes, FINOS Workspace copies the object, together with `dataKey`, `rawDataKey` and `rawType`, onto the widgets that are already on dashboards.
 
 ## Validation
 

@@ -1,4 +1,4 @@
-import type { SchemaDoc, SchemaProperty, SchemaSet, TypeLabel } from "../../src/data/types.ts";
+import type { SchemaDoc, SchemaProperty, SchemaSet, SchemaVariant, TypeLabel } from "../../src/data/types.ts";
 
 type Json = Record<string, unknown>;
 
@@ -218,6 +218,62 @@ function appliesTo(labels: string[], all: string[], shared: boolean): string | u
   return `not for ${all.filter((label) => !labels.includes(label)).join(", ")}`;
 }
 
+function topLevelParts(text: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text.charAt(index);
+    if (char === "(") depth += 1;
+    if (char === ")") depth -= 1;
+    if (depth === 0 && text.startsWith(" | ", index)) {
+      parts.push(current);
+      current = "";
+      index += 2;
+    } else {
+      current += char;
+    }
+  }
+  parts.push(current);
+  return parts;
+}
+
+function unionType(types: TypeLabel[]): TypeLabel {
+  if (types.every((type) => type.every((part) => typeof part === "string"))) {
+    const parts = types.flatMap((type) => topLevelParts(type.join("")));
+    return [[...new Set(parts)].join(" | ")];
+  }
+  const distinct = types.filter((type, index) => types.findIndex((other) => JSON.stringify(other) === JSON.stringify(type)) === index);
+  return joinLabels(distinct, " | ");
+}
+
+function mergedRow(name: string, groups: { row: SchemaProperty; labels: string[] }[], labels: string[]): SchemaProperty {
+  const [first] = groups;
+  const common = (first?.row.notes ?? []).filter((note) => groups.every((group) => group.row.notes.includes(note)));
+  const covered = groups.flatMap((group) => group.labels);
+  const values = [...new Set(groups.flatMap((group) => group.row.enum ?? []))];
+  const row: SchemaProperty = {
+    name,
+    type: unionType(groups.map((group) => group.row.type)),
+    required: covered.length === labels.length && groups.every((group) => group.row.required),
+    notes: common,
+    variants: groups.map(
+      (group): SchemaVariant => ({
+        applies: group.labels.join(", "),
+        type: group.row.type,
+        required: group.row.required,
+        notes: group.row.notes.filter((note) => !common.includes(note)),
+        ...(group.row.enum === undefined ? {} : { enum: group.row.enum }),
+      }),
+    ),
+  };
+  const note = appliesTo([...new Set(covered)], labels, false);
+  if (note !== undefined) row.notes.push(note);
+  if (first?.row.description !== undefined) row.description = first.row.description;
+  if (values.length > 0) row.enum = values;
+  return row;
+}
+
 function unionRows(branches: Json[], definitions: Json, options: Options): { properties: SchemaProperty[]; notes: string[] } {
   const key = discriminatorOf(branches);
   const labels = branches.map((branch, index) => {
@@ -247,10 +303,14 @@ function unionRows(branches: Json[], definitions: Json, options: Options): { pro
       properties.push(row);
       continue;
     }
-    for (const group of groups) {
-      const note = appliesTo(group.labels, labels, groups.length > 1);
-      properties.push(note === undefined ? group.row : { ...group.row, notes: [...group.row.notes, note] });
+    const [first] = groups;
+    if (first === undefined) continue;
+    if (groups.length === 1) {
+      const note = appliesTo(first.labels, labels, false);
+      properties.push(note === undefined ? first.row : { ...first.row, notes: [...first.row.notes, note] });
+      continue;
     }
+    properties.push(mergedRow(name, groups, labels));
   }
   const notes = [...new Set(branches.flatMap(ruleNotes))];
   return { properties, notes };

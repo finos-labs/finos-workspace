@@ -15,6 +15,17 @@ export function fromSchema(properties: SchemaProperty[]): FlatField[] {
     description: property.description,
     enumValues: property.enum,
     ...splitNotes(property.notes),
+    ...(property.variants === undefined
+      ? {}
+      : {
+          variants: property.variants.map((variant) => ({
+            applies: variant.applies,
+            type: variant.type,
+            required: variant.required,
+            constraints: variant.notes,
+            ...(variant.enum === undefined ? {} : { enumValues: variant.enum }),
+          })),
+        }),
   }));
 }
 
@@ -79,6 +90,20 @@ function FieldItem({ node, schemaPage }: { node: FieldNode; schemaPage: string }
             <code key={value}>{value}</code>
           ))}
         </div>
+      ) : null}
+      {field.variants !== undefined ? (
+        <ul className={styles.byType}>
+          {field.variants.map((variant) => (
+            <li key={variant.applies}>
+              <span className={styles.valuesLabel}>{variant.applies}</span>
+              <TypeLabelText label={variant.type} schemaPage={schemaPage} />
+              {variant.required ? <Chip tone="required">required</Chip> : null}
+              {variant.constraints.map((constraint) => (
+                <Chip key={constraint}>{constraint}</Chip>
+              ))}
+            </li>
+          ))}
+        </ul>
       ) : null}
       {node.children.length > 0 ? (
         <details className={styles.nested} open>

@@ -1,5 +1,13 @@
 import type { TypeLabel } from "../../data/types.ts";
 
+export interface FieldVariant {
+  applies: string;
+  type: TypeLabel;
+  required: boolean;
+  constraints: string[];
+  enumValues?: string[];
+}
+
 export interface FlatField {
   path: string;
   type: TypeLabel;
@@ -8,6 +16,7 @@ export interface FlatField {
   defaultValue?: string;
   constraints: string[];
   enumValues?: string[];
+  variants?: FieldVariant[];
 }
 
 export interface FieldNode {
