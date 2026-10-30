@@ -250,5 +250,5 @@ The card first shows nothing, because the plugin loads in a frame of its own. A 
 - [Style a plugin widget for both themes](style-a-plugin-widget.md): your table is plain because the module draws no styles.
 - [Add an export to a plugin widget](add-an-export-to-a-plugin.mdx): let people export the rows.
 - [Plugin module contract](../../reference/plugins/module-contract.mdx): everything that a module can do.
-- [Widget plugins](../../concepts/widget-plugins.md): why plugins pass through a review.
+- [Plugin](../../concepts/plugin.md): what a plugin is.
 - The folder `docs/examples` of the repository holds three complete plugins, two of which draw charts and tables with libraries.

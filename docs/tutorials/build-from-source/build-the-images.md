@@ -14,7 +14,7 @@ FINOS Workspace runs from four images:
 | `workspace-agent` | The agent |
 | `workspace-agent-mcp` | The agent's MCP server |
 
-This page builds all four from a clone of the repository and pushes them to your own registry. [The container images and the supply chain](../../concepts/images-and-supply-chain.md) describes what is inside each one.
+This page builds all four from a clone of the repository and pushes them to your own registry.
 
 ## What you need
 

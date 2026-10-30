@@ -36,4 +36,4 @@ Open the profile of a person who has the role and expand the section Roles / Per
 
 Set the backend and its widgets to No Access and save. Dashboards that already use the widgets keep them, and the widgets stop showing data for people who no longer have access.
 
-[Roles and access](../../concepts/roles-and-access.md) explains how the grants of several roles add up: a person may use a widget when any one of their roles allows it.
+The grants of several roles add up: a person may use a widget when any one of their roles allows it.

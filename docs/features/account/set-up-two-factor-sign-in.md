@@ -31,4 +31,3 @@ Keep the authenticator app. When you lose the phone, you cannot sign in, and an 
 
 Untick Enable 2FA in the tab Security and confirm the dialog with Yes, turn off 2FA. A message says "2FA configuration updated". The checkbox is disabled, and its tooltip says "Your organization has 2FA enabled.", when your organization requires 2FA, because only an admin can change that for the organization.
 
-[Sessions and tokens](../../concepts/sessions-and-tokens.mdx) explains how FINOS Workspace signs you in and keeps you signed in.

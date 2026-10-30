@@ -19,7 +19,7 @@ Select Approve to let the share take effect. The recipients then see the dashboa
 
 ## Who needs approval
 
-Only Developers' shares wait for approval. An Admin or a User whose roles give the sharing level Can share shares directly. A person whose roles give Receive only or None cannot share at all, and the Share option does not appear in their menus. [Roles and access](../../concepts/roles-and-access.md) explains the three levels.
+Only Developers' shares wait for approval. An Admin or a User whose roles give the sharing level Can share shares directly. A person whose roles give Receive only or None cannot share at all, and the Share option does not appear in their menus.
 
 ## What happens when roles change
 

@@ -26,7 +26,7 @@ To connect an AI tool now, go to [Connect your AI tool](../../quick-start/connec
 
 - **The live dashboard is in the browser.** The browser holds the widgets, their parameters, the layout and the data of the widgets. It saves a copy to the API from time to time. A server that changed the saved copy would lose the change: the open tab would overwrite it at its next save, or never show it.
 - **The web app already has the dashboard logic.** For example, it gets the data of a widget from a backend with the credentials of the connection. It also validates parameters and applies layouts. The tab uses this same code, so the result is the same as when you make the change yourself.
-- **The Agent works in the same way.** It uses the same tools, as [How the Agent answers](../../concepts/how-the-agent-answers.md) explains. The Agent already talks to your browser. An AI tool outside the app needs the bridge to find your browser.
+- **The Agent works in the same way.** It uses the same tools. The Agent already talks to your browser. An AI tool outside the app needs the bridge to find your browser.
 
 ## How the API finds your tab
 
@@ -43,7 +43,7 @@ To connect an AI tool now, go to [Connect your AI tool](../../quick-start/connec
 - **A tab must be open.** When your browser is closed, the AI tool can do nothing. The AI tool works through the tab that connected last, and you see each change in that tab.
 - **Your permissions apply.** The tab runs each command with your session and your catalog of widgets. The AI tool can do only what you can do in the app. The token identifies you, and it never gives more access.
 - **The tools are the same everywhere.** The Agent and the MCP server send the same commands to the tab, so a command gives the same result through both.
-- **The AI tool holds only a token.** It never holds your session. You can revoke the token, and nothing else changes. [Sessions and tokens](../../concepts/sessions-and-tokens.mdx) explains the credentials.
+- **The AI tool holds only a token.** It never holds your session. You can revoke the token, and nothing else changes.
 
 ## Reference
 

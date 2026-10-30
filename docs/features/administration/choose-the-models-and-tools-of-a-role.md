@@ -37,4 +37,4 @@ Select Save. The change takes effect on the members' next question, because the 
 
 A new organization starts with a role named Agent User that grants All models of the default agent and All tools of the deployment's default MCP servers. Every new user receives it. To limit the Agent for an organization, either edit Agent User or remove it from the people who should have less, and grant the models and tools through other roles.
 
-[Ines and its MCP server](../../reference/configuration/agent.mdx) lists the settings that decide which models exist, and [Roles and access](../../concepts/roles-and-access.md) explains how the grants of several roles add up.
+[Ines and its MCP server](../../reference/configuration/agent.mdx) lists the settings that decide which models exist. A person may use the models and tools that any one of their roles grants, and nothing else.

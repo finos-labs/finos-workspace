@@ -23,7 +23,7 @@ The `type` of a definition decides which component renders the widget and which 
 |---|---|---|---|
 | `markdown`, `html`, `newsfeed` and `pdf` | The built-in widgets of the same names. | `GET` and `POST`. | The query, a header or the body. |
 | `iframe` | A page that the widget embeds from the endpoint's URL. | `GET`. | The query. |
-| A plugin type | The plugin that handles the type, as [Widget plugins](../../concepts/widget-plugins.md) describes. | `GET` and `POST`. | The query, a header or the body. |
+| A plugin type | The plugin that handles the type. | `GET` and `POST`. | The query, a header or the body. |
 
 A plugin type exists for an organization when the organization has enabled a plugin that handles it. When two enabled plugins handle the same type, the organization admin's choice decides which of them renders it, and without a choice the plugin with the lowest id wins. A widget whose type nobody handles for the user does not appear in that user's catalog.
 

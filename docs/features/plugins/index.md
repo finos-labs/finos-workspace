@@ -28,8 +28,7 @@ A widget plugin teaches FINOS Workspace to draw a new type of widget. This secti
 
 ## Background
 
-- [Widget plugins](../../concepts/widget-plugins.md) explains what a plugin is and how it works.
-- [The widget plugin security model](../../concepts/widget-plugin-security.md) explains why a plugin cannot harm a deployment.
+- [Plugin](../../concepts/plugin.md) says what a plugin is.
 
 ## Reference
 

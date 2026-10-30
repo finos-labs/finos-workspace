@@ -41,7 +41,7 @@ The built-in types are `markdown`, `html`, `newsfeed`, `pdf` and `iframe`. Choos
 | `pdf` | A PDF, or JSON that holds the file. |
 | `iframe` | Nothing. The endpoint is the address of a page that the browser opens, as [Embed a web page](../../features/widgets/embed-a-web-page.md) describes. |
 
-A type that a widget plugin handles works the same way, and it appears only for the organizations that enabled the plugin, as [Widget plugins](../../concepts/widget-plugins.md) explains. When the endpoint answers with JSON and the text is not at the top of it, name the path in `data.dataKey`, for example `"data": { "dataKey": "result.text" }`.
+A type that a widget plugin handles works the same way, and it appears only for the organizations that enabled the plugin. When the endpoint answers with JSON and the text is not at the top of it, name the path in `data.dataKey`, for example `"data": { "dataKey": "result.text" }`.
 
 ## Add parameters
 

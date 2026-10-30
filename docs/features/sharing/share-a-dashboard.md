@@ -9,7 +9,7 @@ This guide gives colleagues in your organization access to one of your dashboard
 
 ## What you need
 
-Your roles have to give you the sharing level Can share, and each person you share with needs Receive only or Can share. An organization also has a master switch for sharing, which a superuser controls, and nobody can share or receive while it is off. When your roles do not let you share, the Share item is missing from your menus. [Roles and access](../../concepts/roles-and-access.md) explains the levels, and [Create a role](../administration/create-a-role.md) shows an admin how to grant them.
+Your roles have to give you the sharing level Can share, and each person you share with needs Receive only or Can share. An organization also has a master switch for sharing, which a superuser controls, and nobody can share or receive while it is off. When your roles do not let you share, the Share item is missing from your menus. [Create a role](../administration/create-a-role.md) shows an admin how to grant the levels.
 
 ## Share the dashboard
 

@@ -53,4 +53,4 @@ Select the gear at the left of the panel's toolbar. The popover lists the settin
 
 ## Where to go next
 
-You asked the Agent a question, chose its data, and traced its answer. To change which models and tools your organization's people may use, read [Choose the models and tools of a role](../administration/choose-the-models-and-tools-of-a-role.md). To learn what happens inside the agent, read [How the Agent answers a question](../../concepts/how-the-agent-answers.md).
+You asked the Agent a question, chose its data, and traced its answer. To change which models and tools your organization's people may use, read [Choose the models and tools of a role](../administration/choose-the-models-and-tools-of-a-role.md). To see what the browser and the agent send each other, read the [Agent query protocol](../../reference/protocols/ines-query.mdx).

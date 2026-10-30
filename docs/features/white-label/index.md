@@ -45,7 +45,6 @@ Three layers decide the colors, and a later layer wins where two set the same pr
 2. The theme stylesheet of the deployment, `WL_STYLESHEET`.
 3. The theme preset that an organization's admin applied in the app. It loads only after a user signs in, so the sign-in pages show the first two layers.
 
-[How theming works](../../concepts/how-theming-works.md) explains why the layers exist.
 
 ## A checklist for a rebrand
 

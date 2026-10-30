@@ -7,7 +7,7 @@ sidebar_position: 0
 
 # Features
 
-What FINOS Workspace does, one feature at a time. Each page says what a feature is and how to use it. To see how the parts fit together, read [The building blocks](../concepts/the-building-blocks.md).
+What FINOS Workspace does, one feature at a time. Each page says what a feature is and how to use it. [Concepts](../concepts/index.md) says what each part is.
 
 | Feature | What it does |
 |---|---|

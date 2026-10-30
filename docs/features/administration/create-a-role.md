@@ -24,7 +24,7 @@ A message says "Role created", and the role appears in the table with its member
 
 A limit counts for each person and each day, and the counts reset at midnight UTC. When a person's next question would exceed the daily number of questions, the Agent answers `Cannot increment usage beyond the maximum limit of` followed by the limit. When the person has already used the daily number of tokens, it answers that the daily token limit of that number has been reached. A question that is under way when the token limit is crossed finishes, and the next question is the one that is refused. A limit of 0 refuses every question.
 
-A person with several roles gets the highest limit of their roles, and a role with No limit beats any number, so adding a role never takes allowance away. A person with no role at all gets 0. [Roles and access](../../concepts/roles-and-access.md) explains this rule and the others.
+A person with several roles gets the highest limit of their roles, and a role with No limit beats any number, so adding a role never takes allowance away. A person with no role at all gets 0.
 
 ## Change or delete the role
 
