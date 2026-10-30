@@ -4,6 +4,7 @@ import postcss from "postcss";
 import type { CssStats, TokenUsage } from "../../src/data/types.ts";
 import type { ParsedCss } from "./css.mts";
 import { fromRepo, repoRelative } from "./paths.mts";
+import { collectPluginTokens } from "./theme.mts";
 
 const THEME_CSS = "frontend/src/index.css";
 const SOURCE_DIR = "frontend/src";
@@ -139,6 +140,9 @@ export function addUsage(css: ParsedCss): { stats: CssStats } {
   const references = new Map<string, number>();
   cssReferences(files, references);
   themeReferences(references);
+  for (const token of collectPluginTokens(css)) {
+    references.set(token.property, (references.get(token.property) ?? 0) + 1);
+  }
   for (const token of declared) {
     const names = byProperty.get(token.name) ?? [];
     const fileCounts = new Map<string, number>();

@@ -9,7 +9,7 @@ import { TokenGroup } from "@site/src/components/Reference/theme";
 
 Besides the semantic properties, the file `frontend/src/index.css` declares a second set of properties in the `base` layer, on `:root` and on `.dark`. They follow the naming of the shadcn/ui components on which the app's design system is built. No Tailwind utility reads them. The web app gives them to widget plugins as the tokens that [Plugin theme](plugin-theme.mdx) lists, and `--radius` sets the corners of the `rounded-lg`, `rounded-md` and `rounded-sm` utilities. Most of them refer to palette steps with `var()`, so changing a palette step moves them as well.
 
-Because these declarations are in a layer, a stylesheet that is not in a layer overrides them, whatever its position. A theme stylesheet is not in a layer, so it always wins over them. The tables are generated from the stylesheet and from the frontend source, and [Semantic properties](semantic-properties.mdx) explains how to read their columns. The **used** column counts classes and `var()` reads, so it shows nothing for a property that plugins read by name. The brand, font and scale properties of the same file are on [Brand color, font and text size](brand-font-size.mdx).
+Because these declarations are in a layer, a stylesheet that is not in a layer overrides them, whatever its position. A theme stylesheet is not in a layer, so it always wins over them. The tables are generated from the stylesheet and from the frontend source, and [Semantic properties](semantic-properties.mdx) explains how to read their columns. The brand, font and scale properties of the same file are on [Brand color, font and text size](brand-font-size.mdx).
 
 ## Page and text
 
