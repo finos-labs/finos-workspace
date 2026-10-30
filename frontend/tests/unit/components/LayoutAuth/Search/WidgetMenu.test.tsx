@@ -433,14 +433,20 @@ describe("WidgetMenu - Category Headers", () => {
       name: "Table To Chart",
       category: "AgGrid table chart examples",
     });
-    renderWidgetMenu({ widgets: [widget], allCategories: ["AgGrid table chart examples"] });
+    renderWidgetMenu({
+      widgets: [widget],
+      allCategories: ["AgGrid table chart examples"],
+    });
 
     const title = await screen.findByText("Table To Chart");
-    const row = title.closest<HTMLElement>("[id$='-0']") ?? title.closest<HTMLElement>(".cursor-pointer");
+    const row =
+      title.closest<HTMLElement>("[id$='-0']") ??
+      title.closest<HTMLElement>(".cursor-pointer");
     expect(row).not.toBeNull();
-    expect(row!.classList).toContain("widget-chart-AgGrid-table-chart-examples-My-backend");
-    expect(row!.classList).not.toContain("table");
-    expect(row!.classList).toContain("flex");
+    const classes = [...(row?.classList ?? [])];
+    expect(classes).toContain("widget-chart-AgGrid-table-chart-examples-My-backend");
+    expect(classes).not.toContain("table");
+    expect(classes).toContain("flex");
   });
 });
 
