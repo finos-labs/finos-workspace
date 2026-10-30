@@ -21,16 +21,16 @@ const pdf: Widget = {
 const searchTool: AgentTool = {
   name: "query_documents",
   tool_name: "query_documents",
-  server_id: "ines-tools",
-  url: "http://ines-mcp:8787/mcp",
+  server_id: "agent-tools",
+  url: "http://agent-mcp:8787/mcp",
   description: "Search documents",
   input_schema: { properties: { query: { type: "string" } }, required: ["query"] },
 };
 
 const hit = (page: number, score: number) => ({
   text: JSON.stringify({
-    $ines_kind: "citation",
-    citation: { type: "document", id: "pdf-1", uri: "ines-doc://c/pdf-1", title: "Project Kestrel Plan", page, score },
+    $agent_kind: "citation",
+    citation: { type: "document", id: "pdf-1", uri: "agent-doc://c/pdf-1", title: "Project Kestrel Plan", page, score },
   }),
 });
 
@@ -38,7 +38,7 @@ function searchResult(extra_state?: Record<string, unknown>): ToolMessage {
   return {
     role: "tool",
     function: "execute_agent_tool",
-    input_arguments: { tool_name: "query_documents", server_id: "ines-tools" },
+    input_arguments: { tool_name: "query_documents", server_id: "agent-tools" },
     data: [
       {
         items: [
@@ -142,12 +142,12 @@ describe("the pages cited for a search of a PDF", () => {
         {
           role: "tool",
           function: "execute_agent_tool",
-          input_arguments: { tool_name: "query_documents", server_id: "ines-tools" },
+          input_arguments: { tool_name: "query_documents", server_id: "agent-tools" },
           data: [
             {
               items: [
                 { text: "### Hit 1 — notes.txt\nsome text" },
-                { text: JSON.stringify({ $ines_kind: "citation", citation: { type: "document", id: "pdf-1", uri: "u", title: "Project Kestrel Plan", score: 0.5 } }) },
+                { text: JSON.stringify({ $agent_kind: "citation", citation: { type: "document", id: "pdf-1", uri: "u", title: "Project Kestrel Plan", score: 0.5 } }) },
               ],
             },
           ],

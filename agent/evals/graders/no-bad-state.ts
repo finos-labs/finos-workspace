@@ -7,10 +7,10 @@ export function noBadState(): GraderSpec {
     grader: (trace: Trace) => {
       const blob = trace.finalText;
 
-      if (blob.includes("x-ines-")) {
+      if (blob.includes("x-agent-")) {
         return {
           pass: false,
-          message: "Model leaked x-ines-* into the final text",
+          message: "Model leaked x-agent-* into the final text",
         };
       }
 

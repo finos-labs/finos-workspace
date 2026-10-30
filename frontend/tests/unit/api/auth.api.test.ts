@@ -228,7 +228,7 @@ describe("API Client Functions", () => {
           new Response(
             JSON.stringify({
               other_agent: { ...descriptor, name: "Other" },
-              default_agent: { ...descriptor, name: "Ines" },
+              default_agent: { ...descriptor, name: "Agent" },
             }),
             { status: 200 },
           ),
@@ -238,7 +238,7 @@ describe("API Client Functions", () => {
       const agent = await fetchDefaultAgent();
 
       expect(agent?.id).toBe("default_agent");
-      expect(agent?.name).toBe("Ines");
+      expect(agent?.name).toBe("Agent");
       const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
       expect(String(url)).toBe(`${mockConfig.urls.ai}/agents.json`);
       expect(init.credentials).toBeUndefined();

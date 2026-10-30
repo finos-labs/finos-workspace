@@ -87,8 +87,8 @@ describe("liveDebugLevel", () => {
   it("is nothing in production, where it would write conversations to the log, unless the operator says they mean it", () => {
     expect(liveDebugLevel({ LIVE_DEBUG_TRACES: "2", NODE_ENV: "production" })).toBe(0);
     expect(liveDebugIgnored({ LIVE_DEBUG_TRACES: "2", NODE_ENV: "production" })).toBe(true);
-    expect(liveDebugLevel({ LIVE_DEBUG_TRACES: "2", NODE_ENV: "production", INES_ALLOW_DEBUG_TRACES: "true" })).toBe(2);
-    expect(liveDebugIgnored({ LIVE_DEBUG_TRACES: "2", NODE_ENV: "production", INES_ALLOW_DEBUG_TRACES: "true" })).toBe(false);
+    expect(liveDebugLevel({ LIVE_DEBUG_TRACES: "2", NODE_ENV: "production", AGENT_ALLOW_DEBUG_TRACES: "true" })).toBe(2);
+    expect(liveDebugIgnored({ LIVE_DEBUG_TRACES: "2", NODE_ENV: "production", AGENT_ALLOW_DEBUG_TRACES: "true" })).toBe(false);
     expect(liveDebugIgnored({ NODE_ENV: "production" })).toBe(false);
   });
 });

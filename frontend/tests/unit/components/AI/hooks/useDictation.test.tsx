@@ -25,7 +25,7 @@ vi.mock("~/lib/state/agentToken", () => ({
 
 const agent = {
   id: "default-copilot",
-  endpoints: { query: "http://ines:7777/v1/query" },
+  endpoints: { query: "http://agent:7777/v1/query" },
   features: { "speech-to-text": true },
 } as unknown as Copilot;
 
@@ -102,7 +102,7 @@ afterEach(() => {
 
 describe("transcribeUrl", () => {
   it("is the agent's /v1/transcribe, next to its /v1/query", () => {
-    expect(transcribeUrl(agent)).toBe("http://ines:7777/v1/transcribe");
+    expect(transcribeUrl(agent)).toBe("http://agent:7777/v1/transcribe");
     expect(transcribeUrl({ ...agent, endpoints: {} } as Copilot)).toBeNull();
     expect(transcribeUrl(null)).toBeNull();
   });
@@ -127,7 +127,7 @@ describe("useDictation", () => {
     expect(onText).toHaveBeenCalledWith("Show me the revenue of Apple.");
 
     expect(sent).toHaveLength(1);
-    expect(sent[0].url).toBe("http://ines:7777/v1/transcribe");
+    expect(sent[0].url).toBe("http://agent:7777/v1/transcribe");
     const headers = new Headers(sent[0].init.headers);
     expect(headers.get("Authorization")).toBe("Bearer agent-token");
     expect(headers.get("X-Trace-Id")).toBe("chat-1");

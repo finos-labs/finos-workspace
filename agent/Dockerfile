@@ -152,7 +152,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN ["node", "/opt/npm/package/bin/npm-cli.js", "ci", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund"]
 
-FROM scratch AS ines-mcp
+FROM scratch AS agent-mcp
 
 COPY --from=node / /
 
@@ -176,7 +176,7 @@ USER 1000:1000
 
 CMD ["node", "mcp-server/src/server.ts"]
 
-FROM scratch AS ines
+FROM scratch AS agent
 
 COPY --from=node / /
 

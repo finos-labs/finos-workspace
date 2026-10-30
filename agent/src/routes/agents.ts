@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { configuredModels } from "../lib/config.ts";
 import { getLogger } from "../lib/logger.ts";
 import { transcribeModel } from "../lib/transcribe.ts";
-import { inesSkills } from "../skills/index.ts";
+import { agentSkills } from "../skills/index.ts";
 
 const logger = getLogger(["app", "routes", "agents"]);
 
@@ -11,7 +11,7 @@ export const AGENT_ID = "default_agent";
 export const agentsRouter = new Hono();
 
 agentsRouter.get("/", (c) => {
-  return c.text("Ines");
+  return c.text("Agent");
 });
 
 agentsRouter.get("/agents.json", (c) => {
@@ -22,11 +22,11 @@ agentsRouter.get("/agents.json", (c) => {
 
   return c.json({
     [AGENT_ID]: {
-      name: "Ines",
+      name: "Agent",
       description:
         "An open-source, model-agnostic agent for the FINOS Workspace",
       endpoints: { query: "/v1/query" },
-      skills: inesSkills(),
+      skills: agentSkills(),
       features: {
         streaming: true,
         "widget-dashboard-select": true,

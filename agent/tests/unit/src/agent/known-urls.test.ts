@@ -124,7 +124,7 @@ describe("addressesGiven", () => {
   });
 
   it("knows a tool by its name with the server in front, as the FINOS Workspace may call it", () => {
-    const set = given([human("hi"), mcp("Ines Tools_web_search", "https://news.example/story"), mcp("Ines Tools_mermaid_diagram", SECRET_URL), mcp("Ines Tools_not_web_search_at_all", SECRET_URL)]);
+    const set = given([human("hi"), mcp("Agent Tools_web_search", "https://news.example/story"), mcp("Agent Tools_mermaid_diagram", SECRET_URL), mcp("Agent Tools_not_web_search_at_all", SECRET_URL)]);
     expect(isGivenAddress("https://news.example/story", set)).toBe(true);
     expect(isGivenAddress(SECRET_URL, set)).toBe(false);
   });

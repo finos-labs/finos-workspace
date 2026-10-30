@@ -91,7 +91,7 @@ export function createWorkspaceClient(options: WorkspaceClientOptions): Workspac
     logger.error(
       "The FINOS Workspace API refused this agent's metering token on {endpoint}: {detail}. " +
         "Until it is replaced no question can be answered. Mint a new one with " +
-        "`python -m scripts.create_metering_token` in backend-api/backend and set INES_METERING_TOKEN to it.",
+        "`python -m scripts.create_metering_token` in backend-api/backend and set AGENT_METERING_TOKEN to it.",
       { endpoint, detail: typeof detail === "string" ? detail : "no reason given" },
     );
   }

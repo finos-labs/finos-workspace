@@ -8,7 +8,7 @@ const logger = getLogger(["app", "tools", "sql", "isolated"]);
 const CHILD = new URL("./child.ts", import.meta.url).pathname;
 
 export function sqlTimeoutMs(): number {
-  const configured = Number(process.env.INES_SQL_TIMEOUT_MS);
+  const configured = Number(process.env.AGENT_SQL_TIMEOUT_MS);
   return Number.isFinite(configured) && configured >= 100 ? configured : 10_000;
 }
 

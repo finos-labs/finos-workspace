@@ -15,7 +15,7 @@ const PRICES_LOADED: ToolMessage = {
       items: [
         {
           text: JSON.stringify({
-            $ines_kind: "sqlite_table",
+            $agent_kind: "sqlite_table",
             name: "prices",
             rows: [
               { symbol: "AAPL", date: "2026-04-01", close: 7.13 },
@@ -34,7 +34,7 @@ const PRICES_LOADED: ToolMessage = {
 
 const SQL_TOOL = {
   name: "execute_sql",
-  server_id: "ines",
+  server_id: "agent",
   url: "http://localhost:8787/mcp",
   description: "Run SQLite SELECT/WITH against widget data already loaded.",
   input_schema: {

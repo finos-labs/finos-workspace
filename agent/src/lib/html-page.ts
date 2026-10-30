@@ -30,7 +30,7 @@ const READABLE_TYPE = /^(text\/|application\/(xhtml\+xml|xml|json|ld\+json)$|[^/
 export async function fetchPage(url: string): Promise<{ page: FetchedPage; status: number }> {
   const res = await fetchClientUrl(url, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; InesAgent/1.0)",
+      "User-Agent": "Mozilla/5.0 (compatible; Agent/1.0)",
       Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,application/json;q=0.8,*/*;q=0.5",
     },
     signal: AbortSignal.timeout(10_000),

@@ -182,7 +182,7 @@ if (!companionToolsEnabled) {
 
 async function buildMcpServer(): Promise<McpServer> {
   const mcp = new McpServer({
-    name: "ines-tools",
+    name: "agent-tools",
     version: "1.0.0",
   });
 
@@ -354,7 +354,7 @@ mountBridgeRoutes(app, bridgeManager);
 
 app.get("/", (c) =>
   c.json({
-    name: "ines-mcp-tools",
+    name: "agent-mcp-tools",
     version: "1.0.0",
     endpoint: "/mcp",
     bridge_endpoints: {

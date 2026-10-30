@@ -16,13 +16,13 @@ export const MAX_TOTAL_CHUNKS = 120_000;
 const REDIS_TTL_S = 48 * 3600;
 
 export function ingestChunksPerHour(): number {
-  const configured = Number(process.env.INES_INGEST_CHUNKS_PER_HOUR);
+  const configured = Number(process.env.AGENT_INGEST_CHUNKS_PER_HOUR);
   return Number.isFinite(configured) && configured > 0 ? configured : 20_000;
 }
 const ingestUsed = createBoundedCache<string, { chunks: number }>({ ttlMs: 60 * 60 * 1000, maxEntries: 20_000 });
 
 function redisKey(conversationId: string): string {
-  return `ines:doc:${conversationId}`;
+  return `agent:doc:${conversationId}`;
 }
 
 export interface StoredDocument {

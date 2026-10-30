@@ -146,7 +146,7 @@ describe("buildDocumentCitations", () => {
   });
 
   it("cites a page of a file widget as that widget at that page", async () => {
-    const out = await buildDocumentCitations([{ id: "u-pdf", type: "document", uri: "ines-doc://u-pdf#page=3", title: "kestrel-plan.pdf", page: 3 }], [pdf]);
+    const out = await buildDocumentCitations([{ id: "u-pdf", type: "document", uri: "agent-doc://u-pdf#page=3", title: "kestrel-plan.pdf", page: 3 }], [pdf]);
     expect(out).toHaveLength(1);
     expect(out[0].source_info).toMatchObject({
       type: "widget",

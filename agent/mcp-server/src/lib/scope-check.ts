@@ -13,26 +13,26 @@ export const scopeSigSchema = z
   .describe("INTERNAL — populated by agent decoration. Do not set.");
 
 interface Scoped {
-  "x-ines-conversation-id"?: string;
-  "x-ines-scope-sig"?: string;
+  "x-agent-conversation-id"?: string;
+  "x-agent-scope-sig"?: string;
 }
 
 export function scopeSecretProblem(env: Record<string, string | undefined> = process.env): string | null {
-  const mode = (env.INES_AUTH ?? "workspace").trim();
+  const mode = (env.AGENT_AUTH ?? "workspace").trim();
   if (mode === "none") return null;
-  const secret = (env.INES_SCOPE_SECRET ?? "").trim();
+  const secret = (env.AGENT_SCOPE_SECRET ?? "").trim();
   if (!secret) {
-    return "INES_SCOPE_SECRET is not set. It is shared with the agent and is what keeps one user's chat from another; without it the tools that keep state for a chat would act on any scope a client sends. Set it (`python -m scripts.create_local_env` in backend-api/backend writes it), or run without users with INES_AUTH=none.";
+    return "AGENT_SCOPE_SECRET is not set. It is shared with the agent and is what keeps one user's chat from another; without it the tools that keep state for a chat would act on any scope a client sends. Set it (`python -m scripts.create_local_env` in backend-api/backend writes it), or run without users with AGENT_AUTH=none.";
   }
   if (secret.length < MIN_SECRET_CHARS) {
-    return `INES_SCOPE_SECRET must be at least ${MIN_SECRET_CHARS} characters.`;
+    return `AGENT_SCOPE_SECRET must be at least ${MIN_SECRET_CHARS} characters.`;
   }
   return null;
 }
 
 export function scopeProblem(
   args: Scoped,
-  secret: string | undefined = process.env.INES_SCOPE_SECRET,
+  secret: string | undefined = process.env.AGENT_SCOPE_SECRET,
   env: Record<string, string | undefined> = process.env,
 ): string | null {
   if (!secret) {
@@ -40,8 +40,8 @@ export function scopeProblem(
       ? null
       : "This server has no chat-scope secret, so it cannot tell one user's chat from another.";
   }
-  const key = args["x-ines-conversation-id"];
-  const signature = args["x-ines-scope-sig"];
+  const key = args["x-agent-conversation-id"];
+  const signature = args["x-agent-scope-sig"];
   if (!key || !signature) return "The call carries no signed chat scope.";
   return verifyScope(secret, key, signature) ? null : "The call's chat scope was not signed by the agent.";
 }

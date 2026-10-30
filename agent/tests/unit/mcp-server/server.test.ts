@@ -2,7 +2,7 @@ import { describe, it, afterEach } from "node:test";
 import { expect } from "expect";
 import { fn } from "jest-mock";
 import { logicalUrl } from "../../helpers/logical-url.ts";
-process.env.INES_AUTH = "none";
+process.env.AGENT_AUTH = "none";
 const { default: server } = await import("../../../mcp-server/src/server.ts");
 
 const realFetch = globalThis.fetch;

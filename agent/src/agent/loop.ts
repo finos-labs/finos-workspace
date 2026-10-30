@@ -68,7 +68,7 @@ import {
   type WidgetRequest,
 } from "./tools/widget-data.ts";
 import { makeGetSkillContentTool, getSkillContentSchema } from "./tools/skills.ts";
-import { inesSkillContent, isInesSkill } from "../skills/index.ts";
+import { agentSkillContent, isAgentSkill } from "../skills/index.ts";
 import { makeWorkspaceTools } from "./tools/workspace.ts";
 import {
   normalizeBridgeArgs,
@@ -470,16 +470,16 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
   const inheritedRoot = isRebootToolTurn ? parseTraceparent(rebootExtra.traceparent) : null;
   const turnTimezone = request.timezone ?? (isRebootToolTurn ? rebootExtra.timezone : undefined);
   const turnSpan: Span = getTracer().startSpan(
-    "ines.turn.request",
+    "agent.turn.request",
     {
       attributes: {
-        "ines.conversation_id": conversationId || "(missing)",
+        "agent.conversation_id": conversationId || "(missing)",
         ...(conversationId ? { [ATTR_SESSION_ID]: conversationId } : {}),
-        "ines.model": rawModelId,
-        "ines.reboot": isRebootToolTurn,
-        "ines.reboot_function": isRebootToolTurn ? lastMessage.function : "",
-        "ines.widget_count": allWidgets.length,
-        "ines.mcp_tool_count": agentTools.length,
+        "agent.model": rawModelId,
+        "agent.reboot": isRebootToolTurn,
+        "agent.reboot_function": isRebootToolTurn ? lastMessage.function : "",
+        "agent.widget_count": allWidgets.length,
+        "agent.mcp_tool_count": agentTools.length,
       },
     },
     inheritedRoot ? contextFromSpanContext(inheritedRoot) : undefined,
@@ -1164,11 +1164,11 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
               `${entry.toolName} called without X-Trace-Id — doc store keying will fail`,
             );
           }
-          params["x-ines-conversation-id"] = conversationId;
-          if (scopeSecret) params["x-ines-scope-sig"] = signScope(scopeSecret, conversationId);
+          params["x-agent-conversation-id"] = conversationId;
+          if (scopeSecret) params["x-agent-scope-sig"] = signScope(scopeSecret, conversationId);
           const docDelta = buildDocumentsDecoration(pendingDocuments, documentsShipped);
           if (docDelta) {
-            params["x-ines-documents"] = docDelta;
+            params["x-agent-documents"] = docDelta;
             for (const d of docDelta) documentsShipped.add(d.id);
           }
           logger.info(
@@ -1184,20 +1184,20 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
 
         if (isPageTool(entry.toolName)) {
           if (conversationId) {
-            params["x-ines-conversation-id"] = conversationId;
-            if (scopeSecret) params["x-ines-scope-sig"] = signScope(scopeSecret, conversationId);
+            params["x-agent-conversation-id"] = conversationId;
+            if (scopeSecret) params["x-agent-scope-sig"] = signScope(scopeSecret, conversationId);
           } else {
-            delete params["x-ines-conversation-id"];
-            delete params["x-ines-scope-sig"];
+            delete params["x-agent-conversation-id"];
+            delete params["x-agent-scope-sig"];
           }
         }
 
         if (isFetchTool(entry.toolName) && scopeSecret) {
           const url = params.url;
           if (typeof url === "string" && isGivenAddress(url, addressesGiven(request, prefetched.map((page) => page.overview)))) {
-            params["x-ines-url-sig"] = signUrl(scopeSecret, url);
+            params["x-agent-url-sig"] = signUrl(scopeSecret, url);
           } else {
-            delete params["x-ines-url-sig"];
+            delete params["x-agent-url-sig"];
           }
         }
 
@@ -1281,8 +1281,8 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         }
         const { slug, reason } = skillParsed.data;
         loadedSkillSlugs.add(slug);
-        if (isInesSkill(request, slug)) {
-          yield injectSkill(slug, inesSkillContent(slug), ctx);
+        if (isAgentSkill(request, slug)) {
+          yield injectSkill(slug, agentSkillContent(slug), ctx);
           continue;
         }
         for (const ev of sink.flushTail()) yield ev;
@@ -1440,20 +1440,20 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
   } finally {
     const turnUsage = turnUsageSoFar();
     turnSpan.setAttributes({
-      "ines.loop_count": loopCount,
-      "ines.step_count": totalStepCount,
-      "ines.usage.request.input_tokens": cumulativeUsage.inputTokens,
-      "ines.usage.request.cached_input_tokens": cumulativeUsage.cachedInputTokens,
-      "ines.usage.request.cache_write_tokens": cumulativeUsage.cacheWriteTokens,
-      "ines.usage.request.cache_hit_rate": cacheHitRate(cumulativeUsage),
-      "ines.usage.request.output_tokens": cumulativeUsage.outputTokens,
-      "ines.usage.turn.input_tokens": turnUsage.inputTokens,
-      "ines.usage.turn.cached_input_tokens": turnUsage.cachedInputTokens,
-      "ines.usage.turn.cache_write_tokens": turnUsage.cacheWriteTokens,
-      "ines.usage.turn.cache_hit_rate": cacheHitRate(turnUsage),
-      "ines.usage.turn.output_tokens": turnUsage.outputTokens,
-      "ines.usage.turn.total_tokens": turnUsage.totalTokens,
-      "ines.usage.turn.post_count": turnUsage.postCount,
+      "agent.loop_count": loopCount,
+      "agent.step_count": totalStepCount,
+      "agent.usage.request.input_tokens": cumulativeUsage.inputTokens,
+      "agent.usage.request.cached_input_tokens": cumulativeUsage.cachedInputTokens,
+      "agent.usage.request.cache_write_tokens": cumulativeUsage.cacheWriteTokens,
+      "agent.usage.request.cache_hit_rate": cacheHitRate(cumulativeUsage),
+      "agent.usage.request.output_tokens": cumulativeUsage.outputTokens,
+      "agent.usage.turn.input_tokens": turnUsage.inputTokens,
+      "agent.usage.turn.cached_input_tokens": turnUsage.cachedInputTokens,
+      "agent.usage.turn.cache_write_tokens": turnUsage.cacheWriteTokens,
+      "agent.usage.turn.cache_hit_rate": cacheHitRate(turnUsage),
+      "agent.usage.turn.output_tokens": turnUsage.outputTokens,
+      "agent.usage.turn.total_tokens": turnUsage.totalTokens,
+      "agent.usage.turn.post_count": turnUsage.postCount,
     });
     turnSpan.end();
     try {
