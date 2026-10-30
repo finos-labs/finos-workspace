@@ -12,7 +12,7 @@ import type {
 } from "../../src/data/types.ts";
 import { fromRepo } from "./paths.mts";
 import { readReference, referencePath } from "./reference.mts";
-import { describeSchema, describeSet, typeLabel } from "./schema.mts";
+import { describeSchema, describeSet, renameType, typeLabel } from "./schema.mts";
 
 type Json = Record<string, any>;
 
@@ -110,7 +110,8 @@ export function collectApi(): ApiData {
 }
 
 export function collectWidgetsSchema(): SchemaSet {
-  return describeSet(referencePath("backend", "widgets_schema.json"), "widgets.json", readReference("backend", "widgets_schema.json"), "definitions", { inline: true });
+  const set = describeSet(referencePath("backend", "widgets_schema.json"), "widgets.json", readReference("backend", "widgets_schema.json"), "definitions", { inline: true });
+  return renameType(set, "plugin_type", "<type>");
 }
 
 export function collectAppsSchema(): SchemaSet {

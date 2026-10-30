@@ -4,50 +4,20 @@ sidebar_position: 1
 ---
 
 import { SchemaDocs, SchemaSource } from "@site/src/components/Reference/schemas";
-import { Fields } from "@site/src/components/Reference/fields";
 
 # widgets.json
 
 A backend lists its widgets in a file named `widgets.json`. The file is an object. Each key is a widget's id, at most 128 characters long, and each value is a widget definition. The file may also have the keys `$schema`, the address of a schema that editors use to check the file, and `$id`, an identifier of the file. Both are strings of at most 2048 characters. [Widget requests](../protocols/widget-requests.mdx) describes the requests that the web app makes from a definition.
 
-The fields below come from the JSON Schema that the backend's exporter writes to `backend-api/backend/reference-data/widgets_schema.json` for the built-in types `markdown`, `html`, `newsfeed`, `pdf` and `iframe`. A note such as `for html` means that only widgets of that type have the field. [The JSON Schema file](#the-json-schema-file) shows the schema as validators read it.
+The fields below come from the JSON Schema that the backend's exporter writes to `backend-api/backend/reference-data/widgets_schema.json` for the built-in types `markdown`, `html`, `newsfeed`, `pdf` and `iframe`, and for one plugin type, which is shown as `<type>` and stands for the type of every plugin that an organization has enabled. A note such as `for html` means that only widgets of that type have the field. [The JSON Schema file](#the-json-schema-file) shows the schema as validators read it.
 
 <SchemaDocs set="widgets" root={false} show={[{ name: "Widget", title: "Widget definition", description: "The value of each key of the file." }]} />
 
 ## The data key
 
-The object `data` describes the response of the endpoint, so that FINOS Workspace knows where the data is in it and what to do with it. The keys `dataKey`, `rawDataKey` and `rawType` are listed under Widget definition. A widget of a plugin type has one more key, which is named after the type:
-
-<Fields
-  fields={[
-    {
-      path: "data.<type>",
-      type: ["object"],
-      required: false,
-      constraints: ["for plugin types"],
-      description:
-        "The object that a backend writes for a widget of a plugin type, such as `data.plotly` for the type `plotly`. It tells the plugin how to read and show the data of the response. The plugin declares the schema of this object as its `definition` in `plugin.json`.",
-    },
-  ]}
-/>
+The object `data` describes the response of the endpoint, so that FINOS Workspace knows where the data is in it and what to do with it. The keys `dataKey`, `rawDataKey` and `rawType` are listed under Widget definition. A widget of a plugin type also has the key `data.<type>`, which is named after the type and whose schema is the `definition` of the plugin.
 
 FINOS Workspace checks the widget against the plugin's `definition`. A widget that fails the check is left out of the catalog, and the problem is reported with its JSON pointer. The plugin module receives the checked object as its `definition` trait, as [Plugin module contract](../plugins/module-contract.mdx) describes, and the AI Agent reads the `definition` when it builds widgets of the type. [Plugin package and manifest](../plugins/package-and-manifest.mdx) describes how a plugin writes the `definition`. When a source refreshes, FINOS Workspace copies `data.<type>`, together with `dataKey`, `rawDataKey` and `rawType`, onto the widgets that are already on dashboards.
-
-The built-in schema above has no `data.<type>` key because it covers only the built-in types. [What a plugin adds to the schema](#what-a-plugin-adds-to-the-schema) describes how the schema that the API serves gets the key.
-
-## What a plugin adds to the schema
-
-The API composes the schema that it serves for each organization from the built-in schema and the plugins that the organization has enabled. A plugin adds to the schema when it is enabled for the organization and its active version has no errors. [Plugin package and manifest](../plugins/package-and-manifest.mdx) describes the keys of the manifest.
-
-| In the plugin's manifest | What the API adds to the schema |
-|---|---|
-| The `type` of an entry of `contributes.widgets[].handles` | A widget definition for that type. It accepts `"type": "<type>"` and the same fields as a built-in widget, including `raw`, and its parameters can go in the query, a header or the body. The type also joins the `x-types` array. |
-| The `definition` of that entry | The key `data.<type>` of that widget definition, with the `definition` as its schema. |
-| The `settings.schema` of the widget | The schema of the widget's settings, a closed object with the properties of the settings. A layout item of an `apps.json` template is checked against it at `state.storage.plugin.config`, and so is the `config` key of the `ui_args_schema` that `get_widget_schema` returns. |
-
-When two enabled plugins handle the same type, the organization admin's choice decides which of them the schema follows, and without a choice the plugin with the lowest id wins. A plugin that the organization has not enabled, or whose active version has errors, adds nothing, and a widget of its type does not appear in the catalog.
-
-The AI Agent and the MCP clients build widgets of a plugin type from this schema, so the `definition` and the settings of a plugin decide what they may write. The schema has a new `$id` and `ETag` whenever the built-in schema changes or an enabled plugin changes its version, its digest or the widget that handles a type.
 
 <SchemaDocs
   set="widgets"
@@ -428,6 +398,6 @@ Every parameter row also carries `in`, whose value is `path`, `query`, `header` 
 
 ## The JSON Schema file
 
-The blocks below are the entries of the schema file exactly as the exporter writes them. The first block is the top level of the file, and each of the others is one entry of its `definitions` object.
+The blocks below are the entries of the schema file exactly as the exporter writes them. The exporter composes the file with a sample plugin type named `plugin_type`, whose `definition` and settings are empty. The first block is the top level of the file, and each of the others is one entry of its `definitions` object.
 
 <SchemaSource set="widgets" />

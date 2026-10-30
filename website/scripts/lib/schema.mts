@@ -346,3 +346,16 @@ export function describeSet(source: string, title: string, schema: unknown, defi
   }
   return set;
 }
+
+function rename(value: unknown, from: string, to: string): unknown {
+  if (typeof value === "string") return value.split(from).join(to);
+  if (Array.isArray(value)) return value.map((item) => rename(item, from, to));
+  if (isObject(value)) {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [rename(key, from, to), key === "json" ? item : rename(item, from, to)]));
+  }
+  return value;
+}
+
+export function renameType(set: SchemaSet, from: string, to: string): SchemaSet {
+  return rename(set, from, to) as SchemaSet;
+}
