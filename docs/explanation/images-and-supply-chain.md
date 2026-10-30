@@ -11,11 +11,11 @@ FINOS Workspace ships its services as container images, and the images have an u
 
 A common image starts from a Linux distribution and adds the program to it, and the distribution brings a shell, a package manager, many libraries and many tools that the service never uses. Each of them is something to patch, something to audit and something for an attacker to use. The images of FINOS Workspace work the other way round. A build stage assembles exactly what the service needs into a directory, and the final stage starts from nothing and copies that directory in.
 
-- **The API and the worker** hold a pinned CPython from a standalone build for musl, which the build checks against a hash, the Python packages from the lock file, and the few system libraries that those packages link. Packages that ship compiled wheels are built from source with clang, so that the result links the same libraries as the rest of the image. The build stops when any file in the image needs the runtime libraries of GCC.
+- **The API and the worker** run from one image. It holds a pinned CPython from a standalone build for musl, which the build checks against a hash, the Python packages from the lock file, and the few system libraries that those packages link. Packages that ship compiled wheels are built from source with clang, so that the result links the same libraries as the rest of the image. The build stops when any file in the image needs the runtime libraries of GCC.
 - **The web app** holds nginx, compiled in the build into one static binary with its modules and its libraries, and the built app. Nothing else is in the image.
 - **Ines and its MCP server** hold Node and their packages. Node is compiled from source against musl and LLVM's C++ library, and it links no glibc and no GCC runtime.
 
-The services run as an ordinary user, with the identifier 1000 for the API, the worker and the agent images and 101 for the web app, and they listen on ports above 1024.
+The services run as an ordinary user, with the identifier 1000 for the backend image, which the API and the worker share, and for the agent images, and 101 for the web app, and they listen on ports above 1024.
 
 ## Node is built once and released
 
