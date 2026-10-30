@@ -139,10 +139,21 @@ def _move_fragment_defs(fragment: dict[str, Any], prefix: str, definitions: dict
     return rewrite(fragment)
 
 
+PLUGIN_DATA_DESCRIPTION = (
+    "The object that a backend writes for a widget of this type, which tells the plugin how to read and show the "
+    "data of the response; its schema is the definition of the plugin"
+)
+PLUGIN_CONFIG_DESCRIPTION = (
+    "The settings of the widget that handles this type, from the settings schema of its plugin; a widget keeps them "
+    "at storage.plugin.config"
+)
+
+
 def _plugin_config(settings: dict[str, Any] | None) -> dict[str, Any]:
     return {
         "type": "object",
         "additionalProperties": False,
+        "description": PLUGIN_CONFIG_DESCRIPTION,
         "properties": copy.deepcopy((settings or {}).get("properties", {})),
     }
 
@@ -193,7 +204,8 @@ def compose(
     for viz_type, fragment in sorted(plugin_types.items()):
         data = data_of(kit["pluginTypes"])
         if fragment is not None:
-            data["properties"][viz_type] = _move_fragment_defs(fragment, f"Plugin_{viz_type}_", definitions)
+            moved = _move_fragment_defs(fragment, f"Plugin_{viz_type}_", definitions)
+            data["properties"][viz_type] = {"description": PLUGIN_DATA_DESCRIPTION, **moved}
         branch(viz_type, kit["pluginTypes"], data)
         definitions[f"PluginConfig_{viz_type}"] = _plugin_config((plugin_settings or {}).get(viz_type))
 

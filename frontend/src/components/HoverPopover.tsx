@@ -32,8 +32,8 @@ export function HoverPopover({
   ...props
 }: HoverPopoverProps) {
   const [open, setOpen] = useState(false);
-  const openTimeoutRef = useRef<number>();
-  const closeTimeoutRef = useRef<number>();
+  const openTimeoutRef = useRef<number>(undefined);
+  const closeTimeoutRef = useRef<number>(undefined);
   const uniqueId = useId();
   const id = props.id ?? uniqueId;
 

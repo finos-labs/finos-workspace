@@ -13,7 +13,7 @@ Each property is declared on `:root` for the light theme and on `.dark` for the 
 
 - The **property** is the custom property's name.
 - The **value** shows what the property resolves to in the light theme and in the dark theme, with a swatch for each color. A property that only `:root` declares shows "as light" for the dark theme, and a property that `.force-light` redeclares shows its forced value too.
-- The **used** column says how the property reaches the screen. It lists the Tailwind utility classes that read the property, with the most used first. Tailwind maps a utility name to a property in `frontend/tailwind.config.ts`, so `bg-btn-primary-bg` paints with `--btn-primary-bg`. The column also names the files that use the property most, how many times they use it, and the rules or scripts that read it without a utility.
+- The **used** column says how the property reaches the screen. It lists the Tailwind utility classes that read the property, with the most used first. Tailwind maps a utility name to a property in the `@theme` block of `frontend/src/index.css`, so `bg-btn-primary-bg` paints with `--btn-primary-bg`. The column also names the files that use the property most, how many times they use it, and the rules or scripts that read it without a utility.
 
 [Theme scopes and cascade](theme-scopes.mdx) describes how the light and dark values and the cascade work.
 

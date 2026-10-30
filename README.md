@@ -6,7 +6,7 @@
 
 <div align="center">
 
-**[Run it on your machine](docs/technical-guide/build-from-source/run-the-stack-from-source.md)** · [User Guide](docs/user-guide/index.md) · [Technical Guide](docs/technical-guide/index.md) · [Reference](docs/reference/index.md) · [FAQ](docs/faq/index.md) · [Plugins](docs/plugins/index.md) · [Contribute](docs/contributing/index.md)
+**[Run it on your machine](docs/tutorials/build-from-source/run-the-stack-from-source.md)** · [Features](docs/features/index.md) · [Concepts](docs/concepts/index.md) · [Tutorials](docs/tutorials/index.md) · [Reference](docs/reference/index.md)
 
 </div>
 

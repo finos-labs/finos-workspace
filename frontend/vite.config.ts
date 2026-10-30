@@ -120,19 +120,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         selfDestroying: true,
-        registerType: "autoUpdate",
-        devOptions: { enabled: false },
-        workbox: {
-          cacheId: "workspace",
-          maximumFileSizeToCacheInBytes: 15000000,
-          cleanupOutdatedCaches: true,
-          runtimeCaching: [
-            {
-              urlPattern: ({ request }) => request.mode === "navigate",
-              handler: "NetworkOnly",
-            },
-          ],
-        },
+        injectRegister: false,
         manifest: {
           name: APP_NAME,
           short_name: APP_SHORT_NAME,

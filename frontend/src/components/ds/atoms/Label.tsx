@@ -4,7 +4,7 @@ import React from "react";
 import { cn } from "../utils";
 
 const labelVariants = cva([
-  "BB-Label body-xs-regular mb-1 inline-block text-ds-text-caption",
+  "body-xs-regular mb-1 inline-block text-ds-text-caption",
   "group-aria-disabled:cursor-not-allowed group-aria-disabled:text-general-label-disabled",
   "peer-disabled:cursor-not-allowed peer-disabled:text-general-label-disabled",
 ]);
@@ -42,7 +42,7 @@ export const Message = React.forwardRef<HTMLDivElement, MessageProps>(
       <div
         ref={ref}
         className={cn(
-          "BB-Message body-xs-regular mt-1",
+          "body-xs-regular mt-1",
           error && "body-xs-medium text-alert-error",
           className,
         )}

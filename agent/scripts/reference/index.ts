@@ -1,5 +1,6 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { type AgentsFileReference, collectAgentsFile } from "./agents.ts";
 import { collectMcp, type McpReference } from "./mcp.ts";
 import { collectMetrics, type MetricEntry } from "./metrics.ts";
 import { collectProtocol, type ProtocolReference } from "./protocol.ts";
@@ -12,6 +13,7 @@ export interface Reference {
   metrics: MetricEntry[];
   mcp: McpReference;
   protocol: ProtocolReference;
+  agentsFile: AgentsFileReference;
 }
 
 export async function collectReference(): Promise<Reference> {
@@ -20,6 +22,7 @@ export async function collectReference(): Promise<Reference> {
     metrics: collectMetrics(),
     mcp: await collectMcp(),
     protocol: collectProtocol(),
+    agentsFile: await collectAgentsFile(),
   };
 }
 

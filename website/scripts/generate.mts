@@ -9,8 +9,10 @@ import {
   collectManifestSchema,
   collectMcp,
   collectSettings,
+  collectWidgetArgs,
   collectWidgetsSchema,
 } from "./lib/backend.mts";
+import { collectAgentsJson } from "./lib/agentsJson.mts";
 import { checkAgreement } from "./lib/agreement.mts";
 import { collectCss } from "./lib/css.mts";
 import { collectAgent } from "./lib/agent.mts";
@@ -41,6 +43,8 @@ const outputs: Record<string, unknown> = {
   settings: collectSettings(),
   api: collectApi(),
   widgetsSchema: collectWidgetsSchema(),
+  widgetArgs: collectWidgetArgs(),
+  agentsJson: collectAgentsJson(),
   appsSchema: collectAppsSchema(),
   manifestSchema: collectManifestSchema(),
   database: collectDatabase(),

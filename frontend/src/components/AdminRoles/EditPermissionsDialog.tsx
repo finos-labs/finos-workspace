@@ -89,8 +89,8 @@ function MenuTab({
       value={value}
       className={cn(
         "rounded flex gap-2.5 items-center p-2.5 text-left capitalize transition-colors body-xs-regular",
-        "radix-state-active:bg-general-bg-secondary-hover radix-state-active:font-medium",
-        "radix-state-inactive:text-ds-text-caption",
+        "data-[state=active]:bg-general-bg-secondary-hover data-[state=active]:font-medium",
+        "data-[state=inactive]:text-ds-text-caption",
         "hover:bg-general-bg-primary-hover",
         value && `_button_${value}`,
       )}
@@ -1061,7 +1061,7 @@ export function EditPermissionsDialog({
               dispatch({ activeTab: value as PossibleTabValues })
             }
             orientation="horizontal"
-            className="flex flex-1 bg-tab-group-bg rounded border border-secondary/20 overflow-hidden max-h-[calc(100%-50px)]"
+            className="flex flex-1 bg-tab-group-bg rounded border border-light-100/20 dark:border-dark-400/20 overflow-hidden max-h-[calc(100%-50px)]"
           >
             <TabsPrimitive.List className="flex sm:min-w-[180px] flex-col gap-1 overflow-auto p-2.5 border-r border-surface-divider">
               {PERMISSION_TABS.map((tab) => (

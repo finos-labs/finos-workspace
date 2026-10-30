@@ -59,6 +59,13 @@ The contract enforces the following rules:
 
 A header parameter, a JSON body or the `POST` method makes the browser send a preflight request. The backend must therefore answer `OPTIONS` with an `Access-Control-Allow-Methods` header that includes the method, and with an `Access-Control-Allow-Headers` header that includes `Content-Type` when the request has a body and includes the name of every header parameter.
 
+A backend should allow only what its requests need:
+
+- `Access-Control-Allow-Origin` holds the origin of the web app, and never `*`.
+- `Access-Control-Allow-Headers` lists the header names. They are `Content-Type` when the request has a body, the name of every header parameter, the headers that the connection's credentials use, such as `Authorization`, and the headers that the deployment adds, if it adds any.
+- It does not hold `*`, because `*` never covers `Authorization`. It does not copy the `Access-Control-Request-Headers` of the preflight request either, because a copied list allows every header.
+- A request with no header parameter, no credential, no deployment header and no body is a plain `GET`. The browser sends no preflight request for it, so a backend that serves only such requests needs no `Access-Control-Allow-Headers`.
+
 ## Caching
 
 The cache key of a widget request consists of the method, the URL with its query, the values of the header parameters and the body. Credential values are not part of the key.

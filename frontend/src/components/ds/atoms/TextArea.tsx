@@ -8,7 +8,7 @@ import { Label, Message } from "./Label";
 
 const groupVariants = cva(
   [
-    "BB-Textarea group body-xs-regular flex min-h-[80px] w-full rounded-sm border",
+    "group body-xs-regular flex min-h-[80px] w-full rounded-sm border",
     "disabled:cursor-not-allowed",
     "transition",
     "bg-input-field-bg",
@@ -36,7 +36,7 @@ const groupVariants = cva(
 
 const textareaVariants = cva(
   [
-    "BB-TextareaInput flex min-h-[80px] w-full border-none bg-transparent",
+    "flex min-h-[80px] w-full border-none bg-transparent",
     "resize-none",
     "focus-visible:outline-hidden",
     "disabled:cursor-not-allowed disabled:bg-transparent",
@@ -153,7 +153,7 @@ export const FormTextarea = React.forwardRef<HTMLTextAreaElement, FormTextareaPr
     const { label, message, ...rest } = props;
 
     return (
-      <FormItem className="BB-FormTextarea group" aria-disabled={props.disabled}>
+      <FormItem className="group" aria-disabled={props.disabled}>
         <FormLabel>{label}</FormLabel>
         <FormControl>
           <Textarea ref={ref} {...rest} />

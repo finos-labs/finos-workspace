@@ -1,4 +1,5 @@
 import agent from "../../generated/agent.json";
+import agentsJson from "../../generated/agentsJson.json";
 import api from "../../generated/api.json";
 import appsSchema from "../../generated/appsSchema.json";
 import bridge from "../../generated/bridge.json";
@@ -12,9 +13,11 @@ import plugins from "../../generated/plugins.json";
 import settings from "../../generated/settings.json";
 import web from "../../generated/web.json";
 import webConfig from "../../generated/webConfig.json";
+import widgetArgs from "../../generated/widgetArgs.json";
 import widgetsSchema from "../../generated/widgetsSchema.json";
 import type {
   AgentData,
+  AgentsJsonData,
   ApiData,
   BridgeData,
   CliData,
@@ -30,6 +33,7 @@ import type {
 } from "../../data/types";
 
 export const agentData = agent as unknown as AgentData;
+export const agentsJsonData = agentsJson as unknown as AgentsJsonData;
 export const apiData = api as unknown as ApiData;
 const appsSchemaData = appsSchema as unknown as SchemaSet;
 export const bridgeData = bridge as unknown as BridgeData;
@@ -43,10 +47,13 @@ export const pluginsData = plugins as unknown as PluginsData;
 export const settingsData = settings as unknown as SettingsData;
 export const webConfigData = webConfig as unknown as WebConfigData;
 export const webData = web as unknown as WebData;
+const widgetArgsData = widgetArgs as unknown as SchemaSet;
 const widgetsSchemaData = widgetsSchema as unknown as SchemaSet;
 
 export const schemaSets = {
   widgets: widgetsSchemaData,
+  widgetArgs: widgetArgsData,
+  agents: agentsJsonData.schema,
   apps: appsSchemaData,
   manifest: manifestSchemaData,
   api: { source: "openapi.json", title: "FINOS Workspace API", definitions: apiData.schemas } as SchemaSet,

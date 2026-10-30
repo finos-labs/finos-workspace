@@ -5,7 +5,7 @@ parameter, the widget settings, two linked widgets, a form and an app. It comes 
 (`python/`) and TypeScript (`typescript/`), and both answer every request the same way.
 Every name, number and document in it is invented.
 
-The docs explain each widget with its code: [The reference backend](../../technical-guide/build-a-backend/index.mdx).
+The docs explain each widget with its code: [The reference backend](../../tutorials/build-a-backend/index.mdx).
 
 ## Run it
 

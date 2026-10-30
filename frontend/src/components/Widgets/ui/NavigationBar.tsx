@@ -294,7 +294,9 @@ export default function NavigationBar() {
                 </Tooltip>
                 <div className="flex-1">
                   <Input
-                    ref={(el) => (inputRef.current[tabUuid] = el)}
+                    ref={(el) => {
+                      inputRef.current[tabUuid] = el;
+                    }}
                     onChange={(value) => {
                       const valueId = slugify(value as string);
                       const updateState = { isChanged: true } as typeof state;

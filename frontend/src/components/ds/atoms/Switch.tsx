@@ -21,8 +21,8 @@ const Switch = React.forwardRef<
       <SwitchPrimitive.Root
         ref={ref}
         className={cn(
-          "BB-Switch peer h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-          "focus-visible:outline-hidden focus-visible:ring-[3px] focus-visible:ring-ring",
+          "peer h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+          "focus-visible:outline-hidden focus-visible:ring-[3px] focus-visible:ring-light-300 dark:focus-visible:ring-dark-400",
           "disabled:cursor-not-allowed disabled:opacity-50",
           "bg-toggle-bg data-[state=checked]:bg-main-100",
           "hover:enabled:bg-toggle-bg hover:enabled:data-[state=checked]:bg-main-100",

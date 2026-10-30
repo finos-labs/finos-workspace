@@ -12,7 +12,7 @@ import type {
 } from "../../src/data/types.ts";
 import { fromRepo } from "./paths.mts";
 import { readReference, referencePath } from "./reference.mts";
-import { describeSchema, describeSet, typeLabel } from "./schema.mts";
+import { describeCases, describeSchema, describeSet, renameType, typeLabel } from "./schema.mts";
 
 type Json = Record<string, any>;
 
@@ -110,7 +110,24 @@ export function collectApi(): ApiData {
 }
 
 export function collectWidgetsSchema(): SchemaSet {
-  return describeSet(referencePath("backend", "widgets_schema.json"), "widgets.json", readReference("backend", "widgets_schema.json"), "definitions");
+  const set = describeSet(referencePath("backend", "widgets_schema.json"), "widgets.json", readReference("backend", "widgets_schema.json"), "definitions", { inline: true });
+  return renameType(set, "plugin_type", "<type>");
+}
+
+interface ArgsCase {
+  label: string;
+  schema: unknown;
+}
+
+export function collectWidgetArgs(): SchemaSet {
+  const source = readReference("frontend", "widget-args-reference.json") as { paramName: string; data: ArgsCase[]; ui: ArgsCase[] };
+  const set: SchemaSet = {
+    source: referencePath("frontend", "widget-args-reference.json"),
+    title: "get_widget_schema",
+    definitions: [describeCases("data_args_schema", source.data), describeCases("ui_args_schema", source.ui)],
+  };
+  const named = renameType(set, source.paramName, "<paramName>");
+  return renameType(named, "config.setting", "config.<setting>");
 }
 
 export function collectAppsSchema(): SchemaSet {

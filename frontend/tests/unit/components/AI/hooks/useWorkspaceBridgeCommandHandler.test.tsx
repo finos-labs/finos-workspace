@@ -1126,6 +1126,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     expect(widget.data_args_schema).toEqual({
       type: "object",
       additionalProperties: false,
+      description: expect.any(String),
       properties: {
         symbols: {
           type: ["array", "string"],

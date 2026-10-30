@@ -143,12 +143,23 @@ export interface EnvData {
   agent: AgentEnvVariable[];
 }
 
+export interface SchemaVariant {
+  applies: string;
+  type: TypeLabel;
+  required: boolean;
+  enum?: string[];
+  notes: string[];
+  description?: string;
+}
+
 export interface SchemaProperty {
   name: string;
   type: TypeLabel;
   required: boolean;
   description?: string;
+  enum?: string[];
   notes: string[];
+  variants?: SchemaVariant[];
 }
 
 export interface SchemaDoc {
@@ -157,6 +168,7 @@ export interface SchemaDoc {
   type: TypeLabel;
   properties: SchemaProperty[];
   notes: string[];
+  json?: unknown;
 }
 
 export interface SchemaSet {
@@ -444,4 +456,11 @@ export interface BridgeData {
 export interface WebData {
   port: number;
   values: Record<string, PluginValueType>;
+}
+
+export interface AgentsJsonData {
+  schema: SchemaSet;
+  features: { key: string; description: string }[];
+  file: unknown;
+  conditional: { feature: string; variable: string }[];
 }

@@ -32,9 +32,19 @@ const rejecting: WorkspaceClient = {
 };
 
 describe("the reference data", () => {
-  it("renders as JSON with its four parts", async () => {
+  it("renders as JSON with its five parts", async () => {
     const reference = JSON.parse(await renderReference());
-    expect(Object.keys(reference).sort()).toEqual(["http", "mcp", "metrics", "protocol"]);
+    expect(Object.keys(reference).sort()).toEqual(["agentsFile", "http", "mcp", "metrics", "protocol"]);
+  });
+
+  it("records the features of agents.json that an environment variable switches on", async () => {
+    const { agentsFile } = await collectReference();
+    expect(agentsFile.conditional).toEqual([
+      { feature: "model", variable: "DEFAULT_MODEL" },
+      { feature: "model", variable: "INES_MODELS" },
+      { feature: "speech-to-text", variable: "INES_TRANSCRIBE_MODEL" },
+    ]);
+    expect(Object.keys(agentsFile.file)).toEqual(["default_agent"]);
   });
 
   it("asks for a token on exactly the routes that it says need one", async () => {

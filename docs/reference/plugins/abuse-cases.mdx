@@ -1,0 +1,33 @@
+---
+title: Abuse cases and their tests
+sidebar_position: 8
+---
+
+import { PluginValue } from "@site/src/components/Reference/plugins";
+
+# Abuse cases and their tests
+
+This page lists the abuse cases that the plugin runtime defends against. For each case it names the defense and the test that checks it. The Playwright specs generate their packages into a temporary plugins directory, and they run in Chromium, Firefox and WebKit.
+
+| Abuse | Defense | Test |
+|---|---|---|
+| Read the parent or top document, `window.opener`, storage or cookies; `window.open`, top navigation, `alert`; `eval` | Opaque origin, sandbox, policy | `plugins.spec.ts`, plugin-cannot-leave-its-frame |
+| `fetch`, WebSocket, `sendBeacon`, images and remote `import` to any host, from the frame and from nested and `data:` workers | Policy, in workers too | `plugins.spec.ts`, plugin-cannot-leave-its-frame and plugin-policy-violations-reach-the-administrator |
+| Forged host messages through `window.postMessage`; a write to an undeclared param | The host ignores window messages; the authority | `plugins.spec.ts`, plugin-cannot-leave-its-frame |
+| An ungranted or unknown command, `core:mcp:call`, reading the widget's `mcp_tool`, a `javascript:` link, markup in a notice, prototype pollution | Authority, host-only link, plain text, separate realm | `plugins.spec.ts`, plugin-cannot-leave-its-frame |
+| Forged violation events; requests to 250 origins | `isTrusted`; caps; text only | `plugin-admin-journey.spec.ts` |
+| Messages outside the protocol; protocol violations | Schema; <PluginValue of="limits.VIOLATION_LIMIT.count" /> in <PluginValue of="limits.VIOLATION_LIMIT.windowMs" unit="ms" /> end the frame | `frame.test.ts`, `authority.test.ts` |
+| Another window announcing itself as the frame; a frame asking again for a port; a message on another frame's port or through `window.postMessage` | One port, handed once to the frame's own window; the caller is its port | `PluginFrame.test.tsx` |
+| A frame that navigates itself | A second `load` ends the frame | `PluginFrame.test.tsx`, `plugins.spec.ts`, a-frame-that-navigates-itself-is-ended |
+| A frame that stops answering | A frame that misses its pings ends; a hidden frame is not pinged | `PluginFrame.test.tsx` |
+| A frame document with more than the shell, or without its policy first | The document's shape; the canary | `frame.test.ts`, `shell.conformance.test.ts` |
+| Symbolic links, odd names, too many or too large files, an id or version unlike its directory, a wrong checksum or pin, a served path outside the version, `backend/` served | Discovery and file delivery | `test_widget_plugin_rules.py` |
+| Policy sources that are too broad, private or insecure, with and without confirmations | The validator | `csp-cases.json`, in `csp.test.ts` and `test_widget_plugin_rules.py` |
+| An organization admin approves or sets a secret; a role of another organization grants access | Authorization | `test_widget_plugins_api.py`, `test_widget_plugin_server_side.py` |
+| A file edited after approval; a new version; a version whose files changed before approval; an old digest | The API re-hashes a file whose size or modification time changed, and the browser checks every file against the approved digest; explicit approval bound to the reviewed digest | `test_widget_plugins_api.py`, `plugin-admin-journey.spec.ts`, `bundle.test.ts`, `plugins.spec.ts`, the-host-refuses-files-that-differ-from-the-approved-version |
+| A route that uploads or writes plugin files | None, except the copy of an approved version to a new number on a local stack, which every `MODE` but `local` refuses | `test_widget_plugins_api.py`, `test_widget_plugin_development.py` |
+| A proxy aimed at a private or metadata address, a name that resolves to several addresses or changes, a bad certificate; arguments or secrets outside their places | Template rules and the outbound guard | `test_widget_plugin_proxies.py` |
+| Reading a secret from the frame or the page; calls after narrowing or revoking; calls by users without access | Server-side secrets; availability on every call | `test_widget_plugin_server_side.py`, `plugin-proxies.spec.ts` |
+| A backend that reads data the user may not read, with a forged, changed or expired token, or after a version change | Token, broker and identity check | `test_widget_plugin_backends.py`, `plugin-backends.spec.ts` |
+| A widget that cites another backend's MCP server as its own | The link resolves against its own backend | `backendConnector.invalidItems.test.ts`, `mcpLink.test.ts` |
+| A backend that reaches the FINOS Workspace API or the internet, writes its image or data, or runs privileged | In the examples backend's deployment: internal networks, a gateway that forwards only the API's calls, and a read-only container without capabilities or root | `docs/examples/backend/tests/test_isolation.py`, run by `examples.yml` |

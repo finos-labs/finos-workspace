@@ -1,0 +1,60 @@
+---
+title: Give a team access to your data
+sidebar_position: 1
+---
+
+import { SettingConstant } from "@site/src/components/Reference/config";
+
+# Give a team access to your data
+
+Let another person use part of a backend that you connected. You create a role, add a person who has it, grant the role two widgets of your backend, and sign in as that person to see what they see.
+
+## What you need
+
+You need the FINOS Workspace that [Run FINOS Workspace on your machine](../../tutorials/build-from-source/run-the-stack-from-source.md) starts, with its administrator signed in, and the backend of [Connect a backend and build a dashboard](../../tutorials/build-a-backend/connect-a-backend-and-build-a-dashboard.mdx), connected under the name Sales demo and still running. You also need a second browser window that does not share the administrator's session, such as a private window.
+
+## Create a role
+
+A role is a name for a set of grants, and a person gets what their roles grant. Open the main menu, choose Admin Portal, and select Roles and Access. The page lists the roles of your organization. Select Create new role and fill in the dialog:
+
+1. In Name, type `Analysts`.
+2. In Description, type `Reads the sales data and asks the Agent about it.`
+3. Leave Sharing at None, so that the members neither share nor receive dashboards.
+4. Under Agent calls per day, clear the box No limit and type `20`. This is the number of questions that a member may ask the Agent in a day.
+5. Select Create role.
+
+A message says "Role created", and the role appears in the table with no members yet. It grants nothing so far except the allowance of 20 questions.
+
+## Add a person
+
+Select Users in the admin sidebar and select Add users. On the tab Add a single user, fill in First name `Ana`, Last name `Analyst` and Email address `analyst@example.com`. Open Role and choose Analysts. Leave Bypass invitation selected and select Add.
+
+The dialog says "Ana Analyst has been added to the organization." and shows a link with the words "Give them this link to set their password. It works once, until" and a time <SettingConstant name="passwordResetLifetimeSeconds" unit="hours" /> from now. FINOS Workspace sends no email, so you copy the link and give it to the person yourself. Select Done. The table of users now lists Ana Analyst with the type User, and under Roles it shows Agent User and one more, which is Analysts. Every new person receives the role Agent User in addition to the one that you choose.
+
+## Give the role access to your backend
+
+Select Roles and Access again, and select Edit permissions above the table. The dialog Setup Permissions opens. Choose Analysts in the selector at its top left and open the tab Widgets. The group Backend Widgets lists the backends that you connected and the backends of your organization, and Sales demo is one of them. Every backend and every widget has a menu that says No Access.
+
+1. Set the menu of Sales demo to Access. This says that the role may reach the backend, and it grants no widget by itself.
+2. Select the arrow in front of Sales demo to open its widgets. Set Revenue by region and Sales notes to Access, and leave Revenue share and Orders at No Access.
+3. Select Save changes.
+
+Before it saves, FINOS Workspace asks you to confirm: it warns that you are about to make critical changes to the permissions of Analysts, and it counts what you changed, which is 2 widgets added and none removed. Select Yes, Continue. A message says "Role permissions updated".
+
+## Sign in as the person
+
+Open a private window and paste the link into it. The page Set a new password asks for a password twice and says what it needs: at least 8 characters, with a number, an uppercase letter, a lowercase letter and a special character, and no spaces. Choose one and select Set password. The page says "Your password is set. Sign in with it." Select Sign in and sign in with `analyst@example.com` and the password that you chose.
+
+Ana's FINOS Workspace looks smaller than yours. The sidebar offers Apps, Widgets and AI and her own dashboards, and it has no Connections entry, because a person of the type User cannot add backends of their own. The Apps page says "Your Apps page is empty", because the role grants no app.
+
+## See what the role grants
+
+Select Widgets in the sidebar and open Backend Widgets. The list shows Sales demo, and under it all four widgets of the backend, each with a small icon of two people that marks it as shared with Ana. The library lists what the backend offers, so it shows even the widgets that the role does not grant.
+
+Tick the box in front of Sales demo to select its four widgets. Open the dashboard menu beside Add Data at the top of the page, choose Create New Dashboard, and select Add widgets. Open the new dashboard in the sidebar. A dashboard draws only the cards that are near the part of the page that you see, so scroll down to reach the last one.
+
+Two of the widgets show their data: Revenue by region shows the table, and Sales notes shows the notes. The other two, Revenue share and Orders, show the message "You don't have access to this widget" and a button, Remove Widget. This is the grant at work. Ana has the backend through her role, the role names two widgets, and the data of the others stays out of reach. Select Remove Widget to take such a widget off the dashboard.
+
+## Where to go next
+
+You created a role, gave it to a person and limited what it opens. To change what the role grants, open Edit permissions again, choose the role and change its menus. To choose which models and tools the role gives to the Agent, read [Choose the models and tools of a role](choose-the-models-and-tools-of-a-role.md). To give the role an app, read [Give a role access to data](give-a-role-access-to-data.md). To add many people at once, read [Add a user](add-a-user.mdx). [Admin](../../concepts/admin.md) says what a role grants.

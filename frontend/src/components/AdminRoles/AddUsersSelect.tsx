@@ -133,7 +133,7 @@ export default function AddUsersSelect({
         )}
       >
         {isLoading ? "Loading users…" : triggerLabel}
-        <Icon id="chevron-down" className="BB-Icon block size-4 text-ds-text-body" />
+        <Icon id="chevron-down" className="block size-4 text-ds-text-body" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className={cn(
@@ -146,7 +146,9 @@ export default function AddUsersSelect({
         sideOffset={4}
       >
         <Input
-          ref={(el) => (inputRef.current = el)}
+          ref={(el) => {
+            inputRef.current = el;
+          }}
           prefix={<Icon id="search" />}
           placeholder="Search users"
           defaultValue={state.searchQuery}

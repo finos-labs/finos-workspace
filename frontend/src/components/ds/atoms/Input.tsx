@@ -16,7 +16,7 @@ import { Label, Message } from "./Label";
 
 export const groupVariants = cva(
   [
-    "BB-Input group body-xs-regular flex w-full items-center gap-2 rounded-sm border",
+    "group body-xs-regular flex w-full items-center gap-2 rounded-sm border",
     "disabled:cursor-not-allowed",
     "transition",
     "bg-input-field-bg",
@@ -32,7 +32,7 @@ export const groupVariants = cva(
         default: "",
       },
       size: {
-        xs: "gap-1 pr-1 pl-1 [&_.BB-Icon]:size-3 [&_button]:max-h-3",
+        xs: "gap-1 pr-1 pl-1 [&_button]:max-h-3",
         sm: "gap-1 pr-2 pl-2 [&_button]:max-h-4",
         md: "gap-2 pr-3 pl-3 [&_button]:max-h-6",
         lg: "gap-2 pr-3 pl-3 [&_button]:max-h-8",
@@ -47,7 +47,7 @@ export const groupVariants = cva(
 
 const inputVariants = cva(
   [
-    "BB-Input flex w-full border-none bg-transparent",
+    "flex w-full border-none bg-transparent [&[type=date]::-webkit-inner-spin-button]:cursor-pointer [&[type=date]::-webkit-inner-spin-button]:opacity-0 [&[type=date]::-webkit-calendar-picker-indicator]:cursor-pointer [&[type=date]::-webkit-calendar-picker-indicator]:opacity-0",
     "file:border-0 file:bg-transparent file:font-medium file:text-sm",
     "disabled:cursor-not-allowed disabled:bg-transparent",
     "focus-visible:outline-hidden",
@@ -279,7 +279,7 @@ const FormInputBase = React.forwardRef<HTMLInputElement, FormInputProps>(
     const { label, message, ...rest } = props;
 
     return (
-      <FormItem className="BB-FormInput group" aria-disabled={props.disabled}>
+      <FormItem className="group" aria-disabled={props.disabled}>
         <FormLabel>{label}</FormLabel>
         <FormControl>
           <Input ref={ref} {...rest} />

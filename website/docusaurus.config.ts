@@ -78,46 +78,22 @@ const config: Config = {
       },
       items: [
         { type: "docSidebar", sidebarId: "quickStart", label: "Quick Start", position: "left" },
-        { type: "docSidebar", sidebarId: "technical", label: "Technical Guide", position: "left" },
-        { type: "doc", docId: "reference/index", label: "Reference", position: "left" },
-        { type: "docSidebar", sidebarId: "faq", label: "FAQ", position: "left" },
-        { type: "docSidebar", sidebarId: "contributing", label: "Contribute", position: "left" },
-        { type: "docSidebar", sidebarId: "plugins", label: "Plugins", position: "left" },
+        { type: "docSidebar", sidebarId: "features", label: "Features", position: "left" },
+        { type: "docSidebar", sidebarId: "concepts", label: "Concepts", position: "left" },
+        { type: "docSidebar", sidebarId: "tutorials", label: "Tutorials", position: "left" },
+        { type: "docSidebar", sidebarId: "reference", label: "Reference", position: "left" },
         { href: "https://github.com/openbq-org/workspace", label: "GitHub", position: "right" },
       ],
     },
     footer: {
       copyright: "Licensed under the Apache License 2.0.",
       links: [
-        {
-          title: "Docs",
-          items: [
-            { label: "Quick Start", to: "/quick-start" },
-            { label: "MCP Companion", to: "/mcp" },
-            { label: "User Guide", to: "/user-guide" },
-            { label: "Technical Guide", to: "/technical-guide" },
-            { label: "Reference", to: "/reference" },
-            { label: "FAQ", to: "/faq" },
-            { label: "Contribute", to: "/contributing" },
-            { label: "Plugins", to: "/plugins" },
-          ],
-        },
-        {
-          title: "FINOS",
-          items: [
-            { label: "FINOS Website", href: "https://www.finos.org/" },
-            { label: "Community Handbook", href: "https://community.finos.org/" },
-            { label: "FINOS Projects", href: "https://landscape.finos.org" },
-          ],
-        },
-        {
-          title: "About FINOS",
-          items: [
-            { label: "FINOS Projects on GitHub", href: "https://github.com/finos" },
-            { label: "Engage the FINOS Community", href: "https://www.finos.org/engage-with-our-community" },
-            { label: "FINOS News and Events", href: "https://www.finos.org/news-and-events" },
-          ],
-        },
+        { label: "FINOS Website", href: "https://www.finos.org/" },
+        { label: "Community Handbook", href: "https://community.finos.org/" },
+        { label: "FINOS Projects", href: "https://landscape.finos.org" },
+        { label: "FINOS Projects on GitHub", href: "https://github.com/finos" },
+        { label: "Engage the FINOS Community", href: "https://www.finos.org/engage-with-our-community" },
+        { label: "FINOS News and Events", href: "https://www.finos.org/news-and-events" },
       ],
     },
     prism: {

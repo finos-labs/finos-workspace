@@ -13,15 +13,15 @@ function requirements(plugins: PluginsData, agent: AgentData): Requirement[] {
   const commands = plugins.permissions.flatMap((permission) => (permission.command === null ? [] : [permission.command]));
   const values = plugins.values;
   return [
-    { page: "docs/plugins/reference/commands-and-permissions.mdx", what: "host commands", tokens: commands.map((name) => `\`${name}\``) },
-    { page: "docs/plugins/reference/module-contract.mdx", what: "default traits", tokens: plugins.traits.map((name) => `| \`${name}\` |`) },
+    { page: "docs/reference/plugins/commands-and-permissions.mdx", what: "host commands", tokens: commands.map((name) => `\`${name}\``) },
+    { page: "docs/reference/plugins/module-contract.mdx", what: "default traits", tokens: plugins.traits.map((name) => `| \`${name}\` |`) },
     {
-      page: "docs/plugins/reference/package-and-manifest.mdx",
+      page: "docs/reference/plugins/package-and-manifest.mdx",
       what: "host versions in the example manifest",
       tokens: [`"host": { "api": ${values["host.api"]}, "afm": "${values["host.afm"]}" }`],
     },
     {
-      page: "docs/plugins/build-your-first-widget-plugin.md",
+      page: "docs/tutorials/plugins/build-your-first-widget-plugin.md",
       what: "host versions in the manifest that the lesson writes",
       tokens: [`"host": { "api": ${values["host.api"]}, "afm": "${values["host.afm"]}" }`],
     },

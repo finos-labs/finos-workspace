@@ -47,7 +47,8 @@ services:
   rq_worker:
     build:
       context: backend
-      dockerfile: rqworker.Dockerfile
+      dockerfile: fastapi.Dockerfile
+    command: ["python", "base_workers.py"]
     platform: ${PLATFORM:-linux/amd64}
     container_name: rq_worker
     env_file:

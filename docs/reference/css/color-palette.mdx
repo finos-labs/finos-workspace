@@ -7,7 +7,7 @@ import { PaletteGroup } from "@site/src/components/Reference/theme";
 
 # Color palette
 
-The palette is the set of raw colors from which the semantic properties are built. The file `frontend/src/styles/tokens.css` declares it as custom properties that are named `--color-<ramp>-<step>`. The Tailwind configuration reads the same file and defines the classes `bg-<ramp>-<step>`, `text-<ramp>-<step>`, `border-<ramp>-<step>` and the other color utilities from it. Each class reads its property, so the file is the only place that holds a palette value. The semantic properties on the other pages refer to the palette with `var()`.
+The palette is the set of raw colors from which the semantic properties are built. The file `frontend/src/styles/tokens.css` declares it as custom properties that are named `--color-<ramp>-<step>`. The `@theme` block of `frontend/src/index.css` names each step, and Tailwind defines the classes `bg-<ramp>-<step>`, `text-<ramp>-<step>`, `border-<ramp>-<step>` and the other color utilities from those names. Each class reads its property, so the file is the only place that holds a palette value. The semantic properties on the other pages refer to the palette with `var()`.
 
 A palette step is declared once, on `:root`. The dark theme does not change the value of a step. It changes which step a semantic property refers to.
 

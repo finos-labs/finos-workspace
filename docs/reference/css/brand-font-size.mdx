@@ -7,7 +7,7 @@ import { TokenGroup } from "@site/src/components/Reference/theme";
 
 # Brand color, font and text size
 
-The brand color, the font and the text size are custom properties like all the others. The base stylesheets declare them. The theme stylesheet that `WL_STYLESHEET` names loads after the base stylesheets and overrides them, as [How to create a theme for the web app](../../technical-guide/white-label/create-a-theme.md) describes, and so does the preset that an admin applies ([Theme presets](theme-presets.mdx)).
+The brand color, the font and the text size are custom properties like all the others. The base stylesheets declare them. The theme stylesheet that `WL_STYLESHEET` names loads after the base stylesheets and overrides them, as [Create a theme for the web app](../../features/white-label/create-a-theme.md) describes, and so does the preset that an admin applies ([Theme presets](theme-presets.mdx)).
 
 | Property | Declared in | Value |
 |---|---|---|
@@ -41,7 +41,7 @@ Components read the shades through the `main` color utilities, such as `bg-main-
 
 ## The font
 
-The file `index.css` sets the font of `:root` to `var(--font-family)` followed by `system-ui`, and it sets the font of `body` to `var(--font-family)` followed by `sans-serif`. The Tailwind class `font-wl` uses the same property. The app ships Montserrat, Inter and Roboto, which it declares with `@font-face`, as [Selectors](selectors.mdx) lists. Any other family name works only on devices that have that font installed.
+The file `index.css` sets the font of `:root` to `var(--font-family)` followed by `system-ui`, and it sets the font of `body` to `var(--font-family)` followed by `sans-serif`. The Tailwind class `font-wl` uses the same property. The app ships Montserrat, which it declares with `@font-face`, as [Selectors](selectors.mdx) lists. Any other family name works only on devices that have that font installed.
 
 ## The text scale
 

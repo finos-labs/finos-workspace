@@ -84,7 +84,7 @@ An item of `context` has a `name`, an optional `description` and a `data` object
 
 ### An example
 
-This request is the first one of a chat on the dashboard from the [first tutorial](../../technical-guide/build-a-backend/connect-a-backend-and-build-a-dashboard.mdx). The user selected no widget, so `primary` is empty, and the dashboard has the two widgets of the tutorial. The `tools` list is cut to one of the three tools of Ines's own MCP server, and its schema is shortened.
+This request is the first one of a chat on the dashboard from the [first tutorial](../../tutorials/build-a-backend/connect-a-backend-and-build-a-dashboard.mdx). The user selected no widget, so `primary` is empty, and the dashboard has the two widgets of the tutorial. The `tools` list is cut to one of the three tools of Ines's own MCP server, and its schema is shortened.
 
 ```json
 {
@@ -275,7 +275,7 @@ The function names are these:
 | `function` | What the browser does | Fields of `input_arguments` | Content of `data` |
 |---|---|---|---|
 | `get_widget_data` | Fetches the data of widgets. | `data_sources`, a list of `widget_uuid`, `origin`, `id` and `input_args`. | One entry for each data source, in order. Each entry has `items`, and each item has `content`, a string, or `url`, and a `data_format` with the `data_type` and for files the `filename`, or the entry is an error with an `error_type` and a `content`. [Widget data for the agent](ines-widget-data.mdx) describes them. |
-| `execute_agent_tool` | Runs a tool of an MCP server. For the server `workspace` it runs a [FINOS Workspace tool](../../mcp/reference/tools.mdx) in the tab. | `server_id`, `tool_name`, which is the `name` that the tool has in the request's `tools`, and `parameters`. | The result of the tool, in the form [Tool results](ines-tool-results.mdx) describes. |
+| `execute_agent_tool` | Runs a tool of an MCP server. For the server `workspace` it runs a [FINOS Workspace tool](../mcp/workspace-mcp.mdx) in the tab. | `server_id`, `tool_name`, which is the `name` that the tool has in the request's `tools`, and `parameters`. | The result of the tool, in the form [Tool results](ines-tool-results.mdx) describes. |
 | `get_skill_content` | Looks up a skill in the user's library. | `slug` and optionally `reason`. | A list with one object. It is `{"status": "success", "data": {"skill": {...}}}` with the skill's `slug`, `description` and `contentMarkdown`, or `{"status": "error", "message": ...}` when the library has no such skill. |
 
 The agent's own commands for working with the FINOS Workspace are the other functions, and they are listed after this section. Each has a list of results in `data`, each with a `status` and a `message`.

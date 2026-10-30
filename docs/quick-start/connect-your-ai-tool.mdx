@@ -1,0 +1,136 @@
+---
+title: Connect your AI tool
+sidebar_position: 2
+sidebar_label: "2. Connect your AI tool"
+---
+
+import { BridgeValue } from "@site/src/components/Reference/bridge";
+
+# Connect your AI tool
+
+This page tells you how to connect an AI tool, such as Claude Code or Codex, to FINOS Workspace. After you do these steps, the AI tool can read and change your dashboards.
+
+[MCP Companion](../features/mcp-companion/index.mdx) tells you how the connection works. [FINOS Workspace MCP server](../reference/mcp/workspace-mcp.mdx) lists the tools that the AI tool can call.
+
+You need:
+
+- A FINOS Workspace that runs, and an account on it.
+- An AI tool that can connect to an MCP server with the streamable HTTP transport.
+
+## 1. Show the MCP Companion entry
+
+The MCP Companion entry is off by default. The operator of the deployment turns it on:
+
+1. Set `UI_SHOW_COMPANION_MCP_MODE` to `true` on the container of the web app. [Web app configuration](../reference/configuration/web-app.mdx) describes this setting.
+2. Restart the container.
+
+The main menu then shows the entry **MCP Companion**.
+
+## 2. Connect your tab
+
+1. In the header of the sidebar, select the menu button.
+2. Select **MCP Companion**. The dialog **FINOS Workspace MCP Companion** opens.
+3. Find the **Endpoint** in the dialog. The AI tool connects to this address.
+4. Turn on the switch. The state changes from **Not connected** to **Connecting…** and then to **Connected**.
+5. Make sure that the message "FINOS Workspace MCP companion connected" appears.
+
+An icon of the companion appears in the header of the sidebar:
+
+- A green icon: the tab is connected.
+- A yellow icon that pulses: the tab connects or reconnects. The tooltip of the icon tells you which.
+
+About the connected tab:
+
+- The AI tool works through this tab.
+- You can connect only one tab at a time. When you connect a second tab, it replaces the first.
+- Your browser remembers that the companion is on. When you reload the page, the tab connects again.
+- To disconnect, turn off the switch. The icon disappears.
+
+## 3. Create a token
+
+The AI tool identifies you with a personal access token. You can create a token only while your tab is connected. When the tab is not connected, the tooltip of **Create Token** tells you this.
+
+1. In the section **Active Tokens**, select **Create Token**.
+2. In **Token name**, type a name for the token, for example the name of your AI tool. The maximum length is 100 characters.
+3. Select **Generate Token**. The dialog shows the token. The token starts with `ws_mcp_`.
+4. Copy the token now. FINOS Workspace keeps only a hash of the token, so nobody can show the token to you again.
+5. Below the token, find the four tabs with settings for the AI tool. The settings already contain your token and your addresses:
+   - A prompt. Paste it into an AI tool that adds MCP servers itself.
+   - A `.mcp.json` file.
+   - The command for Claude Code.
+   - The configuration for Codex.
+6. Copy the settings for your AI tool.
+7. Select **Done**.
+
+:::warning
+
+A token does not expire. It works until you revoke it. A person who has the token gets the same access to your dashboards as you. Keep the token secret, as you keep a password. A `.mcp.json` file lives in a project folder, and projects usually commit it, so do not commit a file that holds the token: add it to `.gitignore`, or keep it outside the repository.
+
+:::
+
+The list **Active Tokens** shows each of your tokens. It shows the name, the start of the value and the date when you created the token.
+
+## 4. Give the settings to the AI tool
+
+Each AI tool needs three settings:
+
+| Setting | Value |
+|---|---|
+| Address | The **Endpoint** from the dialog. It is the address of your FINOS Workspace API, followed by `/mcp`. Use the MCP transport "streamable HTTP". |
+| Token | The header `Authorization: Bearer <token>` on each request. |
+| Origin | The header `Origin: <address of the web app>` on each request. |
+
+The API accepts a request only when its `Origin` header contains an allowed address. If the header is missing or has a different address, the API returns the status 403. The text is "Requests must come from an allowed origin". The settings in the dialog already contain the address of the page where you opened the dialog.
+
+This is a `.mcp.json` file for an AI tool that reads one:
+
+```json
+{
+  "mcpServers": {
+    "workspace": {
+      "type": "http",
+      "url": "<endpoint>",
+      "headers": {
+        "Authorization": "Bearer <token>",
+        "Origin": "<address of the web app>"
+      }
+    }
+  }
+}
+```
+
+When the AI tool connects, the server sends it instructions. The instructions describe the conventions of FINOS Workspace and the order in which to call the tools. The server also gives resources and prompts, for example guides to build and debug a backend.
+
+## 5. Test the connection
+
+1. Ask the AI tool to list your dashboards, or to take a snapshot of the workspace.
+2. Make sure that the answer names the dashboard in your tab, with its widgets and their layout.
+3. Ask the AI tool to add or change a widget.
+4. Make sure that the change appears in your tab.
+
+### If a call fails
+
+| What the AI tool gets | Cause |
+|---|---|
+| The status 403 with "Requests must come from an allowed origin" | The request has no `Origin` header, or the API does not allow the origin. |
+| The status 401 | The `Authorization` header is missing, or the token is incorrect or revoked. For an incorrect token, the error is `invalid_token`, with a sentence that tells the AI tool to clear its tokens and connect again. |
+| A tool result that says "<BridgeValue of="constants.noBrowserMessage" plain />" | No tab is connected. Open FINOS Workspace and turn on the companion. |
+| A tool result with the error code `timeout` | The tab did not answer in <BridgeValue of="constants.commandTimeoutSeconds" unit="s" />. The error has `retryable: true`. |
+
+The connection also stops when your web session stops. When you sign out, or when your session expires, the bridge closes. To continue, sign in and connect your tab again.
+
+[FINOS Workspace bridge protocol](../reference/protocols/workspace-bridge.mdx) gives all the limits and messages.
+
+## Revoke a token
+
+1. Open the dialog **MCP Companion**.
+2. In the list **Active Tokens**, move the pointer over the token. A trash icon appears at the end of the row.
+3. Select the trash icon. A message tells you that the token can no longer access this FINOS Workspace through MCP.
+
+The token stops working immediately. The next request with the token gets the status 401.
+
+Revoke a token in these conditions:
+
+- You stop using an AI tool.
+- You think that another person has the token.
+- You give your computer to another person.
