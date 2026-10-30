@@ -11,7 +11,7 @@ export interface ThemeProperty {
   dark: string | undefined;
 }
 
-export const FONT_FAMILIES = ["Montserrat", "Inter", "Roboto"];
+export const FONT_FAMILIES = ["Montserrat"];
 
 const SCOPES: Record<string, ThemeScope> = { ":root": "light", ".dark": "dark" };
 const EXCLUDED = new Set(["--text-scale"]);

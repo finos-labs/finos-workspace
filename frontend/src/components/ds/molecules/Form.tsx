@@ -113,23 +113,6 @@ const FormControl = React.forwardRef<
 });
 FormControl.displayName = "FormControl";
 
-interface FormDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement> {}
-const FormDescription = React.forwardRef<HTMLParagraphElement, FormDescriptionProps>(
-  ({ className, ...props }, ref) => {
-    const { formDescriptionId } = useFormField();
-
-    return (
-      <p
-        ref={ref}
-        id={formDescriptionId}
-        className={cn("text-muted-foreground text-sm", className)}
-        {...props}
-      />
-    );
-  },
-);
-FormDescription.displayName = "FormDescription";
-
 interface FormMessageProps extends React.HTMLAttributes<HTMLParagraphElement> {}
 const FormMessage = React.forwardRef<HTMLParagraphElement, FormMessageProps>(
   (props, ref) => {
@@ -146,13 +129,4 @@ const FormMessage = React.forwardRef<HTMLParagraphElement, FormMessageProps>(
 );
 FormMessage.displayName = "FormMessage";
 
-export {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  useForm,
-};
+export { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, useForm };

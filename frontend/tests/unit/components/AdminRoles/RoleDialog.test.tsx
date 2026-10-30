@@ -229,9 +229,9 @@ describe("RoleDialog", () => {
     const FETCH_FROM_WEB = "Copilot may read pages from the web (FETCH_FROM_WEB)";
     const checkbox = (name: string) => screen.getByRole("checkbox", { name });
     const sharingSelect = () =>
-      within(
-        screen.getByText("Sharing").closest(".BB-FormSelect") as HTMLElement,
-      ).getByRole("combobox");
+      within(screen.getByText("Sharing").parentElement as HTMLElement).getByRole(
+        "combobox",
+      );
 
     it("starts a new role with no sharing, no limits and the web tools on", () => {
       renderDialog();

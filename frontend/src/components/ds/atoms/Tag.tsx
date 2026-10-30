@@ -3,9 +3,7 @@ import React from "react";
 import { cn } from "../utils";
 
 const tagVariants = cva(
-  [
-    "BB-Tag body-xs-regular inline-flex items-center justify-center rounded-full px-1.5",
-  ],
+  ["body-xs-regular inline-flex items-center justify-center rounded-full px-1.5"],
   {
     variants: {
       color: {

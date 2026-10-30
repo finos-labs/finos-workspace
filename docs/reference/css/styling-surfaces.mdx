@@ -19,7 +19,7 @@ FINOS Workspace draws five kinds of surface, and each kind takes its styling fro
 
 ## What a custom property reaches in the web app
 
-The web app styles color through Tailwind utility classes such as `bg-btn-primary-bg` and `bg-light-100`. Every color utility that the Tailwind configuration defines reads a custom property. In total, <Stat of="variableUtilities" /> utilities read a property, and the source uses them <Stat of="variableUses" /> times in <Stat of="variableFiles" /> files. The palette utilities read the `--color-*` properties of `tokens.css`, so changing a palette step changes every class that names it, and it also changes every semantic property that refers to that step.
+The web app styles color through Tailwind utility classes such as `bg-btn-primary-bg` and `bg-light-100`. Every color utility that the `@theme` block of `index.css` defines reads a custom property. In total, <Stat of="variableUtilities" /> utilities read a property, and the source uses them <Stat of="variableUses" /> times in <Stat of="variableFiles" /> files. The palette utilities read the `--color-*` properties of `tokens.css`, so changing a palette step changes every class that names it, and it also changes every semantic property that refers to that step.
 
 Tailwind's own colors are the exception. The colors `white` and `black` and the named hues such as `red-500` are not custom properties, so a theme cannot change them. Components use these colors <Stat of="builtInUses" /> times in <Stat of="builtInFiles" /> files.
 

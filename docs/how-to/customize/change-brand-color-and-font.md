@@ -13,7 +13,7 @@ Open Admin → Theme → Presets and look at the Brand group, which is first in 
 
 ## In a stylesheet
 
-Put the declarations in your theme stylesheet, on `:root`. The font must be one of `Montserrat`, `Inter` and `Roboto`, which the app ships. Another family name works only on devices that have that font installed.
+Put the declarations in your theme stylesheet, on `:root`. The app ships Montserrat. Another family name works only on devices that have that font installed.
 
 ```css
 :root {
@@ -21,7 +21,7 @@ Put the declarations in your theme stylesheet, on `:root`. The font must be one 
   --color-main-50: color-mix(in srgb, var(--color-main-100) 70%, white);
   --color-main-200: color-mix(in srgb, var(--color-main-100) 70%, black);
   --color-main-contrast: var(--color-light-100);
-  --font-family: "Inter";
+  --font-family: "<font-family>";
 }
 ```
 

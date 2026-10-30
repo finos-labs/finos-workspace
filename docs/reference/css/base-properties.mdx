@@ -7,9 +7,9 @@ import { TokenGroup } from "@site/src/components/Reference/theme";
 
 # Base properties
 
-Besides the semantic properties, the file `frontend/src/index.css` declares a second set of properties in the `base` layer, on `:root` and on `.dark`. They follow the naming of the shadcn/ui components on which the app's design system is built, and Tailwind maps them to utilities such as `bg-background`, `text-foreground`, `border-border` and `ring-ring`. Most of them refer to palette steps with `var()`, so changing a palette step moves them as well.
+Besides the semantic properties, the file `frontend/src/index.css` declares a second set of properties in the `base` layer, on `:root` and on `.dark`. They follow the naming of the shadcn/ui components on which the app's design system is built. No Tailwind utility reads them. The web app gives them to widget plugins as the tokens that [Plugin theme](plugin-theme.mdx) lists, and `--radius` sets the corners of the `rounded-lg`, `rounded-md` and `rounded-sm` utilities. Most of them refer to palette steps with `var()`, so changing a palette step moves them as well.
 
-Because these declarations are in a layer, a stylesheet that is not in a layer overrides them, whatever its position. A theme stylesheet is not in a layer, so it always wins over them. The tables are generated from the stylesheet and from the frontend source, and [Semantic properties](semantic-properties.mdx) explains how to read their columns. The brand, font and scale properties of the same file are on [Brand color, font and text size](brand-font-size.mdx).
+Because these declarations are in a layer, a stylesheet that is not in a layer overrides them, whatever its position. A theme stylesheet is not in a layer, so it always wins over them. The tables are generated from the stylesheet and from the frontend source, and [Semantic properties](semantic-properties.mdx) explains how to read their columns. The **used** column counts classes and `var()` reads, so it shows nothing for a property that plugins read by name. The brand, font and scale properties of the same file are on [Brand color, font and text size](brand-font-size.mdx).
 
 ## Page and text
 
@@ -19,12 +19,12 @@ These properties hold the background and the text color of the page.
 
 ## Components
 
-These properties hold the backgrounds and text colors of cards, popovers and the primary, secondary, tertiary, muted, destructive and accent variants of the design system's components.
+These properties hold the background and text color of cards and of the accent variant of the design system's components.
 
-<TokenGroup file="index.css" group={["--card-", "--popover-", "--primary-", "--secondary-", "--tertiary-", "--muted-", "--destructive-", "--accent-"]} />
+<TokenGroup file="index.css" group={["--card-", "--accent-"]} />
 
-## Lines and focus
+## Borders
 
-These properties hold the colors of borders, input outlines and focus rings.
+This property holds the color of borders.
 
-<TokenGroup file="index.css" group={["--border-", "--input-", "--ring-"]} />
+<TokenGroup file="index.css" group={["--border-"]} />

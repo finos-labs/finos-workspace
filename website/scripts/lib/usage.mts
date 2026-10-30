@@ -5,16 +5,12 @@ import type { CssStats, TokenUsage } from "../../src/data/types.ts";
 import type { ParsedCss } from "./css.mts";
 import { fromRepo, repoRelative } from "./paths.mts";
 
-const TAILWIND_CONFIG = "frontend/tailwind.config.ts";
+const THEME_CSS = "frontend/src/index.css";
 const SOURCE_DIR = "frontend/src";
 const PREFIXES =
   "bg|text|border|border-[xytrbl]|ring|ring-offset|outline|fill|stroke|divide|placeholder|shadow|from|via|to|caret|accent|decoration";
 const MAX_CLASSES = 6;
 const MAX_FILES = 3;
-
-interface Tree {
-  [key: string]: Tree | string;
-}
 
 interface SourceFile {
   path: string;
@@ -28,100 +24,18 @@ interface UtilityUse {
   prefixes: Map<string, number>;
 }
 
-function skipSpace(text: string, start: number): number {
-  let index = start;
-  while (index < text.length && /\s/.test(text[index] as string)) index++;
-  return index;
-}
-
-function parseString(text: string, start: number): [string, number] {
-  const quote = text[start] as string;
-  let index = start + 1;
-  let value = "";
-  while (text[index] !== quote) {
-    if (text[index] === "\\") index++;
-    value += text[index];
-    index++;
-  }
-  return [value, index + 1];
-}
-
-function skipExpression(text: string, start: number): number {
-  let index = start;
-  let depth = 0;
-  while (index < text.length) {
-    const char = text[index] as string;
-    if (char === '"' || char === "'" || char === "`") {
-      index = parseString(text, index)[1];
-      continue;
-    }
-    if (depth === 0 && (char === "," || char === "}")) return index;
-    if ("([{".includes(char)) depth++;
-    if (")]}".includes(char)) depth--;
-    index++;
-  }
-  return index;
-}
-
-function parseObject(text: string, start: number): [Tree, number] {
-  const tree: Tree = {};
-  let index = start + 1;
-  for (;;) {
-    index = skipSpace(text, index);
-    const char = text[index] as string;
-    if (char === "}") return [tree, index + 1];
-    if (char === ",") {
-      index++;
-      continue;
-    }
-    if (text.startsWith("...", index)) {
-      index = skipExpression(text, index);
-      continue;
-    }
-    let key: string;
-    if (char === '"' || char === "'") [key, index] = parseString(text, index);
-    else {
-      const match = /^(?:[A-Za-z_$][\w$]*|\d+)/.exec(text.slice(index));
-      if (match === null) throw new Error(`Unexpected ${char} at ${index}`);
-      key = match[0];
-      index += key.length;
-    }
-    index = skipSpace(text, index);
-    if (text[index] !== ":") throw new Error(`Expected : after ${key}`);
-    index = skipSpace(text, index + 1);
-    const first = text[index] as string;
-    if (first === "{") {
-      const [value, next] = parseObject(text, index);
-      tree[key] = value;
-      index = next;
-    } else if (first === '"' || first === "'" || first === "`") {
-      const [value, next] = parseString(text, index);
-      tree[key] = value;
-      index = next;
-    } else {
-      index = skipExpression(text, index);
-    }
-  }
-}
-
-function flatten(tree: Tree, path: string[], found: Map<string, string>): void {
-  for (const [key, value] of Object.entries(tree)) {
-    const next = key === "DEFAULT" ? path : [...path, key];
-    if (typeof value === "string") {
-      const match = /var\((--[\w-]+)/.exec(value);
-      if (match !== null) found.set(next.join("-"), match[1] as string);
-    } else {
-      flatten(value, next, found);
-    }
-  }
+function themeBlocks(): string[] {
+  const css = readFileSync(fromRepo(THEME_CSS), "utf8");
+  return Array.from(css.matchAll(/^@theme inline \{[\s\S]*?^\}/gm), (match) => match[0]);
 }
 
 function tailwindColours(): Map<string, string> {
-  const text = readFileSync(fromRepo(TAILWIND_CONFIG), "utf8");
-  const start = text.indexOf("colors: {");
-  const [tree] = parseObject(text, text.indexOf("{", start));
   const found = new Map<string, string>();
-  flatten(tree, [], found);
+  for (const block of themeBlocks()) {
+    for (const match of block.matchAll(/^\s*--color-([\w-]+):\s*var\((--[\w-]+)/gm)) {
+      found.set(match[1] as string, match[2] as string);
+    }
+  }
   return found;
 }
 
@@ -154,14 +68,14 @@ function cssReferences(files: SourceFile[], counts: Map<string, number>): void {
   }
 }
 
-function configReferences(counts: Map<string, number>): void {
-  const text = readFileSync(fromRepo(TAILWIND_CONFIG), "utf8");
-  const start = text.indexOf("colors: {");
-  const [, end] = parseObject(text, text.indexOf("{", start));
-  const outside = text.slice(0, start) + text.slice(end);
-  for (const match of outside.matchAll(/var\((--[\w-]+)/g)) {
-    const name = match[1] as string;
-    counts.set(name, (counts.get(name) ?? 0) + 1);
+function themeReferences(counts: Map<string, number>): void {
+  for (const block of themeBlocks()) {
+    for (const declaration of block.matchAll(/^\s*--(?!color-)[\w-]+:[^;]*;/gm)) {
+      for (const match of declaration[0].matchAll(/var\((--[\w-]+)/g)) {
+        const name = match[1] as string;
+        counts.set(name, (counts.get(name) ?? 0) + 1);
+      }
+    }
   }
 }
 
@@ -224,7 +138,7 @@ export function addUsage(css: ParsedCss): { stats: CssStats } {
 
   const references = new Map<string, number>();
   cssReferences(files, references);
-  configReferences(references);
+  themeReferences(references);
   for (const token of declared) {
     const names = byProperty.get(token.name) ?? [];
     const fileCounts = new Map<string, number>();

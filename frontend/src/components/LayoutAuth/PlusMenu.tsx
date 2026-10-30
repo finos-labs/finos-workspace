@@ -53,7 +53,7 @@ export default function PlusMenu({ isMobile = false }: { isMobile: boolean }) {
           sideOffset={5}
           align={isMobile ? "end" : "start"}
           className={clsx(
-            "radix-side-top:animate-slide-up radix-side-bottom:animate-slide-down",
+            "data-[side=top]:animate-slide-up data-[side=bottom]:animate-slide-down",
             "z-60 w-fit min-w-[186px] text-xs",
             "ws-dropdown-container",
           )}

@@ -91,7 +91,7 @@ export function showNotificationWithRememberMe(props: WithRememberMeProps) {
       description: (
         <>
           {description}
-          <div className="mt-2 [&_.BB-Checkbox]:!border-light-800 [&_.BB-Checkbox]:!bg-transparent [&_.BB-Checkbox]:hover:!border-light-800 [&_.BB-Checkbox[data-state=checked]]:!border-brand-main [&_.BB-Checkbox[data-state=checked]]:!bg-brand-main [&_.BB-Checkbox[data-state=checked]]:!text-white [&_label]:!text-light-900">
+          <div className="mt-2 [&_[role=checkbox]]:!border-light-800 [&_[role=checkbox]]:!bg-transparent [&_[role=checkbox]]:hover:!border-light-800 [&_[role=checkbox][data-state=checked]]:!border-brand-main [&_[role=checkbox][data-state=checked]]:!bg-brand-main [&_[role=checkbox][data-state=checked]]:!text-white [&_label]:!text-light-900">
             {id && <Checkbox id={id} label={rememberOptionLabel} />}
           </div>
         </>

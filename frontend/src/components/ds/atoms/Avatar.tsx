@@ -8,7 +8,7 @@ import { cn } from "../utils";
 
 const avatarVariants = cva(
   [
-    "BB-Avatar relative flex aspect-square shrink-0 overflow-hidden rounded-full",
+    "relative flex aspect-square shrink-0 overflow-hidden rounded-full",
     "bg-orange-700 text-white",
   ],
   {
@@ -67,7 +67,7 @@ const AvatarFallback = React.forwardRef<
   <AvatarPrimitive.Fallback
     ref={ref}
     className={cn(
-      "BB-AvatarFallback flex h-full w-full items-center justify-center rounded-full",
+      "flex h-full w-full items-center justify-center rounded-full",
       className,
     )}
     {...props}

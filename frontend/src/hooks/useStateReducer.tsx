@@ -43,8 +43,9 @@ export function useStateReducer<S extends object, I>(
   initializer?: (arg: I & S) => S,
 ): UseStateReducer<S> {
   const initialStateRef = useRef(initialState);
-  return useReducer<StateReducer<S>, I & S>(
-    reducerAction,
+  const reducer: StateReducer<S> = reducerAction;
+  return useReducer(
+    reducer,
     initialStateRef.current as I & S,
     initializer ?? ((arg) => arg),
   );

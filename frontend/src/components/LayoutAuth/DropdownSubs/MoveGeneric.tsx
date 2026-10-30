@@ -31,7 +31,7 @@ export default function MoveGeneric({
       </DropdownMenuPrimitive.SubTrigger>
       <DropdownMenuPrimitive.SubContent
         className={cn(
-          "origin-radix-context-menu radix-side-right:animate-scale-in",
+          "origin-radix-context-menu data-[side=right]:animate-scale-in",
           "w-fit text-xs z-[60] ws-dropdown-container",
         )}
       >
