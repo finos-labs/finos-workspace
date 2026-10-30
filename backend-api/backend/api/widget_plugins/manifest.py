@@ -297,16 +297,33 @@ class Widget(BaseModel):
         return self
 
 
+SKILL_SLUG_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+SKILL_FILE_PATTERN = r"^skills/[A-Za-z0-9._-]{1,100}\.md$"
+
+
+class Skill(BaseModel):
+    slug: Annotated[str, StringConstraints(pattern=SKILL_SLUG_PATTERN, min_length=2, max_length=50)]
+    description: Annotated[str, StringConstraints(min_length=1, max_length=300)]
+    file: Annotated[str, StringConstraints(pattern=SKILL_FILE_PATTERN)]
+
+
 class Contributes(BaseModel):
     model_config = closed
 
     widgets: list[Widget] = Field(min_length=1, max_length=20)
+    skills: list[Skill] = Field(default_factory=list, max_length=20)
 
     @model_validator(mode="after")
     def unique(self):
         ids = [w.id for w in self.widgets]
         if len(set(ids)) != len(ids):
             raise ValueError("widget ids must be unique")
+        slugs = [s.slug for s in self.skills]
+        if len(set(slugs)) != len(slugs):
+            raise ValueError("skill slugs must be unique")
+        files = [s.file for s in self.skills]
+        if len(set(files)) != len(files):
+            raise ValueError("two skills name the same file")
         types = [h.type for w in self.widgets for h in w.handles]
         if len(set(types)) != len(types):
             raise ValueError("two widgets of the plugin handle the same type")
@@ -396,6 +413,9 @@ class Manifest(BaseModel):
             if len(set(route.secrets)) != len(route.secrets):
                 problems.append(f"server.backend.routes[{route.id}]: a secret is listed twice")
         return problems
+
+    def skill_paths(self) -> set[str]:
+        return {skill.file for skill in self.contributes.skills}
 
     def served_paths(self) -> set[str]:
         paths = {self.entry.module, *self.entry.styles}

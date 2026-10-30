@@ -118,6 +118,15 @@ export function SkillsTab() {
     [skills, state.selectedSkills],
   );
 
+  const ownSkills = useMemo(
+    () => skills.filter((skill) => !skill.pluginName),
+    [skills],
+  );
+  const pluginSkills = useMemo(
+    () => skills.filter((skill) => skill.pluginName),
+    [skills],
+  );
+
   const agentSkills = useMemo(() => {
     const ownSlugs = new Set(skills.map((skill) => skill.slug));
     return (agent?.skills ?? []).filter((skill) => !ownSlugs.has(skill.slug));
@@ -133,16 +142,26 @@ export function SkillsTab() {
     );
   }, [agentSkills, debouncedFilter]);
 
-  const filteredSkills = useMemo(() => {
-    if (!debouncedFilter) return skills;
+  const filteredPluginSkills = useMemo(() => {
+    if (!debouncedFilter) return pluginSkills;
     const searchTerm = debouncedFilter.toLowerCase();
-    return skills.filter(
+    return pluginSkills.filter(
+      (skill) =>
+        skill.slug.toLowerCase().includes(searchTerm) ||
+        skill.description.toLowerCase().includes(searchTerm),
+    );
+  }, [pluginSkills, debouncedFilter]);
+
+  const filteredSkills = useMemo(() => {
+    if (!debouncedFilter) return ownSkills;
+    const searchTerm = debouncedFilter.toLowerCase();
+    return ownSkills.filter(
       (skill) =>
         skill.slug.toLowerCase().includes(searchTerm) ||
         skill.description.toLowerCase().includes(searchTerm) ||
         skill.content.toLowerCase().includes(searchTerm),
     );
-  }, [skills, debouncedFilter]);
+  }, [ownSkills, debouncedFilter]);
 
   return (
     <>
@@ -176,7 +195,9 @@ export function SkillsTab() {
         </TabPageToolbar>
 
         <div className="flex flex-col gap-4">
-          {filteredSkills.length === 0 && filteredAgentSkills.length === 0 ? (
+          {filteredSkills.length === 0 &&
+          filteredAgentSkills.length === 0 &&
+          filteredPluginSkills.length === 0 ? (
             debouncedFilter ? (
               <SearchResultsNotFound
                 extraClassName="rounded-lg bg-general-bg-primary p-12 h-[200px]"
@@ -206,6 +227,13 @@ export function SkillsTab() {
                     key={`agent-skill-card-${skill.slug}`}
                     skill={skill}
                     agentName={agent?.name ?? "the agent"}
+                  />
+                ))}
+                {filteredPluginSkills.map((skill) => (
+                  <AgentSkillCard
+                    key={`plugin-skill-card-${skill.id}`}
+                    skill={skill}
+                    agentName={skill.pluginName ?? "a plugin"}
                   />
                 ))}
                 {filteredSkills.map((skill) => (

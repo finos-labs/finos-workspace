@@ -1,5 +1,6 @@
 import asyncio
 from time import time
+from types import SimpleNamespace
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -13,6 +14,7 @@ from sqlalchemy.sql import quoted_name
 
 from api import base, crud, database, models, schemas
 from api.auth_helpers import CustomRow
+from api.widget_plugins import service as widget_plugin_service
 from utilities.config import settings
 
 EXCEPTION_401 = HTTPException(
@@ -784,8 +786,14 @@ async def get_user_skill_state(db: AsyncSession, user_uuid: UUID):
         .where(models.UserSkills.user_uuid == user_uuid)
         .order_by(models.UserSkills.created_date.desc())
     )
-    result = await db.execute(query)
-    return result.scalars().all()
+    own = (await db.execute(query)).scalars().all()
+    taken = {skill.slug for skill in own}
+    provided = [
+        SimpleNamespace(**skill)
+        for skill in await widget_plugin_service.plugin_skills(db, user_uuid)
+        if skill["slug"] not in taken
+    ]
+    return [*own, *provided]
 
 
 async def entity_require_authenticator(db: AsyncSession, entity_uuid: UUID) -> bool:

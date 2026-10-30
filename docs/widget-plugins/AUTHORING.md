@@ -21,6 +21,7 @@ A plugin is a package of files that adds widget types to FINOS Workspace. Its co
   entry.js           the module, one bundled file
   entry.css          optional styles
   assets/            optional: the icon, and files the module reads with core:asset:read
+  skills/            optional: one markdown file for each skill the plugin gives the agent (section 3.2)
 ```
 
 - `<plugin-id>`: 2 to 48 characters, lowercase letters, digits and `-`, starting with a letter.
@@ -71,6 +72,7 @@ The manifest is closed: an unknown key blocks the version. Strings and lists are
 | `dataSources`, `identity` | no | For a backend (section 8): the data it reads for the user, by `id` and `purpose`, and `"pseudonymous"` to learn an anonymous id of the user (default `"none"`). |
 | `adminSettings` | no | A settings form an organization's admin fills in (section 9). Not for secrets. |
 | `contributes.widgets` | yes | 1 to 20 widgets (below). |
+| `contributes.skills` | no | Up to 20 skills for the agent (section 3.2). |
 
 A manifest that asks for the permission `core:data:query` or has `signatures` is blocked: neither exists on this host.
 
@@ -116,6 +118,27 @@ A manifest that asks for the permission `core:data:query` or has `signatures` is
 One plugin cannot handle the same type twice. When two plugins handle a type, the organization's admin chooses which renders it.
 
 A type you handle works with any backend whose `widgets.json` declares a widget of that type and whose endpoint returns what `response` describes. FINOS Workspace adds `theme=dark` or `theme=light` to that endpoint's query, the site's mode, and asks again when the user switches it, as it does for `markdown` and `html`. What each mode looks like is the backend author's to decide. `theme` and `raw` (4.2) are names the backend's widgets cannot use for query params of their own.
+
+### 3.2 Skills
+
+A plugin can give the agent skills: instructions it follows for one kind of task, such as how to ask for the data a widget needs. Each skill is a markdown file under `skills/` and an entry in `contributes.skills`:
+
+```jsonc
+"contributes": {
+  "widgets": [],
+  "skills": [
+    { "slug": "forecast-charts", "description": "How to draw a forecast", "file": "skills/forecast.md" }
+  ]
+}
+```
+
+| Key | What it is |
+|---|---|
+| `slug` | 2 to 50 characters: lowercase letters, digits and single `-`. Unique in the plugin. The user starts the skill with `/skill:<slug>`, and the agent can pick it up from its description. |
+| `description` | One line, at most 300 characters, which tells the agent when to use the skill. |
+| `file` | `skills/<name>.md`, UTF-8 text that is not empty and is at most 32 KiB. Unique in the plugin. |
+
+The skills of a plugin that is approved and enabled for an organization appear in the Skills tab of every user of that organization, with the plugin's name and without edit or delete. They need no role grant. They go when the plugin is disabled or a later version drops them. A skill the user made with the same slug wins, and when two plugins use one slug the one whose id comes first in the alphabet wins. A skill file is part of the package: the version's checksum covers it, the reviewer sees each skill in the review and acknowledges it, and a file that differs from the approved one is not given out. A skill is text for the model, so it cannot run code or call tools by itself.
 
 ## 4. The module
 

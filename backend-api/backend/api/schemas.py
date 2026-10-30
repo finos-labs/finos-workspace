@@ -1191,6 +1191,13 @@ class SkillCreate(BaseModel, extra="ignore"):  # type: ignore[call-arg]
 class SkillReturn(SkillCreate):
     model_config = get_camel_config(from_attributes=True)
 
+    plugin_name: str | None = Field(
+        default=None,
+        description=(
+            "The widget plugin that provides this skill. A plugin's skill is read-only; "
+            "left out for the user's own skills"
+        ),
+    )
     uuid: UUID
     id_: UUID = Field(serialization_alias="id", alias="uuid")
     created_date: datetime = Field(serialization_alias="createdDate", alias="created_date")
