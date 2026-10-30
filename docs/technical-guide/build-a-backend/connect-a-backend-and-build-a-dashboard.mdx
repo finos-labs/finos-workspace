@@ -36,11 +36,15 @@ Create an empty directory, and put this program in it:
 <Tabs groupId="language" queryString>
 <TabItem value="python" label="Python">
 
-Install the two packages that the program uses:
+Create a virtual environment, and install the two packages that the program uses in it:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install fastapi uvicorn
 ```
+
+On Windows, activate the environment with `.venv\Scripts\activate` instead.
 
 Save the program as `main.py`:
 

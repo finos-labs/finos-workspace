@@ -95,7 +95,6 @@ class Handler(BaseHTTPRequestHandler):
     def _send(self, status: int, body: bytes = b"") -> None:
         self.send_response(status)
         self.send_header("Access-Control-Allow-Origin", ORIGIN)
-        self.send_header("Access-Control-Allow-Headers", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))

@@ -57,7 +57,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[APP_ORIGIN],
     allow_methods=["GET", "POST"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type", "X-Desk"],
 )
 
 

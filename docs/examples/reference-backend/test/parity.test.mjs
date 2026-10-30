@@ -151,6 +151,22 @@ test("the form adds clients the same way", async () => {
   assert.match(entries.body, /Ada Lane \| bonds, funds \| cautious/);
 });
 
+test("the preflight allows the headers of the widgets and no others", async () => {
+  for (const { port } of Object.values(servers)) {
+    const response = await fetch(`http://127.0.0.1:${port}/param_body`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: ORIGIN,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type,x-desk,authorization",
+      },
+    });
+    const allowed = (response.headers.get("access-control-allow-headers") ?? "").toLowerCase().split(/\s*,\s*/);
+    assert.ok(allowed.includes("content-type") && allowed.includes("x-desk"), `port ${port}: ${allowed}`);
+    assert.ok(!allowed.includes("*") && !allowed.includes("authorization"), `port ${port}: ${allowed}`);
+  }
+});
+
 test("the app names only widgets that exist", () => {
   for (const app of apps) {
     for (const tab of Object.values(app.tabs)) {

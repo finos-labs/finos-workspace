@@ -329,7 +329,7 @@ createServer(async (request, response) => {
   }
   if (request.method === "OPTIONS") {
     response.setHeader("Access-Control-Allow-Methods", "GET, POST");
-    response.setHeader("Access-Control-Allow-Headers", request.headers["access-control-request-headers"] ?? "*");
+    response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Desk");
     return response.writeHead(204).end();
   }
 

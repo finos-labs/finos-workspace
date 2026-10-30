@@ -65,18 +65,22 @@ A backend is a small web server that FINOS Workspace calls from your browser. It
 - `/apps.json` lists ready-made dashboards. This backend has none.
 - `/portfolio_summary` returns the content of the one widget, an HTML page.
 
-FINOS Workspace adds `theme=dark` or `theme=light` to the widget's request, so the page can match the app's colors. The backend also allows the web app at `http://localhost:3000` to call it.
+FINOS Workspace adds `theme=dark` or `theme=light` to the widget's request, so the page can match the app's colors. The backend also allows the web app at `http://localhost:3000`, and no other address, to call it. It allows no request headers, because the requests of this backend carry none that the browser needs permission to send.
 
 Create an empty directory and put this program in it:
 
 <Tabs groupId="language" queryString>
 <TabItem value="python" label="Python">
 
-Install the two packages that the program uses:
+Create a virtual environment, and install the two packages that the program uses in it:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install fastapi uvicorn
 ```
+
+On Windows, activate the environment with `.venv\Scripts\activate` instead.
 
 Save the program as `main.py`:
 
@@ -88,7 +92,7 @@ from fastapi.responses import HTMLResponse
 APP_ORIGIN = "http://localhost:3000"
 
 app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=[APP_ORIGIN], allow_methods=["GET"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=[APP_ORIGIN], allow_methods=["GET"])
 
 WIDGETS = {
     "portfolio_summary": {
@@ -223,7 +227,6 @@ createServer((request, response) => {
 
   if (request.method === "OPTIONS") {
     response.setHeader("Access-Control-Allow-Methods", "GET");
-    response.setHeader("Access-Control-Allow-Headers", "*");
     return response.writeHead(204).end();
   }
   if (url.pathname === "/widgets.json") return send("application/json", JSON.stringify(WIDGETS));
@@ -245,6 +248,12 @@ node main.ts
 </Tabs>
 
 Both programs return the same responses. Check the backend in your browser: [http://localhost:5050/portfolio_summary](http://localhost:5050/portfolio_summary) shows four cards with sample portfolio figures. Leave the backend running.
+
+:::warning[Allow only what the backend needs]
+
+This backend allows one origin and no request headers. When you later give the connection a credential, or a widget a header parameter, name each of those headers in the allowed headers: `allow_headers=["Authorization"]` in the Python program, or the value of `Access-Control-Allow-Headers` in the TypeScript one. Never use `*` and never copy the headers that the browser asks for: `*` does not cover `Authorization`, and a copied list allows every header. [Widget requests](reference/protocols/widget-requests.mdx#cors) lists what a backend has to answer.
+
+:::
 
 ## 4. Connect the backend and add the widget
 
