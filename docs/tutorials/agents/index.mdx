@@ -1,0 +1,19 @@
+---
+slug: /tutorials/agents
+title: Agents
+sidebar_label: Overview
+sidebar_position: 0
+---
+
+# Agents
+
+An agent answers the questions that people ask in the Agent panel of FINOS Workspace. Ines is the agent that ships with FINOS Workspace. You can write your own agent, add it, and let people choose it in the panel. An agent is a web server that the browser calls directly. It speaks the agent query protocol, which carries the dashboard of the user to the agent and lets the agent ask the browser for data.
+
+The guides build one agent in two steps. Each example comes in Python and in TypeScript.
+
+1. [Build your own agent](build-your-own-agent.mdx) writes an agent that repeats the question, adds it to FINOS Workspace, and asks it a question.
+2. [Let your agent read the dashboard](let-your-agent-read-the-dashboard.mdx) makes the agent read the widgets of the dashboard, ask the browser for the data of a widget, answer from the data, and cite the widget.
+
+The finished agent is in `docs/examples/reference-agent`, in both languages, with a test that checks that they answer alike. It uses no model, so you need no key to run it. A real agent calls a model where the example builds its answer.
+
+[agents.json](../../reference/schemas/agents-json.mdx) lists what an agent tells the web app about itself, and [Agent query protocol](../../reference/protocols/ines-query.mdx) lists every field of a question and every event of an answer.

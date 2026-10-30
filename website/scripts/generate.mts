@@ -17,7 +17,7 @@ import { checkAgreement } from "./lib/agreement.mts";
 import { collectCss } from "./lib/css.mts";
 import { collectAgent } from "./lib/agent.mts";
 import { collectBridge } from "./lib/bridge.mts";
-import { checkAbuseCases, checkCoverage, checkRoutes, checkSettingNames } from "./lib/coverage.mts";
+import { checkAbuseCases, checkCoverage, checkExampleListings, checkRoutes, checkSettingNames } from "./lib/coverage.mts";
 import { collectEnv } from "./lib/env.mts";
 import { collectIframe } from "./lib/iframe.mts";
 import { collectPlugins } from "./lib/plugins.mts";
@@ -64,6 +64,7 @@ const outputs: Record<string, unknown> = {
 
 checkAgreement();
 checkAbuseCases();
+checkExampleListings();
 const settingNames = new Set<string>([
   ...(outputs.settings as SettingsData).fields.map((field) => field.name.toUpperCase()),
   ...env.agent.map((variable) => variable.name),

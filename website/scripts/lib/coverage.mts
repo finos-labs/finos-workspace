@@ -150,3 +150,21 @@ export function checkSettingNames(known: Set<string>, pages: string[]): void {
   }
   if (problems.length > 0) throw new Error(`The hand-written pages name settings that do not exist:\n${[...new Set(problems)].join("\n")}`);
 }
+
+const LISTINGS = [
+  {
+    page: "docs/tutorials/agents/let-your-agent-read-the-dashboard.mdx",
+    files: ["docs/examples/reference-agent/python/main.py", "docs/examples/reference-agent/typescript/main.ts"],
+  },
+];
+
+export function checkExampleListings(): void {
+  const problems: string[] = [];
+  for (const { page, files } of LISTINGS) {
+    const text = readFileSync(fromRepo(page), "utf8");
+    for (const file of files) {
+      if (!text.includes(readFileSync(fromRepo(file), "utf8").trimEnd())) problems.push(`${page} does not show ${file} as it is`);
+    }
+  }
+  if (problems.length > 0) throw new Error(`A tutorial shows code that differs from the example that its test runs:\n${problems.join("\n")}`);
+}

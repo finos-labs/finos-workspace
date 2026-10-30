@@ -3,6 +3,8 @@
 [`reference-backend/`](reference-backend/README.md) is a data backend in Python and TypeScript with a widget of
 every built-in type, every kind of parameter, the widget settings, linked widgets, a form and an app.
 
+[`reference-agent/`](reference-agent/README.md) is an agent in Python and TypeScript that answers questions about the widgets of a dashboard without a model. It reads the dashboard, asks the browser for the data of a widget, cites it and reads settings.
+
 The other two are widget plugins, each a package of its own, built and deployed the way any plugin is
 ([How to build and try a widget plugin](../tutorials/plugins/build-a-plugin.md)). Nothing in
 FINOS Workspace imports them; they show what the plugin framework does from an author's side.
