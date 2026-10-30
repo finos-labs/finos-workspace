@@ -12,9 +12,9 @@ You configure FINOS Workspace with environment variables, one set for each kind 
 
 | Service | What it reads | On the local stack | Full table |
 |---|---|---|---|
-| API, worker and init step | Environment variables with the names of the settings, without a prefix and without regard to case. A setting without a default is required, and the process does not start without it. | `backend-api/backend/envs/.env` | [Backend settings](backend.mdx) |
-| The agent and its MCP server | Environment variables. The table says which of the two processes reads each one. | `agent/.env`, from the template `agent/.env.example` | [The agent and its MCP server](agent.mdx) |
-| Web app | The environment of its container, which nginx writes into `/config.js` each time that the container starts. A variable that is not set leaves its setting at the default, and a value that does not fit its type makes `/config.js` and `/healthz` answer with status 500. | The `environment` of the service `web` in `docker-compose.yml` | [Web app configuration](web-app.mdx) |
+| API, worker and init step | Environment variables with the names of the settings, without a prefix and without regard to case. A setting without a default is required, and so are the settings that the choice of `DATABASE_TYPE` and `STORAGE_PROVIDER` calls for, such as the database accounts with MySQL or the key for links to files with file storage in a folder. The process does not start without them. | `backend-api/backend/envs/.env` | [Backend settings](../../reference/configuration/backend.mdx) |
+| The agent and its MCP server | Environment variables. The table says which of the two processes reads each one. | `agent/.env`, from the template `agent/.env.example` | [The agent and its MCP server](../../reference/configuration/agent.mdx) |
+| Web app | The environment of its container, which nginx writes into `/config.js` each time that the container starts. A variable that is not set leaves its setting at the default, and a value that does not fit its type makes `/config.js` and `/healthz` answer with status 500. | The `environment` of the service `web` in `docker-compose.yml` | [Web app configuration](../../reference/configuration/web-app.mdx) |
 
 A few settings of the web app are fixed when its image is built, such as the name of the app that people install on their devices. [White label](../../features/white-label/index.md) lists them.
 
@@ -26,10 +26,10 @@ A few settings of the web app are fixed when its image is built, such as the nam
 | `APPURL` and `FRONTENDURL` of the API | The web app's address. Its origin is also `WORKSPACE_ORIGIN` of the agent and one of the origins in `INES_CORS_ORIGINS`. |
 | `BACKEND_CORS_ORIGINS` of the API | It includes the web app's origin, which the agent and its MCP server also send as `WORKSPACE_ORIGIN`. |
 | `AI_API_URL` of the web app | The public address of the agent. |
-| `WORKSPACE_AES_KEY` and `JWT_SECRET` | The same in every API and worker container. |
+| `WORKSPACE_AES_KEY`, `JWT_SECRET` and `LOCAL_STORAGE_SECRET_KEY` | The same in every API and worker container. |
 | `INES_METERING_TOKEN` of the agent | Signed with the API's `JWT_SECRET`. |
 | `INES_SCOPE_SECRET` | The same in the agent and in its MCP server. |
-| `REDIS_URL` of the agent and its MCP server | The Valkey server of the API, when they share state. |
+| `REDIS_URL` of the agent and its MCP server | Not needed with one replica of each. Several replicas need the same Valkey or Redis server, which may be the one of the API. |
 
 [Serve FINOS Workspace over HTTPS and set the addresses](../../tutorials/deploy/serve-over-https-and-cors.mdx) explains the addresses, and [Production setup](../../tutorials/deploy/production-setup.mdx#the-secrets-you-need-to-create) the secrets.
 

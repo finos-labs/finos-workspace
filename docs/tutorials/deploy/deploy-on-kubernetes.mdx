@@ -7,7 +7,7 @@ import { EnvDefault, SettingDefault, WebPort } from "@site/src/components/Refere
 
 # Deploy on Kubernetes
 
-Kubernetes runs FINOS Workspace across several machines, so the web app and the API can run more than one copy and keep serving when a machine goes away. FINOS Workspace does not ship a Helm chart. This guide gives plain manifests for every part, in the order you apply them. Use them as they are, or turn them into Kustomize overlays or a chart of your own.
+Kubernetes can run more than one copy of a service on different machines. The manifests in this guide run two copies of the web app and of the API, and one copy of everything else: the worker, the agent, its MCP server, MySQL and Valkey. If the machine that runs a single copy fails, that part is down until Kubernetes starts it again on another machine. When that is not enough, use managed services for MySQL and Valkey, and run several replicas of the agent as [Run the agent on several replicas](run-the-agent-on-several-replicas.mdx) describes. FINOS Workspace does not ship a Helm chart. This guide gives plain manifests for every part, in the order you apply them. Use them as they are, or turn them into Kustomize overlays or a chart of your own.
 
 This guide follows [Production setup](production-setup.mdx), so read that page first.
 
@@ -28,7 +28,7 @@ This guide follows [Production setup](production-setup.mdx), so read that page f
 | API | Deployment | <SettingDefault name="PORT" unit="raw" /> | `/healthz` | 1000 | Two or more | Request 512 MiB, limit 2 GiB |
 | Worker | Deployment | None | None | 1000 | One | Request 512 MiB, limit 1 GiB |
 | Agent | Deployment | <EnvDefault name="PORT" /> | Liveness `/status`, readiness `/ready` | 1000 | One, or more with Valkey | Request 512 MiB, limit 4 GiB |
-| Agent MCP server | Deployment | <EnvDefault name="MCP_PORT" /> | `/` | 1000 | One | Request 256 MiB, limit 4 GiB |
+| Agent MCP server | Deployment | <EnvDefault name="MCP_PORT" /> | `/` | 1000 | One, or more with Valkey | Request 256 MiB, limit 4 GiB |
 | Init step | Job | None | None | 1000 | One run per release | Request 512 MiB |
 
 The memory figures are starting points. Watch what each workload uses, and give the agent enough for the largest files your users attach.
@@ -124,7 +124,7 @@ data:
 - `DB_HOST` and `REDIS_HOST` name the Services from [Run MySQL and Valkey in the cluster](#run-mysql-and-valkey-in-the-cluster). With managed services, put their addresses here instead, and their passwords into `backend.env`.
 - `DEFAULT_MCP_SERVERS` gives the API the address of the agent's MCP server, which stays inside the cluster.
 - `DEFAULT_MODEL` is written `<provider>:<model>`. [Pick the providers](../../features/agent/choose-the-agent-model.mdx#pick-the-providers) lists the providers and their keys.
-- `config.toml` names the first organization and its administrators, which the init step creates.
+- `config.toml` names the first organization and its administrators, which the init step creates. It finds the organization by its name, so changing the name later creates a second organization.
 
 Pods read the ConfigMaps when they start. After you change one, restart the pods that use it, for example with `kubectl -n finos-workspace rollout restart deployment/api deployment/worker`.
 
@@ -261,7 +261,7 @@ kubectl -n finos-workspace rollout status statefulset/valkey
 
 ## Run the init step
 
-Save this as `init-job.yaml`:
+The backend image has no shell, so the Job starts a short Python program that runs the three actions. Save this as `init-job.yaml`:
 
 ```yaml
 apiVersion: batch/v1
@@ -353,6 +353,7 @@ metadata:
   name: storage
 spec:
   accessModes: ["ReadWriteMany"]
+  storageClassName: <a storage class that supports ReadWriteMany>
   resources:
     requests:
       storage: 20Gi
@@ -488,8 +489,9 @@ kubectl -n finos-workspace rollout status deployment/api
 kubectl -n finos-workspace rollout status deployment/worker
 ```
 
-- The volume `storage` holds the uploaded files. Its storage class must offer `ReadWriteMany` when the pods run on more than one node. On a single node, `ReadWriteOnce` works too. To keep the files in a bucket instead, set the storage settings from [Choose where files are stored](choose-file-storage.md) and remove the volume.
-- `fsGroup: 1000` lets the API's user write to the volume.
+- The volume `storage` holds the uploaded files, and every API and worker pod mounts it. When the pods run on more than one node, it must allow `ReadWriteMany`, so set `storageClassName` to a class that supports it, such as one backed by Amazon EFS, Azure Files or Google Filestore, or by an NFS server. Without `storageClassName`, Kubernetes uses the default class. The default class of many clusters, and the one of kind, offers `ReadWriteOnce` only, and then the claim stays `Pending`: on kind, its event reads "NodePath only supports ReadWriteOnce and ReadWriteOncePod (1.22+) access modes". On a single node, `ReadWriteOnce` works.
+- `fsGroup: 1000` asks Kubernetes to make the volume writable for the user 1000. Many `ReadWriteMany` volumes ignore it: by default, Kubernetes applies `fsGroup` to a volume of a CSI driver only when the volume also allows `ReadWriteOnce`. On such a volume, a pod running as the user 1000 fails with `Permission denied` when it writes a file, until you set the owner of the volume's directory to the user 1000 in the storage itself.
+- To keep the files in a bucket instead, set the storage settings from [Choose where files are stored](choose-file-storage.md) and remove the volume.
 - The startup probe gives the API five minutes, because each API pod runs the database migrations before it serves.
 
 ## Start the agent
@@ -507,6 +509,8 @@ OPENAI_API_KEY=<your OpenAI API key>
 INES_SCOPE_SECRET=<INES_SCOPE_SECRET>
 INES_METERING_TOKEN=<the token>
 ```
+
+For another provider, set its own key instead of `OPENAI_API_KEY`, or for Ollama `OLLAMA_BASE_URL`. [Pick the providers](../../features/agent/choose-the-agent-model.mdx#pick-the-providers) lists them.
 
 Save the agent and its MCP server as `agent.yaml`:
 
@@ -665,6 +669,8 @@ kubectl -n finos-workspace rollout status deployment/agent-mcp
 - `terminationGracePeriodSeconds` must be at least `INES_SHUTDOWN_GRACE_SECONDS`, which is <EnvDefault name="INES_SHUTDOWN_GRACE_SECONDS" /> seconds by default, so that the agent can finish the answers it is working on when the pod stops.
 - The readiness probe `/ready` answers 503 while the agent cannot reach the API.
 
+If every question fails with status 503 and the message "The FINOS Workspace API is not available" while the agent pod is ready, read its log with `kubectl -n finos-workspace logs deploy/agent`. The line "The FINOS Workspace API refused this agent's metering token" means that the token has expired, or that `JWT_SECRET` changed after you created it. Create a new token, update the Secret `workspace-agent` and restart the agent.
+
 ## Start the web app and expose everything
 
 Save the web app as `web.yaml`:
@@ -793,13 +799,17 @@ kubectl -n finos-workspace rollout status deployment/web
 
 The agent streams its answers, so set the idle timeout of your ingress controller for the agent's name to at least the longest model call, as [What the load balancer and the platform allow](run-the-agent-on-several-replicas.mdx#what-the-load-balancer-and-the-platform-allow) describes. Each controller sets it with its own annotation or policy.
 
+Set the request size limit too. The web app lets people attach files of up to 25 MiB, and the agent accepts a request of up to `INES_MAX_BODY_MB` megabytes, 64 by default. ingress-nginx refuses a request body of more than 1 MiB with status 413 unless the Ingress has the annotation `nginx.ingress.kubernetes.io/proxy-body-size`, for example with the value `64m`. Other controllers have a setting of their own.
+
+The API counts its rate limits per client address and reads that address from `X-Forwarded-For`, so make sure your ingress controller passes it on, as [What your platform needs to provide](production-setup.mdx#what-your-platform-needs-to-provide) describes.
+
 ## Give the administrator a password
 
 ```bash
 kubectl -n finos-workspace exec -it deploy/api -- python -m scripts.init_users --new-password admin@example.com
 ```
 
-It asks for the password twice and does not show what you type. The password needs at least 8 characters, with an uppercase letter, a lowercase letter, a number and a special character, and no spaces. Then go through the checks in [Production setup](production-setup.mdx#check-that-it-works).
+It asks for the password twice and does not show what you type. The password needs at least 8 characters, with an uppercase letter, a lowercase letter, a number and a special character, and no spaces. The underscore does not count as a special character. Then go through the checks in [Production setup](production-setup.mdx#check-that-it-works).
 
 ## Upgrade
 
@@ -830,4 +840,32 @@ kubectl -n finos-workspace exec mysql-0 -- sh -c 'exec mysqldump --single-transa
 kubectl -n finos-workspace exec -i mysql-0 -- sh -c 'exec mysql -u root -p"$MYSQL_ROOT_PASSWORD" workspace' < workspace.sql
 ```
 
-MySQL warns that a password on the command line can be insecure. The password stays inside the pod, and the warning does not end up in the file. Keep `backend.env` safe away from the cluster too: without its `WORKSPACE_AES_KEY`, the secrets stored in the database cannot be read.
+MySQL warns that a password on the command line can be insecure. The password stays inside the pod, and the warning does not end up in the file.
+
+The uploaded files are not in the database. With a bucket, use the versioning and backups of your provider. With the volume `storage`, use the snapshots of your storage.
+
+Keep `backend.env`, and the settings and manifests that you applied, safe away from the cluster too: without the `WORKSPACE_AES_KEY` in `backend.env`, the secrets stored in the database cannot be read.
+
+## Change a database password
+
+Change the password in MySQL first, then in the Secret, then restart the pods that read the Secret. MySQL reads the passwords of its Secret only on its very first start, so a changed Secret alone leaves the API with a password that MySQL does not know.
+
+With the MySQL of this guide, open a MySQL session as the root user:
+
+```bash
+kubectl -n finos-workspace exec -it mysql-0 -- sh -c 'exec mysql -u root -p"$MYSQL_ROOT_PASSWORD"'
+```
+
+At the `mysql>` prompt, change the password of the user `workspace`:
+
+```sql
+ALTER USER 'workspace'@'%' IDENTIFIED BY '<the new password>';
+```
+
+Put the new password into `WRITE_DB_PASSWORD` and `READ_DB_PASSWORD` in `backend.env`, update the Secret from the file and restart the API and the worker:
+
+```bash
+kubectl -n finos-workspace create secret generic workspace-backend --from-env-file=backend.env --dry-run=client -o yaml | kubectl -n finos-workspace replace -f -
+kubectl -n finos-workspace rollout restart deployment/api deployment/worker
+kubectl -n finos-workspace rollout status deployment/api
+```
