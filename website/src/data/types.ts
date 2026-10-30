@@ -427,6 +427,7 @@ export interface PluginsData {
   exportMembers: string[];
   exportOption: AgentField[];
   traits: string[];
+  traitTable: { name: string; description: string; requires: string | null; writableWith: string | null }[];
   builtInTypes: string[];
   guestMessages: ProtocolMessage[];
   hostMessages: ProtocolMessage[];
@@ -463,4 +464,47 @@ export interface AgentsJsonData {
   features: { key: string; description: string }[];
   file: unknown;
   conditional: { feature: string; variable: string }[];
+}
+
+export interface BuiltRequestView {
+  method?: string;
+  url?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+  problems?: string[];
+}
+
+export interface WidgetRequestData {
+  backend: string;
+  values: { label: string; value: string; query: string | null; header: string | null; body: string | null; path: string | null }[];
+  omitted: { label: string; sent: boolean }[];
+  problems: { label: string; messages: string[] }[];
+  examples: { label: string; widget: unknown; optionsParam: unknown; request: BuiltRequestView; options: BuiltRequestView }[];
+}
+
+export interface IframeData {
+  fromPage: SchemaSet;
+  fromHost: SchemaSet;
+  limits: { requestTimeoutMs: number; maxFrameDepth: number };
+  values: { label: string; text: string }[];
+}
+
+export interface ProtocolCases {
+  contract: { label: string; messages: string[] }[];
+  rawRows: { label: string; response: string; rawDataKey: string | null; rows: string }[];
+  mcpActive: { label: string; link: string; result: string }[];
+  mcpCite: { label: string; call: string; cited: string | null; inputArgs: string | null; details: string | null }[];
+}
+
+export interface HtmlSurface {
+  name: string;
+  draws: string;
+  frame: string;
+  sandbox: string;
+  sandboxWithScripts: string | null;
+  policy: string | null;
+  policyWithScripts: string | null;
+  sanitizing: { tags: string[]; attributes: string[]; dataAttributes: boolean } | null;
+  added: string[];
+  theme: string;
 }

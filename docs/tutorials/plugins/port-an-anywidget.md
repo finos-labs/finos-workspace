@@ -33,7 +33,7 @@ Map the module's trait names in `model.traits`, so that the module keeps reading
 
 ## 4. Remove what the sandbox forbids
 
-Remove every use of storage, popups, alerts and cookies. Keep a widget's preferences in `state`, which needs the permission `core:state:write`.
+Remove every use of storage, popups, alerts and cookies. Keep a widget's preferences in `state`, which needs the permission [`core:state:write`](../../reference/plugins/commands-and-permissions.mdx).
 
 ## 5. Try it
 

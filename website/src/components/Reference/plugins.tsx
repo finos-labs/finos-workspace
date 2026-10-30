@@ -3,6 +3,7 @@ import { FieldTable, MetricsTable } from "./agent";
 import { pluginsData } from "./data";
 import { amount, type Unit } from "./format";
 import { Chip, ItemList } from "./kit";
+import styles from "./styles.module.css";
 
 export function Codes({ items, or }: { items: string[]; or?: boolean }) {
   const last = or ? " or " : " and ";
@@ -117,4 +118,23 @@ export function PluginHostMessages() {
 
 export function PluginExportOption() {
   return <FieldTable fields={pluginsData.exportOption} depth={1} />;
+}
+
+export function PluginTraits() {
+  return (
+    <ItemList
+      items={pluginsData.traitTable.map((trait) => ({
+        key: trait.name,
+        title: <code className={styles.fieldName}>{trait.name}</code>,
+        chips: (
+          <>
+            <Chip>{trait.writableWith === null ? "read only" : "writable"}</Chip>
+            {trait.requires === null ? null : <Chip>{`needs ${trait.requires}`}</Chip>}
+            {trait.writableWith === null ? null : <Chip>{`writing needs ${trait.writableWith}`}</Chip>}
+          </>
+        ),
+        description: trait.description,
+      }))}
+    />
+  );
 }

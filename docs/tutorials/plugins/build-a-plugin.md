@@ -78,7 +78,7 @@ Edit the copy's files, or build into its directory. The app serves them as they 
 
 - A dashboard reads the plugin list when its window gets focus and every minute. A frame restarts when its files changed.
 - An edit does not block the copy. A `checksum` that no longer matches is only a warning.
-- The other declarations of the manifest apply as you change them. These are the frame policy, the proxies, the routes and the widgets' `definition`s.
+- The other declarations of the manifest apply as you change them. These are the [frame policy](../../reference/plugins/frame-policy.mdx), the [proxies](../../reference/plugins/proxies.mdx), the routes and the widgets' `definition`s.
 - A copy that fails a check is not served, and the Deployment page says why.
 
 ## 8. Finish the copy

@@ -7,7 +7,7 @@ sidebar_position: 6
 
 Many reference pages are generated from the code, so that they cannot drift away from it. Each part of FINOS Workspace that the reference describes writes JSON files into a folder named `reference-data`, and the site's generator reads them. Git does not track the folders, so nothing generated is committed, and the data always comes from the code of the commit that you build. This guide shows how to write the data and what to do when the site stops for want of it.
 
-Write the data before you generate or build the site, and write it again after a change to the API, the settings, the database models, the plugin manifest, the `widgets.json` schema, the admin CLI, the FINOS Workspace bridge, the agent or the plugin runtime of the web app.
+Write the data before you generate or build the site, and write it again after a change to the API, the settings, the database models, the plugin manifest, the [`widgets.json`](../../reference/schemas/widgets-json.mdx) schema, the admin CLI, the [FINOS Workspace bridge](../../reference/protocols/workspace-bridge.mdx), the agent or the plugin runtime of the web app.
 
 ## Write all the data
 
@@ -39,7 +39,7 @@ The script builds the image of the local stack, `workspace-api:local`, and runs 
 
 ## Write the agent's data
 
-From `agent`, install the dependencies and run the exporter on Node 26.12.1. It writes `agent/reference-data/reference.json`, which holds the routes, the metrics, the MCP tools, the query protocol and the limits of Ines, and the `agents.json` file that Ines serves.
+From `agent`, install the dependencies and run the exporter on Node 26.12.1. It writes `agent/reference-data/reference.json`, which holds the routes, the metrics, the MCP tools, the [query protocol](../../reference/protocols/ines-query.mdx) and the limits of Ines, and the [`agents.json`](../../reference/schemas/agents-json.mdx) file that Ines serves.
 
 ```bash
 cd agent
@@ -51,7 +51,19 @@ The descriptions of the agent's environment variables are in `agent/src/lib/env-
 
 ## Write the web app's data
 
-From `frontend`, install the dependencies and run the script that runs the five tests which write the data. It writes six files into `frontend/reference-data`. The file `plugin-reference.json` holds the plugin runtime's messages, limits, permissions and policy rules, and `workspace-bridge-reference.json` holds the limits, the errors and the commands of the bridge in the tab. The file `web-app-reference.json` holds the numbers, names and lists of the web app's interface that the how-to guides quote, such as the file types that a dashboard accepts and the longest name of a folder, `apps-schema.json` is the JSON Schema of `apps.json`, `widget-args-reference.json` holds the schemas that `get_widget_schema` builds for the `data_args` and the `ui_args` of a widget, and `agents-reference.json` holds the schema of an entry of `agents.json` and the features that the web app knows. A test fails when a field of an agent has no description, or when the code reads a feature that `AI_FEATURE_DESCRIPTIONS` does not describe. A test fails when a field of an `apps.json` entry has no description.
+From `frontend`, install the dependencies and run the script that runs the tests which write the data. It writes these files into `frontend/reference-data`:
+
+- `plugin-reference.json` holds the plugin runtime's messages, limits, permissions and policy rules.
+- `workspace-bridge-reference.json` holds the limits, the errors and the commands of the bridge in the tab.
+- `web-app-reference.json` holds the numbers, names and lists of the web app's interface that the how-to guides quote, such as the file types that a dashboard accepts and the longest name of a folder.
+- `apps-schema.json` is the JSON Schema of [`apps.json`](../../reference/schemas/apps-json.mdx). A test fails when a field of an `apps.json` entry has no description.
+- `widget-args-reference.json` holds the schemas that `get_widget_schema` builds for the `data_args` and the `ui_args` of a widget.
+- `agents-reference.json` holds the schema of an entry of `agents.json` and the features that the web app knows. A test fails when a field of an agent has no description, or when the code reads a feature that `AI_FEATURE_DESCRIPTIONS` does not describe.
+- `widget-request-reference.json` holds the requests that the request builder makes for each kind of value, and the problems that it reports.
+- `iframe-reference.json` holds the messages of the [iframe protocol](../../reference/protocols/iframe-widget.mdx), with the schema of each. A test fails when a field of a message has no description.
+- `widgets-contract-reference.json` holds the message of each check of the widgets.json contract that the schema cannot express.
+- `raw-rows-reference.json` holds what the reader of a widget's rows returns for each kind of response.
+- `mcp-link-reference.json` holds when the [MCP tool link](../../reference/protocols/mcp-tool-link.md) of a widget is active and which widget an answer cites for a call.
 
 ```bash
 cd frontend

@@ -36,6 +36,27 @@ jobs:
         env:
           PYTHON: python/.venv/bin/python
 
+  reference-agent:
+    name: Reference agent
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs/examples/reference-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.12.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: |
+          python -m venv python/.venv
+          python/.venv/bin/pip install -r python/requirements.txt
+      - run: node --test test/parity.test.mjs
+        env:
+          PYTHON: python/.venv/bin/python
+
   plotly-charts:
     name: Plotly charts
     runs-on: ubuntu-latest

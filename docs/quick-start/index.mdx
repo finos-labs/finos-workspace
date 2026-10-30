@@ -18,21 +18,18 @@ In about 15 minutes you run FINOS Workspace on your own computer, write a small 
 - Docker with Docker Compose.
 - Python 3, to run the script that writes the configuration.
 - A clone of the [FINOS Workspace repository](https://github.com/openbq-org/workspace), for the Compose file and the configuration script.
+- A GitHub account that can read the packages of `openbq-org`, and a personal access token (classic) of that account with the `read:packages` scope. The images build on a base image that GitHub's container registry serves to logged-in readers only.
 - For the backend: Python 3.10 or later, or Node.js 22.18 or later. Use whichever language you prefer; every example on this site comes in both.
 
-## 1. Get the images
+## 1. Log in to the container registry
 
-:::note[Placeholder]
-
-The FINOS Workspace images will be published on the FINOS Docker Hub. This step will show the command that pulls them, for example:
+Log in once, with your GitHub user name and the token. Docker keeps the login, so later builds need nothing more:
 
 ```bash
-docker pull finos/workspace:<version>
+echo <token> | docker login ghcr.io -u <github-username> --password-stdin
 ```
 
-Until the images are published, Compose builds them from source in the next step. [Run the stack from source](../tutorials/build-from-source/run-the-stack-from-source.md) lists what that build needs.
-
-:::
+The next step builds the images from the clone. [Run the stack from source](../tutorials/build-from-source/run-the-stack-from-source.md) describes the same build in more detail.
 
 ## 2. Start FINOS Workspace
 
@@ -49,10 +46,10 @@ To let the Agent answer questions, open `agent/.env` and set `DEFAULT_MODEL` and
 Start the stack from the root of the clone:
 
 ```bash
-docker compose up
+docker compose up --build
 ```
 
-The stack is ready when `docker compose ps`, in a second terminal, shows the API as healthy. Then set the administrator's password. The command asks for it twice:
+The first build takes several minutes. The stack is ready when `docker compose ps`, in a second terminal, shows the API as healthy. Then set the administrator's password. The command asks for it twice:
 
 ```bash
 docker compose run --rm init python -m scripts.init_users --new-password <your-email>
@@ -254,7 +251,7 @@ Both programs return the same responses. Check the backend in your browser: [htt
 
 :::warning[Allow only what the backend needs]
 
-This backend allows one origin and no request headers. When you later give the connection a credential, or a widget a header parameter, name each of those headers in the allowed headers: `allow_headers=["Authorization"]` in the Python program, or the value of `Access-Control-Allow-Headers` in the TypeScript one. Never use `*` and never copy the headers that the browser asks for: `*` does not cover `Authorization`, and a copied list allows every header. [Widget requests](../reference/protocols/widget-requests.mdx#cors) lists what a backend has to answer.
+This backend allows one origin and no request headers. When you later give the connection a credential, or a widget a header parameter, name each of those headers in the allowed headers: `allow_headers=["Authorization"]` in the Python program, or the value of `Access-Control-Allow-Headers` in the TypeScript one. Never use `*` and never copy the headers that the browser asks for: `*` does not cover `Authorization`, and a copied list allows every header. [Requests that a widget sends](../tutorials/build-a-backend/requests-from-a-widget.md#cors) lists what a backend has to answer.
 
 :::
 

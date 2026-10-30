@@ -23,7 +23,7 @@ export interface TraitBinding {
   writable: boolean;
 }
 
-const DEFAULT_SOURCES: BindingSource[] = [
+export const DEFAULT_SOURCES = [
   "data",
   "definition",
   "params",
@@ -33,7 +33,22 @@ const DEFAULT_SOURCES: BindingSource[] = [
   "theme",
   "capabilities",
   "meta",
-];
+] as const satisfies readonly BindingSource[];
+
+export const TRAIT_DESCRIPTIONS: Record<(typeof DEFAULT_SOURCES)[number], string> = {
+  data: "The JSON that the widget's backend endpoint returned, taken after `dataKey`, or the widget's rows while the user shows them",
+  definition:
+    "The `data.<type>` object of the backend widget, which has been checked against the `definition` schema",
+  params: "The widget's parameters as an object of `{ name: value }`",
+  config: "The settings of this widget instance",
+  adminSettings: "The settings that the organization's admin made",
+  state: `The module's own instance state, which is saved with the dashboard and may hold at most ${MAX_STATE_BYTES} bytes of JSON`,
+  theme:
+    "An object of the form `{ mode, tokens, locale, decimals }`. The module should follow it and react to `change:theme`. It is meant for the plugin's own interface, whereas the content that a backend returns is drawn as its author made it",
+  capabilities:
+    "The module's effective permissions. The module should check them before it calls a command",
+  meta: "An object of the form `{ pluginId, version, widgetId, instanceId }`",
+};
 
 function parseBinding(bind: string): { source: BindingSource; key?: string } | null {
   const [head, ...rest] = bind.split(":");
@@ -41,7 +56,7 @@ function parseBinding(bind: string): { source: BindingSource; key?: string } | n
   if (head === "param" && key) return { source: "param", key };
   if ((head === "config" || head === "adminSettings") && key !== undefined)
     return { source: head, key };
-  if (key === undefined && (DEFAULT_SOURCES as string[]).includes(head))
+  if (key === undefined && (DEFAULT_SOURCES as readonly string[]).includes(head))
     return { source: head as BindingSource };
   return null;
 }

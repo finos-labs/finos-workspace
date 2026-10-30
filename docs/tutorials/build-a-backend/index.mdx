@@ -16,8 +16,8 @@ A backend answers these requests:
 
 | Method | Path | Answer |
 |---|---|---|
-| GET | `/widgets.json` | The widgets that the backend offers |
-| GET | `/apps.json` | The apps that the backend offers. An empty list is permitted. |
+| GET | [`/widgets.json`](../../reference/schemas/widgets-json.mdx) | The widgets that the backend offers |
+| GET | [`/apps.json`](../../reference/schemas/apps-json.mdx) | The apps that the backend offers. An empty list is permitted. |
 | GET or POST | The endpoint of each widget | The data of the widget |
 
 The backend must also allow the address of the web app in CORS. Each example in this section comes in Python and in TypeScript. Select the language once, and all the examples show it.
@@ -127,7 +127,7 @@ PYTHON=python/.venv/bin/python node --test test/parity.test.mjs
 
 The reference backend comes from the reference backend of OpenBB Workspace in [`backends-for-openbb`](https://github.com/openbq-org/backends-for-openbb/tree/main/getting-started/reference-backend). It keeps what FINOS Workspace supports and removes the rest:
 
-- **Only the built-in widget types.** FINOS Workspace draws `markdown`, `html`, `newsfeed`, `pdf` and `iframe`. The OpenBB types `table`, `chart`, `metric`, `chart-highcharts`, `chart-vegalite`, `live_grid`, `omni`, `multi_file_viewer`, `youtube` and the sparkline types are not part of FINOS Workspace. This version does not have their widgets. The tables are HTML widgets with `raw` rows. [Plugins](../../features/plugins/index.md) can add types, for example charts.
+- **Only the built-in widget types.** FINOS Workspace draws `markdown`, `html`, `newsfeed`, `pdf` and `iframe`. The OpenBB types `table`, `chart`, `metric`, `chart-highcharts`, `chart-vegalite`, `live_grid`, `omni`, `multi_file_viewer`, `youtube` and the sparkline types are not part of FINOS Workspace. This version does not have their widgets. The tables are HTML widgets with [`raw`](../../reference/protocols/raw-rows.md) rows. [Plugins](../../features/plugins/index.md) can add types, for example charts.
 - **No outside data.** The OpenBB version reads a public crypto API, an image service and PDFs that OpenBB hosts, and it links videos. This version uses only its own invented data and files.
 - **No OpenBB-only features.** Grouping by cell click, column definitions and render functions are features of the OpenBB table. This version does not have them.
 - **New parameters.** Header, body and path parameters are new. FINOS Workspace adds them.

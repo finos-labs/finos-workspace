@@ -47,7 +47,7 @@ When the request for `widgets.json` fails, the Error notice names the cause and 
 | 23 | The request timed out. | Whether the backend answers within one minute. |
 | Anything else | Unable to find a widgets.json file. | The console of your browser, where the details are logged. |
 
-A backend on `localhost` or `127.0.0.1` gets a section Troubleshooting localhost, which lists the three usual causes. [Connect a backend](../../features/data-backends/connect-a-backend.md) describes them, and [Widget requests](../../reference/protocols/widget-requests.mdx#cors) lists what the backend must answer so that the browser may call it.
+A backend on `localhost` or `127.0.0.1` gets a section Troubleshooting localhost, which lists the three usual causes. [Connect a backend](../../features/data-backends/connect-a-backend.md) describes them, and [Requests that a widget sends](requests-from-a-widget.md#cors) lists what the backend must answer so that the browser may call it.
 
 ## A widget does not appear
 
@@ -67,7 +67,7 @@ FINOS Workspace reads `apps.json`, and when the backend has no such file, it rea
 
 - A plugin widget whose configuration in `state.storage.plugin.config` the plugin's settings refuse, or a built-in widget that sets such a configuration.
 - An MCP server whose name another app of the backend uses for a different address.
-- A widget whose `mcp_tool.mcp_server` names a server that no app of the backend declares.
+- A widget whose [`mcp_tool.mcp_server`](../../reference/protocols/mcp-tool-link.md) names a server that no app of the backend declares.
 
 The Warning notice reports a layout item whose widget `widgets.json` does not define, with the text "Missing widgets used in tab" and the ids. The dashboard then opens without that widget.
 

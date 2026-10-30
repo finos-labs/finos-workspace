@@ -65,7 +65,7 @@ Three more points apply to `raw`:
 
 Some widgets show data that the Agent can fetch better with a tool than with a plain request, for example when a database sits behind a query tool of your own MCP server. The key `mcp_tool` links the widget to such a tool, so that the Agent knows which tool answers questions about the data that the widget shows.
 
-1. Declare the MCP server in the `mcpServers` list of an app in the backend's `apps.json`, with a `name`, a `description`, a `url` and an `authType`.
+1. Declare the MCP server in the `mcpServers` list of an app in the backend's [`apps.json`](../../reference/schemas/apps-json.mdx), with a `name`, a `description`, a `url` and an `authType`.
 2. Add `mcp_tool` to the widget. The key `mcp_server` is the name that you declared, `tool_id` is the name of the tool on that server, and `args` says how the widget's parameters fill the tool's arguments:
 
    ```json
@@ -87,3 +87,17 @@ Set `disableRetrievalForCopilot` to `true` on a widget whose data the Agent must
 3. Open Step-by-step reasoning. The Agent should find the widget and show the line that the data was loaded.
 4. Look at the requests that your backend received. A widget with `raw` should see one request with `raw=true` for the question.
 5. When the answer is wrong or empty, ask the Agent to name the widget that it used. A widget whose description does not say what it shows is the usual cause, and a backend that answers `raw=true` with the view is the second.
+
+## What the host does with the rows
+
+When the host needs the rows, it sends the widget's own request again, with the widget's current parameters and with `raw=true` in the query, as [Widget requests](../../reference/protocols/widget-requests.mdx) describes. The widget's endpoint can therefore decide whether to answer with a view or with rows.
+
+The host reads the rows from the path in `data.rawDataKey`, which works like `dataKey`. Without `rawDataKey`, it reads the `results` field of the response, and when there is none it uses the whole response. One endpoint can answer both requests with a single document, such as `{"results": {"chart": {...}, "records": [...]}}`.
+
+When `raw` is set, the AI Agent and MCP clients receive the rows and never the HTML or the chart. This applies to the widget's data in the Agent and to the tools `get_widget_data` and `read_widget`. The agent loads a list of objects as a table that it can query.
+
+The card gets a database button that switches between the widget's view and its rows, and the widget remembers the choice. If the user may use the plugin that `data.rawType` names, that plugin shows the rows. Otherwise an `html` widget shows the rows as a table, and the plugin of a plugin type shows them itself, as [Plugin module contract](../../reference/plugins/module-contract.mdx) describes.
+
+The keys `data.rawDataKey` and `data.rawType` are valid only together with `"raw": true`. The value of `rawType` is a type name that matches `^[a-z][a-z0-9_-]{1,31}$`. The name `raw` is a reserved query parameter name for these types, so a widget cannot use it for a parameter of its own.
+
+The function `rowsOf` in `frontend/src/lib/utils/rawRows.ts` reads the rows for every caller. The hook `useRawRows` and the components `RowsToggle` and `RowsTable` serve the html and plugin widgets, and `useRowsPlugin` finds the plugin that `rawType` names. The function `getCustomWidgetsData` asks a widget that has `raw` for its rows.

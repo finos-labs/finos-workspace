@@ -112,8 +112,8 @@ Next to `entry.js`, create `plugin.json`:
 
 The manifest says who the plugin is and which widget it offers:
 
-- `handles` names the widget type that the plugin draws, `rowtable`. A backend uses that type in its `widgets.json`. It also says what the endpoint has to return.
-- `core:data:read` lets the widget read `data`. A widget gets no permission that it does not ask for.
+- `handles` names the widget type that the plugin draws, `rowtable`. A backend uses that type in its [`widgets.json`](../../reference/schemas/widgets-json.mdx). It also says what the endpoint has to return.
+- [`core:data:read`](../../reference/plugins/commands-and-permissions.mdx) lets the widget read `data`. A widget gets no permission that it does not ask for.
 
 [Plugin package and manifest](../../reference/plugins/package-and-manifest.mdx) describes every key.
 

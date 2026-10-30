@@ -36,7 +36,7 @@ Approve it. Every request that the version adds to what the active version alrea
 - a permission,
 - a frame source,
 - a server host,
-- a proxy,
+- a [proxy](../../reference/plugins/proxies.mdx),
 - a secret,
 - a backend route,
 - a data source,

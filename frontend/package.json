@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "lint": "biome format . --write && biome check . --write && biome lint --write --unsafe .",
     "update-icons": "node scripts/update-icons.js",
-    "reference": "REFERENCE_OUT=reference-data vitest run tests/unit/plugins/reference.test.ts tests/unit/components/AI/workspaceBridgeReference.test.ts tests/unit/lib/webAppReference.test.ts tests/unit/lib/widgetArgsReference.test.ts tests/unit/lib/agentsReference.test.ts",
+    "reference": "REFERENCE_OUT=reference-data vitest run tests/unit/plugins/reference.test.ts tests/unit/components/AI/workspaceBridgeReference.test.ts tests/unit/lib/webAppReference.test.ts tests/unit/lib/widgetArgsReference.test.ts tests/unit/lib/agentsReference.test.ts tests/unit/lib/widgetRequestReference.test.ts tests/unit/lib/iframeReference.test.ts tests/unit/lib/widgetProtocolsReference.test.ts tests/unit/lib/htmlDocumentsReference.test.ts",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test tests/e2e",
