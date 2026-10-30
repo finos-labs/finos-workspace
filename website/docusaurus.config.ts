@@ -88,32 +88,12 @@ const config: Config = {
     footer: {
       copyright: "Licensed under the Apache License 2.0.",
       links: [
-        {
-          title: "Docs",
-          items: [
-            { label: "Quick Start", to: "/quick-start" },
-            { label: "Features", to: "/features" },
-            { label: "Concepts", to: "/concepts" },
-            { label: "Tutorials", to: "/tutorials" },
-            { label: "Reference", to: "/reference" },
-          ],
-        },
-        {
-          title: "FINOS",
-          items: [
-            { label: "FINOS Website", href: "https://www.finos.org/" },
-            { label: "Community Handbook", href: "https://community.finos.org/" },
-            { label: "FINOS Projects", href: "https://landscape.finos.org" },
-          ],
-        },
-        {
-          title: "About FINOS",
-          items: [
-            { label: "FINOS Projects on GitHub", href: "https://github.com/finos" },
-            { label: "Engage the FINOS Community", href: "https://www.finos.org/engage-with-our-community" },
-            { label: "FINOS News and Events", href: "https://www.finos.org/news-and-events" },
-          ],
-        },
+        { label: "FINOS Website", href: "https://www.finos.org/" },
+        { label: "Community Handbook", href: "https://community.finos.org/" },
+        { label: "FINOS Projects", href: "https://landscape.finos.org" },
+        { label: "FINOS Projects on GitHub", href: "https://github.com/finos" },
+        { label: "Engage the FINOS Community", href: "https://www.finos.org/engage-with-our-community" },
+        { label: "FINOS News and Events", href: "https://www.finos.org/news-and-events" },
       ],
     },
     prism: {

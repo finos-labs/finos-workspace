@@ -177,6 +177,28 @@
   display: none;
 }
 
+.footer {
+  padding: 0.75rem 0;
+}
+
+.footer .container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 2rem;
+  padding: 0 1.5rem;
+}
+
+.footer .footer__links {
+  margin: 0;
+}
+
+.footer .footer__bottom {
+  order: -1;
+  text-align: left;
+}
+
 .table-of-contents {
   padding: 0.25rem 0.5rem 0.25rem 0.75rem;
   font-size: 0.82rem;
