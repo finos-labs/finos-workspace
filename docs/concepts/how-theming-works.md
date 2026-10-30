@@ -5,11 +5,11 @@ sidebar_position: 9
 
 # How theming works
 
-The web app has to look right in a light and a dark theme, and every deployment wants to make it look like its own. This page explains how the colors are organized so that both are possible, why a theme can be a single stylesheet or a preset that an admin saves in the app, and why the widgets that draw in frames are styled by their authors and not by FINOS Workspace.
+The web app has two themes, light and dark, and every deployment can restyle it. This page explains how the colors are organized to allow that, why a theme is either a stylesheet or a preset that an admin saves in the app, and why the authors of widgets that draw in frames style them, not FINOS Workspace.
 
 ## Roles and colors
 
-The components of the web app mostly name a role and not a color. A button's background is `bg-btn-primary-bg`, for example, and a theme decides which color that is. This is the idea of design tokens, which Material and GitHub's Primer also use. The components stay the same, and the theme maps each role to a value, once for the light theme and once for the dark theme. The custom properties in `tokens.css` are those tokens.
+The components of the web app mostly name a role and not a color. A button's background is `bg-btn-primary-bg`, for example, and a theme decides which color that is. These are design tokens, which Material and GitHub's Primer also use. The components stay the same, and the theme maps each role to a value, once for the light theme and once for the dark theme. The custom properties in `tokens.css` are those tokens.
 
 Beneath the roles sits a palette of steps, such as `light-100`, which is a set of custom properties as well. A component can name a step directly, and the class then reads the same property that the roles refer to. A theme can therefore change a step and move everything that names it. The colors that remain outside the system are Tailwind's own, which are `white`, `black` and the named hues. [Styling surfaces](../reference/css/styling-surfaces.mdx) counts how often each is used.
 

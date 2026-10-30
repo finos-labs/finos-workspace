@@ -85,7 +85,7 @@ The API composes the policy for the user's organization and returns it in the pl
 
 The host builds the frame's document as a string and sets it as the frame's `srcdoc`. The first element of the document is `<meta http-equiv="Content-Security-Policy">`. The meta element is followed by settings that turn `x-dns-prefetch-control` off and set the `referrer` to `no-referrer`. The document contains exactly one script, which is the shell, and the policy allows that script by its hash. A `srcdoc` frame needs no URL, no server route and no change to nginx, and the policy can differ for each plugin and each organization.
 
-Three details are worth knowing:
+Three details:
 
 - A `srcdoc` frame also inherits the policy of the FINOS Workspace page itself. The web app sets no policy of its own, so a deployment that adds one must allow `blob:` and `data:` for frames.
 - A policy in a meta element cannot carry `report-uri` or `frame-ancestors`. Reports therefore come from violation events instead.

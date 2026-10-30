@@ -7,7 +7,7 @@ import { EnvDefault, SettingConstant } from "@site/src/components/Reference/conf
 
 # The architecture of FINOS Workspace
 
-FINOS Workspace is a web application that is made of a few cooperating services, and one idea explains most of how they fit together: the browser is the hub. The user's dashboards live in the browser while the user works with them, and the browser talks directly to the services that each need to hear from it. The services talk to each other far less than one might expect. This page describes the parts, what each of them is responsible for, and why the connections run the way they do.
+FINOS Workspace is a web application made of a few services. The browser connects to each service directly. The user's dashboards live in the browser while the user works, and the services talk to each other very little. This page describes the parts, what each one does, and why the connections run the way they do.
 
 ## The parts
 

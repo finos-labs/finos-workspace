@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # Ask the Agent about a dashboard
 
-In this lesson you ask the Agent a question about the data on a dashboard and follow how it answers. You choose which widget the Agent looks at, read the steps that it took, check the source of its answer and ask a follow-up question. When you finish, you will know how to put data in front of the Agent, how to see where an answer came from, and where its settings are.
+Ask the Agent a question about the data on a dashboard. You choose which widget it looks at, read the steps it took, check the source of its answer and ask a follow-up question.
 
 ## What you need
 

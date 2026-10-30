@@ -5,9 +5,9 @@ sidebar_position: 1
 
 # Run the stack from source
 
-In this lesson you start a complete FINOS Workspace on your own computer, set a password for its first administrator, and sign in. The stack that you start here is for trying FINOS Workspace and for development. It is not how you deploy FINOS Workspace: a deployment runs the same images on your own platform and sets the same variables through that platform's configuration.
+Start a complete FINOS Workspace on your own computer, set a password for the first administrator, and sign in. This stack is for trying FINOS Workspace and for development. A deployment runs the same images on your own platform and sets the same variables through that platform's configuration.
 
-When you finish, you will have the web app, the API, the background worker, the database and the AI agent running, and you will be signed in as an administrator.
+At the end, the web app, the API, the background worker, the database and the AI agent are running, and you are signed in as an administrator.
 
 ## What you need
 

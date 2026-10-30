@@ -5,7 +5,7 @@ sidebar_position: 11
 
 # How the project is tested
 
-FINOS Workspace has four kinds of code that fail in different ways: an API that guards data, a web app that people look at, an agent that talks to a language model, and documentation that must match all of them. Each kind is tested in the way that catches its own failures, and a few checks cut across all of them. This page explains the choices, so that a contributor knows what a failing check is protecting and where to add a test. [Run the tests](../tutorials/contribute/run-the-tests.md) gives the commands.
+FINOS Workspace has four kinds of code: an API that guards data, a web app, an agent that talks to a language model, and documentation that must match the others. Each kind has its own tests, and a few checks cover all of them. This page explains what each check protects and where to add a test. [Run the tests](../tutorials/contribute/run-the-tests.md) gives the commands.
 
 ## Tests that use the real thing where it matters
 

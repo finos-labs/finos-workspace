@@ -5,7 +5,7 @@ sidebar_position: 10
 
 # The container images and the supply chain
 
-FINOS Workspace ships its services as container images, and the images have an unusual shape: each one is built `FROM scratch` and holds only what its service runs. There is no shell in them, no package manager and no operating system that is not needed. This page explains how that is done, why, and what it changes for the people who run and audit a deployment. [Run FINOS Workspace on your machine](../tutorials/build-from-source/run-the-stack-from-source.md) starts the images, and [Serve FINOS Workspace over HTTPS and set the addresses](../tutorials/deploy/serve-over-https-and-cors.mdx) says what a deployment has to provide around them.
+FINOS Workspace ships its services as container images. Each image is built `FROM scratch` and holds only what its service runs: no shell, no package manager and no operating system beyond what the service needs. This page explains how the images are built, why, and what that means for the people who run and audit a deployment. [Run the stack from source](../tutorials/build-from-source/run-the-stack-from-source.md) starts the images, and [Serve FINOS Workspace over HTTPS and set the addresses](../tutorials/deploy/serve-over-https-and-cors.mdx) says what a deployment has to provide around them.
 
 ## What an image holds
 

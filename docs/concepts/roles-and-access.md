@@ -5,7 +5,7 @@ sidebar_position: 4
 
 # Roles and access
 
-Who may do what in FINOS Workspace is decided by two things that work together. A user's type says what kind of participant the person is, and the roles that an admin assigns to the person say what the person is granted. The design follows one rule: nothing is allowed unless a role grants it. This page explains the pieces, how several roles combine, and why the system is shaped this way. The steps for an admin are in the how-to guides, and the exact fields are in the [FINOS Workspace API reference](../reference/http-api/workspace-api.mdx).
+Two things decide who may do what in FINOS Workspace. A user's type says what kind of user the person is, and the roles that an admin assigns say what the person is granted. Nothing is allowed unless a role grants it. This page explains the pieces, how several roles combine, and why the system works this way. The steps for an admin are in the guides, and the exact fields are in the [FINOS Workspace API reference](../reference/http-api/workspace-api.mdx).
 
 ## Organizations, user types and roles
 
@@ -47,7 +47,7 @@ Changing roles can take sharing away. When a change leaves a user unable to shar
 
 The alternative to this design is to allow everything by default and let an admin switch things off. That is simpler to start with, but it makes every new capability a hole until someone closes it, and it makes the question "what can this person do?" hard to answer, because the answer is everything minus a list. With strict grants, the answer is the sum of the person's roles. An admin can read a role and know what it allows, and a new tool or a backend that someone connected is invisible to everyone else until a role names it. The same rule covers the Agent, whose tools run as the user and are checked against the user's roles when the browser sends a call and again when the agent asks whether a request is allowed.
 
-Limits follow a second principle: a limit is a ceiling and not a floor, so a user is never worse off for having a role. That is why the highest limit wins, and why a Developer, whose job is to experiment, has none.
+A limit is a ceiling, not a floor, so having a role never makes a user worse off. The highest limit among a user's roles applies. A Developer has no limits.
 
 ## When a change takes effect
 

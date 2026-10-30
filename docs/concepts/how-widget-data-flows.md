@@ -5,7 +5,7 @@ sidebar_position: 3
 
 # How a widget gets its data
 
-When a card on a dashboard shows data, a request has gone from the browser to a backend and an answer has come back. The path is short, but each step of it is a decision, and the decisions explain behavior that people ask about: why a change of a parameter reloads a card, why the Agent sees what a card sees, why a backend needs to allow the web app's address, and why a card can be empty for one person and full for another. This page follows one request from a card to the screen.
+When a card on a dashboard shows data, the browser has sent a request to a backend and received an answer. This page follows one request from the card to the screen. It explains why a parameter change reloads a card, why the Agent sees what a card sees, why a backend must allow the web app's address, and why a card can be empty for one person and full for another.
 
 ## The request is built in one place
 

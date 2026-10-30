@@ -5,7 +5,7 @@ sidebar_position: 6
 
 # How the Agent answers a question
 
-The Agent is Ines, an agent that wraps a language model in a loop of tool calls. The loop is deliberately thin. Ines decides what the model sees, which tools it may use and what to do with the results, but it does not plan the work for the model and it does not look at the content of data to decide a route. This page explains the choices that shape an answer: who runs the tools, what the model is shown, how Ines keeps a long chat cheap, and what it does to keep a user's data from leaking through the model's text.
+The Agent is Ines. Ines runs a language model in a loop of tool calls. It decides what the model sees, which tools the model can use and what to do with the results. It does not plan the work for the model, and it does not read the content of data to choose a route. This page explains four things: who runs the tools, what the model is shown, how Ines keeps a long chat cheap, and how it stops a user's data from leaking through the model's text.
 
 ## The browser does the work that touches the user
 
