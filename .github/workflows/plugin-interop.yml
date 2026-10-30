@@ -59,6 +59,7 @@ jobs:
         run: >-
           docker buildx bake -f docker-compose.yml -f docker-compose.e2e.yml --load
           --set init.cache-from=type=gha,scope=fastapi.Dockerfile
+          --set "web.contexts.node=$GITHUB_WORKSPACE/agent-node"
           --set "agent.contexts.node=$GITHUB_WORKSPACE/agent-node"
           --set "agent-mcp.contexts.node=$GITHUB_WORKSPACE/agent-node"
 
