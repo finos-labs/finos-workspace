@@ -65,6 +65,13 @@
         "permissions": ["core:data:read", "core:export:provide", "core:copilot:context"],
         "grid": { "w": 20, "h": 12, "minW": 8, "minH": 6 }
       }
+    ],
+    "skills": [
+      {
+        "slug": "plotly-charts",
+        "description": "How to show a chart with the Plotly charts component: which trace fits the question, the data it takes, and its limits.",
+        "file": "skills/plotly-charts.md"
+      }
     ]
   }
 }

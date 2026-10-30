@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
@@ -48,6 +48,7 @@ for (const [target, source] of Object.entries(FILES)) {
   mkdirSync(dirname(join(out, target)), { recursive: true });
   copyFileSync(join(root, source), join(out, target));
 }
+cpSync(join(root, "src/skills"), join(out, "skills"), { recursive: true });
 
 const agGridStyles = join(root, "node_modules/ag-grid-community/styles");
 const stylesheet = ["ag-grid.css", "ag-theme-quartz.css"]

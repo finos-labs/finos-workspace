@@ -104,7 +104,74 @@
           "h": 16,
           "minW": 10,
           "minH": 6
+        },
+        "artifact": {
+          "description": "A table of rows in AgGrid: sortable, filterable, groupable, selectable and exportable, with numbers right-aligned and formatted. Use it to show rows the user will want to work with, such as a query result or a list of records.",
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rowData"
+            ],
+            "properties": {
+              "columnDefs": {
+                "type": "array",
+                "maxItems": 60,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "field"
+                  ],
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    "headerName": {
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    "type": {
+                      "enum": [
+                        "numericColumn",
+                        "rightAligned"
+                      ]
+                    },
+                    "width": {
+                      "type": "integer",
+                      "minimum": 40,
+                      "maximum": 800
+                    }
+                  }
+                }
+              },
+              "rowData": {
+                "type": "array",
+                "maxItems": 1000,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ],
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
         }
+      }
+    ],
+    "skills": [
+      {
+        "slug": "ag-grid-tables",
+        "description": "How to show rows in the AgGrid component: the data it takes, column hints, and how to fill it from loaded tables.",
+        "file": "skills/ag-grid-tables.md"
       }
     ]
   }

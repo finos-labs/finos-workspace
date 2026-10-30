@@ -152,6 +152,19 @@ from the data:
   column resizes/moves are persisted to the `state` trait so they survive
   dashboard saves and are readable by the agent.
 
+## For the AI agent
+
+The `grid` widget declares an `artifact` (`src/plugin.json`): the AI agent can show a table of
+rows under its answer, as an ag-grid-ready object with `rowData` (up to 1,000 rows of
+strings, numbers, booleans and nulls) and, optionally, `columnDefs` (a `field`, a
+`headerName`, a `type` of `numericColumn` or `rightAligned`, and a `width`). The agent can fill
+`rowData` from a table it has loaded instead of copying the rows. The card has the grid's
+sorting, filters, grouping and CSV export, follows the site's light or dark mode, and the
+user can add it to a dashboard as a widget that keeps its rows.
+
+The skill `ag-grid-tables` (`src/skills/ag-grid-tables.md`) tells the agent when rows belong in
+a grid, the shape of the data, and how to fill it from loaded tables.
+
 ## Model traits
 
 | Trait | Bind | Writable | Purpose |

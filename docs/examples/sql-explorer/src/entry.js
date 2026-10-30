@@ -44,7 +44,7 @@ export function csvOf(result) {
 
 export function contextOf(run) {
   if (!run) return null;
-  const base = { source: SOURCES[run.source].label, sql: run.sql.slice(0, 4000) };
+  const base = { source: SOURCES[run.source]?.label ?? "Given result", sql: run.sql.slice(0, 4000) };
   if (run.error) return { ...base, error: run.error };
   return {
     ...base,
@@ -52,6 +52,16 @@ export function contextOf(run) {
     rows: run.result.rows.length,
     truncated: run.result.truncated,
   };
+}
+
+export function givenOf(data) {
+  if (!data || typeof data !== "object" || !Array.isArray(data.rows)) return null;
+  const columns =
+    Array.isArray(data.columns) && data.columns.length
+      ? data.columns.map((column) => ({ name: String(column.name), type: column.type }))
+      : Object.keys(data.rows[0] ?? {}).map((name) => ({ name }));
+  const rows = data.rows.map((row) => (Array.isArray(row) ? row : columns.map((column) => row?.[column.name] ?? null)));
+  return { sql: typeof data.sql === "string" ? data.sql : "", result: { columns, rows, truncated: false } };
 }
 
 export function stateOf(saved) {
@@ -153,6 +163,35 @@ export default {
     const withGrid = model.get("meta")?.widgetId === "grid";
     let gridApi = null;
     let gridHost = null;
+
+    const given = withGrid ? givenOf(model.get("result")) : null;
+    if (given) {
+      lastRun = { source: "given", sql: given.sql, result: given.result };
+      const shown = element("div", "sx sx-given");
+      const output = element("div", "sx-output");
+      const query = element("pre", "sx-given-sql", given.sql);
+      query.hidden = !given.sql;
+      shown.append(query, output);
+      el.replaceChildren(shown);
+      const theme = () => (model.get("theme")?.mode === "light" ? "ag-theme-quartz" : "ag-theme-quartz-dark");
+      const paint = () => {
+        shown.dataset.mode = model.get("theme")?.mode === "light" ? "light" : "dark";
+        if (gridHost) gridHost.className = `sx-grid ${theme()}`;
+      };
+      loadingGrid ??= import("ag-grid-community");
+      const { createGrid } = await loadingGrid;
+      if (signal.aborted) return;
+      gridHost = element("div", `sx-grid ${theme()}`);
+      output.replaceChildren(gridHost);
+      gridApi = createGrid(gridHost, gridOptions(given.result));
+      paint();
+      model.on("change:theme", paint);
+      signal.addEventListener("abort", () => {
+        model.off("change:theme", paint);
+        gridApi?.destroy();
+      });
+      return;
+    }
 
     const root = element("div", "sx");
     const bar = element("div", "sx-bar");

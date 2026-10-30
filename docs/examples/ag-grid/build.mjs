@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -49,6 +49,7 @@ writeFileSync(join(out, "entry.css"), combinedCss);
 
 /* ---- Copy assets ---- */
 copyFileSync(join(root, "src/assets/icon.svg"), join(out, "assets/icon.svg"));
+cpSync(join(root, "src/skills"), join(out, "skills"), { recursive: true });
 
 /* ---- Third-party licenses ---- */
 const agGridPkg = JSON.parse(readFileSync(join(agGridDir, "package.json"), "utf8"));

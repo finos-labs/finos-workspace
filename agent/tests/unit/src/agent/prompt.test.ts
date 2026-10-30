@@ -139,6 +139,14 @@ describe("buildSystemPrompt — base content", () => {
     );
   });
 
+  it("tells a plugin's component from the others, and that it has no data to read", () => {
+    const component = w({ uuid: "w-3", name: "SQL grid", widget_id: "plugin:sql-explorer:grid", widget_type: "plugin" });
+    const out = buildSystemPrompt(req({ widgets: { primary: [], secondary: [component], extra: [] } }));
+    expect(out).toContain("- SQL grid (plugin:sql-explorer:grid) [origin: example] [uuid: w-3]: [plugin] Sample description");
+    expect(out).toContain("A widget tagged [plugin] is a component of a widget plugin, with no endpoint");
+    expect(out).toContain("get_widget_data returns nothing for it");
+  });
+
   it("tells an iframe widget from the others, and what to do with it", () => {
     const iframe = w({ uuid: "w-1", name: "Asset Info", widget_id: "asset_info", widget_type: "iframe" });
     const table = w({ uuid: "w-2", name: "Prices", widget_id: "prices", widget_type: "table" });

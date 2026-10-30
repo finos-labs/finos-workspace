@@ -1,7 +1,25 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import widget, { contextOf, csvOf, formatCell, gridColumns, gridOptions, gridRows, identifier, isNumeric, SOURCES, stateOf } from "../src/entry.js";
+import widget, { contextOf, csvOf, formatCell, givenOf, gridColumns, gridOptions, gridRows, identifier, isNumeric, SOURCES, stateOf } from "../src/entry.js";
+
+test("a result the agent gives is shown as rows, with the columns of its first row when it names none", () => {
+  assert.equal(givenOf(undefined), null);
+  assert.equal(givenOf({ sql: "SELECT 1" }), null);
+  const given = givenOf({ sql: "SELECT region, units FROM sales", rows: [{ region: "emea", units: 3 }, { region: "apac" }] });
+  assert.equal(given.sql, "SELECT region, units FROM sales");
+  assert.deepEqual(given.result.columns, [{ name: "region" }, { name: "units" }]);
+  assert.deepEqual(given.result.rows, [["emea", 3], ["apac", null]]);
+  const named = givenOf({ columns: [{ name: "units", type: "integer" }], rows: [{ units: 1, region: "x" }] });
+  assert.deepEqual(named.result.rows, [[1]]);
+  assert.equal(named.sql, "");
+  assert.equal(csvOf(named.result), "units\n1");
+});
+
+test("a given result reaches the agent's export and context under its own name", () => {
+  const given = givenOf({ sql: "SELECT 1", rows: [{ a: 1 }] });
+  assert.equal(contextOf({ source: "given", sql: given.sql, result: given.result }).source, "Given result");
+});
 
 test("a name is quoted only when it has to be", () => {
   assert.equal(identifier("readings"), "readings");

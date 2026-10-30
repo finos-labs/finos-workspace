@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,6 +26,7 @@ mkdirSync(join(out, "assets"), { recursive: true });
 writeFileSync(join(out, "entry.js"), entry.replace(placeholder, () => JSON.stringify(plotly)));
 copyFileSync(join(root, "src/entry.css"), join(out, "entry.css"));
 copyFileSync(join(root, "src/assets/icon.svg"), join(out, "assets/icon.svg"));
+cpSync(join(root, "src/skills"), join(out, "skills"), { recursive: true });
 const outlines = join(packageDir("sane-topojson"), "dist");
 for (const name of readdirSync(outlines).filter((n) => n.endsWith(".json")))
   copyFileSync(join(outlines, name), join(out, "assets", `topojson-${name}`));

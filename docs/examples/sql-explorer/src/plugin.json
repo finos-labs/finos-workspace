@@ -136,6 +136,7 @@
         "category": "Data",
         "standalone": true,
         "permissions": [
+          "core:data:read",
           "core:backend:call",
           "core:state:write",
           "core:export:provide",
@@ -154,7 +155,84 @@
           "h": 18,
           "minW": 12,
           "minH": 8
+        },
+        "model": {
+          "traits": {
+            "state": {
+              "bind": "state",
+              "access": "readwrite"
+            },
+            "theme": {
+              "bind": "theme"
+            },
+            "meta": {
+              "bind": "meta"
+            },
+            "result": {
+              "bind": "data"
+            }
+          }
+        },
+        "artifact": {
+          "description": "A query result as a grid, with the SQL that produced it when there is one, and a CSV export. Use it to show rows you have, such as the result of a query.",
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rows"
+            ],
+            "properties": {
+              "sql": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "columns": {
+                "type": "array",
+                "maxItems": 60,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "name"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    "type": {
+                      "type": "string",
+                      "maxLength": 40
+                    }
+                  }
+                }
+              },
+              "rows": {
+                "type": "array",
+                "maxItems": 1000,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ],
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
         }
+      }
+    ],
+    "skills": [
+      {
+        "slug": "sql-explorer-queries",
+        "description": "How to write read-only SQL for the SQL explorer's Postgres and Files sources, what the example deployment holds, and how to show rows with the SQL result component.",
+        "file": "skills/sql-explorer-queries.md"
       }
     ]
   }

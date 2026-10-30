@@ -1,6 +1,6 @@
 {
   "name": "workspace-plugin-ag-grid",
-  "version": "1.0.6",
+  "version": "1.1.0",
   "private": true,
   "description": "A FINOS Workspace widget plugin that renders ag-grid Community tables with streaming updates and grid events",
   "author": "dlee-bq",

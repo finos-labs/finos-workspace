@@ -118,6 +118,10 @@ An endpoint that answers both in one shape, `{"results": {"chart": <figure>, "re
   it, is drawn in the site's light or dark mode, and again when the mode changes; a figure
   that sets any of them is drawn as its author made it.
 
+- **Skill.** `plotly-charts` (`src/skills/plotly-charts.md`) tells the AI agent which trace fits
+  which question, the shape of the data, and the limits above, so that it shows a chart
+  instead of drawing one as HTML.
+
 It asks for `core:data:read`, `core:export:provide` and `core:copilot:context`. It
 declares no network access, proxies or backend: everything it draws comes from the
 widget's own endpoint through FINOS Workspace, and the outlines and MathJax from its package.

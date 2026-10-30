@@ -89,6 +89,20 @@ rows. The widget decides by the `widgetId` of its `meta` trait, and the package 
 `ag-grid-community`, which the frame loads the first time a result arrives. Both widgets
 export the last result and tell the Copilot the query and the shape of the answer.
 
+## For the AI agent
+
+The agent cannot run a query through the explorer: the query runs from the user's own session,
+against the deployment's database and files. The plugin gives the agent two things instead.
+
+- **The skill `sql-explorer-queries`** (`src/skills/sql-explorer-queries.md`): the two sources and
+  their dialects, what a query may be (one read-only SELECT, with the limits above), the tables of
+  the example deployment, and how to give the user a query to run.
+- **An `artifact` on the SQL grid**, for rows the agent already has: the rows (up to 1,000, as
+  objects), optionally their columns with types, and the SQL that produced them. The card shows
+  the SQL above the result in AgGrid, with the CSV export of the explorer, and runs nothing: it is
+  a snapshot. The agent can fill the rows from a table it has loaded. The user can add the card to a
+  dashboard as a SQL grid widget that keeps its rows.
+
 ## The package
 
 | Path | |
