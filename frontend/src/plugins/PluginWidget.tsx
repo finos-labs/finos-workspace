@@ -197,7 +197,8 @@ function PluginWidgetBody({
     },
     { enabled: readsData && !showRows, staleTime: widget.staleTime ?? 1000 * 60 * 15 },
   );
-  const { data, isLoading, error, dataUpdatedAt } = showRows ? rows : answer;
+  const { data: fetched, isLoading, error, dataUpdatedAt } = showRows ? rows : answer;
+  const data = showRows || endpointUrl ? fetched : storagePlugin.data;
 
   const refreshed = useRef(widget.refreshQuery);
   useEffect(() => {

@@ -18,6 +18,12 @@ vi.mock("~/lib/contexts/CopilotChatContext", () => ({
 
 const mockCreateWidget = vi.mocked(vi.fn());
 
+vi.mock("~/plugins/PluginArtifactFrame", () => ({
+  PluginArtifactFrame: ({ artifact }: { artifact: { plugin: { id: string } } }) => (
+    <div data-testid="plugin-frame">{artifact.plugin.id}</div>
+  ),
+}));
+
 vi.mock("~/components/AI/hooks/utils", async (importActual) => {
   const actual = (await importActual()) as object;
   return {
@@ -35,6 +41,38 @@ describe("Artifact Component", () => {
         writeText: vi.fn().mockResolvedValue(undefined),
       },
     });
+  });
+
+  it("renders a plugin artifact in its frame and adds it to a dashboard as a plugin widget", () => {
+    const artifact: ArtifactT = {
+      uuid: "p1",
+      type: "plugin",
+      name: "Sales bars",
+      description: "Sales by month",
+      plugin: { id: "chart-kit", widget: "bars" },
+      data: { rows: [{ x: "jan", y: 3 }] },
+      config: { color: "red" },
+    };
+
+    render(<Artifact artifact={artifact} />);
+
+    expect(screen.getByTestId("plugin-frame")).toHaveTextContent("chart-kit");
+    fireEvent.click(screen.getByTestId("create-widget-from-plugin-artifact-button"));
+    expect(mockCreateWidget).toHaveBeenCalledWith({
+      widgetType: "plugin",
+      content: "",
+      pluginArtifact: {
+        plugin: { id: "chart-kit", widget: "bars" },
+        data: { rows: [{ x: "jan", y: 3 }] },
+        config: { color: "red" },
+      },
+      metadata: { uuid: "p1", name: "Sales bars", description: "Sales by month" },
+    });
+
+    fireEvent.click(screen.getByTestId("copy-plugin-artifact-button"));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      JSON.stringify(artifact.data, null, 2),
+    );
   });
 
   it("renders text artifact correctly", () => {
