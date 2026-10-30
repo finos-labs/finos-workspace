@@ -16,7 +16,7 @@
 
 Users connect their own data backends and arrange the data in dashboards of widgets. An AI agent answers questions about the dashboards, outside AI tools reach them through an MCP server, roles decide who may use what, and plugins add new kinds of widgets.
 
-The code is in `frontend/`, `backend-api/`, `agent/` (Ines and its MCP server), `local/` (the development stack) and `docs/` with `website/` (the documentation).
+The code is in `frontend/`, `backend-api/`, `agent/` (the agent and its MCP server), `local/` (the development stack) and `docs/` with `website/` (the documentation).
 
 ## License
 
