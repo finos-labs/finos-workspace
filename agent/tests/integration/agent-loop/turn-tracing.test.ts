@@ -118,7 +118,7 @@ function rePostWithBridgeCall(conversationId: string, extraState: Record<string,
 }
 
 function turnSpans() {
-  return exporter.getFinishedSpans().filter((s) => s.name === "ines.turn.request");
+  return exporter.getFinishedSpans().filter((s) => s.name === "agent.turn.request");
 }
 
 describe("turn tracing across re-POSTs", () => {
@@ -181,9 +181,9 @@ describe("turn tracing across re-POSTs", () => {
     );
 
     const attrs = turnSpans()[0].attributes;
-    expect(attrs["ines.usage.turn.post_count"]).toBe(2);
-    expect(attrs["ines.usage.turn.total_tokens"]).toBe(4);
-    expect(attrs["ines.conversation_id"]).toBe("t-usage-span");
+    expect(attrs["agent.usage.turn.post_count"]).toBe(2);
+    expect(attrs["agent.usage.turn.total_tokens"]).toBe(4);
+    expect(attrs["agent.conversation_id"]).toBe("t-usage-span");
   });
 
   it("tags the turn span with the standard session.id attribute", async () => {
@@ -194,7 +194,7 @@ describe("turn tracing across re-POSTs", () => {
   it("omits session.id entirely when there is no conversation id", async () => {
     await collectGenerator(firstRequest(""));
     expect(turnSpans()[0].attributes).not.toHaveProperty("session.id");
-    expect(turnSpans()[0].attributes["ines.conversation_id"]).toBe("(missing)");
+    expect(turnSpans()[0].attributes["agent.conversation_id"]).toBe("(missing)");
   });
 
   it("ends the span even when the request exits early through a round-trip return", async () => {
@@ -254,7 +254,7 @@ describe("turn tracing — untrusted echoed state", () => {
       }),
     );
     expect(events.length).toBeGreaterThan(0);
-    expect(turnSpans()[0].attributes["ines.usage.turn.post_count"]).toBe(1);
+    expect(turnSpans()[0].attributes["agent.usage.turn.post_count"]).toBe(1);
   });
 });
 

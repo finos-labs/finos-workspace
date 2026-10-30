@@ -100,7 +100,7 @@ function buildSingleTypeSchema(type: string, prop: JsonSchemaProp): z.ZodTypeAny
   }
 }
 
-const INTERNAL_PARAM_PREFIX = "x-ines-";
+const INTERNAL_PARAM_PREFIX = "x-agent-";
 const DISPLAY_SUMMARY_DESCRIPTION =
   "Display-only progress summary shown to the user before the tool runs. " +
   "Use a short human-readable gerund phrase, e.g. 'Checking renewable energy trend'. " +

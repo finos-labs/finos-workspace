@@ -18,7 +18,7 @@ function splitModelId(raw: string): { provider: string; modelId: string } | null
 }
 
 export function transcribeModel(env: Env = process.env): string | null {
-  return env.INES_TRANSCRIBE_MODEL?.trim() || null;
+  return env.AGENT_TRANSCRIBE_MODEL?.trim() || null;
 }
 
 export function transcribeModelProblem(env: Env = process.env): string | null {
@@ -27,10 +27,10 @@ export function transcribeModelProblem(env: Env = process.env): string | null {
   const parsed = splitModelId(raw);
   const provider = parsed && PROVIDERS[parsed.provider];
   if (!parsed || !provider) {
-    return `INES_TRANSCRIBE_MODEL "${raw}" must be <provider>:<model> with a provider that transcribes (${Object.keys(PROVIDERS).join(", ")}).`;
+    return `AGENT_TRANSCRIBE_MODEL "${raw}" must be <provider>:<model> with a provider that transcribes (${Object.keys(PROVIDERS).join(", ")}).`;
   }
   if (!env[provider.keyEnv]?.trim()) {
-    return `INES_TRANSCRIBE_MODEL names ${parsed.provider}, which needs ${provider.keyEnv}.`;
+    return `AGENT_TRANSCRIBE_MODEL names ${parsed.provider}, which needs ${provider.keyEnv}.`;
   }
   return null;
 }
@@ -71,8 +71,8 @@ export function readWav(bytes: Uint8Array): WavAudio | null {
 
 export async function transcribe(audio: WavAudio, signal?: AbortSignal, env: Env = process.env): Promise<string> {
   const raw = transcribeModel(env);
-  const problem = raw ? transcribeModelProblem(env) : "INES_TRANSCRIBE_MODEL is not set.";
-  if (!raw || problem) throw new Error(problem ?? "INES_TRANSCRIBE_MODEL is not set.");
+  const problem = raw ? transcribeModelProblem(env) : "AGENT_TRANSCRIBE_MODEL is not set.";
+  if (!raw || problem) throw new Error(problem ?? "AGENT_TRANSCRIBE_MODEL is not set.");
   const { provider, modelId } = splitModelId(raw)!;
   const apiKey = env[PROVIDERS[provider].keyEnv]!.trim();
 

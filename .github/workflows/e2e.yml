@@ -81,8 +81,8 @@ jobs:
           docker buildx bake -f docker-compose.yml -f docker-compose.e2e.yml --load
           --set init.cache-from=type=gha,scope=fastapi.Dockerfile
           --set init.cache-to=type=gha,mode=max,scope=fastapi.Dockerfile
-          --set "ines.contexts.node=docker-image://$NODE_IMAGE"
-          --set "ines-mcp.contexts.node=docker-image://$NODE_IMAGE"
+          --set "agent.contexts.node=docker-image://$NODE_IMAGE"
+          --set "agent-mcp.contexts.node=docker-image://$NODE_IMAGE"
 
       - name: Start the stack
         run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" up -d

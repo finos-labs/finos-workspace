@@ -3,7 +3,7 @@ import { z } from "zod";
 import { textItem, webCitationItem, type ContentItem } from "../../lib/typed.ts";
 
 const SEARCH_URL = "https://html.duckduckgo.com/html/";
-const USER_AGENT = "Mozilla/5.0 (compatible; Ines/1.0)";
+const USER_AGENT = "Mozilla/5.0 (compatible; Agent/1.0)";
 const DEFAULT_RESULTS = 5;
 const MAX_RESULTS = 20;
 

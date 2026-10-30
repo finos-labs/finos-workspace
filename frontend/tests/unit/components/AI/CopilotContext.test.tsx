@@ -182,7 +182,7 @@ describe("CopilotContext", () => {
       useCopilotStore.setState({
         selectedCopilot: {
           id: "default-copilot",
-          name: "Ines",
+          name: "Agent",
           description: "",
           endpoints: {},
           features: {

@@ -75,9 +75,9 @@ describe("renderMetrics", () => {
   it("adds the process's own metrics to what was registered", () => {
     metrics.queries.inc({ outcome: "completed" });
     const text = renderMetrics();
-    expect(text).toContain('ines_queries_total{outcome="completed"}');
+    expect(text).toContain('agent_queries_total{outcome="completed"}');
     expect(text).toMatch(/process_resident_memory_bytes \d+/);
-    expect(text).toMatch(/ines_build_info\{version="[^"]+"\} 1/);
+    expect(text).toMatch(/agent_build_info\{version="[^"]+"\} 1/);
     expect(text.endsWith("\n")).toBe(true);
   });
 });

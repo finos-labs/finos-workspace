@@ -221,7 +221,7 @@ describe("a metering token the FINOS Workspace API will not take", () => {
 
   it("is not reported as the user not being signed in, when the roles are checked", async () => {
     const { client } = clientAnswering(expired);
-    expect(await client.authorize("user-token", { agentId: "ines", tools: [] })).toEqual({
+    expect(await client.authorize("user-token", { agentId: "agent", tools: [] })).toEqual({
       ok: false,
       reason: "unavailable",
     });
@@ -229,7 +229,7 @@ describe("a metering token the FINOS Workspace API will not take", () => {
 
   it("is still the user when the refusal is not about the metering token", async () => {
     const { client } = clientAnswering(() => json({ detail: "You do not have access to the tool `web_search`" }, 403));
-    expect(await client.authorize("user-token", { agentId: "ines", tools: [] })).toEqual({
+    expect(await client.authorize("user-token", { agentId: "agent", tools: [] })).toEqual({
       ok: false,
       reason: "rejected",
     });
@@ -238,7 +238,7 @@ describe("a metering token the FINOS Workspace API will not take", () => {
 
   it("is still the user when the session token itself is refused", async () => {
     const { client } = clientAnswering(() => json({ detail: "Could not validate credentials" }, 401));
-    expect(await client.authorize("user-token", { agentId: "ines", tools: [] })).toEqual({
+    expect(await client.authorize("user-token", { agentId: "agent", tools: [] })).toEqual({
       ok: false,
       reason: "rejected",
     });

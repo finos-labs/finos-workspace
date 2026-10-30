@@ -20,10 +20,10 @@ const widget = (uuid: string, name: string, extra: Partial<Widget> = {}): Widget
 });
 
 const mcp = (name: string, description: string): AgentTool => ({
-  name: `Ines Tools_${name}`,
+  name: `Agent Tools_${name}`,
   tool_name: name,
-  server_id: "ines-tools",
-  url: "http://ines-mcp:8787/mcp",
+  server_id: "agent-tools",
+  url: "http://agent-mcp:8787/mcp",
   description,
   input_schema: { properties: { query: { type: "string" } }, required: ["query"] },
 });

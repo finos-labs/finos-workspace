@@ -25,7 +25,7 @@ function ragTools(): AgentTool[] {
   return [
     {
       name: "query_documents",
-      server_id: "ines",
+      server_id: "agent",
       url: "http://localhost:8787/mcp",
       description: "Search uploaded documents",
       input_schema: {
@@ -33,27 +33,27 @@ function ragTools(): AgentTool[] {
           query: { type: "string" },
           doc_ids: { type: "array", items: { type: "string" } },
           top_k: { type: "number" },
-          "x-ines-conversation-id": { type: "string" },
-          "x-ines-documents": { type: "array" },
+          "x-agent-conversation-id": { type: "string" },
+          "x-agent-documents": { type: "array" },
         },
         required: ["query"],
       },
     },
     {
       name: "list_documents",
-      server_id: "ines",
+      server_id: "agent",
       url: "http://localhost:8787/mcp",
       description: "List uploaded documents",
       input_schema: {
         properties: {
-          "x-ines-conversation-id": { type: "string" },
-          "x-ines-documents": { type: "array" },
+          "x-agent-conversation-id": { type: "string" },
+          "x-agent-documents": { type: "array" },
         },
       },
     },
     {
       name: "web_search",
-      server_id: "ines",
+      server_id: "agent",
       url: "http://localhost:8787/mcp",
       description: "Search the web",
       input_schema: { properties: { query: { type: "string" } }, required: ["query"] },
@@ -121,8 +121,8 @@ describe("document RAG — decoration on first query_documents call", () => {
     const emit = findExecuteAgentTool(events, "query_documents");
     expect(emit).toBeDefined();
     const p = payload(emit!);
-    expect(p.parameters["x-ines-conversation-id"]).toBe("conv-doc-1");
-    const shipped = p.parameters["x-ines-documents"] as Array<{ id: string; name: string }>;
+    expect(p.parameters["x-agent-conversation-id"]).toBe("conv-doc-1");
+    const shipped = p.parameters["x-agent-documents"] as Array<{ id: string; name: string }>;
     expect(shipped).toBeDefined();
     expect(shipped.map((d) => d.id).sort()).toEqual(["doc-bar", "doc-foo"]);
     expect(p.extra_state).toMatchObject({
@@ -148,8 +148,8 @@ describe("document RAG — decoration on first query_documents call", () => {
     const emit = findExecuteAgentTool(events, "list_documents");
     expect(emit).toBeDefined();
     const p = payload(emit!);
-    expect(p.parameters["x-ines-conversation-id"]).toBe("conv-doc-1b");
-    const shipped = p.parameters["x-ines-documents"] as Array<{ id: string }>;
+    expect(p.parameters["x-agent-conversation-id"]).toBe("conv-doc-1b");
+    const shipped = p.parameters["x-agent-documents"] as Array<{ id: string }>;
     expect(shipped.map((d) => d.id)).toEqual(["doc-foo"]);
   });
 
@@ -171,8 +171,8 @@ describe("document RAG — decoration on first query_documents call", () => {
     const emit = findExecuteAgentTool(events, "web_search");
     expect(emit).toBeDefined();
     const p = payload(emit!);
-    expect("x-ines-documents" in p.parameters).toBe(false);
-    expect("x-ines-conversation-id" in p.parameters).toBe(false);
+    expect("x-agent-documents" in p.parameters).toBe(false);
+    expect("x-agent-conversation-id" in p.parameters).toBe(false);
   });
 });
 
@@ -181,7 +181,7 @@ describe("document RAG — delta shipping on subsequent calls", () => {
     const priorTool: ToolMessage = {
       role: "tool",
       function: "execute_agent_tool",
-      input_arguments: { tool_name: "query_documents", server_id: "ines" },
+      input_arguments: { tool_name: "query_documents", server_id: "agent" },
       data: [{ items: [{ text: "(prior result)" }] }],
       extra_state: { documents_shipped: ["doc-foo"] },
     };
@@ -207,7 +207,7 @@ describe("document RAG — delta shipping on subsequent calls", () => {
     const emit = findExecuteAgentTool(events, "query_documents");
     expect(emit).toBeDefined();
     const p = payload(emit!);
-    const shipped = p.parameters["x-ines-documents"] as Array<{ id: string }>;
+    const shipped = p.parameters["x-agent-documents"] as Array<{ id: string }>;
     expect(shipped).toBeDefined();
     expect(shipped.map((d) => d.id)).toEqual(["doc-bar"]);
     expect(p.extra_state?.documents_shipped).toEqual(
@@ -215,11 +215,11 @@ describe("document RAG — delta shipping on subsequent calls", () => {
     );
   });
 
-  it("omits x-ines-documents entirely once everything has been shipped", async () => {
+  it("omits x-agent-documents entirely once everything has been shipped", async () => {
     const priorTool: ToolMessage = {
       role: "tool",
       function: "execute_agent_tool",
-      input_arguments: { tool_name: "query_documents", server_id: "ines" },
+      input_arguments: { tool_name: "query_documents", server_id: "agent" },
       data: [{ items: [{ text: "(prior)" }] }],
       extra_state: { documents_shipped: ["doc-foo"] },
     };
@@ -241,13 +241,13 @@ describe("document RAG — delta shipping on subsequent calls", () => {
       }),
     );
     const p = payload(findExecuteAgentTool(events, "query_documents")!);
-    expect("x-ines-documents" in p.parameters).toBe(false);
-    expect(p.parameters["x-ines-conversation-id"]).toBe("conv-doc-4");
+    expect("x-agent-documents" in p.parameters).toBe(false);
+    expect(p.parameters["x-agent-conversation-id"]).toBe("conv-doc-4");
   });
 });
 
-describe("document RAG — x-ines-* never reaches the model", () => {
-  it("query_documents tool surfaced to doGenerate has no x-ines-* keys", async () => {
+describe("document RAG — x-agent-* never reaches the model", () => {
+  it("query_documents tool surfaced to doGenerate has no x-agent-* keys", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("ok"));
     await collectGenerator(
       runAgentLoop({
@@ -270,7 +270,7 @@ describe("document RAG — x-ines-* never reaches the model", () => {
         .inputSchema?.jsonSchema?.properties;
       if (!props) continue;
       for (const k of Object.keys(props)) {
-        expect(`${name}.${k}: ${k.startsWith("x-ines-")}`).toBe(`${name}.${k}: false`);
+        expect(`${name}.${k}: ${k.startsWith("x-agent-")}`).toBe(`${name}.${k}: false`);
       }
     }
   });
@@ -324,7 +324,7 @@ describe("document RAG — file-tier widget bridge", () => {
     const emit = findExecuteAgentTool(events, "query_documents");
     expect(emit).toBeDefined();
     const p = payload(emit!);
-    const shipped = p.parameters["x-ines-documents"] as Array<{
+    const shipped = p.parameters["x-agent-documents"] as Array<{
       id: string;
       name: string;
       format: string;
@@ -334,7 +334,7 @@ describe("document RAG — file-tier widget bridge", () => {
     expect(shipped[0].id).toBe("file-pdf-1");
     expect(shipped[0].name).toBe("report.pdf");
     expect(shipped[0].format).toBe("pdf");
-    expect(p.parameters["x-ines-conversation-id"]).toBe("conv-file-rag-1");
+    expect(p.parameters["x-agent-conversation-id"]).toBe("conv-file-rag-1");
   });
 
   it("ignores file-* widgets whose format is not RAG-eligible (csv stays out of pendingDocuments)", async () => {
@@ -380,7 +380,7 @@ describe("document RAG — file-tier widget bridge", () => {
     );
     const emit = findExecuteAgentTool(events, "query_documents");
     const p = payload(emit!);
-    expect("x-ines-documents" in p.parameters).toBe(false);
+    expect("x-agent-documents" in p.parameters).toBe(false);
   });
 });
 

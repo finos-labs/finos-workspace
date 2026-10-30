@@ -42,14 +42,14 @@ describe("queryDocumentsHandler — guards", () => {
     const res = await queryDocumentsHandler({ query: "hello" });
     expect(res.content).toHaveLength(1);
     const parsed = JSON.parse(res.content[0].text);
-    expect(parsed.$ines_kind).toBe("error");
+    expect(parsed.$agent_kind).toBe("error");
     expect(parsed.error.code).toBe("MISSING_CONVERSATION_ID");
   });
 
   it("returns NO_DOCUMENTS_LOADED when conversation has no docs", async () => {
     const res = await queryDocumentsHandler({
       query: "anything",
-      "x-ines-conversation-id": "c-empty",
+      "x-agent-conversation-id": "c-empty",
     });
     expect(res.content).toHaveLength(1);
     const parsed = JSON.parse(res.content[0].text);
@@ -61,8 +61,8 @@ describe("queryDocumentsHandler — happy path", () => {
   it("ingests new docs from decoration and returns ranked chunks + citations", async () => {
     const res = await queryDocumentsHandler({
       query: "tell me about foo",
-      "x-ines-conversation-id": "c-1",
-      "x-ines-documents": [
+      "x-agent-conversation-id": "c-1",
+      "x-agent-documents": [
         {
           id: "d-1",
           name: "FooDoc.txt",
@@ -78,7 +78,7 @@ describe("queryDocumentsHandler — happy path", () => {
     expect(res.content[0].text).toContain("Hit 1");
     expect(res.content[0].text).toContain("FooDoc.txt");
     const last = JSON.parse(res.content[res.content.length - 1].text);
-    expect(last.$ines_kind).toBe("citation");
+    expect(last.$agent_kind).toBe("citation");
     expect(last.citation.type).toBe("document");
     expect(last.citation.title).toBe("FooDoc.txt");
   });
@@ -86,8 +86,8 @@ describe("queryDocumentsHandler — happy path", () => {
   it("filters by doc_ids when provided", async () => {
     await queryDocumentsHandler({
       query: "warmup",
-      "x-ines-conversation-id": "c-2",
-      "x-ines-documents": [
+      "x-agent-conversation-id": "c-2",
+      "x-agent-documents": [
         {
           id: "doc-foo",
           name: "Foo.txt",
@@ -105,7 +105,7 @@ describe("queryDocumentsHandler — happy path", () => {
     const filtered = await queryDocumentsHandler({
       query: "any topic",
       doc_ids: ["doc-foo"],
-      "x-ines-conversation-id": "c-2",
+      "x-agent-conversation-id": "c-2",
     });
     const allText = filtered.content.map((c) => c.text).join("\n");
     expect(allText).toContain("Foo.txt");
@@ -123,15 +123,15 @@ describe("queryDocumentsHandler — happy path", () => {
     ];
     const r1 = await queryDocumentsHandler({
       query: "first call",
-      "x-ines-conversation-id": "c-3",
-      "x-ines-documents": decoration,
+      "x-agent-conversation-id": "c-3",
+      "x-agent-documents": decoration,
     });
     expect(r1.content.length).toBeGreaterThan(0);
 
     const r2 = await queryDocumentsHandler({
       query: "second call",
-      "x-ines-conversation-id": "c-3",
-      "x-ines-documents": decoration,
+      "x-agent-conversation-id": "c-3",
+      "x-agent-documents": decoration,
     });
     expect(r2.content.length).toBeGreaterThan(0);
     expect(r2.content[0].text).not.toContain("could not be ingested");
@@ -144,14 +144,14 @@ describe("queryDocumentsHandler — PDFs", () => {
     res.content
       .filter((c) => c.text.startsWith("{"))
       .map((c) => JSON.parse(c.text))
-      .filter((c) => c.$ines_kind === "citation")
+      .filter((c) => c.$agent_kind === "citation")
       .map((c) => c.citation);
 
   it("tags every hit with its page and cites the page the answer is on", async () => {
     const res = await queryDocumentsHandler({
       query: "foo",
-      "x-ines-conversation-id": "c-pdf",
-      "x-ines-documents": [
+      "x-agent-conversation-id": "c-pdf",
+      "x-agent-documents": [
         {
           id: "w-1",
           name: "plan.pdf",
@@ -168,8 +168,8 @@ describe("queryDocumentsHandler — PDFs", () => {
   it("reports every page it returned, with how well it matched", async () => {
     const res = await queryDocumentsHandler({
       query: "foo",
-      "x-ines-conversation-id": "c-pdf-2",
-      "x-ines-documents": [
+      "x-agent-conversation-id": "c-pdf-2",
+      "x-agent-documents": [
         {
           id: "w-1",
           name: "plan.pdf",
@@ -187,8 +187,8 @@ describe("queryDocumentsHandler — PDFs", () => {
   it("reports a page once, however many passages of it matched", async () => {
     const res = await queryDocumentsHandler({
       query: "foo",
-      "x-ines-conversation-id": "c-pdf-dup",
-      "x-ines-documents": [
+      "x-agent-conversation-id": "c-pdf-dup",
+      "x-agent-documents": [
         { id: "w-1", name: "plan.pdf", format: "pdf", content_b64: pdfB64(["foo ".repeat(1500)]) },
       ],
     });
@@ -208,8 +208,8 @@ describe("queryDocumentsHandler — PDFs", () => {
     try {
       const res = await queryDocumentsHandler({
         query: "foo",
-        "x-ines-conversation-id": "c-pdf-url",
-        "x-ines-documents": [{ id: "w-2", name: "plan.pdf", format: "pdf", url: "https://files.example.com/plan.pdf?sig=1" }],
+        "x-agent-conversation-id": "c-pdf-url",
+        "x-agent-documents": [{ id: "w-2", name: "plan.pdf", format: "pdf", url: "https://files.example.com/plan.pdf?sig=1" }],
       });
       expect(asked).toEqual(["https://files.example.com/plan.pdf?sig=1"]);
       expect(res.content[0].text).toContain("plan.pdf p.2");
@@ -225,8 +225,8 @@ describe("queryDocumentsHandler — PDFs", () => {
     try {
       const res = await queryDocumentsHandler({
         query: "foo",
-        "x-ines-conversation-id": "c-pdf-403",
-        "x-ines-documents": [{ id: "w-3", name: "plan.pdf", format: "pdf", url: "https://files.example.com/plan.pdf" }],
+        "x-agent-conversation-id": "c-pdf-403",
+        "x-agent-documents": [{ id: "w-3", name: "plan.pdf", format: "pdf", url: "https://files.example.com/plan.pdf" }],
       });
       const parsed = JSON.parse(res.content[0].text);
       expect(parsed.error.code).toBe("NO_DOCUMENTS_LOADED");
@@ -240,8 +240,8 @@ describe("queryDocumentsHandler — PDFs", () => {
   it("says a PDF that is only pictures has no text to search", async () => {
     const res = await queryDocumentsHandler({
       query: "foo",
-      "x-ines-conversation-id": "c-pdf-scan",
-      "x-ines-documents": [{ id: "w-4", name: "scan.pdf", format: "pdf", content_b64: pdfB64(["", ""]) }],
+      "x-agent-conversation-id": "c-pdf-scan",
+      "x-agent-documents": [{ id: "w-4", name: "scan.pdf", format: "pdf", content_b64: pdfB64(["", ""]) }],
     });
     const parsed = JSON.parse(res.content[0].text);
     expect(parsed.error.code).toBe("NO_DOCUMENTS_LOADED");
@@ -252,8 +252,8 @@ describe("queryDocumentsHandler — PDFs", () => {
   it("refuses a link to a private address", async () => {
     const res = await queryDocumentsHandler({
       query: "foo",
-      "x-ines-conversation-id": "c-pdf-ssrf",
-      "x-ines-documents": [{ id: "w-5", name: "plan.pdf", format: "pdf", url: "http://169.254.169.254/latest/meta-data" }],
+      "x-agent-conversation-id": "c-pdf-ssrf",
+      "x-agent-documents": [{ id: "w-5", name: "plan.pdf", format: "pdf", url: "http://169.254.169.254/latest/meta-data" }],
     });
     expect(JSON.parse(res.content[0].text).error.code).toBe("NO_DOCUMENTS_LOADED");
   });

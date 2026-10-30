@@ -26,7 +26,7 @@ try {
 }
 
 if (config.auth.mode === "none") {
-  logger.warn("INES_AUTH=none: there are no users. Every request is anonymous and nothing is counted. Do not use this where others can reach the agent.");
+  logger.warn("AGENT_AUTH=none: there are no users. Every request is anonymous and nothing is counted. Do not use this where others can reach the agent.");
 }
 
 configureFetchPolicy({ workspace: config.workspaceFiles ?? undefined });
@@ -73,7 +73,7 @@ if (config.metricsPort !== null) {
 }
 
 if (liveDebugIgnored()) {
-  logger.warn("LIVE_DEBUG_TRACES is ignored in production: it would write whole conversations to the log. Set INES_ALLOW_DEBUG_TRACES=true to allow it.");
+  logger.warn("LIVE_DEBUG_TRACES is ignored in production: it would write whole conversations to the log. Set AGENT_ALLOW_DEBUG_TRACES=true to allow it.");
 }
 
 installErrorGuards(process, logger);
@@ -82,7 +82,7 @@ let listening: ServerType | null = null;
 installShutdown(process, {
   stopAccepting: () => listening?.close(),
   inFlight: () => limits.running(),
-  graceMs: Number(process.env.INES_SHUTDOWN_GRACE_SECONDS ?? 25) * 1000,
+  graceMs: Number(process.env.AGENT_SHUTDOWN_GRACE_SECONDS ?? 25) * 1000,
   finish: shutdownTelemetry,
   exit: (code) => process.exit(code),
   log: logger,

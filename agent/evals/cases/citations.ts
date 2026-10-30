@@ -11,7 +11,7 @@ const STASH_ID = "stashed-eval-citation";
 const PRIOR_WITH_STASH: ToolMessage = {
   role: "tool",
   function: "execute_agent_tool",
-  input_arguments: { tool_name: "fetch_webpage", server_id: "ines" },
+  input_arguments: { tool_name: "fetch_webpage", server_id: "agent" },
   data: [
     {
       items: [
@@ -35,7 +35,7 @@ const PRIOR_WITH_STASH: ToolMessage = {
 
 const FETCH_TOOL = {
   name: "fetch_webpage",
-  server_id: "ines",
+  server_id: "agent",
   url: "http://localhost:8787/mcp",
   description: "Fetch a webpage. Returns body + citation.",
   input_schema: {
@@ -46,7 +46,7 @@ const FETCH_TOOL = {
 
 const SEARCH_TOOL = {
   name: "web_search",
-  server_id: "ines",
+  server_id: "agent",
   url: "http://localhost:8787/mcp",
   description: "Search the web. Returns links + citations.",
   input_schema: {

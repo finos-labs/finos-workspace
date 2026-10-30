@@ -19,7 +19,7 @@ const statusMessages = (events: SSEEvent[]): string[] =>
     .filter((e) => e.event === "copilotStatusUpdate")
     .map((e) => String((e.data as { message?: unknown }).message ?? ""));
 
-describe("Ines's own skills", () => {
+describe("the agent's own skills", () => {
   it("are listed to the model and read without a round trip", async () => {
     const spy = makeSequencedSpyMockLlm([
       llmCallsTool("get_skill_content", { slug: "html-chart" }),
@@ -32,7 +32,7 @@ describe("Ines's own skills", () => {
         model: spy.model,
         allWidgets: [],
         workspaceState: null,
-        conversationId: "ines-skill",
+        conversationId: "agent-skill",
       }),
     );
 

@@ -36,12 +36,12 @@ describe("urlProblem", () => {
   });
 
   it("lets every address through where there are no users, and where every address is allowed by name", () => {
-    expect(urlProblem(URL_A, undefined, undefined, false, { INES_AUTH: "none" })).toBeNull();
+    expect(urlProblem(URL_A, undefined, undefined, false, { AGENT_AUTH: "none" })).toBeNull();
     expect(urlProblem(URL_A, undefined, SECRET, true)).toBeNull();
   });
 
   it("fetches no address at all when there are users and no secret", () => {
-    for (const env of [{}, { INES_AUTH: "workspace" }]) {
+    for (const env of [{}, { AGENT_AUTH: "workspace" }]) {
       const problem = urlProblem(URL_A, undefined, undefined, false, env);
       expect(problem).toContain("not configured");
       expect(problem).not.toContain(URL_A);

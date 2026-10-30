@@ -127,7 +127,7 @@ npm run test:integration
 The tests run against a running stack over HTTPS, as a deployment serves it, and sign in as an
 account that exists there. The session cookie is Secure, and WebKit does not count
 http://localhost as secure. Start the whole stack from the repository root with
-`docker-compose.e2e.yml`, which puts a TLS front before the web app, the API and Ines with a
+`docker-compose.e2e.yml`, which puts a TLS front before the web app, the API and the agent with a
 certificate from a certificate authority made for the purpose, and name the administrator it
 created: the address in `backend-api/backend/scripts/cfgs/config.toml`, and the password you set
 for it:

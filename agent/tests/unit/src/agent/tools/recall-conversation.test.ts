@@ -119,7 +119,7 @@ describe("recall_conversation — limits", () => {
     await recall(chat(3));
     const text = renderMetrics();
     for (const mode of ["words", "numbers", "latest"]) {
-      expect(text).toMatch(new RegExp(`ines_conversation_recalls_total\\{mode="${mode}"\\} \\d+`));
+      expect(text).toMatch(new RegExp(`agent_conversation_recalls_total\\{mode="${mode}"\\} \\d+`));
     }
   });
 });

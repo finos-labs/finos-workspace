@@ -18,7 +18,7 @@ const TICKERS_TABLE_LOADED: ToolMessage = {
       items: [
         {
           text: JSON.stringify({
-            $ines_kind: "sqlite_table",
+            $agent_kind: "sqlite_table",
             name: "tickers",
             rows: [
               { ticker: "AAPL", q4_revenue: 124.3 },
