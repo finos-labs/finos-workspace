@@ -109,7 +109,7 @@ Widget plugins are packages built outside this repository (`docs/widget-plugins/
 
 ### A deployed data backend
 
-A widget can read a data backend that a deployment uses: add it under Connections with your own key, read-only where the backend has such keys, and have the backend allow `http://localhost:1420` as an origin. The browser calls it directly, and this stack has its own database, so nothing is written to the deployment's FINOS Workspace. A deployment's agent and plugin backends accept only that deployment's sessions and call tokens; run them on your machine instead (the root `docker-compose.yml` runs the agent, `docs/examples/backend/compose.yaml` a plugin backend).
+A widget can read a data backend that a deployment uses: add it under Connections with your own key, read-only where the backend has such keys, and have the backend allow `http://localhost:1420` as an origin. The browser calls it directly, and this stack has its own database, so nothing is written to the deployment's FINOS Workspace. A deployment's agent and plugin backends accept only that deployment's sessions and call tokens; run them on your machine instead (the root `docker-compose.yml` runs the agent, `docs/examples/sql-explorer/examples/compose.yaml` a plugin backend).
 
 ## What does not work locally
 

@@ -259,7 +259,7 @@ A backend declares MCP servers on the templates of its `apps.json` (`mcpServers`
 
 1. **The agent is told.** Where the request is assembled (`lib/utils/mcpLink.ts`, used in `useAiFetchRequestInit.tsx`), a widget row gains `mcp_tool: { server_id, tool_name, args }` when the request's tools include the linked tool; `server_id` and `tool_name` come from that list, never from the widget's strings.
 2. **Ines shows it.** Her `search_widgets` rows carry `mcp_tool: { tool, args }` with the tool named as the model calls it (`linkedToolName`, `agent/src/mcp/factory.ts`), and her prompt's widget lists tag the widget `[query tool: <name>]`. Nothing is routed by it: the model chooses.
-3. **A call cites the widget** (`citeMcpCall`, used by `useMcpExecutor`). Only widgets of the server's own backend that name its declared name and the tool are candidates; `input_args` are built through the mapping in reverse, and arguments that map to no param go in the citation's `details`. An answer cites a widget once, however many calls cited it: the first citation of a widget is kept, for the calls of a linked tool and for those of an `iframe` widget's own server.
+3. **A call cites the widget** (`citeMcpCall`, used by `useMcpExecutor`). Only widgets of the server's own backend that name its declared name and the tool are candidates; `input_args` are built through the mapping in reverse, and arguments that map to no param go in the citation's `details`.
 4. **The FINOS Workspace MCP** returns the link in `list_available_widgets` and `get_widget_schema`.
 
 ### 5.5 Security

@@ -177,7 +177,28 @@ as you rebuild them (`docs/widget-plugins/AUTHORING.md`, section 11).
 
 ## Try it
 
-The [examples backend](../backend/README.md) has five `plotly` widgets made with plotly.py: stacked bars, lines, a sampled signal from numpy arrays, a heatmap, and the bars of any SQL query. It answers `theme=dark` with plotly.py's `plotly_dark` template and `theme=light` with `plotly_white`. Connect it as a backend under Connections, then add *Sales by region*, *Sales trend*, *Signal and noise*, *Correlation* and *SQL chart* to a dashboard. *Sales by region* has `raw`: its database button shows its rows, drawn by the AgGrid plugin, and the AI agent reads them.
+`examples/backend.py` is a backend with four `plotly` widgets made with plotly.py:
+stacked bars, lines, a sampled signal from numpy arrays, and a heatmap. It answers
+`theme=dark` with plotly.py's `plotly_dark` template and `theme=light` with
+`plotly_white`.
+
+```bash
+python3 -m venv examples/.venv
+```
+
+```bash
+examples/.venv/bin/pip install -r examples/requirements.txt
+```
+
+```bash
+npm run demo-backend
+```
+
+It listens on `http://localhost:7798` and allows the FINOS Workspace web app at
+`http://localhost:3000`; `examples/.venv/bin/python examples/backend.py <port> <web app
+origin>` changes either. Connect it as a backend under Connections, then add *Sales by
+region*, *Sales trend*, *Signal and noise* and *Correlation* to a dashboard. *Sales by
+region* has `raw`: its database button shows its rows, and the AI agent reads them.
 
 ## Notes
 
