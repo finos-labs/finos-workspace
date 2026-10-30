@@ -9,7 +9,7 @@ A widget can name one MCP tool of its own backend. The AI agent uses that tool t
 
 ## Servers
 
-A backend declares its MCP servers on the templates of its `apps.json`, in the `mcpServers` list. Each server has a `name`, a `description`, a `url` and an `authType`. When a user connects the backend, FINOS Workspace registers each declared server once. It uses the backend's header credentials as the server's headers, and it records the server's declared name together with the backend's id. The declared name cannot be edited, unlike the server's display name.
+A backend declares its MCP servers on the templates of its [`apps.json`](../../reference/schemas/apps-json.mdx), in the `mcpServers` list. Each server has a `name`, a `description`, a `url` and an `authType`. When a user connects the backend, FINOS Workspace registers each declared server once. It uses the backend's header credentials as the server's headers, and it records the server's declared name together with the backend's id. The declared name cannot be edited, unlike the server's display name.
 
 The agent's tools are the enabled tools of the connected servers that the user may use, and the browser sends them when the agent has MCP tools turned on. A user may use every server that one of the user's roles grants, and every server that a backend declares when the user can use that backend. A backend declares servers in the `mcpServers` of its `apps.json` and in the `storage.mcpUrl` of its `iframe` widgets. Using the backend is the approval, so no server is granted one by one. The browser makes each call through `/app/mcp-proxy`, which checks the same access again for every `tools/call` request.
 

@@ -396,9 +396,25 @@ The descriptor of the agent has three more features:
 
 A feature that is an object, with a `label`, a `default` and a `description`, is a setting. [agents.json](../../reference/schemas/agents-json.mdx) lists the features that the web app knows and the fields of a setting.
 
-## 3. Read the widgets
+## 3. Read the question
 
-With the feature on, a question carries `widgets`. This is the question `Read the data of Portfolio summary` on the dashboard of Quick Start. The request has more fields, which [Agent query protocol](../../reference/protocols/ines-query.mdx) lists:
+The body of a question is a JSON object. Only `messages` is required, and the web app adds the other fields when the descriptor asks for them or when the user has something to send. [Sending a question](../../reference/protocols/ines-query.mdx#sending-a-question) gives the type and the limits of every field. This agent reads the first three fields of the table and ignores the others.
+
+| Field | What it holds |
+|---|---|
+| `messages` | The conversation, oldest first. The last message is the question, or the result of a call. [Messages](../../reference/protocols/ines-query.mdx#messages) |
+| `widgets` | The widgets that the agent may read, in the tiers `primary`, `secondary` and `extra`. [Widgets](../../reference/protocols/ines-query.mdx#widgets) |
+| `workspace_options` | The value of each setting of the descriptor, by key. |
+| `context` | What the user attached to the question, such as the artifacts of earlier answers. [Context](../../reference/protocols/ines-query.mdx#context) |
+| `workspace_state` | Where the user is: the current page, dashboard and tab, and the recent actions. |
+| `tools` | The tools of the MCP servers that the user connected, which the agent can ask the browser to run. [Function calls](../../reference/protocols/ines-query.mdx#function-calls) |
+| `urls` | The web addresses in the message of the user. |
+| `timezone` | The time zone of the user, such as `Europe/Paris`. |
+| `skills_catalog`, `selected_skills` | The skills in the library of the user, and the skills that the user or the model chose for this question. |
+| `documents` | Files sent inline. The field is deprecated, because the web app sends a file as a widget in `widgets.primary`. |
+| `model` | Accepted and not used. Ines reads the model from `workspace_options`. |
+
+With the feature `widget-dashboard-select` on, a question carries `widgets`. This is the question `Read the data of Portfolio summary` on the dashboard of Quick Start, with the fields that this agent reads:
 
 ```json
 {
@@ -423,11 +439,15 @@ With the feature on, a question carries `widgets`. This is the question `Read th
 }
 ```
 
+A widget has an `origin`, which is the name of its backend, a `widget_id`, a `uuid`, a `name`, a `description`, a `widget_type`, a `category` and its `params`. A parameter has a `name`, a `type`, a `default_value` and the `current_value` that the dashboard shows. [Widgets](../../reference/protocols/ines-query.mdx#widgets) lists every field of a widget.
+
 The widgets that the user selected are in `primary`, and the other widgets of the dashboard are in `secondary`. The tier `extra` holds the rest of the catalog, and the web app fills it only for an agent that has the feature `widget-global-search`. The function `widgets_of`, or `widgetsOf`, joins the three lists. The function `respond` looks for a widget whose name the question contains. When there is none, it answers with an overview of the widgets and suggests reading the first one.
 
 ## 4. Ask the browser for the data
 
-Your agent cannot reach the backend of a widget. The browser can, with the credentials of the connection. So an agent asks the browser for the data and ends its answer there. When the question names a widget, the agent sends two events:
+Your agent cannot reach the backend of a widget. The browser can, with the credentials of the connection. So an agent asks the browser for the data with a function call, and ends its answer there. The function that reads the data of widgets is `get_widget_data`. [Widget data for the agent](../../reference/protocols/ines-widget-data.mdx) follows one read from the call to the answer. This section shows what the agent writes and what it reads.
+
+When the question names a widget, the agent sends two events:
 
 ```
 event: copilotStatusUpdate
@@ -437,9 +457,16 @@ event: copilotFunctionCall
 data: {"function":"get_widget_data","input_arguments":{"data_sources":[{"widget_uuid":"7c0e5f4a-9c1b-4a46-8f0a-2f4f2c0f9a11","origin":"Quick start","id":"portfolio_summary","input_args":{}}]},"extra_state":{}}
 ```
 
-The status update is a line in the steps that the panel shows. The function call ends the answer. Its `function` is `get_widget_data`, and the data source names the widget by `widget_uuid`, `origin` and `id`. The `input_args` hold the values of the widget's parameters: the function `input_args`, or `inputArgs`, takes the value that the dashboard shows, and the default of the parameter when there is none.
+The status update is a line in the steps that the panel shows. The function call ends the answer. Its `function` is `get_widget_data`, its `input_arguments` hold a list of `data_sources`, one for each widget to read, and its `extra_state` holds state that the agent wants back. [The function call](../../reference/protocols/ines-widget-data.mdx#the-function-call) lists the fields of a data source:
 
-The browser fetches the data and sends the conversation again. It adds two messages: an `ai` message that records the call, and a `tool` message that holds the result. The agent finds the result in the last message:
+| Field of a data source | Meaning |
+|---|---|
+| `widget_uuid` | The `uuid` of the widget, or its `widget_id` when it has none. |
+| `origin` | The name of the backend that serves the widget. |
+| `id` | The `widget_id` of the widget. |
+| `input_args` | The value of every parameter of the widget, by name. The function `input_args`, or `inputArgs`, takes the value that the dashboard shows, and the default of the parameter when there is none. |
+
+The browser reads each data source in turn. When the widget is on the open dashboard and has loaded its data with the same parameters, the browser returns that data and makes no request. Otherwise it sends the request that the widget itself would send, with the credentials of the connection. A failed source does not fail the call. [What the browser does](../../reference/protocols/ines-widget-data.mdx#what-the-browser-does) lists the cases. The browser then sends the conversation again, with two messages added: an `ai` message that records the call, and a `tool` message that holds the result. The agent finds the result in the last message:
 
 ```json
 {
@@ -451,13 +478,22 @@ The browser fetches the data and sends the conversation again. It adds two messa
 }
 ```
 
-`data` holds one entry for each data source, in order. An entry has `items`, and an item has its `content` as a string. When the browser cannot get the data, the entry has an `error_type` and a `content` that says why, and the agent reports that instead. `extra_state` comes back as the agent sent it. An agent that wants something back puts it there and treats it as input that the user could have changed. [Function calls](../../reference/protocols/ines-query.mdx#function-calls) lists the functions that an agent can ask for.
+`function` and `input_arguments` repeat the call. `data` holds one entry for each data source, in order, and an entry is one of two things:
+
+| Entry | Meaning |
+|---|---|
+| `items` | The data. An item has its `content` as a string, or a `url` for a file that the user uploaded, and it may have a `data_format` that says what the content is. |
+| `error_type` and `content` | The browser could not read the source, and `content` says why. |
+
+The `error_type` is `gateway_error` when the backend answered with a status other than 2xx, `not_found` when the widget or one of the parameters is unknown, and `unexpected_error` for anything else, such as a network failure. [The reply](../../reference/protocols/ines-widget-data.mdx#the-reply) lists the shapes of an item, and [Errors](../../reference/protocols/ines-widget-data.mdx#errors) the causes of an error. This agent reads the `content` of the first item, and it reports an error as text.
+
+`extra_state` comes back with what the agent put there. An agent that wants something back puts it there and treats it as input that the user could have changed. [Function calls](../../reference/protocols/ines-query.mdx#function-calls) lists the functions that an agent can ask for, with the arguments of each and the content of `data` that each one gets.
 
 ## 5. Answer and cite
 
 The function `answer_from_result`, or `answerFromResult`, counts the lines of the content and says how many there are and what the first one is. A real agent hands the content to its model here.
 
-After the text, the agent sends the event `copilotCitationCollection`. A citation has an `id`, a `source_info` that names the widget, and the `input_args` that fetched its data. The panel shows a chip with the name of the widget under the answer, and selecting it lists those values.
+After the text, the agent sends the event `copilotCitationCollection`. A citation has an `id`, a `source_info` that names the widget, and the `input_args` that fetched its data. The panel shows a chip with the name of the widget under the answer, and selecting it lists those values. [Citations](../../reference/protocols/ines-query.mdx#citations) lists the fields of a citation.
 
 ```
 event: copilotCitationCollection
@@ -466,7 +502,7 @@ data: {"citations":[{"id":"widget-7c0e5f4a-9c1b-4a46-8f0a-2f4f2c0f9a11","source_
 
 ## 6. Suggest a question and read a setting
 
-The web app sends the value of every setting in `workspace_options`, each under its key: `true` for a switch that is on, and the chosen value for a text or a choice. The function `suggest` sends the event `copilotPromptSuggestions` only when `workspace_options["prompt-suggestions"]` is `true`, so the user can switch the suggestions off. The function `say` writes the answer in capitals when `shout` is `true`.
+The web app sends the value of every setting in `workspace_options`, each under its key: `true` for a switch that is on, and the chosen value for a text or a choice. [agents.json](../../reference/schemas/agents-json.mdx#features) lists the kinds of setting. The function `suggest` sends the event [`copilotPromptSuggestions`](../../reference/protocols/ines-query.mdx#the-response) only when `workspace_options["prompt-suggestions"]` is `true`, so the user can switch the suggestions off. The function `say` writes the answer in capitals when `shout` is `true`.
 
 ```
 event: copilotPromptSuggestions
@@ -475,7 +511,7 @@ data: {"suggestions":["What is on this dashboard?"]}
 
 ## 7. Handle a failure
 
-A request that does not fit gets the status 400 and a JSON body with an `error`, before any event. A failure after the stream has started ends the stream with an event of the type `ERROR`, which the web app shows in the chat:
+A request that does not fit gets the status 400 and a JSON body with an `error`, before any event. [Refusals and errors](../../reference/protocols/ines-query.mdx#refusals-and-errors) lists the statuses that Ines uses. A failure after the stream has started ends the stream with a [status update](../../reference/protocols/ines-query.mdx#status-updates) whose `eventType` is `ERROR`, which the web app shows in the chat:
 
 ```
 event: copilotStatusUpdate

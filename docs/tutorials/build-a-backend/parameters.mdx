@@ -8,7 +8,7 @@ import TabItem from "@theme/TabItem";
 
 # Parameters
 
-Parameters are the controls in a widget's header. FINOS Workspace sends their values with each request: in the query by default, or in a header, a JSON body or the path. The `type` of a parameter decides the control, so pick the type that matches the value. [widgets.json](../../reference/schemas/widgets-json.mdx) lists every field.
+Parameters are the controls in a widget's header. FINOS Workspace sends their values with each request: in the query by default, or in a header, a JSON body or the path. The `type` of a parameter decides the control, so pick the type that matches the value. [widgets.json](../../reference/schemas/widgets-json.mdx) lists every field, and [Widget requests](../../reference/protocols/widget-requests.mdx) lists how each value is written and which values are not sent.
 
 ## Text parameter
 
@@ -655,7 +655,7 @@ def param_rows(
 
 ## Header parameter
 
-With `"in": "header"`, the value travels as a request header named after the parameter. The name must be one a browser lets page script set, and the backend must allow it in CORS.
+With `"in": "header"`, the value travels as a request header named after the parameter. The name must be one a browser lets page script set, and the backend must allow it in CORS. [Header parameters](../../reference/protocols/widget-requests.mdx#header-parameters) lists the names that are not allowed.
 
 ```json title="widgets.json"
 {
@@ -718,7 +718,7 @@ def param_header(
 
 ## Body parameters
 
-With `"method": "POST"` on the widget and `"in": "body"` on its parameters, the values are sent as one flat JSON object.
+With `"method": "POST"` on the widget and `"in": "body"` on its parameters, the values are sent as one flat JSON object. [How values are written](../../reference/protocols/widget-requests.mdx#how-values-are-written) says how each type of value appears in it.
 
 ```json title="widgets.json"
 {

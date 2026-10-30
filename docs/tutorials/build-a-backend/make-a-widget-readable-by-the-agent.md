@@ -65,7 +65,7 @@ Three more points apply to `raw`:
 
 Some widgets show data that the Agent can fetch better with a tool than with a plain request, for example when a database sits behind a query tool of your own MCP server. The key `mcp_tool` links the widget to such a tool, so that the Agent knows which tool answers questions about the data that the widget shows.
 
-1. Declare the MCP server in the `mcpServers` list of an app in the backend's `apps.json`, with a `name`, a `description`, a `url` and an `authType`.
+1. Declare the MCP server in the `mcpServers` list of an app in the backend's [`apps.json`](../../reference/schemas/apps-json.mdx), with a `name`, a `description`, a `url` and an `authType`.
 2. Add `mcp_tool` to the widget. The key `mcp_server` is the name that you declared, `tool_id` is the name of the tool on that server, and `args` says how the widget's parameters fill the tool's arguments:
 
    ```json

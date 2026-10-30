@@ -67,7 +67,7 @@ FINOS Workspace reads `apps.json`, and when the backend has no such file, it rea
 
 - A plugin widget whose configuration in `state.storage.plugin.config` the plugin's settings refuse, or a built-in widget that sets such a configuration.
 - An MCP server whose name another app of the backend uses for a different address.
-- A widget whose `mcp_tool.mcp_server` names a server that no app of the backend declares.
+- A widget whose [`mcp_tool.mcp_server`](../../reference/protocols/mcp-tool-link.md) names a server that no app of the backend declares.
 
 The Warning notice reports a layout item whose widget `widgets.json` does not define, with the text "Missing widgets used in tab" and the ids. The dashboard then opens without that widget.
 

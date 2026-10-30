@@ -19,4 +19,4 @@ Before you open a pull request, read [CONTRIBUTING.md](https://github.com/openbq
 | Add an icon to the web app | [Add an icon](add-an-icon.md) |
 | Change the documentation | [Write and preview documentation](write-docs.md) |
 | Rebuild the generated reference | [Regenerate the reference data](regenerate-reference-data.md) |
-| Change what a `widgets.json` file may contain | [Change the widgets.json contract](change-the-widgets-contract.md) |
+| Change what a [`widgets.json`](../../reference/schemas/widgets-json.mdx) file may contain | [Change the widgets.json contract](change-the-widgets-contract.md) |

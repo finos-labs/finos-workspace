@@ -155,6 +155,6 @@ An AI host can help with this conversion. The FINOS Workspace MCP server serves 
 
 ## Test the file
 
-1. Serve the file at `/widgets.json` on your backend, and serve `/apps.json` too, with `[]` when you have no apps.
+1. Serve the file at `/widgets.json` on your backend, and serve [`/apps.json`](../../reference/schemas/apps-json.mdx) too, with `[]` when you have no apps.
 2. In Connections, select Connect Backend, enter the name and the address, set Validate widgets to Yes and select Test. The result says how many widgets FINOS Workspace found, and it lists the problems of every definition that breaks the contract, each with the path of the key. [Review and debug a backend](review-and-debug-a-backend.md) explains the notices.
 3. Add the widgets to a dashboard and open the network tool of your browser. Check that each request has the URL, the headers and the body that you expect, and that the backend answers each with the right data.

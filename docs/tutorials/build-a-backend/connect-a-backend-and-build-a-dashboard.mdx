@@ -209,7 +209,7 @@ node backend.ts
 The program has three parts:
 
 - **The widgets.** `WIDGETS` is the content of `widgets.json`. Each key is the id of a widget. Each value gives the widget a name, a description, a category for the catalog, a type and the endpoint that serves its data. The widget `revenue_by_region` also has one parameter, `year`, with the start value 2025.
-- **The routes.** The backend answers `/widgets.json` with `WIDGETS`, and `/apps.json` with an empty list, because this backend has no apps. It answers the two widget endpoints with Markdown text.
+- **The routes.** The backend answers `/widgets.json` with `WIDGETS`, and [`/apps.json`](../../reference/schemas/apps-json.mdx) with an empty list, because this backend has no apps. It answers the two widget endpoints with Markdown text.
 - **The access rules.** The header `Access-Control-Allow-Origin` lets the web app at `http://localhost:3000` call the backend. The browser checks a route with an `OPTIONS` request first. The backend answers 204 for a route that exists and 404 for a route that does not exist. FINOS Workspace uses these answers to check the routes of a backend.
 
 The backend uses port 9100. Keep it running. [widgets.json](../../reference/schemas/widgets-json.mdx) lists all the fields of a widget. [Widget requests](../../reference/protocols/widget-requests.mdx) describes the requests that the web app sends.

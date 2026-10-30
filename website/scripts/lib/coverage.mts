@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import type { AgentData, ApiData, BridgeData, PluginsData } from "../../src/data/types.ts";
 import { fromRepo } from "./paths.mts";
 
@@ -167,4 +167,68 @@ export function checkExampleListings(): void {
     }
   }
   if (problems.length > 0) throw new Error(`A tutorial shows code that differs from the example that its test runs:\n${problems.join("\n")}`);
+}
+
+interface LinkRule {
+  term: string;
+  pattern: RegExp;
+  pages: string[];
+  only?: string;
+  except?: string;
+}
+
+const REFERENCE = "docs/reference/";
+const LINK_RULES: LinkRule[] = [
+  { term: "widgets.json", pattern: /widgets\.json/, pages: [`${REFERENCE}schemas/widgets-json.mdx`] },
+  { term: "apps.json", pattern: /apps\.json/, pages: [`${REFERENCE}schemas/apps-json.mdx`] },
+  { term: "plugin.json", pattern: /plugin\.json/, pages: [`${REFERENCE}schemas/plugin-json.mdx`, `${REFERENCE}plugins/package-and-manifest.mdx`] },
+  { term: "agents.json", pattern: /agents\.json/, pages: [`${REFERENCE}schemas/agents-json.mdx`] },
+  { term: "the MCP tool link", pattern: /(?<![.\w])mcp_tool(?!\w)|MCP tool link/, pages: [`${REFERENCE}protocols/mcp-tool-link.md`] },
+  { term: "raw rows", pattern: /rawDataKey|rawType|`raw`|"raw": true/, pages: [`${REFERENCE}protocols/raw-rows.md`], only: "docs/tutorials/build-a-backend/" },
+  { term: "the iframe widget protocol", pattern: /workspace-connect|workspace-auth|postMessage|iframe protocol|iframe widget protocol/, pages: [`${REFERENCE}protocols/iframe-widget.mdx`] },
+  { term: "the plugin frame protocol", pattern: /(?<!i)frame protocol|plugin frame/, pages: [`${REFERENCE}protocols/plugin-frame.mdx`] },
+  { term: "the FINOS Workspace bridge", pattern: /workspace bridge|bridge protocol|workspace-bridge/i, pages: [`${REFERENCE}protocols/workspace-bridge.mdx`] },
+  {
+    term: "the agent query protocol",
+    pattern: /query protocol|copilot(?:MessageChunk|FunctionCall|StatusUpdate)|\/v1\/query|get_widget_data/,
+    pages: [`${REFERENCE}protocols/ines-query.mdx`, `${REFERENCE}protocols/ines-widget-data.mdx`],
+  },
+  { term: "widget requests", pattern: /optionsMethod|"in": "(?:header|body)"/, pages: [`${REFERENCE}protocols/widget-requests.mdx`] },
+  { term: "typed results", pattern: /typed results?/, pages: [`${REFERENCE}protocols/ines-tool-results.mdx`], except: "docs/tutorials/contribute/" },
+  { term: "the module contract", pattern: /module contract/, pages: [`${REFERENCE}plugins/module-contract.mdx`] },
+  { term: "plugin permissions", pattern: /`core:[a-z]+(?::[a-z]+)*`/, pages: [`${REFERENCE}plugins/commands-and-permissions.mdx`] },
+  { term: "the frame policy", pattern: /frame policy|content security policy/, pages: [`${REFERENCE}plugins/frame-policy.mdx`] },
+  {
+    term: "plugin proxies",
+    pattern: /\bproxies\b|(?<!egress )(?<!forward )(?<!reverse )\bproxy\b/,
+    pages: [`${REFERENCE}plugins/proxies.mdx`],
+    only: "docs/tutorials/plugins/",
+  },
+];
+
+function linksOf(prose: string, page: string): Set<string> {
+  const found = new Set<string>();
+  for (const match of prose.matchAll(/\]\(([^)\s#]+)(?:#[^)]*)?\)/g)) {
+    const target = match[1] as string;
+    if (!/^(?:https?:|mailto:|\/)/.test(target)) found.add(relative(fromRepo("."), resolve(dirname(page), target)));
+  }
+  return found;
+}
+
+export function checkReferenceLinks(): void {
+  const problems: string[] = [];
+  for (const page of pages(fromRepo("docs/tutorials"))) {
+    const name = relative(fromRepo("."), page);
+    const prose = readFileSync(page, "utf8")
+      .replace(/^---\n[\s\S]*?\n---\n/, "")
+      .replace(/```[\s\S]*?```/g, "");
+    const linked = linksOf(prose, page);
+    for (const rule of LINK_RULES) {
+      if ((rule.only && !name.startsWith(rule.only)) || (rule.except && name.startsWith(rule.except))) continue;
+      if (rule.pattern.test(prose) && !rule.pages.some((target) => linked.has(target))) {
+        problems.push(`${name} names ${rule.term} and does not link ${rule.pages[0]}`);
+      }
+    }
+  }
+  if (problems.length > 0) throw new Error(`Tutorials name a protocol or a schema without a link to its reference page:\n${problems.join("\n")}`);
 }

@@ -10,7 +10,7 @@ import TabItem from "@theme/TabItem";
 
 In about 15 minutes you write an agent, add it to FINOS Workspace, and ask it a question. The agent has no model: it repeats your question. [Let your agent read the dashboard](let-your-agent-read-the-dashboard.mdx) gives it the dashboard.
 
-An agent is a web server with two routes. `GET /agents.json` tells FINOS Workspace who the agent is and where to send questions. `POST /v1/query` receives a question and answers with a stream of events. The browser calls both directly, so the agent also has to allow the address of the web app.
+An agent is a web server with two routes. `GET /agents.json` tells FINOS Workspace who the agent is and where to send questions, in the format that [agents.json](../../reference/schemas/agents-json.mdx) lists. `POST /v1/query` receives a question and answers with a stream of events, as [Agent query protocol](../../reference/protocols/ines-query.mdx) describes. The browser calls both directly, so the agent also has to allow the address of the web app.
 
 You need:
 
@@ -146,8 +146,19 @@ createServer(async (request, response) => {
 The program has three parts:
 
 - **The descriptor.** `AGENTS` is the answer to `GET /agents.json`. The key of the object, `echo_agent`, is the id of the agent. `endpoints.query` is the address that receives the questions. A relative address is resolved against the address of `agents.json`. `features.streaming` tells the web app that the agent answers with a stream of events.
-- **The answer.** The web app posts the conversation as `messages`, and the last message is the question. The agent answers with `Content-Type: text/event-stream`. Each event is two lines and an empty line: the name of the event, and its data as JSON. The event `copilotMessageChunk` carries a piece of the answer in `delta`, and the web app appends the pieces in the order that they arrive.
-- **The permission for the web app.** The browser calls the agent from the address of the web app, so the agent has to allow that address. It allows one origin, the methods `GET` and `POST`, and the two headers that the web app sends on its own: `Content-Type`, which the JSON body needs, and `X-Trace-Id`, which carries the id of the chat. Do not allow `*`. [Requests that a widget sends](../build-a-backend/requests-from-a-widget.md#cors) explains why.
+- **The answer.** The web app posts the conversation as `messages`, and the last message is the question. A message has a `role`: `human` for the user, `ai` for an earlier answer of the agent, and `tool` for a result that the browser fetched for the agent. [Messages](../../reference/protocols/ines-query.mdx#messages) describes them. The agent answers with `Content-Type: text/event-stream`. Each event is two lines and an empty line: the name of the event, and its data as JSON. The event `copilotMessageChunk` carries a piece of the answer in `delta`, and the web app appends the pieces in the order that they arrive.
+- **The permission for the web app.** The browser calls the agent from the address of the web app, so the agent has to allow that address. It allows one origin, the methods `GET` and `POST`, and the two headers that the web app sends on its own: `Content-Type`, which the JSON body needs, and `X-Trace-Id`, which carries the id of the chat. Do not allow `*`. [Requests that a widget sends](../build-a-backend/requests-from-a-widget.md#cors) explains why, and [Sending a question](../../reference/protocols/ines-query.mdx#sending-a-question) lists every header of the request.
+
+An agent can send six events. This one sends only `copilotMessageChunk`, and the next guide uses the others. [The response](../../reference/protocols/ines-query.mdx#the-response) lists the fields of each event.
+
+| Event | What the web app does with it |
+|---|---|
+| [`copilotMessageChunk`](../../reference/protocols/ines-query.mdx#the-answer) | Appends the text in `delta` to the answer. |
+| [`copilotStatusUpdate`](../../reference/protocols/ines-query.mdx#status-updates) | Adds a step to the steps that the panel shows. |
+| [`copilotMessageArtifact`](../../reference/protocols/ines-query.mdx#artifacts) | Shows a table, an HTML document or an app in the answer. |
+| [`copilotCitationCollection`](../../reference/protocols/ines-query.mdx#citations) | Shows the sources of the answer under it. |
+| [`copilotPromptSuggestions`](../../reference/protocols/ines-query.mdx#the-response) | Offers follow-up questions. |
+| [`copilotFunctionCall`](../../reference/protocols/ines-query.mdx#function-calls) | Ends the answer and asks the browser to do something, such as to fetch the data of a widget. |
 
 ## 2. Start the agent
 
