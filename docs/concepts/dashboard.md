@@ -14,6 +14,4 @@ A dashboard arranges widgets on a page. Each widget on it is a card.
 - A dashboard belongs to one person. The FINOS Workspace API stores it and keeps older versions for a while.
 - A dashboard can be saved as an [app](app.md), shared and exported.
 
-| | |
-|---|---|
-| Use it | [Create and arrange dashboards](../features/dashboards/create-and-arrange-dashboards.md), [Organize dashboards in folders](../features/dashboards/organize-dashboards-in-folders.mdx), [Export a dashboard](../features/dashboards/export-a-dashboard.md), [Share a dashboard](../features/sharing/share-a-dashboard.md) |
+- **Use it:** [Create and arrange dashboards](../features/dashboards/create-and-arrange-dashboards.md), [Organize dashboards in folders](../features/dashboards/organize-dashboards-in-folders.mdx), [Export a dashboard](../features/dashboards/export-a-dashboard.md), [Share a dashboard](../features/sharing/share-a-dashboard.md)
