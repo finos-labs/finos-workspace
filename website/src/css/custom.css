@@ -151,7 +151,7 @@
 }
 
 @media (min-width: 997px) {
-  [class*="docItemCol"] {
+  .row > [class*="docItemCol"] {
     flex: 1 1 0;
     min-width: 0;
     max-width: none !important;
