@@ -8,8 +8,8 @@ const tracks = [
     text: "From nothing to a working dashboard, then let your AI tools build with you.",
     steps: [
       { to: "/quick-start", label: "Run FINOS Workspace", text: "Get the images, start it and connect a first backend." },
-      { to: "/mcp", label: "Connect the MCP Companion", text: "Let Claude Code, Claude Desktop or your IDE build dashboards and apps." },
-      { to: "/user-guide", label: "User Guide", text: "Dashboards, widgets, apps, the Agent, sharing and administration." },
+      { to: "/quick-start/connect-your-ai-tool", label: "Connect the MCP Companion", text: "Let Claude Code, Claude Desktop or your IDE build dashboards and apps." },
+      { to: "/features", label: "User Guide", text: "Dashboards, widgets, apps, the Agent, sharing and administration." },
     ],
   },
   {
@@ -17,16 +17,16 @@ const tracks = [
     title: "Technical Guide and Reference",
     text: "Deploy, configure, white-label and build on FINOS Workspace, and look up the exact facts.",
     steps: [
-      { to: "/technical-guide", label: "Technical Guide", text: "Architecture, building a backend, building from source, deployment and white label." },
+      { to: "/tutorials", label: "Technical Guide", text: "Architecture, building a backend, building from source, deployment and white label." },
       { to: "/reference", label: "Reference", text: "Every setting, API, schema and protocol, generated from the code." },
     ],
   },
 ];
 
 const more = [
-  { to: "/faq", label: "FAQ", text: "Answers to the questions people ask most." },
-  { to: "/contributing", label: "Contribute", text: "How to propose changes to FINOS Workspace." },
-  { to: "/plugins", label: "Plugins", text: "Add new kinds of widgets." },
+  { to: "/concepts", label: "FAQ", text: "Answers to the questions people ask most." },
+  { to: "/tutorials/contribute", label: "Contribute", text: "How to propose changes to FINOS Workspace." },
+  { to: "/features/plugins", label: "Plugins", text: "Add new kinds of widgets." },
 ];
 
 export default function TrackGrid() {

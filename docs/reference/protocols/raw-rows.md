@@ -28,7 +28,7 @@ The host reads the rows from the path in `data.rawDataKey`, which works like `da
 
 When `raw` is set, the AI Agent and MCP clients receive the rows and never the HTML or the chart. This applies to the widget's data in the Agent and to the tools `get_widget_data` and `read_widget`. The agent loads a list of objects as a table that it can query.
 
-The card gets a database button that switches between the widget's view and its rows, and the widget remembers the choice. If the user may use the plugin that `data.rawType` names, that plugin shows the rows. Otherwise an `html` widget shows the rows as a table, and the plugin of a plugin type shows them itself, as [Plugin module contract](../../plugins/reference/module-contract.mdx) describes.
+The card gets a database button that switches between the widget's view and its rows, and the widget remembers the choice. If the user may use the plugin that `data.rawType` names, that plugin shows the rows. Otherwise an `html` widget shows the rows as a table, and the plugin of a plugin type shows them itself, as [Plugin module contract](../plugins/module-contract.mdx) describes.
 
 ## Rules
 

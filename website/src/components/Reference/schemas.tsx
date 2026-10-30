@@ -1,62 +1,34 @@
-import Heading from "@theme/Heading";
 import type { SchemaDoc } from "../../data/types";
 import { databaseData, schemaSets } from "./data";
-import { Contents, Lines, TableWrap, TypeText } from "./shared";
-import styles from "./styles.module.css";
+import { Fields, fromSchema, TypeLabelText } from "./fields";
+import { Chip, Entry, Index, Section } from "./kit";
+import { TableWrap } from "./shared";
 
-function PropertyTable({ doc, schemaPage }: { doc: SchemaDoc; schemaPage: string }) {
-  return (
-    <TableWrap>
-      <table>
-        <thead>
-          <tr>
-            <th>Property</th>
-            <th>Type</th>
-            <th>Required</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {doc.properties.map((property) => (
-            <tr key={property.name}>
-              <td>
-                <code>{property.name}</code>
-              </td>
-              <td>
-                <TypeText type={property.type} schemaPage={schemaPage} />
-              </td>
-              <td>{property.required ? "yes" : "no"}</td>
-              <td>
-                {property.description ? <p>{property.description}</p> : null}
-                {property.notes.length > 0 ? <Lines items={property.notes} /> : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </TableWrap>
-  );
+function SchemaFields({ doc, schemaPage }: { doc: SchemaDoc; schemaPage: string }) {
+  return <Fields fields={fromSchema(doc.properties)} schemaPage={schemaPage} empty="This schema has no named properties." />;
 }
 
 function SchemaBlock({ doc, id }: { doc: SchemaDoc; id: string }) {
   return (
-    <div className={styles.block}>
-      <Heading as="h3" id={id}>
-        <code>{doc.name}</code>
-      </Heading>
-      {doc.description ? <p>{doc.description}</p> : null}
-      <p>
-        Type: <TypeText type={doc.type} />
-      </p>
-      {doc.notes.length > 0 ? (
-        <ul>
-          {doc.notes.map((note, index) => (
-            <li key={index}>{note}</li>
+    <Entry
+      id={id}
+      title={<code>{doc.name}</code>}
+      description={doc.description}
+      chips={
+        <>
+          <TypeLabelText label={doc.type} />
+          {doc.notes.map((note) => (
+            <Chip key={note}>{note}</Chip>
           ))}
-        </ul>
+        </>
+      }
+    >
+      {doc.properties.length > 0 ? (
+        <Section title="Properties">
+          <SchemaFields doc={doc} schemaPage="" />
+        </Section>
       ) : null}
-      {doc.properties.length > 0 ? <PropertyTable doc={doc} schemaPage="" /> : null}
-    </div>
+    </Entry>
   );
 }
 
@@ -64,18 +36,18 @@ export function SchemaTable({ set, name, schemaPage }: { set: keyof typeof schem
   const data = schemaSets[set];
   const doc = name === undefined ? data.root : data.definitions.find((definition) => definition.name === name);
   if (doc === undefined) throw new Error(`The schema set ${set} has no ${name ?? "root"}`);
-  return <PropertyTable doc={doc} schemaPage={schemaPage} />;
+  return <SchemaFields doc={doc} schemaPage={schemaPage} />;
 }
 
 export function SchemaDocs({ set }: { set: keyof typeof schemaSets }) {
   const data = schemaSets[set];
   const items = [
-    ...(data.root ? [{ id: "schema-root", label: data.title }] : []),
-    ...data.definitions.map((doc) => ({ id: `schema-${doc.name}`, label: doc.name })),
+    ...(data.root ? [{ id: "schema-root", label: <code>{data.title}</code> }] : []),
+    ...data.definitions.map((doc) => ({ id: `schema-${doc.name}`, label: <code>{doc.name}</code> })),
   ];
   return (
     <>
-      <Contents items={items} />
+      <Index items={items} />
       {data.root ? <SchemaBlock doc={{ ...data.root, name: data.title }} id="schema-root" /> : null}
       {data.definitions.map((doc) => (
         <SchemaBlock key={doc.name} doc={doc} id={`schema-${doc.name}`} />
@@ -87,12 +59,10 @@ export function SchemaDocs({ set }: { set: keyof typeof schemaSets }) {
 export function DatabaseTables() {
   return (
     <>
-      <Contents items={databaseData.tables.map((table) => ({ id: `table-${table.name}`, label: table.name }))} />
+      <Index items={databaseData.tables.map((table) => ({ id: `table-${table.name}`, label: <code>{table.name}</code> }))} />
       {databaseData.tables.map((table) => (
-        <div key={table.name} className={styles.block}>
-          <Heading as="h3" id={`table-${table.name}`}>
-            <code>{table.name}</code>
-          </Heading>
+        <Entry key={table.name} id={`table-${table.name}`} title={<code>{table.name}</code>}>
+          <Section title="Columns">
           <TableWrap>
             <table>
               <thead>
@@ -130,7 +100,9 @@ export function DatabaseTables() {
               </tbody>
             </table>
           </TableWrap>
+          </Section>
           {table.indexes.length + table.uniqueConstraints.length > 0 ? (
+            <Section title="Indexes and constraints">
             <ul>
               {table.indexes.map((index, position) => (
                 <li key={`index-${position}`}>
@@ -143,8 +115,9 @@ export function DatabaseTables() {
                 </li>
               ))}
             </ul>
+            </Section>
           ) : null}
-        </div>
+        </Entry>
       ))}
     </>
   );

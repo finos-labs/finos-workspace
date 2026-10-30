@@ -1,0 +1,45 @@
+---
+title: Choose the Agent's model and provider
+sidebar_position: 7
+---
+
+import { EnvDefault } from "@site/src/components/Reference/config";
+
+# Choose the Agent's model and provider
+
+Ines, the agent behind the Agent, has no model of its own. You choose the models in the environment of the agent, you give the agent the key of each provider, and the roles in the admin area decide which people may use which model. This guide sets that up and checks it. [Ines and its MCP server](../../reference/configuration/agent.mdx) lists every setting with its description.
+
+## Pick the providers
+
+The agent can use models from five providers. A provider is available when the agent has what it needs:
+
+| Prefix | Provider | What the agent needs |
+|---|---|---|
+| `openai` | OpenAI | `OPENAI_API_KEY` |
+| `openrouter` | OpenRouter, which offers Claude, Gemini, DeepSeek and many other models | `OPENROUTER_API_KEY` |
+| `groq` | Groq | `GROQ_API_KEY` |
+| `nvidia` | NVIDIA's hosted models at integrate.api.nvidia.com | `NVIDIA_API_KEY` |
+| `ollama` | An Ollama server that you run | `OLLAMA_BASE_URL`, which is <EnvDefault name="OLLAMA_BASE_URL" /> by default |
+
+A provider without its key is left out, and a model that names it fails with "No provider for model". Inside a container, `localhost` is the container itself, so point `OLLAMA_BASE_URL` at the address of the machine or service that runs Ollama.
+
+## Name the models
+
+A model is written `<provider>:<model>`, where the second part is the name that the provider gives the model, for example `openai:` followed by one of OpenAI's model names.
+
+- **`DEFAULT_MODEL`** is the model that every call of the agent uses unless a user picks another one: the chat, the titles, the improvement of prompts and the extraction of tables. It is required, because no model is built into the agent. A request that names no model fails while it is unset. Changing it needs a restart.
+- **`INES_MODELS`** adds the models that users may choose, as a comma-separated list written in the same way. The agent offers `DEFAULT_MODEL` and these models, and it refuses any other one, so a user cannot spend your keys on a model that you did not choose.
+
+Choose models that call tools well, because the Agent works through tools. A model without native tool calling writes its calls into its text, and the agent reads them as calls unless you set `INES_INLINE_TOOL_CALLS` to `off`.
+
+## Decide who may use which model
+
+The Agent works for a person only with the models that one of their roles grants, so a model that you list in `INES_MODELS` is not available to anyone until a role grants it. A new organization has a role that grants all models of the default agent, as [Choose the models and tools of a role](../administration/choose-the-models-and-tools-of-a-role.md) describes. Users choose among the models that their roles grant in the settings of the Agent panel, with the field Model.
+
+## Check it
+
+1. Restart the agent. Its log says which providers it found, with a line "Providers available", and it warns "DEFAULT_MODEL is not set" when the variable is missing. When it finds no provider at all, it logs an error that names the keys to set.
+2. Open the Agent in the web app and ask a short question. When the agent answers that no model is configured, or that there is no provider for the model, check the prefix of `DEFAULT_MODEL` and the key that goes with it.
+3. Open the settings of the Agent panel and check that the field Model lists the models that you expect. A model that the field lacks is not in `INES_MODELS`, or the user's roles do not grant it.
+
+The keys are secrets, so give them to the agent the way your platform gives secrets to a container, and never write them into an image.

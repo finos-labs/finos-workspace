@@ -148,6 +148,7 @@ export interface SchemaProperty {
   type: TypeLabel;
   required: boolean;
   description?: string;
+  enum?: string[];
   notes: string[];
 }
 

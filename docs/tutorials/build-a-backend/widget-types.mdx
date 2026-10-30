@@ -1,0 +1,611 @@
+---
+title: Widget types
+sidebar_position: 3
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# Widget types
+
+FINOS Workspace draws five widget types itself: `markdown`, `html`, `newsfeed`, `pdf` and `iframe`. Each section below shows a widget's entry in `widgets.json` and the route that serves it, in Python and in TypeScript. Plugins add further types, such as charts; see [Plugins](../../features/plugins/index.md).
+
+Two helpers appear in the routes. `markdown` returns text as `text/markdown`, and `page` wraps HTML in a document with the colors of the `theme` that FINOS Workspace sends:
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+def markdown(text: str) -> PlainTextResponse:
+    return PlainTextResponse(text, media_type="text/markdown")
+
+
+def page(theme: str, body: str) -> HTMLResponse:
+    colors = PALETTES.get(theme, PALETTES["dark"])
+    return HTMLResponse(f"""<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {{ margin: 0; padding: 16px; background: {colors["background"]}; color: {colors["text"]}; font: 14px/1.4 system-ui, sans-serif; }}
+  .grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }}
+  .card {{ background: {colors["card"]}; border-radius: 8px; padding: 12px; }}
+  .muted {{ color: {colors["muted"]}; font-size: 12px; }}
+  .value {{ font-size: 22px; font-weight: 600; }}
+  .up {{ color: #2e9e6a; }}
+  .down {{ color: #d0504f; }}
+  table {{ border-collapse: collapse; width: 100%; }}
+  th, td {{ border-bottom: 1px solid {colors["border"]}; padding: 6px 8px; text-align: left; }}
+</style>
+</head>
+<body>{body}</body>
+</html>""")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+const markdown = (text: string): Reply => ({ type: "text/markdown; charset=utf-8", body: text });
+
+function page(theme: string, body: string): Reply {
+  const colors = PALETTES[theme] ?? PALETTES.dark;
+  return {
+    type: "text/html; charset=utf-8",
+    body: `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 16px; background: ${colors.background}; color: ${colors.text}; font: 14px/1.4 system-ui, sans-serif; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .card { background: ${colors.card}; border-radius: 8px; padding: 12px; }
+  .muted { color: ${colors.muted}; font-size: 12px; }
+  .value { font-size: 22px; font-weight: 600; }
+  .up { color: #2e9e6a; }
+  .down { color: #d0504f; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border-bottom: 1px solid ${colors.border}; padding: 6px 8px; text-align: left; }
+</style>
+</head>
+<body>${body}</body>
+</html>`,
+  };
+}
+```
+
+</TabItem>
+</Tabs>
+
+
+## Markdown widget
+
+A `markdown` widget shows the text that its endpoint returns. Markdown follows the app's theme and typography, so it is the type for prose, lists and small tables.
+
+```json title="widgets.json"
+{
+  "markdown_widget": {
+    "name": "Markdown widget",
+    "description": "Formatted text that the backend returns as Markdown",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "markdown",
+    "endpoint": "markdown_widget",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data"
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/markdown_widget")
+def markdown_widget() -> PlainTextResponse:
+    return markdown(
+        "# Reference backend\n\n"
+        "This widget is Markdown that the backend returns as text. "
+        "Every name and number in this backend is invented.\n\n"
+        "- **Bold**, *italic* and `code`\n"
+        "- Lists and tables\n\n"
+        "| Company | Sector |\n|---|---|\n"
+        + "\n".join(
+            f"| {company['name']} | {company['sector']} |"
+            for company in DATA["companies"]
+        )
+    )
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/markdown_widget": () =>
+  markdown(
+    "# Reference backend\n\n" +
+      "This widget is Markdown that the backend returns as text. " +
+      "Every name and number in this backend is invented.\n\n" +
+      "- **Bold**, *italic* and `code`\n" +
+      "- Lists and tables\n\n" +
+      "| Company | Sector |\n|---|---|\n" +
+      DATA.companies.map((company: Company) => `| ${company.name} | ${company.sector} |`).join("\n"),
+  )
+```
+
+</TabItem>
+</Tabs>
+
+## Markdown widget with an image
+
+Markdown can show an image. This one embeds the backend's own SVG as a data URL, so the image needs no other address.
+
+```json title="widgets.json"
+{
+  "markdown_widget_with_image": {
+    "name": "Markdown widget with an image",
+    "description": "Markdown that embeds an SVG chart as a data URL",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "markdown",
+    "endpoint": "markdown_widget_with_image",
+    "gridData": {
+      "w": 20,
+      "h": 14
+    },
+    "source": "Invented sample data"
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/markdown_widget_with_image")
+def markdown_widget_with_image() -> PlainTextResponse:
+    svg = base64.b64encode(
+        (ROOT / "assets" / "revenue-chart.svg").read_bytes()
+    ).decode()
+    return markdown(
+        f"## Revenue by company\n\n![Revenue by company](data:image/svg+xml;base64,{svg})"
+    )
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/markdown_widget_with_image": () => {
+  const svg = read("assets/revenue-chart.svg").toString("base64");
+  return markdown(`## Revenue by company\n\n![Revenue by company](data:image/svg+xml;base64,${svg})`);
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Markdown widget with an error
+
+When an endpoint fails, the widget shows the error. Return a status of 400 or more with a JSON body whose `detail` says what went wrong.
+
+```json title="widgets.json"
+{
+  "markdown_widget_with_error": {
+    "name": "Markdown widget with an error",
+    "description": "A widget whose endpoint fails on purpose, to show how an error looks",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "markdown",
+    "endpoint": "markdown_widget_with_error",
+    "gridData": {
+      "w": 20,
+      "h": 6
+    },
+    "source": "Invented sample data"
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/markdown_widget_with_error")
+def markdown_widget_with_error() -> None:
+    raise HTTPException(
+        status_code=500,
+        detail="This widget fails on purpose, to show how an error looks.",
+    )
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/markdown_widget_with_error": () => {
+  throw new HttpError(500, "This widget fails on purpose, to show how an error looks.");
+}
+```
+
+</TabItem>
+</Tabs>
+
+## HTML widget
+
+An `html` widget shows the document that its endpoint returns, in a sandboxed frame. FINOS Workspace adds `theme=dark` or `theme=light` to the request, so the page can match the app. With `"raw": true`, the endpoint also answers `raw=true` with the rows behind the page, as JSON: the user can switch the widget to those rows, and the Agent reads them instead of the HTML.
+
+```json title="widgets.json"
+{
+  "html_widget": {
+    "name": "HTML widget",
+    "description": "A portfolio summary that the backend renders as HTML, in the app's theme, with its rows for the Agent",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "html",
+    "endpoint": "html_widget",
+    "gridData": {
+      "w": 20,
+      "h": 12
+    },
+    "source": "Invented sample data",
+    "raw": true
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/html_widget", response_model=None)
+def html_widget(theme: str = "dark", raw: bool = False) -> HTMLResponse | list:
+    if raw:
+        return DATA["portfolio"]
+    cards = "".join(
+        f'<div class="card"><div class="muted">{row["metric"]}</div>'
+        f'<div class="value">{row["value"]}</div>'
+        f'<div class="{"down" if row["change"].startswith("-") else "up"}">{row["change"]}</div></div>'
+        for row in DATA["portfolio"]
+    )
+    return page(theme, f'<div class="grid">{cards}</div>')
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/html_widget": ({ query }) => {
+  if (flag(query.get("raw"))) return json(DATA.portfolio);
+  const cards = DATA.portfolio
+    .map(
+      (row: { metric: string; value: string; change: string }) =>
+        `<div class="card"><div class="muted">${row.metric}</div>` +
+        `<div class="value">${row.value}</div>` +
+        `<div class="${row.change.startsWith("-") ? "down" : "up"}">${row.change}</div></div>`,
+    )
+    .join("");
+  return page(query.get("theme") ?? "dark", `<div class="grid">${cards}</div>`);
+}
+```
+
+</TabItem>
+</Tabs>
+
+## HTML table widget
+
+FINOS Workspace has no built-in table type. Render a table as HTML and offer its rows with `raw`, as here, or use a plugin that draws tables.
+
+```json title="widgets.json"
+{
+  "html_table_widget": {
+    "name": "HTML table widget",
+    "description": "The holdings of a sample portfolio as an HTML table, with its rows for the Agent",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "html",
+    "endpoint": "html_table_widget",
+    "gridData": {
+      "w": 20,
+      "h": 12
+    },
+    "source": "Invented sample data",
+    "raw": true
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/html_table_widget", response_model=None)
+def html_table_widget(theme: str = "dark", raw: bool = False) -> HTMLResponse | list:
+    if raw:
+        return DATA["holdings"]
+    rows = [
+        [h["company"], h["sector"], h["quantity"], h["price"], h["weight"]]
+        for h in DATA["holdings"]
+    ]
+    return page(
+        theme, table(["Company", "Sector", "Quantity", "Price", "Weight"], rows)
+    )
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/html_table_widget": ({ query }) => {
+  if (flag(query.get("raw"))) return json(DATA.holdings);
+  const rows = DATA.holdings.map((h: Record<string, unknown>) => [h.company, h.sector, h.quantity, h.price, h.weight]);
+  return page(query.get("theme") ?? "dark", table(["Company", "Sector", "Quantity", "Price", "Weight"], rows));
+}
+```
+
+</TabItem>
+</Tabs>
+
+## News feed widget
+
+A `newsfeed` widget lists articles. The endpoint returns a JSON array whose items have a `title`, a `date` in ISO 8601, an `author`, an `excerpt` that the search box filters, and a `body` in Markdown that opens when the user selects the article.
+
+```json title="widgets.json"
+{
+  "newsfeed_widget": {
+    "name": "News feed widget",
+    "description": "Invented articles about invented companies, filtered by category",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "newsfeed",
+    "endpoint": "newsfeed_widget",
+    "gridData": {
+      "w": 20,
+      "h": 16
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "category",
+        "type": "text",
+        "label": "Category",
+        "description": "Show the articles of one category",
+        "value": "all",
+        "options": [
+          {
+            "label": "All",
+            "value": "all"
+          },
+          {
+            "label": "Business",
+            "value": "business"
+          },
+          {
+            "label": "Technology",
+            "value": "tech"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/newsfeed_widget")
+def newsfeed_widget(category: str = "all") -> list:
+    fields = ("title", "date", "author", "excerpt", "body")
+    return [
+        {field: article[field] for field in fields}
+        for article in DATA["articles"]
+        if category == "all" or article["category"] == category
+    ]
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/newsfeed_widget": ({ query }) => {
+  const category = query.get("category") ?? "all";
+  return json(
+    DATA.articles
+      .filter((article: { category: string }) => category === "all" || article.category === category)
+      .map(({ title, date, author, excerpt, body }: Record<string, string>) => ({ title, date, author, excerpt, body })),
+  );
+}
+```
+
+</TabItem>
+</Tabs>
+
+## PDF widget
+
+A `pdf` widget shows a document page by page. The simplest answer is the file itself, with `Content-Type: application/pdf`.
+
+```json title="widgets.json"
+{
+  "pdf_widget": {
+    "name": "PDF widget",
+    "description": "A sample report that the backend returns as a PDF file",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "pdf",
+    "endpoint": "pdf_widget",
+    "gridData": {
+      "w": 20,
+      "h": 20
+    },
+    "source": "Invented sample data"
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/pdf_widget")
+def pdf_widget() -> FileResponse:
+    return FileResponse(
+        ROOT / "assets" / "sample-report.pdf", media_type="application/pdf"
+    )
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/pdf_widget": () => file("sample-report.pdf")
+```
+
+</TabItem>
+</Tabs>
+
+## PDF widget from base64
+
+The endpoint can instead return JSON with the file in base64 in `content`, and its name in `data_format`.
+
+```json title="widgets.json"
+{
+  "pdf_widget_base64": {
+    "name": "PDF widget from base64",
+    "description": "The same report, returned as JSON with the file in base64",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "pdf",
+    "endpoint": "pdf_widget_base64",
+    "gridData": {
+      "w": 20,
+      "h": 20
+    },
+    "source": "Invented sample data"
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/pdf_widget_base64")
+def pdf_widget_base64() -> dict:
+    content = base64.b64encode(
+        (ROOT / "assets" / "sample-report.pdf").read_bytes()
+    ).decode()
+    return {
+        "data_format": {"data_type": "pdf", "filename": "sample-report.pdf"},
+        "content": content,
+    }
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/pdf_widget_base64": () =>
+  json({
+    data_format: { data_type: "pdf", filename: "sample-report.pdf" },
+    content: read("assets/sample-report.pdf").toString("base64"),
+  })
+```
+
+</TabItem>
+</Tabs>
+
+## PDF widget from a URL
+
+Or it returns JSON with the `url` of the file. This backend serves the file itself, under `/assets`.
+
+```json title="widgets.json"
+{
+  "pdf_widget_url": {
+    "name": "PDF widget from a URL",
+    "description": "The same report, returned as JSON with the address of the file",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "pdf",
+    "endpoint": "pdf_widget_url",
+    "gridData": {
+      "w": 20,
+      "h": 20
+    },
+    "source": "Invented sample data"
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/pdf_widget_url")
+def pdf_widget_url(request: Request) -> dict:
+    url = f"{str(request.base_url).rstrip('/')}/assets/sample-report.pdf"
+    return {
+        "data_format": {"data_type": "pdf", "filename": "sample-report.pdf"},
+        "url": url,
+    }
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/pdf_widget_url": ({ base }) =>
+  json({ data_format: { data_type: "pdf", filename: "sample-report.pdf" }, url: `${base}/assets/sample-report.pdf` })
+```
+
+</TabItem>
+</Tabs>
+
+## Iframe widget
+
+An `iframe` widget opens a web page. Its `endpoint` is the page's address, a path of the backend or an absolute URL; FINOS Workspace adds `theme` to it. Some sites refuse to be framed: serve such content as `html` instead.
+
+```json title="widgets.json"
+{
+  "iframe_widget": {
+    "name": "Iframe widget",
+    "description": "A page that the backend serves and the widget opens in a frame",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "iframe",
+    "endpoint": "iframe_page",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data"
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/iframe_page")
+def iframe_page(theme: str = "dark") -> HTMLResponse:
+    return page(
+        theme,
+        "<h2>A page in a frame</h2><p>The iframe widget opens this page, which the backend serves.</p>",
+    )
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/iframe_page": ({ query }) =>
+  page(query.get("theme") ?? "dark", "<h2>A page in a frame</h2><p>The iframe widget opens this page, which the backend serves.</p>")
+```
+
+</TabItem>
+</Tabs>

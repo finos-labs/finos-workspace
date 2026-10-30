@@ -23,11 +23,11 @@ The `type` of a definition decides which component renders the widget and which 
 |---|---|---|---|
 | `markdown`, `html`, `newsfeed` and `pdf` | The built-in widgets of the same names. | `GET` and `POST`. | The query, a header or the body. |
 | `iframe` | A page that the widget embeds from the endpoint's URL. | `GET`. | The query. |
-| A plugin type | The plugin that handles the type, as [About widget plugins](../../plugins/widget-plugins.md) describes. | `GET` and `POST`. | The query, a header or the body. |
+| A plugin type | The plugin that handles the type, as [Widget plugins](../../concepts/widget-plugins.md) describes. | `GET` and `POST`. | The query, a header or the body. |
 
 A plugin type exists for an organization when the organization has enabled a plugin that handles it. When two enabled plugins handle the same type, the organization admin's choice decides which of them renders it, and without a choice the plugin with the lowest id wins. A widget whose type nobody handles for the user does not appear in that user's catalog.
 
-A plugin type keeps its own configuration in `data.<type>`. For a type named `plotly`, that is the object at `data.plotly`. The plugin declares the schema of this object as its `definition`, as [Plugin package and manifest](../../plugins/reference/package-and-manifest.mdx) describes, and the plugin reads the object as the `definition` trait. When a source refreshes, FINOS Workspace copies the object, together with `dataKey`, `rawDataKey` and `rawType`, onto the widgets that are already on dashboards.
+A plugin type keeps its own configuration in `data.<type>`. For a type named `plotly`, that is the object at `data.plotly`. The plugin declares the schema of this object as its `definition`, as [Plugin package and manifest](../plugins/package-and-manifest.mdx) describes, and the plugin reads the object as the `definition` trait. When a source refreshes, FINOS Workspace copies the object, together with `dataKey`, `rawDataKey` and `rawType`, onto the widgets that are already on dashboards.
 
 ## One schema for each organization
 

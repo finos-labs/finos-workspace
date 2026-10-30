@@ -1,0 +1,39 @@
+---
+title: Use and write skills for the Agent
+sidebar_position: 5
+---
+
+import { WebAppValue } from "@site/src/components/Reference/config";
+
+# Use and write skills for the Agent
+
+A skill is a set of written instructions that the Agent follows when a question calls for it, for example how to lay out a report or which figures to put first in an analysis. This guide shows the skills that you already have, makes the Agent use one, and adds a skill of your own.
+
+## See the skills that you have
+
+Select AI in the sidebar, and then the tab Skills. The list shows each skill's name, which is its slug, and its description. The skills tagged Ines are built into the agent: `html-report` writes an HTML report, and `html-table` and `html-chart` give the rules for tables and charts that the Agent builds. The other skills belong to your account.
+
+## Use a skill in a question
+
+There are two ways to apply a skill:
+
+- **Choose it yourself.** Type `/` in the question box of the Agent. The menu lists the skills that you can use, each as `/skill:` and its slug with its description. Pick one, and it becomes a tag at the start of your question, which you finish as usual. The Agent then follows that skill for the question.
+- **Let the Agent choose.** Every question carries the list of the skills with their descriptions. When the request matches the description of a skill, the Agent loads that skill by itself and follows it. A skill is therefore only as good as its description.
+
+## Add a skill
+
+1. On the tab Skills, select Add Skill. The dialog Add new skill opens.
+2. In Slug, type the name of the skill, in lower case. It has <WebAppValue of="minSkillSlugLength" unit="raw" /> to <WebAppValue of="maxSkillSlugLength" unit="raw" /> characters, only letters, digits and single hyphens, and it cannot start or end with a hyphen. A slug that you already use is refused. A skill of yours takes the place of a built-in skill with the same slug.
+3. In Description, say what the skill is for and when it applies. It is required, and it has at most <WebAppValue of="maxSkillDescriptionLength" unit="raw" /> characters, which a counter shows. The Agent reads this text to decide whether to use the skill, so write it like the answer to the question "when should this be used?".
+4. In Content, write the instructions in Markdown. The content is required. Write it as you would brief a colleague: say what to do, in which order, and what the result should look like. A short list of rules works better than a long essay.
+5. Select Add Skill. A message says "Skill created successfully".
+
+## Change or delete a skill
+
+Open the arrow in front of one of your skills to read its content, which the list shows as formatted text. The row then has three buttons: the first copies the content, the pencil edits the skill in the same dialog that adds one, and the trash can deletes it with the message "Skill deleted". To delete several skills at once, tick them and use the delete button above the list, which gives the message "Skills deleted". Built-in skills have no such buttons, so they cannot be changed or deleted.
+
+## Keep a good answer as a skill
+
+When your deployment allows it, you can ask the Agent in the chat to save the way it just worked as a skill. The Agent writes the skill's slug, description and content from the conversation, and a message "Saving skill..." has a button Edit Skill that opens the dialog with the text filled in, so that you can change it before it is saved. When the skill is saved, the message says "Skill saved:" and the slug, and Edit Skill opens it again. When saving fails, the message says "Failed to save skill". An admin turns this on with the web app's setting `AI_COPILOT_SAVE_SKILL_FROM_CHAT`, as [Web app configuration](../../reference/configuration/web-app.mdx) describes, and without it the Agent answers that saving skills is not available.
+
+[How the Agent answers a question](../../concepts/how-the-agent-answers.md) explains how the Agent gets the skills, and [Agent query protocol](../../reference/protocols/ines-query.mdx) describes what the browser sends for them.

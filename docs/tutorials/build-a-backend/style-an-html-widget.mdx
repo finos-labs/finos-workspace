@@ -1,0 +1,135 @@
+---
+title: Style an HTML widget for both themes
+sidebar_label: Style an HTML widget
+sidebar_position: 6
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# Style an HTML widget for both themes
+
+An HTML widget shows the document that its endpoint returns. The document is in a frame, and the frame gets nothing from the app. Thus the document cannot see the theme of the app.
+
+FINOS Workspace sends the theme to the endpoint in the query parameter `theme`. The value is `dark` or `light`. The endpoint returns the styles for that theme.
+
+## 1. Add the widget to widgets.json
+
+Do not add a parameter with the name `theme`. The name is reserved. FINOS Workspace adds the parameter to each request of an HTML widget.
+
+```json title="widgets.json"
+{
+  "report": {
+    "name": "Report",
+    "description": "A report that follows the theme",
+    "type": "html",
+    "endpoint": "report"
+  }
+}
+```
+
+## 2. Choose the colors from the theme
+
+In the endpoint, read `theme` and choose the colors for that theme:
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="main.py"
+from fastapi import FastAPI, Query
+from fastapi.responses import HTMLResponse
+
+app = FastAPI()
+
+PALETTES = {
+    "dark": {"background": "#0b2432", "text": "#e7f2f8", "border": "#355867", "accent": "#00b5e2"},
+    "light": {"background": "#ffffff", "text": "#1a3248", "border": "#b7cdd8", "accent": "#005e8a"},
+}
+
+
+@app.get("/report", response_class=HTMLResponse)
+def report(theme: str = Query("dark")) -> str:
+    colors = PALETTES.get(theme, PALETTES["dark"])
+    return f"""<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {{
+    margin: 0;
+    padding: 16px;
+    background: {colors["background"]};
+    color: {colors["text"]};
+    font: 14px/1.5 system-ui, sans-serif;
+  }}
+  table {{ border-collapse: collapse; width: 100%; }}
+  th, td {{ border: 1px solid {colors["border"]}; padding: 4px 8px; text-align: left; }}
+  a {{ color: {colors["accent"]}; }}
+</style>
+</head>
+<body>
+<table><tr><th>Quarter</th><th>Revenue</th></tr><tr><td>Q1</td><td>120</td></tr></table>
+</body>
+</html>"""
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="main.ts"
+import { createServer } from "node:http";
+
+const PALETTES: Record<string, { background: string; text: string; border: string; accent: string }> = {
+  dark: { background: "#0b2432", text: "#e7f2f8", border: "#355867", accent: "#00b5e2" },
+  light: { background: "#ffffff", text: "#1a3248", border: "#b7cdd8", accent: "#005e8a" },
+};
+
+function report(theme: string): string {
+  const colors = PALETTES[theme] ?? PALETTES.dark;
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {
+    margin: 0;
+    padding: 16px;
+    background: ${colors.background};
+    color: ${colors.text};
+    font: 14px/1.5 system-ui, sans-serif;
+  }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid ${colors.border}; padding: 4px 8px; text-align: left; }
+  a { color: ${colors.accent}; }
+</style>
+</head>
+<body>
+<table><tr><th>Quarter</th><th>Revenue</th></tr><tr><td>Q1</td><td>120</td></tr></table>
+</body>
+</html>`;
+}
+
+createServer((request, response) => {
+  const url = new URL(request.url ?? "/", "http://localhost:5050");
+  if (url.pathname !== "/report") return response.writeHead(404).end();
+  response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }).end(report(url.searchParams.get("theme") ?? "dark"));
+}).listen(5050);
+```
+
+</TabItem>
+</Tabs>
+
+## 3. Use the colors of the app
+
+Use the values of the app for the colors that must agree with the app. [Semantic properties](../../reference/css/semantic-properties.mdx) gives the values for the two themes.
+
+- In the example, `background`, `text` and `border` are the values of `--general-bg-primary`, `--foreground` and `--border`.
+- The accent colors give good contrast on these backgrounds.
+- The link color of the app, `--link-color`, comes from the brand color.
+
+## Limits
+
+- The document cannot read the parameter `theme` itself, because the document comes through `srcdoc`.
+- The document cannot read the custom properties of the app.
+
+[HTML documents](../../reference/css/html-documents.mdx) tells what the frame adds and what it does not add. The [widget types](widget-types.mdx) page shows a complete HTML widget of the reference backend.

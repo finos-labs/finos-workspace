@@ -1,0 +1,61 @@
+---
+title: Add an export to a plugin widget
+sidebar_position: 7
+---
+
+import { PluginValue } from "@site/src/components/Reference/plugins";
+
+# Add an export to a plugin widget
+
+Let users export what a widget shows. The **Export** entry on a widget's card calls two functions that the module returns from `initialize`. The host defines no export formats, because only the widget's own code knows what it can export.
+
+## 1. Ask for the permission
+
+In the widget's manifest entry:
+
+```json
+"permissions": ["core:data:read", "core:export:provide"]
+```
+
+## 2. Return the two functions
+
+Return them from `initialize`:
+
+```js
+async initialize({ model }) {
+  return {
+    async exportOptions() {
+      const rows = model.get("data") ?? [];
+      return rows.length
+        ? [{ id: "rows", label: "Rows (CSV)", extension: "csv", mime: "text/csv" }]
+        : [];
+    },
+    async exportData(id, { title }) {
+      return toCsv(model.get("data"));
+    },
+  };
+},
+```
+
+- `exportOptions` returns the list of exports. The host calls it each time the user opens **Export**. An empty list means that the widget has nothing to export right now.
+- `exportData` returns the content of the chosen export, as a string, an `ArrayBuffer`, a typed array or a `Blob`.
+
+## 3. Clean up through `signal`
+
+`initialize` returns the exports, so it cannot return a cleanup function as well. Do the module's cleanup through `signal`.
+
+## Limits
+
+An export has at most <PluginValue of="limits.MAX_EXPORT_OPTIONS" /> options, and a file has at most <PluginValue of="limits.maxExportBytes" unit="bytes" />. The timeouts are:
+
+| Function | Timeout |
+|---|---|
+| `exportOptions` | <PluginValue of="limits.EXPORT_TIMEOUTS_MS.exportOptions" unit="ms" /> |
+| `exportData` | <PluginValue of="limits.EXPORT_TIMEOUTS_MS.exportData" unit="ms" /> |
+| `copilotContext` | <PluginValue of="limits.EXPORT_TIMEOUTS_MS.copilotContext" unit="ms" /> |
+
+A `copilotContext` function, together with the permission `core:copilot:context`, works the same way. It tells the AI agent what the widget shows.
+
+## Next steps
+
+[Plugin module contract](../../reference/plugins/module-contract.mdx) lists the limits.

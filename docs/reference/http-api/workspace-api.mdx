@@ -72,13 +72,13 @@ The routes under `/entity` manage organizations, which the API calls entities, t
 
 ## widget-plugins
 
-These are the widget plugin routes. Superuser routes are under `/plugins`, organization admin routes are under `/admin/plugins`, member routes are under `/app/widget-plugins`, and the backends' data route is under `/internal/plugin-broker`. [Plugin lifecycle and administration](../../plugins/reference/lifecycle.mdx) explains how they fit together.
+These are the widget plugin routes. Superuser routes are under `/plugins`, organization admin routes are under `/admin/plugins`, member routes are under `/app/widget-plugins`, and the backends' data route is under `/internal/plugin-broker`. [Plugin lifecycle and administration](../plugins/lifecycle.mdx) explains how they fit together.
 
 <ApiTag tag="widget-plugins" schemaPage="/reference/http-api/workspace-api-schemas" />
 
 ## workspace-mcp
 
-These routes manage the personal access tokens and the bridge session of the FINOS Workspace MCP server, which [FINOS Workspace MCP server](../../mcp/reference/tools.mdx) describes.
+These routes manage the personal access tokens and the bridge session of the FINOS Workspace MCP server, which [FINOS Workspace MCP server](../mcp/workspace-mcp.mdx) describes.
 
 <ApiTag tag="workspace-mcp" schemaPage="/reference/http-api/workspace-api-schemas" />
 
@@ -101,6 +101,6 @@ The setting `PROMETHEUS` turns the metrics on. It is off by default, and with it
 - **`GET /metrics` on the API's port.** The route passes through the origin check like every other route, so a request without an allowed `Origin` header receives the status 403. The API compresses the answer with gzip when the client accepts it.
 - **A second listener on port <SettingConstant name="prometheusListenerPort" unit="raw" />.** The main process of the web server serves it, and it checks neither the origin nor a token. A scraper uses this port.
 
-The API runs several worker processes, and each one writes its counters to files that the answer reads, so the counters and the histograms are the totals of the whole API, and a worker that the server replaces leaves its counts in them. The gauges of the runtime metrics describe one worker's event loop, thread pool and database pools, so they have one series for each live worker, which the label `pid` tells apart. The runtime metrics are sampled every `RUNTIME_METRICS_INTERVAL` seconds, <SettingDefault name="RUNTIME_METRICS_INTERVAL" unit="s" /> by default. The API serves the metrics below and the metrics of the widget plugins, which [Plugin lifecycle and administration](../../plugins/reference/lifecycle.mdx) lists, and no others.
+The API runs several worker processes, and each one writes its counters to files that the answer reads, so the counters and the histograms are the totals of the whole API, and a worker that the server replaces leaves its counts in them. The gauges of the runtime metrics describe one worker's event loop, thread pool and database pools, so they have one series for each live worker, which the label `pid` tells apart. The runtime metrics are sampled every `RUNTIME_METRICS_INTERVAL` seconds, <SettingDefault name="RUNTIME_METRICS_INTERVAL" unit="s" /> by default. The API serves the metrics below and the metrics of the widget plugins, which [Plugin lifecycle and administration](../plugins/lifecycle.mdx) lists, and no others.
 
 <ApiMetrics />

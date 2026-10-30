@@ -60,6 +60,14 @@ export function typeLabel(schema: unknown): TypeLabel {
   return ["any"];
 }
 
+function enumValues(schema: Json): string[] | undefined {
+  if (Array.isArray(schema.enum)) return schema.enum.map(literal);
+  for (const branch of [...list(schema.anyOf), ...list(schema.oneOf)]) {
+    if (Array.isArray(branch.enum)) return branch.enum.map(literal);
+  }
+  return undefined;
+}
+
 function truncate(text: string): string {
   return text.length > MAX_PATTERN ? `${text.slice(0, MAX_PATTERN)}…` : text;
 }
@@ -142,6 +150,8 @@ function rows(schema: Json, prefix: string, depth: number, definitions: Json): S
     };
     const description = typeof property.description === "string" ? property.description : referencedDescription(property, definitions);
     if (description !== undefined) row.description = description;
+    const values = enumValues(property);
+    if (values !== undefined) row.enum = values;
     result.push(row);
     if (depth < MAX_DEPTH) {
       if (property.type === "object" && Object.keys(propertiesOf(property)).length > 0) {
