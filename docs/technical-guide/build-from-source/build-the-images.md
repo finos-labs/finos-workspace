@@ -20,11 +20,12 @@ This page builds all four from a clone of the repository and pushes them to your
 
 - Docker with BuildKit. Docker Engine and Docker Desktop use it by default.
 - A clone of the repository. Run the commands on this page from its root folder.
+- A GitHub account that can read the packages of `openbq-org`, logged in to `ghcr.io` as [Log in to the container registry](run-the-stack-from-source.md#log-in-to-the-container-registry) shows. The Node base below is in GitHub's container registry, which serves it to logged-in readers only.
 - A registry that your servers can pull from. Below, `<registry>` stands for it and `<version>` for the version you give the images.
 
 ## The Node base
 
-The web app and both agent images run on `finos-node`, a build of Node that the repository compiles and releases itself. The web app's Dockerfile has no other way to get Node, so it does not build without the base. The agent's Dockerfile compiles Node from source when it does not get the base, and that takes hours: the release run of `finos-node` 26.12.1-1 took over four hours on a GitHub-hosted runner.
+The agent and its MCP server run on `finos-node`, a build of Node that the repository compiles and releases itself, and the web app is built with it. The web app's Dockerfile has no other way to get Node, so it does not build without the base. The agent's Dockerfile compiles Node from source when it does not get the base. The agent's README puts that at about 20 minutes on a fast machine that builds for its own architecture, and it takes hours under emulation. The release run of `finos-node` 26.12.1-1 took over four hours on a GitHub-hosted runner.
 
 So use the released base. `docker-compose.yml` names the release that the repository builds with, and this command reads it from there:
 
