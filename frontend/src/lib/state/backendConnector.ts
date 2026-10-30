@@ -16,7 +16,6 @@ import type { GroupTypes, WidgetT } from "~/components/types";
 import type { WidgetId } from "~/components/Widgets";
 import type { ProcessedBackendT } from "~/hooks/useProcessBackendWidgets";
 import type { ProcessedTemplate, SharedPromptT } from "~/hooks/useSharedTemplates";
-import { getConfig } from "~/lib/runtimeConfig";
 import type { Selector } from "~/lib/state/app";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
 import {
@@ -722,7 +721,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           };
 
           validateApiSourceWorker.postMessage({
-            config: getConfig(),
             apiSources: stale,
             pluginVizTypes,
             widgetsSchema,

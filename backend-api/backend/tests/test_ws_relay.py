@@ -68,8 +68,10 @@ async def upstream():
         await asyncio.sleep(3)
         return await echo(request)
 
+    where = {}
+
     async def redirect(request):
-        raise web.HTTPFound(f"http://127.0.0.1:{request.url.port}/echo")
+        raise web.HTTPFound(where["echo"])
 
     app = web.Application()
     app.router.add_get("/echo", echo)
@@ -80,6 +82,7 @@ async def upstream():
     site = web.TCPSite(runner, "127.0.0.1", 0)
     await site.start()
     port = site._server.sockets[0].getsockname()[1]
+    where["echo"] = f"http://127.0.0.1:{port}/echo"
     yield type("Upstream", (), {"port": port, "seen": seen})
     await runner.cleanup()
 

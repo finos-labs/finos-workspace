@@ -59,10 +59,6 @@ export function getConfig(): RuntimeConfig {
   return _config;
 }
 
-export function setConfig(config: RuntimeConfig): void {
-  _config = config;
-}
-
 export function _resetConfig(): void {
   _config = null;
 }

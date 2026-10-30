@@ -1,5 +1,5 @@
 import { debounce } from "lodash";
-import { type RuntimeConfig, setConfig } from "~/lib/runtimeConfig";
+import { loadConfigScript } from "~/lib/loadConfigScript";
 import {
   errorResponse,
   getApiSourceWidgets,
@@ -9,7 +9,6 @@ import type { Source, ValidateBackend } from "./lib/state/backendConnector";
 import type { ComposedWidgetsSchema } from "./lib/utils/widgetsSchemaValidation";
 
 interface EventData {
-  config: RuntimeConfig;
   apiSources: Source[];
   pluginVizTypes?: string[];
   widgetsSchema: ComposedWidgetsSchema;
@@ -25,10 +24,12 @@ const debouncedPartialResults = debounce(
   { maxWait: 800, trailing: true },
 );
 
+const configLoaded = loadConfigScript();
+
 self.onmessage = async (e: MessageEvent<EventData>) => {
   if (e.origin && e.origin !== self.location.origin) return;
-  const { config, apiSources, pluginVizTypes = [], widgetsSchema } = e.data;
-  setConfig(config);
+  await configLoaded;
+  const { apiSources, pluginVizTypes = [], widgetsSchema } = e.data;
 
   const results: ResultT[] = [];
   const sliceSize = Math.ceil(apiSources.length / 5);

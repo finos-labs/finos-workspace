@@ -15,6 +15,5 @@ export const mockConfig = RuntimeConfigSchema.parse({
 
 vi.mock("~/lib/runtimeConfig", () => ({
   getConfig: () => mockConfig,
-  setConfig: vi.fn(),
   _resetConfig: vi.fn(),
 }));
