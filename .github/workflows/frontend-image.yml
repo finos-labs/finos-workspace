@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
   id-token: write
   attestations: write
 
@@ -22,7 +23,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  node:
+    uses: ./.github/workflows/agent-node.yml
+
   image:
+    needs: node
     runs-on: ubuntu-latest
     env:
       ECR_REPOSITORY: finos/frontend
@@ -73,9 +78,18 @@ jobs:
             exit 1
           fi
 
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        if: steps.existing.outputs.exists != 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build image
         if: steps.existing.outputs.exists != 'true'
-        run: docker build -t "$ECR_REPOSITORY:$IMAGE_TAG" frontend
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: docker build --build-context "node=docker-image://$NODE_IMAGE" -t "$ECR_REPOSITORY:$IMAGE_TAG" frontend
 
       - name: Push image
         if: github.ref_type == 'tag' && steps.existing.outputs.exists != 'true'
