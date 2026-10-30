@@ -314,7 +314,7 @@ export function InternalArguments() {
   }
   return (
     <ItemList
-      items={[...rows.entries()].map(([name, row]) => ({
+      items={Array.from(rows.entries()).map(([name, row]) => ({
         key: name,
         title: <code>{name}</code>,
         description: row.description,
