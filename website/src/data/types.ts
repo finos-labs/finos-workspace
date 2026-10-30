@@ -464,3 +464,33 @@ export interface AgentsJsonData {
   file: unknown;
   conditional: { feature: string; variable: string }[];
 }
+
+export interface BuiltRequestView {
+  method?: string;
+  url?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+  problems?: string[];
+}
+
+export interface WidgetRequestData {
+  backend: string;
+  values: { label: string; value: string; query: string | null; header: string | null; body: string | null; path: string | null }[];
+  omitted: { label: string; sent: boolean }[];
+  problems: { label: string; messages: string[] }[];
+  examples: { label: string; widget: unknown; optionsParam: unknown; request: BuiltRequestView; options: BuiltRequestView }[];
+}
+
+export interface IframeData {
+  fromPage: SchemaSet;
+  fromHost: SchemaSet;
+  limits: { requestTimeoutMs: number; maxFrameDepth: number };
+  values: { label: string; text: string }[];
+}
+
+export interface ProtocolCases {
+  contract: { label: string; messages: string[] }[];
+  rawRows: { label: string; response: string; rawDataKey: string | null; rows: string }[];
+  mcpActive: { label: string; link: string; result: string }[];
+  mcpCite: { label: string; call: string; cited: string | null; inputArgs: string | null; details: string | null }[];
+}

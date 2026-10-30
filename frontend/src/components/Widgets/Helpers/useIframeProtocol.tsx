@@ -35,7 +35,7 @@ const getIframeOrigin = (iframeRef: React.RefObject<HTMLIFrameElement | null>) =
   }
 };
 
-const MAX_FRAME_DEPTH = 8;
+export const MAX_FRAME_DEPTH = 8;
 
 function isWindowWithin(
   source: MessageEventSource | null,

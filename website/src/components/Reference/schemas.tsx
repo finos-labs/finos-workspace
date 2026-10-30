@@ -176,3 +176,27 @@ export function DatabaseTables() {
     </>
   );
 }
+
+export function WidgetRules() {
+  const names = ["Widget", "ParamDef"];
+  const rules: string[] = [];
+  for (const doc of schemaSets.widgets.definitions.filter((item) => names.includes(item.name))) {
+    for (const note of doc.notes) {
+      if (note.length > RULE_LENGTH && !rules.includes(note)) rules.push(note);
+    }
+  }
+  return (
+    <ul>
+      {rules.map((rule) => (
+        <li key={rule}>{rule}</li>
+      ))}
+    </ul>
+  );
+}
+
+export function McpToolFields() {
+  const widget = schemaSets.widgets.definitions.find((doc) => doc.name === "Widget");
+  if (widget === undefined) throw new Error("The widgets schema has no Widget");
+  const properties = widget.properties.filter((property) => property.name === "mcp_tool" || property.name.startsWith("mcp_tool."));
+  return <Fields fields={fromSchema(properties)} />;
+}

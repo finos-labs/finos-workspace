@@ -4,6 +4,7 @@ sidebar_position: 1
 ---
 
 import { SchemaDocs, SchemaSource } from "@site/src/components/Reference/schemas";
+import { ContractChecks } from "@site/src/components/Reference/cases";
 
 # widgets.json
 
@@ -385,14 +386,11 @@ A plugin type exists for an organization when the organization has enabled a plu
 
 The schema defines every key at every depth of a definition, and it bounds every string and list. A key that the schema does not define is ignored: the web app loads the widget without the key and lists the key, with its JSON pointer, under the backend's unrecognized fields. Any other problem leaves the widget out of the catalog and is reported together with its JSON pointer.
 
-JSON Schema cannot express every rule of the contract. The function `contractProblems` checks the remaining rules after the schema check passed. It verifies that:
+JSON Schema cannot express every rule of the contract. The function `contractProblems` checks the remaining rules after the schema check passed, and the web app reports each problem with its JSON pointer. This table comes from running it on a definition that breaks each rule.
 
-- every `{name}` in `endpoint` or `optionsEndpoint` names a declared parameter, and that a parameter that fills a path placeholder declares no `in` and takes one value;
-- every `paramName` is unique, and every `$name` in `optionsParams` or in `mcp_tool.args` names a declared parameter;
-- the inputs of a form are unique, and every placeholder in a form names an input or a parameter;
-- at most one parameter has the role `fileSelector`, and every cron expression is valid;
-- no header parameter uses a header that the backend connection needs for its credentials, and no query parameter uses a query name that the connection needs;
-- the value of `mcp_tool.mcp_server` names a server in the backend's `apps.json`.
+<ContractChecks />
+
+The value of `mcp_tool.mcp_server` must also name a server in the backend's `apps.json`.
 
 ## The schema that the API serves
 

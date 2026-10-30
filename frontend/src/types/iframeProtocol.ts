@@ -1,43 +1,68 @@
 import { z } from "zod";
 
 const WorkspaceWidgetManifestSchema = z.object({
-  widgetId: z.string(),
-  name: z.string(),
-  description: z.string().optional(),
-  category: z.string().optional(),
-  dataType: z.enum(["table", "markdown"]),
+  widgetId: z.string().describe("The id that the page gives the widget"),
+  name: z.string().describe("The name that the Agent and the dashboard show"),
+  description: z.string().optional().describe("What the widget shows"),
+  category: z
+    .string()
+    .optional()
+    .describe("The group that the catalog lists the widget under"),
+  dataType: z
+    .enum(["table", "markdown"])
+    .describe("The kind of data that the widget answers with"),
 });
 
 const WorkspaceParamDefSchema = z.object({
-  paramName: z.string(),
-  label: z.string().optional(),
-  type: z.enum(["text", "number", "date", "boolean"]),
-  description: z.string().optional(),
-  value: z.string().optional(),
-  options: z.array(z.object({ label: z.string(), value: z.string() })).optional(),
-  min: z.number().optional(),
-  max: z.number().optional(),
-  step: z.number().optional(),
+  paramName: z.string().describe("The name of the parameter"),
+  label: z.string().optional().describe("The label of the control"),
+  type: z.enum(["text", "number", "date", "boolean"]).describe("The kind of control"),
+  description: z.string().optional().describe("Help shown on hover"),
+  value: z.string().optional().describe("The default value, as a string"),
+  options: z
+    .array(
+      z.object({
+        label: z.string().describe("The name that the choice shows"),
+        value: z.string().describe("The value of the choice"),
+      }),
+    )
+    .optional()
+    .describe("The choices of a dropdown"),
+  min: z.number().optional().describe("The lowest value of a number"),
+  max: z.number().optional().describe("The highest value of a number"),
+  step: z.number().optional().describe("The step of a number"),
 });
 
 export const WorkspaceConnectMessageSchema = z.object({
   type: z.literal("workspace-connect"),
-  widgets: z.array(WorkspaceWidgetManifestSchema),
-  params: z.array(WorkspaceParamDefSchema).optional(),
+  widgets: z
+    .array(WorkspaceWidgetManifestSchema)
+    .describe("The widgets that the page can supply"),
+  params: z
+    .array(WorkspaceParamDefSchema)
+    .optional()
+    .describe("The parameters that the page understands"),
 });
 
 export const WorkspaceDataMessageSchema = z.object({
   type: z.literal("workspace-data"),
-  widgetId: z.string(),
-  dataType: z.enum(["table", "markdown"]),
-  data: z.union([z.array(z.record(z.string(), z.unknown())), z.string()]),
-  columns: z.array(z.string()).optional(),
+  widgetId: z.string().describe("The id of the widget that the data belongs to"),
+  dataType: z
+    .enum(["table", "markdown"])
+    .describe("The kind of data: `table` or `markdown`"),
+  data: z
+    .union([z.array(z.record(z.string(), z.unknown())), z.string()])
+    .describe("For `table`, an array of row objects. For `markdown`, a string"),
+  columns: z
+    .array(z.string())
+    .optional()
+    .describe("The names of the columns of a table"),
 });
 
 export const WorkspaceErrorMessageSchema = z.object({
   type: z.literal("workspace-error"),
-  widgetId: z.string(),
-  error: z.string(),
+  widgetId: z.string().describe("The id of the widget that cannot answer"),
+  error: z.string().describe("The message that the request fails with"),
 });
 
 const WorkspaceWidgetParamPrimitiveSchema = z.union([
@@ -59,12 +84,94 @@ export const WIDGET_PARAM_MESSAGE_TYPES = [
 
 type WidgetParamMessageType = (typeof WIDGET_PARAM_MESSAGE_TYPES)[number];
 
-const WorkspaceWidgetParamsUpdateMessageSchema = z.object({
+export const WorkspaceWidgetParamsUpdateMessageSchema = z.object({
   type: z.enum(WIDGET_PARAM_MESSAGE_TYPES),
-  params: z.record(z.string(), WorkspaceWidgetParamValueSchema).optional(),
-  paramName: z.string().optional(),
-  value: WorkspaceWidgetParamValueSchema.optional(),
+  params: z
+    .record(z.string(), WorkspaceWidgetParamValueSchema)
+    .optional()
+    .describe("The new values, by parameter name"),
+  paramName: z
+    .string()
+    .optional()
+    .describe("The name of one parameter, together with `value`"),
+  value: WorkspaceWidgetParamValueSchema.optional().describe(
+    "The new value of the parameter that `paramName` names",
+  ),
 });
+
+export const WorkspaceRequestMessageSchema = z.object({
+  type: z.literal("workspace-request"),
+  widgetId: z
+    .string()
+    .nullable()
+    .describe("The id of the widget whose data the page should send"),
+});
+
+export const WorkspaceParamsUpdateMessageSchema = z.object({
+  type: z.literal("workspace-params-update"),
+  params: z
+    .record(z.string(), z.string())
+    .describe(
+      "Every current parameter value, including `theme`, which is `light` or `dark`",
+    ),
+});
+
+export const WorkspaceAuthMessageSchema = z.object({
+  type: z.literal("workspace-auth"),
+  headers: z
+    .record(z.string(), z.string())
+    .describe("The header credentials of the backend connection, by header name"),
+});
+
+export interface IframeMessageDoc {
+  direction: "page" | "host";
+  schema: z.ZodType;
+  meaning: string;
+}
+
+export const IFRAME_MESSAGES: IframeMessageDoc[] = [
+  {
+    direction: "page",
+    schema: WorkspaceConnectMessageSchema,
+    meaning:
+      "The page announces the widgets that it supplies and the parameters that it understands",
+  },
+  {
+    direction: "page",
+    schema: WorkspaceDataMessageSchema,
+    meaning: "The page answers a `workspace-request`",
+  },
+  {
+    direction: "page",
+    schema: WorkspaceErrorMessageSchema,
+    meaning:
+      "The page cannot answer a `workspace-request`, and the request fails with the message",
+  },
+  {
+    direction: "page",
+    schema: WorkspaceWidgetParamsUpdateMessageSchema,
+    meaning:
+      "The page changes parameter values. A message that has both `params` and `paramName` applies both",
+  },
+  {
+    direction: "host",
+    schema: WorkspaceRequestMessageSchema,
+    meaning:
+      "FINOS Workspace asks the page for the data of one widget, and the page should answer with `workspace-data` or `workspace-error`",
+  },
+  {
+    direction: "host",
+    schema: WorkspaceParamsUpdateMessageSchema,
+    meaning:
+      "A parameter value changed, so the page should update what it shows. FINOS Workspace also sends the message after the handshake, when the user changes a control, when a parameter that the widget shares in a group changes, and when the site's theme changes",
+  },
+  {
+    direction: "host",
+    schema: WorkspaceAuthMessageSchema,
+    meaning:
+      "The backend connection's header credentials, which the page can attach to its own requests. FINOS Workspace sends them only to a window whose origin equals the origin of the iframe's address, and again whenever the credentials change",
+  },
+];
 
 export type WorkspaceWidgetManifest = z.infer<typeof WorkspaceWidgetManifestSchema>;
 export type WorkspaceParamDef = z.infer<typeof WorkspaceParamDefSchema>;
@@ -73,20 +180,13 @@ export type WorkspaceDataMessage = z.infer<typeof WorkspaceDataMessageSchema>;
 
 export type WorkspaceWidgetParamValue = z.infer<typeof WorkspaceWidgetParamValueSchema>;
 
-export interface WorkspaceParamsUpdateMessage {
-  type: "workspace-params-update";
-  params: Record<string, string>;
-}
+export type WorkspaceParamsUpdateMessage = z.infer<
+  typeof WorkspaceParamsUpdateMessageSchema
+>;
 
-export interface WorkspaceAuthMessage {
-  type: "workspace-auth";
-  headers: Record<string, string>;
-}
+export type WorkspaceAuthMessage = z.infer<typeof WorkspaceAuthMessageSchema>;
 
-export interface WorkspaceRequestMessage {
-  type: "workspace-request";
-  widgetId: string | null;
-}
+export type WorkspaceRequestMessage = z.infer<typeof WorkspaceRequestMessageSchema>;
 
 export function isWidgetParamMessageType(
   value: unknown,

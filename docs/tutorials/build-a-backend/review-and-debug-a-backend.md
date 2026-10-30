@@ -47,7 +47,7 @@ When the request for `widgets.json` fails, the Error notice names the cause and 
 | 23 | The request timed out. | Whether the backend answers within one minute. |
 | Anything else | Unable to find a widgets.json file. | The console of your browser, where the details are logged. |
 
-A backend on `localhost` or `127.0.0.1` gets a section Troubleshooting localhost, which lists the three usual causes. [Connect a backend](../../features/data-backends/connect-a-backend.md) describes them, and [Widget requests](../../reference/protocols/widget-requests.mdx#cors) lists what the backend must answer so that the browser may call it.
+A backend on `localhost` or `127.0.0.1` gets a section Troubleshooting localhost, which lists the three usual causes. [Connect a backend](../../features/data-backends/connect-a-backend.md) describes them, and [Requests that a widget sends](requests-from-a-widget.md#cors) lists what the backend must answer so that the browser may call it.
 
 ## A widget does not appear
 

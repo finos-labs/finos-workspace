@@ -19,11 +19,14 @@ import { collectAgent } from "./lib/agent.mts";
 import { collectBridge } from "./lib/bridge.mts";
 import { checkCoverage, checkRoutes } from "./lib/coverage.mts";
 import { collectEnv } from "./lib/env.mts";
+import { collectIframe } from "./lib/iframe.mts";
 import { collectPlugins } from "./lib/plugins.mts";
+import { collectProtocolCases } from "./lib/protocolCases.mts";
 import { outDir } from "./lib/paths.mts";
 import { collectPluginTokens, collectReport } from "./lib/theme.mts";
 import { addUsage } from "./lib/usage.mts";
 import { collectWeb } from "./lib/web.mts";
+import { collectWidgetRequests } from "./lib/widgetRequests.mts";
 import { collectWebConfig } from "./lib/webConfig.mts";
 
 const env = await collectEnv();
@@ -45,6 +48,9 @@ const outputs: Record<string, unknown> = {
   widgetsSchema: collectWidgetsSchema(),
   widgetArgs: collectWidgetArgs(),
   agentsJson: collectAgentsJson(),
+  widgetRequests: collectWidgetRequests(),
+  iframe: collectIframe(),
+  protocolCases: collectProtocolCases(),
   appsSchema: collectAppsSchema(),
   manifestSchema: collectManifestSchema(),
   database: collectDatabase(),

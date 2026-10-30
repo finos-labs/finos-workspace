@@ -130,7 +130,7 @@ Suppose that your service answers a request for `https://tickets.example.com/api
 2. **Pick the type from the response.** The response is text inside JSON, so the type is `markdown` and `"data": { "dataKey": "summary" }` names the field. A response that is a finished HTML page is `html`, and a JSON array of articles is `newsfeed`.
 3. **Make every changing part a parameter.** The segment `platform` becomes the placeholder `{team}` in the endpoint and a parameter named `team`, `period` becomes a parameter that goes into the query, and `X-Region` becomes a parameter with `"in": "header"`.
 4. **Leave the credentials out.** An API key or a bearer token belongs to the connection that the user creates for the backend, as [Connect a backend](../../features/data-backends/connect-a-backend.md) describes, and never to a parameter. The contract refuses a parameter that has the name of one of the connection's credentials.
-5. **Allow the browser to call it.** The browser calls the backend directly, so the service has to answer the preflight requests that a header, a body or a method other than `GET` cause, and to allow the address of the web app. [Widget requests](../../reference/protocols/widget-requests.mdx#cors) lists what it has to answer.
+5. **Allow the browser to call it.** The browser calls the backend directly, so the service has to answer the preflight requests that a header, a body or a method other than `GET` cause, and to allow the address of the web app. [Requests that a widget sends](requests-from-a-widget.md#cors) lists what it has to answer.
 
 The result is this definition:
 

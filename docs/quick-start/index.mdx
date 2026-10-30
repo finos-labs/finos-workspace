@@ -254,7 +254,7 @@ Both programs return the same responses. Check the backend in your browser: [htt
 
 :::warning[Allow only what the backend needs]
 
-This backend allows one origin and no request headers. When you later give the connection a credential, or a widget a header parameter, name each of those headers in the allowed headers: `allow_headers=["Authorization"]` in the Python program, or the value of `Access-Control-Allow-Headers` in the TypeScript one. Never use `*` and never copy the headers that the browser asks for: `*` does not cover `Authorization`, and a copied list allows every header. [Widget requests](../reference/protocols/widget-requests.mdx#cors) lists what a backend has to answer.
+This backend allows one origin and no request headers. When you later give the connection a credential, or a widget a header parameter, name each of those headers in the allowed headers: `allow_headers=["Authorization"]` in the Python program, or the value of `Access-Control-Allow-Headers` in the TypeScript one. Never use `*` and never copy the headers that the browser asks for: `*` does not cover `Authorization`, and a copied list allows every header. [Requests that a widget sends](../tutorials/build-a-backend/requests-from-a-widget.md#cors) lists what a backend has to answer.
 
 :::
 

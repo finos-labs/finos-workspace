@@ -4,30 +4,9 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { AI_FEATURE_DESCRIPTIONS, ALL_AI_FEATURES } from "~/lib/constants";
 import { agentEntrySchema } from "~/lib/state/copilot";
+import { undescribed } from "./undescribed";
 
 const OUT = process.env.REFERENCE_OUT ?? "";
-
-function undescribed(node: unknown, path: string): string[] {
-  if (node === null || typeof node !== "object") return [];
-  const schema = node as Record<string, unknown>;
-  const properties = schema.properties as
-    | Record<string, Record<string, unknown>>
-    | undefined;
-  const found = Object.entries(properties ?? {}).flatMap(([name, property]) => [
-    ...(typeof property.description === "string" && property.description.trim() !== ""
-      ? []
-      : [`${path}.${name}`]),
-    ...undescribed(property, `${path}.${name}`),
-  ]);
-  return [
-    ...found,
-    ...undescribed(schema.additionalProperties, `${path}.*`),
-    ...undescribed(schema.items, `${path}[]`),
-    ...((schema.anyOf as unknown[] | undefined) ?? []).flatMap((item) =>
-      undescribed(item, path),
-    ),
-  ];
-}
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
