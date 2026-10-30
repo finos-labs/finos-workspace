@@ -13,7 +13,7 @@ A common image starts from a Linux distribution and adds the program to it, and 
 
 - **The API and the worker** run from one image. It holds a pinned CPython from a standalone build for musl, which the build checks against a hash, the Python packages from the lock file, and the few system libraries that those packages link. Packages that ship compiled wheels are built from source with clang, so that the result links the same libraries as the rest of the image. The build stops when any file in the image needs the runtime libraries of GCC.
 - **The web app** holds nginx, compiled in the build into one static binary with its modules and its libraries, and the built app. Nothing else is in the image.
-- **Ines and its MCP server** hold Node and their packages. Node is compiled from source against musl and LLVM's C++ library, and it links no glibc and no GCC runtime.
+- **Agent and MCP server** hold Node and their packages. Node is compiled from source against musl and LLVM's C++ library, and it links no glibc and no GCC runtime.
 
 The services run as an ordinary user, with the identifier 1000 for the backend image, which the API and the worker share, and for the agent images, and 101 for the web app, and they listen on ports above 1024.
 

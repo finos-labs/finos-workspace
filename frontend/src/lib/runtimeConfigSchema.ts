@@ -53,7 +53,7 @@ export const RuntimeConfigSchema = z.object({
     ),
     ai: stringField(
       "",
-      "Address of the built-in Copilot agent (Ines), which the app sends Copilot questions to.",
+      "Address of the built-in Copilot agent, which the app sends Copilot questions to.",
     ),
   }),
   authentication: z.object({
@@ -108,7 +108,7 @@ export const RuntimeConfigSchema = z.object({
     ),
     defaultCopilot: boolField(
       true,
-      "Offer the built-in Copilot agent (Ines) as an agent that users can choose.",
+      "Offer the built-in Copilot agent as an agent that users can choose.",
     ),
     documentationLinks: boolField(
       true,

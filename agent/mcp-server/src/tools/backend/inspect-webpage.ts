@@ -43,8 +43,8 @@ export const inspectWebpageSchema = {
     .min(1)
     .optional()
     .describe(`How much: characters for text, raw and data (default ${DEFAULT_CHARS}, at most ${MAX_CHARS}), items for the other views.`),
-  "x-ines-conversation-id": conversationIdSchema,
-  "x-ines-scope-sig": scopeSigSchema,
+  "x-agent-conversation-id": conversationIdSchema,
+  "x-agent-scope-sig": scopeSigSchema,
 };
 
 export const inspectWebpageDescription =
@@ -79,7 +79,7 @@ function tableItems(result: { text: string; tables?: Array<{ name: string; rows:
 }
 
 export async function inspectWebpageHandler(args: Args): Promise<{ content: ContentItem[] }> {
-  const chat = args["x-ines-conversation-id"];
+  const chat = args["x-agent-conversation-id"];
   const page = chat ? getPage(chat, args.page_id) : undefined;
   if (!page) {
     return {

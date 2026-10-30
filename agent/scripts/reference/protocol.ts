@@ -74,7 +74,7 @@ const EVENT_REFERENCE: Record<SSEEventType, { fields: string; meaning: string }>
   copilotPromptSuggestions: {
     fields: "suggestions, a list of strings.",
     meaning:
-      "Follow-up questions. Ines sends them only when workspace_options has the key prompt-suggestions set to a true value.",
+      "Follow-up questions. The agent sends them only when workspace_options has the key prompt-suggestions set to a true value.",
   },
   copilotFunctionCall: {
     fields: "function, input_arguments and extra_state.",
@@ -86,7 +86,7 @@ const EXTRA_STATE_REFERENCE: Record<(typeof EXTRA_STATE_KEYS)[number], string> =
   copilot_function_call_arguments:
     "The widgets that the call concerns, as widget_queries with a widget_uuid each. The browser reads it to know which widgets an earlier call belonged to.",
   intermediate_citations: "The citations that the turn has collected so far.",
-  document_hits: "The pages of documents that a search returned, which Ines cites when the answer names them.",
+  document_hits: "The pages of documents that a search returned, which the agent cites when the answer names them.",
   documents_shipped: "The documents that the agent has already sent to the search tools, so that each is sent once.",
   loaded_skill_slugs: "The skills that the model has loaded.",
   loaded_tool_groups: "The groups of tools that the model has loaded.",

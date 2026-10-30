@@ -31,10 +31,9 @@ These brand elements are written in the code. A deployment changes them only by 
 
 | What users or AI tools see | Where it is |
 |---|---|
-| The agent calls itself Ines in its answers | `agent/src/agent/prompt.ts` |
 | The agent's name and description in `/agents.json` | `agent/src/routes/agents.ts` |
-| The User-Agent `Ines/1.0` of the agent's web requests | `agent/mcp-server/src/tools/backend/web-search.ts` |
-| The names `ines-tools` and `ines-mcp-tools` of the agent's MCP server | `agent/mcp-server/src/app.ts` |
+| The User-Agent `Agent/1.0` of the agent's web requests | `agent/mcp-server/src/tools/backend/web-search.ts` |
+| The names `agent-tools` and `agent-mcp-tools` of the agent's MCP server | `agent/mcp-server/src/app.ts` |
 | The colors, font and "Generated with Workspace" footer of the Agent's reports and charts | `agent/src/skills/html-report.md`, `html-chart.md`, `html-table.md` |
 | The name "Workspace MCP" and the instructions that AI hosts see when they connect through the MCP Companion | `backend-api/backend/workspace_mcp/server/__init__.py`, `_guidance.py` |
 | The client name "Workspace" that an MCP server shows when a user grants access with OAuth | `backend-api/backend/routers/app/mcp_oauth.py` |

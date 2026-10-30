@@ -218,7 +218,7 @@ function toolNames(features: McpFeatures): Record<"backend" | "workspace", strin
 
 export async function buildMcpServer(features: McpFeatures): Promise<McpServer> {
   const mcp = new McpServer({
-    name: "ines-tools",
+    name: "agent-tools",
     version: "1.0.0",
   });
 
@@ -276,7 +276,7 @@ export function createMcpApp(features: McpFeatures, manager: BridgeSessionManage
 
   app.get("/", (c) =>
     c.json({
-      name: "ines-mcp-tools",
+      name: "agent-mcp-tools",
       version: "1.0.0",
       endpoint: "/mcp",
       bridge_endpoints: {

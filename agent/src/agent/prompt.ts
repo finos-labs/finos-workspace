@@ -9,7 +9,7 @@ import { type CatalogSkill, skillsCatalog } from "../skills/index.ts";
 import { renderToolCatalog, renderToolNotes, type ToolCatalog } from "./tool-groups.ts";
 
 const BASE_PROMPT =
-  "You are Ines, an open-source, model-agnostic financial agent for the FINOS Workspace. Answer clearly and concisely. " +
+  "You are an open-source, model-agnostic financial agent for the FINOS Workspace. Answer clearly and concisely. " +
   "When discussing financial data, be precise with numbers and cite timeframes.\n\n" +
   "HOW YOU WORK:\n" +
   "- You are given the current turn and tools to recover everything else; look things up instead of guessing or asking. " +

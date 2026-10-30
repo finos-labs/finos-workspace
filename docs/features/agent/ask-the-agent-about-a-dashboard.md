@@ -19,7 +19,7 @@ Your account also has to be allowed to use the model. A new organization has a r
 
 ## Open the Agent
 
-The Agent is the panel on the right side of the web app. When the panel is closed, a blue tab on the right edge of the window opens it. The panel names the agent, which is Ines, and lists three hints: click the speech bubble on a widget to add it as context, use the `@` button or type `@` and a widget's name to pick widgets, and type `/` to browse the skills and MCP servers that you can use.
+The Agent is the panel on the right side of the web app. When the panel is closed, a blue tab on the right edge of the window opens it. The panel names the agent, which is Agent, and lists three hints: click the speech bubble on a widget to add it as context, use the `@` button or type `@` and a widget's name to pick widgets, and type `/` to browse the skills and MCP servers that you can use.
 
 Ask a question that needs no data, to see an answer at all. Select the box that says "Ask a question...", type `What can you do?` and press Enter. The answer appears under the heading Agent. Below it, the panel offers one or more follow-up questions, which you can select instead of typing.
 
@@ -37,7 +37,7 @@ Your answer's wording depends on the model that you configured, so it will not m
 
 ## Read the steps
 
-Above the answer, the line Step-by-step reasoning folds the work of the Agent. Select it to see each step in order. You see a line for each thing that the Agent did, such as loading the widget's data, and you can open a step to see its details, which include the tool that ran and the widget with the parameters that it used. A model that reasons in words between its steps shows those sentences here as well. The steps are the progress messages that the agent sends to your browser, as the [agent query protocol](../../reference/protocols/ines-query.mdx) describes.
+Above the answer, the line Step-by-step reasoning folds the work of the Agent. Select it to see each step in order. You see a line for each thing that the Agent did, such as loading the widget's data, and you can open a step to see its details, which include the tool that ran and the widget with the parameters that it used. A model that reasons in words between its steps shows those sentences here as well. The steps are the progress messages that the agent sends to your browser, as the [agent query protocol](../../reference/protocols/agent-query.mdx) describes.
 
 ## Check the source
 
@@ -49,8 +49,8 @@ Select a follow-up question under the answer, or type your own. The Agent contin
 
 ## Change the Agent's settings
 
-Select the gear at the left of the panel's toolbar. The popover lists the settings that the agent offers. Follow-up Suggestions switches the follow-up questions on and off, and Model chooses the model that answers your questions, among the models that your roles allow. The control with the number next to the gear opens the MCP Tools list, where you switch whole MCP servers, or single tools of a server, on and off for your questions, and the number counts the tools that are on. A fresh deployment lists one server, Ines Tools, whose tools give the Agent web search and the ability to read web pages, and, when the deployment names an embedding model, the search of the documents that you attach.
+Select the gear at the left of the panel's toolbar. The popover lists the settings that the agent offers. Follow-up Suggestions switches the follow-up questions on and off, and Model chooses the model that answers your questions, among the models that your roles allow. The control with the number next to the gear opens the MCP Tools list, where you switch whole MCP servers, or single tools of a server, on and off for your questions, and the number counts the tools that are on. A fresh deployment lists one server, Agent Tools, whose tools give the Agent web search and the ability to read web pages, and, when the deployment names an embedding model, the search of the documents that you attach.
 
 ## Where to go next
 
-You asked the Agent a question, chose its data, and traced its answer. To change which models and tools your organization's people may use, read [Choose the models and tools of a role](../administration/choose-the-models-and-tools-of-a-role.md). To see what the browser and the agent send each other, read the [Agent query protocol](../../reference/protocols/ines-query.mdx).
+You asked the Agent a question, chose its data, and traced its answer. To change which models and tools your organization's people may use, read [Choose the models and tools of a role](../administration/choose-the-models-and-tools-of-a-role.md). To see what the browser and the agent send each other, read the [Agent query protocol](../../reference/protocols/agent-query.mdx).

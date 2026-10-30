@@ -36,17 +36,17 @@ interface RouteReference {
 const MEBIBYTE = 1024 * 1024;
 
 export const ROUTE_REFERENCE: Record<string, RouteReference> = {
-  "GET /": { summary: "Answers with the text Ines." },
+  "GET /": { summary: "Answers with the text Agent." },
   "GET /agents.json": {
     summary: "The agent's descriptor, which the Workspace reads to learn the agent's name, skills and features.",
   },
   "GET /status": {
     summary:
-      'Answers {"status": "ok", "timestamp": ..., "sharedState": ...}. sharedState is true when Ines keeps its state in Redis, which a deployment with more than one replica needs.',
+      'Answers {"status": "ok", "timestamp": ..., "sharedState": ...}. sharedState is true when the agent keeps its state in Redis, which a deployment with more than one replica needs.',
   },
   "GET /ready": {
     summary:
-      `Answers {"status": "ready"}. With authentication on, Ines first calls the /health route of the Workspace API with a timeout of ${READY_TIMEOUT_MS / 1000} seconds, ` +
+      `Answers {"status": "ready"}. With authentication on, the agent first calls the /health route of the Workspace API with a timeout of ${READY_TIMEOUT_MS / 1000} seconds, ` +
       'and when that fails it answers 503 with {"status": "not ready", "reason": "the Workspace API does not answer"}.',
   },
   "POST /v1/query": { summary: "Asks a question. The answer is a stream of events, as the agent query protocol describes." },
@@ -54,7 +54,7 @@ export const ROUTE_REFERENCE: Record<string, RouteReference> = {
     summary: "Names a chat.",
     helper: {
       request: ChatTitleSchema,
-      detail: `Ines reads the last ${CHAT_TITLE_MESSAGES} messages that have the role human, each cut to ${CHAT_TITLE_MESSAGE_CHARS} characters.`,
+      detail: `The agent reads the last ${CHAT_TITLE_MESSAGES} messages that have the role human, each cut to ${CHAT_TITLE_MESSAGE_CHARS} characters.`,
       answer: 'A JSON string that holds the title, for example "Revenue by region".',
       fallback: `"${CHAT_TITLE_FALLBACK}", also when there is no human message.`,
     },
@@ -63,7 +63,7 @@ export const ROUTE_REFERENCE: Record<string, RouteReference> = {
     summary: "Names a dashboard.",
     helper: {
       request: DashboardTitleSchema,
-      detail: `Ines reads the first ${DASHBOARD_TITLE_WIDGETS} widget names, each cut to ${DASHBOARD_TITLE_NAME_CHARS} characters.`,
+      detail: `The agent reads the first ${DASHBOARD_TITLE_WIDGETS} widget names, each cut to ${DASHBOARD_TITLE_NAME_CHARS} characters.`,
       answer: "Plain text, the title.",
       fallback: `${DASHBOARD_TITLE_FALLBACK}, also when no widget has a name.`,
     },
@@ -73,7 +73,7 @@ export const ROUTE_REFERENCE: Record<string, RouteReference> = {
     helper: {
       request: EnhancePromptSchema,
       detail:
-        `Ines rewrites the last human message, cut to ${MAX_HELPER_TEXT_CHARS.toLocaleString("en-US")} characters, ` +
+        `The agent rewrites the last human message, cut to ${MAX_HELPER_TEXT_CHARS.toLocaleString("en-US")} characters, ` +
         `and uses the names of up to ${ENHANCE_WIDGET_NAMES} widgets, each cut to ${ENHANCE_WIDGET_NAME_CHARS} characters, as hints.`,
       answer: "Plain text, the rewritten question.",
       fallback: "The original question, or an empty string when there is no human message.",
@@ -83,7 +83,7 @@ export const ROUTE_REFERENCE: Record<string, RouteReference> = {
     summary: "Describes and classifies a widget from a sample of its data.",
     helper: {
       request: WidgetInfoSchema,
-      detail: `Ines reads the first ${WIDGET_SAMPLE_CHARS.toLocaleString("en-US")} characters of widget_data.`,
+      detail: `The agent reads the first ${WIDGET_SAMPLE_CHARS.toLocaleString("en-US")} characters of widget_data.`,
       answer: "A JSON object with title, description, category and subcategory.",
       fallback: "An object made from the request's own name, description and metadata, with the category Other.",
     },
@@ -94,7 +94,7 @@ export const ROUTE_REFERENCE: Record<string, RouteReference> = {
       request: null,
       detail:
         `The request is a multipart form with the field file, at most ${MAX_FILE_SIZE / MEBIBYTE} MiB, ` +
-        `and Ines reads its first ${WIDGET_SAMPLE_CHARS.toLocaleString("en-US")} characters. ` +
+        `and the agent reads its first ${WIDGET_SAMPLE_CHARS.toLocaleString("en-US")} characters. ` +
         "A form without the field is answered with 400 and a file that is too large with 413.",
       answer: "A JSON object with title and description.",
       fallback: "The file's name without its extension as the title, and the file's name as the description.",
@@ -119,7 +119,7 @@ export interface RouteEntry {
   path: string;
   needsToken: boolean;
   helperCalls: boolean;
-  bodyLimitBytes: number | "INES_MAX_BODY_MB";
+  bodyLimitBytes: number | "AGENT_MAX_BODY_MB";
   summary: string;
 }
 
@@ -142,7 +142,7 @@ function matches(pattern: string, path: string): boolean {
 }
 
 export function collectRoutes(): RoutesReference {
-  const config = loadConfig({ INES_AUTH: "none" });
+  const config = loadConfig({ AGENT_AUTH: "none" });
   const store = createLocalStore();
   const app = createApp({ config, workspace: null, store, limits: createLimits({ store, maxConcurrent: 4 }) });
 
@@ -153,7 +153,7 @@ export function collectRoutes(): RoutesReference {
     const key = `${route.method} ${route.path}`;
     const reference = ROUTE_REFERENCE[key];
     if (!reference) throw new Error(`The route ${key} has no entry in ROUTE_REFERENCE`);
-    let bodyLimitBytes: RouteEntry["bodyLimitBytes"] = "INES_MAX_BODY_MB";
+    let bodyLimitBytes: RouteEntry["bodyLimitBytes"] = "AGENT_MAX_BODY_MB";
     if (route.path === "/v1/transcribe") bodyLimitBytes = TRANSCRIBE_BODY_BYTES;
     else if (HELPER_JSON_PATHS.includes(route.path)) bodyLimitBytes = HELPER_BODY_BYTES;
     return {
@@ -185,7 +185,7 @@ export function collectRoutes(): RoutesReference {
     ];
   });
 
-  const maxBody = ENV_REFERENCE.find((entry) => entry.name === "INES_MAX_BODY_MB");
+  const maxBody = ENV_REFERENCE.find((entry) => entry.name === "AGENT_MAX_BODY_MB");
   return {
     routes,
     helpers,

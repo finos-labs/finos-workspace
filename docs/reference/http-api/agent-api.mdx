@@ -1,0 +1,45 @@
+---
+title: Agent HTTP API
+sidebar_position: 3
+---
+
+import { EnvDefault } from "@site/src/components/Reference/config";
+import { AgentHelperRoutes, AgentBodyLimit, AgentMetrics, AgentRoutes } from "@site/src/components/Reference/agent";
+
+# Agent HTTP API
+
+The agent is a separate service from the FINOS Workspace API. It is a Hono application on Node that listens on port <EnvDefault name="PORT" /> by default, and the web app talks to it directly from the browser. This page lists its routes, the checks that apply to them and the metrics that it serves. The questions that users ask travel over `POST /v1/query`, which has its own page, the [agent query protocol](../protocols/agent-query.mdx). The routes are defined in `agent/src/app.ts` and `agent/src/routes/`, and the tables on this page are generated from the running application, so they list the routes that it serves.
+
+## Checks that apply to every route
+
+**Origin.** the agent answers cross-origin requests from the origins that `AGENT_CORS_ORIGINS` lists. The value `*` allows every origin. The setting is required when authentication is on. The responses expose the headers `X-Trace-Id` and `X-Completion-Id` to scripts.
+
+**Trace headers.** Every response carries `X-Trace-Id`, which repeats the request's header of that name or holds a new identifier, and `X-Completion-Id`, which is new for every response.
+
+**Authentication.** Every route under `/v1` requires the header `Authorization: Bearer` with an [agent token](../protocols/agent-authentication.mdx), unless the agent runs with `AGENT_AUTH=none`. A request without a valid token receives the status 401, the body `{"error": "Not signed in"}` and the header `WWW-Authenticate: Bearer`. The routes outside `/v1` need no token. A test asks every route below for an answer without a token and fails when the column "Needs a token" differs from what the application does.
+
+**Body size.** A request body under `/v1` may not exceed `AGENT_MAX_BODY_MB` megabytes, which is <EnvDefault name="AGENT_MAX_BODY_MB" /> by default. The JSON helper routes accept at most <AgentBodyLimit name="helperBodyBytes" />, and `/v1/transcribe` accepts a little more than <AgentBodyLimit name="audioBytes" />. A larger body receives the status 413.
+
+## Routes
+
+<AgentRoutes />
+
+## Helper routes
+
+The helper routes make one call to the model and never run tools. Each user may make `AGENT_HELPER_CALLS_PER_MINUTE` of these calls a minute, which is <EnvDefault name="AGENT_HELPER_CALLS_PER_MINUTE" /> by default, and beyond that the route answers 429 with `{"error": "Too many requests. Try again in a minute."}` and `Retry-After: 60`. The tokens that a helper call uses are added to the user's usage, but the call does not count as a question. A body that is not JSON receives the status 400 and `{"error": "Invalid JSON"}`, and a body that does not fit the route's schema receives 400 and `{"error": "Invalid request", "details": [...]}`.
+
+Every JSON helper accepts the optional field `model`. The agent uses it when this deployment offers the model and the user's roles allow it, and otherwise it uses `DEFAULT_MODEL` without reporting an error. When the model call fails, each helper answers with the fallback that its section gives, so that the interface never waits on a failure. The fields of each request come from its schema in the code.
+
+<AgentHelperRoutes />
+
+## Speech to text
+
+`POST /v1/transcribe` needs the setting `AGENT_TRANSCRIBE_MODEL`. Without it the route answers 404 with `{"error": "Speech to text is not set up for this agent."}`, and the descriptor leaves out the feature `speech-to-text`. The request is a multipart form with the field `audio`, which must be a 16-bit PCM WAV file of at most <AgentBodyLimit name="audioBytes" />. The answer is `{"text": "..."}`. A recording that is too long receives 413, a file that is not a 16-bit PCM WAV receives 400 and a failure of the speech model receives 502 with `{"error": "Speech to text failed. Try again."}`.
+
+## Metrics
+
+The agent serves Prometheus metrics from a second listener, so that they never share a port with the API that users reach. The listener answers `GET /metrics` on the port that `AGENT_METRICS_PORT` names, which is <EnvDefault name="AGENT_METRICS_PORT" /> by default, and the value 0 turns it off. It does not authenticate requests. The metrics never carry a label that comes from a user, a chat or text that a model wrote, so the number of series stays fixed. The table is generated from the definitions in `agent/src/lib/metrics.ts`. A label whose values are listed takes only those values.
+
+<AgentMetrics />
+
+The MCP server serves the same kinds of metrics on `MCP_METRICS_PORT`, which is <EnvDefault name="MCP_METRICS_PORT" /> by default, and a value of 0 or less turns them off. The agent also exports traces over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, and it prints them to its log when `OTEL_TRACES_CONSOLE` is `true`. Without either setting it creates no spans. The service name is `OTEL_SERVICE_NAME`, which is `agent` by default.

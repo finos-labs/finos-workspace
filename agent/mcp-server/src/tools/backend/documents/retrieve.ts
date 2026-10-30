@@ -60,15 +60,15 @@ function splitModelId(raw: string): { provider: string; modelId: string } | null
 }
 
 export function embeddingProblem(): string | null {
-  const raw = process.env.INES_EMBED_MODEL;
-  if (!raw) return "INES_EMBED_MODEL is not set: document search needs an embedding model, written <provider>:<model>.";
+  const raw = process.env.AGENT_EMBED_MODEL;
+  if (!raw) return "AGENT_EMBED_MODEL is not set: document search needs an embedding model, written <provider>:<model>.";
   const parsed = splitModelId(raw);
   const provider = parsed && EMBEDDING_PROVIDERS[parsed.provider];
   if (!parsed || !provider) {
-    return `INES_EMBED_MODEL "${raw}" must be <provider>:<model> with a provider that embeds (${Object.keys(EMBEDDING_PROVIDERS).join(", ")}).`;
+    return `AGENT_EMBED_MODEL "${raw}" must be <provider>:<model> with a provider that embeds (${Object.keys(EMBEDDING_PROVIDERS).join(", ")}).`;
   }
   if (provider.keyEnv && !process.env[provider.keyEnv]) {
-    return `INES_EMBED_MODEL names ${parsed.provider}, which needs ${provider.keyEnv}.`;
+    return `AGENT_EMBED_MODEL names ${parsed.provider}, which needs ${provider.keyEnv}.`;
   }
   return null;
 }
@@ -80,7 +80,7 @@ export function getEmbeddingModel(kind: EmbedKind): EmbeddingModel {
   if (memoized) return memoized;
   const problem = embeddingProblem();
   if (problem) throw new Error(problem);
-  const { provider, modelId } = splitModelId(process.env.INES_EMBED_MODEL!)!;
+  const { provider, modelId } = splitModelId(process.env.AGENT_EMBED_MODEL!)!;
   const { keyEnv, model } = EMBEDDING_PROVIDERS[provider];
   return (_embedModels[kind] = model(modelId, kind, keyEnv ? process.env[keyEnv]! : ""));
 }

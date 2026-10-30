@@ -15,11 +15,11 @@ export const EnhancePromptSchema = z.object({
     .array(z.unknown())
     .min(1)
     .max(1000)
-    .describe("The conversation. Ines rewrites the last message that has the role human and a text as its content."),
+    .describe("The conversation. The agent rewrites the last message that has the role human and a text as its content."),
   widgets: z
     .unknown()
     .optional()
-    .describe("The widgets in the tiers primary, secondary and extra, as in a query. Ines uses their names as hints."),
+    .describe("The widgets in the tiers primary, secondary and extra, as in a query. The agent uses their names as hints."),
   context: z.unknown().optional().describe("Accepted and not used."),
   urls: z.array(z.string()).optional().describe("Accepted and not used."),
   workspace_state: z.unknown().optional().describe("Accepted and not used."),

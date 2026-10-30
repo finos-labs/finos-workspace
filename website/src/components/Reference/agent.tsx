@@ -13,18 +13,18 @@ function bytes(value: number): string {
 
 export function FieldTable({ fields, depth = 0, prefix = "" }: { fields: AgentField[]; depth?: number; prefix?: string }) {
   const rows = fields
-    .filter((field) => field.path.startsWith(prefix) && !field.path.startsWith("x-ines-"))
+    .filter((field) => field.path.startsWith(prefix) && !field.path.startsWith("x-agent-"))
     .map((field) => ({ ...field, path: prefix === "" ? field.path : field.path.slice(prefix.length) }))
     .filter((field) => field.path.split(/\.|\[\]/).filter(Boolean).length <= depth + 1);
   return <Fields fields={fromAgent(rows)} empty="No fields." />;
 }
 
-export function InesLimit({ name }: { name: "helperBodyBytes" | "transcribeBodyBytes" | "audioBytes" | "defaultMaxBodyMb" }) {
+export function AgentBodyLimit({ name }: { name: "helperBodyBytes" | "transcribeBodyBytes" | "audioBytes" | "defaultMaxBodyMb" }) {
   const limits = agentData.http.limits;
   return <>{name === "defaultMaxBodyMb" ? limits[name] : bytes(limits[name])}</>;
 }
 
-export function InesRoutes() {
+export function AgentRoutes() {
   return (
     <ItemList
       items={agentData.http.routes.map((route) => ({
@@ -42,7 +42,7 @@ export function InesRoutes() {
   );
 }
 
-export function InesHelperRoutes() {
+export function AgentHelperRoutes() {
   return (
     <>
       <Index
@@ -108,11 +108,11 @@ export function MetricsTable({ metrics }: { metrics: MetricRow[] }) {
   );
 }
 
-export function InesMetrics() {
+export function AgentMetrics() {
   return <MetricsTable metrics={agentData.metrics} />;
 }
 
-export function InesMcpCorsHeaders() {
+export function AgentMcpCorsHeaders() {
   return (
     <>
       {agentData.mcp.corsHeaders.map((header, index) => (
@@ -125,7 +125,7 @@ export function InesMcpCorsHeaders() {
   );
 }
 
-export function InesCount({ what }: { what: "backendTools" | "documentTools" | "workspaceTools" | "prompts" | "resources" }) {
+export function AgentCount({ what }: { what: "backendTools" | "documentTools" | "workspaceTools" | "prompts" | "resources" }) {
   const { tools, prompts, resources } = agentData.mcp;
   const counts = {
     backendTools: tools.filter((tool) => tool.group === "backend").length,
@@ -137,7 +137,7 @@ export function InesCount({ what }: { what: "backendTools" | "documentTools" | "
   return <>{counts[what]}</>;
 }
 
-export function InesScopedTools() {
+export function AgentScopedTools() {
   const names = agentData.mcp.tools.filter((tool) => tool.scoped).map((tool) => tool.name);
   return (
     <>
@@ -151,7 +151,7 @@ export function InesScopedTools() {
   );
 }
 
-export function InesMcpRoutes() {
+export function AgentMcpRoutes() {
   return (
     <ItemList
       items={agentData.mcp.routes.map((route) => ({
@@ -168,15 +168,15 @@ export function InesMcpRoutes() {
   );
 }
 
-export function InesMcpTools({ group }: { group: "backend" | "documents" | "workspace" }) {
+export function AgentMcpTools({ group }: { group: "backend" | "documents" | "workspace" }) {
   const tools = agentData.mcp.tools.filter((tool) => tool.group === group);
   return (
     <>
-      <Index items={tools.map((tool) => ({ id: `ines-tool-${tool.name}`, label: <code>{tool.name}</code>, summary: firstSentence(tool.description) }))} />
+      <Index items={tools.map((tool) => ({ id: `agent-tool-${tool.name}`, label: <code>{tool.name}</code>, summary: firstSentence(tool.description) }))} />
       {tools.map((tool) => (
         <Entry
           key={tool.name}
-          id={`ines-tool-${tool.name}`}
+          id={`agent-tool-${tool.name}`}
           title={<code>{tool.name}</code>}
           description={tool.description}
           chips={tool.scoped ? <Chip>checks the signed chat scope of every call</Chip> : undefined}
@@ -196,7 +196,7 @@ export function InesMcpTools({ group }: { group: "backend" | "documents" | "work
   );
 }
 
-export function InesMcpPrompts() {
+export function AgentMcpPrompts() {
   return (
     <ItemList
       items={agentData.mcp.prompts.map((prompt) => ({
@@ -208,7 +208,7 @@ export function InesMcpPrompts() {
   );
 }
 
-export function InesMcpResources() {
+export function AgentMcpResources() {
   return (
     <ItemList
       items={agentData.mcp.resources.map((resource) => ({
@@ -306,7 +306,7 @@ export function InternalArguments() {
   const rows = new Map<string, { tools: string[]; description: string }>();
   for (const tool of agentData.mcp.tools) {
     for (const field of tool.fields) {
-      if (!field.path.startsWith("x-ines-") || field.path.includes(".") || field.path.includes("[")) continue;
+      if (!field.path.startsWith("x-agent-") || field.path.includes(".") || field.path.includes("[")) continue;
       const row = rows.get(field.path) ?? { tools: [], description: field.description };
       row.tools.push(tool.name);
       rows.set(field.path, row);
@@ -330,7 +330,7 @@ export function AgentLimit({ name, unit }: { name: string; unit?: Unit }) {
   return <>{amount(value, unit)}</>;
 }
 
-export function InesCoreTools() {
+export function AgentCoreTools() {
   const names = agentData.protocol.coreTools;
   return (
     <>

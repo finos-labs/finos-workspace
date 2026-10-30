@@ -72,11 +72,11 @@ Valkey runs on the private network of Compose without a password, so `REDIS_PASS
 ```bash
 DEFAULT_MODEL=openai:<model>
 OPENAI_API_KEY=<your OpenAI API key>
-INES_SCOPE_SECRET=<INES_SCOPE_SECRET>
-INES_METERING_TOKEN=
+AGENT_SCOPE_SECRET=<AGENT_SCOPE_SECRET>
+AGENT_METERING_TOKEN=
 ```
 
-For another provider, set its own key instead of `OPENAI_API_KEY`, or for Ollama `OLLAMA_BASE_URL`. [Pick the providers](../../features/agent/choose-the-agent-model.mdx#pick-the-providers) lists them. Leave `INES_METERING_TOKEN` empty for now. You create it in [Start it](#start-it).
+For another provider, set its own key instead of `OPENAI_API_KEY`, or for Ollama `OLLAMA_BASE_URL`. [Pick the providers](../../features/agent/choose-the-agent-model.mdx#pick-the-providers) lists them. Leave `AGENT_METERING_TOKEN` empty for now. You create it in [Start it](#start-it).
 
 ### config.toml
 
@@ -280,7 +280,7 @@ services:
       WORKSPACE_ORIGIN: ${WEB_URL:?Set WEB_URL in .env}
       WORKSPACE_PUBLIC_URL: ${API_URL:?Set API_URL in .env}
       REDIS_URL: redis://valkey:6379
-      INES_CORS_ORIGINS: ${WEB_URL:?Set WEB_URL in .env}
+      AGENT_CORS_ORIGINS: ${WEB_URL:?Set WEB_URL in .env}
     ports:
       - "127.0.0.1:7777:7777"
     depends_on:
@@ -333,7 +333,7 @@ A few things about this file:
 - `user_create.json` and `config.toml` are mounted with `create_host_path: false`. When one of them is missing, `docker compose up` stops with `bind source path does not exist` and names the file, instead of putting an empty folder in its place.
 - The init step runs as `root` because it writes `user_create.json` on the server. The API and the worker read that file to know which role to give new people. The backend image has no shell, so the init step starts a short Python program that runs its three actions, instead of a shell command.
 - Every container except the init step drops all Linux capabilities and turns off privilege escalation.
-- The agent gets 30 seconds to stop (`stop_grace_period`). When it is told to stop, it waits up to 25 seconds for the answers in progress to finish, as `INES_SHUTDOWN_GRACE_SECONDS` sets, while Compose stops a container after 10 seconds unless told otherwise. Without this line, an upgrade would cut off an answer in progress.
+- The agent gets 30 seconds to stop (`stop_grace_period`). When it is told to stop, it waits up to 25 seconds for the answers in progress to finish, as `AGENT_SHUTDOWN_GRACE_SECONDS` sets, while Compose stops a container after 10 seconds unless told otherwise. Without this line, an upgrade would cut off an answer in progress.
 - The agent and its MCP server run with the [limits for the containers](production-setup.mdx#lock-down-the-containers) from Production setup.
 
 ## Start it
@@ -344,7 +344,7 @@ A few things about this file:
    docker compose run --rm --no-deps init python -m scripts.create_metering_token
    ```
 
-   It prints the token, then the date on which it expires, a year from now. Copy the token into `agent.env` as `INES_METERING_TOKEN`.
+   It prints the token, then the date on which it expires, a year from now. Copy the token into `agent.env` as `AGENT_METERING_TOKEN`.
 
 2. Start everything:
 
@@ -390,7 +390,7 @@ Fix what it names in the files, then run `docker compose up -d` again.
 docker compose logs agent
 ```
 
-A line with `INES_METERING_TOKEN is required` means that `agent.env` has no metering token. Create one as the first step of [Start it](#start-it) shows, put it into `agent.env` and run `docker compose up -d` again.
+A line with `AGENT_METERING_TOKEN is required` means that `agent.env` has no metering token. Create one as the first step of [Start it](#start-it) shows, put it into `agent.env` and run `docker compose up -d` again.
 
 ### When every question fails
 
@@ -414,7 +414,7 @@ Point your reverse proxy at the three ports on `127.0.0.1`:
 
 Make the proxy pass on the address of each client in `X-Forwarded-For` and the scheme of the request in `X-Forwarded-Proto`. The API counts its rate limits per client address and reads that address from `X-Forwarded-For`. Without the header, every user shares the address of the proxy, and its limits.
 
-The agent streams its answers, so the proxy must keep an idle connection to the agent open while a model call runs. [What the load balancer and the platform allow](run-the-agent-on-several-replicas.mdx#what-the-load-balancer-and-the-platform-allow) gives the timeout. Check the size limit of the proxy too: the agent accepts a request of up to 64 MB by default, as `INES_MAX_BODY_MB` sets, and nginx refuses anything over 1 MiB unless you raise `client_max_body_size` for the agent's name. Then go through the checks in [Production setup](production-setup.mdx#check-that-it-works).
+The agent streams its answers, so the proxy must keep an idle connection to the agent open while a model call runs. [What the load balancer and the platform allow](run-the-agent-on-several-replicas.mdx#what-the-load-balancer-and-the-platform-allow) gives the timeout. Check the size limit of the proxy too: the agent accepts a request of up to 64 MB by default, as `AGENT_MAX_BODY_MB` sets, and nginx refuses anything over 1 MiB unless you raise `client_max_body_size` for the agent's name. Then go through the checks in [Production setup](production-setup.mdx#check-that-it-works).
 
 ## Upgrade
 

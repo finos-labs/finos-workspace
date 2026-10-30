@@ -5,7 +5,7 @@ sidebar_position: 7
 
 # Make a widget readable by the Agent
 
-The Agent can answer a question about a widget only after it has found the widget and read its data. A widget that draws a chart or a page, such as an `html` widget, gives the Agent markup and no numbers unless you do something about it. This guide shows how to help the Agent find a widget, how to give it the rows behind a view, how to link a widget to a query tool of your backend, and how to keep a widget away from the Agent. The keys are described in [widgets.json](../../reference/schemas/widgets-json.mdx), and [Widget data for the agent](../../reference/protocols/ines-widget-data.mdx) follows a read from the tool call to the reply.
+The Agent can answer a question about a widget only after it has found the widget and read its data. A widget that draws a chart or a page, such as an `html` widget, gives the Agent markup and no numbers unless you do something about it. This guide shows how to help the Agent find a widget, how to give it the rows behind a view, how to link a widget to a query tool of your backend, and how to keep a widget away from the Agent. The keys are described in [widgets.json](../../reference/schemas/widgets-json.mdx), and [Widget data for the agent](../../reference/protocols/agent-widget-data.mdx) follows a read from the tool call to the reply.
 
 ## How the Agent reads a widget
 

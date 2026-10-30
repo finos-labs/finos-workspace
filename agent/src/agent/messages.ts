@@ -2,7 +2,7 @@ import type { ModelMessage } from "ai";
 import type { QueryRequest, ToolMessage, WorkspaceState } from "../protocol/types.ts";
 import { buildSystemPrompt, type PromptOptions } from "./prompt.ts";
 import { renderToolResultForHistory } from "../mcp/results.ts";
-import { inesSkillContent, isInesSkill } from "../skills/index.ts";
+import { agentSkillContent, isAgentSkill } from "../skills/index.ts";
 import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../protocol/bridge-commands.ts";
 import { isWidgetDataMcpResult } from "./workspace-widget-data.ts";
 import {
@@ -42,7 +42,7 @@ export function buildMessages(
   ];
 
   const selectedSkills = (request.selected_skills ?? []).flatMap((s) => {
-    const content = s.contentMarkdown || (isInesSkill(request, s.slug) ? inesSkillContent(s.slug) : "");
+    const content = s.contentMarkdown || (isAgentSkill(request, s.slug) ? agentSkillContent(s.slug) : "");
     return content ? [{ slug: s.slug, content }] : [];
   });
   if (selectedSkills.length > 0) {

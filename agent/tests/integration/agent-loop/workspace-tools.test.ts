@@ -159,11 +159,11 @@ describe("a call of the FINOS Workspace's tool", () => {
   it("does not make another server's calls wait with the FINOS Workspace's", async () => {
     const events = await ask({
       messages: [{ role: "human", content: "search the web and update the widget" }],
-      tools: [...TOOLS, { name: "Ines_Tools_web_search", server_id: "ines", url: "http://ines:8787/mcp", description: "Search the web." }],
+      tools: [...TOOLS, { name: "Agent_Tools_web_search", server_id: "agent", url: "http://agent:8787/mcp", description: "Search the web." }],
       model: makeMockLlm({
         toolCalls: [
           { toolName: "Workspace_update_widget", input: { widget_uuid: "w-1" } },
-          { toolName: "Ines_Tools_web_search", input: { query: "MSFT" } },
+          { toolName: "Agent_Tools_web_search", input: { query: "MSFT" } },
         ],
         finishReason: "tool-calls",
       }),
@@ -216,13 +216,13 @@ describe("the calls that wait", () => {
   it("are made only of the FINOS Workspace's tools that the request has: what comes back from the browser is not trusted", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("Done."));
     const events = await ask({
-      tools: [...TOOLS, { name: "Ines_Tools_web_search", server_id: "ines", url: "http://ines:8787/mcp", description: "Search the web." }],
+      tools: [...TOOLS, { name: "Agent_Tools_web_search", server_id: "agent", url: "http://agent:8787/mcp", description: "Search the web." }],
       messages: [
         { role: "human", content: "set the symbol to MSFT" },
         result({
           pending_workspace_calls: [
             { tool_name: "Workspace_delete_everything", input_arguments: {} },
-            { tool_name: "Ines_Tools_web_search", input_arguments: { query: "x" } },
+            { tool_name: "Agent_Tools_web_search", input_arguments: { query: "x" } },
           ],
         }),
       ],

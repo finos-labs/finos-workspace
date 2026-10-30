@@ -39,7 +39,7 @@ The script builds the image of the local stack, `workspace-api:local`, and runs 
 
 ## Write the agent's data
 
-From `agent`, install the dependencies and run the exporter on Node 26.12.1. It writes `agent/reference-data/reference.json`, which holds the routes, the metrics, the MCP tools, the [query protocol](../../reference/protocols/ines-query.mdx) and the limits of Ines, and the [`agents.json`](../../reference/schemas/agents-json.mdx) file that Ines serves.
+From `agent`, install the dependencies and run the exporter on Node 26.12.1. It writes `agent/reference-data/reference.json`, which holds the routes, the metrics, the MCP tools, the [query protocol](../../reference/protocols/agent-query.mdx) and the limits of the agent, and the [`agents.json`](../../reference/schemas/agents-json.mdx) file that the agent serves.
 
 ```bash
 cd agent

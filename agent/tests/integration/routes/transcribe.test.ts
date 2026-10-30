@@ -11,9 +11,9 @@ import { wav } from "../../helpers/wav.ts";
 const ENV = {
   WORKSPACE_API_URL: "http://api:8000",
   WORKSPACE_ORIGIN: "http://localhost:3000",
-  INES_METERING_TOKEN: "metering-token",
-  INES_SCOPE_SECRET: "0123456789abcdef0123",
-  INES_CORS_ORIGINS: "http://localhost:3000",
+  AGENT_METERING_TOKEN: "metering-token",
+  AGENT_SCOPE_SECRET: "0123456789abcdef0123",
+  AGENT_CORS_ORIGINS: "http://localhost:3000",
 };
 
 function app(extraEnv: Record<string, string> = {}) {
@@ -45,11 +45,11 @@ function send(target: ReturnType<typeof app>, audio: Uint8Array<ArrayBuffer> | s
 }
 
 const realFetch = globalThis.fetch;
-const saved = { model: process.env.INES_TRANSCRIBE_MODEL, key: process.env.GROQ_API_KEY };
+const saved = { model: process.env.AGENT_TRANSCRIBE_MODEL, key: process.env.GROQ_API_KEY };
 let asked = 0;
 
 beforeEach(() => {
-  process.env.INES_TRANSCRIBE_MODEL = "groq:whisper-large-v3-turbo";
+  process.env.AGENT_TRANSCRIBE_MODEL = "groq:whisper-large-v3-turbo";
   process.env.GROQ_API_KEY = "gsk-test";
   asked = 0;
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -62,7 +62,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   globalThis.fetch = realFetch;
-  for (const [name, value] of [["INES_TRANSCRIBE_MODEL", saved.model], ["GROQ_API_KEY", saved.key]] as const) {
+  for (const [name, value] of [["AGENT_TRANSCRIBE_MODEL", saved.model], ["GROQ_API_KEY", saved.key]] as const) {
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;
   }
@@ -82,7 +82,7 @@ describe("POST /v1/transcribe", () => {
   });
 
   it("is not there when the deployment has no speech-to-text model", async () => {
-    delete process.env.INES_TRANSCRIBE_MODEL;
+    delete process.env.AGENT_TRANSCRIBE_MODEL;
     expect((await send(app(), wav())).status).toBe(404);
   });
 
@@ -107,7 +107,7 @@ describe("POST /v1/transcribe", () => {
   });
 
   it("counts against the user's helper calls", async () => {
-    const limited = app({ INES_HELPER_CALLS_PER_MINUTE: "1" });
+    const limited = app({ AGENT_HELPER_CALLS_PER_MINUTE: "1" });
     expect((await send(limited, wav())).status).toBe(200);
     expect((await send(limited, wav())).status).toBe(429);
   });
@@ -119,13 +119,13 @@ describe("the speech-to-text feature in /agents.json", () => {
 
   it("is on when the deployment has a speech-to-text model, and absent when it has none", async () => {
     expect((await features())["speech-to-text"]).toBe(true);
-    delete process.env.INES_TRANSCRIBE_MODEL;
+    delete process.env.AGENT_TRANSCRIBE_MODEL;
     expect(await features()).not.toHaveProperty("speech-to-text");
   });
 });
 
 describe("loadConfig", () => {
-  it("refuses an INES_TRANSCRIBE_MODEL it cannot use", () => {
-    expect(() => loadConfig({ ...ENV, INES_TRANSCRIBE_MODEL: "ollama:whisper" })).toThrow("provider that transcribes");
+  it("refuses an AGENT_TRANSCRIBE_MODEL it cannot use", () => {
+    expect(() => loadConfig({ ...ENV, AGENT_TRANSCRIBE_MODEL: "ollama:whisper" })).toThrow("provider that transcribes");
   });
 });

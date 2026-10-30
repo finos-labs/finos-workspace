@@ -17,7 +17,7 @@ export const GenerateCodeSchema = z.object({
   current_code: z.string().nullish().describe("The code to change or improve."),
   language: z.enum(["sql", "python"]).describe("The language of the code."),
   sql_schema: z.record(z.string(), z.unknown()).nullish().describe("The tables and columns that the code may use."),
-  data_sample: z.array(z.record(z.string(), z.unknown())).nullish().describe(`Rows of the data. Ines reads the first ${DATA_SAMPLE_ROWS}.`),
+  data_sample: z.array(z.record(z.string(), z.unknown())).nullish().describe(`Rows of the data. The agent reads the first ${DATA_SAMPLE_ROWS}.`),
   model: modelField,
 });
 

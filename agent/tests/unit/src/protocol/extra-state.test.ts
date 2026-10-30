@@ -63,7 +63,7 @@ describe("readExtraState — what a client sends back", () => {
   });
 
   it("keeps the document hits the tool reported, and drops the ones that are not", () => {
-    const good = { id: "d1", type: "document", uri: "ines-doc://c/d1", title: "plan.pdf", page: 2, score: 0.58 };
+    const good = { id: "d1", type: "document", uri: "agent-doc://c/d1", title: "plan.pdf", page: 2, score: 0.58 };
     const out = readExtraState(
       tm({
         document_hits: [good, null, { id: "d1", type: "document" }, { ...good, page: 0 }, { ...good, page: "2" }, { ...good, type: "web" }, { ...good, score: 7 }, "x"],

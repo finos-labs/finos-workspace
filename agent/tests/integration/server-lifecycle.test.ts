@@ -19,7 +19,7 @@ function run(script: string, env: Record<string, string>) {
 async function startServer(extraEnv: Record<string, string> = {}): Promise<{ proc: ChildProcess; exited: Promise<number | null>; base: string }> {
   const port = 20_000 + Math.floor(Math.random() * 20_000);
   const { proc, exited } = run(SERVER, {
-    PATH: process.env.PATH ?? "", PORT: String(port), INES_AUTH: "none", INES_CORS_ORIGINS: "*", INES_METRICS_PORT: "0", LOG_LEVEL: "warning", ...extraEnv,
+    PATH: process.env.PATH ?? "", PORT: String(port), AGENT_AUTH: "none", AGENT_CORS_ORIGINS: "*", AGENT_METRICS_PORT: "0", LOG_LEVEL: "warning", ...extraEnv,
   });
   const base = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 100; i++) {
@@ -47,7 +47,7 @@ describe("the server process", () => {
 
   it("refuses to start without what it needs, and says what is missing", { timeout: 30_000 }, async () => {
     const port = 20_000 + Math.floor(Math.random() * 20_000);
-    const { exited, output } = run(SERVER, { PATH: process.env.PATH ?? "", PORT: String(port), INES_METRICS_PORT: "0" });
+    const { exited, output } = run(SERVER, { PATH: process.env.PATH ?? "", PORT: String(port), AGENT_METRICS_PORT: "0" });
     expect(await exited).toBe(1);
     expect(output()).toContain("WORKSPACE_API_URL");
   });
@@ -57,7 +57,7 @@ describe("the MCP server process", () => {
   it("refuses to fetch the FINOS Workspace's files without the Origin the API allows", { timeout: 30_000 }, async () => {
     const { exited, output } = run(MCP_SERVER, {
       PATH: process.env.PATH ?? "",
-      INES_AUTH: "none",
+      AGENT_AUTH: "none",
       MCP_PORT: String(20_000 + Math.floor(Math.random() * 20_000)),
       MCP_METRICS_PORT: "0",
       WORKSPACE_PUBLIC_URL: "http://localhost:8000",

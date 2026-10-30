@@ -321,7 +321,7 @@ interface AgentRoute {
   path: string;
   needsToken: boolean;
   helperCalls: boolean;
-  bodyLimitBytes: number | "INES_MAX_BODY_MB";
+  bodyLimitBytes: number | "AGENT_MAX_BODY_MB";
   summary: string;
 }
 

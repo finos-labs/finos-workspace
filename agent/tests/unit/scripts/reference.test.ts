@@ -10,9 +10,9 @@ import { collectReference, renderReference } from "../../../scripts/reference/in
 const ENV = {
   WORKSPACE_API_URL: "http://api:8000",
   WORKSPACE_ORIGIN: "http://localhost:3000",
-  INES_METERING_TOKEN: "metering-token",
-  INES_SCOPE_SECRET: "0123456789abcdef0123",
-  INES_CORS_ORIGINS: "http://localhost:3000",
+  AGENT_METERING_TOKEN: "metering-token",
+  AGENT_SCOPE_SECRET: "0123456789abcdef0123",
+  AGENT_CORS_ORIGINS: "http://localhost:3000",
 };
 
 const rejecting: WorkspaceClient = {
@@ -41,8 +41,8 @@ describe("the reference data", () => {
     const { agentsFile } = await collectReference();
     expect(agentsFile.conditional).toEqual([
       { feature: "model", variable: "DEFAULT_MODEL" },
-      { feature: "model", variable: "INES_MODELS" },
-      { feature: "speech-to-text", variable: "INES_TRANSCRIBE_MODEL" },
+      { feature: "model", variable: "AGENT_MODELS" },
+      { feature: "speech-to-text", variable: "AGENT_TRANSCRIBE_MODEL" },
     ]);
     expect(Object.keys(agentsFile.file)).toEqual(["default_agent"]);
   });

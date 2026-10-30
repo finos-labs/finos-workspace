@@ -31,7 +31,7 @@ describe("messageChunk", () => {
     const cases = [
       ["see this <artifact_id:abcd-ef12>", "see this "],
       ["<artifact:1234>before<copilot_table:7> after", "before after"],
-      ["<ines_artifact id=\"x\">leak</ines_artifact>", "leak"],
+      ["<agent_artifact id=\"x\">leak</agent_artifact>", "leak"],
       ['Visual Summary\n\n<chart artifact="UNRATE vs GDP"/>', "Visual Summary\n\n"],
       ["<ARTIFACT_ID:upper>", ""],
       ["<|start_artifact_id|>artifact-1<|end_artifact_id|>answer", "answer"],
@@ -199,8 +199,8 @@ describe("executeAgentTool", () => {
   it("threads parameters byte-for-byte (decoration keys included)", () => {
     const params = {
       query: "revenue",
-      "x-ines-conversation-id": "conv-1",
-      "x-ines-documents": [{ id: "d1", name: "report.pdf" }],
+      "x-agent-conversation-id": "conv-1",
+      "x-agent-documents": [{ id: "d1", name: "report.pdf" }],
     };
     const e = executeAgentTool("srv", "query_documents", params);
     const data = e.data as Record<string, unknown>;
@@ -374,7 +374,7 @@ describe("stripPlaceholderTags is what the patterns it replaced were", () => {
     text.replace(paired, "").replace(tag, "").replace(pipe, "").replace(dangling, "").replace(img, "").replace(dataImage, "");
 
   const pieces = [
-    "<artifact>", "</artifact>", "<artifact_id:1>", "<ARTIFACT ", "<copilot_table:7>", "<ines_artifact id=\"x\">", "</ines_artifact>",
+    "<artifact>", "</artifact>", "<artifact_id:1>", "<ARTIFACT ", "<copilot_table:7>", "<agent_artifact id=\"x\">", "</agent_artifact>",
     "<citation_id:9>", "<chart a=1/>", "<suggestions>", "</suggestions>", "<suggestion>", "</suggestion>", "<img src=x>", "<IMG ", "<imgx>",
     "<|start_artifact|>", "<|end_artifact|>", "<|start_citation_id|>", "<|end_citation_id|>", "<|START_Artifact|>", "<|end_Artifact|>",
     "<|start_artifact_id|>", "<|end_artifact|>", "<|start_chart|>", "<|end_chart|>",

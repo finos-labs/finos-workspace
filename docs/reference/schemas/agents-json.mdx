@@ -8,7 +8,7 @@ import { AgentFeatures, AgentsFileExample } from "@site/src/components/Reference
 
 # agents.json
 
-The file `agents.json` is how an agent introduces itself to the web app. The file is an object. Each key is an agent's id, and each value describes one agent, so one file can describe several agents. Ines serves it at `/agents.json`, and a user can connect any other agent by entering the address of a server that serves such a file.
+The file `agents.json` is how an agent introduces itself to the web app. The file is an object. Each key is an agent's id, and each value describes one agent, so one file can describe several agents. The agent serves it at `/agents.json`, and a user can connect any other agent by entering the address of a server that serves such a file.
 
 The fields below are generated from the schema that the web app validates the file with, in `frontend/src/lib/state/copilot.ts`.
 
@@ -33,7 +33,7 @@ The web app knows these keys of `features`. A key set to `true` switches the fea
 
 ## Example
 
-This is the file that a running Ines answers with. The agent's exporter writes it with `DEFAULT_MODEL`, `INES_MODELS` and `INES_TRANSCRIBE_MODEL` set, and the agent builds it in `agent/src/routes/agents.ts`.
+This is the file that a running the agent answers with. The agent's exporter writes it with `DEFAULT_MODEL`, `AGENT_MODELS` and `AGENT_TRANSCRIBE_MODEL` set, and the agent builds it in `agent/src/routes/agents.ts`.
 
 <AgentsFileExample />
 
@@ -41,5 +41,5 @@ This is the file that a running Ines answers with. The agent's exporter writes i
 
 - The web app requests the file at the address that the user entered or, for the default agent, at the address of its `urls.ai` setting. A user can add request headers, such as an `Authorization` header, and the app sends them with every request to the agent, including this one.
 - A 401 means that the agent refused the request, a 404 means that the file does not exist, and a file that does not match the schema is reported as an invalid agents file.
-- The web app merges the entry `default_agent` of the default agent into its own definition of the default agent, so the models, skills and settings that Ines declares appear in the interface without a change to the app. The Admin → Roles dialog uses the same entry to list the models that a role can be granted.
-- The settings travel in the `workspace_options` of the request that [the query protocol](../protocols/ines-query.mdx) describes.
+- The web app merges the entry `default_agent` of the default agent into its own definition of the default agent, so the models, skills and settings that the agent declares appear in the interface without a change to the app. The Admin → Roles dialog uses the same entry to list the models that a role can be granted.
+- The settings travel in the `workspace_options` of the request that [the query protocol](../protocols/agent-query.mdx) describes.

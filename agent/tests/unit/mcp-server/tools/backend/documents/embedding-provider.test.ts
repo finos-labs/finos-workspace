@@ -14,7 +14,7 @@ import {
 } from "../../../../../../mcp-server/src/tools/backend/documents/store.ts";
 
 const realFetch = globalThis.fetch;
-const KEYS = ["INES_EMBED_MODEL", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "NVIDIA_API_KEY", "OLLAMA_BASE_URL"];
+const KEYS = ["AGENT_EMBED_MODEL", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "NVIDIA_API_KEY", "OLLAMA_BASE_URL"];
 const savedEnv: Record<string, string | undefined> = {};
 
 interface Request {
@@ -66,46 +66,46 @@ afterEach(() => {
 });
 
 describe("embeddingProblem", () => {
-  it("asks for INES_EMBED_MODEL when it is unset", () => {
-    expect(embeddingProblem()).toContain("INES_EMBED_MODEL is not set");
+  it("asks for AGENT_EMBED_MODEL when it is unset", () => {
+    expect(embeddingProblem()).toContain("AGENT_EMBED_MODEL is not set");
   });
 
   it("rejects a value that names no provider", () => {
-    process.env.INES_EMBED_MODEL = "some-bare-model";
+    process.env.AGENT_EMBED_MODEL = "some-bare-model";
     expect(embeddingProblem()).toContain("must be <provider>:<model>");
   });
 
   it("rejects a provider that cannot embed", () => {
-    process.env.INES_EMBED_MODEL = "groq:anything";
+    process.env.AGENT_EMBED_MODEL = "groq:anything";
     expect(embeddingProblem()).toContain("must be <provider>:<model>");
   });
 
   it("names the credential a provider is missing", () => {
-    process.env.INES_EMBED_MODEL = "nvidia:some/model";
+    process.env.AGENT_EMBED_MODEL = "nvidia:some/model";
     expect(embeddingProblem()).toContain("NVIDIA_API_KEY");
-    process.env.INES_EMBED_MODEL = "openai:some-model";
+    process.env.AGENT_EMBED_MODEL = "openai:some-model";
     expect(embeddingProblem()).toContain("OPENAI_API_KEY");
-    process.env.INES_EMBED_MODEL = "openrouter:some/model";
+    process.env.AGENT_EMBED_MODEL = "openrouter:some/model";
     expect(embeddingProblem()).toContain("OPENROUTER_API_KEY");
   });
 
   it("is satisfied by a provider with its credential, and by Ollama without one", () => {
-    process.env.INES_EMBED_MODEL = "nvidia:some/model";
+    process.env.AGENT_EMBED_MODEL = "nvidia:some/model";
     process.env.NVIDIA_API_KEY = "k";
     expect(embeddingProblem()).toBeNull();
-    process.env.INES_EMBED_MODEL = "ollama:some-model:latest";
+    process.env.AGENT_EMBED_MODEL = "ollama:some-model:latest";
     expect(embeddingProblem()).toBeNull();
   });
 
   it("makes getEmbeddingModel throw the same explanation", () => {
-    process.env.INES_EMBED_MODEL = "nvidia:some/model";
+    process.env.AGENT_EMBED_MODEL = "nvidia:some/model";
     expect(() => getEmbeddingModel("passage")).toThrow("NVIDIA_API_KEY");
   });
 });
 
 describe("NVIDIA embeddings", () => {
   beforeEach(() => {
-    process.env.INES_EMBED_MODEL = "nvidia:nvidia/some-embed-model";
+    process.env.AGENT_EMBED_MODEL = "nvidia:nvidia/some-embed-model";
     process.env.NVIDIA_API_KEY = "test-key";
   });
 
@@ -151,7 +151,7 @@ describe("NVIDIA embeddings", () => {
 
 describe("other providers", () => {
   it("sends OpenAI's own request without NVIDIA's fields", async () => {
-    process.env.INES_EMBED_MODEL = "openai:some-embed-model";
+    process.env.AGENT_EMBED_MODEL = "openai:some-embed-model";
     process.env.OPENAI_API_KEY = "oa-key";
     const seen = recordRequests();
     await embedChunks([chunk(0)]);
@@ -163,14 +163,14 @@ describe("other providers", () => {
   });
 
   it("resolves an OpenRouter model", () => {
-    process.env.INES_EMBED_MODEL = "openrouter:vendor/some-embed-model";
+    process.env.AGENT_EMBED_MODEL = "openrouter:vendor/some-embed-model";
     process.env.OPENROUTER_API_KEY = "or-key";
     const model = getEmbeddingModel("passage");
     expect(model).toMatchObject({ specificationVersion: "v3", modelId: "vendor/some-embed-model" });
   });
 
   it("resolves an Ollama model whose name contains a colon", () => {
-    process.env.INES_EMBED_MODEL = "ollama:some-embed-model:latest";
+    process.env.AGENT_EMBED_MODEL = "ollama:some-embed-model:latest";
     const model = getEmbeddingModel("passage");
     expect(model).toMatchObject({ specificationVersion: "v3", modelId: "some-embed-model:latest" });
   });

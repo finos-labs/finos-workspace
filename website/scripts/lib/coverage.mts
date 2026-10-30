@@ -24,7 +24,7 @@ function requirements(plugins: PluginsData, agent: AgentData): Requirement[] {
       what: "host versions in the manifest that the lesson writes",
       tokens: [`"host": { "api": ${values["host.api"]}, "afm": "${values["host.afm"]}" }`],
     },
-    { page: "docs/reference/protocols/ines-tool-results.mdx", what: "typed result kinds", tokens: agent.protocol.typedResults.kinds.map((kind) => `| \`${kind}\` |`) },
+    { page: "docs/reference/protocols/agent-tool-results.mdx", what: "typed result kinds", tokens: agent.protocol.typedResults.kinds.map((kind) => `| \`${kind}\` |`) },
   ];
 }
 
@@ -191,10 +191,10 @@ const LINK_RULES: LinkRule[] = [
   {
     term: "the agent query protocol",
     pattern: /query protocol|copilot(?:MessageChunk|FunctionCall|StatusUpdate)|\/v1\/query|get_widget_data/,
-    pages: [`${REFERENCE}protocols/ines-query.mdx`, `${REFERENCE}protocols/ines-widget-data.mdx`],
+    pages: [`${REFERENCE}protocols/agent-query.mdx`, `${REFERENCE}protocols/agent-widget-data.mdx`],
   },
   { term: "widget requests", pattern: /optionsMethod|"in": "(?:header|body)"/, pages: [`${REFERENCE}protocols/widget-requests.mdx`] },
-  { term: "typed results", pattern: /typed results?/, pages: [`${REFERENCE}protocols/ines-tool-results.mdx`], except: "docs/tutorials/contribute/" },
+  { term: "typed results", pattern: /typed results?/, pages: [`${REFERENCE}protocols/agent-tool-results.mdx`], except: "docs/tutorials/contribute/" },
   { term: "the module contract", pattern: /module contract/, pages: [`${REFERENCE}plugins/module-contract.mdx`] },
   { term: "plugin permissions", pattern: /`core:[a-z]+(?::[a-z]+)*`/, pages: [`${REFERENCE}plugins/commands-and-permissions.mdx`] },
   { term: "the frame policy", pattern: /frame policy|content security policy/, pages: [`${REFERENCE}plugins/frame-policy.mdx`] },

@@ -55,8 +55,8 @@ The API does not start without these, and the agent needs two secrets of its own
 | `WRITE_DB_PASSWORD` and `READ_DB_PASSWORD` | API, worker, init step | The passwords of the database accounts that the API writes and reads with. The two accounts can be the same one. You need them with MySQL or PostgreSQL. |
 | `REDIS_PASS` | API, worker | The password of Valkey. Leave it empty when Valkey has no password, but the variable still has to be there. |
 | `MODE` | API, worker | Set it to `production`. |
-| `INES_SCOPE_SECRET` | Agent, agent MCP server | At least 16 characters. It keeps one user's chats apart from another's, and both services must have the same value. |
-| `INES_METERING_TOKEN` | Agent | Lets the agent report usage to the API and ask it whether a user may use a model and its tools. It is signed with `JWT_SECRET` and expires after a year. The agent does not start without it. |
+| `AGENT_SCOPE_SECRET` | Agent, agent MCP server | At least 16 characters. It keeps one user's chats apart from another's, and both services must have the same value. |
+| `AGENT_METERING_TOKEN` | Agent | Lets the agent report usage to the API and ask it whether a user may use a model and its tools. It is signed with `JWT_SECRET` and expires after a year. The agent does not start without it. |
 
 Every API and worker process must have the same `JWT_SECRET`, `WORKSPACE_AES_KEY` and `LOCAL_STORAGE_SECRET_KEY`, so give all replicas the same Secret or file.
 
@@ -66,10 +66,10 @@ Generate the random values with the same commands that the local setup script us
 
 ```bash
 python3 -c "import secrets; print(secrets.token_urlsafe(48))"  # JWT_SECRET
-python3 -c "import secrets; print(secrets.token_urlsafe(32))"  # once each for WORKSPACE_AES_KEY, LOCAL_STORAGE_SECRET_KEY and INES_SCOPE_SECRET
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"  # once each for WORKSPACE_AES_KEY, LOCAL_STORAGE_SECRET_KEY and AGENT_SCOPE_SECRET
 ```
 
-To create `INES_METERING_TOKEN`, run this command in a container of the backend image that has the API's settings:
+To create `AGENT_METERING_TOKEN`, run this command in a container of the backend image that has the API's settings:
 
 ```bash
 python -m scripts.create_metering_token
@@ -85,7 +85,7 @@ It prints the token, and on its error output the date on which the token expires
 - Backups of the database, including one right before every upgrade, as [Upgrade a deployment](run-database-migrations.mdx#upgrade-a-deployment) describes.
 - A place for uploaded files that every API and worker container can reach, as [Choose where files are stored](choose-file-storage.md) describes.
 - A model for the agent: set `DEFAULT_MODEL` and your provider's key in the environment of the agent. [Choose the Agent's model and provider](../../features/agent/choose-the-agent-model.mdx) lists the providers.
-- A request size limit in the proxy that fits what the app sends. People can attach files of up to 25 MiB in the web app, and the agent accepts a request of up to `INES_MAX_BODY_MB` megabytes, 64 by default, and refuses a larger one with status 413. Set the limit of your proxy for the agent's name to the same size: nginx, for one, refuses anything over 1 MiB unless you raise it.
+- A request size limit in the proxy that fits what the app sends. People can attach files of up to 25 MiB in the web app, and the agent accepts a request of up to `AGENT_MAX_BODY_MB` megabytes, 64 by default, and refuses a larger one with status 413. Set the limit of your proxy for the agent's name to the same size: nginx, for one, refuses anything over 1 MiB unless you raise it.
 - Connections that stay open while the agent streams an answer, and enough time at shutdown for the agent to finish the questions it is working on, as [What the load balancer and the platform allow](run-the-agent-on-several-replicas.mdx#what-the-load-balancer-and-the-platform-allow) describes.
 
 ## Lock down the containers

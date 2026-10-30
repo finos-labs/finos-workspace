@@ -32,7 +32,7 @@ export function fromSchema(properties: SchemaProperty[]): FlatField[] {
 
 export function fromAgent(fields: AgentField[]): FlatField[] {
   return fields
-    .filter((field) => !field.path.startsWith("x-ines-"))
+    .filter((field) => !field.path.startsWith("x-agent-"))
     .map((field) => ({
       path: field.path,
       type: [field.type],

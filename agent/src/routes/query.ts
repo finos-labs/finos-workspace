@@ -34,7 +34,7 @@ export const WidgetSchema = z
       .max(500)
       .optional()
       .describe(
-        "The widget's identifier on the dashboard. A widget of the catalog that is not on the dashboard has none, and Ines identifies it by its widget_id.",
+        "The widget's identifier on the dashboard. A widget of the catalog that is not on the dashboard has none, and the agent identifies it by its widget_id.",
       ),
     origin: z.string().max(500).optional().describe("The name of the backend that serves the widget."),
     widget_id: z.string().max(500).optional().describe("The widget's id in its backend."),
@@ -82,7 +82,7 @@ export const QueryRequestSchema = z.object({
     .min(1)
     .max(LIMITS.messages)
     .describe("The conversation, oldest first. A message has the role human, ai or tool."),
-  model: z.string().max(200).optional().describe("Accepted but not used. Ines reads the model from workspace_options.model."),
+  model: z.string().max(200).optional().describe("Accepted but not used. The agent reads the model from workspace_options.model."),
   widgets: z
     .object({
       primary: z.array(WidgetSchema).max(LIMITS.widgets).optional().describe("The widgets that the user selected or mentioned."),
@@ -100,12 +100,12 @@ export const QueryRequestSchema = z.object({
     .array(z.string().max(4_000))
     .max(8)
     .optional()
-    .describe("Web addresses that appeared in the user's message. Ines fetches them for the model unless an administrator turned the web tools off."),
+    .describe("Web addresses that appeared in the user's message. The agent fetches them for the model unless an administrator turned the web tools off."),
   timezone: z.string().max(100).optional().describe("The user's time zone, such as Europe/Paris."),
   workspace_state: z
     .unknown()
     .optional()
-    .describe("Where the user is: the current page, dashboard and tab, and the recent actions. Ines ignores a value that does not have this shape."),
+    .describe("Where the user is: the current page, dashboard and tab, and the recent actions. The agent ignores a value that does not have this shape."),
   workspace_options: z
     .record(z.string().max(100), z.union([z.boolean(), z.string().max(500)]))
     .refine((o) => Object.keys(o).length <= LIMITS.options, "Too many options")
@@ -168,7 +168,7 @@ export const QueryRequestSchema = z.object({
     .max(LIMITS.documents)
     .optional()
     .describe(
-      "Files sent inline. Ines accepts them but treats the field as deprecated, because the web app sends a file as a widget in widgets.primary instead. Each needs content_b64 or url.",
+      "Files sent inline. The agent accepts them but treats the field as deprecated, because the web app sends a file as a widget in widgets.primary instead. Each needs content_b64 or url.",
     ),
 });
 

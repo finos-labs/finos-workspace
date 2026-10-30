@@ -99,8 +99,8 @@ describe("the environment reference", () => {
       (match) => match[1],
     );
     expect(providers("DEFAULT_MODEL")).toEqual(registered);
-    expect(providers("INES_MODELS")).toEqual(registered);
-    expect(providers("INES_TRANSCRIBE_MODEL")).toEqual(TRANSCRIBE_PROVIDER_NAMES);
-    expect(providers("INES_EMBED_MODEL")).toEqual(EMBEDDING_PROVIDER_NAMES);
+    expect(providers("AGENT_MODELS")).toEqual(registered);
+    expect(providers("AGENT_TRANSCRIBE_MODEL")).toEqual(TRANSCRIBE_PROVIDER_NAMES);
+    expect(providers("AGENT_EMBED_MODEL")).toEqual(EMBEDDING_PROVIDER_NAMES);
   });
 });

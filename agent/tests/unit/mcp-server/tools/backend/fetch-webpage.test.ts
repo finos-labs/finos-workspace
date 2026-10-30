@@ -9,17 +9,17 @@ import { signScope, signUrl } from "../../../../../src/lib/scope.ts";
 const realFetch = globalThis.fetch;
 const CHAT = "u1:chat1";
 const SECRET = "0123456789abcdef0123";
-process.env.INES_SCOPE_SECRET = SECRET;
+process.env.AGENT_SCOPE_SECRET = SECRET;
 const scoped = (chat: string = CHAT) => ({
-  "x-ines-conversation-id": chat,
-  "x-ines-scope-sig": signScope(SECRET, chat),
+  "x-agent-conversation-id": chat,
+  "x-agent-scope-sig": signScope(SECRET, chat),
 });
 const call = (url: string, chat: string = CHAT) => ({
   url,
-  "x-ines-url-sig": signUrl(SECRET, url),
+  "x-agent-url-sig": signUrl(SECRET, url),
   ...scoped(chat),
 });
-const callWithoutChat = (url: string) => ({ url, "x-ines-url-sig": signUrl(SECRET, url) });
+const callWithoutChat = (url: string) => ({ url, "x-agent-url-sig": signUrl(SECRET, url) });
 
 const page = (body: string, init: ResponseInit = {}) =>
   new Response(body, { ...init, headers: { "content-type": "text/html; charset=utf-8", ...init.headers } });
@@ -54,7 +54,7 @@ describe("fetchWebpageHandler — happy path", () => {
     expect(res.content[0].text).toContain("Body");
     expect(res.content[0].text).not.toContain("script");
     const cit = JSON.parse(res.content[1].text);
-    expect(cit.$ines_kind).toBe("citation");
+    expect(cit.$agent_kind).toBe("citation");
     expect(cit.citation.type).toBe("web");
     expect(cit.citation.url).toBe("https://example.com");
     expect(cit.citation.title).toBe("Hello");
@@ -110,25 +110,25 @@ describe("fetchWebpageHandler — happy path", () => {
   });
 
   it("holds nothing for a call whose chat the agent did not sign", async () => {
-    const saved = process.env.INES_SCOPE_SECRET;
-    process.env.INES_SCOPE_SECRET = "0123456789abcdef0123";
+    const saved = process.env.AGENT_SCOPE_SECRET;
+    process.env.AGENT_SCOPE_SECRET = "0123456789abcdef0123";
     try {
       const { signUrl } = await import("../../../../../src/lib/scope.ts");
       mockFetch(() => page("<html><body><p>hi</p></body></html>"));
       const url = "https://example.com/p";
-      const forged = await fetchWebpageHandler({ url, "x-ines-url-sig": signUrl("0123456789abcdef0123", url), "x-ines-conversation-id": "victim:chat", "x-ines-scope-sig": "forged" });
+      const forged = await fetchWebpageHandler({ url, "x-agent-url-sig": signUrl("0123456789abcdef0123", url), "x-agent-conversation-id": "victim:chat", "x-agent-scope-sig": "forged" });
       expect(forged.content[0].text).not.toContain("page_id");
       expect(getPage("victim:chat", "p-00000000")).toBeUndefined();
       const signed = await fetchWebpageHandler({
         url,
-        "x-ines-url-sig": signUrl("0123456789abcdef0123", url),
+        "x-agent-url-sig": signUrl("0123456789abcdef0123", url),
         ...scoped(),
-        "x-ines-scope-sig": signScope("0123456789abcdef0123", "u1:chat1"),
+        "x-agent-scope-sig": signScope("0123456789abcdef0123", "u1:chat1"),
       });
       expect(signed.content[0].text).toContain("page_id");
     } finally {
-      if (saved === undefined) delete process.env.INES_SCOPE_SECRET;
-      else process.env.INES_SCOPE_SECRET = saved;
+      if (saved === undefined) delete process.env.AGENT_SCOPE_SECRET;
+      else process.env.AGENT_SCOPE_SECRET = saved;
     }
   });
 
@@ -232,13 +232,13 @@ describe("fetchWebpageHandler — a page that is built to cause trouble", () => 
 
 describe("fetchWebpageHandler — addresses the agent did not sign", () => {
   const SECRET = "0123456789abcdef0123";
-  const saved = { secret: process.env.INES_SCOPE_SECRET, any: process.env.INES_FETCH_ANY_URL };
+  const saved = { secret: process.env.AGENT_SCOPE_SECRET, any: process.env.AGENT_FETCH_ANY_URL };
   beforeEach(() => {
-    process.env.INES_SCOPE_SECRET = SECRET;
-    delete process.env.INES_FETCH_ANY_URL;
+    process.env.AGENT_SCOPE_SECRET = SECRET;
+    delete process.env.AGENT_FETCH_ANY_URL;
   });
   afterEach(() => {
-    for (const [name, value] of [["INES_SCOPE_SECRET", saved.secret], ["INES_FETCH_ANY_URL", saved.any]] as const) {
+    for (const [name, value] of [["AGENT_SCOPE_SECRET", saved.secret], ["AGENT_FETCH_ANY_URL", saved.any]] as const) {
       if (value === undefined) delete process.env[name];
       else process.env[name] = value;
     }
@@ -267,16 +267,16 @@ describe("fetchWebpageHandler — addresses the agent did not sign", () => {
       return page("<html><head><title>T</title></head><body>page</body></html>");
     });
     const signature = signUrl(SECRET, "https://example.com/report");
-    const ok = await fetchWebpageHandler({ url: "https://example.com/report", "x-ines-url-sig": signature });
+    const ok = await fetchWebpageHandler({ url: "https://example.com/report", "x-agent-url-sig": signature });
     expect(ok.content[0].text).toContain("page");
     expect(requests).toBe(1);
-    const other = await fetchWebpageHandler({ url: "https://example.com/report?d=secret", "x-ines-url-sig": signature });
+    const other = await fetchWebpageHandler({ url: "https://example.com/report?d=secret", "x-agent-url-sig": signature });
     expect(other.content[0].text).toContain("was not given");
     expect(requests).toBe(1);
   });
 
   it("fetches any address when the deployment says so", async () => {
-    process.env.INES_FETCH_ANY_URL = "true";
+    process.env.AGENT_FETCH_ANY_URL = "true";
     mockFetch(() => page("<html><body>open</body></html>"));
     const res = await fetchWebpageHandler(call("https://example.com/anything"));
     expect(res.content[0].text).toContain("open");

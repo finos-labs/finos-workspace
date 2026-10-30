@@ -30,7 +30,7 @@ function list(value: string | undefined): string[] {
 }
 
 export function configuredModels(env: Env = process.env): string[] {
-  return [...new Set([env.DEFAULT_MODEL?.trim(), ...list(env.INES_MODELS)].filter((m): m is string => !!m))];
+  return [...new Set([env.DEFAULT_MODEL?.trim(), ...list(env.AGENT_MODELS)].filter((m): m is string => !!m))];
 }
 
 function integer(env: Env, name: string, fallback: number, min: number, problems: string[]): number {
@@ -56,16 +56,16 @@ function isOrigin(value: string): boolean {
 export function loadConfig(env: Env = process.env): ServerConfig {
   const problems: string[] = [];
 
-  const mode = env.INES_AUTH ?? "workspace";
+  const mode = env.AGENT_AUTH ?? "workspace";
   if (!(AUTH_MODES as readonly string[]).includes(mode)) {
-    problems.push(`INES_AUTH must be ${AUTH_MODES.join(" or ")}; got "${mode}".`);
+    problems.push(`AGENT_AUTH must be ${AUTH_MODES.join(" or ")}; got "${mode}".`);
   }
 
   const origin = (env.WORKSPACE_ORIGIN ?? "").trim().replace(/\/+$/, "");
   const publicUrl = (env.WORKSPACE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
   if (mode === "workspace" || publicUrl) {
     if (!origin) {
-      problems.push("WORKSPACE_ORIGIN is required with INES_AUTH=workspace or WORKSPACE_PUBLIC_URL: the web app's origin, which the FINOS Workspace API allows (BACKEND_CORS_ORIGINS).");
+      problems.push("WORKSPACE_ORIGIN is required with AGENT_AUTH=workspace or WORKSPACE_PUBLIC_URL: the web app's origin, which the FINOS Workspace API allows (BACKEND_CORS_ORIGINS).");
     } else if (!isOrigin(origin)) {
       problems.push(`WORKSPACE_ORIGIN must be an origin like https://workspace.example.com without a path; got "${env.WORKSPACE_ORIGIN}".`);
     }
@@ -75,7 +75,7 @@ export function loadConfig(env: Env = process.env): ServerConfig {
   if (mode === "workspace") {
     const apiUrl = (env.WORKSPACE_API_URL ?? "").trim().replace(/\/+$/, "");
     if (!apiUrl) {
-      problems.push("WORKSPACE_API_URL is required with INES_AUTH=workspace (for example the API service's address inside the deployment).");
+      problems.push("WORKSPACE_API_URL is required with AGENT_AUTH=workspace (for example the API service's address inside the deployment).");
     } else {
       try {
         const { protocol } = new URL(apiUrl);
@@ -84,16 +84,16 @@ export function loadConfig(env: Env = process.env): ServerConfig {
         problems.push(`WORKSPACE_API_URL must be an http(s) URL; got "${env.WORKSPACE_API_URL}".`);
       }
     }
-    const meteringToken = (env.INES_METERING_TOKEN ?? "").trim();
+    const meteringToken = (env.AGENT_METERING_TOKEN ?? "").trim();
     if (!meteringToken) {
-      problems.push("INES_METERING_TOKEN is required with INES_AUTH=workspace (python -m scripts.create_metering_token in backend-api/backend prints it).");
+      problems.push("AGENT_METERING_TOKEN is required with AGENT_AUTH=workspace (python -m scripts.create_metering_token in backend-api/backend prints it).");
     }
     auth = {
       mode: "workspace",
       apiUrl,
       origin,
       meteringToken,
-      cacheSeconds: integer(env, "INES_AUTH_CACHE_SECONDS", 30, 0, problems),
+      cacheSeconds: integer(env, "AGENT_AUTH_CACHE_SECONDS", 30, 0, problems),
     };
   }
 
@@ -108,24 +108,24 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     }
   }
 
-  const scopeSecret = (env.INES_SCOPE_SECRET ?? "").trim() || null;
+  const scopeSecret = (env.AGENT_SCOPE_SECRET ?? "").trim() || null;
   if (mode === "workspace" && (!scopeSecret || scopeSecret.length < 16)) {
-    problems.push("INES_SCOPE_SECRET is required with INES_AUTH=workspace and must be at least 16 characters.");
+    problems.push("AGENT_SCOPE_SECRET is required with AGENT_AUTH=workspace and must be at least 16 characters.");
   }
 
   let corsOrigins: string[] | "*";
-  const origins = list(env.INES_CORS_ORIGINS);
+  const origins = list(env.AGENT_CORS_ORIGINS);
   if (origins.length === 0) {
     corsOrigins = "*";
     if (mode === "workspace") {
-      problems.push("INES_CORS_ORIGINS is required with INES_AUTH=workspace: the origin of the web app, or * for every origin.");
+      problems.push("AGENT_CORS_ORIGINS is required with AGENT_AUTH=workspace: the origin of the web app, or * for every origin.");
     }
   } else if (origins.includes("*")) {
     corsOrigins = "*";
   } else {
     corsOrigins = origins;
     for (const origin of origins) {
-      if (!isOrigin(origin)) problems.push(`INES_CORS_ORIGINS has "${origin}", which is not an origin like https://workspace.example.com.`);
+      if (!isOrigin(origin)) problems.push(`AGENT_CORS_ORIGINS has "${origin}", which is not an origin like https://workspace.example.com.`);
     }
   }
 
@@ -140,13 +140,13 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     }
   }
 
-  const metricsPort = integer(env, "INES_METRICS_PORT", 9464, 0, problems);
-  const maxBodyMb = integer(env, "INES_MAX_BODY_MB", 64, 1, problems);
-  const maxConcurrentQueries = integer(env, "INES_MAX_CONCURRENT_QUERIES", 4, 1, problems);
-  const maxTotalQueries = integer(env, "INES_MAX_TOTAL_QUERIES", 200, 1, problems);
-  const maxTurnRequests = integer(env, "INES_MAX_TURN_REQUESTS", 60, 1, problems);
-  const maxHelperCallsPerMinute = integer(env, "INES_HELPER_CALLS_PER_MINUTE", 60, 1, problems);
-  const maxInvalidPerMinute = integer(env, "INES_INVALID_REQUESTS_PER_MINUTE", 20, 1, problems);
+  const metricsPort = integer(env, "AGENT_METRICS_PORT", 9464, 0, problems);
+  const maxBodyMb = integer(env, "AGENT_MAX_BODY_MB", 64, 1, problems);
+  const maxConcurrentQueries = integer(env, "AGENT_MAX_CONCURRENT_QUERIES", 4, 1, problems);
+  const maxTotalQueries = integer(env, "AGENT_MAX_TOTAL_QUERIES", 200, 1, problems);
+  const maxTurnRequests = integer(env, "AGENT_MAX_TURN_REQUESTS", 60, 1, problems);
+  const maxHelperCallsPerMinute = integer(env, "AGENT_HELPER_CALLS_PER_MINUTE", 60, 1, problems);
+  const maxInvalidPerMinute = integer(env, "AGENT_INVALID_REQUESTS_PER_MINUTE", 20, 1, problems);
 
   if (problems.length > 0) {
     throw new Error(`Invalid configuration:\n${problems.map((p) => ` - ${p}`).join("\n")}`);

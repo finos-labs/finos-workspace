@@ -5,7 +5,7 @@ sidebar_position: 2
 
 # Run the tests
 
-Each part of the repository has its own tests, and a pull request runs them in CI. This guide shows the command for each part, so that you can run the same checks before you push. The backend, the web app, the agent and the example plugins are separate projects, and a change to one of them needs only that project's checks. The workflows in `.github/workflows` are the authority: `backend-checks.yml`, `frontend-checks.yml`, `ines-checks.yml`, `examples.yml` and `e2e.yml` each run the commands below.
+Each part of the repository has its own tests, and a pull request runs them in CI. This guide shows the command for each part, so that you can run the same checks before you push. The backend, the web app, the agent and the example plugins are separate projects, and a change to one of them needs only that project's checks. The workflows in `.github/workflows` are the authority: `backend-checks.yml`, `frontend-checks.yml`, `agent-checks.yml`, `examples.yml` and `e2e.yml` each run the commands below.
 
 ## The backend
 
@@ -65,7 +65,7 @@ The first command runs every end-to-end test, the second one file, and the third
 
 ## The agent
 
-The agent Ines needs the same Node version. Run the commands in `agent`:
+The agent needs the same Node version. Run the commands in `agent`:
 
 ```bash
 npm ci

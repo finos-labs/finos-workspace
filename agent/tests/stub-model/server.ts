@@ -58,7 +58,7 @@ async function answer(request: Request): Promise<Response> {
   }
 
   if (pathname.endsWith("/embed")) {
-    return Response.json({ error: "This stub does not embed. Do not set INES_EMBED_MODEL with it." }, { status: 501 });
+    return Response.json({ error: "This stub does not embed. Do not set AGENT_EMBED_MODEL with it." }, { status: 501 });
   }
 
   return new Response("Not found", { status: 404 });

@@ -241,17 +241,17 @@ class TestTheMcpClient:
         monkeypatch.setattr(
             settings,
             "DEFAULT_MCP_SERVERS",
-            [DefaultMCPServer(id="tools", name="Tools", url="http://Ines-MCP:8787/mcp")],
+            [DefaultMCPServer(id="tools", name="Tools", url="http://Agent-MCP:8787/mcp")],
         )
-        hosts.add("ines-mcp", "172.18.0.5", handler=_ok)
+        hosts.add("agent-mcp", "172.18.0.5", handler=_ok)
 
-        response = await mcp_client.post("http://ines-mcp:8787/mcp", json={})
+        response = await mcp_client.post("http://agent-mcp:8787/mcp", json={})
 
         assert response.status_code == 200
-        assert hosts.connections == [("ines-mcp", 8787)]
+        assert hosts.connections == [("agent-mcp", 8787)]
         with pytest.raises(mcp_oauth.BlockedAddressError):
-            await mcp_client.get("http://ines-mcp:9000/")
-        assert hosts.connections == [("ines-mcp", 8787)]
+            await mcp_client.get("http://agent-mcp:9000/")
+        assert hosts.connections == [("agent-mcp", 8787)]
 
     @pytest.mark.asyncio
     async def test_a_host_that_does_not_resolve_is_not_reached(self, hosts, mcp_client):

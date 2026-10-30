@@ -16,12 +16,12 @@ function tools(rows: Record<string, unknown>[] = [{ a: 1 }, { a: 2 }, { a: 3 }])
 
 let saved: string | undefined;
 beforeEach(() => {
-  saved = process.env.INES_SQL_TIMEOUT_MS;
-  process.env.INES_SQL_TIMEOUT_MS = "1500";
+  saved = process.env.AGENT_SQL_TIMEOUT_MS;
+  process.env.AGENT_SQL_TIMEOUT_MS = "1500";
 });
 afterEach(() => {
-  if (saved === undefined) delete process.env.INES_SQL_TIMEOUT_MS;
-  else process.env.INES_SQL_TIMEOUT_MS = saved;
+  if (saved === undefined) delete process.env.AGENT_SQL_TIMEOUT_MS;
+  else process.env.AGENT_SQL_TIMEOUT_MS = saved;
 });
 
 async function whileRunning<T>(work: () => Promise<T>): Promise<{ result: T; beats: number; ms: number }> {
@@ -65,7 +65,7 @@ describe("a query that never ends", () => {
   });
 
   it("does not hold up another user's query that runs at the same time", async () => {
-    process.env.INES_SQL_TIMEOUT_MS = "6000";
+    process.env.AGENT_SQL_TIMEOUT_MS = "6000";
     const stuck = tools();
     const other = tools();
     let runawayEnded = false;
@@ -84,7 +84,7 @@ describe("a query that never ends", () => {
 
 describe("a query that wants more memory than there is", () => {
   beforeEach(() => {
-    process.env.INES_SQL_TIMEOUT_MS = "30000";
+    process.env.AGENT_SQL_TIMEOUT_MS = "30000";
   });
 
   it("fails with an error instead of taking the memory of the machine", async () => {

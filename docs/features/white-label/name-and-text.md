@@ -59,7 +59,7 @@ Point `DOCS_URL` at your own documentation, or switch the links off. The changel
 Some features carry names that are not settings:
 
 - The built-in agent is shown as **Agent**. `AI_COPILOT_DEFAULT_COPILOT=False` hides it, for example when you offer only agents of your own.
-- The agent's tools server is listed under the name that `DEFAULT_MCP_SERVERS` gives it, **Ines Tools** in the Compose file. Change `name` in that variable to rename it.
+- The agent's tools server is listed under the name that `DEFAULT_MCP_SERVERS` gives it, **Agent Tools** in the Compose file. Change `name` in that variable to rename it.
 - The MCP Companion dialog is titled "Workspace MCP Companion". `UI_SHOW_COMPANION_MCP_MODE` decides whether the app offers it.
 
 The other names are in the code: [What you cannot change yet](what-you-cannot-change-yet.md) lists them.

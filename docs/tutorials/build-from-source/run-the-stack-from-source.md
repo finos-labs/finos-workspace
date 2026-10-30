@@ -80,4 +80,4 @@ Press `Ctrl+C` in the terminal that runs Compose, or run `docker compose down` i
 
 ## Where to go next
 
-You now have a working FINOS Workspace to experiment with. [Web app configuration](../../reference/configuration/web-app.mdx), [Backend settings](../../reference/configuration/backend.mdx) and [Ines and its MCP server](../../reference/configuration/agent.mdx) list every setting that you can change. To make the app look like your own, follow [Design and apply a theme in the admin area](../../features/administration/design-a-theme-in-the-admin-area.mdx).
+You now have a working FINOS Workspace to experiment with. [Web app configuration](../../reference/configuration/web-app.mdx), [Backend settings](../../reference/configuration/backend.mdx) and [Agent and MCP server](../../reference/configuration/agent.mdx) list every setting that you can change. To make the app look like your own, follow [Design and apply a theme in the admin area](../../features/administration/design-a-theme-in-the-admin-area.mdx).

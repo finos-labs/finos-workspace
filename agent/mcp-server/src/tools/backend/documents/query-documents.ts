@@ -39,9 +39,9 @@ export const queryDocumentsSchema = {
     .max(MAX_TOP_K)
     .optional()
     .describe(`How many chunks to return (default ${DEFAULT_TOP_K}, max ${MAX_TOP_K}).`),
-  "x-ines-conversation-id": conversationIdSchema,
-  "x-ines-scope-sig": scopeSigSchema,
-  "x-ines-documents": shippedDocumentsSchema,
+  "x-agent-conversation-id": conversationIdSchema,
+  "x-agent-scope-sig": scopeSigSchema,
+  "x-agent-documents": shippedDocumentsSchema,
 };
 
 export const queryDocumentsDescription =
@@ -129,11 +129,11 @@ export async function queryDocumentsHandler(args: {
   query: string;
   doc_ids?: string[];
   top_k?: number;
-  "x-ines-conversation-id"?: string;
-  "x-ines-documents"?: NewDocPayload[];
+  "x-agent-conversation-id"?: string;
+  "x-agent-documents"?: NewDocPayload[];
 }): Promise<{ content: ContentItem[] }> {
-  const conversationId = args["x-ines-conversation-id"];
-  const newDocs = args["x-ines-documents"] ?? [];
+  const conversationId = args["x-agent-conversation-id"];
+  const newDocs = args["x-agent-documents"] ?? [];
   const topK = args.top_k ?? DEFAULT_TOP_K;
   const startedAt = Date.now();
 
@@ -198,7 +198,7 @@ export async function queryDocumentsHandler(args: {
     items.push(
       documentCitationItem({
         id: h.doc.id,
-        uri: `ines-doc://${conversationId}/${h.doc.id}`,
+        uri: `agent-doc://${conversationId}/${h.doc.id}`,
         title: h.doc.name,
         ...(h.chunk.page != null ? { page: h.chunk.page } : {}),
         score: h.score,

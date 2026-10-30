@@ -104,7 +104,7 @@ data:
   WORKSPACE_ORIGIN: https://workspace.example.com
   WORKSPACE_PUBLIC_URL: https://api.workspace.example.com
   REDIS_URL: redis://valkey:6379
-  INES_CORS_ORIGINS: https://workspace.example.com
+  AGENT_CORS_ORIGINS: https://workspace.example.com
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -506,8 +506,8 @@ It prints the token, then the date on which it expires, a year from now. Put the
 
 ```bash
 OPENAI_API_KEY=<your OpenAI API key>
-INES_SCOPE_SECRET=<INES_SCOPE_SECRET>
-INES_METERING_TOKEN=<the token>
+AGENT_SCOPE_SECRET=<AGENT_SCOPE_SECRET>
+AGENT_METERING_TOKEN=<the token>
 ```
 
 For another provider, set its own key instead of `OPENAI_API_KEY`, or for Ollama `OLLAMA_BASE_URL`. [Pick the providers](../../features/agent/choose-the-agent-model.mdx#pick-the-providers) lists them.
@@ -666,7 +666,7 @@ kubectl -n finos-workspace rollout status deployment/agent-mcp
 
 - Both run with a read-only root file system and a writable `/tmp`.
 - `shareProcessNamespace: true` lets the pod's pause process clean up the child processes that the agent starts.
-- `terminationGracePeriodSeconds` must be at least `INES_SHUTDOWN_GRACE_SECONDS`, which is <EnvDefault name="INES_SHUTDOWN_GRACE_SECONDS" /> seconds by default, so that the agent can finish the answers it is working on when the pod stops.
+- `terminationGracePeriodSeconds` must be at least `AGENT_SHUTDOWN_GRACE_SECONDS`, which is <EnvDefault name="AGENT_SHUTDOWN_GRACE_SECONDS" /> seconds by default, so that the agent can finish the answers it is working on when the pod stops.
 - The readiness probe `/ready` answers 503 while the agent cannot reach the API.
 
 If every question fails with status 503 and the message "The FINOS Workspace API is not available" while the agent pod is ready, read its log with `kubectl -n finos-workspace logs deploy/agent`. The line "The FINOS Workspace API refused this agent's metering token" means that the token has expired, or that `JWT_SECRET` changed after you created it. Create a new token, update the Secret `workspace-agent` and restart the agent.
@@ -799,7 +799,7 @@ kubectl -n finos-workspace rollout status deployment/web
 
 The agent streams its answers, so set the idle timeout of your ingress controller for the agent's name to at least the longest model call, as [What the load balancer and the platform allow](run-the-agent-on-several-replicas.mdx#what-the-load-balancer-and-the-platform-allow) describes. Each controller sets it with its own annotation or policy.
 
-Set the request size limit too. The web app lets people attach files of up to 25 MiB, and the agent accepts a request of up to `INES_MAX_BODY_MB` megabytes, 64 by default. ingress-nginx refuses a request body of more than 1 MiB with status 413 unless the Ingress has the annotation `nginx.ingress.kubernetes.io/proxy-body-size`, for example with the value `64m`. Other controllers have a setting of their own.
+Set the request size limit too. The web app lets people attach files of up to 25 MiB, and the agent accepts a request of up to `AGENT_MAX_BODY_MB` megabytes, 64 by default. ingress-nginx refuses a request body of more than 1 MiB with status 413 unless the Ingress has the annotation `nginx.ingress.kubernetes.io/proxy-body-size`, for example with the value `64m`. Other controllers have a setting of their own.
 
 The API counts its rate limits per client address and reads that address from `X-Forwarded-For`, so make sure your ingress controller passes it on, as [What your platform needs to provide](production-setup.mdx#what-your-platform-needs-to-provide) describes.
 

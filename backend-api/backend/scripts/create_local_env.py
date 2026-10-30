@@ -15,9 +15,9 @@ SQLITE_EXAMPLE = ENVS / ".env.sqlite.example"
 SQLITE_TARGET = ENVS / ".env.sqlite"
 CONFIG = Path(__file__).resolve().parent / "cfgs" / "config.toml"
 USER_CREATE = Path(__file__).resolve().parent.parent / "user_create.json"
-INES = Path(__file__).resolve().parents[3] / "agent"
-INES_EXAMPLE = INES / ".env.example"
-INES_TARGET = INES / ".env"
+AGENT = Path(__file__).resolve().parents[3] / "agent"
+AGENT_EXAMPLE = AGENT / ".env.example"
+AGENT_TARGET = AGENT / ".env"
 
 WEB_URL = "http://localhost:3000"
 API_URL = "http://localhost:8000"
@@ -92,21 +92,21 @@ last_name = "Administrator"
 """
 
 
-def ines_secrets(jwt_secret: str, current_scope_secret: str = "") -> dict[str, str]:
+def agent_secrets(jwt_secret: str, current_scope_secret: str = "") -> dict[str, str]:
     return {
-        "INES_METERING_TOKEN": metering_token(jwt_secret),
-        "INES_SCOPE_SECRET": current_scope_secret or secrets.token_urlsafe(32),
+        "AGENT_METERING_TOKEN": metering_token(jwt_secret),
+        "AGENT_SCOPE_SECRET": current_scope_secret or secrets.token_urlsafe(32),
     }
 
 
-def write_ines_env(jwt_secret: str) -> Path | None:
-    if not INES_EXAMPLE.exists():
+def write_agent_env(jwt_secret: str) -> Path | None:
+    if not AGENT_EXAMPLE.exists():
         return None
-    text = INES_TARGET.read_text() if INES_TARGET.exists() else INES_EXAMPLE.read_text()
-    current = dict(line.partition("=")[::2] for line in text.splitlines()).get("INES_SCOPE_SECRET", "")
-    INES_TARGET.write_text(render(text, ines_secrets(jwt_secret, current.strip())))
-    INES_TARGET.chmod(0o600)
-    return INES_TARGET
+    text = AGENT_TARGET.read_text() if AGENT_TARGET.exists() else AGENT_EXAMPLE.read_text()
+    current = dict(line.partition("=")[::2] for line in text.splitlines()).get("AGENT_SCOPE_SECRET", "")
+    AGENT_TARGET.write_text(render(text, agent_secrets(jwt_secret, current.strip())))
+    AGENT_TARGET.chmod(0o600)
+    return AGENT_TARGET
 
 
 def render(example: str, values: dict[str, str]) -> str:
@@ -159,15 +159,15 @@ def main(argv: list[str] | None = None) -> int:
     CONFIG.write_text(seed_config(args.entity_name, args.admin_email))
     if not (args.config_only or args.sqlite) and not USER_CREATE.exists():
         USER_CREATE.write_text("{}\n")
-    ines = None if args.config_only or args.sqlite else write_ines_env(generated["jwt_secret"])
+    agent = None if args.config_only or args.sqlite else write_agent_env(generated["jwt_secret"])
     sys.stdout.write(
         f"Wrote {CONFIG if args.config_only else f'{target} and {CONFIG}'}\n"
         f"The first start creates the administrator {args.admin_email} without a password. "
         "Set it with: docker compose run --rm init python -m scripts.init_users "
         f"--new-password {args.admin_email}\n"
     )
-    if ines:
-        sys.stdout.write(f"Set Ines's secrets in {ines}; set DEFAULT_MODEL and that provider's key there too.\n")
+    if agent:
+        sys.stdout.write(f"Set the agent's secrets in {agent}; set DEFAULT_MODEL and that provider's key there too.\n")
     return 0
 
 

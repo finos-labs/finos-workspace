@@ -1,7 +1,7 @@
 import { agentsRouter } from "../../src/routes/agents.ts";
 
 const PLACEHOLDER = "<provider>:<model>";
-const PROBES = ["DEFAULT_MODEL", "INES_MODELS", "INES_TRANSCRIBE_MODEL"] as const;
+const PROBES = ["DEFAULT_MODEL", "AGENT_MODELS", "AGENT_TRANSCRIBE_MODEL"] as const;
 
 type Descriptor = Record<string, { features?: Record<string, unknown> }>;
 

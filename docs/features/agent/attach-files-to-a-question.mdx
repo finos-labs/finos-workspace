@@ -11,7 +11,7 @@ This guide gives the Agent a document, a spreadsheet or a picture to work with, 
 
 ## What you need
 
-You need an account that may upload files, which is an Admin or a Developer account, when you use the default agent, and an agent that accepts files. FINOS Workspace switches attaching off while your daily limit of questions is used up, and the agent has to be one that offers file upload, which Ines does. The Agent's file types are <WebAppValue of="copilotAttachmentExtensions" />.
+You need an account that may upload files, which is an Admin or a Developer account, when you use the default agent, and an agent that accepts files. FINOS Workspace switches attaching off while your daily limit of questions is used up, and the agent has to be one that offers file upload, which the agent does. The Agent's file types are <WebAppValue of="copilotAttachmentExtensions" />.
 
 A file may be at most <WebAppValue of="maxFileBytes" unit="bytes" /> large. FINOS Workspace uploads the files in groups of at most <WebAppValue of="uploadBatchBytes" unit="bytes" />.
 
@@ -37,7 +37,7 @@ How the Agent reads a file depends on its type:
 | Documents: `pdf` and `docx` | The Agent searches the document, page by page, and its answer can point to the page. Searching needs the deployment to name an embedding model, as [Switch on the search of documents](enable-document-search.mdx) describes. Without it, the Agent says that it cannot read the file. |
 | Pictures: `png`, `jpg` and `jpeg` | The Agent looks at the picture. |
 
-[Widget data for the agent](../../reference/protocols/ines-widget-data.mdx) lists the limits of each kind exactly.
+[Widget data for the agent](../../reference/protocols/agent-widget-data.mdx) lists the limits of each kind exactly.
 
 ## Where the file goes
 

@@ -5,7 +5,7 @@ const logger = getLogger(["mcp", "tools"]);
 
 function isErrorResult(result: unknown): boolean {
   const content = (result as { content?: { text?: unknown }[] } | null)?.content;
-  return (content ?? []).some((item) => typeof item.text === "string" && item.text.includes('"$ines_kind":"error"'));
+  return (content ?? []).some((item) => typeof item.text === "string" && item.text.includes('"$agent_kind":"error"'));
 }
 
 export function observed<A, R>(tool: string, handler: (args: A) => Promise<R>): (args: A) => Promise<R> {
@@ -27,7 +27,7 @@ export function observed<A, R>(tool: string, handler: (args: A) => Promise<R>): 
         tool,
         outcome,
         durationMs: Math.round(seconds * 1000),
-        conversationId: (args as { "x-ines-conversation-id"?: string } | null)?.["x-ines-conversation-id"] ?? null,
+        conversationId: (args as { "x-agent-conversation-id"?: string } | null)?.["x-agent-conversation-id"] ?? null,
       });
     }
   };

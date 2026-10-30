@@ -49,7 +49,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
         "The model that every call of the agent uses unless the user picks another of the offered models in the Workspace: chat, titles, prompt enhancement and table extraction. It is written <provider>:<model>, where <model> is the name that the provider gives it. No model is built into the agent, so a request that names none fails while this is unset. Changing it needs a restart.",
     },
     {
-      name: "INES_MODELS",
+      name: "AGENT_MODELS",
       readBy: AGENT,
       type: "model-list",
       providers: ["openai", "openrouter", "groq", "nvidia", "ollama"],
@@ -92,7 +92,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
         "Address of the Ollama API, for models written ollama:<model> (agent) and Ollama embedding models (MCP server). In Docker, use host.docker.internal instead of localhost: inside a container, localhost is the container itself and cannot reach an Ollama on the host.",
     },
     {
-      name: "INES_TRANSCRIBE_MODEL",
+      name: "AGENT_TRANSCRIBE_MODEL",
       readBy: AGENT,
       type: "model",
       providers: ["groq", "openai", "nvidia"],
@@ -100,7 +100,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
         "The model that turns a dictated recording into the text of a question, written <provider>:<model>, for example groq:whisper-large-v3-turbo, openai:gpt-4o-mini-transcribe or nvidia:openai/whisper-large-v3. The provider needs its API key. Unset, the chat has no microphone.",
     },
     {
-      name: "INES_EMBED_MODEL",
+      name: "AGENT_EMBED_MODEL",
       readBy: MCP,
       type: "model",
       providers: ["openai", "openrouter", "nvidia", "ollama"],
@@ -108,7 +108,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
         "The embedding model of document search, written <provider>:<model>. The provider needs its API key or, for Ollama, its address. There is no default: unset, the tools query_documents and list_documents are turned off.",
     },
     {
-      name: "INES_INLINE_TOOL_CALLS",
+      name: "AGENT_INLINE_TOOL_CALLS",
       readBy: AGENT,
       type: "enum",
       default: "on",
@@ -119,7 +119,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
   ]),
   ...group("Who can use the agent", [
     {
-      name: "INES_AUTH",
+      name: "AGENT_AUTH",
       readBy: BOTH,
       type: "enum",
       default: "workspace",
@@ -131,7 +131,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
       name: "WORKSPACE_API_URL",
       readBy: BOTH,
       type: "url",
-      required: "with INES_AUTH=workspace",
+      required: "with AGENT_AUTH=workspace",
       description:
         "Address of the Workspace API as the agent and the MCP server reach it, which is not necessarily the address that a browser uses; inside a deployment, it is the address of the API service. Signed file links of the Workspace are fetched through it.",
     },
@@ -139,7 +139,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
       name: "WORKSPACE_ORIGIN",
       readBy: BOTH,
       type: "origin",
-      required: "with INES_AUTH=workspace or WORKSPACE_PUBLIC_URL",
+      required: "with AGENT_AUTH=workspace or WORKSPACE_PUBLIC_URL",
       description:
         "The origin of the web app, without a path, for example https://workspace.example.com. Every call to the Workspace API carries it as its Origin, and the API refuses the calls of an origin that it does not allow, so it must be one of the API's BACKEND_CORS_ORIGINS.",
     },
@@ -151,38 +151,38 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
         "The address at which browsers reach the Workspace API, without a path, as it appears in the links to uploaded files (/app/files/...). The agent and the MCP server rewrite such a link to WORKSPACE_API_URL and fetch it with WORKSPACE_ORIGIN as its Origin, so that an API on a private network can serve files to them. Unset, those links are fetched like any other address and are refused when it is internal.",
     },
     {
-      name: "INES_CORS_ORIGINS",
+      name: "AGENT_CORS_ORIGINS",
       readBy: AGENT,
       type: "list",
-      required: "with INES_AUTH=workspace",
+      required: "with AGENT_AUTH=workspace",
       description:
         "The origins of the web app that may call the agent from a browser, comma-separated, each like https://workspace.example.com. An * allows every origin.",
     },
     {
-      name: "INES_METERING_TOKEN",
+      name: "AGENT_METERING_TOKEN",
       readBy: AGENT,
       type: "secret",
-      required: "with INES_AUTH=workspace",
+      required: "with AGENT_AUTH=workspace",
       description:
         "The token with which the agent reports usage to the Workspace API; `python -m scripts.create_metering_token` in backend-api/backend mints it. It runs out after a year, and the API refuses one that never runs out. Until a new one is set, usage is not counted and the API answers 403.",
     },
     {
-      name: "INES_SCOPE_SECRET",
+      name: "AGENT_SCOPE_SECRET",
       readBy: BOTH,
       type: "secret",
-      required: "with INES_AUTH=workspace",
+      required: "with AGENT_AUTH=workspace",
       description:
         "At least 16 characters. The secret with which the agent signs the chat scope that the MCP tools receive, and the addresses that the model may fetch. The agent and the MCP server must have the same value; it keeps one user's chat from another's.",
     },
     {
-      name: "INES_AUTH_CACHE_SECONDS",
+      name: "AGENT_AUTH_CACHE_SECONDS",
       readBy: AGENT,
       type: "integer",
       default: "30",
       description: "How long, in seconds, a signed-in user is remembered before the Workspace API is asked about them again. The least is 0.",
     },
     {
-      name: "INES_FETCH_ANY_URL",
+      name: "AGENT_FETCH_ANY_URL",
       readBy: MCP,
       type: "boolean",
       default: "false",
@@ -192,42 +192,42 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
   ]),
   ...group("Limits", [
     {
-      name: "INES_MAX_BODY_MB",
+      name: "AGENT_MAX_BODY_MB",
       readBy: AGENT,
       type: "integer",
       default: "64",
       description: "The largest request that the agent accepts, in megabytes. The least is 1.",
     },
     {
-      name: "INES_MAX_CONCURRENT_QUERIES",
+      name: "AGENT_MAX_CONCURRENT_QUERIES",
       readBy: AGENT,
       type: "integer",
       default: "4",
       description: "How many questions one user may have running at once. The least is 1.",
     },
     {
-      name: "INES_MAX_TOTAL_QUERIES",
+      name: "AGENT_MAX_TOTAL_QUERIES",
       readBy: AGENT,
       type: "integer",
       default: "200",
       description: "How many questions the whole agent runs at once. Past it, the agent answers 503. The least is 1.",
     },
     {
-      name: "INES_MAX_TURN_REQUESTS",
+      name: "AGENT_MAX_TURN_REQUESTS",
       readBy: AGENT,
       type: "integer",
       default: "60",
       description: "How many requests one question may be made of: a turn is several requests, one for each tool that the browser runs. The least is 1.",
     },
     {
-      name: "INES_HELPER_CALLS_PER_MINUTE",
+      name: "AGENT_HELPER_CALLS_PER_MINUTE",
       readBy: AGENT,
       type: "integer",
       default: "60",
       description: "How many helper calls, such as titles and rewritten prompts, one user may make in a minute. The least is 1.",
     },
     {
-      name: "INES_INVALID_REQUESTS_PER_MINUTE",
+      name: "AGENT_INVALID_REQUESTS_PER_MINUTE",
       readBy: AGENT,
       type: "integer",
       default: "20",
@@ -242,7 +242,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
       description: "How long, in milliseconds, a model call may take before the agent stops it. A value that is not a number, or is 0, leaves the default.",
     },
     {
-      name: "INES_SQL_TIMEOUT_MS",
+      name: "AGENT_SQL_TIMEOUT_MS",
       readBy: AGENT,
       type: "integer",
       default: "10000",
@@ -250,7 +250,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
         "How long, in milliseconds, one SQL query on the data of a chat may run before the agent stops it. A value below 100 leaves the default.",
     },
     {
-      name: "INES_ISOLATED_CONCURRENCY",
+      name: "AGENT_ISOLATED_CONCURRENCY",
       readBy: BOTH,
       type: "integer",
       default: "4",
@@ -258,14 +258,14 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
         "How many child processes may run at once for work on a stranger's bytes: SQL, spreadsheets, PDF and Word text, and web pages. A value that is not a number, or is 0, leaves the default; a smaller number than 1 counts as 1.",
     },
     {
-      name: "INES_INGEST_CHUNKS_PER_HOUR",
+      name: "AGENT_INGEST_CHUNKS_PER_HOUR",
       readBy: MCP,
       type: "integer",
       default: "20000",
       description: "How many chunks of documents one chat may add to document search in an hour. A value that is not a positive number leaves the default.",
     },
     {
-      name: "INES_SHUTDOWN_GRACE_SECONDS",
+      name: "AGENT_SHUTDOWN_GRACE_SECONDS",
       readBy: AGENT,
       type: "integer",
       default: "25",
@@ -323,7 +323,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
       readBy: BOTH,
       type: "string",
       description:
-        "With production, logs default to level info in JSON, and LIVE_DEBUG_TRACES is ignored unless INES_ALLOW_DEBUG_TRACES is true. Any other value, or none, selects the defaults of development: level debug and the pretty format.",
+        "With production, logs default to level info in JSON, and LIVE_DEBUG_TRACES is ignored unless AGENT_ALLOW_DEBUG_TRACES is true. Any other value, or none, selects the defaults of development: level debug and the pretty format.",
     },
     {
       name: "LOG_LEVEL",
@@ -342,7 +342,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
       description: "The format of the logs, whatever the case: one JSON object per line, or text for a person to read.",
     },
     {
-      name: "INES_METRICS_PORT",
+      name: "AGENT_METRICS_PORT",
       readBy: AGENT,
       type: "integer",
       default: "9464",
@@ -385,7 +385,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
       name: "OTEL_SERVICE_NAME",
       readBy: AGENT,
       type: "string",
-      default: "ines",
+      default: "agent",
       description: "The name under which the agent's traces are exported.",
     },
     {
@@ -393,7 +393,7 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
       readBy: BOTH,
       type: "string",
       default: "dev",
-      description: "The version that the agent's traces and the metric ines_build_info report.",
+      description: "The version that the agent's traces and the metric agent_build_info report.",
     },
   ]),
   ...group("Debugging", [
@@ -404,10 +404,10 @@ export const ENV_REFERENCE: readonly EnvVariable[] = [
       default: "0",
       choices: DEBUG_TRACE_LEVELS,
       description:
-        "Writes the course of each question to the log while it runs. The value 1 writes a clean trace, and 2 also writes the whole input and output of the model as JSON. A value of 1 or more writes whole conversations to the log, so the agent ignores it in production unless INES_ALLOW_DEBUG_TRACES is true.",
+        "Writes the course of each question to the log while it runs. The value 1 writes a clean trace, and 2 also writes the whole input and output of the model as JSON. A value of 1 or more writes whole conversations to the log, so the agent ignores it in production unless AGENT_ALLOW_DEBUG_TRACES is true.",
     },
     {
-      name: "INES_ALLOW_DEBUG_TRACES",
+      name: "AGENT_ALLOW_DEBUG_TRACES",
       readBy: AGENT,
       type: "boolean",
       default: "false",

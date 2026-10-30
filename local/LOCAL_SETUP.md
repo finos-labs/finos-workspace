@@ -123,7 +123,7 @@ A widget can read a data backend that a deployment uses: add it under Connection
 
 ## What does not work locally
 
-- AI features. They need an AI service, which this setup does not run; `AI_API_URL` stays empty and `AI_COPILOT_ENABLED` stays `false`. The root `docker-compose.yml` runs Ines, the FINOS Workspace's agent.
+- AI features. They need an AI service, which this setup does not run; `AI_API_URL` stays empty and `AI_COPILOT_ENABLED` stays `false`. The root `docker-compose.yml` runs the FINOS Workspace's agent.
 - Google sign-in, unless `http://localhost:1420` is an allowed origin of the Google OAuth client. Use the email sign-in.
 
 ## Differences from a deployed environment

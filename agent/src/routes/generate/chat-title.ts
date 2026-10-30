@@ -16,7 +16,7 @@ export const ChatTitleSchema = z.object({
     .array(z.unknown())
     .min(1)
     .max(1000)
-    .describe("The conversation. Ines reads the messages that have the role human and a text as their content."),
+    .describe("The conversation. The agent reads the messages that have the role human and a text as their content."),
   model: modelField,
 });
 

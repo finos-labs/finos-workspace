@@ -100,10 +100,10 @@ describe("file widget — a PDF is searched, not shown", () => {
   });
   const documentTools = [
     {
-      name: "Ines Tools_query_documents",
+      name: "Agent Tools_query_documents",
       tool_name: "query_documents",
-      server_id: "ines-tools",
-      url: "http://ines-mcp:8787/mcp",
+      server_id: "agent-tools",
+      url: "http://agent-mcp:8787/mcp",
       description: "Search documents",
       input_schema: { properties: { query: { type: "string" } }, required: ["query"] },
     },
@@ -245,10 +245,10 @@ describe("file widget — a long text file is cut, not sent whole", () => {
     data: [{ items: [{ content, data_format: { data_type: "txt", filename: "notes.txt" } }] }],
   });
   const searchTool = {
-    name: "Ines Tools_query_documents",
+    name: "Agent Tools_query_documents",
     tool_name: "query_documents",
-    server_id: "ines-tools",
-    url: "http://ines-mcp:8787/mcp",
+    server_id: "agent-tools",
+    url: "http://agent-mcp:8787/mcp",
     description: "Search documents",
     input_schema: { properties: { query: { type: "string" } }, required: ["query"] },
   };

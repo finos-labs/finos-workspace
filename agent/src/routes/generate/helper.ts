@@ -15,7 +15,7 @@ export const modelField = z
   .max(200)
   .optional()
   .describe(
-    "A model to use instead of DEFAULT_MODEL, written <provider>:<model>. Ines uses it only when this deployment offers it and the user's roles allow it.",
+    "A model to use instead of DEFAULT_MODEL, written <provider>:<model>. The agent uses it only when this deployment offers it and the user's roles allow it.",
   );
 
 export async function readJson(c: Context<AppEnv>): Promise<unknown | null> {

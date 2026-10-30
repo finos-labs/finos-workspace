@@ -591,7 +591,7 @@ def check_metering(request: Request) -> None:
             403,
             detail=(
                 "The metering token has expired. Mint a new one with "
-                "`python -m scripts.create_metering_token` and set INES_METERING_TOKEN to it."
+                "`python -m scripts.create_metering_token` and set AGENT_METERING_TOKEN to it."
             ),
         ) from e
     except PyJWTError as e:

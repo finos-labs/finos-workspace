@@ -45,15 +45,15 @@ docker build --platform linux/amd64 --build-context "node=$NODE_BASE" \
   -t <registry>/workspace-web:<version> frontend
 
 docker build --platform linux/amd64 --build-context "node=$NODE_BASE" \
-  --target ines --build-arg GIT_SHA="$(git rev-parse HEAD)" \
+  --target agent --build-arg GIT_SHA="$(git rev-parse HEAD)" \
   -t <registry>/workspace-agent:<version> agent
 
 docker build --platform linux/amd64 --build-context "node=$NODE_BASE" \
-  --target ines-mcp \
+  --target agent-mcp \
   -t <registry>/workspace-agent-mcp:<version> agent
 ```
 
-The backend image is built for the machine you build on. If you build on Apple silicon for x86-64 servers, add `--platform linux/amd64` to its command too. `ines` and `ines-mcp` are the names of the two stages in `agent/Dockerfile` that the agent images are built from.
+The backend image is built for the machine you build on. If you build on Apple silicon for x86-64 servers, add `--platform linux/amd64` to its command too. `agent` and `agent-mcp` are the names of the two stages in `agent/Dockerfile` that the agent images are built from.
 
 The worker is the backend image with the command `python base_workers.py`, and the init step is the backend image with the commands that [Production setup](../deploy/production-setup.mdx#the-order-in-which-things-start) lists. `GIT_SHA` puts the commit into the traces of the agent as its version.
 

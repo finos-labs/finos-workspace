@@ -45,7 +45,7 @@ The agent's tools are the enabled tools of the connected servers that the user m
 Four parts of the system use the link:
 
 1. **The agent is told about the link.** The web app assembles the request in `frontend/src/lib/utils/mcpLink.ts`. When the request's tools include the linked tool, the widget's row gains `mcp_tool: { server_id, tool_name, args }`. The values of `server_id` and `tool_name` come from the tool list and never from the strings in the widget.
-2. **Ines shows the link to the model.** Her `search_widgets` rows carry `mcp_tool: { tool, args }`, with the tool named as the model calls it, and her prompt tags the widget in its lists with `[query tool: <name>]`. Ines does not route anything by this information, and the model chooses what to call.
+2. **The agent shows the link to the model.** Its `search_widgets` rows carry `mcp_tool: { tool, args }`, with the tool named as the model calls it, and its prompt tags the widget in its lists with `[query tool: <name>]`. The agent does not route anything by this information, and the model chooses what to call.
 3. **A call cites the widget.** The function `citeMcpCall` considers only widgets of the server's own backend that name the server's declared name and the tool. It builds the `input_args` by applying the mapping in reverse, and it puts arguments that map to no parameter into the citation's `details`. An answer cites a widget once, however many calls cited it. FINOS Workspace keeps the first citation of a widget, both for the calls of a linked tool and for those of an `iframe` widget's own server.
 4. **The FINOS Workspace MCP returns the link** in the answers of `list_available_widgets` and `get_widget_schema`.
 

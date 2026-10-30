@@ -3,20 +3,20 @@ import { expect } from "expect";
 import { readWav, transcribe, transcribeModel, transcribeModelProblem } from "../../../../src/lib/transcribe.ts";
 import { wav } from "../../../helpers/wav.ts";
 
-describe("INES_TRANSCRIBE_MODEL", () => {
+describe("AGENT_TRANSCRIBE_MODEL", () => {
   it("is optional: unset, there is no dictation and nothing is wrong", () => {
     expect(transcribeModel({})).toBeNull();
     expect(transcribeModelProblem({})).toBeNull();
   });
 
   it("names a provider that transcribes, with its key", () => {
-    expect(transcribeModelProblem({ INES_TRANSCRIBE_MODEL: "nvidia:openai/whisper-large-v3", NVIDIA_API_KEY: "k" })).toBeNull();
-    expect(transcribeModelProblem({ INES_TRANSCRIBE_MODEL: "groq:whisper-large-v3-turbo", GROQ_API_KEY: "k" })).toBeNull();
-    expect(transcribeModelProblem({ INES_TRANSCRIBE_MODEL: "openai:gpt-4o-mini-transcribe", OPENAI_API_KEY: "k" })).toBeNull();
-    expect(transcribeModelProblem({ INES_TRANSCRIBE_MODEL: "ollama:whisper" })).toContain("groq, openai, nvidia");
-    expect(transcribeModelProblem({ INES_TRANSCRIBE_MODEL: "whisper" })).toContain("<provider>:<model>");
-    expect(transcribeModelProblem({ INES_TRANSCRIBE_MODEL: "nvidia:openai/whisper-large-v3" })).toBe(
-      "INES_TRANSCRIBE_MODEL names nvidia, which needs NVIDIA_API_KEY.",
+    expect(transcribeModelProblem({ AGENT_TRANSCRIBE_MODEL: "nvidia:openai/whisper-large-v3", NVIDIA_API_KEY: "k" })).toBeNull();
+    expect(transcribeModelProblem({ AGENT_TRANSCRIBE_MODEL: "groq:whisper-large-v3-turbo", GROQ_API_KEY: "k" })).toBeNull();
+    expect(transcribeModelProblem({ AGENT_TRANSCRIBE_MODEL: "openai:gpt-4o-mini-transcribe", OPENAI_API_KEY: "k" })).toBeNull();
+    expect(transcribeModelProblem({ AGENT_TRANSCRIBE_MODEL: "ollama:whisper" })).toContain("groq, openai, nvidia");
+    expect(transcribeModelProblem({ AGENT_TRANSCRIBE_MODEL: "whisper" })).toContain("<provider>:<model>");
+    expect(transcribeModelProblem({ AGENT_TRANSCRIBE_MODEL: "nvidia:openai/whisper-large-v3" })).toBe(
+      "AGENT_TRANSCRIBE_MODEL names nvidia, which needs NVIDIA_API_KEY.",
     );
   });
 });
@@ -48,13 +48,13 @@ describe("transcribe", () => {
       asked.push({ url: String(input), file: (init?.body as FormData).get("file") as Blob });
       return Response.json({ text: " Show me the revenue of Apple. ", x_groq: { id: "req_1" } });
     }) as typeof fetch;
-    const text = await transcribe(readWav(wav())!, undefined, { INES_TRANSCRIBE_MODEL: "groq:whisper-large-v3-turbo", GROQ_API_KEY: "gsk" });
+    const text = await transcribe(readWav(wav())!, undefined, { AGENT_TRANSCRIBE_MODEL: "groq:whisper-large-v3-turbo", GROQ_API_KEY: "gsk" });
     expect(text).toBe("Show me the revenue of Apple.");
     expect(asked[0].url).toBe("https://api.groq.com/openai/v1/audio/transcriptions");
     expect(asked[0].file?.size).toBe(wav().length);
   });
 
   it("refuses to run without a usable model", async () => {
-    await expect(transcribe(readWav(wav())!, undefined, {})).rejects.toThrow("INES_TRANSCRIBE_MODEL is not set.");
+    await expect(transcribe(readWav(wav())!, undefined, {})).rejects.toThrow("AGENT_TRANSCRIBE_MODEL is not set.");
   });
 });

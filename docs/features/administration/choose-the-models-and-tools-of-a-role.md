@@ -16,7 +16,7 @@ The dialog begins with this explanation: "Choose what the members of this role m
 
 ## Choose the models
 
-The section Models lists each agent by name, and under it the models that the agent offers. For Ines the models are the ones that the deployment names in `DEFAULT_MODEL` and `INES_MODELS`.
+The section Models lists each agent by name, and under it the models that the agent offers. For the built-in agent the models are the ones that the deployment names in `DEFAULT_MODEL` and `AGENT_MODELS`.
 
 - Select All models to grant every model that the agent offers now and in the future. The individual choices are then switched off, because they are included.
 - Select individual models to grant only those.
@@ -37,4 +37,4 @@ Select Save. The change takes effect on the members' next question, because the 
 
 A new organization starts with a role named Agent User that grants All models of the default agent and All tools of the deployment's default MCP servers. Every new user receives it. To limit the Agent for an organization, either edit Agent User or remove it from the people who should have less, and grant the models and tools through other roles.
 
-[Ines and its MCP server](../../reference/configuration/agent.mdx) lists the settings that decide which models exist. A person may use the models and tools that any one of their roles grants, and nothing else.
+[Agent and MCP server](../../reference/configuration/agent.mdx) lists the settings that decide which models exist. A person may use the models and tools that any one of their roles grants, and nothing else.

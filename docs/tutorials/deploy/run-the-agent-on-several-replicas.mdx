@@ -21,21 +21,21 @@ curl http://<agent-address>:7777/status
 
 The answer is `{"status":"ok", ... ,"sharedState":true}` when the replica uses the shared store. A value of `false` means that `REDIS_URL` is missing or wrong. A chat's tables and the rows that the agent read are kept in the shared store only, so without it a follow-up question fetches the widget again.
 
-A shared store that does not answer does not stop the agent. The replica falls back to its own memory for the moment, which makes the quotas count for each replica until the store is back. The metric `ines_store_errors_total` counts those moments, so alert on it.
+A shared store that does not answer does not stop the agent. The replica falls back to its own memory for the moment, which makes the quotas count for each replica until the store is back. The metric `agent_store_errors_total` counts those moments, so alert on it.
 
 ## Give every replica the same configuration
 
-- **The secrets.** `INES_SCOPE_SECRET` must be the same on every replica of the agent and of the MCP server, because the agent signs the scope of a chat with it and the MCP server checks the signature. The same holds for `INES_METERING_TOKEN`, with which every replica reports usage to the API. It runs out <SettingConstant name="meteringTokenDefaultLifetimeSeconds" unit="days" /> after it was minted, and `python -m scripts.create_metering_token` in the backend mints a new one.
-- **The models and keys.** `DEFAULT_MODEL`, `INES_MODELS` and the provider keys, so that every replica offers the same models.
+- **The secrets.** `AGENT_SCOPE_SECRET` must be the same on every replica of the agent and of the MCP server, because the agent signs the scope of a chat with it and the MCP server checks the signature. The same holds for `AGENT_METERING_TOKEN`, with which every replica reports usage to the API. It runs out <SettingConstant name="meteringTokenDefaultLifetimeSeconds" unit="days" /> after it was minted, and `python -m scripts.create_metering_token` in the backend mints a new one.
+- **The models and keys.** `DEFAULT_MODEL`, `AGENT_MODELS` and the provider keys, so that every replica offers the same models.
 - **The addresses.** `WORKSPACE_API_URL`, `WORKSPACE_ORIGIN` and `WORKSPACE_PUBLIC_URL`, as [Serve FINOS Workspace over HTTPS](serve-over-https-and-cors.mdx) describes.
 
 ## What the load balancer and the platform allow
 
 - **No stickiness is needed.** With the shared store, a replica recognizes the continuation of a turn wherever it lands.
 - **Answers stream.** The agent answers a question as a stream of events that stays open while the model works. Do not let the load balancer close an idle connection earlier than the longest that a model call may take, which `LLM_STREAM_TIMEOUT_MS` sets to <EnvDefault name="LLM_STREAM_TIMEOUT_MS" /> milliseconds by default.
-- **A restart is graceful.** When the agent is told to stop, it waits up to `INES_SHUTDOWN_GRACE_SECONDS`, <EnvDefault name="INES_SHUTDOWN_GRACE_SECONDS" /> by default, for the questions in progress to finish, and then it exits. Give the container a termination grace period that is at least as long.
+- **A restart is graceful.** When the agent is told to stop, it waits up to `AGENT_SHUTDOWN_GRACE_SECONDS`, <EnvDefault name="AGENT_SHUTDOWN_GRACE_SECONDS" /> by default, for the questions in progress to finish, and then it exits. Give the container a termination grace period that is at least as long.
 - **Health checks.** The path `/status` says that the process is up, and `/ready` also asks the API and answers 503 while the API does not answer. Use `/status` to decide that a container is alive and `/ready` to decide that it should receive traffic.
-- **Resources.** The agent works on files and web pages that strangers wrote, in child processes that `INES_ISOLATED_CONCURRENCY` limits. The repository's local stack runs both services with a read-only file system, without Linux capabilities, with a limit on memory and on the number of processes and with a small temporary directory, and they work within those limits. Size the memory for the largest files that your users attach.
+- **Resources.** The agent works on files and web pages that strangers wrote, in child processes that `AGENT_ISOLATED_CONCURRENCY` limits. The repository's local stack runs both services with a read-only file system, without Linux capabilities, with a limit on memory and on the number of processes and with a small temporary directory, and they work within those limits. Size the memory for the largest files that your users attach.
 
 ## Check it
 

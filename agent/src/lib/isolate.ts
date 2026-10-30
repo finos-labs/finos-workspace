@@ -21,7 +21,7 @@ export class IsolationError extends Error {
 const DEFAULT_MAX_OUTPUT_BYTES = 64 * 1024 * 1024;
 let maxWaiting = 64;
 
-let concurrency = Math.max(1, Number(process.env.INES_ISOLATED_CONCURRENCY) || 4);
+let concurrency = Math.max(1, Number(process.env.AGENT_ISOLATED_CONCURRENCY) || 4);
 let running = 0;
 const waiting: Array<() => void> = [];
 

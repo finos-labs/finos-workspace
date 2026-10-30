@@ -46,19 +46,19 @@ describe("buildToolInputSchema", () => {
     expect(Object.keys(schema.shape)).toEqual(["display_summary"]);
   });
 
-  it("strips x-ines-* keys from model-facing schema", () => {
+  it("strips x-agent-* keys from model-facing schema", () => {
     const schema = buildToolInputSchema({
       properties: {
         sql: { type: "string" },
-        "x-ines-conversation-id": { type: "string" },
-        "x-ines-documents": { type: "array" },
+        "x-agent-conversation-id": { type: "string" },
+        "x-agent-documents": { type: "array" },
       },
       required: ["sql"],
     });
     const shape = schema.shape;
     expect(Object.keys(shape).sort()).toEqual(["display_summary", "sql"]);
-    expect("x-ines-conversation-id" in shape).toBe(false);
-    expect("x-ines-documents" in shape).toBe(false);
+    expect("x-agent-conversation-id" in shape).toBe(false);
+    expect("x-agent-documents" in shape).toBe(false);
   });
 
   it("marks non-required props as optional", () => {
