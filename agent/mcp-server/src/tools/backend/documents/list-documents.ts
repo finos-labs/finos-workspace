@@ -12,12 +12,12 @@ import { documentBytes, shippedDocumentSchema, type ShippedDocument } from "./pa
 const logger = getLogger(["mcp", "documents", "list"]);
 
 export const listDocumentsSchema = {
-  "x-ines-conversation-id": z
+  "x-agent-conversation-id": z
     .string()
     .optional()
     .describe("INTERNAL — populated by agent decoration. Do not set."),
-  "x-ines-scope-sig": scopeSigSchema,
-  "x-ines-documents": z
+  "x-agent-scope-sig": scopeSigSchema,
+  "x-agent-documents": z
     .array(shippedDocumentSchema)
     .optional()
     .describe("INTERNAL — populated by agent decoration. Do not set."),
@@ -29,10 +29,10 @@ export const listDocumentsDescription =
   "Use this when the user asks what files are attached, or to pick `doc_ids` for a targeted `query_documents` call.";
 
 export async function listDocumentsHandler(args: {
-  "x-ines-conversation-id"?: string;
-  "x-ines-documents"?: ShippedDocument[];
+  "x-agent-conversation-id"?: string;
+  "x-agent-documents"?: ShippedDocument[];
 }): Promise<{ content: ContentItem[] }> {
-  const conversationId = args["x-ines-conversation-id"];
+  const conversationId = args["x-agent-conversation-id"];
   if (!conversationId) {
     return {
       content: [
@@ -43,7 +43,7 @@ export async function listDocumentsHandler(args: {
 
   await ensureHydrated(conversationId);
 
-  const newDocs = args["x-ines-documents"] ?? [];
+  const newDocs = args["x-agent-documents"] ?? [];
   for (const d of newDocs) {
     if (hasDocument(conversationId, d.id)) continue;
     try {

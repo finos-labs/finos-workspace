@@ -10,7 +10,7 @@ export function textItem(content: string): ContentItem {
 export function artifactItem(artifact: Record<string, unknown>): ContentItem {
   return {
     type: "text",
-    text: JSON.stringify({ $ines_kind: "artifact", artifact }),
+    text: JSON.stringify({ $agent_kind: "artifact", artifact }),
   };
 }
 
@@ -18,7 +18,7 @@ export function webCitationItem(args: { url: string; title: string; id?: string 
   return {
     type: "text",
     text: JSON.stringify({
-      $ines_kind: "citation",
+      $agent_kind: "citation",
       citation: {
         type: "web",
         url: args.url,
@@ -39,7 +39,7 @@ export function documentCitationItem(args: {
   return {
     type: "text",
     text: JSON.stringify({
-      $ines_kind: "citation",
+      $agent_kind: "citation",
       citation: {
         type: "document",
         uri: args.uri,
@@ -55,7 +55,7 @@ export function documentCitationItem(args: {
 export function sqliteTableItem(name: string, rows: Record<string, unknown>[]): ContentItem {
   return {
     type: "text",
-    text: JSON.stringify({ $ines_kind: "sqlite_table", name, rows }),
+    text: JSON.stringify({ $agent_kind: "sqlite_table", name, rows }),
   };
 }
 
@@ -67,7 +67,7 @@ export function errorItem(args: {
   return {
     type: "text",
     text: JSON.stringify({
-      $ines_kind: "error",
+      $agent_kind: "error",
       error: {
         code: args.code,
         message: args.message,
@@ -80,6 +80,6 @@ export function errorItem(args: {
 export function modelContextItem(summary: string): ContentItem {
   return {
     type: "text",
-    text: JSON.stringify({ $ines_kind: "model_context", summary }),
+    text: JSON.stringify({ $agent_kind: "model_context", summary }),
   };
 }

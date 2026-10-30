@@ -19,7 +19,7 @@ const PRICES_LOADED: ToolMessage = {
       items: [
         {
           text: JSON.stringify({
-            $ines_kind: "sqlite_table",
+            $agent_kind: "sqlite_table",
             name: "prices",
             rows: [
               ...Array.from({ length: 60 }, (_, i) => ({
@@ -42,7 +42,7 @@ const PRICES_LOADED: ToolMessage = {
 
 const SQL_TOOL = {
   name: "execute_sql",
-  server_id: "ines",
+  server_id: "agent",
   url: "http://localhost:8787/mcp",
   description:
     "Run SQLite SELECT/WITH against widget data. Use for filters, aggregations, joins. Cheap.",

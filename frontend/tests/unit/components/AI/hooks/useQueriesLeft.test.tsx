@@ -141,7 +141,7 @@ describe("QueryLimitReached", () => {
   beforeEach(() => {
     useStreamingStore.setState({ limitReached: true });
     useCopilotStore.setState({
-      selectedCopilot: { id: "default-copilot", name: "Ines" } as never,
+      selectedCopilot: { id: "default-copilot", name: "Agent" } as never,
       showWelcome: false,
     });
   });

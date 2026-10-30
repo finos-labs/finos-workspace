@@ -1,7 +1,7 @@
 import type { CitationCollection, CopilotArtifact, SSEEvent, Widget } from "./types.ts";
 
 export const PLACEHOLDER_TAG_NAMES = [
-  "artifact_id", "artifact", "copilot_table", "ines_artifact",
+  "artifact_id", "artifact", "copilot_table", "agent_artifact",
   "citation_id", "citation", "chart", "suggestions", "suggestion",
 ] as const;
 export const PAIRED_PIPE_PLACEHOLDER_NAMES = [

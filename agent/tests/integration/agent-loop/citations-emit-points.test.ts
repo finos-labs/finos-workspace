@@ -26,7 +26,7 @@ function priorToolMessage(): ToolMessage {
   return {
     role: "tool",
     function: "execute_agent_tool",
-    input_arguments: { tool_name: "fetch_webpage", server_id: "ines" },
+    input_arguments: { tool_name: "fetch_webpage", server_id: "agent" },
     data: [{ items: [{ text: "page body" }] }],
     extra_state: { intermediate_citations: [STASHED] },
   };
@@ -49,7 +49,7 @@ function mcpTools(): AgentTool[] {
   return [
     {
       name: "fetch_webpage",
-      server_id: "ines",
+      server_id: "agent",
       url: "http://localhost:8787/mcp",
       description: "Fetch a webpage",
       input_schema: { properties: { url: { type: "string" } }, required: ["url"] },

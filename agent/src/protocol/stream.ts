@@ -21,7 +21,7 @@ function traceSseEvent(value: SSEEvent, finalText: { chunks: string[] }): void {
     const suffix = expanded != null
       ? `\n${JSON.stringify(expanded, null, 2)}`
       : "";
-    console.error(`[ines:${data.group ?? "status"}:${data.eventType ?? "INFO"}] ${data.message ?? ""}${suffix}`);
+    console.error(`[agent:${data.group ?? "status"}:${data.eventType ?? "INFO"}] ${data.message ?? ""}${suffix}`);
     return;
   }
 
@@ -31,7 +31,7 @@ function traceSseEvent(value: SSEEvent, finalText: { chunks: string[] }): void {
       input_arguments?: Record<string, unknown>;
     };
     console.error(
-      `[ines:tool] ${data.function ?? "unknown"}\n` +
+      `[agent:tool] ${data.function ?? "unknown"}\n` +
         JSON.stringify(data.input_arguments ?? {}, null, 2),
     );
     return;
@@ -46,14 +46,14 @@ function traceSseEvent(value: SSEEvent, finalText: { chunks: string[] }): void {
   if (value.event === "copilotMessageArtifact") {
     const data = value.data as { type?: string; name?: string; uuid?: string };
     console.error(
-      `[ines:artifact] ${data.type ?? "artifact"} ${data.name ?? ""} ${data.uuid ?? ""}`.trim(),
+      `[agent:artifact] ${data.type ?? "artifact"} ${data.name ?? ""} ${data.uuid ?? ""}`.trim(),
     );
     return;
   }
 
   if (value.event === "copilotCitationCollection") {
     const data = value.data as { citations?: unknown[] };
-    console.error(`[ines:citations] ${data.citations?.length ?? 0}`);
+    console.error(`[agent:citations] ${data.citations?.length ?? 0}`);
   }
 }
 
@@ -61,7 +61,7 @@ function flushTraceFinal(finalText: { chunks: string[] }): void {
   if (LIVE_DEBUG_TRACES_LEVEL < 1 || finalText.chunks.length === 0) return;
   const text = finalText.chunks.join("").trim();
   finalText.chunks = [];
-  if (text) console.error(`[ines:final]\n${text}\n[/ines:final]`);
+  if (text) console.error(`[agent:final]\n${text}\n[/agent:final]`);
 }
 
 export function sseResponse(

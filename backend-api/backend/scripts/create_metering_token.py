@@ -37,7 +37,7 @@ def main() -> None:
             "could only\n"
             "be withdrawn by changing ``JWT_SECRET``, which signs out every user at the same time. "
             "Mint a new\n"
-            "one before this one expires and set ``INES_METERING_TOKEN`` to it; an expired token is "
+            "one before this one expires and set ``AGENT_METERING_TOKEN`` to it; an expired token is "
             "answered\n"
             "with a 403 that says so.\n"
             "\n"

@@ -78,7 +78,7 @@ const pdfWidget: Widget = {
 
 const QUERY_DOCS_TOOL = {
   name: "query_documents",
-  server_id: "ines",
+  server_id: "agent",
   url: "http://localhost:8787/mcp",
   description: queryDocumentsDescription,
   input_schema: {
@@ -92,7 +92,7 @@ const QUERY_DOCS_TOOL = {
 
 const LIST_DOCS_TOOL = {
   name: "list_documents",
-  server_id: "ines",
+  server_id: "agent",
   url: "http://localhost:8787/mcp",
   description: listDocumentsDescription,
   input_schema: { properties: {}, required: [] },

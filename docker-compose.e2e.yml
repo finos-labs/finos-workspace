@@ -12,7 +12,7 @@ services:
     depends_on:
       - web
       - api
-      - ines
+      - agent
     networks:
       - workspace
 
@@ -30,7 +30,7 @@ services:
       SELFURL: ${API_URL:-https://localhost:8000}
       BACKEND_CORS_ORIGINS: '["${WEB_URL:-https://localhost:3000}"]'
 
-  ines-mcp:
+  agent-mcp:
     environment:
       WORKSPACE_ORIGIN: ${WEB_URL:-https://localhost:3000}
       WORKSPACE_PUBLIC_URL: ${API_URL:-https://localhost:8000}
@@ -48,15 +48,15 @@ services:
     networks:
       - workspace
 
-  ines:
+  agent:
     ports: !reset []
     environment:
       WORKSPACE_ORIGIN: ${WEB_URL:-https://localhost:3000}
       WORKSPACE_PUBLIC_URL: ${API_URL:-https://localhost:8000}
-      INES_CORS_ORIGINS: ${WEB_URL:-https://localhost:3000}
+      AGENT_CORS_ORIGINS: ${WEB_URL:-https://localhost:3000}
       DEFAULT_MODEL: ollama:stub
       OLLAMA_BASE_URL: http://stub-model:11434/api
-      INES_EMBED_MODEL: ""
+      AGENT_EMBED_MODEL: ""
     depends_on:
       stub-model:
         condition: service_healthy

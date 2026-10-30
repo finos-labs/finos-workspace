@@ -11,7 +11,7 @@ import {
 } from "../../../../mcp-server/src/lib/typed.ts";
 
 describe("typed.ts — helpers", () => {
-  it("textItem wraps content in a plain text item (no $ines_kind)", () => {
+  it("textItem wraps content in a plain text item (no $agent_kind)", () => {
     const item = textItem("hello");
     expect(item.type).toBe("text");
     expect(item.text).toBe("hello");
@@ -19,16 +19,16 @@ describe("typed.ts — helpers", () => {
     expect(() => JSON.parse(item.text)).toThrow();
   });
 
-  it("artifactItem JSON-encodes the artifact under $ines_kind", () => {
+  it("artifactItem JSON-encodes the artifact under $agent_kind", () => {
     const a = { type: "table", uuid: "u", name: "n", description: "d", content: [] };
     const item = artifactItem(a);
-    expect(JSON.parse(item.text)).toEqual({ $ines_kind: "artifact", artifact: a });
+    expect(JSON.parse(item.text)).toEqual({ $agent_kind: "artifact", artifact: a });
   });
 
   it("webCitationItem includes id only when supplied", () => {
     const without = JSON.parse(webCitationItem({ url: "https://x", title: "X" }).text);
     expect(without).toEqual({
-      $ines_kind: "citation",
+      $agent_kind: "citation",
       citation: { type: "web", url: "https://x", title: "X" },
     });
     expect("id" in without.citation).toBe(false);
@@ -55,10 +55,10 @@ describe("typed.ts — helpers", () => {
     });
   });
 
-  it("sqliteTableItem encodes name + rows under $ines_kind", () => {
+  it("sqliteTableItem encodes name + rows under $agent_kind", () => {
     const item = sqliteTableItem("Prices", [{ a: 1 }]);
     expect(JSON.parse(item.text)).toEqual({
-      $ines_kind: "sqlite_table",
+      $agent_kind: "sqlite_table",
       name: "Prices",
       rows: [{ a: 1 }],
     });
@@ -66,7 +66,7 @@ describe("typed.ts — helpers", () => {
 
   it("errorItem defaults retryable to false", () => {
     const def = JSON.parse(errorItem({ code: "C", message: "m" }).text);
-    expect(def).toEqual({ $ines_kind: "error", error: { code: "C", message: "m", retryable: false } });
+    expect(def).toEqual({ $agent_kind: "error", error: { code: "C", message: "m", retryable: false } });
 
     const ret = JSON.parse(errorItem({ code: "C", message: "m", retryable: true }).text);
     expect(ret.error.retryable).toBe(true);
@@ -74,6 +74,6 @@ describe("typed.ts — helpers", () => {
 
   it("modelContextItem encodes summary", () => {
     const item = modelContextItem("use this only");
-    expect(JSON.parse(item.text)).toEqual({ $ines_kind: "model_context", summary: "use this only" });
+    expect(JSON.parse(item.text)).toEqual({ $agent_kind: "model_context", summary: "use this only" });
   });
 });

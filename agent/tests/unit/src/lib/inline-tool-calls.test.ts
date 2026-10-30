@@ -5,7 +5,7 @@ import { MockLanguageModelV3 } from "ai/test";
 import { z } from "zod";
 import { extractInlineToolCalls, withInlineToolCalls } from "../../../../src/lib/inline-tool-calls.ts";
 
-const TOOLS = new Set(["execute_sql", "Ines_Tools_web_search", "get_widget_data"]);
+const TOOLS = new Set(["execute_sql", "Agent_Tools_web_search", "get_widget_data"]);
 const calls = (text: string) => extractInlineToolCalls(text, TOOLS);
 const only = (text: string) => {
   const { segments } = calls(text);
@@ -24,9 +24,9 @@ describe("extractInlineToolCalls", () => {
   });
 
   it("reads the other formats models write", () => {
-    expect(only('<TOOLCALL>[{"name": "execute_sql", "arguments": {"sql": "SELECT 1"}}, {"name": "Ines_Tools_web_search", "arguments": {"query": "nvidia"}}]</TOOLCALL>')).toEqual([
+    expect(only('<TOOLCALL>[{"name": "execute_sql", "arguments": {"sql": "SELECT 1"}}, {"name": "Agent_Tools_web_search", "arguments": {"query": "nvidia"}}]</TOOLCALL>')).toEqual([
       { name: "execute_sql", input: { sql: "SELECT 1" } },
-      { name: "Ines_Tools_web_search", input: { query: "nvidia" } },
+      { name: "Agent_Tools_web_search", input: { query: "nvidia" } },
     ]);
     expect(only('<function=execute_sql>{"sql": "SELECT 2"}</function>')).toEqual([{ name: "execute_sql", input: { sql: "SELECT 2" } }]);
     expect(only('[TOOL_CALLS][{"name": "get_widget_data", "arguments": {"widgets": []}}]')).toEqual([{ name: "get_widget_data", input: { widgets: [] } }]);

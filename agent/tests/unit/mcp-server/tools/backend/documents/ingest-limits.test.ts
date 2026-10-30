@@ -39,15 +39,15 @@ beforeEach(() => {
 });
 afterEach(() => {
   _resetEmbeddingModel();
-  delete process.env.INES_INGEST_CHUNKS_PER_HOUR;
+  delete process.env.AGENT_INGEST_CHUNKS_PER_HOUR;
 });
 
 const b64 = (bytes: Uint8Array | string) => Buffer.from(typeof bytes === "string" ? new TextEncoder().encode(bytes) : bytes).toString("base64");
 const ingest = (conversation: string, doc: { id: string; name: string; format: "pdf" | "docx" | "txt"; bytes: Uint8Array | string }) =>
   queryDocumentsHandler({
     query: "anything",
-    "x-ines-conversation-id": conversation,
-    "x-ines-documents": [{ id: doc.id, name: doc.name, format: doc.format, content_b64: b64(doc.bytes) }],
+    "x-agent-conversation-id": conversation,
+    "x-agent-documents": [{ id: doc.id, name: doc.name, format: doc.format, content_b64: b64(doc.bytes) }],
   });
 const errorOf = (res: Awaited<ReturnType<typeof ingest>>) => {
   const first = res.content[0].text;
@@ -124,7 +124,7 @@ describe("what a chat may hold, checked before anything is paid for", () => {
 
 describe("what a user may have read in an hour", () => {
   it("is limited, whichever chat the documents are in, and one user's use is not another's", async () => {
-    process.env.INES_INGEST_CHUNKS_PER_HOUR = "3";
+    process.env.AGENT_INGEST_CHUNKS_PER_HOUR = "3";
     const text = (n: number) =>
       Array.from({ length: n }, (_, i) => `${Array.from({ length: 300 }, (_, j) => `word${i}x${j}`).join(" ")}.`).join("\n\n");
     const first = await ingest("alice:c1", { id: "a", name: "a.txt", format: "txt", bytes: text(2) });

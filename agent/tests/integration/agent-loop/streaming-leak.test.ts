@@ -40,7 +40,7 @@ describe("streaming — placeholder tags never reach the user", () => {
     expect(text).toContain("see chart");
   });
 
-  it("regression: strips `<copilot_table:…>` and `<ines_artifact…>` tag styles", async () => {
+  it("regression: strips `<copilot_table:…>` and `<agent_artifact…>` tag styles", async () => {
     const events = await collectGenerator(
       runAgentLoop({
         request: { messages: [{ role: "human", content: "go" }] } as QueryRequest,
@@ -48,7 +48,7 @@ describe("streaming — placeholder tags never reach the user", () => {
         model: makeMockLlm(
           llmEmitsTextInDeltas([
             "A <copilot_",
-            'table:7>foo B <ines_artifact id="x">bar</ines_arti',
+            'table:7>foo B <agent_artifact id="x">bar</agent_arti',
             "fact> end",
           ]),
         ),
@@ -59,7 +59,7 @@ describe("streaming — placeholder tags never reach the user", () => {
     );
     const text = chunkText(events);
     expect(text).not.toMatch(/<\/?copilot_table/i);
-    expect(text).not.toMatch(/<\/?ines_artifact/i);
+    expect(text).not.toMatch(/<\/?agent_artifact/i);
     expect(text).toContain("foo B ");
     expect(text).toContain("bar");
   });

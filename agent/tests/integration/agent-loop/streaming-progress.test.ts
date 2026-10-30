@@ -44,7 +44,7 @@ function mermaidTools(): AgentTool[] {
   return [
     {
       name: "mermaid_diagram",
-      server_id: "Ines",
+      server_id: "Agent",
       url: "http://localhost:8787/mcp",
       description: "Create a Mermaid diagram",
       input_schema: {
@@ -1058,7 +1058,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
     const priorTool: ToolMessage = {
       role: "tool",
       function: "execute_agent_tool",
-      input_arguments: { tool_name: "fetch_webpage", server_id: "ines" },
+      input_arguments: { tool_name: "fetch_webpage", server_id: "agent" },
       data: [{ items: [{ text: "" }] }],
       extra_state: { intermediate_citations: [citation] },
     };

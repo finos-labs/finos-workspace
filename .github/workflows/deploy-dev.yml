@@ -130,7 +130,7 @@ jobs:
         env:
           NODE_IMAGE: ${{ needs.node.outputs.image }}
         run: |
-          for image in agent:ines agent-mcp:ines-mcp; do
+          for image in agent:agent agent-mcp:agent-mcp; do
             repository="finos/${image%%:*}" target="${image#*:}"
             if output=$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$IMAGE_TAG" 2>&1); then
               echo "$repository:$IMAGE_TAG is already in ECR."
