@@ -427,6 +427,7 @@ export interface PluginsData {
   exportMembers: string[];
   exportOption: AgentField[];
   traits: string[];
+  traitTable: { name: string; description: string; requires: string | null; writableWith: string | null }[];
   builtInTypes: string[];
   guestMessages: ProtocolMessage[];
   hostMessages: ProtocolMessage[];
@@ -493,4 +494,17 @@ export interface ProtocolCases {
   rawRows: { label: string; response: string; rawDataKey: string | null; rows: string }[];
   mcpActive: { label: string; link: string; result: string }[];
   mcpCite: { label: string; call: string; cited: string | null; inputArgs: string | null; details: string | null }[];
+}
+
+export interface HtmlSurface {
+  name: string;
+  draws: string;
+  frame: string;
+  sandbox: string;
+  sandboxWithScripts: string | null;
+  policy: string | null;
+  policyWithScripts: string | null;
+  sanitizing: { tags: string[]; attributes: string[]; dataAttributes: boolean } | null;
+  added: string[];
+  theme: string;
 }

@@ -2,7 +2,13 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { COMMAND_PERMISSIONS, ExportOptionSchema } from "~/plugins/authority";
+import {
+  COMMAND_PERMISSIONS,
+  DEFAULT_SOURCES,
+  ExportOptionSchema,
+  TRAIT_DESCRIPTIONS,
+  traitBindings,
+} from "~/plugins/authority";
 import {
   CONFIRMATIONS,
   FLOOR,
@@ -35,6 +41,22 @@ import {
 
 const OUT = process.env.REFERENCE_OUT ?? "";
 
+function traitTable() {
+  const holds = (name: string, permissions: string[], writable = false) =>
+    traitBindings({} as never, new Set(permissions)).some(
+      (binding) => binding.trait === name && (!writable || binding.writable),
+    );
+  return DEFAULT_SOURCES.map((name) => ({
+    name,
+    description: TRAIT_DESCRIPTIONS[name],
+    requires: holds(name, [])
+      ? null
+      : (PERMISSIONS.find((permission) => holds(name, [permission])) ?? null),
+    writableWith:
+      PERMISSIONS.find((permission) => holds(name, [permission], true)) ?? null,
+  }));
+}
+
 function reference() {
   return {
     versions: { runtime: RUNTIME_VERSION, afm: AFM_VERSION },
@@ -51,6 +73,7 @@ function reference() {
       io: "input",
       unrepresentable: "any",
     }),
+    traitTable: traitTable(),
     commandErrors: [...COMMAND_ERRORS],
     exportMembers: [...EXPORT_MEMBERS],
     commandPermissions: COMMAND_PERMISSIONS,

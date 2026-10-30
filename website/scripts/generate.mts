@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { AgentData, ApiData, BridgeData, CssData, PluginsData } from "../src/data/types.ts";
+import type { AgentData, ApiData, BridgeData, CssData, PluginsData, SettingsData, WebConfigData } from "../src/data/types.ts";
 import {
   collectApi,
   collectAppsSchema,
@@ -17,11 +17,11 @@ import { checkAgreement } from "./lib/agreement.mts";
 import { collectCss } from "./lib/css.mts";
 import { collectAgent } from "./lib/agent.mts";
 import { collectBridge } from "./lib/bridge.mts";
-import { checkCoverage, checkRoutes } from "./lib/coverage.mts";
+import { checkAbuseCases, checkCoverage, checkRoutes, checkSettingNames } from "./lib/coverage.mts";
 import { collectEnv } from "./lib/env.mts";
 import { collectIframe } from "./lib/iframe.mts";
 import { collectPlugins } from "./lib/plugins.mts";
-import { collectProtocolCases } from "./lib/protocolCases.mts";
+import { collectHtmlSurfaces, collectProtocolCases } from "./lib/protocolCases.mts";
 import { outDir } from "./lib/paths.mts";
 import { collectPluginTokens, collectReport } from "./lib/theme.mts";
 import { addUsage } from "./lib/usage.mts";
@@ -51,6 +51,7 @@ const outputs: Record<string, unknown> = {
   widgetRequests: collectWidgetRequests(),
   iframe: collectIframe(),
   protocolCases: collectProtocolCases(),
+  htmlSurfaces: collectHtmlSurfaces(),
   appsSchema: collectAppsSchema(),
   manifestSchema: collectManifestSchema(),
   database: collectDatabase(),
@@ -62,6 +63,14 @@ const outputs: Record<string, unknown> = {
 };
 
 checkAgreement();
+checkAbuseCases();
+const settingNames = new Set<string>([
+  ...(outputs.settings as SettingsData).fields.map((field) => field.name.toUpperCase()),
+  ...env.agent.map((variable) => variable.name),
+  ...(outputs.webConfig as WebConfigData).groups.flatMap((group) => group.fields.flatMap((field) => [field.containerVariable, field.buildVariable])),
+  ...(outputs.webConfig as WebConfigData).buildVariables.map((variable) => variable.name),
+]);
+checkSettingNames(settingNames, ["docs/reference/configuration/overview.md", "docs/reference/css/html-documents.mdx"]);
 checkCoverage(outputs.plugins as PluginsData, outputs.agent as AgentData);
 checkRoutes(outputs.api as ApiData, outputs.agent as AgentData, outputs.bridge as BridgeData, outputs.plugins as PluginsData);
 

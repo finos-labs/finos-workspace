@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import { protocolCasesData } from "./data";
+import { htmlSurfacesData, protocolCasesData } from "./data";
+import { Entry } from "./kit";
+import { InlineText } from "./prose";
 import { TableWrap } from "./shared";
 import styles from "./styles.module.css";
 
@@ -83,5 +85,56 @@ export function McpLinkCites() {
         <Code key="details" value={row.details} />,
       ])}
     />
+  );
+}
+
+export function HtmlSurfaces() {
+  return (
+    <>
+      {htmlSurfacesData.map((surface) => (
+        <Entry key={surface.name} id={surface.name.toLowerCase().replace(/[^a-z]+/g, "-")} level={2} title={surface.name} description={surface.draws}>
+          <Cases
+            columns={["Item", "Value"]}
+            rows={[
+              ["Frame", <InlineText key="frame" text={surface.frame} />],
+              [
+                "sandbox",
+                <span key="sandbox">
+                  {surface.sandbox === "" ? "Empty" : <code>{surface.sandbox}</code>}
+                  {surface.sandboxWithScripts === null ? null : (
+                    <>
+                      . With <code>ALLOW_HTML_JS_EXECUTION</code> set to <code>true</code>: <code>{surface.sandboxWithScripts}</code>
+                    </>
+                  )}
+                </span>,
+              ],
+              [
+                "Content security policy",
+                surface.policy === null ? (
+                  "None added"
+                ) : (
+                  <span key="policy">
+                    <code>{surface.policy}</code>. With scripts allowed: <code>{surface.policyWithScripts}</code>
+                  </span>
+                ),
+              ],
+              [
+                "Sanitizing",
+                surface.sanitizing === null ? (
+                  "None"
+                ) : (
+                  <span key="sanitizing">
+                    The elements {surface.sanitizing.tags.map((tag) => <code key={tag}>{tag} </code>)}and the attributes {surface.sanitizing.attributes.map((name) => <code key={name}>{name} </code>)}
+                    are removed{surface.sanitizing.dataAttributes ? "" : ", and so are the data-* attributes"}
+                  </span>
+                ),
+              ],
+              ["Added to the document", surface.added.length === 0 ? "Nothing" : surface.added.map((item) => <div key={item}><InlineText text={item} /></div>)],
+              ["Theme", <InlineText key="theme" text={surface.theme} />],
+            ]}
+          />
+        </Entry>
+      ))}
+    </>
   );
 }

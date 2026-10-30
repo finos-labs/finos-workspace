@@ -7,6 +7,7 @@ import cli from "../../generated/cli.json";
 import css from "../../generated/css.json";
 import database from "../../generated/database.json";
 import env from "../../generated/env.json";
+import htmlSurfaces from "../../generated/htmlSurfaces.json";
 import iframe from "../../generated/iframe.json";
 import manifestSchema from "../../generated/manifestSchema.json";
 import mcp from "../../generated/mcp.json";
@@ -27,6 +28,7 @@ import type {
   CssData,
   DatabaseData,
   EnvData,
+  HtmlSurface,
   IframeData,
   McpData,
   PluginsData,
@@ -42,6 +44,7 @@ export const agentData = agent as unknown as AgentData;
 export const agentsJsonData = agentsJson as unknown as AgentsJsonData;
 export const widgetRequestData = widgetRequests as unknown as WidgetRequestData;
 export const iframeData = iframe as unknown as IframeData;
+export const htmlSurfacesData = htmlSurfaces as unknown as HtmlSurface[];
 export const protocolCasesData = protocolCases as unknown as ProtocolCases;
 export const apiData = api as unknown as ApiData;
 const appsSchemaData = appsSchema as unknown as SchemaSet;

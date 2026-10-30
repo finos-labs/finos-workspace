@@ -14,7 +14,6 @@ function requirements(plugins: PluginsData, agent: AgentData): Requirement[] {
   const values = plugins.values;
   return [
     { page: "docs/reference/plugins/commands-and-permissions.mdx", what: "host commands", tokens: commands.map((name) => `\`${name}\``) },
-    { page: "docs/reference/plugins/module-contract.mdx", what: "default traits", tokens: plugins.traits.map((name) => `| \`${name}\` |`) },
     {
       page: "docs/reference/plugins/package-and-manifest.mdx",
       what: "host versions in the example manifest",
@@ -105,4 +104,49 @@ export function checkRoutes(api: ApiData, agent: AgentData, bridge: BridgeData, 
     }
   }
   if (unknown.length > 0) throw new Error(`The pages name routes that the code does not have:\n${[...new Set(unknown)].join("\n")}`);
+}
+
+const NOT_SEARCHED = new Set([".git", "node_modules", "build", "reference-data", "generated", ".docusaurus"]);
+
+function filesOf(directory: string): string[] {
+  return readdirSync(directory).flatMap((name) => {
+    if (NOT_SEARCHED.has(name)) return [];
+    const path = join(directory, name);
+    return statSync(path).isDirectory() ? filesOf(path) : [path];
+  });
+}
+
+const ON_ANOTHER_BRANCH = new Set(["docs/examples/backend/tests/test_isolation.py"]);
+
+export function checkAbuseCases(): void {
+  const page = readFileSync(fromRepo("docs/reference/plugins/abuse-cases.mdx"), "utf8");
+  const root = fromRepo(".");
+  const files = filesOf(root);
+  const problems: string[] = [];
+  for (const row of page.split("\n").filter((line) => line.startsWith("|") && !line.startsWith("| Abuse") && !line.startsWith("|---"))) {
+    const cell = row.split(" | ").at(-1) ?? "";
+    const named = [...cell.matchAll(/`([^`]+)`/g)].map((match) => match[1] as string).filter((name) => /\.[a-z]+$/.test(name));
+    const titles = [...cell.replace(/`[^`]*`/g, "").matchAll(/\b[a-z0-9]+(?:-[a-z0-9]+)+\b/g)].map((match) => match[0]);
+    const found = named.map((name) => files.filter((file) => file === join(root, name) || file.endsWith(`/${name}`)));
+    named.forEach((name, index) => {
+      if (!ON_ANOTHER_BRANCH.has(name) && (found[index] ?? []).length === 0) problems.push(`The abuse case "${row.slice(2, 50)}" names ${name}, which does not exist`);
+    });
+    for (const title of titles) {
+      const sources = found.flat().filter((file) => readFileSync(file, "utf8").includes(`"${title}"`));
+      if (sources.length === 0) problems.push(`The abuse case "${row.slice(2, 50)}" names the test ${title}, which is in none of its files`);
+    }
+  }
+  if (problems.length > 0) throw new Error(`abuse-cases.mdx is out of step with the tests:\n${problems.join("\n")}`);
+}
+
+export function checkSettingNames(known: Set<string>, pages: string[]): void {
+  const problems: string[] = [];
+  for (const page of pages) {
+    const text = readFileSync(fromRepo(page), "utf8");
+    for (const match of text.matchAll(/`([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*)`/g)) {
+      const name = match[1] as string;
+      if (name.length > 3 && !known.has(name)) problems.push(`${page} names the setting ${name}, which no component defines`);
+    }
+  }
+  if (problems.length > 0) throw new Error(`The hand-written pages name settings that do not exist:\n${[...new Set(problems)].join("\n")}`);
 }
