@@ -98,7 +98,7 @@ export function SchemaDocs({
     ...(root && data.root ? [{ id: "schema-root", label: <code>{data.title}</code> }] : []),
     ...definitions.map(({ doc }) => ({ id: `schema-${doc.name}`, label: <code>{doc.name}</code> })),
   ];
-  const named = headings?.some((heading) => heading.title !== heading.name) ?? false;
+  const named = show?.some((item) => typeof item !== "string") ?? false;
   return (
     <>
       {named ? null : <Index items={items} />}

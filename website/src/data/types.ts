@@ -457,3 +457,10 @@ export interface WebData {
   port: number;
   values: Record<string, PluginValueType>;
 }
+
+export interface AgentsJsonData {
+  schema: SchemaSet;
+  features: { key: string; description: string }[];
+  file: unknown;
+  conditional: { feature: string; variable: string }[];
+}

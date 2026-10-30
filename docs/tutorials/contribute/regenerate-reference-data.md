@@ -39,7 +39,7 @@ The script builds the image of the local stack, `workspace-api:local`, and runs 
 
 ## Write the agent's data
 
-From `agent`, install the dependencies and run the exporter on Node 26.12.1. It writes `agent/reference-data/reference.json`, which holds the routes, the metrics, the MCP tools, the query protocol and the limits of Ines.
+From `agent`, install the dependencies and run the exporter on Node 26.12.1. It writes `agent/reference-data/reference.json`, which holds the routes, the metrics, the MCP tools, the query protocol and the limits of Ines, and the `agents.json` file that Ines serves.
 
 ```bash
 cd agent
@@ -51,7 +51,7 @@ The descriptions of the agent's environment variables are in `agent/src/lib/env-
 
 ## Write the web app's data
 
-From `frontend`, install the dependencies and run the script that runs the four tests which write the data. It writes five files into `frontend/reference-data`. The file `plugin-reference.json` holds the plugin runtime's messages, limits, permissions and policy rules, and `workspace-bridge-reference.json` holds the limits, the errors and the commands of the bridge in the tab. The file `web-app-reference.json` holds the numbers, names and lists of the web app's interface that the how-to guides quote, such as the file types that a dashboard accepts and the longest name of a folder, `apps-schema.json` is the JSON Schema of `apps.json`, and `widget-args-reference.json` holds the schemas that `get_widget_schema` builds for the `data_args` and the `ui_args` of a widget. A test fails when a field of an `apps.json` entry has no description.
+From `frontend`, install the dependencies and run the script that runs the five tests which write the data. It writes six files into `frontend/reference-data`. The file `plugin-reference.json` holds the plugin runtime's messages, limits, permissions and policy rules, and `workspace-bridge-reference.json` holds the limits, the errors and the commands of the bridge in the tab. The file `web-app-reference.json` holds the numbers, names and lists of the web app's interface that the how-to guides quote, such as the file types that a dashboard accepts and the longest name of a folder, `apps-schema.json` is the JSON Schema of `apps.json`, `widget-args-reference.json` holds the schemas that `get_widget_schema` builds for the `data_args` and the `ui_args` of a widget, and `agents-reference.json` holds the schema of an entry of `agents.json` and the features that the web app knows. A test fails when a field of an agent has no description, or when the code reads a feature that `AI_FEATURE_DESCRIPTIONS` does not describe. A test fails when a field of an `apps.json` entry has no description.
 
 ```bash
 cd frontend
