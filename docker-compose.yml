@@ -120,6 +120,8 @@ services:
   web:
     build:
       context: ./frontend
+      additional_contexts:
+        node: docker-image://ghcr.io/openbq-org/finos-node:26.12.1-1@sha256:ead12e53441802ae738c130ba285e2517e7aa9a39449e9e4fd9bc9bbf03c5352
     platform: ${PLATFORM:-linux/amd64}
     image: workspace-web:local
     restart: unless-stopped
@@ -140,6 +142,8 @@ services:
     build:
       context: ./agent
       target: agent
+      additional_contexts:
+        node: docker-image://ghcr.io/openbq-org/finos-node:26.12.1-1@sha256:ead12e53441802ae738c130ba285e2517e7aa9a39449e9e4fd9bc9bbf03c5352
     image: workspace-agent:local
     restart: unless-stopped
     init: true
@@ -174,6 +178,8 @@ services:
     build:
       context: ./agent
       target: agent-mcp
+      additional_contexts:
+        node: docker-image://ghcr.io/openbq-org/finos-node:26.12.1-1@sha256:ead12e53441802ae738c130ba285e2517e7aa9a39449e9e4fd9bc9bbf03c5352
     image: workspace-agent-mcp:local
     restart: unless-stopped
     init: true
