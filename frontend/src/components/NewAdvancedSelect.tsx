@@ -184,9 +184,9 @@ const Row = memo(
 
     return (
       <div
-        ref={(el) =>
-          (refs.current[index] = { ...(refs.current[index] || {}), div: el })
-        }
+        ref={(el) => {
+          refs.current[index] = { ...(refs.current[index] || {}), div: el };
+        }}
         onClick={() => {
           if (DISABLE_VALUES.includes(item.value)) return;
           handleSetSelected({ ...item, selected: !isSelected });
@@ -197,9 +197,9 @@ const Row = memo(
           dark:text-white dark:hover:bg-dark-500 flex justify-between items-center gap-2"
       >
         <span
-          ref={(el) =>
-            (refs.current[index] = { ...(refs.current[index] || {}), span: el })
-          }
+          ref={(el) => {
+            refs.current[index] = { ...(refs.current[index] || {}), span: el };
+          }}
           className={cn({ "inline-flex gap-2 items-center": showExtraInfo })}
         >
           {item.label}

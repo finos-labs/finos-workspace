@@ -125,7 +125,7 @@ vi.mock("~/components/ds/atoms/Input", () => ({
 
 vi.mock("~/components/ds/atoms/Tag", () => ({
   Tag: ({ children, color }: { children: ReactNode; color?: string }) => (
-    <span className="BB-Tag" data-color={color}>
+    <span data-testid="tag" data-color={color}>
       {children}
     </span>
   ),
@@ -318,7 +318,7 @@ describe("SkillsTab", () => {
     it("renders skill slugs as plain text (not tags)", () => {
       renderSkillsTab();
       const slug = screen.getByText("financial-analysis");
-      expect(slug.classList.contains("BB-Tag")).toBe(false);
+      expect(slug.closest('[data-testid="tag"]')).toBeNull();
     });
 
     it("does not render skill creation dates", () => {

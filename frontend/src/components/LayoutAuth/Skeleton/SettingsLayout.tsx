@@ -69,9 +69,9 @@ export const SettingsLayout = ({
                   className={cn(
                     "pb-2 flex items-center gap-1.5",
                     "border-b-2 border-transparent",
-                    "radix-state-active:border-brand-main radix-state-active:text-brand-main",
-                    "dark:radix-state-active:border-brand-lighter dark:radix-state-active:text-brand-lighter",
-                    "radix-state-inactive:text-ds-text-body hover:radix-state-inactive:text-ds-text-heading",
+                    "data-[state=active]:border-brand-main data-[state=active]:text-brand-main",
+                    "dark:data-[state=active]:border-brand-lighter dark:data-[state=active]:text-brand-lighter",
+                    "data-[state=inactive]:text-ds-text-body hover:data-[state=inactive]:text-ds-text-heading",
                     tab.disabled && "opacity-50 cursor-not-allowed",
                   )}
                 >

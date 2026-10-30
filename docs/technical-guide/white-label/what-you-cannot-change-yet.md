@@ -19,13 +19,13 @@ These brand elements are written in the code. A deployment changes them only by 
 | "FINOS (default)" and "the FINOS theme" in the theme editor | `frontend/src/components/ThemeSettings/PresetsSettings.tsx`, `frontend/src/lib/state/themePresets.ts` |
 | "Workspace Documentation" on the home page, "Workspace MCP Companion" and about 75 other texts that name Workspace | `frontend/src/routes/appHome.tsx`, `frontend/src/components/LayoutAuth/McpCompanionModal.tsx` and others |
 | The title and meta tags that crawlers read without JavaScript, and the Windows tile color | `frontend/index.html` |
-| The installed app's colors and its cache name | `frontend/vite.config.ts` |
+| The installed app's colors | `frontend/vite.config.ts` |
 
 ## Theme presets
 
 - A preset applies after a user signs in, so the login, password reset and two-factor pages show only the theme stylesheet. Put the colors that those pages need in `WL_STYLESHEET`.
 - A preset cannot load a font of its own, because preset values may not contain `url(`. Load such a font in the theme stylesheet, as [Change the brand color and font](change-brand-color-and-font.md) shows.
-- The font menu of the theme editor offers Montserrat, Inter and Roboto.
+- The font menu of the theme editor offers only Montserrat.
 
 ## Agent and MCP
 

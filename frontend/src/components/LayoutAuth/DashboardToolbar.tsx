@@ -270,7 +270,7 @@ export default function DashboardToolbar() {
                   : ""
               }
             >
-              <DropdownMenuTrigger className="w-2.5 h-6 flex items-center justify-center rounded-[2px] radix-state-open:bg-brand-main hover:bg-brand-main/50">
+              <DropdownMenuTrigger className="w-2.5 h-6 flex items-center justify-center rounded-[2px] data-[state=open]:bg-brand-main hover:bg-brand-main/50">
                 <ChevronDownIcon className="min-w-2.5 size-2.5 text-white" />
               </DropdownMenuTrigger>
             </Tooltip>

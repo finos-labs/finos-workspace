@@ -173,18 +173,21 @@ pinned versions, so it runs only with `E2E_INTEROP=1`, and nightly in
 
 ### Storybook Accessibility Tests
 
-We use `@storybook/test-runner` and `axe-playwright` to run accessibility (WCAG) checks against our UI components using Storybook.
+Every story of the design system is also an accessibility test. Storybook's Vitest addon renders
+each story in Chromium through Vitest's browser mode, and the accessibility addon checks it with axe
+against WCAG 2 A and AA. A story fails when axe finds a violation. The check skips elements marked
+`data-a11y-ignore`, disabled elements and elements with `aria-disabled="true"`, as
+`.storybook/preview.ts` sets it, and a story can change that through its own `a11y` parameter.
 
 ```bash
-# 1. Build the static Storybook (requires significant memory, hence NODE_OPTIONS)
-npm run build-storybook
+# Once, for the browser the tests run in
+npx playwright install chromium
 
-# 2. Start a local server for the static build
-npx http-server storybook-static -p 6006 -s &
-
-# 3. Run the accessibility tests
-npx test-storybook --url http://127.0.0.1:6006
+npm run test-storybook
 ```
+
+`.storybook/vitest.config.ts` runs the stories that `.storybook/main.ts` lists, with the app's Vite
+configuration.
 
 ---
 

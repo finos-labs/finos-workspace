@@ -13,7 +13,7 @@ Open Admin → Theme → Presets and look at the Brand group, which is first in 
 
 ## In a stylesheet
 
-Put the declarations in your theme stylesheet, on `:root`. The font must be one of `Montserrat`, `Inter` and `Roboto`, which the app ships. Another family name works only on devices that have that font installed.
+Put the declarations in your theme stylesheet, on `:root`. The app ships Montserrat. Another family name works only on devices that have that font installed.
 
 ```css
 :root {
@@ -21,7 +21,7 @@ Put the declarations in your theme stylesheet, on `:root`. The font must be one 
   --color-main-50: color-mix(in srgb, var(--color-main-100) 70%, white);
   --color-main-200: color-mix(in srgb, var(--color-main-100) 70%, black);
   --color-main-contrast: var(--color-light-100);
-  --font-family: "Inter";
+  --font-family: "<font-family>";
 }
 ```
 
@@ -46,4 +46,4 @@ A font that the app does not ship needs its files and an `@font-face` rule, both
 }
 ```
 
-Every text of the app follows `--font-family`, with `system-ui` as the fallback while the font loads. A preset that an admin designs in the app cannot do this, because a preset's values may not contain `url(`, and its font menu offers only Montserrat, Inter and Roboto. Check that the font's license allows you to serve it from your own host.
+Every text of the app follows `--font-family`, with `system-ui` as the fallback while the font loads. A preset that an admin designs in the app cannot do this, because a preset's values may not contain `url(`, and its font menu offers only Montserrat. Check that the font's license allows you to serve it from your own host.

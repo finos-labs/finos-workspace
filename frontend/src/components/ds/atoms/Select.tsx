@@ -10,7 +10,7 @@ import { Label, Message } from "./Label";
 
 export const SelectTriggerVariants = cva(
   [
-    "BB-Select body-xs-regular flex w-full items-center justify-between rounded-sm border [&>span]:line-clamp-1",
+    "body-xs-regular flex w-full items-center justify-between rounded-sm border [&>span]:line-clamp-1",
     "transition",
     "border-general-border-primary text-general-label-hover data-placeholder:text-ds-text-caption bg-input-field-bg",
     "hover:enabled:text-general-label-hover",
@@ -201,7 +201,7 @@ interface SelectProps<T extends string = string>
   forceLight?: boolean;
 }
 const SelectBase = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Root>,
+  React.ElementRef<typeof SelectPrimitive.Trigger>,
   SelectProps
 >((props, ref) => {
   const {
@@ -242,7 +242,7 @@ const SelectBase = React.forwardRef<
 
   return (
     <SelectRoot onValueChange={onChange} {...rest}>
-      <div className="BB-Select group" aria-disabled={props.disabled}>
+      <div className="group" aria-disabled={props.disabled}>
         <Label id={labelId}>{label}</Label>
         <SelectTrigger
           ref={ref}
@@ -280,7 +280,7 @@ const FormSelect = React.forwardRef<HTMLInputElement, FormSelectProps>((props, r
   const { label, message, ...rest } = props;
 
   return (
-    <FormItem className="BB-FormSelect group" aria-disabled={props.disabled}>
+    <FormItem className="group" aria-disabled={props.disabled}>
       <FormLabel>{label}</FormLabel>
       <Select ref={ref} {...rest} />
       <FormMessage>{message}</FormMessage>

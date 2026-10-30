@@ -43,7 +43,7 @@ function useAuthKeyPresses() {
   }, [themeStore]);
 }
 
-function usePanelEvents(leftPanelRef: RefObject<ImperativePanelHandle>) {
+function usePanelEvents(leftPanelRef: RefObject<ImperativePanelHandle | null>) {
   const toggleLeftSidebar = useCallback(() => {
     if (leftPanelRef.current) {
       leftPanelRef.current.getSize() <= 4

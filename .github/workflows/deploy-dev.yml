@@ -45,9 +45,9 @@ jobs:
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
       - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487
 
-      - name: Build and push the API and worker images
+      - name: Build and push the backend image
         run: |
-          for image in backend:fastapi.Dockerfile backend-worker:rqworker.Dockerfile; do
+          for image in backend:fastapi.Dockerfile; do
             repository="finos/${image%%:*}" dockerfile="${image#*:}"
             if output=$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$IMAGE_TAG" 2>&1); then
               echo "$repository:$IMAGE_TAG is already in ECR."
@@ -61,17 +61,11 @@ jobs:
             fi
           done
 
-      - name: SBOM of the API image
+      - name: SBOM of the backend image
         continue-on-error: true
         uses: ./.github/actions/image-sbom
         with:
           image: ${{ env.ECR_REGISTRY }}/finos/backend:${{ env.IMAGE_TAG }}
-
-      - name: SBOM of the worker image
-        continue-on-error: true
-        uses: ./.github/actions/image-sbom
-        with:
-          image: ${{ env.ECR_REGISTRY }}/finos/backend-worker:${{ env.IMAGE_TAG }}
 
   frontend:
     needs: node

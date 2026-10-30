@@ -212,7 +212,7 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
 
             <div className="grid grid-cols-[100px_1fr] gap-4 items-center">
               <span className="font-medium">Type</span>
-              <div className="[&>.BB-Select]:inline">
+              <div className="[&>*]:inline">
                 <Select
                   className="inline-flex h-7 w-[120px] rounded-sm px-2"
                   options={typeOptions}

@@ -62,7 +62,6 @@ jobs:
         run: >-
           docker buildx bake -f docker-compose.yml -f docker-compose.e2e.yml --load
           --set init.cache-from=type=gha,scope=fastapi.Dockerfile
-          --set worker.cache-from=type=gha,scope=rqworker.Dockerfile
           --set "web.contexts.node=docker-image://$NODE_IMAGE"
           --set "ines.contexts.node=docker-image://$NODE_IMAGE"
           --set "ines-mcp.contexts.node=docker-image://$NODE_IMAGE"

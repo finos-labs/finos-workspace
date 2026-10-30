@@ -73,7 +73,7 @@ export const SingleDatePicker = forwardRef<HTMLButtonElement, SingleDatePickerPr
               size="xs"
               className={cn(
                 "flex whitespace-nowrap items-center justify-between px-0.5 gap-0.5 h-[20px] text-xs !border-0",
-                !currentDate && "!text-muted-foreground",
+                !currentDate && "!text-light-300 dark:!text-dark-100",
                 triggerClassName,
               )}
             >
@@ -88,7 +88,7 @@ export const SingleDatePicker = forwardRef<HTMLButtonElement, SingleDatePickerPr
             sideOffset={5}
             alignOffset={alignOffset}
             className={cn(
-              "radix-side-top:animate-slide-up radix-side-bottom:animate-slide-down",
+              "data-[side=top]:animate-slide-up data-[side=bottom]:animate-slide-down",
               "text-xs z-10 p-0",
               "ws-dropdown-container",
             )}

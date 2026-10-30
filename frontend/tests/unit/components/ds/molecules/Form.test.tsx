@@ -7,7 +7,6 @@ import { z } from "zod";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -38,7 +37,6 @@ function TestForm() {
               <FormControl>
                 <input {...field} placeholder="Enter username" />
               </FormControl>
-              <FormDescription>Min 3 characters</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -54,7 +52,6 @@ describe("Form Molecule", () => {
     render(<TestForm />);
     expect(screen.getByText("Username")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Enter username")).toBeInTheDocument();
-    expect(screen.getByText("Min 3 characters")).toBeInTheDocument();
   });
 
   it("shows validation error message on invalid submit", async () => {

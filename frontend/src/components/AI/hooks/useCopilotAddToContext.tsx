@@ -41,8 +41,8 @@ import { useMentions } from "./useMentions";
 import { dispatchCopilotCommand } from "./utils";
 
 type ContextSuggestionsProps = {
-  inputRef?: RefObject<HTMLInputElement | HTMLTextAreaElement>;
-  suggestionsRef?: RefObject<HTMLDivElement>;
+  inputRef?: RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
+  suggestionsRef?: RefObject<HTMLDivElement | null>;
   fromTextArea?: boolean;
   textAreatype?: TextAreaProps["type"];
   setIsDropdownOpen?: (isOpen: boolean) => void;

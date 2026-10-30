@@ -547,7 +547,9 @@ const MyDashboards = memo((props: MyDashboardsProps) => {
             ? { maxHeight: `${maxHeight}px` }
             : undefined
         }
-        ref={(el) => (tabsRef.current = el)}
+        ref={(el) => {
+          tabsRef.current = el;
+        }}
         onScroll={(e) => expandedMyDashboards && setScrollY(e.currentTarget.scrollTop)}
       >
         <TabsItems key="auth-sidebar-tab-items" tabsRef={tabsRef} />
