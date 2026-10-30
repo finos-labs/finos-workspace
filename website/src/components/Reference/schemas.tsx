@@ -9,15 +9,22 @@ function SchemaFields({ doc, schemaPage }: { doc: SchemaDoc; schemaPage: string 
   return <Fields fields={fromSchema(doc.properties)} schemaPage={schemaPage} empty="This schema has no named properties." />;
 }
 
-const RULE_LENGTH = 48;
+const RULE_LENGTH = 30;
 
-function SchemaBlock({ doc, id }: { doc: SchemaDoc; id: string }) {
+interface Heading {
+  name: string;
+  title: string;
+  description?: string;
+}
+
+function SchemaBlock({ doc, id, heading }: { doc: SchemaDoc; id: string; heading?: Heading }) {
   const rules = doc.notes.filter((note) => note.length > RULE_LENGTH);
   return (
     <Entry
       id={id}
-      title={<code>{doc.name}</code>}
-      description={doc.description}
+      level={heading ? 2 : 3}
+      title={heading ? heading.title : <code>{doc.name}</code>}
+      description={heading?.description ?? doc.description}
       chips={
         <>
           <TypeLabelText label={doc.type} />
@@ -73,20 +80,30 @@ export function SchemaSource({ set }: { set: keyof typeof schemaSets }) {
   );
 }
 
-export function SchemaDocs({ set, show }: { set: keyof typeof schemaSets; show?: string[] }) {
+export function SchemaDocs({
+  set,
+  show,
+  root = true,
+}: {
+  set: keyof typeof schemaSets;
+  show?: (string | Heading)[];
+  root?: boolean;
+}) {
   const data = schemaSets[set];
+  const headings = show?.map((item) => (typeof item === "string" ? { name: item, title: item } : item));
   const definitions =
-    show === undefined ? data.definitions : show.flatMap((name) => data.definitions.filter((doc) => doc.name === name));
+    headings === undefined ? data.definitions.map((doc) => ({ doc, heading: undefined })) : headings.flatMap((heading) => data.definitions.filter((doc) => doc.name === heading.name).map((doc) => ({ doc, heading })));
   const items = [
-    ...(data.root ? [{ id: "schema-root", label: <code>{data.title}</code> }] : []),
-    ...definitions.map((doc) => ({ id: `schema-${doc.name}`, label: <code>{doc.name}</code> })),
+    ...(root && data.root ? [{ id: "schema-root", label: <code>{data.title}</code> }] : []),
+    ...definitions.map(({ doc }) => ({ id: `schema-${doc.name}`, label: <code>{doc.name}</code> })),
   ];
+  const named = headings?.some((heading) => heading.title !== heading.name) ?? false;
   return (
     <>
-      <Index items={items} />
-      {data.root ? <SchemaBlock doc={{ ...data.root, name: data.title }} id="schema-root" /> : null}
-      {definitions.map((doc) => (
-        <SchemaBlock key={doc.name} doc={doc} id={`schema-${doc.name}`} />
+      {named ? null : <Index items={items} />}
+      {root && data.root ? <SchemaBlock doc={{ ...data.root, name: data.title }} id="schema-root" /> : null}
+      {definitions.map(({ doc, heading }) => (
+        <SchemaBlock key={doc.name} doc={doc} id={`schema-${doc.name}`} heading={named ? heading : undefined} />
       ))}
     </>
   );

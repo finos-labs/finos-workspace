@@ -7,13 +7,22 @@ import { SchemaDocs, SchemaSource } from "@site/src/components/Reference/schemas
 
 # widgets.json
 
-A backend lists its widgets in a file named `widgets.json`: an object whose keys are widget ids and whose values are widget definitions. [Widget requests](../protocols/widget-requests.mdx) describes the requests that the web app makes from a definition.
+A backend lists its widgets in a file named `widgets.json`. The file is an object. Each key is a widget's id, at most 128 characters long, and each value is a widget definition. The file may also have the keys `$schema`, the address of a schema that editors use to check the file, and `$id`, an identifier of the file. Both are strings of at most 2048 characters. [Widget requests](../protocols/widget-requests.mdx) describes the requests that the web app makes from a definition.
 
-## Schema
+The fields below come from the JSON Schema that the backend's exporter writes to `backend-api/backend/reference-data/widgets_schema.json` for the built-in types `markdown`, `html`, `newsfeed`, `pdf` and `iframe`. A note such as `for html` means that only widgets of that type have the field. [The JSON Schema file](#the-json-schema-file) shows the schema as validators read it.
 
-The fields of a widget definition and of a parameter, with their types, whether they are required, their defaults, their allowed values and their limits. A note such as `for html` means that only widgets of that type have the field. The schema is draft-07 JSON Schema for the built-in types `markdown`, `html`, `newsfeed`, `pdf` and `iframe`, and the exporter writes it to `backend-api/backend/reference-data/widgets_schema.json`. [The JSON Schema file](#the-json-schema-file) shows it as the validators read it.
-
-<SchemaDocs set="widgets" show={["Widget", "ParamDef"]} />
+<SchemaDocs
+  set="widgets"
+  root={false}
+  show={[
+    { name: "Widget", title: "Widget definition", description: "The value of each key of the file." },
+    {
+      name: "ParamDef",
+      title: "Parameter",
+      description: "An item of `params`. An item of `params` can also be a list of parameters, which is one row of the parameter bar.",
+    },
+  ]}
+/>
 
 ## Examples
 
