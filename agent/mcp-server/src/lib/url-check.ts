@@ -13,8 +13,8 @@ export const urlSigSchema = z
 export function urlProblem(
   url: string,
   signature: string | undefined,
-  secret: string | undefined = process.env.INES_SCOPE_SECRET,
-  anyUrl: boolean = process.env.INES_FETCH_ANY_URL === "true",
+  secret: string | undefined = process.env.AGENT_SCOPE_SECRET,
+  anyUrl: boolean = process.env.AGENT_FETCH_ANY_URL === "true",
   env: Record<string, string | undefined> = process.env,
 ): string | null {
   if (anyUrl) return null;

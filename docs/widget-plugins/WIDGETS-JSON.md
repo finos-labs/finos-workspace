@@ -98,7 +98,7 @@ Each param row also carries `in`: `path`, `query`, `header` or `body`. `get_widg
 
 ### 3.9 Generated spec pages
 
-`backend-api/backend/scripts/generate_app_builder_specs.py` writes, from the kit, the type catalog (`specs/widget-types.md`), each type's response (`backend-contract.md`), the widget fields (`specs/widgets-json.md`), and the param fields and header-name rules (`specs/widget-parameters.md`), between `<!-- generated:<name> -->` markers, and copies the pages to Ines's MCP server (`agent/mcp-server/src/resources/app-builder/`). A pytest test fails when a page is stale. The pages list the built-in types; a plugin's types vary by organization, so they point to `workspace://specs/widgets-json-schema`, which the user's FINOS Workspace tab answers over the bridge with their organization's composed schema.
+`backend-api/backend/scripts/generate_app_builder_specs.py` writes, from the kit, the type catalog (`specs/widget-types.md`), each type's response (`backend-contract.md`), the widget fields (`specs/widgets-json.md`), and the param fields and header-name rules (`specs/widget-parameters.md`), between `<!-- generated:<name> -->` markers, and copies the pages to the agent's MCP server (`agent/mcp-server/src/resources/app-builder/`). A pytest test fails when a page is stale. The pages list the built-in types; a plugin's types vary by organization, so they point to `workspace://specs/widgets-json-schema`, which the user's FINOS Workspace tab answers over the bridge with their organization's composed schema.
 
 ### 3.10 `apps.json` templates
 
@@ -310,7 +310,7 @@ A backend declares MCP servers on the templates of its `apps.json` (`mcpServers`
 ### 5.4 What the web app and the agent do
 
 1. **The agent is told.** Where the request is assembled (`lib/utils/mcpLink.ts`, used in `useAiFetchRequestInit.tsx`), a widget row gains `mcp_tool: { server_id, tool_name, args }` when the request's tools include the linked tool; `server_id` and `tool_name` come from that list, never from the widget's strings.
-2. **Ines shows it.** Her `search_widgets` rows carry `mcp_tool: { tool, args }` with the tool named as the model calls it (`linkedToolName`, `agent/src/mcp/factory.ts`), and her prompt's widget lists tag the widget `[query tool: <name>]`. Nothing is routed by it: the model chooses.
+2. **The agent shows it.** Its `search_widgets` rows carry `mcp_tool: { tool, args }` with the tool named as the model calls it (`linkedToolName`, `agent/src/mcp/factory.ts`), and its prompt's widget lists tag the widget `[query tool: <name>]`. Nothing is routed by it: the model chooses.
 3. **A call cites the widget** (`citeMcpCall`, used by `useMcpExecutor`). Only widgets of the server's own backend that name its declared name and the tool are candidates; `input_args` are built through the mapping in reverse, and arguments that map to no param go in the citation's `details`. An answer cites a widget once, however many calls cited it: the first citation of a widget is kept, for the calls of a linked tool and for those of an `iframe` widget's own server.
 4. **The FINOS Workspace MCP** returns the link in `list_available_widgets` and `get_widget_schema`.
 

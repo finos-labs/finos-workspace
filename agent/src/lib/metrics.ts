@@ -141,64 +141,64 @@ export function createRegistry(): Registry {
 export const registry = createRegistry();
 
 export const metrics = {
-  httpRequests: registry.counter("ines_http_requests_total", "HTTP requests by route, method and status.", [
+  httpRequests: registry.counter("agent_http_requests_total", "HTTP requests by route, method and status.", [
     "route",
     "method",
     "status",
   ]),
   httpDuration: registry.histogram(
-    "ines_http_request_duration_seconds",
+    "agent_http_request_duration_seconds",
     "Time until an HTTP request is answered (for a stream, until it starts).",
     ["route", "method"],
   ),
   queryDuration: registry.histogram(
-    "ines_query_duration_seconds",
+    "agent_query_duration_seconds",
     "Time a Copilot query takes, until its last event is sent, by outcome.",
     ["outcome"],
   ),
   queries: registry.counter(
-    "ines_queries_total",
+    "agent_queries_total",
     "Copilot queries by outcome: completed, continued (a tool round trip), unauthorized, limit, denied, busy, invalid, error.",
     ["outcome"],
   ),
-  activeQueries: registry.gauge("ines_active_queries", "Queries being answered right now."),
-  modelTokens: registry.counter("ines_model_tokens_total", "Model tokens used, by direction (input or output).", [
+  activeQueries: registry.gauge("agent_active_queries", "Queries being answered right now."),
+  modelTokens: registry.counter("agent_model_tokens_total", "Model tokens used, by direction (input or output).", [
     "direction",
   ]),
-  modelErrors: registry.counter("ines_model_errors_total", "Model calls that failed, by provider.", ["provider"]),
-  helperRefused: registry.counter("ines_helper_calls_refused_total", "Helper calls (titles, rewritten prompts, ...) refused because the user made too many in a minute."),
-  unhandled: registry.counter("ines_unhandled_errors_total", "Errors nobody handled, by kind (rejection or exception).", ["kind"]),
-  isolated: registry.counter("ines_isolated_runs_total", "Work run in a child process, by how it ended (ok, failed, timeout, crash, output, busy, protocol).", ["kind"]),
-  isolatedDuration: registry.histogram("ines_isolated_run_duration_seconds", "How long work run in a child process took, by kind of work.", ["work"]),
-  modelCalls: registry.counter("ines_model_calls_total", "Calls made to a model (one for each step of a question), by provider.", ["provider"]),
+  modelErrors: registry.counter("agent_model_errors_total", "Model calls that failed, by provider.", ["provider"]),
+  helperRefused: registry.counter("agent_helper_calls_refused_total", "Helper calls (titles, rewritten prompts, ...) refused because the user made too many in a minute."),
+  unhandled: registry.counter("agent_unhandled_errors_total", "Errors nobody handled, by kind (rejection or exception).", ["kind"]),
+  isolated: registry.counter("agent_isolated_runs_total", "Work run in a child process, by how it ended (ok, failed, timeout, crash, output, busy, protocol).", ["kind"]),
+  isolatedDuration: registry.histogram("agent_isolated_run_duration_seconds", "How long work run in a child process took, by kind of work.", ["work"]),
+  modelCalls: registry.counter("agent_model_calls_total", "Calls made to a model (one for each step of a question), by provider.", ["provider"]),
   workspaceRequests: registry.counter(
-    "ines_workspace_api_requests_total",
+    "agent_workspace_api_requests_total",
     "Calls to the FINOS Workspace API by endpoint and outcome (ok, rejected, limit, error).",
     ["endpoint", "outcome"],
   ),
   workspaceDuration: registry.histogram(
-    "ines_workspace_api_request_duration_seconds",
+    "agent_workspace_api_request_duration_seconds",
     "Time a call to the FINOS Workspace API takes.",
     ["endpoint"],
   ),
-  authCache: registry.counter("ines_auth_cache_total", "Lookups of a signed-in user in the cache, by result.", [
+  authCache: registry.counter("agent_auth_cache_total", "Lookups of a signed-in user in the cache, by result.", [
     "result",
   ]),
   storeErrors: registry.counter(
-    "ines_store_errors_total",
+    "agent_store_errors_total",
     "Times the shared store could not answer and this process answered instead, by operation. Steadily above zero means quotas and turns are being counted per replica.",
     ["op"],
   ),
   recalls: registry.counter(
-    "ines_conversation_recalls_total",
+    "agent_conversation_recalls_total",
     "Times the model read the earlier part of a chat, by how: latest messages, words, or numbers.",
     ["mode"],
   ),
-  toolCalls: registry.counter("ines_mcp_tool_calls_total", "MCP tool calls by tool and outcome (ok, error).", [
+  toolCalls: registry.counter("agent_mcp_tool_calls_total", "MCP tool calls by tool and outcome (ok, error).", [
     "tool",
     "outcome",
   ]),
-  toolDuration: registry.histogram("ines_mcp_tool_duration_seconds", "Time an MCP tool takes.", ["tool"]),
+  toolDuration: registry.histogram("agent_mcp_tool_duration_seconds", "Time an MCP tool takes.", ["tool"]),
 };
 
 export function renderMetrics(): string {
@@ -209,9 +209,9 @@ export function renderMetrics(): string {
     "# HELP process_uptime_seconds Seconds since the process started.",
     "# TYPE process_uptime_seconds gauge",
     `process_uptime_seconds ${Math.round(process.uptime())}`,
-    "# HELP ines_build_info The version that is running.",
-    "# TYPE ines_build_info gauge",
-    `ines_build_info{version="${escapeLabel(process.env.OTEL_SERVICE_VERSION ?? "dev")}"} 1`,
+    "# HELP agent_build_info The version that is running.",
+    "# TYPE agent_build_info gauge",
+    `agent_build_info{version="${escapeLabel(process.env.OTEL_SERVICE_VERSION ?? "dev")}"} 1`,
   ].join("\n");
   return `${registry.render()}${process_}\n`;
 }

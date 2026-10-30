@@ -59,13 +59,13 @@ function loadDoc(path: string): DocPayload {
 
 function formatItem(text: string): string {
   try {
-    const parsed = JSON.parse(text) as { $ines_kind?: string } & Record<string, unknown>;
-    if (parsed.$ines_kind === "citation") {
+    const parsed = JSON.parse(text) as { $agent_kind?: string } & Record<string, unknown>;
+    if (parsed.$agent_kind === "citation") {
       const c = parsed.citation as { title: string; page?: number; uri?: string };
       const pageRef = c.page != null ? ` p.${c.page}` : "";
       return `[citation] ${c.title}${pageRef}  (${c.uri ?? ""})`;
     }
-    if (parsed.$ines_kind === "error") {
+    if (parsed.$agent_kind === "error") {
       const e = parsed.error as { code: string; message: string };
       return `[error] ${e.code} — ${e.message}`;
     }
@@ -91,8 +91,8 @@ async function main(): Promise<void> {
   const result = await queryDocumentsHandler({
     query: question,
     top_k: 5,
-    "x-ines-conversation-id": `smoke-${Date.now()}`,
-    "x-ines-documents": docs,
+    "x-agent-conversation-id": `smoke-${Date.now()}`,
+    "x-agent-documents": docs,
   });
   const ms = Date.now() - startedAt;
 

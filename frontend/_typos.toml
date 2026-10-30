@@ -17,7 +17,6 @@ THA = "THA"
 Bund = "Bund"
 consts = "consts"
 BSE = "BSE"
-Ines = "Ines"
 
 [files]
 extend-exclude = []

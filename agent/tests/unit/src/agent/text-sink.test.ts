@@ -36,7 +36,7 @@ function* enumerateSplits(s: string): Generator<string[]> {
 
 const STRICT_INPUTS = [
   "Result: <artifact_id:abcd-1234>see chart</artifact_id> done.",
-  'A <copilot_table:7>foo B <ines_artifact id="x">bar</ines_artifact> end',
+  'A <copilot_table:7>foo B <agent_artifact id="x">bar</agent_artifact> end',
   "The artifact has rendered. Reference its uuid for follow-up.",
   '**Trend**\n\n<img src="data:image/png;base64,AAAA" alt="Trend" />\n\nDone.',
   "<|start_artifact_id|>artifact-1<|end_artifact_id|>answer",
@@ -75,7 +75,7 @@ describe("text-sink — strip invariant under every delta split", () => {
         const got = chunkText(runSplit(deltas));
         expect(got).not.toMatch(/<\/?artifact_id\b/i);
         expect(got).not.toMatch(/<\/?copilot_table\b/i);
-        expect(got).not.toMatch(/<\/?ines_artifact\b/i);
+        expect(got).not.toMatch(/<\/?agent_artifact\b/i);
         expect(got).not.toMatch(/<img\b/i);
         expect(got).not.toMatch(/data:image\//i);
         expect(got).not.toMatch(/<\|(?:start|end)_/i);
@@ -211,7 +211,7 @@ function makeRng(seed: number): () => number {
 
 const FUZZ_TOKENS: string[] = (() => {
   const names = [
-    "artifact_id", "artifact", "copilot_table", "ines_artifact",
+    "artifact_id", "artifact", "copilot_table", "agent_artifact",
     "citation_id", "citation", "chart",
   ];
   const tags: string[] = [];

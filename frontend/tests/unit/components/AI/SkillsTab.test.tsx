@@ -741,8 +741,8 @@ describe("SkillsTab", () => {
     });
   });
   describe("The agent's skills", () => {
-    const ines = {
-      name: "Ines",
+    const agent = {
+      name: "Agent",
       skills: [
         { slug: "html-report", description: "HTML reports" },
         { slug: "html-chart", description: "Chart colors" },
@@ -750,18 +750,18 @@ describe("SkillsTab", () => {
     };
 
     it("lists them with the agent's name, and nothing to edit or delete", () => {
-      agentState.agent = ines;
+      agentState.agent = agent;
       renderSkillsTab();
 
       expect(screen.getByText("html-report")).toBeInTheDocument();
       expect(screen.getByText("HTML reports")).toBeInTheDocument();
-      expect(screen.getAllByText("Ines")).toHaveLength(2);
+      expect(screen.getAllByText("Agent")).toHaveLength(2);
       expect(screen.getAllByTestId("icon-edit")).toHaveLength(mockSkills.length);
       expect(screen.getAllByTestId("icon-trash-02")).toHaveLength(mockSkills.length);
     });
 
     it("shows them instead of the empty state when the user has no skills", () => {
-      agentState.agent = ines;
+      agentState.agent = agent;
       setupMocks([]);
       renderSkillsTab();
 
@@ -771,7 +771,7 @@ describe("SkillsTab", () => {
 
     it("give way to a user's skill with the same slug", () => {
       agentState.agent = {
-        name: "Ines",
+        name: "Agent",
         skills: [{ slug: "data-viz", description: "The agent's charts" }],
       };
       renderSkillsTab();

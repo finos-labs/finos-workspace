@@ -37,11 +37,11 @@ import type { Authorization, Result, WorkspaceClient } from "../../../src/auth/w
 const ENV = {
   WORKSPACE_API_URL: "http://api:8000",
   WORKSPACE_ORIGIN: "http://localhost:3000",
-  INES_METERING_TOKEN: "metering-token",
-  INES_SCOPE_SECRET: "0123456789abcdef0123",
-  INES_CORS_ORIGINS: "http://localhost:3000",
+  AGENT_METERING_TOKEN: "metering-token",
+  AGENT_SCOPE_SECRET: "0123456789abcdef0123",
+  AGENT_CORS_ORIGINS: "http://localhost:3000",
   DEFAULT_MODEL: "test-provider:test-model",
-  INES_MODELS: "test-provider:other-model,test-provider:role-denied",
+  AGENT_MODELS: "test-provider:other-model,test-provider:role-denied",
 };
 
 function setup(extraEnv: Record<string, string> = {}) {
@@ -244,7 +244,7 @@ describe("a helper with no model at all", () => {
 
 describe("how often a user may call a helper", () => {
   it("is so many times a minute, then 429, and no model is paid for", async () => {
-    const t = setup({ INES_HELPER_CALLS_PER_MINUTE: "3" });
+    const t = setup({ AGENT_HELPER_CALLS_PER_MINUTE: "3" });
     for (let i = 0; i < 3; i++) {
       expect(await (await post(t.app, TITLE, titleBody())).json()).toBe("A title");
     }
@@ -257,7 +257,7 @@ describe("how often a user may call a helper", () => {
   });
 
   it("is counted for each user, and for all the helpers together", async () => {
-    const t = setup({ INES_HELPER_CALLS_PER_MINUTE: "2" });
+    const t = setup({ AGENT_HELPER_CALLS_PER_MINUTE: "2" });
     expect((await post(t.app, TITLE, titleBody())).status).toBe(200);
     expect((await post(t.app, "/v1/enhance_prompt", { messages: [{ role: "human", content: "hello" }] })).status).toBe(200);
     expect((await post(t.app, TITLE, titleBody())).status).toBe(429);
@@ -266,14 +266,14 @@ describe("how often a user may call a helper", () => {
   });
 
   it("is checked before the body is read: a user over it is turned away at no cost, whatever they send", async () => {
-    const t = setup({ INES_HELPER_CALLS_PER_MINUTE: "1" });
+    const t = setup({ AGENT_HELPER_CALLS_PER_MINUTE: "1" });
     await post(t.app, TITLE, titleBody());
     expect((await post(t.app, TITLE, "{ not json")).status).toBe(429);
     expect((await post(t.app, "/v1/generate/code", { nonsense: true })).status).toBe(429);
   });
 
   it("is not asked of a caller who is not signed in", async () => {
-    const t = setup({ INES_HELPER_CALLS_PER_MINUTE: "1" });
+    const t = setup({ AGENT_HELPER_CALLS_PER_MINUTE: "1" });
     expect((await post(t.app, TITLE, titleBody(), null)).status).toBe(401);
     expect((await post(t.app, TITLE, titleBody())).status).toBe(200);
   });

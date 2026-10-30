@@ -80,7 +80,7 @@ export function resolveModel(rawModelId: string): LanguageModel {
     );
   }
   const model = provider.resolve(rawModelId.slice(provider.prefix.length + 1));
-  if (process.env.INES_INLINE_TOOL_CALLS === "off" || typeof model === "string") return model;
+  if (process.env.AGENT_INLINE_TOOL_CALLS === "off" || typeof model === "string") return model;
   return withInlineToolCalls(model as LanguageModelV3);
 }
 

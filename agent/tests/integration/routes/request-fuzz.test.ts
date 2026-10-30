@@ -37,12 +37,12 @@ const workspace: WorkspaceClient = {
 const config = loadConfig({
   WORKSPACE_API_URL: "http://api:8000",
   WORKSPACE_ORIGIN: "http://localhost:3000",
-  INES_METERING_TOKEN: "metering-token",
-  INES_SCOPE_SECRET: "0123456789abcdef0123",
-  INES_CORS_ORIGINS: "http://localhost:3000",
+  AGENT_METERING_TOKEN: "metering-token",
+  AGENT_SCOPE_SECRET: "0123456789abcdef0123",
+  AGENT_CORS_ORIGINS: "http://localhost:3000",
   DEFAULT_MODEL: "test-provider:test-model",
-  INES_MAX_CONCURRENT_QUERIES: "1000",
-  INES_INVALID_REQUESTS_PER_MINUTE: "100000",
+  AGENT_MAX_CONCURRENT_QUERIES: "1000",
+  AGENT_INVALID_REQUESTS_PER_MINUTE: "100000",
 });
 const app = createApp({
   config,
@@ -68,7 +68,7 @@ const valid = () => ({
   timezone: "Europe/Madrid",
   workspace_state: { current_page_context: "dashboard" },
   workspace_options: { "prompt-suggestions": true },
-  tools: [{ name: "Ines Tools_web_search", tool_name: "web_search", server_id: "s", url: "http://ines-mcp:8787/mcp", description: "d", input_schema: { properties: { query: { type: "string" } }, required: ["query"] } }],
+  tools: [{ name: "Agent Tools_web_search", tool_name: "web_search", server_id: "s", url: "http://agent-mcp:8787/mcp", description: "d", input_schema: { properties: { query: { type: "string" } }, required: ["query"] } }],
   documents: [],
 });
 
@@ -114,7 +114,7 @@ function mutate(random: () => number): string {
 }
 
 const unhandledCount = () => {
-  return [...renderMetrics().matchAll(/^ines_unhandled_errors_total\{[^}]*\} ([0-9.e+-]+)$/gm)].reduce((n, m) => n + Number(m[1]), 0);
+  return [...renderMetrics().matchAll(/^agent_unhandled_errors_total\{[^}]*\} ([0-9.e+-]+)$/gm)].reduce((n, m) => n + Number(m[1]), 0);
 };
 
 const send = (body: string, token = "alice-token", chat = "fuzz-chat") =>

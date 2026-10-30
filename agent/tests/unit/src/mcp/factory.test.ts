@@ -40,10 +40,10 @@ describe("makeMcpTools — sanitization", () => {
 describe("makeMcpTools — entries", () => {
   it("preserves serverId, original toolName, and description", () => {
     const out = makeMcpTools([
-      tool({ name: "fetch-webpage", server_id: "ines", description: "Fetch a page" }),
+      tool({ name: "fetch-webpage", server_id: "agent", description: "Fetch a page" }),
     ]);
     expect(out.entries[0]).toMatchObject({
-      serverId: "ines",
+      serverId: "agent",
       toolName: "fetch-webpage",
       sanitizedName: "fetch_webpage",
       description: "Fetch a page",
@@ -120,7 +120,7 @@ describe("makeMcpTools — isMcpToolName", () => {
   });
 });
 
-describe("makeMcpTools — input schema strips x-ines-*", () => {
+describe("makeMcpTools — input schema strips x-agent-*", () => {
   it("hides decoration keys from the model-facing input schema", () => {
     const out = makeMcpTools([
       tool({
@@ -128,8 +128,8 @@ describe("makeMcpTools — input schema strips x-ines-*", () => {
         input_schema: {
           properties: {
             query: { type: "string" },
-            "x-ines-documents": { type: "array" },
-            "x-ines-conversation-id": { type: "string" },
+            "x-agent-documents": { type: "array" },
+            "x-agent-conversation-id": { type: "string" },
           },
           required: ["query"],
         },
@@ -138,17 +138,17 @@ describe("makeMcpTools — input schema strips x-ines-*", () => {
     const keys = modelFacingKeys(out.toolSet.query_documents);
     expect(keys).toContain("query");
     expect(keys).toContain("display_summary");
-    expect(keys).not.toContain("x-ines-documents");
-    expect(keys).not.toContain("x-ines-conversation-id");
+    expect(keys).not.toContain("x-agent-documents");
+    expect(keys).not.toContain("x-agent-conversation-id");
   });
 });
 
 describe("makeMcpTools — agent-owned tool names filtered", () => {
   it("drops MCP wrappers whose name matches a vendored bridge command", () => {
     const out = makeMcpTools([
-      tool({ name: "manage_dashboard", server_id: "ines" }),
-      tool({ name: "create_widget", server_id: "ines" }),
-      tool({ name: "fetch_webpage", server_id: "ines" }),
+      tool({ name: "manage_dashboard", server_id: "agent" }),
+      tool({ name: "create_widget", server_id: "agent" }),
+      tool({ name: "fetch_webpage", server_id: "agent" }),
     ]);
     expect(out.entries.map((e) => e.toolName).sort()).toEqual(["fetch_webpage"]);
     expect(Object.keys(out.toolSet)).toEqual(["fetch_webpage"]);
@@ -156,30 +156,30 @@ describe("makeMcpTools — agent-owned tool names filtered", () => {
 
   it("drops MCP wrappers whose name matches an agent SQL tool", () => {
     const out = makeMcpTools([
-      tool({ name: "execute_sql", server_id: "ines" }),
-      tool({ name: "peek_table", server_id: "ines" }),
-      tool({ name: "create_artifact", server_id: "ines" }),
-      tool({ name: "fetch_webpage", server_id: "ines" }),
+      tool({ name: "execute_sql", server_id: "agent" }),
+      tool({ name: "peek_table", server_id: "agent" }),
+      tool({ name: "create_artifact", server_id: "agent" }),
+      tool({ name: "fetch_webpage", server_id: "agent" }),
     ]);
     expect(out.entries.map((e) => e.toolName).sort()).toEqual(["fetch_webpage"]);
   });
 
   it("matches workspace's server-slug-prefixed names too", () => {
     const out = makeMcpTools([
-      tool({ name: "inesmcp_manage_dashboard", server_id: "ines" }),
-      tool({ name: "inesmcp_execute_sql", server_id: "ines" }),
-      tool({ name: "inesmcp_fetch_webpage", server_id: "ines" }),
+      tool({ name: "agentmcp_manage_dashboard", server_id: "agent" }),
+      tool({ name: "agentmcp_execute_sql", server_id: "agent" }),
+      tool({ name: "agentmcp_fetch_webpage", server_id: "agent" }),
     ]);
-    expect(out.entries.map((e) => e.toolName)).toEqual(["inesmcp_fetch_webpage"]);
+    expect(out.entries.map((e) => e.toolName)).toEqual(["agentmcp_fetch_webpage"]);
   });
 
   it("drops bridge-mount aliases and bespoke round-trip wrappers", () => {
     const out = makeMcpTools([
-      tool({ name: "inesmcp_update_widget_layout", server_id: "ines" }),
-      tool({ name: "inesmcp_get_skill_content", server_id: "ines" }),
-      tool({ name: "inesmcp_web_search", server_id: "ines" }),
+      tool({ name: "agentmcp_update_widget_layout", server_id: "agent" }),
+      tool({ name: "agentmcp_get_skill_content", server_id: "agent" }),
+      tool({ name: "agentmcp_web_search", server_id: "agent" }),
     ]);
-    expect(out.entries.map((e) => e.toolName)).toEqual(["inesmcp_web_search"]);
+    expect(out.entries.map((e) => e.toolName)).toEqual(["agentmcp_web_search"]);
     expect(out.widgetDataEntry).toBeUndefined();
   });
 });
@@ -268,14 +268,14 @@ describe("makeMcpTools — the FINOS Workspace's own tools", () => {
   it("are the FINOS Workspace's by the id of their server, not by their name", () => {
     const out = makeMcpTools(
       [
-        tool({ name: "inesmcp_manage_dashboard", server_id: "ines" }),
-        tool({ name: "inesmcp_update_widget_layout", server_id: "ines" }),
-        tool({ name: "inesmcp_get_widget_data", server_id: "ines" }),
+        tool({ name: "agentmcp_manage_dashboard", server_id: "agent" }),
+        tool({ name: "agentmcp_update_widget_layout", server_id: "agent" }),
+        tool({ name: "agentmcp_get_widget_data", server_id: "agent" }),
         workspace("manage_dashboard"),
       ],
     );
     expect(out.entries.map((entry) => `${entry.serverId}:${entry.toolName}`)).toEqual([
-      "ines:inesmcp_get_widget_data",
+      "agent:agentmcp_get_widget_data",
       "workspace:Workspace_manage_dashboard",
     ]);
   });
@@ -291,7 +291,7 @@ describe("makeMcpTools — the FINOS Workspace's own tools", () => {
   it("are offered, whatever of them is registered: the agent then has no function calls of its own for the FINOS Workspace", () => {
     expect(makeMcpTools(request).workspaceToolsOffered).toBe(true);
     expect(makeMcpTools([workspace("read_widget")]).workspaceToolsOffered).toBe(true);
-    expect(makeMcpTools([tool({ name: "fetch_webpage", server_id: "ines" })]).workspaceToolsOffered).toBe(false);
+    expect(makeMcpTools([tool({ name: "fetch_webpage", server_id: "agent" })]).workspaceToolsOffered).toBe(false);
     expect(makeMcpTools([]).workspaceToolsOffered).toBe(false);
   });
 });

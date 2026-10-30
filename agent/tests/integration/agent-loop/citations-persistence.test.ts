@@ -37,14 +37,14 @@ function tools(): AgentTool[] {
   return [
     {
       name: "fetch_webpage",
-      server_id: "ines",
+      server_id: "agent",
       url: "http://localhost:8787/mcp",
       description: "Fetch",
       input_schema: { properties: { url: { type: "string" } }, required: ["url"] },
     },
     {
       name: "web_search",
-      server_id: "ines",
+      server_id: "agent",
       url: "http://localhost:8787/mcp",
       description: "Search",
       input_schema: { properties: { q: { type: "string" } }, required: ["q"] },
@@ -57,13 +57,13 @@ describe("citations persist across two MCP round-trips and a terminal turn", () 
     const step1Result: ToolMessage = {
       role: "tool",
       function: "execute_agent_tool",
-      input_arguments: { tool_name: "fetch_webpage", server_id: "ines" },
+      input_arguments: { tool_name: "fetch_webpage", server_id: "agent" },
       data: [
         {
           items: [
             {
               text: JSON.stringify({
-                $ines_kind: "citation",
+                $agent_kind: "citation",
                 citation: {
                   type: "web",
                   url: "https://first.example",
@@ -108,13 +108,13 @@ describe("citations persist across two MCP round-trips and a terminal turn", () 
     const step1Result: ToolMessage = {
       role: "tool",
       function: "execute_agent_tool",
-      input_arguments: { tool_name: "fetch_webpage", server_id: "ines" },
+      input_arguments: { tool_name: "fetch_webpage", server_id: "agent" },
       data: [
         {
           items: [
             {
               text: JSON.stringify({
-                $ines_kind: "citation",
+                $agent_kind: "citation",
                 citation: {
                   type: "web",
                   url: "https://first.example",
@@ -153,7 +153,7 @@ describe("citations persist across two MCP round-trips and a terminal turn", () 
     const stashOnly: ToolMessage = {
       role: "tool",
       function: "execute_agent_tool",
-      input_arguments: { tool_name: "fetch_webpage", server_id: "ines" },
+      input_arguments: { tool_name: "fetch_webpage", server_id: "agent" },
       data: [{ items: [{ text: "" }] }],
       extra_state: { intermediate_citations: [FIRST] },
     };

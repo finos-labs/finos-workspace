@@ -102,7 +102,7 @@ describe("webSearchHandler — happy path", () => {
     expect(res.content[0].text).toContain("Kafka 4.1 is the latest release.");
     expect(res.content[0].text).toContain("---");
     const c1 = JSON.parse(res.content[1].text);
-    expect(c1.$ines_kind).toBe("citation");
+    expect(c1.$agent_kind).toBe("citation");
     expect(c1.citation).toMatchObject({
       type: "web",
       url: "https://kafka.apache.org/community/downloads/",

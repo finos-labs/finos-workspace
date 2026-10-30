@@ -11,14 +11,14 @@ import { logicalUrl } from "../../../../helpers/logical-url.ts";
 const realFetch = globalThis.fetch;
 const CHAT = "u1:chat1";
 const SECRET = "0123456789abcdef0123";
-process.env.INES_SCOPE_SECRET = SECRET;
+process.env.AGENT_SCOPE_SECRET = SECRET;
 const scoped = (chat: string = CHAT) => ({
-  "x-ines-conversation-id": chat,
-  "x-ines-scope-sig": signScope(SECRET, chat),
+  "x-agent-conversation-id": chat,
+  "x-agent-scope-sig": signScope(SECRET, chat),
 });
 const call = (url: string, chat: string = CHAT) => ({
   url,
-  "x-ines-url-sig": signUrl(SECRET, url),
+  "x-agent-url-sig": signUrl(SECRET, url),
   ...scoped(chat),
 });
 
@@ -124,7 +124,7 @@ describe("inspect_webpage — the other views", () => {
     expect(res.content).toHaveLength(2);
     expect(res.content[0].text).toContain("These are loaded as tables: query them with execute_sql.");
     const table = JSON.parse(res.content[1].text);
-    expect(table.$ines_kind).toBe("sqlite_table");
+    expect(table.$agent_kind).toBe("sqlite_table");
     expect(table.name).toBe(`web_${id.replace("-", "")}_t1`);
     expect(table.rows).toEqual([
       { Region: "East", Revenue: "100" },
@@ -166,22 +166,22 @@ describe("inspect_webpage — which pages can be read", () => {
 
   it("is refused for a chat that the agent did not sign", async () => {
     const id = await fetched();
-    const saved = process.env.INES_SCOPE_SECRET;
-    process.env.INES_SCOPE_SECRET = "0123456789abcdef0123";
+    const saved = process.env.AGENT_SCOPE_SECRET;
+    process.env.AGENT_SCOPE_SECRET = "0123456789abcdef0123";
     try {
       const guarded = requireScope(inspectWebpageHandler);
-      const forged = await guarded({ page_id: id, view: "text", "x-ines-conversation-id": CHAT, "x-ines-scope-sig": "forged" } as Parameters<typeof inspectWebpageHandler>[0]);
+      const forged = await guarded({ page_id: id, view: "text", "x-agent-conversation-id": CHAT, "x-agent-scope-sig": "forged" } as Parameters<typeof inspectWebpageHandler>[0]);
       expect(forged.content[0].text).toContain("SCOPE_REJECTED");
       const signed = await guarded({
         page_id: id,
         view: "text",
-        "x-ines-conversation-id": CHAT,
-        "x-ines-scope-sig": signScope("0123456789abcdef0123", CHAT),
+        "x-agent-conversation-id": CHAT,
+        "x-agent-scope-sig": signScope("0123456789abcdef0123", CHAT),
       } as Parameters<typeof inspectWebpageHandler>[0]);
       expect(signed.content[0].text).not.toContain("SCOPE_REJECTED");
     } finally {
-      if (saved === undefined) delete process.env.INES_SCOPE_SECRET;
-      else process.env.INES_SCOPE_SECRET = saved;
+      if (saved === undefined) delete process.env.AGENT_SCOPE_SECRET;
+      else process.env.AGENT_SCOPE_SECRET = saved;
     }
   });
 

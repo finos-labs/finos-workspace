@@ -121,7 +121,7 @@ describe("injectFromReboot — MCP results", () => {
       data: [
         {
           items: [
-            { content: JSON.stringify({ $ines_kind: "artifact", artifact }) },
+            { content: JSON.stringify({ $agent_kind: "artifact", artifact }) },
             { content: "Search result text." },
           ],
         },
@@ -154,7 +154,7 @@ describe("injectFromReboot — MCP results", () => {
           items: [
             {
               content: JSON.stringify({
-                $ines_kind: "citation",
+                $agent_kind: "citation",
                 citation: {
                   type: "web",
                   url: "https://reddit.com/r/apple/example",
@@ -200,7 +200,7 @@ describe("injectFromReboot — MCP results", () => {
           items: [
             {
               content: JSON.stringify({
-                $ines_kind: "error",
+                $agent_kind: "error",
                 error: {
                   code: "MERMAID_SYNTAX",
                   message: "Mermaid syntax error: Parse error on line 2",

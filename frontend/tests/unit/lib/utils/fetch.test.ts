@@ -85,9 +85,9 @@ describe("isDefaultCopilotUrl", () => {
   });
 
   it("accepts every path of an AI_API_URL at an origin's root", () => {
-    mockConfig.urls.ai = "https://ines.example.test/";
+    mockConfig.urls.ai = "https://agent.example.test/";
 
-    expect(isDefaultCopilotUrl("https://ines.example.test/v1/query")).toBe(true);
+    expect(isDefaultCopilotUrl("https://agent.example.test/v1/query")).toBe(true);
     expect(isDefaultCopilotUrl("https://other.example.test/v1/query")).toBe(false);
   });
 

@@ -39,11 +39,11 @@ def test_a_block_belongs_to_its_page():
     assert set(BLOCKS) == {"types", "returns", "widget-fields", "param-fields", "header-names"}
 
 
-def test_ines_serves_the_same_pages(tmp_path, monkeypatch, capsys):
+def test_agent_serves_the_same_pages(tmp_path, monkeypatch, capsys):
     copy = tmp_path / "app-builder"
-    monkeypatch.setattr(specs, "INES_COPY", copy)
+    monkeypatch.setattr(specs, "AGENT_COPY", copy)
     assert main(["--check"]) == 1
-    assert "ines:specs/widgets-json.md" in capsys.readouterr().err
+    assert "agent:specs/widgets-json.md" in capsys.readouterr().err
 
     assert main([]) == 0
     pages = sorted(path.relative_to(RESOURCES).as_posix() for path in RESOURCES.rglob("*.md"))
@@ -56,7 +56,7 @@ def test_ines_serves_the_same_pages(tmp_path, monkeypatch, capsys):
     (copy / "specs" / "widgets-json.md").write_text("edited", encoding="utf-8")
     capsys.readouterr()
     assert main(["--check"]) == 1
-    assert "ines:extra.md, ines:specs/widgets-json.md" in capsys.readouterr().err
+    assert "agent:extra.md, agent:specs/widgets-json.md" in capsys.readouterr().err
     assert main([]) == 0
     assert not (copy / "extra.md").exists()
     assert main(["--check"]) == 0

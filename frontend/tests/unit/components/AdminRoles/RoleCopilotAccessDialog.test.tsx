@@ -172,7 +172,7 @@ describe("RoleCopilotAccessDialog", () => {
     });
     (fetchDefaultAgent as Mock).mockResolvedValue({
       id: "default_agent",
-      name: "Ines",
+      name: "Agent",
       features: {
         model: {
           label: "Model",

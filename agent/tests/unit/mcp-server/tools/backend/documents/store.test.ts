@@ -140,15 +140,15 @@ describe("doc store — redis persistence", () => {
 
   it("writes doc + 48h TTL to redis on upsert", async () => {
     await upsertDocument("c1", makeDoc("doc-1", 2));
-    const stored = mock.hashes.get("ines:doc:c1");
+    const stored = mock.hashes.get("agent:doc:c1");
     expect(stored).toBeDefined();
     expect(stored?.has("doc-1")).toBe(true);
-    expect(mock.expires.get("ines:doc:c1")).toBe(48 * 3600);
+    expect(mock.expires.get("agent:doc:c1")).toBe(48 * 3600);
   });
 
   it("hydrates in-memory store from redis on ensureHydrated", async () => {
     const doc = makeDoc("doc-r1", 1);
-    mock.hashes.set("ines:doc:c2", new Map([["doc-r1", JSON.stringify(doc)]]));
+    mock.hashes.set("agent:doc:c2", new Map([["doc-r1", JSON.stringify(doc)]]));
 
     expect(listDocuments("c2")).toEqual([]);
 
@@ -161,11 +161,11 @@ describe("doc store — redis persistence", () => {
 
   it("ensureHydrated is idempotent within a process lifetime", async () => {
     const doc = makeDoc("doc-once", 1);
-    mock.hashes.set("ines:doc:c3", new Map([["doc-once", JSON.stringify(doc)]]));
+    mock.hashes.set("agent:doc:c3", new Map([["doc-once", JSON.stringify(doc)]]));
 
     await ensureHydrated("c3");
     mock.hashes.set(
-      "ines:doc:c3",
+      "agent:doc:c3",
       new Map([["doc-twice", JSON.stringify(makeDoc("doc-twice", 1))]]),
     );
     await ensureHydrated("c3");
