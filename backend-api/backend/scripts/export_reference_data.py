@@ -101,8 +101,12 @@ def collect_openapi() -> dict[str, Any]:
     return {**schema, "paths": paths}
 
 
+SAMPLE_PLUGIN_TYPE = "plugin_type"
+
+
 def collect_widgets_schema() -> dict[str, Any]:
-    return compose({}, "offline", {})
+    definition = {"type": "object", "additionalProperties": False, "properties": {}}
+    return compose({SAMPLE_PLUGIN_TYPE: definition}, "offline", {SAMPLE_PLUGIN_TYPE: {"properties": {}}})
 
 
 def collect_plugin_manifest_schema() -> dict[str, Any]:

@@ -55,17 +55,24 @@ export function getAiApiUrl() {
   return getConfig().urls.ai;
 }
 
-export const ALL_AI_FEATURES = new Set([
-  "streaming",
-  "file-upload",
-  "widget-dashboard-select",
-  "widget-dashboard-search",
-  "widget-global-search",
-  "mcp-tools",
-  "agent-orchestration",
-  "feedback",
-  "speech-to-text",
-]);
+export const AI_FEATURE_DESCRIPTIONS: Record<string, string> = {
+  streaming: "The agent answers with a stream of events",
+  "file-upload": `The user can attach files with the extensions ${COPILOT_ACCEPTED_EXTENSIONS.join(", ")}`,
+  "widget-dashboard-select":
+    "The widgets and tabs of the current dashboard can be mentioned in a question, every widget has a button that adds it to the chat, and the dashboard's widgets are sent to the agent as context",
+  "widget-dashboard-search":
+    "Any widget of the catalog can be mentioned in a question, not only the widgets of the dashboard",
+  "widget-global-search":
+    "The web app also sends the rest of the widget catalog in the extra tier of the request, so the agent can find widgets that are not on the dashboard",
+  "mcp-tools":
+    "The web app sends the tools of the user's MCP servers and of the FINOS Workspace in the tools of the request",
+  "agent-orchestration":
+    "The user can let the agent hand work to other connected agents",
+  feedback: "The chat shows thumbs up and down and posts them to the feedback endpoint",
+  "speech-to-text": "The chat shows a microphone button",
+};
+
+export const ALL_AI_FEATURES = new Set(Object.keys(AI_FEATURE_DESCRIPTIONS));
 
 export const AGENT_ENABLED_FEATURES = new Set([
   "widget-dashboard-select",

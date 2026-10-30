@@ -1,0 +1,870 @@
+---
+title: Parameters
+sidebar_position: 4
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# Parameters
+
+Parameters are the controls in a widget's header. FINOS Workspace sends their values with each request: in the query by default, or in a header, a JSON body or the path. The `type` of a parameter decides the control, so pick the type that matches the value. [widgets.json](../../reference/schemas/widgets-json.mdx) lists every field, and [Widget requests](../../reference/protocols/widget-requests.mdx) lists how each value is written and which values are not sent.
+
+## Text parameter
+
+A `text` parameter is a text box. An empty value is not sent, so the route needs a default.
+
+```json title="widgets.json"
+{
+  "param_text": {
+    "name": "Text parameter",
+    "description": "A text box whose value the backend echoes",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_text",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "name",
+        "type": "text",
+        "label": "Name",
+        "description": "A name to greet",
+        "value": "Analyst",
+        "placeholder": "Type a name"
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/param_text")
+def param_text(name: str = "") -> PlainTextResponse:
+    return markdown(f"Hello, **{name or 'nobody'}**.")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/param_text": ({ query }) => markdown(`Hello, **${query.get("name") || "nobody"}**.`)
+```
+
+</TabItem>
+</Tabs>
+
+## Number parameter
+
+A `number` parameter is sent as a decimal string in the query.
+
+```json title="widgets.json"
+{
+  "param_number": {
+    "name": "Number parameter",
+    "description": "A number that sets how many holdings the widget lists",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_number",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "count",
+        "type": "number",
+        "label": "Count",
+        "description": "How many holdings to list",
+        "value": 3
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/param_number")
+def param_number(count: int = 3) -> PlainTextResponse:
+    return markdown(f"The {count} largest holdings:\n\n{holdings_list(count)}")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/param_number": ({ query }) => {
+  const count = integer(query.get("count"), 3);
+  return markdown(`The ${count} largest holdings:\n\n${holdingsList(count)}`);
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Boolean parameter
+
+A `boolean` parameter is a toggle, sent as `true` or `false`. A default of `false` is sent too.
+
+```json title="widgets.json"
+{
+  "param_boolean": {
+    "name": "Boolean parameter",
+    "description": "A toggle that shows or hides the details of each company",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_boolean",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "include_details",
+        "type": "boolean",
+        "label": "Include details",
+        "description": "Show the sector and headquarters",
+        "value": false
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/param_boolean")
+def param_boolean(include_details: bool = False) -> PlainTextResponse:
+    lines = [
+        f"- **{c['name']}**"
+        + (f": {c['sector']}, {c['headquarters']}" if include_details else "")
+        for c in DATA["companies"]
+    ]
+    return markdown("\n".join(lines))
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/param_boolean": ({ query }) => {
+  const details = flag(query.get("include_details"));
+  return markdown(
+    DATA.companies
+      .map((c: Company) => `- **${c.name}**` + (details ? `: ${c.sector}, ${c.headquarters}` : ""))
+      .join("\n"),
+  );
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Date parameter
+
+A `date` parameter is a date picker. `$currentDate` with a modifier such as `-1M`, `-1w` or `-1y` keeps the default relative to today. The value is sent as `YYYY-MM-DD`.
+
+```json title="widgets.json"
+{
+  "param_date": {
+    "name": "Date parameter",
+    "description": "A date picker whose default is one month before today",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_date",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "as_of",
+        "type": "date",
+        "label": "As of",
+        "description": "The date of the report",
+        "value": "$currentDate-1M"
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/param_date")
+def param_date(as_of: str = "") -> PlainTextResponse:
+    return markdown(f"Report as of **{as_of or 'today'}**.")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/param_date": ({ query }) => markdown(`Report as of **${query.get("as_of") || "today"}**.`)
+```
+
+</TabItem>
+</Tabs>
+
+## Dropdown parameter
+
+A `text` parameter with `options` is a dropdown with a fixed list.
+
+```json title="widgets.json"
+{
+  "param_dropdown": {
+    "name": "Dropdown parameter",
+    "description": "A fixed list of choices",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_dropdown",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "region",
+        "type": "text",
+        "label": "Region",
+        "description": "The region to summarize",
+        "value": "europe",
+        "options": [
+          {
+            "label": "Americas",
+            "value": "americas"
+          },
+          {
+            "label": "Europe",
+            "value": "europe"
+          },
+          {
+            "label": "Asia Pacific",
+            "value": "apac"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/param_dropdown")
+def param_dropdown(region: str = "europe") -> PlainTextResponse:
+    return markdown(DATA["regionSummaries"].get(region, f"No data for {region}."))
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/param_dropdown": ({ query }) => {
+  const region = query.get("region") ?? "europe";
+  return markdown(DATA.regionSummaries[region] ?? `No data for ${region}.`);
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Multi-select parameter
+
+With `"multiSelect": true`, several options can be chosen. The values are sent joined with commas.
+
+```json title="widgets.json"
+{
+  "param_multi_select": {
+    "name": "Multi-select parameter",
+    "description": "A dropdown in which several regions can be chosen",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_multi_select",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "regions",
+        "type": "text",
+        "label": "Regions",
+        "description": "The regions to summarize",
+        "value": "americas,europe",
+        "multiSelect": true,
+        "options": [
+          {
+            "label": "Americas",
+            "value": "americas"
+          },
+          {
+            "label": "Europe",
+            "value": "europe"
+          },
+          {
+            "label": "Asia Pacific",
+            "value": "apac"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/param_multi_select")
+def param_multi_select(regions: str = "") -> PlainTextResponse:
+    chosen = [region for region in regions.split(",") if region]
+    return markdown(
+        "\n".join(
+            f"- {DATA['regionSummaries'].get(region, region)}" for region in chosen
+        )
+        or "No region chosen."
+    )
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/param_multi_select": ({ query }) => {
+  const chosen = (query.get("regions") ?? "").split(",").filter(Boolean);
+  return markdown(chosen.map((region) => `- ${DATA.regionSummaries[region] ?? region}`).join("\n") || "No region chosen.");
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Multiple text values
+
+A `text` parameter with `"multiple": true` takes several typed values, sent like a multi-select.
+
+```json title="widgets.json"
+{
+  "param_multiple_text": {
+    "name": "Multiple text values",
+    "description": "A text box that takes several values",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_multiple_text",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "tags",
+        "type": "text",
+        "label": "Tags",
+        "description": "Tags to list",
+        "value": "rates,credit",
+        "multiple": true
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/param_multiple_text")
+def param_multiple_text(tags: str = "") -> PlainTextResponse:
+    chosen = [tag for tag in tags.split(",") if tag]
+    return markdown(f"{len(chosen)} tags: " + ", ".join(f"`{tag}`" for tag in chosen))
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/param_multiple_text": ({ query }) => {
+  const chosen = (query.get("tags") ?? "").split(",").filter(Boolean);
+  return markdown(`${chosen.length} tags: ` + chosen.map((tag) => `\`${tag}\``).join(", "));
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Dropdown from an endpoint
+
+An `endpoint` parameter takes its choices from the backend. `optionsEndpoint` returns a list of `{ label, value }`.
+
+```json title="widgets.json"
+{
+  "param_endpoint_dropdown": {
+    "name": "Dropdown from an endpoint",
+    "description": "A dropdown whose choices the backend serves",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_endpoint_dropdown",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "company",
+        "type": "endpoint",
+        "label": "Company",
+        "description": "The company to describe",
+        "value": "alder",
+        "optionsEndpoint": "company_options"
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/company_options")
+def company_options() -> list:
+    return [
+        {"label": company["name"], "value": company["id"]}
+        for company in DATA["companies"]
+    ]
+
+
+@app.get("/param_endpoint_dropdown")
+def param_endpoint_dropdown(company: str = "alder") -> PlainTextResponse:
+    found = company_or_404(company)
+    return markdown(f"## {found['name']}\n\n{found['summary']}")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/company_options": () => json(DATA.companies.map((company: Company) => ({ label: company.name, value: company.id })))
+"/param_endpoint_dropdown": ({ query }) => {
+  const company = companyOr404(query.get("company") ?? "alder");
+  return markdown(`## ${company.name}\n\n${company.summary}`);
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Dependent dropdowns
+
+`optionsParams` sends other parameters' values with the options request. `$country` is the current value of the parameter `country`, so the city list follows the chosen country.
+
+```json title="widgets.json"
+{
+  "param_dependent_dropdown": {
+    "name": "Dependent dropdowns",
+    "description": "A city dropdown whose choices depend on the chosen country",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_dependent_dropdown",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "country",
+        "type": "text",
+        "label": "Country",
+        "description": "The country",
+        "value": "avalon",
+        "options": [
+          {
+            "label": "Avalon",
+            "value": "avalon"
+          },
+          {
+            "label": "Borealis",
+            "value": "borealis"
+          }
+        ]
+      },
+      {
+        "paramName": "city",
+        "type": "endpoint",
+        "label": "City",
+        "description": "A city of the chosen country",
+        "value": "harborview",
+        "optionsEndpoint": "city_options",
+        "optionsParams": {
+          "country": "$country"
+        }
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/city_options")
+def city_options(country: str = "") -> list:
+    return DATA["cities"].get(country, [])
+
+
+@app.get("/param_dependent_dropdown")
+def param_dependent_dropdown(country: str = "", city: str = "") -> PlainTextResponse:
+    return markdown(f"Country: **{country or 'none'}**, city: **{city or 'none'}**.")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/city_options": ({ query }) => json(DATA.cities[query.get("country") ?? ""] ?? [])
+"/param_dependent_dropdown": ({ query }) =>
+  markdown(`Country: **${query.get("country") || "none"}**, city: **${query.get("city") || "none"}**.`)
+```
+
+</TabItem>
+</Tabs>
+
+## Parameters in rows
+
+`row` places a parameter on a row of the parameter bar, so a widget with many controls stays readable.
+
+```json title="widgets.json"
+{
+  "param_rows": {
+    "name": "Parameters in rows",
+    "description": "Parameters placed on two rows of the parameter bar",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_rows",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "region",
+        "type": "text",
+        "label": "Region",
+        "description": "The region",
+        "value": "americas",
+        "options": [
+          {
+            "label": "Americas",
+            "value": "americas"
+          },
+          {
+            "label": "Europe",
+            "value": "europe"
+          },
+          {
+            "label": "Asia Pacific",
+            "value": "apac"
+          }
+        ],
+        "row": 0
+      },
+      {
+        "paramName": "count",
+        "type": "number",
+        "label": "Count",
+        "description": "How many holdings",
+        "value": 2,
+        "row": 0
+      },
+      {
+        "paramName": "note",
+        "type": "text",
+        "label": "Note",
+        "description": "A note shown under the summary",
+        "value": "",
+        "row": 1
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/param_rows")
+def param_rows(
+    region: str = "americas", count: int = 2, note: str = ""
+) -> PlainTextResponse:
+    text = f"{DATA['regionSummaries'].get(region, region)}\n\n{holdings_list(count)}"
+    return markdown(text + (f"\n\n> {note}" if note else ""))
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/param_rows": ({ query }) => {
+  const region = query.get("region") ?? "americas";
+  const note = query.get("note") ?? "";
+  const text = `${DATA.regionSummaries[region] ?? region}\n\n${holdingsList(integer(query.get("count"), 2))}`;
+  return markdown(text + (note ? `\n\n> ${note}` : ""));
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Header parameter
+
+With `"in": "header"`, the value travels as a request header named after the parameter. The name must be one a browser lets page script set, and the backend must allow it in CORS. [Header parameters](../../reference/protocols/widget-requests.mdx#header-parameters) lists the names that are not allowed.
+
+```json title="widgets.json"
+{
+  "param_header": {
+    "name": "Header parameter",
+    "description": "A parameter that travels as a request header instead of in the query",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_header",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "X-Desk",
+        "type": "text",
+        "label": "Desk",
+        "description": "The desk, sent in the X-Desk header",
+        "value": "credit",
+        "in": "header",
+        "options": [
+          {
+            "label": "Credit",
+            "value": "credit"
+          },
+          {
+            "label": "Rates",
+            "value": "rates"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/param_header")
+def param_header(
+    x_desk: Annotated[str, Header(alias="X-Desk")] = "",
+) -> PlainTextResponse:
+    return markdown(f"The `X-Desk` header says **{x_desk or 'nothing'}**.")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/param_header": ({ headers }) => markdown(`The \`X-Desk\` header says **${headers["x-desk"] || "nothing"}**.`)
+```
+
+</TabItem>
+</Tabs>
+
+## Body parameters
+
+With `"method": "POST"` on the widget and `"in": "body"` on its parameters, the values are sent as one flat JSON object. [How values are written](../../reference/protocols/widget-requests.mdx#how-values-are-written) says how each type of value appears in it.
+
+```json title="widgets.json"
+{
+  "param_body": {
+    "name": "Body parameters",
+    "description": "Parameters sent as a JSON body with POST",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_body",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "method": "POST",
+    "params": [
+      {
+        "paramName": "region",
+        "type": "text",
+        "label": "Region",
+        "description": "The region",
+        "value": "apac",
+        "in": "body",
+        "options": [
+          {
+            "label": "Americas",
+            "value": "americas"
+          },
+          {
+            "label": "Europe",
+            "value": "europe"
+          },
+          {
+            "label": "Asia Pacific",
+            "value": "apac"
+          }
+        ]
+      },
+      {
+        "paramName": "limit",
+        "type": "number",
+        "label": "Limit",
+        "description": "How many holdings",
+        "value": 2,
+        "in": "body"
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.post("/param_body")
+def param_body(body: Annotated[dict, Body()]) -> PlainTextResponse:
+    region = body.get("region", "")
+    limit = int(body.get("limit", 0))
+    return markdown(
+        f"POST body: region **{region}**, limit **{limit}**.\n\n{holdings_list(limit)}"
+    )
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/param_body": ({ body }) => {
+  const limit = Number.parseInt(String(body.limit ?? 0), 10);
+  return markdown(`POST body: region **${body.region ?? ""}**, limit **${limit}**.\n\n${holdingsList(limit)}`);
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Path parameter
+
+A `{name}` placeholder in the `endpoint` takes the value of the parameter of that name. Such a parameter is required, and it is sent nowhere else.
+
+```json title="widgets.json"
+{
+  "param_path": {
+    "name": "Path parameter",
+    "description": "A parameter that fills a placeholder in the endpoint's path",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "regions/{region}/summary",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "region",
+        "type": "text",
+        "label": "Region",
+        "description": "The region in the path",
+        "value": "americas",
+        "options": [
+          {
+            "label": "Americas",
+            "value": "americas"
+          },
+          {
+            "label": "Europe",
+            "value": "europe"
+          },
+          {
+            "label": "Asia Pacific",
+            "value": "apac"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.get("/regions/{region}/summary")
+def region_summary(region: str) -> PlainTextResponse:
+    if region not in REGIONS:
+        raise HTTPException(status_code=404, detail=f"Unknown region: {region}")
+    return markdown(f"Path parameter: `{region}`\n\n{DATA['regionSummaries'][region]}")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+[
+  /^\/regions\/([^/]+)\/summary$/,
+  ({ path: [region] }) => {
+    if (!REGIONS.has(region)) throw new HttpError(404, `Unknown region: ${region}`);
+    return markdown(`Path parameter: \`${region}\`\n\n${DATA.regionSummaries[region]}`);
+  },
+]
+```
+
+</TabItem>
+</Tabs>

@@ -3,7 +3,7 @@ title: Plugin module contract
 sidebar_position: 2
 ---
 
-import { PluginList, PluginValue } from "@site/src/components/Reference/plugins";
+import { PluginList, PluginTraits, PluginValue } from "@site/src/components/Reference/plugins";
 
 # Plugin module contract
 
@@ -53,17 +53,7 @@ The model holds the widget's traits. A trait is a named value that is bound to s
 
 When the manifest has no `model.traits` entry, the model offers these traits: <PluginList of="traits" />.
 
-| Trait | Value | Writable |
-|---|---|---|
-| `data` | The JSON that the widget's backend endpoint returned, taken after `dataKey`, or the widget's rows while the user shows them. It requires `core:data:read`. | No. |
-| `params` | The widget's parameters as an object of `{ name: value }`. | Yes, with `core:params:write`, but only for declared names. |
-| `definition` | The `data.<type>` object of the backend widget, which has been checked against the `definition` schema. | No. |
-| `config` | The settings of this widget instance. | No. |
-| `adminSettings` | The settings that the organization's admin made. | No. |
-| `state` | The module's own instance state, which is saved with the dashboard and may hold at most <PluginValue of="limits.maxStateBytes" unit="bytes" /> of JSON. | Yes, with `core:state:write`. |
-| `theme` | An object of the form `{ mode, tokens, locale, decimals }`. The module should follow it and react to `change:theme`. It is meant for the plugin's own interface, whereas the content that a backend returns is drawn as its author made it. | No. |
-| `capabilities` | The module's effective permissions. The module should check them before it calls a command. | No. |
-| `meta` | An object of the form `{ pluginId, version, widgetId, instanceId }`. | No. |
+<PluginTraits />
 
 A module that already uses other trait names can keep them by binding them in the manifest:
 

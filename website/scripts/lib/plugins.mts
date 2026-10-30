@@ -47,6 +47,7 @@ export function collectPlugins(): PluginsData {
     exportMembers: frontend.exportMembers as string[],
     exportOption: jsonSchemaFields(frontend.exportOption as Json),
     traits: backend.traits as string[],
+    traitTable: frontend.traitTable as PluginsData["traitTable"],
     builtInTypes: backend.builtInTypes as string[],
     guestMessages: messages(frontend.guestMessages as Json, referencePath("frontend", "plugin-reference.json")),
     hostMessages: messages(frontend.hostMessages as Json, referencePath("frontend", "plugin-reference.json")),

@@ -1,9 +1,8 @@
 import type { AgentEnvVariable, WebConfigField } from "../../data/types";
 import { envData, settingsData, webConfigData, webData } from "./data";
 import { amount, formatValue, type Unit } from "./format";
+import { Chip, ItemList } from "./kit";
 import { FactValue } from "./plugins";
-import { TableWrap } from "./shared";
-import styles from "./styles.module.css";
 
 function webConfigType(field: WebConfigField): string {
   const quoted = (values: string[]) => values.map((value) => `"${value}"`).join(" | ");
@@ -16,69 +15,43 @@ export function WebConfigTable({ group }: { group: string }) {
   const found = webConfigData.groups.find((item) => item.name === group);
   if (found === undefined) throw new Error(`No web config group ${group}`);
   return (
-    <TableWrap>
-      <table>
-        <thead>
-          <tr>
-            <th>Setting</th>
-            <th>Container variable</th>
-            <th>Build variable</th>
-            <th>Type</th>
-            <th>Default</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {found.fields.map((field) => (
-            <tr key={field.path}>
-              <td>
-                <code>{field.path}</code>
-              </td>
-              <td>
-                <code>{field.containerVariable}</code>
-              </td>
-              <td>
-                <code>{field.buildVariable}</code>
-              </td>
-              <td>{webConfigType(field)}</td>
-              <td>
-                <code>{formatValue(field.default)}</code>
-              </td>
-              <td>{field.description}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </TableWrap>
+    <ItemList
+      items={found.fields.map((field) => ({
+        key: field.path,
+        id: `setting-${field.path}`,
+        title: <code>{field.path}</code>,
+        chips: (
+          <>
+            <Chip>{webConfigType(field)}</Chip>
+            <Chip>default {formatValue(field.default)}</Chip>
+          </>
+        ),
+        description: field.description,
+        meta: [
+          ["Container variable", <code key="container">{field.containerVariable}</code>],
+          ["Build variable", <code key="build">{field.buildVariable}</code>],
+        ],
+      }))}
+    />
   );
 }
 
 export function WebBuildVariables() {
   return (
-    <TableWrap>
-      <table>
-        <thead>
-          <tr>
-            <th>Variable</th>
-            <th>Values</th>
-            <th>Default</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {webConfigData.buildVariables.map((variable) => (
-            <tr key={variable.name}>
-              <td>
-                <code>{variable.name}</code>
-              </td>
-              <td>{variable.values ? variable.values.map((value) => `"${value}"`).join(" | ") : "any text"}</td>
-              <td>{variable.default === null ? <span className={styles.muted}>none</span> : <code>{variable.default}</code>}</td>
-              <td>{variable.description}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </TableWrap>
+    <ItemList
+      items={webConfigData.buildVariables.map((variable) => ({
+        key: variable.name,
+        id: `build-${variable.name}`,
+        title: <code>{variable.name}</code>,
+        chips: (
+          <>
+            <Chip>{variable.values ? variable.values.map((value) => `"${value}"`).join(" | ") : "any text"}</Chip>
+            <Chip>default {variable.default === null ? "none" : variable.default}</Chip>
+          </>
+        ),
+        description: variable.description,
+      }))}
+    />
   );
 }
 
@@ -86,38 +59,24 @@ export function SettingsTable({ group }: { group: string }) {
   const fields = settingsData.fields.filter((field) => field.group === group);
   if (fields.length === 0) throw new Error(`No settings group ${group}`);
   return (
-    <TableWrap>
-      <table>
-        <thead>
-          <tr>
-            <th>Variable</th>
-            <th>Type</th>
-            <th>Default</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {fields.map((field) => (
-            <tr key={field.name}>
-              <td>
-                <code>{field.name}</code>
-              </td>
-              <td>{field.choices ? <code>{field.choices.map((value) => `"${value}"`).join(" | ")}</code> : <code>{field.type}</code>}</td>
-              <td>
-                {field.required ? (
-                  <strong>required</strong>
-                ) : field.hasDefaultFactory ? (
-                  <span className={styles.muted}>computed</span>
-                ) : (
-                  <code>{formatValue(field.default)}</code>
-                )}
-              </td>
-              <td>{field.description}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </TableWrap>
+    <ItemList
+      items={fields.map((field) => ({
+        key: field.name,
+        id: `setting-${field.name}`,
+        title: <code>{field.name}</code>,
+        chips: (
+          <>
+            <Chip>{field.choices ? field.choices.map((value) => `"${value}"`).join(" | ") : field.type}</Chip>
+            {field.required ? (
+              <Chip tone="required">required</Chip>
+            ) : (
+              <Chip>{field.hasDefaultFactory ? "computed default" : `default ${formatValue(field.default)}`}</Chip>
+            )}
+          </>
+        ),
+        description: field.description,
+      }))}
+    />
   );
 }
 
@@ -138,36 +97,24 @@ export function AgentEnvTable() {
       {groups.map((group) => (
         <div key={group}>
           <h3>{group}</h3>
-          <TableWrap>
-            <table>
-              <thead>
-                <tr>
-                  <th>Variable</th>
-                  <th>Read by</th>
-                  <th>Type</th>
-                  <th>Default</th>
-                  <th>Required</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {envData.agent
-                  .filter((entry) => entry.group === group)
-                  .map((entry) => (
-                    <tr key={entry.name}>
-                      <td>
-                        <code>{entry.name}</code>
-                      </td>
-                      <td>{entry.readBy.join(" and ")}</td>
-                      <td>{agentEnvType(entry)}</td>
-                      <td>{entry.default === null ? <span className={styles.muted}>none</span> : <code>{entry.default}</code>}</td>
-                      <td>{entry.required ?? <span className={styles.muted}>no</span>}</td>
-                      <td>{entry.description}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </TableWrap>
+          <ItemList
+            items={envData.agent
+              .filter((entry) => entry.group === group)
+              .map((entry) => ({
+                key: entry.name,
+                id: `env-${entry.name}`,
+                title: <code>{entry.name}</code>,
+                chips: (
+                  <>
+                    <Chip>{agentEnvType(entry)}</Chip>
+                    {entry.default === null ? null : <Chip>default {entry.default}</Chip>}
+                    {entry.required === null ? null : <Chip tone="required">{entry.required}</Chip>}
+                  </>
+                ),
+                description: entry.description,
+                meta: [["Read by", entry.readBy.join(" and ")]],
+              }))}
+          />
         </div>
       ))}
     </>

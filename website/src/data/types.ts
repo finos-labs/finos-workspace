@@ -143,12 +143,23 @@ export interface EnvData {
   agent: AgentEnvVariable[];
 }
 
+export interface SchemaVariant {
+  applies: string;
+  type: TypeLabel;
+  required: boolean;
+  enum?: string[];
+  notes: string[];
+  description?: string;
+}
+
 export interface SchemaProperty {
   name: string;
   type: TypeLabel;
   required: boolean;
   description?: string;
+  enum?: string[];
   notes: string[];
+  variants?: SchemaVariant[];
 }
 
 export interface SchemaDoc {
@@ -157,6 +168,7 @@ export interface SchemaDoc {
   type: TypeLabel;
   properties: SchemaProperty[];
   notes: string[];
+  json?: unknown;
 }
 
 export interface SchemaSet {
@@ -415,6 +427,7 @@ export interface PluginsData {
   exportMembers: string[];
   exportOption: AgentField[];
   traits: string[];
+  traitTable: { name: string; description: string; requires: string | null; writableWith: string | null }[];
   builtInTypes: string[];
   guestMessages: ProtocolMessage[];
   hostMessages: ProtocolMessage[];
@@ -444,4 +457,54 @@ export interface BridgeData {
 export interface WebData {
   port: number;
   values: Record<string, PluginValueType>;
+}
+
+export interface AgentsJsonData {
+  schema: SchemaSet;
+  features: { key: string; description: string }[];
+  file: unknown;
+  conditional: { feature: string; variable: string }[];
+}
+
+export interface BuiltRequestView {
+  method?: string;
+  url?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+  problems?: string[];
+}
+
+export interface WidgetRequestData {
+  backend: string;
+  values: { label: string; value: string; query: string | null; header: string | null; body: string | null; path: string | null }[];
+  omitted: { label: string; sent: boolean }[];
+  problems: { label: string; messages: string[] }[];
+  examples: { label: string; widget: unknown; optionsParam: unknown; request: BuiltRequestView; options: BuiltRequestView }[];
+}
+
+export interface IframeData {
+  fromPage: SchemaSet;
+  fromHost: SchemaSet;
+  limits: { requestTimeoutMs: number; maxFrameDepth: number };
+  values: { label: string; text: string }[];
+}
+
+export interface ProtocolCases {
+  contract: { label: string; messages: string[] }[];
+  rawRows: { label: string; response: string; rawDataKey: string | null; rows: string }[];
+  mcpActive: { label: string; link: string; result: string }[];
+  mcpCite: { label: string; call: string; cited: string | null; inputArgs: string | null; details: string | null }[];
+}
+
+export interface HtmlSurface {
+  name: string;
+  draws: string;
+  frame: string;
+  sandbox: string;
+  sandboxWithScripts: string | null;
+  policy: string | null;
+  policyWithScripts: string | null;
+  sanitizing: { tags: string[]; attributes: string[]; dataAttributes: boolean } | null;
+  added: string[];
+  theme: string;
 }

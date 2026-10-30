@@ -85,7 +85,7 @@ The browser answers each data source in turn, and it never fails the whole call 
 
 **A file that the user uploaded.** The origin of an uploaded file is `the backend`. The browser asks the FINOS Workspace API for a link to the file that is valid for at most <SettingConstant name="presignedUrlMaxSeconds" unit="min" /> and returns the link with the file's extension and name. Ines downloads the file from the link.
 
-**A widget that the FINOS Workspace provides.** The origin `Workspace` covers the widgets that the app provides itself, such as the iframe widget and the notes, tables and pages that the Copilot adds to a dashboard, and the sub-widgets of an iframe widget, whose identifier has the form `<parent uuid>::iframe::<sub-widget id>`. The browser returns what the dashboard holds for the widget, or the rows or HTML that the widget stored, or, for an iframe sub-widget, the answer of the page through the [iframe widget protocol](iframe-widget.mdx).
+**A widget that the FINOS Workspace provides.** The origin `Workspace` covers the widgets that the app provides itself, such as the iframe widget and the notes, tables and pages that the Agent adds to a dashboard, and the sub-widgets of an iframe widget, whose identifier has the form `<parent uuid>::iframe::<sub-widget id>`. The browser returns what the dashboard holds for the widget, or the rows or HTML that the widget stored, or, for an iframe sub-widget, the answer of the page through the [iframe widget protocol](iframe-widget.mdx).
 
 The browser then puts the result in the shape that the next section describes. A widget whose identifier starts with `tab_` is a navigation tab and cannot be read.
 

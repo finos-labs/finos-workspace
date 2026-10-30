@@ -3807,6 +3807,7 @@
           "description": "A plugin's type that shows the rows when the user switches the widget to them; without it, or when the user may not use that type, an html widget shows them in a table and a plugin's widget with its own plugin"
         },
         "test_chart": {
+          "description": "The object that a backend writes for a widget of this type, which tells the plugin how to read and show the data of the response; its schema is the definition of the plugin",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -4195,6 +4196,7 @@
     "PluginConfig_test_chart": {
       "type": "object",
       "additionalProperties": false,
+      "description": "The settings of the widget that handles this type, from the settings schema of its plugin; a widget keeps them at storage.plugin.config",
       "properties": {
         "palette": {
           "type": "string",

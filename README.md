@@ -6,7 +6,7 @@
 
 <div align="center">
 
-**[Run it on your machine](docs/tutorials/run-workspace-on-your-machine.md)** · [Tutorials](docs/tutorials/index.md) · [How-to guides](docs/how-to/index.md) · [Reference](docs/reference/index.md) · [Explanation](docs/explanation/index.md)
+**[Run it on your machine](docs/tutorials/build-from-source/run-the-stack-from-source.md)** · [Features](docs/features/index.md) · [Concepts](docs/concepts/index.md) · [Tutorials](docs/tutorials/index.md) · [Reference](docs/reference/index.md)
 
 </div>
 

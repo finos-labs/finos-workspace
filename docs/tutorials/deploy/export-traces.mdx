@@ -1,0 +1,50 @@
+---
+title: Export traces of the Agent
+sidebar_position: 11
+---
+
+import { EnvDefault } from "@site/src/components/Reference/config";
+
+# Export traces of the Agent
+
+Ines, the agent behind the Agent, can export OpenTelemetry traces of the questions that people ask and of the calls that it makes to models. A trace shows how long each model call took, which model answered and how many tokens it used, so it answers questions that the logs and the metrics cannot, such as why one question was slow. This guide turns the export on, says what the traces contain and how to find the trace of a question. Only Ines exports traces. The FINOS Workspace API and the Ines MCP server do not. [Ines and its MCP server](../../reference/configuration/agent.mdx) lists the settings, and [Ship logs and metrics](ship-logs-and-metrics.mdx) covers the logs and the metrics.
+
+## Turn the export on
+
+Tracing is off until you give Ines a place to send the spans. Set one of these in the environment of the agent and restart it:
+
+- `OTEL_EXPORTER_OTLP_ENDPOINT` is the base address of an OpenTelemetry collector that accepts OTLP over HTTP. Ines sends the traces to that address followed by `/v1/traces`, and it removes slashes at the end of the base address first.
+- `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is the whole address of the trace endpoint. Ines uses it as it is, and it takes the place of `OTEL_EXPORTER_OTLP_ENDPOINT`.
+
+Ines sends the spans in batches, and when it is told to stop it sends the last batch before it exits. Two more settings name the service in the backend that stores the traces:
+
+- `OTEL_SERVICE_NAME` is the name of the service, <EnvDefault name="OTEL_SERVICE_NAME" /> by default.
+- `OTEL_SERVICE_VERSION` is the version that the traces report, <EnvDefault name="OTEL_SERVICE_VERSION" /> by default. Set it to the release that you run. The metric `ines_build_info` reports the same value, and the Ines MCP server reads the setting as well.
+
+To see spans without a collector, set `OTEL_TRACES_CONSOLE` to `true`. Ines then prints each span to its standard output as a multi-line object. It can do this together with the export. Use it to try the setup, because a busy agent prints a lot.
+
+When tracing is on, the log of the agent has the line "Telemetry enabled" at the start, with the address that the traces go to, whether the console is on and whether prompts are recorded. When tracing is off, it logs at level `debug` that telemetry is disabled and creates no spans.
+
+## What a trace contains
+
+A question can take several requests, because the browser runs a tool between them and then sends the next request of the same turn. Ines puts the trace identifier into the state that it hands to the browser, so that every request of a turn joins the same trace.
+
+- **`ines.turn.request`** is the span of one request of a turn. It carries the attributes `ines.conversation_id` and `session.id`, which are both the identifier of the chat, `ines.model`, `ines.widget_count`, the number of widgets that the browser sent, and `ines.mcp_tool_count`, the number of tools that came from MCP servers. The attribute `ines.reboot` says whether the request continues a turn after the browser ran a tool, and `ines.reboot_function` names that tool. When the request ends, the span also carries `ines.loop_count`, `ines.step_count` and the tokens that the request and the whole turn used so far, in the attributes `ines.usage.request.*` and `ines.usage.turn.*`, with the cache hit rate of the model's prompt cache.
+- **Model calls** are spans that the AI SDK creates under it. A question has an `ai.streamText` span with an `ai.streamText.doStream` span for each call to the model, and their attribute `ai.telemetry.functionId` is `agent.loop`. The calls that make a title, improve a prompt or read a file are separate traces with the spans `ai.generateText` and `ai.generateText.doGenerate`, and the function id names the helper, such as `generate.chat-title`. The spans carry the provider, the model, the settings of the call, the finish reason and the usage of tokens, including the tokens that the model spent on reasoning.
+
+The trace has no span for the HTTP request itself, and it has none for the work of the Ines MCP server.
+
+## Keep prompts out of the traces
+
+By default the spans carry no prompts and no answers. When you set `OTEL_RECORD_PROMPTS` to `true`, the spans of the model calls carry the whole input and output of each call, which includes the question, the data of the widgets that Ines read and the answer. Turn it on only when the system that stores the traces is as well protected as the chats themselves.
+
+## Find the trace of a question
+
+The log line "Token usage" of a question carries the fields `conversationId` and `traceId`. Search the traces for that identifier, or search for the attribute `ines.conversation_id` to see every request of a chat. The `traceId` is present only while tracing is on. The `requestId` of the other log lines is the `X-Trace-Id` of the HTTP request, which is a different identifier.
+
+## Check it
+
+1. Restart the agent and look for the line "Telemetry enabled" in its log.
+2. Ask the Agent a question.
+3. Open the tracing backend and look for the service whose name is the value of `OTEL_SERVICE_NAME`. A trace with a span `ines.turn.request` appears within moments of the answer, because Ines sends spans in batches.
+4. When nothing arrives, set `OTEL_TRACES_CONSOLE` to `true` to check that Ines creates the spans, and then check that the collector's address is reachable from the agent and that the collector accepts OTLP over HTTP at the path `/v1/traces`.

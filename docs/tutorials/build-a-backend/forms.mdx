@@ -1,0 +1,174 @@
+---
+title: Forms
+sidebar_position: 11
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# Forms
+
+A parameter of type `form` puts a form in the widget. When the user selects one of its buttons, FINOS Workspace sends the inputs as a JSON body to the form's own `endpoint`, then fetches the widget again.
+
+## A form that adds client records
+
+The widget lists the records, and its form adds one. A `button` input sends its `paramName` with the value `true`, so one form can offer several actions.
+
+```json title="widgets.json"
+{
+  "client_entries": {
+    "name": "Client entry form",
+    "description": "A form that adds client records, and the records added so far",
+    "category": "Reference backend",
+    "subCategory": "Forms",
+    "type": "markdown",
+    "endpoint": "client_entries",
+    "gridData": {
+      "w": 20,
+      "h": 12
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "client_form",
+        "type": "form",
+        "label": "Add a client",
+        "description": "Adds a client record",
+        "endpoint": "client_form",
+        "inputParams": [
+          {
+            "paramName": "first_name",
+            "type": "text",
+            "label": "First name",
+            "description": "The client's first name",
+            "value": ""
+          },
+          {
+            "paramName": "last_name",
+            "type": "text",
+            "label": "Last name",
+            "description": "The client's last name",
+            "value": ""
+          },
+          {
+            "paramName": "investment_types",
+            "type": "text",
+            "label": "Investment types",
+            "description": "What the client invests in",
+            "multiSelect": true,
+            "options": [
+              {
+                "label": "Equities",
+                "value": "equities"
+              },
+              {
+                "label": "Bonds",
+                "value": "bonds"
+              },
+              {
+                "label": "Funds",
+                "value": "funds"
+              }
+            ]
+          },
+          {
+            "paramName": "risk_profile",
+            "type": "text",
+            "label": "Risk profile",
+            "description": "The client's risk tolerance",
+            "value": "balanced",
+            "options": [
+              {
+                "label": "Cautious",
+                "value": "cautious"
+              },
+              {
+                "label": "Balanced",
+                "value": "balanced"
+              },
+              {
+                "label": "Adventurous",
+                "value": "adventurous"
+              }
+            ]
+          },
+          {
+            "paramName": "add_record",
+            "type": "button",
+            "label": "Add client",
+            "description": "Add the client record",
+            "value": true
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The form's endpoint checks the inputs and keeps the record. An error with a `detail` is shown to the user. This backend keeps the records in memory, so they are gone when it restarts.
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+@app.post("/client_form")
+def client_form(body: Annotated[dict, Body()]) -> JSONResponse:
+    if not body.get("first_name") or not body.get("last_name"):
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "First name and last name are required."},
+        )
+    types = body.get("investment_types") or []
+    clients.append(
+        {
+            "first_name": body["first_name"],
+            "last_name": body["last_name"],
+            "investment_types": ", ".join(types)
+            if isinstance(types, list)
+            else str(types),
+            "risk_profile": body.get("risk_profile", ""),
+        }
+    )
+    return JSONResponse(content={"success": True})
+
+
+@app.get("/client_entries")
+def client_entries() -> PlainTextResponse:
+    if not clients:
+        return markdown("No clients yet. Fill in the form and select **Add client**.")
+    rows = "\n".join(
+        f"| {c['first_name']} {c['last_name']} | {c['investment_types']} | {c['risk_profile']} |"
+        for c in clients
+    )
+    return markdown(
+        f"| Client | Investment types | Risk profile |\n|---|---|---|\n{rows}"
+    )
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+"/client_form": ({ body }) => {
+  if (!body.first_name || !body.last_name) return json({ detail: "First name and last name are required." }, 400);
+  const types = body.investment_types ?? [];
+  clients.push({
+    first_name: String(body.first_name),
+    last_name: String(body.last_name),
+    investment_types: Array.isArray(types) ? types.join(", ") : String(types),
+    risk_profile: String(body.risk_profile ?? ""),
+  });
+  return json({ success: true });
+}
+"/client_entries": () => {
+  if (clients.length === 0) return markdown("No clients yet. Fill in the form and select **Add client**.");
+  const rows = clients
+    .map((c) => `| ${c.first_name} ${c.last_name} | ${c.investment_types} | ${c.risk_profile} |`)
+    .join("\n");
+  return markdown(`| Client | Investment types | Risk profile |\n|---|---|---|\n${rows}`);
+}
+```
+
+</TabItem>
+</Tabs>

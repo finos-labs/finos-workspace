@@ -75,7 +75,7 @@ Several further rules apply to every proxy:
 
 ## Secrets
 
-A manifest declares the secrets that it needs by name and purpose, and it never ships a value. A value is at most <PluginValue of="secrets.maxLength" /> characters. The deployment or a superuser sets the values, as [How to deploy a widget plugin](../../how-to/plugins/deploy-a-plugin.md) explains. A value can be written but never read back: the server encrypts it at rest with `WORKSPACE_AES_KEY`, sends it only in the requests that declare it, and never returns it, logs it or puts it in an error message.
+A manifest declares the secrets that it needs by name and purpose, and it never ships a value. A value is at most <PluginValue of="secrets.maxLength" /> characters. The deployment or a superuser sets the values, as [Deploy a widget plugin](../../tutorials/plugins/deploy-a-plugin.md) explains. A value can be written but never read back: the server encrypts it at rest with `WORKSPACE_AES_KEY`, sends it only in the requests that declare it, and never returns it, logs it or puts it in an error message.
 
 ## The outbound guard
 

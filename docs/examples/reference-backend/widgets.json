@@ -1,0 +1,780 @@
+{
+  "markdown_widget": {
+    "name": "Markdown widget",
+    "description": "Formatted text that the backend returns as Markdown",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "markdown",
+    "endpoint": "markdown_widget",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data"
+  },
+  "markdown_widget_with_image": {
+    "name": "Markdown widget with an image",
+    "description": "Markdown that embeds an SVG chart as a data URL",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "markdown",
+    "endpoint": "markdown_widget_with_image",
+    "gridData": {
+      "w": 20,
+      "h": 14
+    },
+    "source": "Invented sample data"
+  },
+  "markdown_widget_with_error": {
+    "name": "Markdown widget with an error",
+    "description": "A widget whose endpoint fails on purpose, to show how an error looks",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "markdown",
+    "endpoint": "markdown_widget_with_error",
+    "gridData": {
+      "w": 20,
+      "h": 6
+    },
+    "source": "Invented sample data"
+  },
+  "html_widget": {
+    "name": "HTML widget",
+    "description": "A portfolio summary that the backend renders as HTML, in the app's theme, with its rows for the Agent",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "html",
+    "endpoint": "html_widget",
+    "gridData": {
+      "w": 20,
+      "h": 12
+    },
+    "source": "Invented sample data",
+    "raw": true
+  },
+  "html_table_widget": {
+    "name": "HTML table widget",
+    "description": "The holdings of a sample portfolio as an HTML table, with its rows for the Agent",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "html",
+    "endpoint": "html_table_widget",
+    "gridData": {
+      "w": 20,
+      "h": 12
+    },
+    "source": "Invented sample data",
+    "raw": true
+  },
+  "newsfeed_widget": {
+    "name": "News feed widget",
+    "description": "Invented articles about invented companies, filtered by category",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "newsfeed",
+    "endpoint": "newsfeed_widget",
+    "gridData": {
+      "w": 20,
+      "h": 16
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "category",
+        "type": "text",
+        "label": "Category",
+        "description": "Show the articles of one category",
+        "value": "all",
+        "options": [
+          {
+            "label": "All",
+            "value": "all"
+          },
+          {
+            "label": "Business",
+            "value": "business"
+          },
+          {
+            "label": "Technology",
+            "value": "tech"
+          }
+        ]
+      }
+    ]
+  },
+  "pdf_widget": {
+    "name": "PDF widget",
+    "description": "A sample report that the backend returns as a PDF file",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "pdf",
+    "endpoint": "pdf_widget",
+    "gridData": {
+      "w": 20,
+      "h": 20
+    },
+    "source": "Invented sample data"
+  },
+  "pdf_widget_base64": {
+    "name": "PDF widget from base64",
+    "description": "The same report, returned as JSON with the file in base64",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "pdf",
+    "endpoint": "pdf_widget_base64",
+    "gridData": {
+      "w": 20,
+      "h": 20
+    },
+    "source": "Invented sample data"
+  },
+  "pdf_widget_url": {
+    "name": "PDF widget from a URL",
+    "description": "The same report, returned as JSON with the address of the file",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "pdf",
+    "endpoint": "pdf_widget_url",
+    "gridData": {
+      "w": 20,
+      "h": 20
+    },
+    "source": "Invented sample data"
+  },
+  "iframe_widget": {
+    "name": "Iframe widget",
+    "description": "A page that the backend serves and the widget opens in a frame",
+    "category": "Reference backend",
+    "subCategory": "Widget types",
+    "type": "iframe",
+    "endpoint": "iframe_page",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data"
+  },
+  "param_text": {
+    "name": "Text parameter",
+    "description": "A text box whose value the backend echoes",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_text",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "name",
+        "type": "text",
+        "label": "Name",
+        "description": "A name to greet",
+        "value": "Analyst",
+        "placeholder": "Type a name"
+      }
+    ]
+  },
+  "param_number": {
+    "name": "Number parameter",
+    "description": "A number that sets how many holdings the widget lists",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_number",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "count",
+        "type": "number",
+        "label": "Count",
+        "description": "How many holdings to list",
+        "value": 3
+      }
+    ]
+  },
+  "param_boolean": {
+    "name": "Boolean parameter",
+    "description": "A toggle that shows or hides the details of each company",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_boolean",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "include_details",
+        "type": "boolean",
+        "label": "Include details",
+        "description": "Show the sector and headquarters",
+        "value": false
+      }
+    ]
+  },
+  "param_date": {
+    "name": "Date parameter",
+    "description": "A date picker whose default is one month before today",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_date",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "as_of",
+        "type": "date",
+        "label": "As of",
+        "description": "The date of the report",
+        "value": "$currentDate-1M"
+      }
+    ]
+  },
+  "param_dropdown": {
+    "name": "Dropdown parameter",
+    "description": "A fixed list of choices",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_dropdown",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "region",
+        "type": "text",
+        "label": "Region",
+        "description": "The region to summarize",
+        "value": "europe",
+        "options": [
+          {
+            "label": "Americas",
+            "value": "americas"
+          },
+          {
+            "label": "Europe",
+            "value": "europe"
+          },
+          {
+            "label": "Asia Pacific",
+            "value": "apac"
+          }
+        ]
+      }
+    ]
+  },
+  "param_multi_select": {
+    "name": "Multi-select parameter",
+    "description": "A dropdown in which several regions can be chosen",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_multi_select",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "regions",
+        "type": "text",
+        "label": "Regions",
+        "description": "The regions to summarize",
+        "value": "americas,europe",
+        "multiSelect": true,
+        "options": [
+          {
+            "label": "Americas",
+            "value": "americas"
+          },
+          {
+            "label": "Europe",
+            "value": "europe"
+          },
+          {
+            "label": "Asia Pacific",
+            "value": "apac"
+          }
+        ]
+      }
+    ]
+  },
+  "param_multiple_text": {
+    "name": "Multiple text values",
+    "description": "A text box that takes several values",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_multiple_text",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "tags",
+        "type": "text",
+        "label": "Tags",
+        "description": "Tags to list",
+        "value": "rates,credit",
+        "multiple": true
+      }
+    ]
+  },
+  "param_endpoint_dropdown": {
+    "name": "Dropdown from an endpoint",
+    "description": "A dropdown whose choices the backend serves",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_endpoint_dropdown",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "company",
+        "type": "endpoint",
+        "label": "Company",
+        "description": "The company to describe",
+        "value": "alder",
+        "optionsEndpoint": "company_options"
+      }
+    ]
+  },
+  "param_dependent_dropdown": {
+    "name": "Dependent dropdowns",
+    "description": "A city dropdown whose choices depend on the chosen country",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_dependent_dropdown",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "country",
+        "type": "text",
+        "label": "Country",
+        "description": "The country",
+        "value": "avalon",
+        "options": [
+          {
+            "label": "Avalon",
+            "value": "avalon"
+          },
+          {
+            "label": "Borealis",
+            "value": "borealis"
+          }
+        ]
+      },
+      {
+        "paramName": "city",
+        "type": "endpoint",
+        "label": "City",
+        "description": "A city of the chosen country",
+        "value": "harborview",
+        "optionsEndpoint": "city_options",
+        "optionsParams": {
+          "country": "$country"
+        }
+      }
+    ]
+  },
+  "param_rows": {
+    "name": "Parameters in rows",
+    "description": "Parameters placed on two rows of the parameter bar",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_rows",
+    "gridData": {
+      "w": 20,
+      "h": 10
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "region",
+        "type": "text",
+        "label": "Region",
+        "description": "The region",
+        "value": "americas",
+        "options": [
+          {
+            "label": "Americas",
+            "value": "americas"
+          },
+          {
+            "label": "Europe",
+            "value": "europe"
+          },
+          {
+            "label": "Asia Pacific",
+            "value": "apac"
+          }
+        ],
+        "row": 0
+      },
+      {
+        "paramName": "count",
+        "type": "number",
+        "label": "Count",
+        "description": "How many holdings",
+        "value": 2,
+        "row": 0
+      },
+      {
+        "paramName": "note",
+        "type": "text",
+        "label": "Note",
+        "description": "A note shown under the summary",
+        "value": "",
+        "row": 1
+      }
+    ]
+  },
+  "param_header": {
+    "name": "Header parameter",
+    "description": "A parameter that travels as a request header instead of in the query",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_header",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "X-Desk",
+        "type": "text",
+        "label": "Desk",
+        "description": "The desk, sent in the X-Desk header",
+        "value": "credit",
+        "in": "header",
+        "options": [
+          {
+            "label": "Credit",
+            "value": "credit"
+          },
+          {
+            "label": "Rates",
+            "value": "rates"
+          }
+        ]
+      }
+    ]
+  },
+  "param_body": {
+    "name": "Body parameters",
+    "description": "Parameters sent as a JSON body with POST",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "param_body",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "method": "POST",
+    "params": [
+      {
+        "paramName": "region",
+        "type": "text",
+        "label": "Region",
+        "description": "The region",
+        "value": "apac",
+        "in": "body",
+        "options": [
+          {
+            "label": "Americas",
+            "value": "americas"
+          },
+          {
+            "label": "Europe",
+            "value": "europe"
+          },
+          {
+            "label": "Asia Pacific",
+            "value": "apac"
+          }
+        ]
+      },
+      {
+        "paramName": "limit",
+        "type": "number",
+        "label": "Limit",
+        "description": "How many holdings",
+        "value": 2,
+        "in": "body"
+      }
+    ]
+  },
+  "param_path": {
+    "name": "Path parameter",
+    "description": "A parameter that fills a placeholder in the endpoint's path",
+    "category": "Reference backend",
+    "subCategory": "Parameters",
+    "type": "markdown",
+    "endpoint": "regions/{region}/summary",
+    "gridData": {
+      "w": 20,
+      "h": 8
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "region",
+        "type": "text",
+        "label": "Region",
+        "description": "The region in the path",
+        "value": "americas",
+        "options": [
+          {
+            "label": "Americas",
+            "value": "americas"
+          },
+          {
+            "label": "Europe",
+            "value": "europe"
+          },
+          {
+            "label": "Asia Pacific",
+            "value": "apac"
+          }
+        ]
+      }
+    ]
+  },
+  "setting_stale_time": {
+    "name": "Stale time",
+    "description": "Reuses a response for one minute before it fetches again",
+    "category": "Reference backend",
+    "subCategory": "Widget settings",
+    "type": "markdown",
+    "endpoint": "setting_stale_time",
+    "gridData": {
+      "w": 20,
+      "h": 6
+    },
+    "source": "Invented sample data",
+    "staleTime": 60000
+  },
+  "setting_refetch_interval": {
+    "name": "Refetch interval",
+    "description": "Fetches again every 15 seconds",
+    "category": "Reference backend",
+    "subCategory": "Widget settings",
+    "type": "markdown",
+    "endpoint": "setting_refetch_interval",
+    "gridData": {
+      "w": 20,
+      "h": 6
+    },
+    "source": "Invented sample data",
+    "refetchInterval": 15000
+  },
+  "setting_cron_refetch": {
+    "name": "Refetch on a schedule",
+    "description": "Fetches again every five minutes, on a cron schedule",
+    "category": "Reference backend",
+    "subCategory": "Widget settings",
+    "type": "markdown",
+    "endpoint": "setting_cron_refetch",
+    "gridData": {
+      "w": 20,
+      "h": 6
+    },
+    "source": "Invented sample data",
+    "refetchInterval": "*/5 * * * *"
+  },
+  "setting_data_update_display": {
+    "name": "Data update display",
+    "description": "Tells the user that the data changes at 9:00 on weekdays",
+    "category": "Reference backend",
+    "subCategory": "Widget settings",
+    "type": "markdown",
+    "endpoint": "setting_data_update_display",
+    "gridData": {
+      "w": 20,
+      "h": 6
+    },
+    "source": "Invented sample data",
+    "dataUpdateDisplay": "0 9 * * 1-5"
+  },
+  "setting_run_button": {
+    "name": "Run button",
+    "description": "Fetches only when the user selects Run",
+    "category": "Reference backend",
+    "subCategory": "Widget settings",
+    "type": "markdown",
+    "endpoint": "setting_run_button",
+    "gridData": {
+      "w": 20,
+      "h": 6
+    },
+    "source": "Invented sample data",
+    "runButton": true
+  },
+  "company_profile": {
+    "name": "Company profile",
+    "description": "The profile of the chosen company",
+    "category": "Reference backend",
+    "subCategory": "Linked widgets",
+    "type": "markdown",
+    "endpoint": "company_profile",
+    "gridData": {
+      "w": 20,
+      "h": 12
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "company",
+        "type": "endpoint",
+        "label": "Company",
+        "description": "The company",
+        "value": "alder",
+        "optionsEndpoint": "company_options"
+      }
+    ]
+  },
+  "company_performance": {
+    "name": "Company performance",
+    "description": "Three years of revenue and growth of the chosen company, with its rows for the Agent",
+    "category": "Reference backend",
+    "subCategory": "Linked widgets",
+    "type": "html",
+    "endpoint": "company_performance",
+    "gridData": {
+      "w": 20,
+      "h": 12
+    },
+    "source": "Invented sample data",
+    "raw": true,
+    "params": [
+      {
+        "paramName": "company",
+        "type": "endpoint",
+        "label": "Company",
+        "description": "The company",
+        "value": "alder",
+        "optionsEndpoint": "company_options"
+      }
+    ]
+  },
+  "client_entries": {
+    "name": "Client entry form",
+    "description": "A form that adds client records, and the records added so far",
+    "category": "Reference backend",
+    "subCategory": "Forms",
+    "type": "markdown",
+    "endpoint": "client_entries",
+    "gridData": {
+      "w": 20,
+      "h": 12
+    },
+    "source": "Invented sample data",
+    "params": [
+      {
+        "paramName": "client_form",
+        "type": "form",
+        "label": "Add a client",
+        "description": "Adds a client record",
+        "endpoint": "client_form",
+        "inputParams": [
+          {
+            "paramName": "first_name",
+            "type": "text",
+            "label": "First name",
+            "description": "The client's first name",
+            "value": ""
+          },
+          {
+            "paramName": "last_name",
+            "type": "text",
+            "label": "Last name",
+            "description": "The client's last name",
+            "value": ""
+          },
+          {
+            "paramName": "investment_types",
+            "type": "text",
+            "label": "Investment types",
+            "description": "What the client invests in",
+            "multiSelect": true,
+            "options": [
+              {
+                "label": "Equities",
+                "value": "equities"
+              },
+              {
+                "label": "Bonds",
+                "value": "bonds"
+              },
+              {
+                "label": "Funds",
+                "value": "funds"
+              }
+            ]
+          },
+          {
+            "paramName": "risk_profile",
+            "type": "text",
+            "label": "Risk profile",
+            "description": "The client's risk tolerance",
+            "value": "balanced",
+            "options": [
+              {
+                "label": "Cautious",
+                "value": "cautious"
+              },
+              {
+                "label": "Balanced",
+                "value": "balanced"
+              },
+              {
+                "label": "Adventurous",
+                "value": "adventurous"
+              }
+            ]
+          },
+          {
+            "paramName": "add_record",
+            "type": "button",
+            "label": "Add client",
+            "description": "Add the client record",
+            "value": true
+          }
+        ]
+      }
+    ]
+  }
+}

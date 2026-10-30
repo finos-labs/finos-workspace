@@ -4,101 +4,39 @@ sidebar_position: 2
 ---
 
 import { WebAppValue } from "@site/src/components/Reference/config";
+import { WidgetRules } from "@site/src/components/Reference/schemas";
+import { OmittedValues, RequestExamples, RequestProblems, ValueEncodings } from "@site/src/components/Reference/requests";
 
 # Widget requests
 
-The web app calls a backend directly from the browser. It builds every request in one place, the file `frontend/src/lib/utils/widgetRequest.ts`. The same builder serves widgets, the option lookups of the parameter bar, forms, the Copilot's data and option requests, and the URL of an `iframe` widget's page. This page describes what a backend receives. The definition that produces the request is described on [widgets.json](../schemas/widgets-json.mdx).
-
-Three keys control how a request is shaped:
-
-| Key | Where it appears | Values | Default |
-|---|---|---|---|
-| `method` | On the widget. | `GET` or `POST`. | `GET`. |
-| `in` | On each parameter, except `form` parameters and parameters that fill a path placeholder. | `query`, `header` or `body`. | `query`. |
-| `optionsMethod` | On `endpoint` parameters and on the `endpoint` inputs of a `form`. | `GET` or `POST`. | `GET`. |
-
-## The widget's request
-
-The app builds a widget's request in four steps:
-
-1. **The URL.** The `endpoint` is a path on the backend or an absolute URL, and it contains neither `?` nor `#`. A static query value is written as a parameter with a default and `show: false`. The app fills the path placeholders first and then appends each parameter whose `in` is `query`.
-2. **The headers.** The request carries the credentials of the backend connection and the headers that the deployment adds, which are `X-Microsoft-Id-Token`, `X-Okta-Id-Token` and `X-Workspace-User` when they are enabled. After these, it carries each parameter whose `in` is `header`, as `paramName: value`.
-3. **The body.** With `POST`, the parameters whose `in` is `body` are sent as one flat JSON object, with `Content-Type: application/json`. A request without body parameters has no body.
-4. **The host parameters.** The app adds `theme` (`dark` or `light`) for `markdown`, `html`, `iframe` and plugin types. It adds `raw=true` when the host asks a widget for its rows, as [Widget rows](raw-rows.md) describes. Both go into the query, whatever the method is. A change of the site's theme sends the request again.
-
-The app does not send a parameter whose value is undefined, null or an empty string, but it does send `0` and `false`. A parameter's value is the value that the user stored for it, or else its default, so a default of `0` or `false` is sent like any other value, while an empty default means that the parameter has no value. The app sends only declared parameters. When the app cannot build a request, the widget shows the problems in place of its content and names each parameter, for example "`team` needs a value". An `iframe` widget shows the problems in place of the page, a form shows them in a toast, and the Copilot receives them as the error of its call.
-
-## Path parameters
-
-A placeholder such as `{name}` in `endpoint` takes the value of the parameter that is called `name`. The app encodes the value as one path segment with `encodeURIComponent`. A parameter that fills a placeholder is sent nowhere else, it declares no `in`, it takes exactly one value, and it is required, so the request is not sent when the value is missing. A placeholder that names no parameter is an error.
+The web app calls a backend directly from the browser, and it builds every request in `frontend/src/lib/utils/widgetRequest.ts`. This page lists what a backend receives for the definition of a widget, as [widgets.json](../schemas/widgets-json.mdx) describes it. Each table below comes from running that code on the cases that it names. [Requests that a widget sends](../../tutorials/build-a-backend/requests-from-a-widget.md) explains how the app builds a request.
 
 ## How values are written
 
-| Parameter | In the query, a header or the path | In the body |
-|---|---|---|
-| `text` and `tabs` | The string itself. | A JSON string. |
-| `number` | The decimal string. | A JSON number. |
-| `boolean` | `true` or `false`. | A JSON boolean. |
-| `date` | `YYYY-MM-DD`, after the `$currentDate` modifiers have been applied. | A JSON string. |
-| `endpoint` | The option's value as a string. | The option's value. |
-| A parameter with `multiSelect` or `multiple` | The values joined with commas, which is not possible in the path. | A JSON array. A default that was given as a comma-separated string is split. |
+<ValueEncodings />
+
+## Values that are not sent
+
+<OmittedValues />
+
+## Problems
+
+When the app cannot build a request, the widget shows these messages in place of its content. An `iframe` widget shows them in place of the page, a form shows them in a toast, and the Agent receives them as the error of its call.
+
+<RequestProblems />
 
 ## Rules for definitions
 
-The contract enforces the following rules:
+The contract enforces these rules, and the schema states each of them.
 
-1. Body parameters need `method: "POST"`.
-2. Every `paramName` is unique within a widget.
-3. A `form` posts its `inputParams` as a JSON body to its own `endpoint`, with its own method, which is `POST` or `PUT`. Neither the form nor its inputs accept `in`.
-4. An `iframe` widget uses `GET` and takes its parameters in the query or in the path.
-5. The name `theme` is reserved as a query parameter name for `markdown`, `html`, `iframe` and plugin types, and the name `raw` is reserved for `html` and plugin types.
-6. A header parameter's `paramName` has 1 to <WebAppValue of="headerNameMaxLength" /> characters from the HTTP token set. Three groups of names are not allowed, and names are compared without regard to case. The first group contains the names that a browser forbids page script to set: <WebAppValue of="forbiddenHeaderNames" /> and every name that starts with <WebAppValue of="forbiddenHeaderPrefixes" or />. The second group contains the names that FINOS Workspace sets itself: <WebAppValue of="reservedHeaderNames" />. The third group contains every header that the backend connection's credentials use. A header value consists of printable ASCII and has at most <WebAppValue of="headerValueMaxLength" /> characters.
-7. Credentials belong to the backend connection and never to parameters, because the dashboard saves a parameter's value and the UI shows it. The contract refuses a parameter whose name matches one of the connection's query credentials.
+<WidgetRules />
 
-## CORS
+## Header parameters
 
-A header parameter, a JSON body or the `POST` method makes the browser send a preflight request. The backend must therefore answer `OPTIONS` with an `Access-Control-Allow-Methods` header that includes the method, and with an `Access-Control-Allow-Headers` header that includes `Content-Type` when the request has a body and includes the name of every header parameter.
+A header parameter's `paramName` has 1 to <WebAppValue of="headerNameMaxLength" /> characters from the HTTP token set. Three groups of names are not allowed, and names are compared without regard to case. The first group contains the names that a browser forbids page script to set: <WebAppValue of="forbiddenHeaderNames" /> and every name that starts with <WebAppValue of="forbiddenHeaderPrefixes" or />. The second group contains the names that FINOS Workspace sets itself: <WebAppValue of="reservedHeaderNames" />. The third group contains every header that the backend connection's credentials use. A header value consists of printable ASCII and has at most <WebAppValue of="headerValueMaxLength" /> characters.
 
-## Caching
-
-The cache key of a widget request consists of the method, the URL with its query, the values of the header parameters and the body. Credential values are not part of the key.
-
-## Option lookups
-
-An `endpoint` parameter loads its choices from its `optionsEndpoint`, using `optionsMethod`. The app fills the placeholders from `optionsParams` in the same way as for the widget. The other `optionsParams` go into the query for `GET` and into a flat JSON body for `POST`. An `optionsParams` value is a string, a number or a boolean, and a string that starts with `$` stands for the current value of the widget's parameter with that name. The app does not send empty values. The answer must be a JSON array of strings or of `{ label, value }` objects.
-
-## Other requests
-
-Two other features build requests from a definition:
-
-- **Validate widgets** in the Connect backend dialog checks that the routes exist without running any of them. For each distinct route, which means every widget `endpoint`, `optionsEndpoint` and form `endpoint`, it sends one plain `OPTIONS` request without credentials, query, headers or body, six at a time, with placeholders filled from their defaults. A `404` answer, or no answer, fails the route. Before it does so, it sends `OPTIONS` to a path that cannot exist. When that request does not receive a `404`, the backend answers every `OPTIONS` request, so the form reports that the routes cannot be checked this way. It reports a route as not checked when a placeholder has no default or when the route is on another origin than the backend's.
-- **The Copilot** builds its data and option requests with the same builder, so the agent receives what the widget receives, except that its data request does not carry the host parameter `theme`. It refuses `input_args` that name no parameter of the widget, and it answers with the list of the widget's parameters.
-
-## What the schema states
-
-`method` is an enum on every branch, and `GET` is the only value for `iframe`. The key `in` exists on every parameter branch except `form`. The values of `endpoint` and `optionsEndpoint` must match `^[^?#]+$`, and the values of `optionsParams` must be strings, numbers or booleans. The composer adds three rules to the branches. A body parameter requires `POST`. For `html` and plugin types, `data.rawDataKey` or `data.rawType` requires `"raw": true`. And `disableRetrievalForCopilot: true` excludes `mcp_tool`. The schema checks header names against the forbidden list from the same table that the code uses.
+Credentials belong to the backend connection and never to parameters, because the dashboard saves a parameter's value and the UI shows it. The contract refuses a parameter whose name matches one of the connection's query credentials.
 
 ## Example
 
-This `widgets.json` entry produces a request with a path parameter, a query parameter, a header and a body field:
-
-```json
-{
-  "team_report": {
-    "name": "Team report",
-    "description": "Report for one team and period",
-    "type": "markdown",
-    "method": "POST",
-    "endpoint": "/teams/{team}/report",
-    "params": [
-      { "paramName": "team", "type": "endpoint", "label": "Team",
-        "optionsEndpoint": "/teams/search", "optionsMethod": "POST", "optionsParams": { "active": true } },
-      { "paramName": "period", "type": "text", "label": "Period", "value": "month" },
-      { "paramName": "X-Region", "type": "text", "label": "Region", "value": "eu", "in": "header" },
-      { "paramName": "filters", "type": "text", "label": "Filters", "value": "active", "in": "body" }
-    ]
-  }
-}
-```
-
-When `team` is set to `platform`, the request is `POST <backend>/teams/platform/report?period=month&theme=dark`. It carries the header `X-Region: eu`, the header `Content-Type: application/json` and the body `{"filters":"active"}`. The choices for `team` come from `POST <backend>/teams/search` with the body `{"active":true}`.
+<RequestExamples />

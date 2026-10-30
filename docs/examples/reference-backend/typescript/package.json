@@ -1,0 +1,12 @@
+{
+  "name": "finos-workspace-reference-backend",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node main.ts"
+  }
+}

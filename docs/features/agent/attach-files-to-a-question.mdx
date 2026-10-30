@@ -1,0 +1,46 @@
+---
+title: Attach files to a question
+sidebar_position: 2
+---
+
+import { WebAppValue } from "@site/src/components/Reference/config";
+
+# Attach files to a question
+
+This guide gives the Agent a document, a spreadsheet or a picture to work with, so that you can ask about a file that is not on a dashboard. The Agent reads the file for this chat, and you can attach it again to later questions.
+
+## What you need
+
+You need an account that may upload files, which is an Admin or a Developer account, when you use the default agent, and an agent that accepts files. FINOS Workspace switches attaching off while your daily limit of questions is used up, and the agent has to be one that offers file upload, which Ines does. The Agent's file types are <WebAppValue of="copilotAttachmentExtensions" />.
+
+A file may be at most <WebAppValue of="maxFileBytes" unit="bytes" /> large. FINOS Workspace uploads the files in groups of at most <WebAppValue of="uploadBatchBytes" unit="bytes" />.
+
+## Attach the files
+
+You can attach a file in either of two ways:
+
+- Select the paper clip in the bottom row of the question box, which has the tooltip Attach files, and choose one or more files.
+- Drag the files from your computer onto the Agent panel.
+
+Each file shows as a chip with a paper clip at the bottom of the question box while it uploads, and it stays there until you send the question. FINOS Workspace changes the file's name to lower case and replaces spaces and other unusual characters with underscores, so `Deal Counts 2026.csv` becomes `deal_counts_2026.csv`. You can then ask your question, and the Agent treats the attached files as part of the question.
+
+A file that is too large gives the message "Upload limit exceeded" and says that individual files must be less than 25MB and which file was not uploaded. A file of another kind is ignored when you drop it or choose it.
+
+## What the Agent does with each kind of file
+
+How the Agent reads a file depends on its type:
+
+| Type | How the Agent reads it |
+|---|---|
+| Spreadsheets and tables: `csv` and `xlsx` | The rows become a table that the Agent queries with SQL, so it can count, filter and add up the figures instead of reading them as text. |
+| Text: `txt`, `md` and `html` | The Agent reads the text. |
+| Documents: `pdf` and `docx` | The Agent searches the document, page by page, and its answer can point to the page. Searching needs the deployment to name an embedding model, as [Switch on the search of documents](enable-document-search.mdx) describes. Without it, the Agent says that it cannot read the file. |
+| Pictures: `png`, `jpg` and `jpeg` | The Agent looks at the picture. |
+
+[Widget data for the agent](../../reference/protocols/ines-widget-data.mdx) lists the limits of each kind exactly.
+
+## Where the file goes
+
+For the default agent, FINOS Workspace stores the file with your other uploaded files, so it counts toward the upload limit of your roles. For another agent, FINOS Workspace sends the file to the upload address that the agent publishes.
+
+A file that you attach to a question is not a widget, and your library of widgets does not list it. To keep a file next to your other widgets, add it to the dashboard, as [Add files to a dashboard](../widgets/add-files-to-a-dashboard.mdx) describes.

@@ -74,7 +74,7 @@ the frame while you type.
   reachable. The admin sees both in the review, with the plugin's notes.
 - Postgres's own functions are not DuckDB's: on the Postgres source the keywords, tables
   and columns are right, and a function DuckDB has and Postgres lacks may be offered. The export dialog offers the last result as
-CSV, and with its query as JSON. The Copilot is told the query and the columns and row
+CSV, and with its query as JSON. The Agent is told the query and the columns and row
 count of the answer, not its values. Its look is its own, a light and a dark version that
 follow the site's mode.
 
@@ -144,7 +144,7 @@ removes what it started.
    `python -m scripts.plugin_check <plugins directory>/sql-explorer/<version> --digest`.
 2. Build the backend's image from the same directory:
    `docker build -f backend/Dockerfile -t sql-explorer-backend:<version> <that directory>`.
-3. Run it as [How to run a plugin backend](../../how-to/plugins/run-a-plugin-backend.md) describes: no privileges, a read-only
+3. Run it as [How to run a plugin backend](../../tutorials/plugins/run-a-plugin-backend.md) describes: no privileges, a read-only
    root, its own network that only a gateway joins from the FINOS Workspace side, the database
    on a second network, the data files mounted read-only at `/data`.
    `examples/compose.yaml` does exactly this.

@@ -1,0 +1,534 @@
+---
+title: Let your agent read the dashboard
+sidebar_position: 2
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# Let your agent read the dashboard
+
+In about 20 minutes your agent learns what is on the dashboard. It reads the widgets that the web app sends with a question, asks the browser for the data of a widget, answers from that data, and cites the widget. It also reads a setting that the user changes in the panel, and it suggests a follow-up question. The agent still has no model: it builds its answers from the data, so the example needs no key. A real agent calls a model at the point where this one builds its answer.
+
+You need:
+
+- The agent from [Build your own agent](build-your-own-agent.mdx), added to FINOS Workspace.
+- The dashboard from [Quick Start](../../quick-start/index.mdx), which has the widget **Portfolio summary**, or any dashboard that has a widget with data.
+
+## 1. Replace the program
+
+The finished agent is in `docs/examples/reference-agent` of the repository, in Python and in TypeScript, with a test that checks that both answer every request the same way. Replace your program with it:
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="main.py"
+import json
+import os
+import re
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
+
+APP_ORIGIN = os.environ.get("APP_ORIGIN", "http://localhost:3000")
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[APP_ORIGIN],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-Trace-Id"],
+)
+
+AGENTS = {
+    "reference_agent": {
+        "name": "Reference agent",
+        "description": "Answers questions about the widgets of your dashboard, without a model",
+        "endpoints": {"query": "/v1/query"},
+        "features": {
+            "streaming": True,
+            "widget-dashboard-select": True,
+            "prompt-suggestions": {
+                "label": "Follow-up suggestions",
+                "default": True,
+                "description": "Suggest a question after each answer.",
+            },
+            "shout": {
+                "label": "Answer in capitals",
+                "default": False,
+                "description": "Write every answer in capitals.",
+            },
+        },
+    }
+}
+
+
+def sse(name: str, data: dict) -> str:
+    return f"event: {name}\ndata: {json.dumps(data, separators=(',', ':'), ensure_ascii=False)}\n\n"
+
+
+def widgets_of(body: dict) -> list[dict]:
+    tiers = body.get("widgets") or {}
+    return [*tiers.get("primary", []), *tiers.get("secondary", []), *tiers.get("extra", [])]
+
+
+def input_args(widget: dict) -> dict:
+    values = {}
+    for param in widget.get("params", []):
+        value = param.get("current_value")
+        if value is None:
+            value = param.get("default_value")
+        if value is not None:
+            values[param["name"]] = value
+    return values
+
+
+def data_source(widget: dict) -> dict:
+    return {
+        "widget_uuid": widget["uuid"],
+        "origin": widget["origin"],
+        "id": widget["widget_id"],
+        "input_args": input_args(widget),
+    }
+
+
+def citation(widget: dict, source: dict) -> dict:
+    return {
+        "id": f"widget-{widget['uuid']}",
+        "source_info": {
+            "type": "widget",
+            "origin": widget["origin"],
+            "widget_id": widget["widget_id"],
+            "name": widget["name"],
+            "metadata": {"input_args": source.get("input_args", {}), "widget_uuid": widget["uuid"]},
+            "citable": True,
+        },
+        "details": [{"Source type": "widget", "Origin": widget["origin"], "Data source": widget["name"]}],
+        "signature": "",
+    }
+
+
+def say(text: str, options: dict):
+    if options.get("shout") is True:
+        text = text.upper()
+    words = text.split(" ")
+    for index, word in enumerate(words):
+        yield sse("copilotMessageChunk", {"delta": word if index == len(words) - 1 else f"{word} "})
+
+
+def suggest(questions: list[str], options: dict):
+    if options.get("prompt-suggestions") is True and questions:
+        yield sse("copilotPromptSuggestions", {"suggestions": questions})
+
+
+def overview(question: str, widgets: list[dict]) -> str:
+    if not widgets:
+        return "I cannot see a widget. Add a widget to the dashboard and ask again."
+    names = ", ".join(widget["name"] for widget in widgets)
+    return f'You asked: "{question}". I can see these widgets: {names}. Name one of them and I read its data.'
+
+
+def answer_from_result(result: dict, widgets: list[dict], options: dict):
+    sources = (result.get("input_arguments") or {}).get("data_sources") or []
+    source = sources[0] if sources else {}
+    widget = next((item for item in widgets if item["uuid"] == source.get("widget_uuid")), None)
+    name = widget["name"] if widget else source.get("id", "the widget")
+    entries = result.get("data") or []
+    entry = entries[0] if entries else {}
+    if "error_type" in entry:
+        yield from say(f'The browser could not read "{name}": {entry.get("content", "")}', options)
+        return
+    items = entry.get("items") or []
+    content = items[0].get("content", "") if items else ""
+    lines = [line for line in re.split(r"\r?\n", str(content)) if line.strip()]
+    first = lines[0] if lines else ""
+    yield from say(f'"{name}" returned {len(lines)} lines. The first line is: {first}', options)
+    if widget:
+        yield sse("copilotCitationCollection", {"citations": [citation(widget, source)]})
+    yield from suggest(["What is on this dashboard?"], options)
+
+
+def respond(body: dict):
+    options = body.get("workspace_options") or {}
+    widgets = widgets_of(body)
+    last = body["messages"][-1]
+    if last.get("role") == "tool":
+        yield from answer_from_result(last, widgets, options)
+        return
+    question = str(last.get("content", ""))
+    named = next((widget for widget in widgets if widget["name"].lower() in question.lower()), None)
+    if named is None:
+        yield from say(overview(question, widgets), options)
+        yield from suggest([f"Read the data of {widgets[0]['name']}"] if widgets else [], options)
+        return
+    yield sse(
+        "copilotStatusUpdate",
+        {"eventType": "INFO", "message": f'Reading the data of "{named["name"]}".', "group": "reasoning"},
+    )
+    yield sse(
+        "copilotFunctionCall",
+        {"function": "get_widget_data", "input_arguments": {"data_sources": [data_source(named)]}, "extra_state": {}},
+    )
+
+
+def stream(body: dict):
+    try:
+        yield from respond(body)
+    except Exception:
+        yield sse("copilotStatusUpdate", {"eventType": "ERROR", "message": "The agent could not read the request."})
+
+
+@app.get("/agents.json")
+def agents() -> dict:
+    return AGENTS
+
+
+@app.post("/v1/query")
+async def query(request: Request):
+    try:
+        body = await request.json()
+    except ValueError:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    messages = body.get("messages") if isinstance(body, dict) else None
+    if not isinstance(messages, list) or not messages or not isinstance(messages[-1], dict):
+        return JSONResponse({"error": "Invalid request"}, status_code=400)
+    return StreamingResponse(stream(body), media_type="text/event-stream")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="main.ts"
+import { createServer } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
+
+type Json = Record<string, any>;
+
+const APP_ORIGIN = process.env.APP_ORIGIN ?? "http://localhost:3000";
+const PORT = Number(process.env.PORT ?? 6060);
+
+const AGENTS = {
+  reference_agent: {
+    name: "Reference agent",
+    description: "Answers questions about the widgets of your dashboard, without a model",
+    endpoints: { query: "/v1/query" },
+    features: {
+      streaming: true,
+      "widget-dashboard-select": true,
+      "prompt-suggestions": {
+        label: "Follow-up suggestions",
+        default: true,
+        description: "Suggest a question after each answer.",
+      },
+      shout: {
+        label: "Answer in capitals",
+        default: false,
+        description: "Write every answer in capitals.",
+      },
+    },
+  },
+};
+
+const sse = (name: string, data: Json): string => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
+
+function widgetsOf(body: Json): Json[] {
+  const tiers = body.widgets ?? {};
+  return [...(tiers.primary ?? []), ...(tiers.secondary ?? []), ...(tiers.extra ?? [])];
+}
+
+function inputArgs(widget: Json): Json {
+  const values: Json = {};
+  for (const param of widget.params ?? []) {
+    const value = param.current_value ?? param.default_value;
+    if (value !== undefined && value !== null) values[param.name] = value;
+  }
+  return values;
+}
+
+const dataSource = (widget: Json): Json => ({
+  widget_uuid: widget.uuid,
+  origin: widget.origin,
+  id: widget.widget_id,
+  input_args: inputArgs(widget),
+});
+
+const citation = (widget: Json, source: Json): Json => ({
+  id: `widget-${widget.uuid}`,
+  source_info: {
+    type: "widget",
+    origin: widget.origin,
+    widget_id: widget.widget_id,
+    name: widget.name,
+    metadata: { input_args: source.input_args ?? {}, widget_uuid: widget.uuid },
+    citable: true,
+  },
+  details: [{ "Source type": "widget", Origin: widget.origin, "Data source": widget.name }],
+  signature: "",
+});
+
+function* say(text: string, options: Json): Generator<string> {
+  const shown = options.shout === true ? text.toUpperCase() : text;
+  const words = shown.split(" ");
+  for (const [index, word] of words.entries()) {
+    yield sse("copilotMessageChunk", { delta: index === words.length - 1 ? word : `${word} ` });
+  }
+}
+
+function* suggest(questions: string[], options: Json): Generator<string> {
+  if (options["prompt-suggestions"] === true && questions.length > 0) {
+    yield sse("copilotPromptSuggestions", { suggestions: questions });
+  }
+}
+
+function overview(question: string, widgets: Json[]): string {
+  if (widgets.length === 0) return "I cannot see a widget. Add a widget to the dashboard and ask again.";
+  const names = widgets.map((widget) => widget.name).join(", ");
+  return `You asked: "${question}". I can see these widgets: ${names}. Name one of them and I read its data.`;
+}
+
+function* answerFromResult(result: Json, widgets: Json[], options: Json): Generator<string> {
+  const sources = result.input_arguments?.data_sources ?? [];
+  const source = sources[0] ?? {};
+  const widget = widgets.find((item) => item.uuid === source.widget_uuid);
+  const name = widget ? widget.name : (source.id ?? "the widget");
+  const entry = (result.data ?? [])[0] ?? {};
+  if ("error_type" in entry) {
+    yield* say(`The browser could not read "${name}": ${entry.content ?? ""}`, options);
+    return;
+  }
+  const content = (entry.items ?? [])[0]?.content ?? "";
+  const lines = String(content)
+    .split(/\r?\n/)
+    .filter((line) => line.trim() !== "");
+  yield* say(`"${name}" returned ${lines.length} lines. The first line is: ${lines[0] ?? ""}`, options);
+  if (widget) yield sse("copilotCitationCollection", { citations: [citation(widget, source)] });
+  yield* suggest(["What is on this dashboard?"], options);
+}
+
+function* respond(body: Json): Generator<string> {
+  const options = body.workspace_options ?? {};
+  const widgets = widgetsOf(body);
+  const last = body.messages[body.messages.length - 1];
+  if (last.role === "tool") {
+    yield* answerFromResult(last, widgets, options);
+    return;
+  }
+  const question = String(last.content ?? "");
+  const named = widgets.find((widget) => question.toLowerCase().includes(widget.name.toLowerCase()));
+  if (!named) {
+    yield* say(overview(question, widgets), options);
+    yield* suggest(widgets.length > 0 ? [`Read the data of ${widgets[0].name}`] : [], options);
+    return;
+  }
+  yield sse("copilotStatusUpdate", {
+    eventType: "INFO",
+    message: `Reading the data of "${named.name}".`,
+    group: "reasoning",
+  });
+  yield sse("copilotFunctionCall", {
+    function: "get_widget_data",
+    input_arguments: { data_sources: [dataSource(named)] },
+    extra_state: {},
+  });
+}
+
+async function readJson(request: IncomingMessage): Promise<unknown> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of request) chunks.push(chunk);
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+
+function send(response: ServerResponse, status: number, body: unknown) {
+  response.writeHead(status, { "Content-Type": "application/json" }).end(JSON.stringify(body));
+}
+
+createServer(async (request, response) => {
+  const url = new URL(request.url ?? "/", `http://localhost:${PORT}`);
+  if (request.headers.origin === APP_ORIGIN) {
+    response.setHeader("Access-Control-Allow-Origin", APP_ORIGIN);
+    response.setHeader("Vary", "Origin");
+  }
+  if (request.method === "OPTIONS") {
+    response.setHeader("Access-Control-Allow-Methods", "GET, POST");
+    response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Trace-Id");
+    return response.writeHead(204).end();
+  }
+  if (request.method === "GET" && url.pathname === "/agents.json") return send(response, 200, AGENTS);
+  if (request.method === "POST" && url.pathname === "/v1/query") {
+    let body: Json;
+    try {
+      body = (await readJson(request)) as Json;
+    } catch {
+      return send(response, 400, { error: "Invalid JSON" });
+    }
+    const messages = body?.messages;
+    if (!Array.isArray(messages) || messages.length === 0 || typeof messages[messages.length - 1] !== "object" || messages[messages.length - 1] === null) {
+      return send(response, 400, { error: "Invalid request" });
+    }
+    response.writeHead(200, { "Content-Type": "text/event-stream" });
+    try {
+      for (const event of respond(body)) response.write(event);
+    } catch {
+      response.write(sse("copilotStatusUpdate", { eventType: "ERROR", message: "The agent could not read the request." }));
+    }
+    return response.end();
+  }
+  if (url.pathname === "/agents.json" || url.pathname === "/v1/query") {
+    return send(response, 405, { detail: "Method Not Allowed" });
+  }
+  send(response, 404, { detail: "Not Found" });
+}).listen(PORT, () => console.log(`Agent on http://localhost:${PORT}`));
+```
+
+</TabItem>
+</Tabs>
+
+Stop the agent from the first guide, start this one in the same way, and select the refresh button **Refresh agents** in the tab **AI Agents**. FINOS Workspace reads `agents.json` again, and the agent is now called **Reference agent**. The next sections explain the parts that are new.
+
+## 2. Ask for the dashboard
+
+The descriptor of the agent has three more features:
+
+- `widget-dashboard-select` asks the web app to send the widgets of the current dashboard with every question. Every widget also gets a speech bubble in its header, which adds the widget to the context of the question.
+- `prompt-suggestions` is a setting with a switch. It starts on.
+- `shout` is a setting with a switch. It starts off. The user finds both settings under the gear in the panel.
+
+A feature that is an object, with a `label`, a `default` and a `description`, is a setting. [agents.json](../../reference/schemas/agents-json.mdx) lists the features that the web app knows and the fields of a setting.
+
+## 3. Read the question
+
+The body of a question is a JSON object. Only `messages` is required, and the web app adds the other fields when the descriptor asks for them or when the user has something to send. [Sending a question](../../reference/protocols/ines-query.mdx#sending-a-question) gives the type and the limits of every field. This agent reads the first three fields of the table and ignores the others.
+
+| Field | What it holds |
+|---|---|
+| `messages` | The conversation, oldest first. The last message is the question, or the result of a call. [Messages](../../reference/protocols/ines-query.mdx#messages) |
+| `widgets` | The widgets that the agent may read, in the tiers `primary`, `secondary` and `extra`. [Widgets](../../reference/protocols/ines-query.mdx#widgets) |
+| `workspace_options` | The value of each setting of the descriptor, by key. |
+| `context` | What the user attached to the question, such as the artifacts of earlier answers. [Context](../../reference/protocols/ines-query.mdx#context) |
+| `workspace_state` | Where the user is: the current page, dashboard and tab, and the recent actions. |
+| `tools` | The tools of the MCP servers that the user connected, which the agent can ask the browser to run. [Function calls](../../reference/protocols/ines-query.mdx#function-calls) |
+| `urls` | The web addresses in the message of the user. |
+| `timezone` | The time zone of the user, such as `Europe/Paris`. |
+| `skills_catalog`, `selected_skills` | The skills in the library of the user, and the skills that the user or the model chose for this question. |
+| `documents` | Files sent inline. The field is deprecated, because the web app sends a file as a widget in `widgets.primary`. |
+| `model` | Accepted and not used. Ines reads the model from `workspace_options`. |
+
+With the feature `widget-dashboard-select` on, a question carries `widgets`. This is the question `Read the data of Portfolio summary` on the dashboard of Quick Start, with the fields that this agent reads:
+
+```json
+{
+  "messages": [{ "role": "human", "content": "Read the data of Portfolio summary" }],
+  "widgets": {
+    "primary": [],
+    "secondary": [
+      {
+        "origin": "Quick start",
+        "widget_id": "portfolio_summary",
+        "uuid": "7c0e5f4a-9c1b-4a46-8f0a-2f4f2c0f9a11",
+        "name": "Portfolio summary",
+        "description": "Key figures of a sample portfolio",
+        "widget_type": "html",
+        "category": "Quick start",
+        "params": []
+      }
+    ],
+    "extra": []
+  },
+  "workspace_options": { "prompt-suggestions": true }
+}
+```
+
+A widget has an `origin`, which is the name of its backend, a `widget_id`, a `uuid`, a `name`, a `description`, a `widget_type`, a `category` and its `params`. A parameter has a `name`, a `type`, a `default_value` and the `current_value` that the dashboard shows. [Widgets](../../reference/protocols/ines-query.mdx#widgets) lists every field of a widget.
+
+The widgets that the user selected are in `primary`, and the other widgets of the dashboard are in `secondary`. The tier `extra` holds the rest of the catalog, and the web app fills it only for an agent that has the feature `widget-global-search`. The function `widgets_of`, or `widgetsOf`, joins the three lists. The function `respond` looks for a widget whose name the question contains. When there is none, it answers with an overview of the widgets and suggests reading the first one.
+
+## 4. Ask the browser for the data
+
+Your agent cannot reach the backend of a widget. The browser can, with the credentials of the connection. So an agent asks the browser for the data with a function call, and ends its answer there. The function that reads the data of widgets is `get_widget_data`. [Widget data for the agent](../../reference/protocols/ines-widget-data.mdx) follows one read from the call to the answer. This section shows what the agent writes and what it reads.
+
+When the question names a widget, the agent sends two events:
+
+```
+event: copilotStatusUpdate
+data: {"eventType":"INFO","message":"Reading the data of \"Portfolio summary\".","group":"reasoning"}
+
+event: copilotFunctionCall
+data: {"function":"get_widget_data","input_arguments":{"data_sources":[{"widget_uuid":"7c0e5f4a-9c1b-4a46-8f0a-2f4f2c0f9a11","origin":"Quick start","id":"portfolio_summary","input_args":{}}]},"extra_state":{}}
+```
+
+The status update is a line in the steps that the panel shows. The function call ends the answer. Its `function` is `get_widget_data`, its `input_arguments` hold a list of `data_sources`, one for each widget to read, and its `extra_state` holds state that the agent wants back. [The function call](../../reference/protocols/ines-widget-data.mdx#the-function-call) lists the fields of a data source:
+
+| Field of a data source | Meaning |
+|---|---|
+| `widget_uuid` | The `uuid` of the widget, or its `widget_id` when it has none. |
+| `origin` | The name of the backend that serves the widget. |
+| `id` | The `widget_id` of the widget. |
+| `input_args` | The value of every parameter of the widget, by name. The function `input_args`, or `inputArgs`, takes the value that the dashboard shows, and the default of the parameter when there is none. |
+
+The browser reads each data source in turn. When the widget is on the open dashboard and has loaded its data with the same parameters, the browser returns that data and makes no request. Otherwise it sends the request that the widget itself would send, with the credentials of the connection. A failed source does not fail the call. [What the browser does](../../reference/protocols/ines-widget-data.mdx#what-the-browser-does) lists the cases. The browser then sends the conversation again, with two messages added: an `ai` message that records the call, and a `tool` message that holds the result. The agent finds the result in the last message:
+
+```json
+{
+  "role": "tool",
+  "function": "get_widget_data",
+  "input_arguments": { "data_sources": [ { "widget_uuid": "7c0e5f4a-9c1b-4a46-8f0a-2f4f2c0f9a11", "origin": "Quick start", "id": "portfolio_summary", "input_args": {} } ] },
+  "data": [ { "items": [ { "content": "…", "data_format": { "data_type": "object", "parse_as": "text" } } ] } ],
+  "extra_state": {}
+}
+```
+
+`function` and `input_arguments` repeat the call. `data` holds one entry for each data source, in order, and an entry is one of two things:
+
+| Entry | Meaning |
+|---|---|
+| `items` | The data. An item has its `content` as a string, or a `url` for a file that the user uploaded, and it may have a `data_format` that says what the content is. |
+| `error_type` and `content` | The browser could not read the source, and `content` says why. |
+
+The `error_type` is `gateway_error` when the backend answered with a status other than 2xx, `not_found` when the widget or one of the parameters is unknown, and `unexpected_error` for anything else, such as a network failure. [The reply](../../reference/protocols/ines-widget-data.mdx#the-reply) lists the shapes of an item, and [Errors](../../reference/protocols/ines-widget-data.mdx#errors) the causes of an error. This agent reads the `content` of the first item, and it reports an error as text.
+
+`extra_state` comes back with what the agent put there. An agent that wants something back puts it there and treats it as input that the user could have changed. [Function calls](../../reference/protocols/ines-query.mdx#function-calls) lists the functions that an agent can ask for, with the arguments of each and the content of `data` that each one gets.
+
+## 5. Answer and cite
+
+The function `answer_from_result`, or `answerFromResult`, counts the lines of the content and says how many there are and what the first one is. A real agent hands the content to its model here.
+
+After the text, the agent sends the event `copilotCitationCollection`. A citation has an `id`, a `source_info` that names the widget, and the `input_args` that fetched its data. The panel shows a chip with the name of the widget under the answer, and selecting it lists those values. [Citations](../../reference/protocols/ines-query.mdx#citations) lists the fields of a citation.
+
+```
+event: copilotCitationCollection
+data: {"citations":[{"id":"widget-7c0e5f4a-9c1b-4a46-8f0a-2f4f2c0f9a11","source_info":{"type":"widget","origin":"Quick start","widget_id":"portfolio_summary","name":"Portfolio summary","metadata":{"input_args":{},"widget_uuid":"7c0e5f4a-9c1b-4a46-8f0a-2f4f2c0f9a11"},"citable":true},"details":[{"Source type":"widget","Origin":"Quick start","Data source":"Portfolio summary"}],"signature":""}]}
+```
+
+## 6. Suggest a question and read a setting
+
+The web app sends the value of every setting in `workspace_options`, each under its key: `true` for a switch that is on, and the chosen value for a text or a choice. [agents.json](../../reference/schemas/agents-json.mdx#features) lists the kinds of setting. The function `suggest` sends the event [`copilotPromptSuggestions`](../../reference/protocols/ines-query.mdx#the-response) only when `workspace_options["prompt-suggestions"]` is `true`, so the user can switch the suggestions off. The function `say` writes the answer in capitals when `shout` is `true`.
+
+```
+event: copilotPromptSuggestions
+data: {"suggestions":["What is on this dashboard?"]}
+```
+
+## 7. Handle a failure
+
+A request that does not fit gets the status 400 and a JSON body with an `error`, before any event. [Refusals and errors](../../reference/protocols/ines-query.mdx#refusals-and-errors) lists the statuses that Ines uses. A failure after the stream has started ends the stream with a [status update](../../reference/protocols/ines-query.mdx#status-updates) whose `eventType` is `ERROR`, which the web app shows in the chat:
+
+```
+event: copilotStatusUpdate
+data: {"eventType":"ERROR","message":"The agent could not read the request."}
+```
+
+## 8. Try it
+
+1. Open the dashboard that has the widget **Portfolio summary**, and ask the agent `What is on this dashboard?`. The answer lists the widgets of the dashboard, and the panel offers the question `Read the data of Portfolio summary`.
+2. Select that question. The steps show "Reading the data of "Portfolio summary".", and then the answer says how many lines the widget returned and what its first line is. A chip with the name of the widget sits under the answer.
+3. Select the gear in the panel and switch on **Answer in capitals**. Ask again. The answer is in capitals.
+4. Switch off **Follow-up suggestions**. The next answer has no suggested question.
+
+The test of the example checks all of this without a browser: `PYTHON=python/.venv/bin/python node --test test/parity.test.mjs`, run in `docs/examples/reference-agent`.
+
+## Where to go next
+
+- [Agent query protocol](../../reference/protocols/ines-query.mdx) lists the fields that you have not used yet. `context` carries what the user attached, `workspace_state` the layout of the dashboard, and `tools` the tools of the MCP servers of the user, which a model can call through the function `execute_agent_tool`.
+- [Agent authentication](../../reference/protocols/agent-authentication.mdx) shows how Ines checks who asks.
+- [Widget data for the agent](../../reference/protocols/ines-widget-data.mdx) shows what the browser puts in `data`, for every kind of widget.

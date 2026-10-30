@@ -28,3 +28,9 @@ def test_every_property_of_the_manifest_has_a_description():
 
 def test_every_property_of_widgets_json_has_a_description():
     assert undescribed(export.collect_widgets_schema(), "definitions") == []
+
+
+def test_the_exported_widgets_schema_includes_a_plugin_type():
+    schema = export.collect_widgets_schema()
+    assert schema["x-types"][-1] == export.SAMPLE_PLUGIN_TYPE
+    assert f"PluginConfig_{export.SAMPLE_PLUGIN_TYPE}" in schema["definitions"]

@@ -1,62 +1,57 @@
-import Heading from "@theme/Heading";
+import type { ReactNode } from "react";
 import type { SchemaDoc } from "../../data/types";
 import { databaseData, schemaSets } from "./data";
-import { Contents, Lines, TableWrap, TypeText } from "./shared";
+import { Fields, fromSchema, TypeLabelText } from "./fields";
+import { Chip, Entry, Index, Section } from "./kit";
+import { TableWrap } from "./shared";
 import styles from "./styles.module.css";
 
-function PropertyTable({ doc, schemaPage }: { doc: SchemaDoc; schemaPage: string }) {
-  return (
-    <TableWrap>
-      <table>
-        <thead>
-          <tr>
-            <th>Property</th>
-            <th>Type</th>
-            <th>Required</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {doc.properties.map((property) => (
-            <tr key={property.name}>
-              <td>
-                <code>{property.name}</code>
-              </td>
-              <td>
-                <TypeText type={property.type} schemaPage={schemaPage} />
-              </td>
-              <td>{property.required ? "yes" : "no"}</td>
-              <td>
-                {property.description ? <p>{property.description}</p> : null}
-                {property.notes.length > 0 ? <Lines items={property.notes} /> : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </TableWrap>
-  );
+function SchemaFields({ doc, schemaPage }: { doc: SchemaDoc; schemaPage: string }) {
+  return <Fields fields={fromSchema(doc.properties)} schemaPage={schemaPage} empty="This schema has no named properties." />;
 }
 
-function SchemaBlock({ doc, id }: { doc: SchemaDoc; id: string }) {
+const RULE_LENGTH = 30;
+
+interface Heading {
+  name: string;
+  title: ReactNode;
+  description?: string;
+}
+
+function SchemaBlock({ doc, id, heading }: { doc: SchemaDoc; id: string; heading?: Heading }) {
+  const rules = doc.notes.filter((note) => note.length > RULE_LENGTH);
   return (
-    <div className={styles.block}>
-      <Heading as="h3" id={id}>
-        <code>{doc.name}</code>
-      </Heading>
-      {doc.description ? <p>{doc.description}</p> : null}
-      <p>
-        Type: <TypeText type={doc.type} />
-      </p>
-      {doc.notes.length > 0 ? (
-        <ul>
-          {doc.notes.map((note, index) => (
-            <li key={index}>{note}</li>
-          ))}
-        </ul>
+    <Entry
+      id={id}
+      level={heading ? 2 : 3}
+      title={heading ? heading.title : <code>{doc.name}</code>}
+      description={[heading?.description, doc.description].filter((text) => text !== undefined).join("\n\n")}
+      chips={
+        <>
+          <TypeLabelText label={doc.type} />
+          {doc.notes
+            .filter((note) => note.length <= RULE_LENGTH)
+            .map((note) => (
+              <Chip key={note}>{note}</Chip>
+            ))}
+        </>
+      }
+    >
+      {doc.properties.length > 0 ? (
+        <Section title="Properties">
+          <SchemaFields doc={doc} schemaPage="" />
+        </Section>
       ) : null}
-      {doc.properties.length > 0 ? <PropertyTable doc={doc} schemaPage="" /> : null}
-    </div>
+      {rules.length > 0 ? (
+        <Section title="Rules">
+          <ul>
+            {rules.map((rule) => (
+              <li key={rule}>{rule}</li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+    </Entry>
   );
 }
 
@@ -64,21 +59,52 @@ export function SchemaTable({ set, name, schemaPage }: { set: keyof typeof schem
   const data = schemaSets[set];
   const doc = name === undefined ? data.root : data.definitions.find((definition) => definition.name === name);
   if (doc === undefined) throw new Error(`The schema set ${set} has no ${name ?? "root"}`);
-  return <PropertyTable doc={doc} schemaPage={schemaPage} />;
+  return <SchemaFields doc={doc} schemaPage={schemaPage} />;
 }
 
-export function SchemaDocs({ set }: { set: keyof typeof schemaSets }) {
+export function SchemaSource({ set }: { set: keyof typeof schemaSets }) {
   const data = schemaSets[set];
-  const items = [
-    ...(data.root ? [{ id: "schema-root", label: data.title }] : []),
-    ...data.definitions.map((doc) => ({ id: `schema-${doc.name}`, label: doc.name })),
-  ];
+  const docs = [...(data.root ? [{ ...data.root, name: data.title }] : []), ...data.definitions].filter((doc) => doc.json !== undefined);
   return (
     <>
-      <Contents items={items} />
-      {data.root ? <SchemaBlock doc={{ ...data.root, name: data.title }} id="schema-root" /> : null}
-      {data.definitions.map((doc) => (
-        <SchemaBlock key={doc.name} doc={doc} id={`schema-${doc.name}`} />
+      {docs.map((doc) => (
+        <details key={doc.name} className={styles.source}>
+          <summary>
+            <code>{doc.name}</code>
+          </summary>
+          <pre className={styles.json}>
+            <code>{JSON.stringify(doc.json, null, 2)}</code>
+          </pre>
+        </details>
+      ))}
+    </>
+  );
+}
+
+export function SchemaDocs({
+  set,
+  show,
+  root = true,
+}: {
+  set: keyof typeof schemaSets;
+  show?: (string | Heading)[];
+  root?: boolean;
+}) {
+  const data = schemaSets[set];
+  const headings = show?.map((item) => (typeof item === "string" ? { name: item, title: item } : item));
+  const definitions =
+    headings === undefined ? data.definitions.map((doc) => ({ doc, heading: undefined })) : headings.flatMap((heading) => data.definitions.filter((doc) => doc.name === heading.name).map((doc) => ({ doc, heading })));
+  const items = [
+    ...(root && data.root ? [{ id: "schema-root", label: <code>{data.title}</code> }] : []),
+    ...definitions.map(({ doc }) => ({ id: `schema-${doc.name}`, label: <code>{doc.name}</code> })),
+  ];
+  const named = show?.some((item) => typeof item !== "string") ?? false;
+  return (
+    <>
+      {named ? null : <Index items={items} />}
+      {root && data.root ? <SchemaBlock doc={{ ...data.root, name: data.title }} id="schema-root" /> : null}
+      {definitions.map(({ doc, heading }) => (
+        <SchemaBlock key={doc.name} doc={doc} id={`schema-${doc.name}`} heading={named ? heading : undefined} />
       ))}
     </>
   );
@@ -87,12 +113,10 @@ export function SchemaDocs({ set }: { set: keyof typeof schemaSets }) {
 export function DatabaseTables() {
   return (
     <>
-      <Contents items={databaseData.tables.map((table) => ({ id: `table-${table.name}`, label: table.name }))} />
+      <Index items={databaseData.tables.map((table) => ({ id: `table-${table.name}`, label: <code>{table.name}</code> }))} />
       {databaseData.tables.map((table) => (
-        <div key={table.name} className={styles.block}>
-          <Heading as="h3" id={`table-${table.name}`}>
-            <code>{table.name}</code>
-          </Heading>
+        <Entry key={table.name} id={`table-${table.name}`} title={<code>{table.name}</code>}>
+          <Section title="Columns">
           <TableWrap>
             <table>
               <thead>
@@ -130,7 +154,9 @@ export function DatabaseTables() {
               </tbody>
             </table>
           </TableWrap>
+          </Section>
           {table.indexes.length + table.uniqueConstraints.length > 0 ? (
+            <Section title="Indexes and constraints">
             <ul>
               {table.indexes.map((index, position) => (
                 <li key={`index-${position}`}>
@@ -143,9 +169,34 @@ export function DatabaseTables() {
                 </li>
               ))}
             </ul>
+            </Section>
           ) : null}
-        </div>
+        </Entry>
       ))}
     </>
   );
+}
+
+export function WidgetRules() {
+  const names = ["Widget", "ParamDef"];
+  const rules: string[] = [];
+  for (const doc of schemaSets.widgets.definitions.filter((item) => names.includes(item.name))) {
+    for (const note of doc.notes) {
+      if (note.length > RULE_LENGTH && !rules.includes(note)) rules.push(note);
+    }
+  }
+  return (
+    <ul>
+      {rules.map((rule) => (
+        <li key={rule}>{rule}</li>
+      ))}
+    </ul>
+  );
+}
+
+export function McpToolFields() {
+  const widget = schemaSets.widgets.definitions.find((doc) => doc.name === "Widget");
+  if (widget === undefined) throw new Error("The widgets schema has no Widget");
+  const properties = widget.properties.filter((property) => property.name === "mcp_tool" || property.name.startsWith("mcp_tool."));
+  return <Fields fields={fromSchema(properties)} />;
 }

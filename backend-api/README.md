@@ -10,7 +10,7 @@ The backend and admin tooling of FINOS Workspace.
 
 ## Getting started
 
-To run the whole stack, follow the tutorial [Run FINOS Workspace on your machine](../docs/tutorials/run-workspace-on-your-machine.md). See [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md) for local development of the backend itself.
+To run the whole stack, follow [Run the stack from source](../docs/tutorials/build-from-source/run-the-stack-from-source.md). See [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md) for local development of the backend itself.
 
 ## Infrastructure
 
