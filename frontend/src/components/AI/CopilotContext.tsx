@@ -175,7 +175,9 @@ export function CopilotContext() {
             >
               <button
                 aria-label="Agent settings"
-                ref={(el) => (settingsButtonRef.current = el)}
+                ref={(el) => {
+                  settingsButtonRef.current = el;
+                }}
                 onClick={enableSettings ? handleSettingsButtonClick : undefined}
                 disabled={!enableSettings}
                 className={cn(
@@ -230,7 +232,9 @@ export function CopilotContext() {
               hide={isMobile}
             >
               <button
-                ref={(el) => (buttonRef.current = el)}
+                ref={(el) => {
+                  buttonRef.current = el;
+                }}
                 onClick={handleOnButtonClick}
                 disabled={!contextEnabled}
                 className={cn(

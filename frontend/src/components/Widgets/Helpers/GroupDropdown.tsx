@@ -343,7 +343,7 @@ export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
                 align="start"
                 sideOffset={5}
                 onInteractOutside={(e) => {
-                  if ((e.target as HTMLElement)?.closest?.(".BB-Popover")) {
+                  if ((e.target as HTMLElement)?.closest?.('[data-slot="popover"]')) {
                     e.preventDefault();
                   }
                 }}

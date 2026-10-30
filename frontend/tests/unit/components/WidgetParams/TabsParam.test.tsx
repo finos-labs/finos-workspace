@@ -88,7 +88,7 @@ describe("TabsParam", () => {
         />,
       );
 
-      const toggleGroup = screen.getByRole("group");
+      const toggleGroup = screen.getByRole("radiogroup");
       expect(toggleGroup).toBeInTheDocument();
 
       await user.hover(toggleGroup);
@@ -115,7 +115,7 @@ describe("TabsParam", () => {
     it("handles empty options array", () => {
       render(<TabsParam value="" options={[]} onValueChange={vi.fn()} />);
 
-      const toggleGroup = screen.getByRole("group");
+      const toggleGroup = screen.getByRole("radiogroup");
       expect(toggleGroup).toBeInTheDocument();
       expect(toggleGroup.children).toHaveLength(0);
     });
@@ -133,12 +133,12 @@ describe("TabsParam", () => {
   });
 
   describe("Accessibility", () => {
-    it("renders as group with radio items", () => {
+    it("renders as radiogroup with radio items", () => {
       render(
         <TabsParam value="option1" options={mockOptions} onValueChange={vi.fn()} />,
       );
 
-      const toggleGroup = screen.getByRole("group");
+      const toggleGroup = screen.getByRole("radiogroup");
       expect(toggleGroup).toBeInTheDocument();
 
       const radios = screen.getAllByRole("radio");

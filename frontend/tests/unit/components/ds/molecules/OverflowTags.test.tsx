@@ -30,7 +30,7 @@ function mockSizes({ container, tag }: { container: number; tag: number }) {
   Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
     configurable: true,
     get() {
-      return this.classList?.contains("BB-Tag") ? tag : 0;
+      return this.parentElement?.getAttribute("aria-hidden") === "true" ? tag : 0;
     },
   });
   return () => {

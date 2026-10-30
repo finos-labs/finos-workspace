@@ -128,7 +128,7 @@ export function SharedDashboardItem({ item }: { item: Item }) {
                   align="start"
                   onCloseAutoFocus={(e) => e.preventDefault()}
                   className={cn(
-                    "z-20 radix-side-bottom:animate-slide-down radix-side-top:animate-slide-up",
+                    "z-20 data-[side=bottom]:animate-slide-down data-[side=top]:animate-slide-up",
                     "w-48",
                     "ws-dropdown-container",
                   )}
