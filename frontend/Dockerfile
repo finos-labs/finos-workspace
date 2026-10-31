@@ -1,15 +1,28 @@
 # syntax=docker/dockerfile:1
 
-FROM --platform=$BUILDPLATFORM node:22 AS builder
+FROM scratch AS node
 
+FROM chimeralinux/chimera@sha256:29102d7e12a1f464707d7aba19ce53e652d277861838ed4129178d0655444b1a AS libgcc
+
+RUN apk add --no-cache libgcc-chimera
+
+FROM scratch AS builder
+
+COPY --from=node / /
+COPY --from=libgcc /usr/lib/libgcc_s.so.1 /usr/lib/libgcc_s.so.1
+ADD --unpack=true --checksum=sha256:d1a92f40e6c407b84c3a00c3cf978a10b24fd42f153c527e2016cef7bb34a483 \
+  https://registry.npmjs.org/npm/-/npm-11.20.0.tgz /opt/npm/
+
+ENV PATH=/usr/local/bin:/usr/bin:/bin
 ENV NODE_OPTIONS="--max-old-space-size=4608"
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts --no-audit --no-fund
+RUN ["node", "/opt/npm/package/bin/npm-cli.js", "ci", "--ignore-scripts", "--no-audit", "--no-fund"]
 COPY . .
-RUN node scripts/check-runtime-config.ts
-RUN npm run build:runtime && rm dist/config.js
+RUN ["node", "scripts/check-runtime-config.ts"]
+RUN ["node", "node_modules/vite/bin/vite.js", "build", "--mode", "runtime"]
+RUN ["node", "-e", "require('node:fs').rmSync('dist/config.js')"]
 
 FROM alpine:3.24.2 AS nginx
 
