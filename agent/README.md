@@ -72,7 +72,7 @@ docker run --rm --env-file .env agent-mcp
 
 ## Philosophy
 
-The agent follows the **thin harness** principle: the model drives decisions, the code provides capabilities. Like opencode, Claude Code, and Codex, the harness is a capability broker and safety rail — not an orchestrator.
+The agent follows the **thin harness** principle: the model drives decisions, the code provides capabilities.
 
 Two ideas drive the codebase:
 

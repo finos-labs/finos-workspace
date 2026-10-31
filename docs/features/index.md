@@ -16,7 +16,7 @@ What FINOS Workspace does, one feature at a time. Each page says what a feature 
 | [Apps](apps/browse-and-open-apps.md) | Save a dashboard as an app that other people open. |
 | [Data backends](data-backends/connect-a-backend.md) | Connect your own data. |
 | [Agent](agent/ask-the-agent-about-a-dashboard.md) | Ask questions about a dashboard, attach files, dictate, reuse prompts, and add skills and tools from MCP servers. |
-| [MCP Companion](mcp-companion/index.mdx) | Let AI tools such as Claude Code read and change your dashboards. |
+| [MCP Companion](mcp-companion/index.mdx) | Let AI tools read and change your dashboards. |
 | [Sharing](sharing/share-a-dashboard.md) | Share dashboards and approve share requests. |
 | [White label](white-label/index.md) | Carry your own name, logos, colors and fonts. |
 | [Administration](administration/add-a-user.mdx) | Users, roles, data access, organizations and themes. |

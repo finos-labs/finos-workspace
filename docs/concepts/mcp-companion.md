@@ -5,7 +5,7 @@ sidebar_position: 7
 
 # MCP Companion
 
-The MCP Companion lets an AI tool outside FINOS Workspace, such as Claude Code or Codex, read and change your [dashboards](dashboard.md).
+The MCP Companion lets an AI tool outside FINOS Workspace read and change your [dashboards](dashboard.md).
 
 - The AI tool connects to the FINOS Workspace MCP server with a personal access token.
 - The server sends each command to the FINOS Workspace tab that you have open, and that tab does the work.

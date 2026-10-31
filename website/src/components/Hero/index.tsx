@@ -6,7 +6,7 @@ const highlights = [
   { to: "/concepts/dashboard", title: "Build dashboards", text: "Arrange widgets on dashboards." },
   { to: "/concepts/app", title: "Save apps", text: "Save a dashboard as an app that other people open." },
   { to: "/concepts/agent", title: "Ask the Agent", text: "The Agent reads your dashboards and answers questions about them." },
-  { to: "/concepts/mcp-companion", title: "Use your AI tools", text: "The MCP Companion lets Claude Code and other AI tools work with your dashboards." },
+  { to: "/concepts/mcp-companion", title: "Use your AI tools", text: "The MCP Companion lets AI tools work with your dashboards." },
   { to: "/concepts/plugin", title: "Add widget types", text: "Plugins add new kinds of widgets, such as charts." },
 ];
 
