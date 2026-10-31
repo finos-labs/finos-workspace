@@ -227,7 +227,7 @@
 
 .markdown td,
 .markdown th {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .theme-code-block pre,
