@@ -16,6 +16,7 @@ The things you work with in FINOS Workspace. Each page says what one thing is an
 | [App](app.md) | A template for dashboards |
 | [Connector](connector.md) | Brings your data in |
 | [Agent](agent.md) | Answers questions about your dashboards |
+| [MCP server](mcp-server.md) | Gives the Agent more tools |
 | [MCP Companion](mcp-companion.md) | Lets AI tools work with your dashboards |
 | [Plugin](plugin.md) | Adds a widget type |
 | [Admin](admin.md) | Manages users, roles and access |

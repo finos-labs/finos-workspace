@@ -1,6 +1,6 @@
 ---
 title: MCP Companion
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 # MCP Companion
@@ -10,6 +10,7 @@ The MCP Companion lets an AI tool outside FINOS Workspace, such as Claude Code o
 - The AI tool connects to the FINOS Workspace MCP server with a personal access token.
 - The server sends each command to the FINOS Workspace tab that you have open, and that tab does the work.
 - Your permissions apply. The AI tool can do only what you can do in the app.
+- It is the opposite of an [MCP server](mcp-server.md), which gives the Agent tools. Here an AI tool uses FINOS Workspace.
 - A tab must be open. When your browser is closed, the AI tool can do nothing.
 
 ## Where to go
