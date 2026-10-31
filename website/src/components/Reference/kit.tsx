@@ -38,6 +38,7 @@ export function Entry({
   collapsed?: boolean;
   children?: ReactNode;
 }) {
+  const summary = lead ?? (collapsed && description ? firstSentence(description) : undefined);
   const heading = (
     <Heading as={`h${level}`} id={id} className={styles.entryTitle}>
       {badge}
@@ -57,7 +58,7 @@ export function Entry({
       <details className={`${styles.entry} ${styles.collapsible}`}>
         <summary className={styles.entryHeader}>
           {heading}
-          {lead ? <span className={styles.entryLead}>{lead}</span> : null}
+          {summary ? <span className={styles.entryLead}>{summary}</span> : null}
         </summary>
         {body}
       </details>

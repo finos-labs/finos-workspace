@@ -1,7 +1,7 @@
 import type { CliCommand } from "../../data/types";
 import { cliData, mcpData } from "./data";
 import { Fields, fromSchema } from "./fields";
-import { Chip, Entry, firstSentence, Index, ItemList, Section } from "./kit";
+import { Chip, Entry, ItemList, Section } from "./kit";
 import { formatValue, slug } from "./format";
 import { Prose } from "./prose";
 import styles from "./styles.module.css";
@@ -29,7 +29,7 @@ function CommandEntry({ command }: { command: CliCommand }) {
   }));
   const text = command.description && command.description !== command.help ? command.description : undefined;
   return (
-    <Entry id={commandId(command)} title={<code>{command.prog}</code>} lead={command.help ?? undefined} description={text}>
+    <Entry id={commandId(command)} title={<code>{command.prog}</code>} lead={command.help ?? undefined} description={text} collapsed>
       {fields.length > 0 ? (
         <Section title="Arguments">
           <Fields fields={fields} />
@@ -45,13 +45,6 @@ export function CliCommands({ noun }: { noun: string }) {
   const commands = allCommands(found);
   return (
     <>
-      <Index
-        items={commands.map((command) => ({
-          id: commandId(command),
-          label: <code>{command.prog.replace(`${cliData.prog} `, "")}</code>,
-          summary: command.help ?? undefined,
-        }))}
-      />
       {commands.map((command) => (
         <CommandEntry key={command.prog} command={command} />
       ))}
@@ -71,15 +64,8 @@ export function McpReference({ part }: { part: "instructions" | "tools" | "resou
   if (part === "tools") {
     return (
       <>
-        <Index
-          items={mcpData.tools.map((tool) => ({
-            id: `tool-${tool.name}`,
-            label: <code>{tool.name}</code>,
-            summary: firstSentence(tool.description),
-          }))}
-        />
         {mcpData.tools.map((tool) => (
-          <Entry key={tool.name} id={`tool-${tool.name}`} title={<code>{tool.name}</code>} description={tool.description}>
+          <Entry key={tool.name} id={`tool-${tool.name}`} title={<code>{tool.name}</code>} description={tool.description} collapsed>
             <Section title="Parameters">
               <Fields fields={fromSchema(tool.parameters.properties)} empty="This tool takes no parameters." />
             </Section>

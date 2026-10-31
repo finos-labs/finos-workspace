@@ -2,7 +2,7 @@ import type { AgentData, AgentField } from "../../data/types";
 import { agentData } from "./data";
 import { Fields, fromAgent } from "./fields";
 import { amount, slug, type Unit } from "./format";
-import { Chip, Entry, firstSentence, Index, ItemList, MethodBadge, Names, Section } from "./kit";
+import { Chip, Entry, firstSentence, ItemList, MethodBadge, Names, Section } from "./kit";
 import { InlineText, Prose } from "./prose";
 
 const MEBIBYTE = 1024 * 1024;
@@ -165,7 +165,6 @@ export function AgentMcpTools({ group }: { group: "backend" | "documents" | "wor
   const tools = agentData.mcp.tools.filter((tool) => tool.group === group);
   return (
     <>
-      <Index items={tools.map((tool) => ({ id: `agent-tool-${tool.name}`, label: <code>{tool.name}</code>, summary: firstSentence(tool.description) }))} />
       {tools.map((tool) => (
         <Entry
           key={tool.name}
@@ -173,6 +172,7 @@ export function AgentMcpTools({ group }: { group: "backend" | "documents" | "wor
           title={<code>{tool.name}</code>}
           description={tool.description}
           chips={tool.scoped ? <Chip>checks the signed chat scope of every call</Chip> : undefined}
+          collapsed
         >
           <dl>
             <dt>Registered</dt>
@@ -251,9 +251,8 @@ export function ExtraStateKeys() {
 export function BridgeCommands() {
   return (
     <>
-      <Index items={agentData.protocol.bridgeCommands.map((command) => ({ id: `bridge-${command.name}`, label: <code>{command.name}</code>, summary: firstSentence(command.description) }))} />
       {agentData.protocol.bridgeCommands.map((command) => (
-        <Entry key={command.name} id={`bridge-${command.name}`} title={<code>{command.name}</code>} description={command.description}>
+        <Entry key={command.name} id={`bridge-${command.name}`} title={<code>{command.name}</code>} description={command.description} collapsed>
           <Section title="Arguments">
             <FieldTable fields={command.fields} depth={1} />
           </Section>

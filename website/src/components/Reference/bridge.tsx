@@ -1,7 +1,7 @@
 import { FieldTable } from "./agent";
 import { bridgeData } from "./data";
 import type { Unit } from "./format";
-import { Entry, firstSentence, Index, ItemList, Section } from "./kit";
+import { Entry, ItemList, Section } from "./kit";
 import { Codes, FactValue, MessageTable } from "./plugins";
 
 export function BridgeValue({ of, unit, plain }: { of: string; unit?: Unit; plain?: boolean }) {
@@ -53,9 +53,8 @@ export function BridgeCommandSummary() {
 export function BridgeCommandFields() {
   return (
     <>
-      <Index items={bridgeData.commands.map((command) => ({ id: `bridge-command-${command.name}`, label: <code>{command.name}</code>, summary: firstSentence(command.meaning) }))} />
       {bridgeData.commands.map((command) => (
-        <Entry key={command.name} id={`bridge-command-${command.name}`} title={<code>{command.name}</code>} description={command.meaning}>
+        <Entry key={command.name} id={`bridge-command-${command.name}`} title={<code>{command.name}</code>} description={command.meaning} collapsed>
           <Section title="Arguments">
             <FieldTable fields={command.fields} depth={1} />
           </Section>

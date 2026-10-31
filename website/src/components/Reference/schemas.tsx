@@ -24,6 +24,7 @@ function SchemaBlock({ doc, id, heading }: { doc: SchemaDoc; id: string; heading
     <Entry
       id={id}
       level={heading ? 2 : 3}
+      collapsed={!heading}
       title={heading ? heading.title : <code>{doc.name}</code>}
       description={[heading?.description, doc.description].filter((text) => text !== undefined).join("\n\n")}
       chips={
@@ -109,7 +110,7 @@ export function DatabaseTables() {
   return (
     <>
       {databaseData.tables.map((table) => (
-        <Entry key={table.name} id={`table-${table.name}`} title={<code>{table.name}</code>}>
+        <Entry key={table.name} id={`table-${table.name}`} title={<code>{table.name}</code>} collapsed>
           <Section title="Columns">
           <TableWrap>
             <table>
