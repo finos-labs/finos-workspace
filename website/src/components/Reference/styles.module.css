@@ -94,6 +94,43 @@
   padding: 1rem 1.1rem 0.4rem;
 }
 
+.collapsible {
+  margin-bottom: 0.5rem;
+}
+
+.collapsible > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.8rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible > summary::before {
+  content: "▸";
+  color: var(--ifm-color-emphasis-600);
+  transition: transform 0.15s;
+}
+
+.collapsible[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.collapsible:not([open]) > summary {
+  border-bottom: 0;
+  border-radius: 8px;
+}
+
+.entryLead {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.95rem;
+}
+
 .byType {
   margin: 0 0 0.6rem;
   padding: 0;

@@ -56,6 +56,7 @@ function Operation({ operation, schemaPage }: { operation: ApiOperation; schemaP
       title={<code>{operation.path}</code>}
       lead={operation.summary}
       description={operation.description}
+      collapsed
     >
       {LOCATIONS.map(({ location, title }) =>
         parameters(location).length > 0 ? (
@@ -106,17 +107,6 @@ export function ApiTag({ tag, schemaPage }: { tag: string; schemaPage: string })
   if (found === undefined) throw new Error(`No API tag ${tag}`);
   return (
     <>
-      <ul className={styles.index}>
-        {found.operations.map((operation) => (
-          <li key={`${operation.method} ${operation.path}`}>
-            <MethodBadge method={operation.method} />
-            <a href={`#${operationId(operation.method, operation.path)}`}>
-              <code>{operation.path}</code>
-            </a>
-            <span className={styles.indexSummary}>{operation.summary}</span>
-          </li>
-        ))}
-      </ul>
       {found.operations.map((operation) => (
         <Operation key={`${operation.method} ${operation.path}`} operation={operation} schemaPage={schemaPage} />
       ))}

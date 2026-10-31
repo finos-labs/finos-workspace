@@ -45,15 +45,8 @@ export function AgentRoutes() {
 export function AgentHelperRoutes() {
   return (
     <>
-      <Index
-        items={agentData.http.helpers.map((helper) => ({
-          id: `helper-${slug(helper.path)}`,
-          label: <code>{helper.path}</code>,
-          summary: firstSentence(helper.detail),
-        }))}
-      />
       {agentData.http.helpers.map((helper) => (
-        <Entry key={helper.path} id={`helper-${slug(helper.path)}`} title={<code>{helper.path}</code>} description={helper.detail}>
+        <Entry key={helper.path} id={`helper-${slug(helper.path)}`} title={<code>{helper.path}</code>} lead={firstSentence(helper.detail)} description={helper.detail} collapsed>
           {helper.fields.length > 0 ? (
             <Section title="Request fields">
               <FieldTable fields={helper.fields} depth={1} />

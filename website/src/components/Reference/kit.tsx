@@ -25,6 +25,7 @@ export function Entry({
   lead,
   description,
   chips,
+  collapsed = false,
   children,
 }: {
   id: string;
@@ -34,22 +35,38 @@ export function Entry({
   lead?: string;
   description?: string;
   chips?: ReactNode;
+  collapsed?: boolean;
   children?: ReactNode;
 }) {
+  const heading = (
+    <Heading as={`h${level}`} id={id} className={styles.entryTitle}>
+      {badge}
+      {title}
+    </Heading>
+  );
+  const body = (
+    <div className={styles.entryBody}>
+      {lead && !collapsed ? <p className={styles.lead}>{lead}</p> : null}
+      {description ? <Prose text={description} /> : null}
+      {chips ? <div className={styles.chips}>{chips}</div> : null}
+      {children}
+    </div>
+  );
+  if (collapsed) {
+    return (
+      <details className={`${styles.entry} ${styles.collapsible}`}>
+        <summary className={styles.entryHeader}>
+          {heading}
+          {lead ? <span className={styles.entryLead}>{lead}</span> : null}
+        </summary>
+        {body}
+      </details>
+    );
+  }
   return (
     <section className={styles.entry}>
-      <header className={styles.entryHeader}>
-        <Heading as={`h${level}`} id={id} className={styles.entryTitle}>
-          {badge}
-          {title}
-        </Heading>
-      </header>
-      <div className={styles.entryBody}>
-        {lead ? <p className={styles.lead}>{lead}</p> : null}
-        {description ? <Prose text={description} /> : null}
-        {chips ? <div className={styles.chips}>{chips}</div> : null}
-        {children}
-      </div>
+      <header className={styles.entryHeader}>{heading}</header>
+      {body}
     </section>
   );
 }
