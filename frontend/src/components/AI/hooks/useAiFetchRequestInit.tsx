@@ -1,12 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import type { WidgetId } from "~/components/Widgets";
-import {
-  ALL_AI_FEATURES,
-  getAiApiUrl,
-  getDefaultCopilot,
-  MAX_COPILOT_LINKS,
-} from "~/lib/constants";
+import { ALL_AI_FEATURES, getAiApiUrl, MAX_COPILOT_LINKS } from "~/lib/constants";
 import {
   type ArtifactT,
   type Copilot,
@@ -293,7 +288,7 @@ export function useAiFetchRequestInit() {
         init: {
           method: "POST",
           signal: abortSignal,
-          headers: getCopilotRequestHeaders(undefined, targetAgent),
+          headers: getCopilotRequestHeaders(),
           body: JSON.stringify(payload),
         },
       };
@@ -406,7 +401,7 @@ export function useAiFetchRequestInit() {
         init: {
           method: "POST",
           signal: abortSignal,
-          headers: getCopilotRequestHeaders(xHeaders?.traceId, targetAgent),
+          headers: getCopilotRequestHeaders(xHeaders?.traceId),
           body: JSON.stringify(payload),
         },
       };
@@ -442,7 +437,7 @@ export function useAiFetchRequestInit() {
         url: `${getAiApiUrl()}/v1/generate/chat/title`,
         init: {
           method: "POST",
-          headers: getCopilotRequestHeaders(xTraceId, getDefaultCopilot()),
+          headers: getCopilotRequestHeaders(xTraceId),
           body: JSON.stringify(payload),
         },
       };

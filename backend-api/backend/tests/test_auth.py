@@ -365,8 +365,8 @@ class TestOAuthErrorHandling:
         assert response.status_code != 500
 
     @pytest.mark.asyncio
-    async def test_microsoft_auth_missing_token(self, app_client):
-        response = await app_client.post("/app/microsoft-auth", json={})
+    async def test_microsoft_sign_in_that_is_not_configured_is_refused(self, app_client):
+        response = await app_client.post("/app/sign-in/microsoft/start", json={})
         assert response.status_code in {400, 401, 422}
 
     @pytest.mark.asyncio

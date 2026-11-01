@@ -39,7 +39,11 @@ export const EndpointHeadersForm = forwardRef<HTMLFormElement, EndpointHeaderPro
                 render={({ field }) => (
                   <FormInput
                     label="Value"
-                    placeholder="Value"
+                    placeholder={
+                      name === "endpointHeaders"
+                        ? "Saved on the server: leave blank to keep it"
+                        : "Value"
+                    }
                     {...field}
                     className=""
                   />

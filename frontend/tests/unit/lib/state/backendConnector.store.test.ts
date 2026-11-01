@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
+import { throughSourceProxy } from "../../../mocks/sourceProxy";
 import { installWidgetsSchemaFixture } from "../../../mocks/widgetsSchema";
 
 installWidgetsSchemaFixture();
@@ -15,7 +16,7 @@ vi.mock("sonner", () => ({
 }));
 
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+global.fetch = throughSourceProxy(mockFetch);
 
 const mockSource: Source = {
   id: "source-1",

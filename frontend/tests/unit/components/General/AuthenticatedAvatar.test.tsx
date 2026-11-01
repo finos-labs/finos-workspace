@@ -12,8 +12,8 @@ const SOURCE = partial<Source>({
   uuid: "src-1",
   url: "https://backend.test",
   endpointHeaders: [
-    { key: "X-API-KEY", value: "backend-key", location: "headers" },
-    { key: "token", value: "backend-token", location: "query" },
+    { key: "X-API-KEY", value: "", location: "headers" },
+    { key: "token", value: "", location: "query" },
   ],
 });
 
@@ -28,9 +28,9 @@ const requestFor = (src: string) => {
   return vi.mocked(useJsonData).mock.calls.at(-1)?.[0].request;
 };
 
-const sentAs = (url: string, credentials: Record<string, string>) => ({
+const sentAs = (url: string, sourceId?: string) => ({
   ok: true,
-  request: { url, method: "GET", credentials },
+  request: { url, method: "GET", ...(sourceId ? { sourceId } : {}) },
 });
 
 describe("AuthenticatedAvatar", () => {
@@ -39,29 +39,26 @@ describe("AuthenticatedAvatar", () => {
     useBackendConnectorStore.setState({ apiSources: [SOURCE], sourcesLoaded: true });
   });
 
-  it("fetches an image on the backend's origin with its headers, and its query rows as params", () => {
+  it("fetches an image on the backend's origin through the API, by the source's id", () => {
     expect(requestFor("https://backend.test/img/logo.png")).toMatchObject(
-      sentAs("https://backend.test/img/logo.png?token=backend-token", {
-        "X-API-KEY": "backend-key",
-      }),
+      sentAs("https://backend.test/img/logo.png", "src-1"),
     );
   });
 
-  it("gives an image anywhere else none of them, a lookalike host included", () => {
+  it("gives an image anywhere else no source, a lookalike host included", () => {
     for (const src of [
       "https://backend.test.evil.example/logo.png",
       "https://elsewhere.test/logo.png",
     ]) {
-      expect(requestFor(src)).toMatchObject(sentAs(src, {}));
+      expect(requestFor(src)).toMatchObject(sentAs(src));
+      expect(requestFor(src)).not.toHaveProperty("request.sourceId");
     }
   });
 
   it("finds an image given as a path on the backend, as its thumbnails are", () => {
     for (const src of ["/thumbnails/numbers", "thumbnails/numbers"]) {
       expect(requestFor(src)).toMatchObject(
-        sentAs("https://backend.test/thumbnails/numbers?token=backend-token", {
-          "X-API-KEY": "backend-key",
-        }),
+        sentAs("https://backend.test/thumbnails/numbers", "src-1"),
       );
     }
   });
@@ -75,7 +72,7 @@ describe("AuthenticatedAvatar", () => {
     );
   });
 
-  it("waits for the backends' credentials before asking for an image on one", () => {
+  it("waits for the backends to load before asking for an image on one", () => {
     useBackendConnectorStore.setState({ sourcesLoaded: false });
 
     expect(requestFor("https://backend.test/img/logo.png")).toBeNull();
@@ -87,10 +84,10 @@ describe("Avatar", () => {
   const credentialed = {
     src: "https://backend.test/img/logo.png",
     alt: "App",
-    headers: { "X-API-KEY": "backend-key" },
+    sourceId: "src-1",
   };
 
-  it("never shows an image that needs credentials from its bare address while it is fetched", () => {
+  it("never shows an image that needs its source from its bare address while it is fetched", () => {
     fetchState({});
     render(<Avatar {...credentialed} />);
 

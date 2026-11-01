@@ -84,7 +84,10 @@ describe("the widgets.json schema kit", () => {
   it("keeps the iframe to GET and the query, and its storage to an MCP URL", () => {
     expect(kit.types.iframe.methods).toEqual(["GET"]);
     expect(kit.types.iframe.locations).toEqual(["query"]);
-    expect(Object.keys(kit.types.iframe.properties)).toEqual(["storage"]);
+    expect(Object.keys(kit.types.iframe.properties)).toEqual([
+      "requires_auth",
+      "storage",
+    ]);
     expect(kit.types.markdown.properties).toEqual({});
   });
 });

@@ -28,10 +28,6 @@ describe("configFromEnv", () => {
     expect(cfg.urls).toEqual({ backend: "", ai: "" });
     expect(cfg.authProviders).toEqual({
       googleClientId: "",
-      azureClientId: "",
-      azureTenantId: "",
-      oktaClientId: "",
-      oktaDomain: "",
     });
     expect(cfg.links.docsUrl).toBe("");
     expect(cfg.contact.supportEmail).toBe("");
@@ -53,7 +49,6 @@ describe("configFromEnv", () => {
       VITE_BACKEND_URL: "https://backend.test",
       VITE_AI_API_URL: "https://ai.test",
       VITE_GOOGLE_OAUTH_CLIENT_ID: "google-id",
-      VITE_OKTA_DOMAIN: "okta.test",
       VITE_DOCS_URL: "https://docs.test",
       VITE_SUPPORT_EMAIL: "help@docs.test",
       VITE_WL_NAME: "Acme",
@@ -64,7 +59,6 @@ describe("configFromEnv", () => {
       ai: "https://ai.test",
     });
     expect(cfg.authProviders.googleClientId).toBe("google-id");
-    expect(cfg.authProviders.oktaDomain).toBe("okta.test");
     expect(cfg.links.docsUrl).toBe("https://docs.test");
     expect(cfg.contact.supportEmail).toBe("help@docs.test");
     expect(cfg.whiteLabel.name).toBe("Acme");

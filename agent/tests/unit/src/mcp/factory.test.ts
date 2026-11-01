@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import { expect } from "expect";
+import { asSchema } from "ai";
 import { linkedToolName, makeMcpTools } from "../../../../src/mcp/factory.ts";
 import type { AgentTool } from "../../../../src/protocol/types.ts";
 
@@ -10,6 +11,13 @@ function tool(overrides: Partial<AgentTool>): AgentTool {
     url: "u",
     ...overrides,
   };
+}
+
+function modelFacingKeys(offered: { inputSchema: unknown }): string[] {
+  const json = asSchema(offered.inputSchema as Parameters<typeof asSchema>[0]).jsonSchema as {
+    properties: Record<string, unknown>;
+  };
+  return Object.keys(json.properties);
 }
 
 describe("makeMcpTools — sanitization", () => {
@@ -127,8 +135,7 @@ describe("makeMcpTools — input schema strips x-agent-*", () => {
         },
       }),
     ]);
-    const t = out.toolSet.query_documents as unknown as { inputSchema: { shape: Record<string, unknown> } };
-    const keys = Object.keys(t.inputSchema.shape);
+    const keys = modelFacingKeys(out.toolSet.query_documents);
     expect(keys).toContain("query");
     expect(keys).toContain("display_summary");
     expect(keys).not.toContain("x-agent-documents");
@@ -249,8 +256,7 @@ describe("makeMcpTools — the FINOS Workspace's own tools", () => {
       sanitizedName: "Workspace_create_widget",
       description: "Create one widget on a target dashboard.",
     });
-    const schema = out.toolSet.Workspace_create_widget as unknown as { inputSchema: { shape: Record<string, unknown> } };
-    expect(Object.keys(schema.inputSchema.shape)).toContain("widget_id");
+    expect(modelFacingKeys(out.toolSet.Workspace_create_widget)).toContain("widget_id");
     expect(out.isMcpToolName("Workspace_update_widget")).toBe(true);
   });
 

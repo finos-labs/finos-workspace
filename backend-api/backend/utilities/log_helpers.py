@@ -42,7 +42,7 @@ _BARE_PAIR = re.compile(
 _AUTH_SCHEME = re.compile(
     r"\b(?P<scheme>Bearer|Basic|Digest)\s++[A-Za-z0-9\-._~+/]++=*", re.IGNORECASE
 )
-_WORKSPACE_TOKEN = re.compile(r"\bws_mcp_[A-Za-z0-9_-]++")
+_WORKSPACE_TOKEN = re.compile(r"\bws_(?:mcp|frame)_[A-Za-z0-9_.-]++")
 _SESSION_COOKIE = re.compile(r"(?P<name>__Host-ws_\w++)=[^;\s'\",]++")
 
 

@@ -33,6 +33,7 @@ import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
 import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import {
   type Source,
+  useBackendConnectorStore,
   useShallowBackendConnectorStore,
 } from "~/lib/state/backendConnector";
 import {
@@ -777,6 +778,7 @@ function Connections() {
         }
       },
       enabled: true,
+      staleTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
     })),
   });
@@ -801,6 +803,7 @@ function Connections() {
   const handleRefresh = useCallback(async () => {
     dispatch({ isRefreshing: true });
     try {
+      useBackendConnectorStore.getState().forgetValidation();
       const agentsRefresh = agentQueries.map(async (q) => await q.refetch());
       await refetch();
       await Promise.all(agentsRefresh);

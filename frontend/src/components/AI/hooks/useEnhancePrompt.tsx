@@ -151,7 +151,7 @@ export function useEnhancePrompt() {
 
         const response = await fetchAgent(`${getAiApiUrl()}/v1/enhance_prompt`, {
           method: "POST",
-          headers: getCopilotRequestHeaders(undefined, getDefaultCopilot()),
+          headers: getCopilotRequestHeaders(),
           body: JSON.stringify(payload),
         });
 

@@ -34,6 +34,8 @@ export function getPreviousCronDate(expression: string, from = new Date()) {
   return parseCron(expression)?.previousRuns(1, from)[0] ?? null;
 }
 
+export const CRON_JITTER_MS = 15_000;
+
 export function getMillisecondsUntilNextCron(expression: string, from = Date.now()) {
   const nextDate = getNextCronDate(expression, new Date(from));
   if (!nextDate) return false;
@@ -56,6 +58,11 @@ export function resolveCronRefetchInterval<Q extends IntervalQuery>(
   if (typeof interval !== "string") return interval;
   if (!interval.trim()) return false;
 
-  return (query) =>
-    getMillisecondsUntilNextCron(interval, query?.state?.dataUpdatedAt || Date.now());
+  return (query) => {
+    const wait = getMillisecondsUntilNextCron(
+      interval,
+      query?.state?.dataUpdatedAt || Date.now(),
+    );
+    return wait === false ? false : wait + Math.floor(Math.random() * CRON_JITTER_MS);
+  };
 }

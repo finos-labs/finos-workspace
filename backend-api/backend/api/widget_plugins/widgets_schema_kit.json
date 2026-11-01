@@ -2315,6 +2315,10 @@
       "summary": "An existing web page",
       "returns": "Nothing: the endpoint is the page's URL, which the browser opens",
       "properties": {
+        "requires_auth": {
+          "type": "boolean",
+          "description": "The page needs the backend connection's credentials. The browser then opens it through the FINOS Workspace API, which adds them, in a sandbox without storage. For trusted pages only: the API checks this declaration itself"
+        },
         "storage": {
           "type": "object",
           "properties": {
@@ -2414,6 +2418,7 @@
       "accept",
       "x-microsoft-id-token",
       "x-okta-id-token",
+      "x-workspace-identity",
       "x-workspace-user"
     ]
   }

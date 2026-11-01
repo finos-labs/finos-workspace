@@ -26,6 +26,7 @@ What you should see: a JSON **object** keyed by widget id. Common failures:
 - 404 → route isn't registered. Check the route exists and is `GET`.
 - 500 / parse error → likely a JSON file read with the wrong encoding. On Windows, defaulting to `cp1252` mangles non-ASCII. Read JSON files as UTF-8 explicitly.
 - CORS error in the browser console → backend isn't allowing the origin the FINOS Workspace is served from (or `http://localhost:1420`). Add the origin.
+- The widget shows an error with no data → the FINOS Workspace API could not reach the backend: its refusals carry the header `X-Workspace-Proxy-Error` (`403`: a connection that is not a superuser's must be a public `https` address; `502`: nothing answered). A status the backend itself returned is shown as it came.
 
 ## 2. Fetch `/apps.json` directly (if the app ships templates)
 
@@ -78,9 +79,9 @@ Common failures:
 
 If the backend works from `curl` but fails in FINOS Workspace:
 
-- CORS: open the browser devtools network tab while loading the dashboard. CORS failures show as red entries with no response body. Add the missing origin.
+- CORS: open the browser devtools network tab while loading the dashboard. CORS failures show as red entries with no response body. Add the missing origin, and answer `OPTIONS` on every route.
 - Auth: if the backend requires a header or query string, confirm FINOS Workspace's backend connection has it configured (Settings → Data Connectors → edit the connection).
-- Mixed content: a backend served over HTTP can't be reached from an HTTPS FINOS Workspace. Use HTTPS in production.
+- Reachability: the API must reach the backend. A connection that is not a superuser's must be a public `https` address, unless the stack runs with `MODE=local`; a superuser's may be a private one anywhere. From a container, `localhost` is the container itself: use `host.docker.internal` for a backend on your machine.
 
 ## 6. Parameter sync isn't working
 

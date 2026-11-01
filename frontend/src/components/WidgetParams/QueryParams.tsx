@@ -26,7 +26,6 @@ import GroupDropdown from "~/components/Widgets/Helpers/GroupDropdown";
 import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGroupBindings";
 import { useIsFirstRender } from "~/hooks/useIsFirstRender";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import {
   beautifySlug,
@@ -43,12 +42,9 @@ import {
   triggerCustomEvent,
   useEventListener,
 } from "~/lib/utils";
+import { fetchRequest } from "~/lib/utils/fetch";
 import { someTruthy } from "~/lib/utils/values";
-import {
-  RequestProblemsError,
-  requestInit,
-  requestKey,
-} from "~/lib/utils/widgetRequest";
+import { RequestProblemsError, requestKey } from "~/lib/utils/widgetRequest";
 import CompareTermsParam from "./CompareTermsParam";
 import { TabsParam } from "./TabsParam";
 
@@ -94,7 +90,6 @@ function replaceFailed(
 
 export function useWidgetParamsPositions(enabled = true) {
   const { widget, updateWidget } = useWidgetContext();
-  const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
   const { setWidgetCopilotDraftParams, beginWidgetCopilotExecution } =
     useShallowCopilotDataStore((s) => ({
       setWidgetCopilotDraftParams: s.setWidgetCopilotDraftParams,
@@ -302,10 +297,10 @@ export function useWidgetParamsPositions(enabled = true) {
         queryFn: async ({ signal }) => {
           if (!built) return [];
           if (!built.ok) throw new RequestProblemsError(built.problems);
-          const res = await fetch(
-            built.request.url,
-            requestInit(built.request, { signal, credentials: "omit" }),
-          );
+          const res = await fetchRequest(built.request, {
+            signal,
+            credentials: "omit",
+          });
           if (res.ok) {
             return await res.json();
           }
@@ -323,7 +318,6 @@ export function useWidgetParamsPositions(enabled = true) {
     widget.endpoint,
     widget.params,
     widget.sourceId,
-    credentials,
     state.localParams,
     widget.refreshQuery,
   ]);

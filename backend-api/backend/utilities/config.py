@@ -686,8 +686,12 @@ class GeneralSettings(BaseModel):
     GOOGLE_OAUTH_CLIENT_ID: str | None = None
     AZURE_CLIENT_ID: str | None = None
     AZURE_TENANT_ID: str | None = None
+    AZURE_CLIENT_SECRET: str | None = None
     OKTA_CLIENT_ID: str | None = None
+    OKTA_CLIENT_SECRET: str | None = None
     OKTA_DOMAIN: str | None = None
+    AUTHENTICATION_SEND_MICROSOFT_IDTOKEN: bool = False
+    AUTHENTICATION_SEND_OKTA_IDTOKEN: bool = False
     UNUSABLE_JSON_CHARACTERS: set[str] = {"?"}
     MAX_DICT_LEN: int = 100_000
     WORKERS: int = 3

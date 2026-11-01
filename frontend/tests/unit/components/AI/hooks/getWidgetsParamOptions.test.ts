@@ -157,9 +157,8 @@ describe("getWidgetsParamOptions", () => {
       );
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          url: "https://api.example.com/portfolios?region=america",
-        }),
+        "https://api.example.com/portfolios?region=america",
+        expect.anything(),
       );
     });
 
@@ -189,9 +188,8 @@ describe("getWidgetsParamOptions", () => {
       );
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          url: "https://api.example.com/portfolios?staticParam=staticValue",
-        }),
+        "https://api.example.com/portfolios?staticParam=staticValue",
+        expect.anything(),
       );
     });
 
@@ -224,9 +222,8 @@ describe("getWidgetsParamOptions", () => {
       );
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          url: expect.stringContaining("limit=10"),
-        }),
+        expect.stringContaining("limit=10"),
+        expect.anything(),
       );
     });
 
@@ -399,7 +396,7 @@ describe("getWidgetsParamOptions", () => {
     });
   });
 
-  describe("the data backend's credentials", () => {
+  describe("the data backend", () => {
     beforeEach(() => {
       useBackendConnectorStore.setState({
         apiSources: [
@@ -407,9 +404,9 @@ describe("getWidgetsParamOptions", () => {
             id: "src-1",
             url: "https://api.example.com",
             endpointHeaders: [
-              { key: "Authorization", value: "Bearer token123" },
-              { key: "X-Custom-Header", value: "custom-value", location: "headers" },
-              { key: "apikey", value: "query-value", location: "query" },
+              { key: "Authorization", value: "" },
+              { key: "X-Custom-Header", value: "", location: "headers" },
+              { key: "apikey", value: "", location: "query" },
             ],
           }),
         ],
@@ -443,21 +440,25 @@ describe("getWidgetsParamOptions", () => {
         ),
       );
 
-    it("go with an options request to the backend's origin: headers and query", async () => {
+    it("is asked through the API by its id, with no credentials in the request", async () => {
       await askForOptions("https://api.example.com/regions");
 
-      const request = vi.mocked(fetch).mock.calls[0][0] as Request;
-      expect(request.headers.get("Authorization")).toBe("Bearer token123");
-      expect(request.headers.get("X-Custom-Header")).toBe("custom-value");
-      expect(new URL(request.url).searchParams.get("apikey")).toBe("query-value");
+      const [route, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+      expect(route).toMatch(/\/app\/data-connectors\/api-source\/src-1\/request$/);
+      expect(JSON.parse(String(init.body))).toMatchObject({
+        url: "https://api.example.com/regions",
+        method: "GET",
+      });
+      expect(String(init.body)).not.toContain("apikey");
+      expect(new Headers(init.headers).has("Authorization")).toBe(false);
     });
 
-    it("never go to an options endpoint on another origin", async () => {
+    it("is not asked through the API for an options endpoint on another origin", async () => {
       await askForOptions("https://elsewhere.test/regions");
 
-      const request = vi.mocked(fetch).mock.calls[0][0] as Request;
-      expect(request.headers.get("Authorization")).toBeNull();
-      expect(new URL(request.url).searchParams.get("apikey")).toBeNull();
+      const [url, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+      expect(url).toBe("https://elsewhere.test/regions");
+      expect(new Headers(init.headers).has("Authorization")).toBe(false);
     });
   });
 });

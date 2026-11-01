@@ -1,65 +1,48 @@
 import { renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { useGetCopilotRequestHeaders } from "~/components/AI/hooks/useGetCopilotRequestHeaders";
-import { getDefaultCopilot } from "~/lib/constants";
-import { type Copilot, useCopilotStore } from "~/lib/state/copilot";
-import { clearIdpTokens, setIdpTokens } from "~/lib/state/idpTokens";
+import { useCopilotStore } from "~/lib/state/copilot";
+import { clearUserEmail, setUserEmail } from "~/lib/state/userEmail";
 import { mockConfig } from "../../../../mocks/runtimeConfig";
-import { partial } from "../../../mocks";
 
-const customAgent = partial<Copilot>({ id: "custom-agent", holderUuid: "holder-1" });
-const holderHeaders = { "X-Agent-Key": "agent-key" };
-
-function getHeaders(agent?: Copilot) {
+function getHeaders(traceId?: string) {
   const { result } = renderHook(() => useGetCopilotRequestHeaders());
-  return result.current("trace-1", agent);
+  return result.current(traceId);
 }
 
 describe("useGetCopilotRequestHeaders", () => {
   afterEach(() => {
-    clearIdpTokens();
+    clearUserEmail();
     mockConfig.authentication.sendUserEmailAsHeader = false;
     useCopilotStore.setState({ externalCopilotHolders: [] });
   });
 
-  it("adds no FINOS Workspace credential and no user id for the default Copilot", () => {
-    setIdpTokens({ email: "user@example.com" });
-
-    expect(getHeaders(getDefaultCopilot())).toEqual({
+  it("names the content type and the trace id and nothing else", () => {
+    expect(getHeaders("trace-1")).toEqual({
       "Content-Type": "application/json",
       "X-Trace-Id": "trace-1",
     });
   });
 
-  it("sends a custom agent its own headers, looked up by its holder", () => {
-    useCopilotStore.setState({
-      externalCopilotHolders: [
-        { uuid: "holder-1", url: "https://agent.test", headers: holderHeaders },
-      ],
-    });
-
-    expect(getHeaders(customAgent)).toEqual({
-      "X-Agent-Key": "agent-key",
-      "Content-Type": "application/json",
-      "X-Trace-Id": "trace-1",
-    });
+  it("falls back to the current chat as the trace id", () => {
+    const { result } = renderHook(() => useGetCopilotRequestHeaders());
+    expect(result.current()["X-Trace-Id"]).toBe(
+      useCopilotStore.getState().getCurrentChat().uuid,
+    );
   });
 
-  it("adds the identity headers the deployment forwards without saving them", () => {
+  it("holds no agent credential and no identity: the API adds them on its side", () => {
     mockConfig.authentication.sendUserEmailAsHeader = true;
-    setIdpTokens({ email: "user@example.com" });
+    setUserEmail("user@example.com");
     useCopilotStore.setState({
       externalCopilotHolders: [
-        { uuid: "holder-1", url: "https://agent.test", headers: holderHeaders },
+        { uuid: "holder-1", url: "https://agent.test", headerNames: ["X-Agent-Key"] },
       ],
     });
 
-    expect(getHeaders(customAgent)).toMatchObject({
-      "X-Agent-Key": "agent-key",
-      "X-Workspace-User": "user@example.com",
-    });
-    expect(useCopilotStore.getState().externalCopilotHolders[0].headers).toEqual({
-      "X-Agent-Key": "agent-key",
-    });
+    expect(Object.keys(getHeaders("trace-1")).sort()).toEqual([
+      "Content-Type",
+      "X-Trace-Id",
+    ]);
   });
 });

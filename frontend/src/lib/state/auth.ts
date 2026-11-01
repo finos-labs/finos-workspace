@@ -5,14 +5,13 @@ import { shallow } from "zustand/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { setOnSessionRefused } from "~/api/api";
 import { getSession, logout } from "~/api/auth.api";
-import { getEnabledIdentityProviders } from "~/lib/identityProviders";
 import { useAccessStore } from "~/lib/state/access";
 import { clearAgentToken } from "~/lib/state/agentToken";
 import type { Selector } from "~/lib/state/app";
 import { useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
-import { clearIdpTokens, setIdpTokens } from "~/lib/state/idpTokens";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
+import { clearUserEmail, setUserEmail } from "~/lib/state/userEmail";
 import { showNotification } from "~/lib/utils/toast";
 import type { LoginResponse, SessionResponse } from "~/types/auth.type";
 import { refreshExternalCopilotHolders, useCopilotStore } from "./copilot";
@@ -74,12 +73,6 @@ async function clearPersistedStores() {
   );
 }
 
-async function clearMicrosoftCache() {
-  if (!getEnabledIdentityProviders().includes("microsoft")) return;
-  const { getMsalInstance } = await import("~/lib/microsoft-auth-config");
-  await getMsalInstance().clearCache();
-}
-
 async function signOut(signedIn: boolean) {
   if (signedIn) {
     const data = await logout();
@@ -93,16 +86,11 @@ async function signOut(signedIn: boolean) {
     }
   }
   clearAgentToken();
-  clearIdpTokens();
+  clearUserEmail();
   useMcpToolsStore.getState().clearAllStorage();
   useCopilotAccessStore.getState().setAccess(null);
   window.sessionStorage.clear();
-  await Promise.all([
-    clearPersistedStores(),
-    clearMicrosoftCache().catch((error) =>
-      console.error("Could not clear the Microsoft sign-in cache:", error),
-    ),
-  ]);
+  await clearPersistedStores();
   window.history.pushState(null, "", "/login");
   window.location.reload();
 }
@@ -122,7 +110,7 @@ export const useAuthStore = createWithEqualityFn<AuthState>()(
         data.user.display_settings ?? {};
       data.user.display_settings = displaySettings;
 
-      setIdpTokens({ email: data.email });
+      setUserEmail(data.email);
       set({
         user: {
           email: data.email,
