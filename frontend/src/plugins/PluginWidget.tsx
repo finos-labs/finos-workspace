@@ -204,16 +204,13 @@ function PluginWidgetBody({
     : undefined;
   const streamTarget = useMemo(() => {
     if (!streamHref) return null;
-    const built = buildWidgetRequest(
-      {
-        endpoint: { url: streamHref, method: "GET" },
-        params: widget.params,
-        storage: widget.storage,
-      },
-      credentials,
-    );
+    const built = buildWidgetRequest({
+      endpoint: { url: streamHref, method: "GET" },
+      params: widget.params,
+      storage: widget.storage,
+    });
     return built?.ok ? webSocketUrl(built.request.url) : null;
-  }, [streamHref, widget.params, widget.storage?.params, credentials]);
+  }, [streamHref, widget.params, widget.storage?.params]);
   const frameRunning = status.kind === "running";
   const stream = useRef<Stream | null>(null);
   useEffect(() => {
