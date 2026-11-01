@@ -5020,6 +5020,43 @@
       ]
     },
     {
+      "bom-ref": "pkg:npm/agent?package-id=c77a472101521eaa",
+      "type": "library",
+      "name": "agent",
+      "version": "UNKNOWN",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:agent:agent:*:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/agent",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "javascript-lock-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "javascript"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "npm"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "javascript-npm-package-lock-entry"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/package-lock.json"
+        }
+      ]
+    },
+    {
       "bom-ref": "pkg:npm/ai@6.0.142?package-id=e5d7f2ed013da104",
       "type": "library",
       "name": "ai",
@@ -10244,43 +10281,6 @@
       ],
       "cpe": "cpe:2.3:a:immediate:immediate:3.0.6:*:*:*:*:*:*:*",
       "purl": "pkg:npm/immediate@3.0.6",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "javascript-lock-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "javascript"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "npm"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "javascript-npm-package-lock-entry"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/package-lock.json"
-        }
-      ]
-    },
-    {
-      "bom-ref": "pkg:npm/ines?package-id=f0a2829d84999fd8",
-      "type": "library",
-      "name": "ines",
-      "version": "UNKNOWN",
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:ines:ines:*:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/ines",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -17875,6 +17875,42 @@
       ]
     },
     {
+      "ref": "pkg:npm/agent?package-id=c77a472101521eaa",
+      "dependsOn": [
+        "pkg:npm/%40ai-sdk/groq@3.0.72?package-id=4553ca4ee2661481",
+        "pkg:npm/%40ai-sdk/openai@3.0.125?package-id=c919641eab0da204",
+        "pkg:npm/%40ai-sdk/provider@3.0.18?package-id=e2fadaeba2464219",
+        "pkg:npm/%40ai-sdk/provider@3.0.8?package-id=d6dce1d298f1be09",
+        "pkg:npm/%40grpc/grpc-js@1.14.6?package-id=b8f9a49c190a07b8",
+        "pkg:npm/%40hono/mcp@0.2.5?package-id=8938bd6e61baff34",
+        "pkg:npm/%40hono/node-server@2.1.5?package-id=39746fe64f3dda67",
+        "pkg:npm/%40logtape/hono@2.4.0?package-id=f7e7b792580f83fc",
+        "pkg:npm/%40logtape/logtape@2.4.0?package-id=eee45118cc2233c6",
+        "pkg:npm/%40mixmark-io/domino@2.2.0?package-id=cf4b4ebfdc624213",
+        "pkg:npm/%40modelcontextprotocol/sdk@1.32.1?package-id=27bdcf43e38a1334",
+        "pkg:npm/%40openrouter/ai-sdk-provider@2.10.0?package-id=471f276d90502f41",
+        "pkg:npm/%40opentelemetry/api@1.9.0?package-id=25dbed0dbf9af7c7",
+        "pkg:npm/%40opentelemetry/api@1.9.1?package-id=d862bc5c97489c57",
+        "pkg:npm/%40opentelemetry/exporter-trace-otlp-http@0.221.0?package-id=7bbbeff9182c26e2",
+        "pkg:npm/%40opentelemetry/resources@2.10.0?package-id=2b896a90ae37519f",
+        "pkg:npm/%40opentelemetry/resources@2.12.0?package-id=37ac53b227e457c5",
+        "pkg:npm/%40opentelemetry/sdk-trace-node@2.12.0?package-id=30cbba6faef701df",
+        "pkg:npm/%40opentelemetry/semantic-conventions@1.43.0?package-id=3ea6681c6222a2ab",
+        "pkg:npm/ai@6.0.142?package-id=e5d7f2ed013da104",
+        "pkg:npm/cheerio@1.2.0?package-id=24f9e4c7ba0d25d9",
+        "pkg:npm/exceljs@4.4.0?package-id=abe7a740762c8239",
+        "pkg:npm/gpt-tokenizer@3.4.0?package-id=f33846e9fb3fa829",
+        "pkg:npm/hono@4.13.13?package-id=7c5c5d04bd18d75d",
+        "pkg:npm/ioredis@5.10.1?package-id=bcd36b93cdd7e0a3",
+        "pkg:npm/mammoth@1.13.0?package-id=c1dc392c0cdd09ad",
+        "pkg:npm/ollama-ai-provider-v2@3.6.0?package-id=744cb3cee5d045a3",
+        "pkg:npm/turndown@7.2.4?package-id=de150d06a7caabb1",
+        "pkg:npm/unpdf@1.8.1?package-id=884da1b02cba754b",
+        "pkg:npm/ws@8.22.0?package-id=d94915b6c2e19e85",
+        "pkg:npm/zod@4.6.7?package-id=4ee4a886887dd62f"
+      ]
+    },
+    {
       "ref": "pkg:npm/ai@6.0.142?package-id=e5d7f2ed013da104",
       "dependsOn": [
         "pkg:npm/%40ai-sdk/gateway@3.0.84?package-id=331bb341e0ea32c9",
@@ -18365,42 +18401,6 @@
       "ref": "pkg:npm/iconv-lite@0.7.3?package-id=3ee96f4850abeb4d",
       "dependsOn": [
         "pkg:npm/safer-buffer@2.1.2?package-id=ada4571adde331f9"
-      ]
-    },
-    {
-      "ref": "pkg:npm/ines?package-id=f0a2829d84999fd8",
-      "dependsOn": [
-        "pkg:npm/%40ai-sdk/groq@3.0.72?package-id=4553ca4ee2661481",
-        "pkg:npm/%40ai-sdk/openai@3.0.125?package-id=c919641eab0da204",
-        "pkg:npm/%40ai-sdk/provider@3.0.18?package-id=e2fadaeba2464219",
-        "pkg:npm/%40ai-sdk/provider@3.0.8?package-id=d6dce1d298f1be09",
-        "pkg:npm/%40grpc/grpc-js@1.14.6?package-id=b8f9a49c190a07b8",
-        "pkg:npm/%40hono/mcp@0.2.5?package-id=8938bd6e61baff34",
-        "pkg:npm/%40hono/node-server@2.1.5?package-id=39746fe64f3dda67",
-        "pkg:npm/%40logtape/hono@2.4.0?package-id=f7e7b792580f83fc",
-        "pkg:npm/%40logtape/logtape@2.4.0?package-id=eee45118cc2233c6",
-        "pkg:npm/%40mixmark-io/domino@2.2.0?package-id=cf4b4ebfdc624213",
-        "pkg:npm/%40modelcontextprotocol/sdk@1.32.1?package-id=27bdcf43e38a1334",
-        "pkg:npm/%40openrouter/ai-sdk-provider@2.10.0?package-id=471f276d90502f41",
-        "pkg:npm/%40opentelemetry/api@1.9.0?package-id=25dbed0dbf9af7c7",
-        "pkg:npm/%40opentelemetry/api@1.9.1?package-id=d862bc5c97489c57",
-        "pkg:npm/%40opentelemetry/exporter-trace-otlp-http@0.221.0?package-id=7bbbeff9182c26e2",
-        "pkg:npm/%40opentelemetry/resources@2.10.0?package-id=2b896a90ae37519f",
-        "pkg:npm/%40opentelemetry/resources@2.12.0?package-id=37ac53b227e457c5",
-        "pkg:npm/%40opentelemetry/sdk-trace-node@2.12.0?package-id=30cbba6faef701df",
-        "pkg:npm/%40opentelemetry/semantic-conventions@1.43.0?package-id=3ea6681c6222a2ab",
-        "pkg:npm/ai@6.0.142?package-id=e5d7f2ed013da104",
-        "pkg:npm/cheerio@1.2.0?package-id=24f9e4c7ba0d25d9",
-        "pkg:npm/exceljs@4.4.0?package-id=abe7a740762c8239",
-        "pkg:npm/gpt-tokenizer@3.4.0?package-id=f33846e9fb3fa829",
-        "pkg:npm/hono@4.13.13?package-id=7c5c5d04bd18d75d",
-        "pkg:npm/ioredis@5.10.1?package-id=bcd36b93cdd7e0a3",
-        "pkg:npm/mammoth@1.13.0?package-id=c1dc392c0cdd09ad",
-        "pkg:npm/ollama-ai-provider-v2@3.6.0?package-id=744cb3cee5d045a3",
-        "pkg:npm/turndown@7.2.4?package-id=de150d06a7caabb1",
-        "pkg:npm/unpdf@1.8.1?package-id=884da1b02cba754b",
-        "pkg:npm/ws@8.22.0?package-id=d94915b6c2e19e85",
-        "pkg:npm/zod@4.6.7?package-id=4ee4a886887dd62f"
       ]
     },
     {
