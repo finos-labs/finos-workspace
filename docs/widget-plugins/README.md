@@ -209,7 +209,7 @@ Compose networks cannot restrict ports, so the gateway stands between the API an
   - Data sources: which of the organization's backends serves each data source a plugin backend declares.
 - **Core widgets**: the built-in types, read-only.
 - **Deployment** (superusers): every discovered plugin with its status, active version and what it asks for. A plugin's page has:
-  - Versions, and the review (what it is, integrity, the frame's network, egress, the server side) with Approve. On a local stack, Patch, Minor and Major start the next version (5.1).
+  - Versions, and the review (what it is, integrity, the frame's network, egress, the server side, the skills it gives the agent, the components it lets the agent show) with Approve. On a local stack, Patch, Minor and Major start the next version (5.1).
   - Revoke, Restore and Forget.
   - Enabled for: organizations, one at a time or all.
   - Overrides: the frame's policy by directive and the server network, with confirmations for `insecure-scheme`, `private-host` and `remote-script`.
@@ -254,6 +254,7 @@ Compose networks cannot restrict ports, so the gateway stands between the API an
 
 - Backend widgets of a type a plugin handles are in the catalog and render through the plugin; standalone plugin widgets are in Add widget.
 - The card is the usual one: title, params, refresh, the Copilot, fullscreen, a settings form from the widget's `settings`, and Export when the plugin offers one (AUTHORING 4.5). The frame follows the site's light or dark mode without restarting.
+- The skills of an approved, enabled plugin are in the Skills tab of the AI Library of every user of the organization, with the plugin's name and without edit or delete (AUTHORING 3.2). A widget with an `artifact` can be shown by the AI Agent under its answer, filled with data the agent chose, and the card can be added to a dashboard as a widget that keeps that data (AUTHORING 3.3). The examples of `docs/examples/` give both.
 - A widget that cannot run keeps its place and its settings and shows why: "This widget type is not available to you", "Plugin sandbox unavailable", "Failed to load", "Plugin error", "Not responding" or "The widget was stopped".
 
 ## 9. Watching it
