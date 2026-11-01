@@ -39,13 +39,13 @@ interface CopilotMock {
   description: string;
   holderUuid?: string;
   endpoints: Record<string, string>;
-  headers?: Record<string, string>;
 }
 
 interface ExternalCopilotHolderMock {
   uuid: string;
   url: string;
-  headers: Record<string, string>;
+  headers?: Record<string, string>;
+  headerNames?: string[];
   copilots?: CopilotMock[];
   status?: "success" | "error";
 }
@@ -134,7 +134,6 @@ function makeCopilot(overrides: Partial<CopilotMock> = {}): CopilotMock {
     description: "A test agent",
     holderUuid: "holder-1",
     endpoints: { query: "/api/query" },
-    headers: {},
     ...overrides,
   };
 }
@@ -145,7 +144,7 @@ function makeHolder(
   return {
     uuid: "holder-1",
     url: "https://agents.example.com",
-    headers: {},
+    headerNames: [],
     copilots: [makeCopilot()],
     status: "success",
     ...overrides,
@@ -157,7 +156,12 @@ describe("useAgentManagement", () => {
     vi.clearAllMocks();
     mockCopilotStoreState.externalCopilotHolders = [];
     mockSelectedCopilot = null;
-    mockPutCustomCopilot.mockResolvedValue(undefined);
+    mockPutCustomCopilot.mockImplementation(
+      async ({ headers, ...saved }: ExternalCopilotHolderMock) => ({
+        ...saved,
+        headerNames: headers ? Object.keys(headers) : (saved.headerNames ?? []),
+      }),
+    );
     mockRemoveCustomCopilot.mockResolvedValue(undefined);
     mockHasCopilotConflict.mockReturnValue(false);
   });
@@ -338,6 +342,7 @@ describe("useAgentManagement", () => {
         uuid: "holder-1",
         url: "https://new-url.example.com",
         headerPairs: [{ key: "Authorization", value: "Bearer token123" }],
+        saved: [],
       };
 
       await act(async () => {
@@ -345,11 +350,76 @@ describe("useAgentManagement", () => {
       });
 
       expect(mockFetchAgentsData).toHaveBeenCalledWith({
+        uuid: "holder-1",
         url: "https://new-url.example.com",
         headers: { Authorization: "Bearer token123" },
       });
       expect(mockPutCustomCopilot).toHaveBeenCalled();
       expect(mockToast.success).toHaveBeenCalledWith("Agent settings updated");
+    });
+
+    it("keeps the typed credentials out of the store and names them instead", async () => {
+      const holder = makeHolder();
+      mockCopilotStoreState.externalCopilotHolders = [holder];
+      mockFetchAgentsData.mockResolvedValue([makeCopilot()]);
+
+      const { result } = renderHook(() => useAgentManagement());
+
+      await act(async () => {
+        await result.current.handleSaveEdit({
+          uuid: "holder-1",
+          url: "https://agents.example.com",
+          headerPairs: [{ key: "Authorization", value: "Bearer token123" }],
+          saved: [],
+        });
+      });
+
+      const [stored] = mockUpdateExternalCopilotHolders.mock.calls[0][0];
+      expect(stored.headers).toBeUndefined();
+      expect(stored.headerNames).toEqual(["Authorization"]);
+      expect(JSON.stringify(stored)).not.toContain("token123");
+    });
+
+    it("keeps a saved credential when its value is left blank", async () => {
+      const holder = makeHolder({ headerNames: ["Authorization"] });
+      mockCopilotStoreState.externalCopilotHolders = [holder];
+      mockFetchAgentsData.mockResolvedValue([makeCopilot()]);
+
+      const { result } = renderHook(() => useAgentManagement());
+
+      await act(async () => {
+        await result.current.handleSaveEdit({
+          uuid: "holder-1",
+          url: "https://agents.example.com",
+          headerPairs: [{ key: "Authorization", value: "" }],
+          saved: ["Authorization"],
+        });
+      });
+
+      expect(mockFetchAgentsData).toHaveBeenCalledWith({
+        uuid: "holder-1",
+        url: "https://agents.example.com",
+        headers: { Authorization: "" },
+      });
+      expect(mockToast.success).toHaveBeenCalledWith("Agent settings updated");
+    });
+
+    it("asks for a value when a new credential has none", async () => {
+      mockCopilotStoreState.externalCopilotHolders = [makeHolder()];
+
+      const { result } = renderHook(() => useAgentManagement());
+
+      await act(async () => {
+        await result.current.handleSaveEdit({
+          uuid: "holder-1",
+          url: "https://agents.example.com",
+          headerPairs: [{ key: "X-New", value: "" }],
+          saved: [],
+        });
+      });
+
+      expect(mockToast.error).toHaveBeenCalledWith("Enter a value for X-New");
+      expect(mockFetchAgentsData).not.toHaveBeenCalled();
     });
 
     it("rejects duplicate header keys without calling fetchAgentsData", async () => {
@@ -365,6 +435,7 @@ describe("useAgentManagement", () => {
           { key: "X-Custom", value: "value1" },
           { key: "X-Custom", value: "value2" },
         ],
+        saved: [],
       };
 
       await act(async () => {
@@ -387,6 +458,7 @@ describe("useAgentManagement", () => {
         uuid: "holder-1",
         url: "https://agents.example.com",
         headerPairs: [{ key: "Authorization", value: "Bearer xyz" }],
+        saved: [],
       };
 
       await act(async () => {
@@ -466,10 +538,8 @@ describe("useAgentManagement", () => {
   });
 
   describe("handleEditGroup", () => {
-    it("populates editGroup state with holder data and header pairs", async () => {
-      const holder = makeHolder({
-        headers: { "X-Api-Key": "key123", Authorization: "Bearer abc" },
-      });
+    it("populates editGroup state with the holder and its credentials by name, blank", async () => {
+      const holder = makeHolder({ headerNames: ["X-Api-Key", "Authorization"] });
       mockCopilotStoreState.externalCopilotHolders = [holder];
 
       const { result } = renderHook(() => useAgentManagement());
@@ -482,9 +552,10 @@ describe("useAgentManagement", () => {
         uuid: "holder-1",
         url: "https://agents.example.com",
         headerPairs: [
-          { key: "X-Api-Key", value: "key123" },
-          { key: "Authorization", value: "Bearer abc" },
+          { key: "X-Api-Key", value: "" },
+          { key: "Authorization", value: "" },
         ],
+        saved: ["X-Api-Key", "Authorization"],
       });
     });
   });

@@ -13,6 +13,7 @@ import {
 } from "~/api/auth.api";
 import { showDeprecatedFlagsToast } from "~/components/AI/hooks/utils";
 import { getConfig } from "~/lib/runtimeConfig";
+import { setAgentHolders } from "~/lib/utils/fetch";
 import type { ActiveMcpLink } from "~/lib/utils/mcpLink";
 import { AI_SUPPORTED_FILE_TYPES, getDefaultCopilot } from "../constants";
 import { type FunctionCallT, mergeDuplicateChats } from "../utils";
@@ -329,7 +330,8 @@ export type ExternalCopilotHolder = {
   enabled?: boolean;
   uuid: string;
   url: string;
-  headers: Record<string, string>;
+  headers?: Record<string, string>;
+  headerNames?: string[];
   copilots?: Copilot[];
 };
 
@@ -1433,6 +1435,8 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
   ),
   shallow,
 );
+
+setAgentHolders(() => useCopilotStore.getState().externalCopilotHolders);
 
 export function useShallowCopilotStore<T>(selector: Selector<CopilotState, T>): T {
   return useCopilotStore(useShallow(selector), (prev, next) => isEqual(prev, next));

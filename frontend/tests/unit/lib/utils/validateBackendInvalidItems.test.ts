@@ -6,13 +6,14 @@ import {
   validateSource,
   validateWidgetItems,
 } from "~/lib/utils/validateBackend";
+import { throughSourceProxy } from "../../../mocks/sourceProxy";
 import {
   installWidgetsSchemaFixture,
   widgetsSchema,
 } from "../../../mocks/widgetsSchema";
 
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+global.fetch = throughSourceProxy(mockFetch);
 installWidgetsSchemaFixture();
 const context = { schema: widgetsSchema };
 
@@ -213,23 +214,21 @@ describe("validateBackend with invalid items", () => {
   });
 
   it("names apps.json or templates.json, whichever the backend serves", async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ good: { ...goodWidget } }),
-        headers: new Headers(),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve([badApp]),
-        url: `${source.url}/templates.json`,
-        headers: new Headers(),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve([]),
+    const answers: Record<string, unknown> = {
+      "widgets.json": { good: { ...goodWidget } },
+      "apps.json": null,
+      "templates.json": [badApp],
+      "agents.json": [],
+    };
+    mockFetch.mockImplementation((url: string) => {
+      const answer = answers[url.split("/").at(-1) ?? ""];
+      return Promise.resolve({
+        ok: answer !== null,
+        status: answer === null ? 404 : 200,
+        json: () => Promise.resolve(answer ?? []),
         headers: new Headers(),
       });
+    });
 
     const result = await validateBackend(source, false);
 

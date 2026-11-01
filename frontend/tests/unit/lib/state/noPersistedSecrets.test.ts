@@ -34,7 +34,7 @@ beforeEach(() => {
 });
 
 describe("persisted stores", () => {
-  it("copilot: custom agents' headers stay in memory", () => {
+  it("copilot: a custom agent's headers are never persisted, even if they were held in memory", () => {
     const holder = partial<ExternalCopilotHolder>({
       uuid: "h1",
       url: "https://agent.example.com",

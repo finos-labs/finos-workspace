@@ -8,13 +8,17 @@ x-backend: &backend
   env_file: ../backend-api/backend/envs/.env
   environment:
     MODE: local
+    WIDGET_PLUGINS_DIR: /opt/widget-plugins
     DB_HOST: mysql
     REDIS_HOST: valkey
     FOLDER_STORAGE_PATH: /opt/code/local_storage
     FRONTENDURL: http://localhost:1420
     APPURL: http://localhost:1420
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   volumes:
     - ../backend-api/backend:/opt/code
+    - ${WORKSPACE_PLUGINS_DIR:-../widget-plugins}:/opt/widget-plugins
 
 services:
   mysql:

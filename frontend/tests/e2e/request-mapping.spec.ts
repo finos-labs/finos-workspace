@@ -1,4 +1,4 @@
-import type { Server } from "node:https";
+import type { Server } from "node:http";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { type ReceivedRequest, startEchoBackend } from "./echoBackend";
 import { authFile, deleteDashboard } from "./helpers";
@@ -6,6 +6,10 @@ import { type ApiResponse, type PageApi, pageApi } from "./plugins/api";
 
 const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const BACKEND_PORT = Number(process.env.E2E_ECHO_BACKEND_PORT ?? 7791);
+const BACKEND_HOST = process.env.E2E_ECHO_BACKEND_HOST ?? "host.docker.internal";
+const BACKEND_LISTEN = process.env.E2E_ECHO_BACKEND_LISTEN ?? "0.0.0.0";
+const SOURCE_NAME = "E2E request mapping";
+const SOURCE_KEY = "e2e-source-key";
 const WIDGET = "E2E team report";
 
 test.describe.configure({ mode: "serial" });
@@ -15,7 +19,7 @@ let page: Page;
 let api: PageApi;
 let backend: Server;
 let received: ReceivedRequest[];
-let sourceUuid: string;
+let entityUuid: string;
 let dashboardId: string;
 
 const card = () => page.locator("div.group\\/widget").filter({ hasText: WIDGET });
@@ -35,17 +39,21 @@ test.beforeAll(async ({ browser }, testInfo) => {
   const baseURL = testInfo.project.use.baseURL ?? "https://localhost:3000";
   ({ server: backend, received } = await startEchoBackend(
     BACKEND_PORT,
-    new URL(baseURL).origin,
+    BACKEND_LISTEN,
   ));
 
   context = await browser.newContext({ storageState: authFile, baseURL });
   page = await context.newPage();
   await page.goto("/app");
   api = await pageApi(context, API_URL);
-  sourceUuid = crypto.randomUUID();
+  entityUuid = (await json(await api.get("/entity/entity"))).items[0].uuid;
   await json(
-    await api.post(`/app/data-connectors/api-source/${sourceUuid}`, {
-      data: { name: "E2E request mapping", url: `https://localhost:${BACKEND_PORT}` },
+    await api.post(`/entity/data-backends/${entityUuid}`, {
+      data: {
+        name: SOURCE_NAME,
+        url: `http://${BACKEND_HOST}:${BACKEND_PORT}`,
+        endpointHeaders: [{ key: "X-Api-Key", value: SOURCE_KEY, location: "headers" }],
+      },
     }),
   );
 
@@ -66,11 +74,39 @@ test.beforeAll(async ({ browser }, testInfo) => {
 
 test.afterAll(async () => {
   if (page && dashboardId) await deleteDashboard(page, dashboardId);
-  if (api && sourceUuid)
-    await api.delete(`/app/data-connectors/api-source/${sourceUuid}`);
+  if (api && entityUuid)
+    await api.delete(
+      `/entity/data-backends/${entityUuid}/${encodeURIComponent(SOURCE_NAME)}`,
+    );
   await api?.dispose();
   await context?.close();
   backend?.close();
+});
+
+test("browser-holds-no-credential-of-the-source", async () => {
+  await arrived((r) => r.method === "POST" && r.path === "/teams/platform/report");
+  const held = await page.evaluate(async () => {
+    const stores = [localStorage, sessionStorage].flatMap((store) =>
+      Object.keys(store).map((key) => `${key}=${store.getItem(key)}`),
+    );
+    for (const { name } of await indexedDB.databases()) {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const open = indexedDB.open(name as string);
+        open.onsuccess = () => resolve(open.result);
+        open.onerror = () => reject(open.error);
+      });
+      for (const store of Array.from(db.objectStoreNames)) {
+        const rows = await new Promise<unknown[]>((resolve, reject) => {
+          const all = db.transaction(store).objectStore(store).getAll();
+          all.onsuccess = () => resolve(all.result);
+          all.onerror = () => reject(all.error);
+        });
+        stores.push(JSON.stringify(rows));
+      }
+    }
+    return stores.join("\n");
+  });
+  expect(held).not.toContain("e2e-source-key");
 });
 
 test("widget-request-goes-where-its-params-say", async () => {
@@ -85,13 +121,9 @@ test("widget-request-goes-where-its-params-say", async () => {
   expect(request.headers["content-type"]).toBe("application/json");
   expect(JSON.parse(request.body)).toEqual({ filters: "active" });
 
-  const preflight = await arrived(
-    (r) => r.method === "OPTIONS" && r.path === "/teams/platform/report",
-  );
-  expect(preflight.headers["access-control-request-method"]).toBe("POST");
-  expect(
-    preflight.headers["access-control-request-headers"]?.split(",").sort(),
-  ).toEqual(["content-type", "x-region"]);
+  expect(request.headers["x-api-key"]).toBe(SOURCE_KEY);
+  expect(request.headers["x-workspace-user"]).toContain("@");
+  expect(received.some((r) => r.method === "OPTIONS")).toBe(false);
 
   await expect(card().getByText("/teams/platform/report")).toBeVisible();
 });
@@ -102,6 +134,7 @@ test("option-lookup-posts-its-params", async () => {
   );
   expect(lookup.query).toBe("");
   expect(lookup.headers["content-type"]).toBe("application/json");
+  expect(lookup.headers["x-api-key"]).toBe(SOURCE_KEY);
   expect(JSON.parse(lookup.body)).toEqual({ active: true, region: "eu" });
 });
 

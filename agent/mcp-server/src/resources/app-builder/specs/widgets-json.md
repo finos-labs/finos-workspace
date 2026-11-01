@@ -54,6 +54,7 @@ Each value is an object with these keys and no others:
 | `mcp_tool` | No | object | The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool |
 | `data` | No | object | `dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines |
 | `raw` | No | `true` or `false` | Only for `html` and plugin types. The endpoint also answers `raw=true` with the rows the widget shows, as JSON: the AI Agent and MCP get those rows, and the widget's rows button shows them |
+| `requires_auth` | No | `true` or `false` | Only for `iframe`. The page needs the backend connection's credentials. The browser then opens it through the FINOS Workspace API, which adds them, in a sandbox without storage. For trusted pages only: the API checks this declaration itself |
 | `storage` | No | object | Only for `iframe`. `mcpUrl`: an MCP server of the page's own, connected for the widget without the backend's credentials |
 <!-- /generated:widget-fields -->
 

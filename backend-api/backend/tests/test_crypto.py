@@ -147,6 +147,9 @@ class TestColumnTypes:
             "user.openai_api_key",
             "user.perplexity_api_key",
             "widget_plugin_secret.value",
+            "provider_session.id_token",
+            "provider_session.refresh_token",
+            "signing_key.private_key",
         }
         for column in columns:
             assert column.type.context == f"{column.table.name}.{column.name}"

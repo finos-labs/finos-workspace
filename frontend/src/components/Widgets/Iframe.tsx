@@ -1,15 +1,21 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useDebounceValue } from "usehooks-ts";
+import { postFrameGrant } from "~/api/auth.api";
 import DraggableCard from "~/components/DraggableCard";
 import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { IFRAME_SANDBOX_ATTRIBUTES } from "~/lib/constants";
+import {
+  IFRAME_SANDBOX_ATTRIBUTES,
+  IFRAME_SRCDOC_SANDBOX_ATTRIBUTES,
+} from "~/lib/constants";
 import {
   registerIframeWidget,
   unregisterIframeWidget,
 } from "~/lib/iframeWidgetRegistry";
+import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { useShallowThemeStore } from "~/lib/state/theme";
@@ -74,6 +80,9 @@ type IframeState = {
   };
 };
 
+const FRAME_GRANT_RENEWAL_MS = 50 * 60 * 1000;
+const FRAME_GRANT_RENEWAL_JITTER = 0.1;
+
 export default function Iframe() {
   const { widget, updateWidget, isShared, activeDashboardId } = useWidgetContext();
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -92,22 +101,24 @@ export default function Iframe() {
       ? widget.endpoint
       : (widget.endpoint?.url ?? "");
   const hasManagedEndpoint = !!endpointUrl;
+  const framed = widget.requires_auth === true && !!widget.sourceId;
+  const pageUrl = (url: string) => {
+    if (framed) return /^https?:\/\//i.test(url) ? url : "";
+    const parsed = urlSchema.safeParse({ url });
+    return parsed.success ? parsed.data.url : "";
+  };
 
-  const [state, dispatch] = useStateReducer<IframeState>(null, () => {
-    const url = widget.storage?.html || endpointUrl || "";
-    const initialUrl = urlSchema.safeParse({ url });
-    return {
-      open: false,
-      scale: widget.storage?.scale || 1.0,
-      url: initialUrl.success ? initialUrl.data.url : "",
-      pendingStorageUpdate: {},
-    };
-  });
+  const [state, dispatch] = useStateReducer<IframeState>(null, () => ({
+    open: false,
+    scale: widget.storage?.scale || 1.0,
+    url: pageUrl(widget.storage?.html || endpointUrl || ""),
+    pendingStorageUpdate: {},
+  }));
 
   useEffect(() => {
     if (endpointUrl && endpointUrl !== state.url) {
-      const url = urlSchema.safeParse({ url: endpointUrl });
-      if (url.success) dispatch({ url: url.data.url });
+      const url = pageUrl(endpointUrl);
+      if (url) dispatch({ url });
     }
   }, [endpointUrl]);
 
@@ -373,16 +384,11 @@ export default function Iframe() {
     const pathNames = new Set(fromBackend ? placeholders(state.url) : []);
     let page = state.url;
     if (pathNames.size) {
-      const built = buildWidgetRequest(
-        {
-          endpoint: { url: state.url, method: "GET" },
-          params: (widget.params ?? []).filter((param) =>
-            pathNames.has(param.paramName),
-          ),
-          storage: { params: effectiveIframeParams },
-        },
-        undefined,
-      );
+      const built = buildWidgetRequest({
+        endpoint: { url: state.url, method: "GET" },
+        params: (widget.params ?? []).filter((param) => pathNames.has(param.paramName)),
+        storage: { params: effectiveIframeParams },
+      });
       if (!built?.ok) return { src: "", problems: built?.problems ?? [] };
       page = built.request.url;
     }
@@ -407,7 +413,31 @@ export default function Iframe() {
   if (!hasProtocol || loadedRef.current?.key !== loadKey) {
     loadedRef.current = { key: loadKey, src: addressWithParams.src };
   }
-  const iframeSrc = loadedRef.current.src;
+  const pageSrc = loadedRef.current.src;
+
+  const framedWidgetId = (widget.widgetId ?? "").replace(`${widget.sourceName}-`, "");
+  const renewalMs = useMemo(
+    () =>
+      FRAME_GRANT_RENEWAL_MS *
+      (1 - FRAME_GRANT_RENEWAL_JITTER + Math.random() * 2 * FRAME_GRANT_RENEWAL_JITTER),
+    [],
+  );
+  const grant = useQuery({
+    queryKey: ["frame-grant", widget.sourceId, framedWidgetId],
+    queryFn: () => postFrameGrant(widget.sourceId as string, framedWidgetId),
+    enabled: framed,
+    staleTime: renewalMs,
+    refetchInterval: renewalMs,
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
+  const iframeSrc = useMemo(() => {
+    if (!framed) return pageSrc;
+    if (!(grant.data && pageSrc)) return "";
+    const page = new URL(pageSrc);
+    const api = getConfig().urls.backend.replace(/\/+$/, "");
+    return `${api}/app/data-connectors/frame/${grant.data.token}${page.pathname}${page.search}`;
+  }, [framed, grant.data, pageSrc]);
 
   const onOpenChange = useCallback((open: boolean) => dispatch({ open }), []);
 
@@ -591,6 +621,11 @@ export default function Iframe() {
           firstMessage="The page cannot be opened"
           secondMessage={addressWithParams.problems.map((p) => p.message).join(". ")}
         />
+      ) : framed && grant.isError ? (
+        <SearchResultsNotFound
+          firstMessage="The page cannot be opened"
+          secondMessage="It needs the connection's credentials, and the connection did not allow it."
+        />
       ) : state.url ? (
         <div className="w-full h-full overflow-auto">
           <div
@@ -608,7 +643,9 @@ export default function Iframe() {
               src={iframeSrc}
               width="100%"
               height="100%"
-              sandbox={IFRAME_SANDBOX_ATTRIBUTES}
+              sandbox={
+                framed ? IFRAME_SRCDOC_SANDBOX_ATTRIBUTES : IFRAME_SANDBOX_ATTRIBUTES
+              }
             />
           </div>
         </div>

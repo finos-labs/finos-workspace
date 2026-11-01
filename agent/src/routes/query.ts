@@ -6,6 +6,7 @@ import { messageChunk, reasoningStep } from "../protocol/events.ts";
 import { getTieredWidgets } from "../widgets/tiers.ts";
 import { resolveModel } from "../lib/providers.ts";
 import { getLogger, withContext } from "../lib/logger.ts";
+import { bodyBudget } from "../lib/body-budget.ts";
 import { metrics } from "../lib/metrics.ts";
 import { scopeKey } from "../lib/scope.ts";
 import type { UsageCounts } from "../lib/token-usage.ts";
@@ -18,6 +19,7 @@ import { AGENT_ID } from "./agents.ts";
 const logger = getLogger(["app", "routes", "query"]);
 const audit = getLogger(["audit"]);
 
+const MAX_BODY_BYTES = 64 * 1024 * 1024;
 const LIMITS = { messages: 20_000, widgets: 20_000, tools: 500, skills: 500, documents: 50 } as const;
 
 const MessageSchema = z.object({ role: z.enum(["human", "ai", "tool"]) }).passthrough();
@@ -218,6 +220,11 @@ function trackQuery(run: QueryRun) {
 
 export const queryRouter = new Hono<AppEnv>();
 
+function declaredBodyBytes(c: Context<AppEnv>, services: Services | undefined): number {
+  const header = c.req.header("content-length") ?? "";
+  return /^\d+$/.test(header) ? Number(header) : (services?.config.maxBodyBytes ?? MAX_BODY_BYTES);
+}
+
 queryRouter.post("/v1/query", async (c) => {
   const services = c.get("services") as Services | undefined;
   const principal = c.get("principal") ?? ANONYMOUS;
@@ -240,11 +247,24 @@ queryRouter.post("/v1/query", async (c) => {
     return c.json({ error: "Too many of your queries are running. Wait for one to finish." }, 429);
   }
 
+  const reservation = bodyBudget.reserve(declaredBodyBytes(c, services));
+  if (!reservation) {
+    admission.release();
+    metrics.queries.inc({ outcome: "busy" });
+    audit.info("Refused a query: the requests being held in memory leave no room for this one");
+    c.header("Retry-After", "5");
+    return c.json({ error: "The agent is busy. Try again in a moment." }, 503);
+  }
+  const release = () => {
+    admission.release();
+    reservation();
+  };
+
   let streaming = false;
   try {
-    return await answerQuery(c, { services, principal, release: admission.release, handOver: () => void (streaming = true) });
+    return await answerQuery(c, { services, principal, release, handOver: () => void (streaming = true) });
   } finally {
-    if (!streaming) admission.release();
+    if (!streaming) release();
   }
 });
 

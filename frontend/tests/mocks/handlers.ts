@@ -138,24 +138,14 @@ export const handlers = [
     return HttpResponse.json({ ...mockUser, status: 200 });
   }),
 
-  http.post(`${BASE_URL}/app/microsoft-auth`, async ({ request }) => {
-    const body = (await request.json()) as { token: string; id_token?: string };
-
-    if (body.token === "invalid-microsoft-token" || !body.id_token) {
-      return HttpResponse.json({ detail: "Invalid Microsoft token" }, { status: 401 });
+  http.post(`${BASE_URL}/app/sign-in/:provider/start`, ({ params }) => {
+    if (params.provider !== "microsoft" && params.provider !== "okta") {
+      return HttpResponse.json({ detail: "Not Found" }, { status: 404 });
     }
 
-    return HttpResponse.json({ ...mockUser, status: 200 });
-  }),
-
-  http.post(`${BASE_URL}/app/okta-auth`, async ({ request }) => {
-    const body = (await request.json()) as { token: string; id_token?: string };
-
-    if (!body.id_token) {
-      return HttpResponse.json({ detail: "Invalid Okta token" }, { status: 401 });
-    }
-
-    return HttpResponse.json({ ...mockUser, status: 200 });
+    return HttpResponse.json({
+      authorization_url: `https://idp.example.com/${params.provider}/authorize?state=s`,
+    });
   }),
 
   http.post(`${BASE_URL}/app/accepted-tos`, () => {

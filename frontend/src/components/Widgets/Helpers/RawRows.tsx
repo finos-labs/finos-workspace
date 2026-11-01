@@ -5,7 +5,6 @@ import Tooltip from "~/components/Tooltip";
 import type { WidgetT } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import { type QueryOptions, useJsonData } from "~/lib/api";
-import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
 import { rowsOf } from "~/lib/utils/rawRows";
@@ -13,12 +12,11 @@ import { buildWidgetRequest, requestKey } from "~/lib/utils/widgetRequest";
 
 export function useRawRows(widget: WidgetT) {
   const theme = useShallowThemeStore((state) => state.theme);
-  const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
   const hasRaw = widget.raw === true;
   const rawDataKey = widget.data?.rawDataKey;
   const options = useMemo<QueryOptions>(() => {
     const request = hasRaw
-      ? buildWidgetRequest(widget, credentials, {
+      ? buildWidgetRequest(widget, {
           theme: theme === "light" ? "light" : "dark",
           raw: "true",
         })
@@ -43,7 +41,7 @@ export function useRawRows(widget: WidgetT) {
     widget.params,
     widget.storage?.params,
     theme,
-    credentials,
+    widget.sourceId,
   ]);
   return useJsonData<unknown>(options, {
     enabled: hasRaw,
