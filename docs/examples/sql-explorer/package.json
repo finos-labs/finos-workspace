@@ -18,5 +18,8 @@
   },
   "dependencies": {
     "ag-grid-community": "32.3.9"
+  },
+  "overrides": {
+    "qs": "^6.17.1"
   }
 }
