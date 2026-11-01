@@ -60,9 +60,10 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | CORS error in browser | Backend doesn't allow the FINOS Workspace origin | Add the origin the FINOS Workspace is served from, and `http://localhost:1420` for local development |
-| CORS error only for some widgets | Their request has a header param, a JSON body or `POST`, and the preflight does not allow it | Allow the method and the header names in the backend's CORS settings (`workspace://contract/backend`) |
+| CORS error only for some widgets, or Validate Widgets fails a route | Their request has a header param, a JSON body or `POST`, and the preflight `OPTIONS` does not allow it, or the route does not answer `OPTIONS` | Answer `OPTIONS` on every route and allow the method and the header names in the backend's CORS settings (`workspace://contract/backend`) |
+| A widget fails with the header `X-Workspace-Proxy-Error` | The API refused or could not make the request: `403` for a connection that is not a superuser's and is not a public `https` address, `502` when nothing answered | Use a public `https` address, or have a superuser add the connection |
 | A widget shows "`xxx` needs a value" instead of its data | A path param, or a placeholder of `optionsEndpoint`, has no value | Give the param a default `value`, or choose one |
-| `Mixed content blocked` | HTTPS FINOS Workspace can't reach HTTP backend | Serve the backend over HTTPS in production |
+| The API cannot reach the backend | A connection that is not a superuser's must be a public `https` address, unless the stack runs with `MODE=local` | Serve the backend over public HTTPS, or develop on a local stack |
 | 404 on widget endpoint | Path typo or missing route | Confirm the route is registered; match `endpoint` exactly |
 | Wrong response shape | Endpoint returns the wrong kind of response for the widget type | `markdown` → string; `html` → HTML document; `newsfeed` → array of articles; `pdf` → file or base64 JSON |
 | Garbled non-ASCII | JSON file read with OS locale (cp1252 on Windows) | Open files with `encoding="utf-8"` (Python) or your language's UTF-8 equivalent |

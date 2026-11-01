@@ -345,8 +345,61 @@ class CreateApiSource(ApiSourceBase):
     pass
 
 
+class ApiSourceHeaderName(BaseModel, extra="ignore"):  # type: ignore[call-arg]
+    model_config = get_camel_config()
+    key: str
+    location: Literal["headers", "query"] = "headers"
+
+
+class SourceRequest(BaseModel, extra="forbid"):  # type: ignore[call-arg]
+    url: str = Field(
+        max_length=4096, description="The absolute URL on the connection's own origin, without its credentials"
+    )
+    method: Literal["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] = Field(
+        default="GET", description="How the data connection is called"
+    )
+    headers: dict[str, str] = Field(
+        default_factory=dict, max_length=32, description="Header params of the widget; never a credential"
+    )
+    body: str | None = Field(
+        default=None,
+        max_length=1_048_576,
+        description="The text to send as the body, JSON unless the connection sets another Content-Type",
+    )
+    accept: str | None = Field(default=None, max_length=200, description="The media types the caller accepts")
+
+
+class FrameRequest(BaseModel):
+    model_config = get_camel_config(extra="forbid")
+    widget_id: str = Field(
+        min_length=1, max_length=200, description="The id of the iframe widget in the connection's widgets.json"
+    )
+
+
+class FrameGrant(BaseModel):
+    model_config = get_camel_config()
+    token: str = Field(description="Names the page in the address the browser opens; it opens nothing else")
+    prefix: str = Field(description="The path below which the token lets the page load anything")
+    expires_in: int = Field(description="Seconds until the token stops working")
+
+
+class SourceTestRequest(BaseModel, extra="forbid"):  # type: ignore[call-arg]
+    id: UUID | None = Field(
+        default=None, description="The saved data connection whose stored values a blank header value keeps"
+    )
+    url: HttpUrl = Field(description="The address of the data connection being tested")
+    endpointHeaders: list[ApiSourceEndpointHeaders] = Field(
+        default_factory=list, max_length=32, description="The credentials being tested; a blank value keeps the saved one"
+    )
+    request: SourceRequest
+
+
 class ReturnApiSource(ApiSourceBase, extra="ignore"):  # type: ignore[call-arg]
     model_config = get_camel_config(from_attributes=True)
+    endpointHeaders: None | list[ApiSourceHeaderName] = Field(
+        default_factory=list,
+        description="The credential headers of the connection, with the values that are stored for it.",
+    )
     uuid: UUID = Field(description="The UUID of the backend.")
     id_: UUID = Field(serialization_alias="id", alias="uuid", description="The UUID of the backend, repeated as `id`.")
     created_date: datetime = Field(
@@ -1318,28 +1371,67 @@ class SharedAppViewed(BaseModel):
     viewed: bool = Field(description="Whether the user has viewed the app.")
 
 
-class SignInNonce(BaseModel):
+class SignInStart(BaseModel):
     model_config = main_config
-    nonce: str = Field(description="The nonce that the provider's token must carry, as a hash.")
+
+    version: None | str = Field(default=None, max_length=64, description="The version of the web app that asks for the sign-in.")
+
+
+class SignInStarted(BaseModel):
+    model_config = main_config
+
+    authorization_url: str = Field(description="The address of the provider's sign-in page, which the browser opens.")
+
+
+class JsonWebKeySet(BaseModel):
+    keys: list[dict] = Field(description="The public keys that verify the identity token, newest first")
 
 
 class AuthData(BaseModel):
     model_config = main_config
 
     token: str | None = Field(default=None, max_length=8192, description="The Google credential.")
-    id_token: str | None = Field(default=None, max_length=16384, description="The ID token of Microsoft or Okta.")
     version: None | str = Field(None, description="The version of the web app that signs in.")
 
 
 class CustomCopilot(BaseModel):
-    model_config = ConfigDict(extra="ignore", from_attributes=True)
+    model_config = get_camel_config(extra="ignore", from_attributes=True)
     uuid: UUID | None = Field(default_factory=uuid4, description="The UUID of the custom Copilot.")
-    url: str = Field(description="The address of the agent.")
-    headers: dict[str, str] = Field(description="The headers to send to the agent.")
+    url: str = Field(max_length=200, description="The address of the agent.")
+    headers: dict[MCPHeaderName, MCPHeaderValue] | None = Field(
+        default=None,
+        exclude=True,
+        description=(
+            "The credentials the API sends to the agent. They are never returned. Left out, the stored ones are "
+            "kept; given, they are the whole set: a blank value keeps the stored value of that name and a name "
+            "that is missing is removed"
+        ),
+    )
+    header_names: list[str] = Field(default_factory=list, description="The names of the stored credentials")
     copilots: list[dict] | None = Field(
         default_factory=list,
         description="The agent descriptors that the address serves.",
     )
+
+    @field_validator("copilots")
+    @classmethod
+    def drop_credentials(cls, copilots: list[dict] | None) -> list[dict] | None:
+        return [{k: v for k, v in copilot.items() if k != "headers"} for copilot in copilots] if copilots else copilots
+
+
+class AgentDiscoverRequest(BaseModel, extra="forbid"):  # type: ignore[call-arg]
+    id: UUID | None = Field(
+        default=None, description="The saved agent connection whose stored credentials a blank value keeps"
+    )
+    url: str = Field(max_length=200, description="The address of the agent connection")
+    headers: dict[MCPHeaderName, MCPHeaderValue] | None = Field(
+        default=None, description="The credentials being tried; left out, those of the saved connection are used"
+    )
+
+
+class AgentDiscovery(BaseModel):
+    status: int = Field(description="The status the agent answered for its agents.json, or 0 when it did not answer")
+    agents: dict | None = Field(default=None, description="The agents.json the agent answered")
 
 
 class Prompt(BaseModel):
@@ -1564,9 +1656,9 @@ class BackendPermissionsModel(BaseModel):
     widgets: list[WidgetAccess] | None = Field(None, description="The access to each widget of the backend.")
     templates: list[TemplateAccess] | None = Field(None, description="The access to each template of the backend.")
     url: str | None = Field(None, description="The backend's address.")
-    endpointHeaders: list[ApiSourceEndpointHeaders] | None = Field(
+    endpointHeaders: list[ApiSourceHeaderName] | None = Field(
         None,
-        description="The headers and query parameters that the web app adds to every request to the backend.",
+        description="The credentials of the connection, which the API adds to every request to the backend.",
     )
     created_date: datetime = Field(
         serialization_alias="createdDate",

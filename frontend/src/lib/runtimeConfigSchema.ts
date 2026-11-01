@@ -66,14 +66,6 @@ export const RuntimeConfigSchema = z.object({
       "The identity providers that the login page offers, as a comma-separated list. The app ignores any other item.",
       IDENTITY_PROVIDERS,
     ),
-    sendMicrosoftIdToken: boolField(
-      false,
-      "Send the signed-in user's Microsoft ID token to data backends in the X-Microsoft-Id-Token request header.",
-    ),
-    sendOktaIdToken: boolField(
-      false,
-      "Send the signed-in user's Okta ID token to data backends in the X-Okta-Id-Token request header.",
-    ),
     sendUserEmailAsHeader: boolField(
       false,
       "Send the signed-in user's email address to data backends in the X-Workspace-User request header.",
@@ -84,22 +76,7 @@ export const RuntimeConfigSchema = z.object({
       "",
       "OAuth client id of the Google sign-in. Set it when identityProviders includes google.",
     ),
-    azureClientId: stringField(
-      "",
-      "Application (client) id of the Microsoft Entra ID app registration. Set it when identityProviders includes microsoft.",
-    ),
-    azureTenantId: stringField(
-      "",
-      "Directory (tenant) id of the Microsoft Entra ID app registration, which forms the address that users sign in at. Set it when identityProviders includes microsoft.",
-    ),
-    oktaClientId: stringField(
-      "",
-      "Client id of the Okta application. Set it when identityProviders includes okta.",
-    ),
-    oktaDomain: stringField(
-      "",
-      "Issuer URL of the Okta authorization server, for example https://example.okta.com/oauth2/default. Okta sign-in is available only when it is set.",
-    ),
+  }),
   }),
   copilot: z.object({
     enabled: boolField(
@@ -216,16 +193,10 @@ export const ENV_NAMES = {
   authentication: {
     allowEmailLogin: "VITE_AUTHENTICATION_ALLOW_EMAIL_LOGIN",
     identityProviders: "VITE_AUTHENTICATION_IDENTITY_PROVIDERS",
-    sendMicrosoftIdToken: "VITE_AUTHENTICATION_SEND_MICROSOFT_IDTOKEN",
-    sendOktaIdToken: "VITE_AUTHENTICATION_SEND_OKTA_IDTOKEN",
     sendUserEmailAsHeader: "VITE_AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER",
   },
   authProviders: {
     googleClientId: "VITE_GOOGLE_OAUTH_CLIENT_ID",
-    azureClientId: "VITE_AZURE_CLIENT_ID",
-    azureTenantId: "VITE_AZURE_TENANT_ID",
-    oktaClientId: "VITE_OKTA_CLIENT_ID",
-    oktaDomain: "VITE_OKTA_DOMAIN",
   },
   copilot: {
     enabled: "VITE_AI_COPILOT_ENABLED",

@@ -88,6 +88,29 @@ class Session(Base, UUIDMixin, DateMixin):
     source = Column(String(20), default=None)
 
 
+class ProviderSession(Base, UUIDMixin, DateMixin):
+    __tablename__ = "provider_session"
+
+    session_uuid: Mapped[UUID] = mapped_column(UUIDType, nullable=False, unique=True)
+    provider: Mapped[str] = mapped_column(String(20), nullable=False)
+    id_token: Mapped[str] = mapped_column(
+        EncryptedStringType("provider_session.id_token"), nullable=False
+    )
+    id_token_expires_at: Mapped[datetime] = mapped_column(AwareDateTime(), nullable=False)
+    refresh_token: Mapped[str] = mapped_column(
+        EncryptedStringType("provider_session.refresh_token"), nullable=False
+    )
+
+
+class SigningKey(Base, UUIDMixin, DateMixin):
+    __tablename__ = "signing_key"
+
+    private_key: Mapped[str] = mapped_column(
+        EncryptedStringType("signing_key.private_key"), nullable=False
+    )
+    public_jwk: Mapped[dict] = mapped_column(JSONType, nullable=False)
+
+
 class PersonalAccessToken(Base, UUIDMixin, DateMixin):
     __tablename__ = "personal_access_token"
     __table_args__ = (

@@ -194,9 +194,9 @@ test("a-route-reads-the-organizations-data-for-the-user", async () => {
     other: "refused:out_of_scope",
   });
 
-  const [read] = dataReceived;
-  expect(read.path).toBe("/api/sales?region=emea");
-  expect(read.headers["x-api-key"]).toBe(DATA_KEY);
+  const read = dataReceived.find((r) => r.path.startsWith("/api/sales"));
+  expect(read?.path).toBe("/api/sales?region=emea");
+  expect(read?.headers["x-api-key"]).toBe(DATA_KEY);
   const call = backendReceived.find((r) => r.path === "/.workspace/routes/forecast");
   expect(JSON.stringify(call)).not.toContain(DATA_KEY);
   expect(String(call?.headers["x-workspace-call"])).toMatch(/^wpc1\./);

@@ -596,6 +596,7 @@ export const WidgetSchemaBase = z.object({
   dataUpdateDisplay: CronExpressionSchema.optional(),
   runButton: z.boolean().optional(),
   raw: z.boolean().optional(),
+  requires_auth: z.boolean().optional(),
   exportable: z.boolean().default(true).optional(),
 });
 

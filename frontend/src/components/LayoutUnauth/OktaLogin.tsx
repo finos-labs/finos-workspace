@@ -1,5 +1,3 @@
-import type { OktaAuth } from "@okta/okta-auth-js";
-import { useOktaAuth } from "@okta/okta-react";
 import { useState } from "react";
 import { Button } from "../ds/atoms/Button";
 import Icon from "../Icon";
@@ -7,12 +5,9 @@ import Icon from "../Icon";
 export default function OktaLogin({
   handleLogin,
 }: {
-  handleLogin: (oktaAuth: OktaAuth) => Promise<void>;
+  handleLogin: () => Promise<void>;
 }) {
   const [isLoading, setIsLoading] = useState(false);
-  const okta = useOktaAuth();
-  if (!okta) return null;
-  const { oktaAuth } = okta;
 
   return (
     <Button
@@ -21,7 +16,7 @@ export default function OktaLogin({
       className="w-full h-[40px] _add_data_button body-sm-medium bg-[#F2F2F2] dark:bg-[#F2F2F2] hover:bg-[#e3e3e3] dark:hover:bg-[#e3e3e3] focus:bg-[#D9D9D9] dark:focus:bg-[#D9D9D9] text-dark-600 dark:text-dark-600"
       onClick={async () => {
         setIsLoading(true);
-        await handleLogin(oktaAuth);
+        await handleLogin();
         setIsLoading(false);
       }}
       loading={isLoading}

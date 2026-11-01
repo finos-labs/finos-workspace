@@ -46,6 +46,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api import auth_helpers, crypto, database, models, schemas
 from api.database import aget_write_db
 from api.rate_limit import LIMIT_DEFAULT, limiter
+from api.source_proxy import KEEPALIVE_SECONDS, MAX_CONNECTIONS, MAX_KEEPALIVE
 from utilities.config import settings
 
 router = APIRouter(
@@ -141,9 +142,9 @@ class PublicAddressTransport(httpx.AsyncHTTPTransport):
         super().__init__()
         self._pool = httpcore.AsyncConnectionPool(
             ssl_context=httpx.create_ssl_context(),
-            max_connections=100,
-            max_keepalive_connections=20,
-            keepalive_expiry=5.0,
+            max_connections=MAX_CONNECTIONS,
+            max_keepalive_connections=MAX_KEEPALIVE,
+            keepalive_expiry=KEEPALIVE_SECONDS,
             network_backend=_PublicNetwork(network or httpcore.AnyIOBackend()),
         )
 

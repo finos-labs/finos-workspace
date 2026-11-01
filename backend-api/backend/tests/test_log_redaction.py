@@ -33,6 +33,7 @@ from utilities.log_helpers import MASK, redact
         ("api_key=form-key&name=x", "form-key"),
         ("kwargs password='kw-pass' user='x'", "kw-pass"),
         ("created ws_mcp_ZyXw987 for a user", "ZyXw987"),
+        ("GET /app/data-connectors/frame/ws_frame_aaa.bbb.ccc/dash/index.html 200", "aaa.bbb.ccc"),
         ("{'secret': 'unterminated value", "unterminated value"),
         ("{'Authorization': 'Basic dXNlcjpwYXNz'}", "dXNlcjpwYXNz"),
         ("value with 'secret': 'a\\'b' done", "a\\'b"),

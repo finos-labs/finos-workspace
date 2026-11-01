@@ -23,7 +23,9 @@ from .general_models import Log
 from .user_models import (
     Login,
     PersonalAccessToken,
+    ProviderSession,
     Session,
+    SigningKey,
     User,
     UserInvite,
     UserPrompts,

@@ -889,30 +889,59 @@ class GeneralSettings(BaseModel):
     AZURE_CLIENT_ID: str | None = Field(
         None,
         description=(
-            "The application (client) id of the Microsoft Entra app registration, the same value as the web app's. The "
-            "API accepts a Microsoft token only when it was issued to this client. The registration must send the "
+            "The application (client) id of the Microsoft Entra app registration. The API runs the Microsoft sign-in "
+            "on the server and accepts a Microsoft identity only for this client. The registration must send the "
             "optional ID token claims email and xms_edov, because without them a Microsoft sign-in by email is refused."
+        ),
+    )
+    AZURE_CLIENT_SECRET: str | None = Field(
+        None,
+        description=(
+            "A client secret of the Microsoft Entra app registration, which the Web platform issues. The API runs the "
+            "Microsoft sign-in on the server and keeps the secret in its environment; the browser never sees it."
         ),
     )
     AZURE_TENANT_ID: str | None = Field(
         None,
         description=(
-            "The tenant whose users may sign in: its id or domain, organizations (every work or school tenant) or common "
-            "(those and personal Microsoft accounts), as in the authority of the web app."
+            "The tenant whose users may sign in: its id or domain, organizations (every work or school tenant) or "
+            "common (those and personal Microsoft accounts)."
         ),
     )
     OKTA_CLIENT_ID: str | None = Field(
         None,
         description=(
-            "The client id of the Okta application, the same value as the web app's. The API accepts an Okta token only "
-            "when it was issued to this client."
+            "The client id of the Okta application. The API runs the Okta sign-in on the server and accepts an Okta "
+            "identity only for this client."
         ),
     )
     OKTA_DOMAIN: str | None = Field(
         None,
         description=(
-            "The Okta issuer, exactly the web app's VITE_OKTA_DOMAIN, for example https://example.okta.com or "
-            "https://example.okta.com/oauth2/default."
+            "The Okta issuer, for example https://example.okta.com or https://example.okta.com/oauth2/default."
+        ),
+    )
+    OKTA_CLIENT_SECRET: str | None = Field(
+        None,
+        description=(
+            "A client secret of the Okta application. The API runs the Okta sign-in on the server and keeps the secret "
+            "in its environment; the browser never sees it."
+        ),
+    )
+    AUTHENTICATION_SEND_MICROSOFT_IDTOKEN: bool = Field(
+        False,
+        description=(
+            "Whether the API sends the signed-in user's Microsoft ID token to data backends in the header "
+            "X-Microsoft-Id-Token. The API keeps the token and its refresh token encrypted and renews the token before "
+            "it expires; the browser never holds either. The provider must issue refresh tokens."
+        ),
+    )
+    AUTHENTICATION_SEND_OKTA_IDTOKEN: bool = Field(
+        False,
+        description=(
+            "Whether the API sends the signed-in user's Okta ID token to data backends in the header X-Okta-Id-Token. "
+            "The API keeps the token and its refresh token encrypted, asks Okta for the offline_access scope, renews "
+            "the token before it expires, and never gives either to the browser."
         ),
     )
     MAX_DICT_LEN: int = Field(

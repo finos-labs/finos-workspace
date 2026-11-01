@@ -1,4 +1,4 @@
-import type { AxiosError } from "axios";
+import axios, { type AxiosError } from "axios";
 import { toast } from "sonner";
 import { z } from "zod";
 import type { SearchableChat } from "~/components/AI/hooks/useChatSearch";
@@ -32,7 +32,6 @@ import {
   useUserAppsStore,
 } from "~/lib/state/userApps";
 import { createURL, createURLString, processWidgetId, uuidv4 } from "~/lib/utils";
-import { addExtraHeaders } from "~/lib/utils/widgetParams";
 import type {
   Detail,
   Login2FAResponse,
@@ -78,7 +77,8 @@ export type PostUploadFileResponse = {
 export type CustomCopilot = {
   uuid: string;
   url: string;
-  headers: Record<string, string>;
+  headers?: Record<string, string>;
+  headerNames?: string[];
   copilots: Copilot[];
   enabled?: boolean;
 };
@@ -141,58 +141,17 @@ export async function googleLogin(
   }
 }
 
-export async function getSignInNonce(): Promise<string> {
-  const { data } = await apiClient.post<{ nonce: string }>("/app/sign-in/nonce");
-  return data.nonce;
+export type ServerSignInProvider = "microsoft" | "okta";
+
+export async function startSignIn(provider: ServerSignInProvider): Promise<string> {
+  const { data } = await apiClient.post<{ authorization_url: string }>(
+    `/app/sign-in/${provider}/start`,
+    { version: VERSION },
+  );
+  return data.authorization_url;
 }
 
-export const SIGN_IN_EXPIRED = "The sign-in has expired; please sign in again";
-
-export async function withSignInNonce<
-  T extends { response: LoginResponse | Login2FAResponse },
->(signIn: (nonce: string) => Promise<T>): Promise<T> {
-  const first = await signIn(await getSignInNonce());
-  const { response } = first;
-  const expired =
-    response.status === 400 &&
-    "detail" in response &&
-    response.detail === SIGN_IN_EXPIRED;
-  return expired ? signIn(await getSignInNonce()) : first;
-}
-
-export async function microsoftLogin(
-  token: string,
-  idToken: string,
-): Promise<LoginResponse | Login2FAResponse> {
-  try {
-    const { data, status } = await apiClient.post("/app/microsoft-auth", {
-      token,
-      id_token: idToken,
-      version: VERSION,
-    });
-    return { status, ...data };
-  } catch (e) {
-    return loginFailure(e);
-  }
-}
-
-export async function oktaLogin(
-  token: string,
-  idToken: string,
-): Promise<LoginResponse | Login2FAResponse> {
-  try {
-    const { data, status } = await apiClient.post("/app/okta-auth", {
-      token,
-      id_token: idToken,
-      version: VERSION,
-    });
-    return { status, ...data };
-  } catch (e) {
-    return loginFailure(e);
-  }
-}
-
-async function getCustomCopilotSchema() {
+export async function getCustomCopilotSchema() {
   const { data } = await apiClient.get<CustomCopilot[]>("/app/custom-copilot");
   return data;
 }
@@ -201,9 +160,13 @@ export async function removeCustomCopilot(uuid: string) {
   const { data } = await apiClient.delete(`/app/custom-copilot/${uuid}`);
   return data;
 }
-export async function putCustomCopilot(copilot: ExternalCopilotHolder) {
-  const { data } = await apiClient.put("/app/custom-copilot", copilot);
-  return data;
+export async function putCustomCopilot<T extends ExternalCopilotHolder>(copilot: T) {
+  await apiClient.put("/app/custom-copilot", copilot);
+  const { headers, ...saved } = copilot;
+  return {
+    ...saved,
+    headerNames: headers ? Object.keys(headers) : (copilot.headerNames ?? []),
+  };
 }
 
 export type ChatUsage = { status?: number; usage?: Usage };
@@ -336,6 +299,19 @@ export async function postApiSource(
   return { status };
 }
 
+export type FrameGrant = { token: string; prefix: string; expiresIn: number };
+
+export async function postFrameGrant(
+  sourceUuid: string,
+  widgetId: string,
+): Promise<FrameGrant> {
+  const { data } = await apiClient.post<FrameGrant>(
+    `/app/data-connectors/api-source/${sourceUuid}/frame`,
+    { widgetId },
+  );
+  return data;
+}
+
 export async function putApiSourceMcpServers(
   sourceUuid: string,
   servers: string[],
@@ -466,7 +442,7 @@ export async function postWidgetMetadata(
   return data;
 }
 
-async function getUserAppsData(): Promise<UserAppsSync> {
+export async function getUserAppsData(): Promise<UserAppsSync> {
   const { data } = await apiClient.get<UserAppsSync>("/app/user-apps/sync");
   return data;
 }
@@ -671,27 +647,56 @@ export function getAgentConnectionErrorMessage(error: unknown): string {
   return message;
 }
 
-export async function fetchAgentsData(
-  holder: Partial<CustomCopilot>,
-  signal?: AbortSignal,
-): Promise<Copilot[]> {
-  const initRequest: RequestInit = {
-    headers: addExtraHeaders(holder?.headers),
-    signal,
-  };
+type AgentsFile = { status: number; agents: Record<string, Copilot> | null };
 
+async function readAgentsDirectly(
+  url: string,
+  signal?: AbortSignal,
+): Promise<AgentsFile> {
+  const initRequest: RequestInit = { signal };
   let res: Response;
   try {
-    res = await fetch(createURL("agents.json", holder.url), initRequest);
+    res = await fetch(createURL("agents.json", url), initRequest).then((res) =>
+      res.ok ? res : fetch(createURL("copilots.json", url), initRequest),
+    );
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw error;
     }
     throw new Error(getAgentConnectionErrorMessage(error));
   }
+  return {
+    status: res.ok ? 200 : res.status,
+    agents: res.ok ? await res.json().catch(() => null) : null,
+  };
+}
 
-  if (!res.ok) {
-    switch (res.status) {
+async function discoverAgents(
+  body: { id?: string; url: string; headers?: Record<string, string> },
+  signal?: AbortSignal,
+): Promise<AgentsFile> {
+  try {
+    const { data } = await apiClient.post<AgentsFile>(
+      "/app/custom-copilot/discover",
+      body,
+      { signal },
+    );
+    return data;
+  } catch (error) {
+    if (axios.isCancel(error)) throw new DOMException("Aborted", "AbortError");
+    const detail = (error as AxiosError<{ detail?: unknown }>)?.response?.data?.detail;
+    throw new Error(
+      typeof detail === "string" ? detail : getAgentConnectionErrorMessage(error),
+    );
+  }
+}
+
+async function agentsFrom(
+  file: AgentsFile,
+  holder: Partial<CustomCopilot>,
+): Promise<Copilot[]> {
+  if (file.status !== 200) {
+    switch (file.status) {
       case 401: {
         throw new Error("Unauthorized access to the agent URL.");
       }
@@ -707,17 +712,13 @@ export async function fetchAgentsData(
     }
   }
 
-  let data: unknown;
-  try {
-    data = await res.json();
-  } catch (_) {
+  if (!file.agents) {
     throw new Error(
       "Invalid response from the agent server. Expected valid JSON in /agents.json.",
     );
   }
 
-  const rawAgents = data as Record<string, Copilot>;
-  const dataArray = Object.entries(rawAgents).map(
+  const dataArray = Object.entries(file.agents).map(
     ([id, copilot]: [string, Copilot]) => {
       const endpoints = copilot?.endpoints;
       if (endpoints) {
@@ -741,6 +742,28 @@ export async function fetchAgentsData(
     }
     throw error;
   }
+}
+
+export async function fetchAgentsData(
+  holder: Partial<CustomCopilot>,
+  signal?: AbortSignal,
+): Promise<Copilot[]> {
+  const url = holder.url ?? "";
+  const file = holder.uuid
+    ? await discoverAgents({ id: holder.uuid, url, headers: holder.headers }, signal)
+    : await readAgentsDirectly(url, signal);
+  return agentsFrom(file, holder);
+}
+
+export async function tryAgentsData(
+  holder: Pick<CustomCopilot, "url" | "headers">,
+  signal?: AbortSignal,
+): Promise<Copilot[]> {
+  const file = await discoverAgents(
+    { url: holder.url, headers: holder.headers },
+    signal,
+  );
+  return agentsFrom(file, holder);
 }
 
 export async function fetchDefaultAgent(

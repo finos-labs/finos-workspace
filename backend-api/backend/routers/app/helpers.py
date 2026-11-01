@@ -1,5 +1,6 @@
 import asyncio
 from time import time
+from types import SimpleNamespace
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -11,7 +12,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql import quoted_name
 
-from api import base, crud, database, models, schemas
+from api import base, crud, database, models, schemas, source_proxy
 from api.auth_helpers import CustomRow
 from utilities.config import settings
 
@@ -646,31 +647,52 @@ async def delete_user(db: AsyncSession, user_uuid: UUID) -> bool:
     return response.rowcount == 1
 
 
+def replace_headers(
+    stored: dict[str, str] | None, incoming: dict[str, str] | None
+) -> dict[str, str]:
+    if incoming is None:
+        return dict(stored or {})
+    kept = {name.lower(): value for name, value in (stored or {}).items()}
+    return {
+        name: value or kept[name.lower()]
+        for name, value in incoming.items()
+        if value or name.lower() in kept
+    }
+
+
 async def insert_or_update_custom_copilot(
     db: AsyncSession, user_uuid: UUID, custom_copilot: schemas.CustomCopilot
 ):
-    update_stmt = (
-        update(models.CustomCopilot)
-        .where(
-            models.CustomCopilot.uuid == custom_copilot.uuid,
-            models.CustomCopilot.user_uuid == user_uuid,
+    stored = (
+        await db.execute(
+            select(models.CustomCopilot.url, models.CustomCopilot.headers).where(
+                models.CustomCopilot.uuid == custom_copilot.uuid,
+                models.CustomCopilot.user_uuid == user_uuid,
+            )
         )
-        .values(
-            headers=custom_copilot.headers,
-            copilots=custom_copilot.copilots,
-        )
-    )
-    result = await db.execute(update_stmt)
+    ).first()
+    kept = stored.headers if stored and source_proxy.on_origin(stored.url, custom_copilot.url) else None
+    headers = replace_headers(kept, custom_copilot.headers)
 
-    if result.rowcount == 0:
-        db_copilot = models.CustomCopilot(
-            uuid=custom_copilot.uuid,
-            user_uuid=user_uuid,
-            url=custom_copilot.url,
-            headers=custom_copilot.headers,
-            copilots=custom_copilot.copilots,
+    if stored is not None:
+        await db.execute(
+            update(models.CustomCopilot)
+            .where(
+                models.CustomCopilot.uuid == custom_copilot.uuid,
+                models.CustomCopilot.user_uuid == user_uuid,
+            )
+            .values(url=custom_copilot.url, headers=headers, copilots=custom_copilot.copilots)
         )
-        db.add(db_copilot)
+    else:
+        db.add(
+            models.CustomCopilot(
+                uuid=custom_copilot.uuid,
+                user_uuid=user_uuid,
+                url=custom_copilot.url,
+                headers=headers,
+                copilots=custom_copilot.copilots,
+            )
+        )
 
     await db.commit()
 
@@ -685,8 +707,42 @@ async def get_custom_copilots(
     )
     result = await db.execute(query)
     return [
-        schemas.CustomCopilot.model_validate(item) for item in result.scalars().all()
+        schemas.CustomCopilot(
+            uuid=item.uuid,
+            url=item.url,
+            header_names=sorted(item.headers or {}),
+            copilots=item.copilots,
+        )
+        for item in result.scalars().all()
     ]
+
+
+async def get_custom_copilot_connection(
+    db: AsyncSession, user_uuid: UUID, copilot_uuid: UUID
+) -> SimpleNamespace | None:
+    if not await may_add_connections(db, user_uuid):
+        return None
+    row = (
+        await db.execute(
+            select(models.CustomCopilot.uuid, models.CustomCopilot.url, models.CustomCopilot.headers).where(
+                models.CustomCopilot.uuid == copilot_uuid,
+                models.CustomCopilot.user_uuid == user_uuid,
+            )
+        )
+    ).first()
+    return None if row is None else agent_connection(row.uuid, row.url, row.headers, user_uuid)
+
+
+def agent_connection(
+    copilot_uuid: UUID | None, url: str, headers: dict[str, str] | None, user_uuid: UUID
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        uuid=copilot_uuid,
+        url=url,
+        endpointHeaders=[{"key": name, "value": value, "location": "headers"} for name, value in (headers or {}).items()],
+        entity_uuid=None,
+        user_uuid=user_uuid,
+    )
 
 
 async def delete_custom_copilot(

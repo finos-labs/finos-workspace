@@ -7,7 +7,6 @@ import type { WidgetT } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useJsonData } from "~/lib/api";
 import {
-  getSourceCredentials,
   getWidgetSourceState,
   type Source,
   useBackendConnectorStore,
@@ -72,12 +71,6 @@ describe("whether a widget can fetch from its data backend", () => {
     expect(getWidgetSourceState(widget({ sourceId: "role-backend" }))).toBe(
       "available",
     );
-    expect(
-      getSourceCredentials("role-backend", "https://team.example.test/prices").headers,
-    ).toEqual({ "X-Api-Key": "team-key" });
-    expect(
-      getSourceCredentials("own-backend", "https://data.example.test/prices").headers,
-    ).toEqual({ "X-Api-Key": "own-key" });
   });
 
   it("refuses a backend that is someone else's", () => {

@@ -48,12 +48,14 @@ See `workspace://specs/widget-types` for type guidance and `workspace://specs/wi
 
 FINOS Workspace runs in a browser. Your backend MUST allow CORS from the origin the FINOS Workspace is served from: the address in the browser's address bar, for example `https://<your-workspace-host>`, and `http://localhost:1420` for a local development server.
 
-A widget whose request carries a header param, a JSON body or `POST` makes the browser send a preflight `OPTIONS` first. The backend must answer it for that route with:
+A widget whose request carries a header param, a JSON body or `POST` makes the browser send a preflight `OPTIONS` first, and the Validate Widgets check sends a plain `OPTIONS` to every route and fails the route that does not answer. The backend must answer it for that route with:
 
 - `Access-Control-Allow-Methods` including the widget's method, and the `optionsMethod` of its option lookups;
 - `Access-Control-Allow-Headers` including `Content-Type` when there is a body, and every header param's name, plus the headers of the backend connection's credentials.
 
 Most CORS middleware does this when configured with the methods and headers.
+
+The FINOS Workspace API adds the backend connection's credentials, `X-Workspace-User` (the signed-in user's email) and `X-Workspace-Identity` (a signed token, described under Authentication) when it calls the backend.
 
 Production browsers also block mixed content, so a backend used from an HTTPS FINOS Workspace must serve over HTTPS. Local development over HTTP is fine for `http://localhost`.
 
@@ -61,11 +63,13 @@ Production browsers also block mixed content, so a backend used from an HTTPS FI
 
 Auth is the backend's responsibility, not FINOS Workspace's. Common patterns:
 
-- Custom request header (e.g. `X-API-KEY`) configured on the backend connection in FINOS Workspace.
-- Query parameter (e.g. `?api_key=...`) configured on the backend connection in FINOS Workspace.
+- Custom request header (e.g. `X-API-KEY`) configured on the backend connection in FINOS Workspace, stored encrypted on the server and added by the API.
+- Query parameter (e.g. `?api_key=...`) configured on the backend connection in FINOS Workspace, added by the API the same way.
+- The signed identity token. The API sends `X-Workspace-Identity`, a JWT signed with ES256 that is valid for five minutes. Verify it with the public keys at `<API address>/.well-known/jwks.json`, which anyone may read. Its `iss` is the API's address, its `aud` is the origin of the backend connection, its `sub` is the user's UUID and its `email` is the user's email. A backend that does not check `aud` accepts a token that was made for another backend.
+- The identity provider's ID token. When the administrator turns on `AUTHENTICATION_SEND_MICROSOFT_IDTOKEN` or `AUTHENTICATION_SEND_OKTA_IDTOKEN` and the user signed in with that provider, the API also sends the user's Microsoft Entra ID token as `X-Microsoft-Id-Token` or the user's Okta ID token as `X-Okta-Id-Token`, so that a backend can verify it with the provider. The API keeps the token and its refresh token on the server, renews the token before it expires, and never gives either to the browser.
 - No auth at all (local dev, internal trusted network).
 
-Header-based auth is preferred — keys stay out of URLs and access logs. FINOS Workspace lets users register backend connections with header or query-string credentials.
+Header-based auth is preferred — keys stay out of URLs and access logs. FINOS Workspace lets users register backend connections with header or query-string credentials. The browser never holds their values.
 
 ## Optional endpoints and behaviors
 

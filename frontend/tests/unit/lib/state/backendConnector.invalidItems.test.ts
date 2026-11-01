@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { forgetInvalidItems } from "~/utils/zodErrors";
+import { throughSourceProxy } from "../../../mocks/sourceProxy";
 import { installWidgetsSchemaFixture } from "../../../mocks/widgetsSchema";
 
 installWidgetsSchemaFixture();
@@ -15,7 +16,7 @@ vi.mock("sonner", () => ({
 }));
 
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+global.fetch = throughSourceProxy(mockFetch);
 
 const source: Source = {
   id: "source-1",
@@ -116,9 +117,11 @@ describe("backends with invalid widgets or apps", () => {
       ).length;
 
     await useBackendConnectorStore.getState().updateApiSources([source], false);
+    useBackendConnectorStore.getState().forgetValidation();
     await useBackendConnectorStore.getState().updateApiSources([source], false);
     expect(warnings()).toBe(1);
 
+    useBackendConnectorStore.getState().forgetValidation();
     await useBackendConnectorStore.getState().updateApiSources([source], true);
     expect(warnings()).toBe(2);
   });
@@ -142,10 +145,12 @@ describe("backends with invalid widgets or apps", () => {
         headers: new Headers(),
       }),
     );
+    useBackendConnectorStore.getState().forgetValidation();
     await useBackendConnectorStore.getState().updateApiSources([source], false);
     expect(warnings()).toBe(1);
 
     backendWithInvalidItems();
+    useBackendConnectorStore.getState().forgetValidation();
     await useBackendConnectorStore.getState().updateApiSources([source], false);
     expect(warnings()).toBe(2);
   });

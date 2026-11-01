@@ -253,6 +253,7 @@ type AgentConfigState = {
   authEditGroup: {
     index: number;
     headerPairs: { key: string; value: string }[];
+    saved: string[];
   } | null;
   searchTerm: string;
 };
@@ -306,8 +307,7 @@ export function AgentConfigDialog() {
           ...agent,
           endpoints: resolveAgentEndpoints(agent.endpoints, holder.url),
         }));
-        await putCustomCopilot(holder);
-        externalHolders[groupIndex] = holder;
+        externalHolders[groupIndex] = await putCustomCopilot(holder);
         updateExternalCopilotHolders(externalHolders);
       }
     },
@@ -428,12 +428,8 @@ export function AgentConfigDialog() {
 
   const handleAuthGroup = useCallback(
     (groupIndex: number) => {
-      const holder = externalCopilotHolders[groupIndex];
-      const headers = holder?.headers || {};
-      const headerPairs = Object.entries(headers).map(([key, value]) => ({
-        key,
-        value,
-      }));
+      const saved = externalCopilotHolders[groupIndex]?.headerNames ?? [];
+      const headerPairs = saved.map((key) => ({ key, value: "" }));
       if (headerPairs.length === 0) {
         headerPairs.push({ key: "", value: "" });
       }
@@ -441,6 +437,7 @@ export function AgentConfigDialog() {
         authEditGroup: {
           index: groupIndex,
           headerPairs,
+          saved,
         },
       });
     },
@@ -453,7 +450,7 @@ export function AgentConfigDialog() {
       const holder = state.groups[authEditGroup.index];
       if (!holder) return;
 
-      const { index: groupIndex, headerPairs } = authEditGroup;
+      const { index: groupIndex, headerPairs, saved } = authEditGroup;
       const allKeys = headerPairs.map((pair) => pair.key);
       const uniqueKeys = new Set(allKeys);
 
@@ -470,6 +467,14 @@ export function AgentConfigDialog() {
         toast.error("Header keys cannot be empty. Please provide valid header names.", {
           id: "auth-update",
         });
+        return;
+      }
+
+      const missing = headerPairs.find(
+        (pair) => !pair.value && !saved.includes(pair.key),
+      );
+      if (missing) {
+        toast.error(`Enter a value for ${missing.key}.`, { id: "auth-update" });
         return;
       }
 
@@ -727,10 +732,7 @@ type AgentGroupItemProps = {
 const AgentGroupItem = memo((props: AgentGroupItemProps) => {
   const { holder, groupIndex, handleSaveRefresh, handleAuthGroup, dispatch } = props;
 
-  const hasHeaders = useMemo(
-    () => Object.keys(holder.headers || {}).length > 0,
-    [holder.headers],
-  );
+  const hasHeaders = (holder.headerNames?.length ?? 0) > 0;
   const [isLoading, setIsLoading] = useState(false);
 
   const onSaveRefreshClick = useCallback(async () => {
@@ -965,7 +967,11 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
                       inputRefs.current[`value-${index}`] = el;
                     }}
                     size="sm"
-                    placeholder="Bearer token..."
+                    placeholder={
+                      editGroup.saved.includes(pair.key)
+                        ? "Saved. Leave blank to keep it"
+                        : "Bearer token..."
+                    }
                     defaultValue={pair.value}
                     onChange={(newValue: string) => {
                       onChange(index, "value", newValue);

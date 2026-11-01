@@ -1,6 +1,4 @@
-import type { IPublicClientApplication } from "@azure/msal-browser";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { OktaAuth } from "@okta/okta-auth-js";
 import type { CredentialResponse } from "@react-oauth/google";
 import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -12,11 +10,11 @@ import {
   login as apiLogin,
   getSession,
   googleLogin,
-  microsoftLogin,
-  oktaLogin,
+  type ServerSignInProvider,
+  startSignIn,
   updatePassword,
-  withSignInNonce,
 } from "~/api/auth.api";
+import { errorMessage } from "~/api/errors";
 import { PasswordUpdateDialog } from "~/components/Auth/PasswordUpdateDialog";
 import TOTPEnterDialog from "~/components/Auth/TOTPEnterDialog";
 import TOTPSetDialog from "~/components/Auth/TOTPSetDialog";
@@ -30,8 +28,6 @@ import MicrosoftLogin from "~/components/LayoutUnauth/MicrosoftLogin";
 import OktaLogin from "~/components/LayoutUnauth/OktaLogin";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
 import { getEnabledIdentityProviders } from "~/lib/identityProviders";
-import { loginRequest } from "~/lib/microsoft-auth-config";
-import { oktaLoginRequest } from "~/lib/okta-auth-config";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useAccessStore } from "~/lib/state/access";
 import { useAppStore } from "~/lib/state/app";
@@ -39,7 +35,6 @@ import { useAuthStore, useShallowAuthStore } from "~/lib/state/auth";
 import { useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useCopilotStore } from "~/lib/state/copilot";
 import { useEntityThemeStore } from "~/lib/state/entityTheme";
-import { rememberSignInProvider, setIdpTokens } from "~/lib/state/idpTokens";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
 import { useSharedAppStore } from "~/lib/state/sharedApp";
 import { useSkillsLibraryStore } from "~/lib/state/skillsLibrary";
@@ -52,11 +47,7 @@ import {
 } from "~/types/auth.type";
 import { zodEmail, zodPassword } from "~/utils/zodForms";
 
-const {
-  allowEmailLogin: authenticationAllowEmailLoginFF,
-  sendMicrosoftIdToken,
-  sendOktaIdToken,
-} = getConfig().authentication;
+const { allowEmailLogin: authenticationAllowEmailLoginFF } = getConfig().authentication;
 
 const { supportEmail } = getConfig().contact;
 const contactTarget = supportEmail ? `your admin (${supportEmail})` : "your admin";
@@ -141,8 +132,7 @@ export default function LoginPage() {
     onTOTPLoginSubmit,
     onTOTPEnroll,
     handleGoogleSuccess,
-    handleMicrosoftSuccess,
-    handleOktaSuccess,
+    handleProviderSignIn,
   } = useLogin({
     dispatch,
     state,
@@ -259,12 +249,14 @@ export default function LoginPage() {
                       )}
                       {enabledProviders.includes("microsoft") && (
                         <div className="relative w-full notranslate">
-                          <MicrosoftLogin handleLogin={handleMicrosoftSuccess} />
+                          <MicrosoftLogin
+                            handleLogin={() => handleProviderSignIn("microsoft")}
+                          />
                         </div>
                       )}
                       {enabledProviders.includes("okta") && (
                         <div className="relative w-full notranslate">
-                          <OktaLogin handleLogin={handleOktaSuccess} />
+                          <OktaLogin handleLogin={() => handleProviderSignIn("okta")} />
                         </div>
                       )}
                     </div>
@@ -310,6 +302,7 @@ function useLogin(props: { dispatch: StateDispatch<LoginState>; state: LoginStat
   const { dispatch, state } = props;
   const [searchParams] = useSearchParams();
   const urlError = searchParams.get("error");
+  const urlStep = searchParams.get("step");
   const navigate = useNavigate();
 
   const authStore = useShallowAuthStore((state) => ({
@@ -328,6 +321,10 @@ function useLogin(props: { dispatch: StateDispatch<LoginState>; state: LoginStat
   useEffect(() => {
     if (urlError) toast.error("Error", { description: urlError });
   }, [urlError]);
+
+  useEffect(() => {
+    if (urlStep === "totp-enroll") dispatch({ showQR: true });
+  }, [urlStep, dispatch]);
 
   useEffect(() => {
     if (state.loggedIn && !state.showQR && !state.showReset) {
@@ -474,91 +471,17 @@ function useLogin(props: { dispatch: StateDispatch<LoginState>; state: LoginStat
     [dispatch, captureError],
   );
 
-  const handleMicrosoftSuccess = useCallback(
-    async (instance: IPublicClientApplication) => {
+  const handleProviderSignIn = useCallback(
+    async (provider: ServerSignInProvider) => {
+      dispatch({ error: null });
       try {
-        const { res, response } = await withSignInNonce(async (nonce) => {
-          const res = await instance.loginPopup({ ...loginRequest, nonce });
-          return { res, response: await microsoftLogin(res.accessToken, res.idToken) };
-        });
-
-        if (isLoggedIn(response)) {
-          if (sendMicrosoftIdToken) setIdpTokens({ microsoftIdToken: res.idToken });
-          rememberSignInProvider("microsoft");
-          instance.setActiveAccount(res.account);
-          return loginSuccess(response)
-            .then(dispatch)
-            .catch((error) => {
-              captureError(error);
-            });
-        }
-
-        if (response.status === 202) {
-          return dispatch({ ...handle2FAResponse(response), oauthLoading: false });
-        }
-
-        const cleanDetail = response?.detail;
-        dispatch({
-          error: getErrorMessage(response.status, cleanDetail),
-          oauthLoading: false,
-        });
+        window.location.assign(await startSignIn(provider));
       } catch (error) {
         console.error(error);
-        dispatch({
-          oauthLoading: false,
-          error: "An unexpected error occurred. Please try again or contact support.",
-        });
+        dispatch({ error: errorMessage(error, UnexpectedError) });
       }
     },
-    [dispatch, captureError],
-  );
-
-  const handleOktaSuccess = useCallback(
-    async (oktaAuth: OktaAuth) => {
-      try {
-        const { idToken, response } = await withSignInNonce(async (nonce) => {
-          const tokenResponse = await oktaAuth.token.getWithPopup({
-            ...oktaLoginRequest,
-            nonce,
-          });
-          const accessToken = tokenResponse.tokens.accessToken?.accessToken;
-          const idToken = tokenResponse.tokens.idToken?.idToken;
-
-          if (!(accessToken && idToken)) {
-            throw new Error("Failed to get the access and ID tokens from Okta");
-          }
-
-          return { idToken, response: await oktaLogin(accessToken, idToken) };
-        });
-
-        if (isLoggedIn(response)) {
-          if (sendOktaIdToken) setIdpTokens({ oktaIdToken: idToken });
-          rememberSignInProvider("okta");
-          return loginSuccess(response)
-            .then(dispatch)
-            .catch((error) => {
-              captureError(error);
-            });
-        }
-
-        if (response.status === 202) {
-          return dispatch({ ...handle2FAResponse(response), oauthLoading: false });
-        }
-
-        const cleanDetail = response?.detail;
-        dispatch({
-          error: getErrorMessage(response.status, cleanDetail),
-          oauthLoading: false,
-        });
-      } catch (error) {
-        console.error(error);
-        dispatch({
-          oauthLoading: false,
-          error: "An unexpected error occurred. Please try again or contact support.",
-        });
-      }
-    },
-    [dispatch, captureError],
+    [dispatch],
   );
 
   return {
@@ -568,8 +491,7 @@ function useLogin(props: { dispatch: StateDispatch<LoginState>; state: LoginStat
     onTOTPLoginSubmit,
     onTOTPEnroll,
     handleGoogleSuccess,
-    handleMicrosoftSuccess,
-    handleOktaSuccess,
+    handleProviderSignIn,
   };
 }
 

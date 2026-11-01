@@ -26,6 +26,7 @@ What you should see: a JSON **object** keyed by widget id. Common failures:
 - 404 → route isn't registered. Check the route exists and is `GET`.
 - 500 / parse error → likely a JSON file read with the wrong encoding. On Windows, defaulting to `cp1252` mangles non-ASCII. Read JSON files as UTF-8 explicitly.
 - CORS error in the browser console → backend isn't allowing the origin the FINOS Workspace is served from (or `http://localhost:1420`). Add the origin.
+- The widget shows an error with no data → the FINOS Workspace API could not reach the backend: its refusals carry the header `X-Workspace-Proxy-Error` (`403`: a connection that is not a superuser's must be a public `https` address; `502`: nothing answered). A status the backend itself returned is shown as it came.
 
 ## 2. Fetch `/apps.json` directly (if the app ships templates)
 
@@ -35,7 +36,8 @@ GET <backend-url>/apps.json
 
 What you should see: a JSON **array** of app objects. Common failures:
 
-- Returns a single object → FINOS Workspace reads it as an array of one app, but the contract is an array. Wrap it in `[ ... ]`.
+- Returns a single object → FINOS Workspace will reject it with `Unknown App: [name]: Required` or similar. Wrap in `[ ... ]`.
+- Each app missing `allowCustomization`, `groups`, `prompts` → some validators flag these as required. Add them with sensible defaults.
 - Each tab missing `id`, `name`, or `layout` → required.
 
 ## 3. Validate the JSON shape
@@ -77,9 +79,9 @@ Common failures:
 
 If the backend works from `curl` but fails in FINOS Workspace:
 
-- CORS: open the browser devtools network tab while loading the dashboard. CORS failures show as red entries with no response body. Add the missing origin.
-- Auth: if the backend requires a header or query string, confirm FINOS Workspace's backend connection has it configured (Connections in the sidebar → edit the connection).
-- Mixed content: a backend served over HTTP can't be reached from an HTTPS FINOS Workspace. Use HTTPS in production.
+- CORS: open the browser devtools network tab while loading the dashboard. CORS failures show as red entries with no response body. Add the missing origin, and answer `OPTIONS` on every route.
+- Auth: if the backend requires a header or query string, confirm FINOS Workspace's backend connection has it configured (Settings → Data Connectors → edit the connection).
+- Reachability: the API must reach the backend. A connection that is not a superuser's must be a public `https` address, unless the stack runs with `MODE=local`; a superuser's may be a private one anywhere. From a container, `localhost` is the container itself: use `host.docker.internal` for a backend on your machine.
 
 ## 6. Parameter sync isn't working
 
@@ -87,7 +89,7 @@ Symptoms: changing a synced param in one widget doesn't update the others; the w
 
 Walk through:
 
-- Group `name` is the same text in `groups` and in the `groups` of every layout item that should join it. Any name works, as long as the two match exactly.
+- Group `name` is `Group 1`, `Group 2`, ... literally — not `"team-group"` or anything custom. Custom names validate but never link.
 - Group `type` matches the widget param shape: `param` for `text+options`, `endpointParam` for `endpoint+optionsEndpoint`. The wrong type silently disables sync.
 - The group's `widgetIds` array, every layout item's `groups: [...]`, and the widget's own param config all agree on the same `paramName`.
 - For dynamic dropdowns: every widget shares the same `optionsEndpoint`. If they differ, FINOS Workspace can't link them.
@@ -97,10 +99,10 @@ Walk through:
 The browser/MCP path exposes the *actual* validator the running FINOS Workspace uses. When the doc and the validator disagree, **trust the validator** — adjust the files to match what FINOS Workspace accepts and then update docs/comments.
 
 - **`workspace_mcp` (preferred)**: `manage_backends(operation="add", ...)` returns schema errors directly. `list_available_widgets(backend_id=...)` and `manage_apps(operation="list", backend_id=...)` confirm what loaded.
-- **Browser**: Connections in the sidebar → Connect Backend shows the same errors in a list of invalid items.
+- **Browser**: Settings → Data Connectors → Connect Backend → Test surfaces the same errors.
 
 ## 8. Refresh, don't restart, for metadata changes
 
-- `widgets.json` / `apps.json` edits → right-click the dashboard → "Refresh backend".
+- `widgets.json` / `apps.json` edits → right-click the backend → "Refresh backend".
 - Code/handler edits → restart the backend.
 - Major schema changes → close the dashboard and open a fresh app instance from the gallery so cached state doesn't lie to you.

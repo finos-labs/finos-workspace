@@ -1,5 +1,5 @@
 import { apiClient } from "~/api/api";
-import { isDefaultCopilotUrl } from "~/lib/utils/fetch";
+import { agentHolderFor, isDefaultCopilotUrl, relayToAgent } from "~/lib/utils/fetch";
 
 export const RENEW_WHEN_LEFT_MS = 20 * 60 * 1000;
 
@@ -44,7 +44,10 @@ export async function fetchAgent(
   input: string | URL,
   init: RequestInit = {},
 ): Promise<Response> {
-  if (!isDefaultCopilotUrl(input)) return fetch(input, init);
+  if (!isDefaultCopilotUrl(input)) {
+    const holder = agentHolderFor(input);
+    return holder ? relayToAgent(holder, input, init) : fetch(input, init);
+  }
 
   const send = async (renew: boolean) => {
     const headers = new Headers(init.headers);

@@ -41,7 +41,7 @@ Read `workspace://contract/backend`. Confirm you understand:
 - `GET /widgets.json` returns a JSON object keyed by widget id.
 - `GET /apps.json` returns a JSON array of app templates (only if you ship templates).
 - Each widget references a data endpoint. Pick paths that read well — `/weekly_summary`, `/audit_report`, `/handbook`.
-- CORS allows the origin your FINOS Workspace is served from, and `http://localhost:1420` for local development.
+- CORS allows the origin your FINOS Workspace is served from, and `http://localhost:1420` for local development, and every route answers `OPTIONS`.
 - Auth strategy: header (preferred), query string, or none.
 
 ## 4. Draft `widgets.json`

@@ -2050,7 +2050,7 @@
                 "type": "string",
                 "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,64}$",
                 "not": {
-                  "pattern": "^(?:[aA][cC][cC][eE][pP][tT]$|[aA][cC][cC][eE][pP][tT]-[cC][hH][aA][rR][sS][eE][tT]$|[aA][cC][cC][eE][pP][tT]-[eE][nN][cC][oO][dD][iI][nN][gG]$|[aA][cC][cC][eE][sS][sS]-[cC][oO][nN][tT][rR][oO][lL]-[rR][eE][qQ][uU][eE][sS][tT]-[hH][eE][aA][dD][eE][rR][sS]$|[aA][cC][cC][eE][sS][sS]-[cC][oO][nN][tT][rR][oO][lL]-[rR][eE][qQ][uU][eE][sS][tT]-[mM][eE][tT][hH][oO][dD]$|[aA][uU][tT][hH][oO][rR][iI][zZ][aA][tT][iI][oO][nN]$|[cC][oO][nN][nN][eE][cC][tT][iI][oO][nN]$|[cC][oO][nN][tT][eE][nN][tT]-[lL][eE][nN][gG][tT][hH]$|[cC][oO][nN][tT][eE][nN][tT]-[tT][yY][pP][eE]$|[cC][oO][oO][kK][iI][eE]$|[dD][aA][tT][eE]$|[dD][nN][tT]$|[eE][xX][pP][eE][cC][tT]$|[hH][oO][sS][tT]$|[kK][eE][eE][pP]-[aA][lL][iI][vV][eE]$|[oO][rR][iI][gG][iI][nN]$|[rR][eE][fF][eE][rR][eE][rR]$|[sS][eE][tT]-[cC][oO][oO][kK][iI][eE]$|[tT][eE]$|[tT][rR][aA][iI][lL][eE][rR]$|[tT][rR][aA][nN][sS][fF][eE][rR]-[eE][nN][cC][oO][dD][iI][nN][gG]$|[uU][pP][gG][rR][aA][dD][eE]$|[vV][iI][aA]$|[xX]-[mM][iI][cC][rR][oO][sS][oO][fF][tT]-[iI][dD]-[tT][oO][kK][eE][nN]$|[xX]-[oO][kK][tT][aA]-[iI][dD]-[tT][oO][kK][eE][nN]$|[xX]-[wW][oO][rR][kK][sS][pP][aA][cC][eE]-[uU][sS][eE][rR]$|[pP][rR][oO][xX][yY]-|[sS][eE][cC]-)"
+                  "pattern": "^(?:[aA][cC][cC][eE][pP][tT]$|[aA][cC][cC][eE][pP][tT]-[cC][hH][aA][rR][sS][eE][tT]$|[aA][cC][cC][eE][pP][tT]-[eE][nN][cC][oO][dD][iI][nN][gG]$|[aA][cC][cC][eE][sS][sS]-[cC][oO][nN][tT][rR][oO][lL]-[rR][eE][qQ][uU][eE][sS][tT]-[hH][eE][aA][dD][eE][rR][sS]$|[aA][cC][cC][eE][sS][sS]-[cC][oO][nN][tT][rR][oO][lL]-[rR][eE][qQ][uU][eE][sS][tT]-[mM][eE][tT][hH][oO][dD]$|[aA][uU][tT][hH][oO][rR][iI][zZ][aA][tT][iI][oO][nN]$|[cC][oO][nN][nN][eE][cC][tT][iI][oO][nN]$|[cC][oO][nN][tT][eE][nN][tT]-[lL][eE][nN][gG][tT][hH]$|[cC][oO][nN][tT][eE][nN][tT]-[tT][yY][pP][eE]$|[cC][oO][oO][kK][iI][eE]$|[dD][aA][tT][eE]$|[dD][nN][tT]$|[eE][xX][pP][eE][cC][tT]$|[hH][oO][sS][tT]$|[kK][eE][eE][pP]-[aA][lL][iI][vV][eE]$|[oO][rR][iI][gG][iI][nN]$|[rR][eE][fF][eE][rR][eE][rR]$|[sS][eE][tT]-[cC][oO][oO][kK][iI][eE]$|[tT][eE]$|[tT][rR][aA][iI][lL][eE][rR]$|[tT][rR][aA][nN][sS][fF][eE][rR]-[eE][nN][cC][oO][dD][iI][nN][gG]$|[uU][pP][gG][rR][aA][dD][eE]$|[vV][iI][aA]$|[xX]-[mM][iI][cC][rR][oO][sS][oO][fF][tT]-[iI][dD]-[tT][oO][kK][eE][nN]$|[xX]-[oO][kK][tT][aA]-[iI][dD]-[tT][oO][kK][eE][nN]$|[xX]-[wW][oO][rR][kK][sS][pP][aA][cC][eE]-[iI][dD][eE][nN][tT][iI][tT][yY]$|[xX]-[wW][oO][rR][kK][sS][pP][aA][cC][eE]-[uU][sS][eE][rR]$|[pP][rR][oO][xX][yY]-|[sS][eE][cC]-)"
                 }
               },
               "value": {
@@ -3553,6 +3553,10 @@
         "mcp_tool": {
           "$ref": "#/definitions/McpTool",
           "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
+        },
+        "requires_auth": {
+          "type": "boolean",
+          "description": "The page needs the backend connection's credentials. The browser then opens it through the FINOS Workspace API, which adds them, in a sandbox without storage. For trusted pages only: the API checks this declaration itself"
         },
         "storage": {
           "type": "object",

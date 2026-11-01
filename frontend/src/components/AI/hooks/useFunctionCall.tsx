@@ -12,7 +12,6 @@ import { getConfig } from "~/lib/runtimeConfig";
 import { fetchAgent } from "~/lib/state/agentToken";
 import { DASHBOARD_LOCKED_MESSAGE, useAppStore } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
-import { getSourceCredentials } from "~/lib/state/backendConnector";
 import {
   type ArtifactT,
   type Citation,
@@ -42,15 +41,16 @@ import {
   paramOptionQueryResult,
   type TaskRequest,
 } from "~/lib/utils";
+import { fetchRequest } from "~/lib/utils/fetch";
 import { rowsOf } from "~/lib/utils/rawRows";
 import { toError } from "~/lib/utils/utils";
 import { isTruthy, isTruthyRecord } from "~/lib/utils/values";
 import { createWidgetEndpoint } from "~/lib/utils/widgetParams";
 import {
+  type BackendRequest,
   buildOptionsRequest,
   buildWidgetRequest,
   type RequestProblem,
-  requestInit,
 } from "~/lib/utils/widgetRequest";
 import { buildHtmlWidget, buildNoteWidget } from "./buildWidget";
 import { useShallowAppWidgetsStore } from "./useGetAppWidgets";
@@ -770,7 +770,10 @@ function notSent(problems: RequestProblem[]): CopilotError {
   );
 }
 
-function getRequest(widget: WidgetT, inputArgs: Record<string, unknown>): Request {
+function getRequest(
+  widget: WidgetT,
+  inputArgs: Record<string, unknown>,
+): BackendRequest {
   const declared = (widget.params ?? [])
     .filter((param) => param.type !== "form")
     .map((param) => param.paramName);
@@ -785,17 +788,14 @@ function getRequest(widget: WidgetT, inputArgs: Record<string, unknown>): Reques
     {
       endpoint,
       params: widget.params,
+      sourceId: widget.sourceId,
       storage: { params: inputArgs as Record<string, StoredParamValue> },
     },
-    getSourceCredentials(widget.sourceId, endpoint.url),
     widget.raw ? { raw: "true" } : {},
   );
   if (!built) throw new Error("Missing widget endpoint url.");
   if (!built.ok) throw notSent(built.problems);
-  return new Request(
-    built.request.url,
-    requestInit(built.request, { credentials: "omit" }),
-  );
+  return built.request;
 }
 
 type GetDashboardWidgetData = (widgetId: string) => DashboardWidgetData | undefined;
@@ -829,7 +829,7 @@ async function getCustomWidgetsData(
 
   try {
     const request = getRequest(customWidget, dataSource.input_args);
-    const response = await fetch(request);
+    const response = await fetchRequest(request, { credentials: "omit" });
     if (!response.ok) throw response;
     const requestResult = await parseResponseBody(
       response,
@@ -970,13 +970,13 @@ export async function getWidgetsParamOptions(
       params: widget.params ?? [],
       values: paramOptionsQuery.options_endpoint_input_args,
     },
-    getSourceCredentials(widget.sourceId, widgetParam.optionsEndpoint),
+    widget.sourceId,
   );
   if (!built) throw new Error(`Endpoint not found for param ${paramName}`);
   if (!built.ok) throw notSent(built.problems);
-  const response: unknown = await fetch(
-    new Request(built.request.url, requestInit(built.request, { credentials: "omit" })),
-  ).then((res) => res.json());
+  const response: unknown = await fetchRequest(built.request, {
+    credentials: "omit",
+  }).then((res) => res.json());
   if (!Array.isArray(response)) throw new Error("Failed to parse param options result");
   const optionsData = response.map((option: unknown) => {
     if (typeof option === "string") return { label: option, value: option };

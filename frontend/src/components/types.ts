@@ -98,6 +98,7 @@ export type Widget = {
   // biome-ignore format: off
   widgetType?: "backend" | "file" | "html";
   raw?: boolean;
+  requires_auth?: boolean;
   mcp_tool?: McpToolContractT;
   imgUrl?: string;
   innerTab?: string;

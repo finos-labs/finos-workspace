@@ -76,15 +76,42 @@ deployment serves the API on a host of its own that no other server shares. On l
 and the session cookie also reaches every other server on a local port that the browser
 navigates to or loads a frame or an image from, such as a local data backend or an app
 in an iframe widget. Run only servers you trust on localhost next to a signed-in FINOS Workspace.
-The sign-in providers check their tokens against `GOOGLE_OAUTH_CLIENT_ID`,
-`AZURE_CLIENT_ID` with `AZURE_TENANT_ID`, and `OKTA_CLIENT_ID` with `OKTA_DOMAIN`, the same
-public values the web app uses (its `VITE_` settings of the same names); a provider without
-them refuses every sign-in. `AZURE_TENANT_ID` is the tenant's id (a GUID) or domain, or
-`organizations` or `common` for a multi-tenant app. The Entra app
-registration must send the optional ID-token claims `email` and `xms_edov`: without them
-Microsoft vouches for no address, so a Microsoft sign-in reaches no existing account,
-claims no invitation and makes no new account; it is refused, unless the account is
-already linked to that Microsoft user.
+Sign-in with Google checks the access token the browser gets against `GOOGLE_OAUTH_CLIENT_ID`,
+the public value the web app uses too (its `VITE_` setting of the same name). Sign-in with
+Microsoft or Okta runs on the server, so the browser never holds a token of the provider:
+the web app asks `POST /app/sign-in/{provider}/start` for the address of the provider's
+sign-in page and goes there, and the provider sends the browser back to
+`<SELFURL>/app/sign-in/{provider}/callback`, where the API exchanges the authorization code
+(with PKCE), checks the ID token against the provider's keys, signs the user in, and
+redirects to `APPURL`. A sign-in that fails redirects to the web app's login page with the
+reason. A sign-in has ten minutes, one browser (a `Lax` cookie holds a secret that only
+that browser has), one use, and a nonce that must come back in the ID token.
+
+- Microsoft needs `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` (the tenant's id or domain, or
+  `organizations` or `common` for a multi-tenant app) and `AZURE_CLIENT_SECRET`. Register the
+  app as a **Web** platform with the redirect URI above and a client secret; a single-page
+  app registration, which has no secret, makes Microsoft limit the refresh token to 24 hours.
+  The app registration must send the optional ID-token claims `email` and `xms_edov`: without
+  them Microsoft vouches for no address, so a Microsoft sign-in reaches no existing account,
+  claims no invitation and makes no new account; it is refused, unless the account is already
+  linked to that Microsoft user.
+- Okta needs `OKTA_CLIENT_ID` and `OKTA_DOMAIN`, the issuer (`https://<your-org>.okta.com`, or
+  `https://<your-org>.okta.com/oauth2/default` for a custom authorization server), and
+  `OKTA_CLIENT_SECRET` for a web app. Allow the redirect URI above, and the
+  authorization code and, for the next paragraph, refresh token grants.
+- A provider without its settings refuses every sign-in.
+
+A backend or an agent that verifies tokens with Microsoft Entra or Okta can keep doing so.
+Set `AUTHENTICATION_SEND_MICROSOFT_IDTOKEN` or `AUTHENTICATION_SEND_OKTA_IDTOKEN` to `true`:
+the API then asks the provider for `offline_access`, keeps the user's ID token and refresh
+token encrypted at rest and tied to the session, renews the ID token before it expires, replaces
+the refresh token whenever the provider rotates it, deletes both when the session ends however it
+ends (sign-out at once, any other end within a minute) and then revokes the refresh token when the
+provider has a revocation endpoint (Okta has one; Microsoft Entra has none), and sends the ID token to the data connections and agents as
+`X-Microsoft-Id-Token` or `X-Okta-Id-Token`. A provider that issues no refresh token refuses
+the sign-in, and one that refuses a refresh token ends the session. Every call also carries
+`X-Workspace-Identity`, a short-lived token that the API signs and publishes the keys of at
+`<SELFURL>/.well-known/jwks.json`; see [Requests that a widget sends](../../docs/tutorials/build-a-backend/requests-from-a-widget.md).
 
 The API reaches users' MCP servers only at public internet addresses. An MCP server on a
 private network (an internal host, a compose service) has to be listed by host name in

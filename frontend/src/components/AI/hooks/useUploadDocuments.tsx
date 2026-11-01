@@ -87,7 +87,7 @@ async function uploadToAgent(
     return data;
   }
 
-  const response = await fetch(uploadUrl, {
+  const response = await fetchAgent(uploadUrl, {
     method: "POST",
     headers: agentHeaders,
     body: formData,

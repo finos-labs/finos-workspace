@@ -47,9 +47,7 @@ export function getConfig(): RuntimeConfig {
     if (!_config.urls.ai)
       console.warn("[runtimeConfig] urls.ai is empty — AI/copilot features will fail");
     if (
-      !_config.authProviders.googleClientId &&
-      !_config.authProviders.azureClientId &&
-      !_config.authProviders.oktaDomain &&
+      _config.authentication.identityProviders.length === 0 &&
       !_config.authentication.allowEmailLogin
     ) {
       console.warn(

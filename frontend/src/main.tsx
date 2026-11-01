@@ -27,8 +27,6 @@ import { useShallowThemeStore } from "./lib/state/theme";
 import { applyWhiteLabelMeta } from "./utils/colorUtils";
 import { loadStylesheet } from "./utils/stylesheet";
 
-const LazyMsalProvider = lazy(() => import("./providers/MsalProviderWrapper"));
-const LazyOktaProvider = lazy(() => import("./providers/OktaProviderWrapper"));
 const LazyGoogleProvider = lazy(() => import("./providers/GoogleProviderWrapper"));
 
 const Setup2FA = lazy(() => import("./routes/2fa"));
@@ -60,9 +58,6 @@ const RootLayout = lazy(() => import("./components/RootLayout"));
 const TooltipProvider = lazy(() =>
   import("./components/Tooltip").then((mod) => ({ default: mod.TooltipProvider })),
 );
-
-const MsalTokenRefresh = lazy(() => import("./components/MsalTokenRefresh"));
-const OktaTokenRestore = lazy(() => import("./components/OktaTokenRestore"));
 
 if (
   typeof window !== "undefined" &&
@@ -119,19 +114,11 @@ function RouterErrorElement() {
 
 const AuthGuard = memo(({ children }: { children?: ReactNode }) => {
   return useMemo(() => {
-    const providers = getEnabledIdentityProviders();
-    const Wrapper = providers.includes("microsoft") ? MsalTokenRefresh : Fragment;
-    const OktaWrapper = providers.includes("okta") ? OktaTokenRestore : Fragment;
-
     return (
       <Fragment key="auth-guard">
         <AuthRedirect key="auth-redirect" />
         <Suspense fallback={null}>
-          <Wrapper key="auth-wrapper">
-            <OktaWrapper key="okta-wrapper">
-              <S children={<App key="app">{children}</App>} />
-            </OktaWrapper>
-          </Wrapper>
+          <S children={<App key="app">{children}</App>} />
         </Suspense>
       </Fragment>
     );
@@ -275,12 +262,6 @@ const router = createBrowserRouter([
   },
 ]);
 
-const AUTH_WRAPPERS = {
-  microsoft: LazyMsalProvider,
-  okta: LazyOktaProvider,
-  google: LazyGoogleProvider,
-} as const;
-
 function Root() {
   const setTheme = useShallowThemeStore((state) => state.setTheme);
 
@@ -299,10 +280,11 @@ function Root() {
         </Suspense>
       </QueryClientProvider>
     );
-    return enabledProviders.reduce((content, provider) => {
-      const Comp = AUTH_WRAPPERS[provider];
-      return <Comp key={`${provider}-wrapper`}>{content}</Comp>;
-    }, content);
+    return enabledProviders.includes("google") ? (
+      <LazyGoogleProvider key="google-wrapper">{content}</LazyGoogleProvider>
+    ) : (
+      content
+    );
   }, [enabledProviders]);
 
   useEffect(() => {

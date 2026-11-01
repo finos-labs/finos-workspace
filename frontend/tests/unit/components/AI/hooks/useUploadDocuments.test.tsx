@@ -8,6 +8,7 @@ import { getDefaultCopilot } from "~/lib/constants";
 import { useAuthStore } from "~/lib/state/auth";
 import { type Copilot, useCopilotStore } from "~/lib/state/copilot";
 import { useThemeStore } from "~/lib/state/theme";
+import { mockConfig } from "../../../../mocks/runtimeConfig";
 import { makeAuthUser } from "../../../factories";
 import { partial } from "../../../mocks";
 
@@ -69,15 +70,11 @@ describe("useUploadDocuments", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("sends a custom agent only its own headers, never a FINOS Workspace credential", async () => {
+  it("sends a custom agent's upload through the API's relay, carrying no agent credential and no FINOS Workspace token", async () => {
     useCopilotStore.setState({
       selectedCopilot: customAgent,
       externalCopilotHolders: [
-        {
-          uuid: "holder-1",
-          url: "https://agent.test",
-          headers: { "X-Agent-Key": "agent-key" },
-        },
+        { uuid: "holder-1", url: "https://agent.test", headerNames: ["X-Agent-Key"] },
       ],
     });
     const upload = renderUpload();
@@ -86,12 +83,14 @@ describe("useUploadDocuments", () => {
 
     expect(apiClient.post).not.toHaveBeenCalled();
     const [url, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("https://agent.test/upload");
+    expect(url).toBe(
+      `${mockConfig.urls.backend}/app/custom-copilot/holder-1/relay?target=${encodeURIComponent("https://agent.test/upload")}`,
+    );
     const headers = new Headers(init.headers);
-    expect(headers.get("X-Agent-Key")).toBe("agent-key");
+    expect(headers.get("X-Agent-Key")).toBeNull();
     expect(headers.get("Authorization")).toBeNull();
-    expect(headers.get("X-Workspace-Client")).toBeNull();
+    expect(headers.get("X-Workspace-Client")).toBe("web");
     expect(headers.get("Content-Type")).toBeNull();
-    expect(init.credentials).toBeUndefined();
+    expect(init.credentials).toBe("include");
   });
 });
