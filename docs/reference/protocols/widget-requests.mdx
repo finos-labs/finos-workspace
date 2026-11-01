@@ -9,7 +9,7 @@ import { OmittedValues, RequestExamples, RequestProblems, ValueEncodings } from 
 
 # Widget requests
 
-The web app calls a backend directly from the browser, and it builds every request in `frontend/src/lib/utils/widgetRequest.ts`. This page lists what a backend receives for the definition of a widget, as [widgets.json](../schemas/widgets-json.mdx) describes it. Each table below comes from running that code on the cases that it names. [Requests that a widget sends](../../tutorials/build-a-backend/requests-from-a-widget.md) explains how the app builds a request.
+The web app builds every request in one place, the file `frontend/src/lib/utils/widgetRequest.ts`, and the FINOS Workspace API sends it to the backend from the routes under `/app/data-connectors`. The same builder serves widgets, the option lookups of the parameter bar, forms, the Agent's data and option requests, and the URL of an `iframe` widget's page. This page lists what a backend receives for the definition of a widget, as [widgets.json](../schemas/widgets-json.mdx) describes it. Each table below comes from running that code on the cases that it names. [Requests that a widget sends](../../tutorials/build-a-backend/requests-from-a-widget.md) explains how the app builds a request.
 
 ## How values are written
 

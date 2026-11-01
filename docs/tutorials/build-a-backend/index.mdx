@@ -10,7 +10,7 @@ import TabItem from "@theme/TabItem";
 
 # Build a backend
 
-A backend gives data to FINOS Workspace. It is a web server that you write and run. FINOS Workspace calls it from the browser of the user.
+A backend gives data to FINOS Workspace. It is a web server that you write and run. The FINOS Workspace API calls it for the browser of the user.
 
 A backend answers these requests:
 
@@ -20,7 +20,7 @@ A backend answers these requests:
 | GET | [`/apps.json`](../../reference/schemas/apps-json.mdx) | The apps that the backend offers. An empty list is permitted. |
 | GET or POST | The endpoint of each widget | The data of the widget |
 
-The backend must also allow the address of the web app in CORS. Each example in this section comes in Python and in TypeScript. Select the language once, and all the examples show it.
+The API makes the calls, so the backend needs no CORS settings for the web app. Each example in this section comes in Python and in TypeScript. Select the language once, and all the examples show it.
 
 ## Read this section in this order
 
@@ -94,9 +94,8 @@ node main.ts
 </TabItem>
 </Tabs>
 
-The backend uses port 5050. It allows calls from the web app at `http://localhost:3000`.
+The backend uses port 5050.
 
-- If your web app has a different address, set `APP_ORIGIN` before you start the backend. For example: `APP_ORIGIN=https://workspace.example.com`.
 - To use a different port, set `PORT`.
 
 To check the backend, open [http://localhost:5050/widgets.json](http://localhost:5050/widgets.json). The page shows the widgets.

@@ -7,7 +7,7 @@ sidebar_position: 0
 
 # Agents
 
-An agent answers the questions that people ask in the Agent panel of FINOS Workspace. The agent is the agent that ships with FINOS Workspace. You can write your own agent, add it, and let people choose it in the panel. An agent is a web server that the browser calls directly. It speaks the agent query protocol, which carries the dashboard of the user to the agent and lets the agent ask the browser for data.
+An agent answers the questions that people ask in the Agent panel of FINOS Workspace. The agent is the agent that ships with FINOS Workspace. You can write your own agent, add it, and let people choose it in the panel. An agent is a web server. It speaks the agent query protocol, which carries the dashboard of the user to the agent and lets the agent ask for the data of a widget. When you add an agent under AI Library, the FINOS Workspace API makes every call to it, queries and tool round trips included; the browser calls the agent that ships with FINOS Workspace directly.
 
 The guides build one agent in two steps. Each example comes in Python and in TypeScript.
 

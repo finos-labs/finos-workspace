@@ -9,7 +9,7 @@ This guide adds a data backend to your own FINOS Workspace account, gives it a c
 
 ## What you need
 
-You need an account of type Admin or Developer, because a User cannot add connections and has no Connections page. The backend has to be running at an address that your browser can reach, and it has to allow the web app's address in its CORS headers, because the browser calls it directly. [Requests that a widget sends](../../tutorials/build-a-backend/requests-from-a-widget.md#cors) lists what the backend must answer.
+You need an account of type Admin or Developer, because a User cannot add connections and has no Connections page. The FINOS Workspace API calls the backend for the browser, so the backend has to be running at an address that the API can reach. The connection's credentials are stored encrypted on the server and the API adds them itself; the browser holds none of them, and the backend needs no CORS settings for the web app. [Requests that a widget sends](../../tutorials/build-a-backend/requests-from-a-widget.md#the-route-check) describes what a backend receives.
 
 ## Add the backend
 

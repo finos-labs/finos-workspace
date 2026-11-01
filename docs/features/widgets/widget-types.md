@@ -31,7 +31,7 @@ A PDF widget shows a document page by page. It comes from a backend widget of th
 
 ## Iframe
 
-An iframe widget shows a web page. A page can ask FINOS Workspace for the parameters of the dashboard, and for the credentials of a backend, through a protocol. [Embed a web page as a widget](embed-a-web-page.md) adds a page to your library and describes what the frame allows.
+An iframe widget shows a web page. A page can ask FINOS Workspace for the parameters of the dashboard, and for the credentials of a backend, through a protocol. A backend can also mark an iframe widget with `requires_auth`, and FINOS Workspace then opens the page through the API, which adds the connection's credentials, in a sandbox without storage. [Embed a web page as a widget](embed-a-web-page.md) adds a page to your library and describes what the frame allows.
 
 It comes from a backend widget of the type `iframe`, from the core widget **Iframe** under **Others** and **Utils**, which starts empty, or from a page that you add to your library with **Add Data**.
 

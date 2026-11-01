@@ -19,7 +19,7 @@ A FINOS Workspace deployment is several processes, and they talk to each other o
 | Helper calls | HTTPS from the browser to the agent, with JSON or multipart bodies. | The agent token. | [Agent HTTP API](http-api/agent-api.mdx) |
 | Tools of connected MCP servers | HTTPS `POST /app/mcp-proxy` from the browser to the API. The body names the server and holds the MCP request, and the API streams the server's answer back. | The session cookie. | [Tool results](protocols/agent-tool-results.mdx) |
 | Tools of the FINOS Workspace | The browser asks the API to prepare a command with `POST /app/workspace-tools/prepare` and runs the command in the tab. | The session cookie. | [FINOS Workspace bridge](protocols/workspace-bridge.mdx#commands) |
-| Data of a widget | HTTPS from the browser to the backend that serves the widget, at the endpoint that `widgets.json` names. | Whatever headers the backend's connection holds. | [widgets.json](schemas/widgets-json.mdx) |
+| Data of a widget | HTTPS from the browser to the API, which calls the backend at the endpoint that `widgets.json` names. | The session cookie. The API adds the connection's credentials and the identity headers, and the browser holds none of them. | [widgets.json](schemas/widgets-json.mdx) |
 | Pages inside iframe widgets | `window.postMessage` between the page and FINOS Workspace. | The origin and the window of the sender. | [Iframe widget protocol](protocols/iframe-widget.mdx) |
 | Plugin widgets | `postMessage` for the handshake, then a `MessageChannel` between the sandboxed frame and FINOS Workspace. | The channel's port. FINOS Workspace ignores messages that reach it through `postMessage` after the handshake. | [Plugin frame protocol](protocols/plugin-frame.mdx) |
 

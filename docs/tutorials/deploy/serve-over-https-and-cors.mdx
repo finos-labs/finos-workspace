@@ -40,6 +40,10 @@ The API accepts a request only when it carries an `Origin` header that the deplo
 
 The agent keeps its own list. `AGENT_CORS_ORIGINS` names the origins of the web app that may call the agent from a browser, as a comma-separated list. It allows every origin when it is `*`, and the agent refuses to start with users and no origins at all. The agent and its MCP server call the API too, and each call carries `WORKSPACE_ORIGIN` as its origin, so that origin must be one that `BACKEND_CORS_ORIGINS` allows.
 
+## Reach the data backends and the registered agents from the API
+
+The API makes every call to a data backend and to an agent that is registered under AI Library, queries and tool round trips included. A data backend therefore needs no CORS settings for the web app, and the browser holds none of its credentials. What the backend needs instead is an address that the API can reach from the deployment's network: a public `https` address for every user's connection, or any address for a connection that a superuser keeps. A backend on a developer's machine cannot take part in a deployment; you develop it against the local stack of the repository instead, as [Run the stack from source](../build-from-source/run-the-stack-from-source.md) describes.
+
 ## Set the addresses of the Compose stack
 
 The stack that `docker-compose.yml` at the root of the repository starts takes the addresses from three variables of its own. A deployment sets the settings above directly on its services and does not use them. Set the variables in your shell or in a `.env` file next to the compose file, then run `docker compose up -d`, which recreates the containers that changed.

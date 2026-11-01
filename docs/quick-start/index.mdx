@@ -59,13 +59,13 @@ Open [http://localhost:3000](http://localhost:3000) and sign in with your email 
 
 ## 3. Write a backend with one HTML widget
 
-A backend is a small web server that FINOS Workspace calls from your browser. It answers three requests:
+A backend is a small web server that the FINOS Workspace API calls for your browser. It answers three requests:
 
 - `/widgets.json` describes the widgets that the backend offers.
 - `/apps.json` lists ready-made dashboards. This backend has none.
 - `/portfolio_summary` returns the content of the one widget, an HTML page.
 
-FINOS Workspace adds `theme=dark` or `theme=light` to the widget's request, so the page can match the app's colors. The backend also allows the web app at `http://localhost:3000`, and no other address, to call it. It allows no request headers, because the requests of this backend carry none that the browser needs permission to send.
+FINOS Workspace adds `theme=dark` or `theme=light` to the widget's request, so the page can match the app's colors. The API calls the backend, so the backend needs no CORS settings; it only answers its three routes.
 
 Create an empty directory and put this program in it:
 
@@ -86,13 +86,9 @@ Save the program as `main.py`:
 
 ```python title="main.py"
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
-APP_ORIGIN = "http://localhost:3000"
-
 app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=[APP_ORIGIN], allow_methods=["GET"])
 
 WIDGETS = {
     "portfolio_summary": {
@@ -169,8 +165,6 @@ The program uses only the modules that Node.js includes, so there is nothing to 
 ```ts title="main.ts"
 import { createServer } from "node:http";
 
-const APP_ORIGIN = "http://localhost:3000";
-
 const WIDGETS = {
   portfolio_summary: {
     name: "Portfolio summary",
@@ -222,13 +216,7 @@ function portfolioSummary(theme: string): string {
 
 createServer((request, response) => {
   const url = new URL(request.url ?? "/", "http://localhost:5050");
-  response.setHeader("Access-Control-Allow-Origin", APP_ORIGIN);
   const send = (type: string, body: string) => response.writeHead(200, { "Content-Type": type }).end(body);
-
-  if (request.method === "OPTIONS") {
-    response.setHeader("Access-Control-Allow-Methods", "GET");
-    return response.writeHead(204).end();
-  }
   if (url.pathname === "/widgets.json") return send("application/json", JSON.stringify(WIDGETS));
   if (url.pathname === "/apps.json") return send("application/json", "[]");
   if (url.pathname === "/portfolio_summary") {
@@ -249,9 +237,9 @@ node main.ts
 
 Both programs return the same responses. Check the backend in your browser: [http://localhost:5050/portfolio_summary](http://localhost:5050/portfolio_summary) shows four cards with sample portfolio figures. Leave the backend running.
 
-:::warning[Allow only what the backend needs]
+:::note[The routes are checked with OPTIONS]
 
-This backend allows one origin and no request headers. When you later give the connection a credential, or a widget a header parameter, name each of those headers in the allowed headers: `allow_headers=["Authorization"]` in the Python program, or the value of `Access-Control-Allow-Headers` in the TypeScript one. Never use `*` and never copy the headers that the browser asks for: `*` does not cover `Authorization`, and a copied list allows every header. [Requests that a widget sends](../tutorials/build-a-backend/requests-from-a-widget.md#cors) lists what a backend has to answer.
+When you connect a backend with **Validate widgets** turned on, FINOS Workspace sends a plain `OPTIONS` request to every route and expects 204 for a route that exists and 404 for one that does not. The programs above answer every request that is not one of their three routes with 404, which includes `OPTIONS`, so validation would report their routes as failed; add an `OPTIONS` branch that answers 204 for the routes you offer, as the [first backend tutorial](../tutorials/build-a-backend/connect-a-backend-and-build-a-dashboard.mdx#the-route-check) shows. [Requests that a widget sends](../tutorials/build-a-backend/requests-from-a-widget.md#the-route-check) describes the check.
 
 :::
 
@@ -265,7 +253,7 @@ This backend allows one origin and no request headers. When you later give the c
 
 The dashboard shows your widget. Switch the app between dark and light mode, and the widget follows, because FINOS Workspace asks the backend again with the new `theme`.
 
-If the test fails, check that the backend is still running and that `APP_ORIGIN` is exactly the address you use to open FINOS Workspace.
+If the test fails, check that the backend is still running and that the API can reach it. For an address on `localhost`, the stack's API container reaches your machine through `host.docker.internal`, and on Linux the backend has to listen on `0.0.0.0`.
 
 ## Next: configure the MCP Companion to build your apps
 

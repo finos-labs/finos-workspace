@@ -1,0 +1,111 @@
+{
+  "manifestVersion": 1,
+  "id": "ag-grid",
+  "name": "AgGrid table",
+  "description": "Renders the ag-grid widget type with ag-grid Community: sorting, filtering, grouping, selection, editing, pagination, streaming row updates, and grid events.",
+  "publisher": {
+    "name": "dlee-bq"
+  },
+  "icon": "assets/icon.svg",
+  "host": {
+    "api": 1,
+    "afm": "0.11"
+  },
+  "adminSettings": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "licenseKey": {
+          "type": "string",
+          "title": "AgGrid license key",
+          "description": "AgGrid Enterprise license key for every card of the organization. Leave it empty to run AgGrid Community.",
+          "maxLength": 1024
+        }
+      }
+    },
+    "defaults": {
+      "licenseKey": ""
+    }
+  },
+  "entry": {
+    "module": "entry.js",
+    "styles": [
+      "entry.css"
+    ]
+  },
+  "contributes": {
+    "widgets": [
+      {
+        "id": "grid",
+        "name": "AgGrid table",
+        "description": "A backend's tabular data, rendered as an ag-grid Community table with streaming and grid events.",
+        "category": "Data",
+        "handles": [
+          {
+            "type": "ag-grid",
+            "response": {
+              "accepts": "json",
+              "description": "A grid as JSON: an ag-grid-ready object ({ columnDefs, rowData, gridOptions }) or pandas-style data (a list of records, a dict of columns, or {columns, index, data}). The endpoint gets theme=dark or theme=light."
+            }
+          }
+        ],
+        "permissions": [
+          "core:data:read",
+          "core:export:provide",
+          "core:copilot:context",
+          "core:clipboard:write",
+          "core:download:save",
+          "core:state:write"
+        ],
+        "model": {
+          "traits": {
+            "data": {
+              "bind": "data",
+              "access": "read"
+            },
+            "definition": {
+              "bind": "definition",
+              "access": "read"
+            },
+            "config": {
+              "bind": "config",
+              "access": "read"
+            },
+            "theme": {
+              "bind": "theme",
+              "access": "read"
+            },
+            "adminSettings": {
+              "bind": "adminSettings",
+              "access": "read"
+            },
+            "state": {
+              "bind": "state",
+              "access": "readwrite"
+            }
+          }
+        },
+        "settings": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "licenseKey": {
+                "type": "string",
+                "title": "AgGrid license key",
+                "description": "AgGrid Enterprise license key for this card. It replaces the organization's key.",
+                "maxLength": 1024
+              }
+            }
+          },
+          "defaults": {}
+        },
+        "grid": {
+          "w": 24,
+          "h": 16,
+          "minW": 10,
+          "minH": 6
+        }
+      }
+    ]
+  }
+}

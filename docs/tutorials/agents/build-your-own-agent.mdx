@@ -10,7 +10,7 @@ import TabItem from "@theme/TabItem";
 
 In about 15 minutes you write an agent, add it to FINOS Workspace, and ask it a question. The agent has no model: it repeats your question. [Let your agent read the dashboard](let-your-agent-read-the-dashboard.mdx) gives it the dashboard.
 
-An agent is a web server with two routes. `GET /agents.json` tells FINOS Workspace who the agent is and where to send questions, in the format that [agents.json](../../reference/schemas/agents-json.mdx) lists. `POST /v1/query` receives a question and answers with a stream of events, as [Agent query protocol](../../reference/protocols/agent-query.mdx) describes. The browser calls both directly, so the agent also has to allow the address of the web app.
+An agent is a web server with two routes. `GET /agents.json` tells FINOS Workspace who the agent is and where to send questions, in the format that [agents.json](../../reference/schemas/agents-json.mdx) lists. `POST /v1/query` receives a question and answers with a stream of events, as [Agent query protocol](../../reference/protocols/agent-query.mdx) describes. You add the agent under AI Library, and the FINOS Workspace API makes every call to it, so the agent needs no CORS settings for the web app.
 
 You need:
 
@@ -36,21 +36,11 @@ On Windows, activate the environment with `.venv\Scripts\activate` instead. Save
 
 ```python title="main.py"
 import json
-import os
 
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-APP_ORIGIN = os.environ.get("APP_ORIGIN", "http://localhost:3000")
-
 app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[APP_ORIGIN],
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "X-Trace-Id"],
-)
 
 AGENTS = {
     "echo_agent": {
@@ -92,7 +82,6 @@ The program uses only the modules that Node.js includes, so there is nothing to 
 ```ts title="main.ts"
 import { createServer } from "node:http";
 
-const APP_ORIGIN = process.env.APP_ORIGIN ?? "http://localhost:3000";
 const PORT = Number(process.env.PORT ?? 6060);
 
 const AGENTS = {
@@ -115,15 +104,6 @@ function* answer(question: string) {
 
 createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://localhost:${PORT}`);
-  if (request.headers.origin === APP_ORIGIN) {
-    response.setHeader("Access-Control-Allow-Origin", APP_ORIGIN);
-    response.setHeader("Vary", "Origin");
-  }
-  if (request.method === "OPTIONS") {
-    response.setHeader("Access-Control-Allow-Methods", "GET, POST");
-    response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Trace-Id");
-    return response.writeHead(204).end();
-  }
   if (request.method === "GET" && url.pathname === "/agents.json") {
     return response.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(AGENTS));
   }
@@ -147,7 +127,7 @@ The program has three parts:
 
 - **The descriptor.** `AGENTS` is the answer to `GET /agents.json`. The key of the object, `echo_agent`, is the id of the agent. `endpoints.query` is the address that receives the questions. A relative address is resolved against the address of `agents.json`. `features.streaming` tells the web app that the agent answers with a stream of events.
 - **The answer.** The web app posts the conversation as `messages`, and the last message is the question. A message has a `role`: `human` for the user, `ai` for an earlier answer of the agent, and `tool` for a result that the browser fetched for the agent. [Messages](../../reference/protocols/agent-query.mdx#messages) describes them. The agent answers with `Content-Type: text/event-stream`. Each event is two lines and an empty line: the name of the event, and its data as JSON. The event `copilotMessageChunk` carries a piece of the answer in `delta`, and the web app appends the pieces in the order that they arrive.
-- **The permission for the web app.** The browser calls the agent from the address of the web app, so the agent has to allow that address. It allows one origin, the methods `GET` and `POST`, and the two headers that the web app sends on its own: `Content-Type`, which the JSON body needs, and `X-Trace-Id`, which carries the id of the chat. Do not allow `*`. [Requests that a widget sends](../build-a-backend/requests-from-a-widget.md#cors) explains why, and [Sending a question](../../reference/protocols/agent-query.mdx#sending-a-question) lists every header of the request.
+- **Who calls the agent.** The FINOS Workspace API reads `agents.json` and makes every call to the agent, queries and tool round trips included, so the agent needs no CORS settings for the web app. [Sending a question](../../reference/protocols/agent-query.mdx#sending-a-question) lists every header of the request.
 
 An agent can send six events. This one sends only `copilotMessageChunk`, and the next guide uses the others. [The response](../../reference/protocols/agent-query.mdx#the-response) lists the fields of each event.
 
@@ -179,7 +159,7 @@ node main.ts
 </TabItem>
 </Tabs>
 
-If you open FINOS Workspace on another address than `http://localhost:3000`, set `APP_ORIGIN` to that address before you start the agent.
+If another service of your machine already uses port 6060, set `PORT` to a free one before you start the agent.
 
 Check the agent from a second terminal. First, the descriptor:
 
@@ -244,7 +224,7 @@ If the test fails, the dialog says why:
 
 The answer appears in the panel: `You asked: "Hello".`
 
-If the panel shows an error instead, open the developer tools of your browser. The tab **Network** shows the request `POST /v1/query` and its answer. A failed request without an answer usually means that the agent does not allow the origin of the web app.
+If the panel shows an error instead, check that the agent is still running and that the API can reach it: on this stack, an address on `localhost` reaches your machine through `host.docker.internal`, and on Linux the agent has to listen on `0.0.0.0`.
 
 ## Next
 

@@ -8,14 +8,14 @@ import { SettingConstant, WebAppValue } from "@site/src/components/Reference/con
 
 # Widget data for the agent
 
-A language model can only read a widget's data after somebody has fetched it, and the agent does not fetch it from the widget's backend. The browser holds the user's connections and credentials, so it makes the request, and the agent turns what comes back into something the model can read: a table that it queries with SQL, a piece of text, an image, or a document that it searches. This page follows one read from the model's tool call to the events that the user sees, and it states the shape of every message on the way. The [agent query protocol](agent-query.mdx) describes the request and the events that surround it. The code is `agent/src/agent/loop.ts`, `agent/src/agent/round-trip.ts`, `agent/src/widgets/parse.ts` and `frontend/src/components/AI/hooks/useFunctionCall.tsx`.
+A language model can only read a widget's data after somebody has fetched it, and the agent does not fetch it from the widget's backend. The browser asks the FINOS Workspace API, which calls the backend with the connection's credentials, and the agent turns what comes back into something the model can read: a table that it queries with SQL, a piece of text, an image, or a document that it searches. This page follows one read from the model's tool call to the events that the user sees, and it states the shape of every message on the way. The [agent query protocol](agent-query.mdx) describes the request and the events that surround it. The code is `agent/src/agent/loop.ts`, `agent/src/agent/round-trip.ts`, `agent/src/widgets/parse.ts` and `frontend/src/components/AI/hooks/useFunctionCall.tsx`.
 
 ## The sequence
 
 A read takes two requests to the agent.
 
 1. The browser posts the question. The model calls its tool `get_widget_data`. The agent checks its cache, and for every widget that is not in it, the agent ends the response with a `copilotFunctionCall` event named `get_widget_data`.
-2. The browser fetches the data of each widget and posts the conversation again, with an `ai` message that records the call and a `tool` message that holds the data. The agent reads the data, gives it to the model, and the model answers.
+2. The browser fetches the data of each widget through the API and posts the conversation again, with an `ai` message that records the call and a `tool` message that holds the data. The agent reads the data, gives it to the model, and the model answers.
 
 One call can name several widgets. The agent asks for all the widgets that are not cached in a single function call, and the browser answers with one entry for each, in the same order.
 
@@ -75,7 +75,7 @@ The browser answers each data source in turn, and it never fails the whole call 
 
 **Data that a widget already holds.** Every widget card on the open dashboard reports the data that it has loaded. When the request names a widget of that dashboard with the same backend, widget id and parameter values, and the card holds data, the browser returns that data as the card holds it and makes no request to the backend. This applies to every origin except `the backend`. A widget that has not loaded yet, whose parameters differ, or that is not on the dashboard is fetched instead.
 
-**A widget of a connected backend.** For any origin other than `the backend` and `Workspace`, the browser looks up the widget's definition, builds the same request that the widget itself would make from its endpoint, method and parameters, and sends it with the credentials of the user's own connection to that backend, or of a backend that one of the user's roles shares, and without cookies. The request does not carry the host parameter `theme` that [Widget requests](widget-requests.mdx) describes. It also refuses to send a parameter that the widget does not declare, and it applies the widget's `data.dataKey` to a JSON response. A widget that sets `raw` is asked for its rows, as [Widget rows](raw-rows.md) describes. The response is read as follows.
+**A widget of a connected backend.** For any origin other than `the backend` and `Workspace`, the browser looks up the widget's definition, builds the same request that the widget itself would make from its endpoint, method and parameters, and sends it to the FINOS Workspace API, which calls the backend and adds the credentials of the user's own connection to that backend, or of a backend that one of the user's roles shares. The request does not carry the host parameter `theme` that [Widget requests](widget-requests.mdx) describes. It also refuses to send a parameter that the widget does not declare, and it applies the widget's `data.dataKey` to a JSON response. A widget that sets `raw` is asked for its rows, as [Widget rows](raw-rows.md) describes. The response is read as follows.
 
 | The response | What the browser returns |
 |---|---|

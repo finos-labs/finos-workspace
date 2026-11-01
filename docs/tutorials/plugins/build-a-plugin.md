@@ -9,7 +9,7 @@ Run your own FINOS Workspace as its administrator, put your plugin through the s
 
 ## Before you start
 
-You need a FINOS Workspace stack of your own. The local development stack is the simplest. It runs with `MODE=local`, which steps 6 to 8 need.
+You need a FINOS Workspace stack of your own. The local development stack of `local/` and the root `docker-compose.yml` are the simplest; both run with `MODE=local`, which steps 6 to 8 need.
 
 :::warning
 
@@ -17,7 +17,7 @@ Deployments run with `MODE=production`, including those built from the `develop`
 
 :::
 
-On the local stack, the Widget plugins section of `local/LOCAL_SETUP.md` shows how to mount a writable plugins directory into the backend and how to set `WIDGET_PLUGINS_DIR`. On any other stack, the API needs the same two things, as [Deploy a widget plugin](deploy-a-plugin.md) describes.
+On either stack, the plugins directory is `widget-plugins/` at the root of the repository: the Widget plugins section of `local/LOCAL_SETUP.md` shows how the local stack mounts it, and the root compose file mounts the same directory. On any other stack, the API needs the same two things, as [Deploy a widget plugin](deploy-a-plugin.md) describes.
 
 ## 1. Build the package
 
@@ -96,10 +96,9 @@ An approved version is never edited, because changing its files blocks it. Only 
 
 ## Read data from a backend
 
-A widget of a type that you handle can read the data backend of a deployment.
+A widget of a type that you handle can read a data backend. Add it under Connections with the address you use in your browser, for example `http://localhost:9000`, with your own key, read-only where the backend has such keys. This stack runs with `MODE=local`, so the API accepts a private or plain `http` address for any user's connection, and for `localhost`, `127.0.0.1` and `[::1]` it calls your machine through `host.docker.internal`. The backend needs no CORS settings, the key is stored encrypted in this stack's database and added by the API, and the browser never holds it. On Linux the backend has to listen on `0.0.0.0`, not only on `127.0.0.1`.
 
-1. Add that backend to your local stack as a connection with your own key, read-only where the backend has such keys.
-2. Have the backend allow the origin of your local web app.
+A deployment's data backend works the same way as long as it has a public `https` address. The key is stored in this stack's database, so nothing is written to the deployment's FINOS Workspace. The reverse does not work: a deployed Workspace cannot call a backend on your machine, so develop against a local backend on this stack.
 
 The agent and the plugin backends of a deployment accept only that deployment's sessions and call tokens. A local stack can neither use them nor write to them. Run them on your machine instead:
 

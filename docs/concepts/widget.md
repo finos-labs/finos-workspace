@@ -10,7 +10,7 @@ A widget shows data from one source on a [dashboard](dashboard.md). The source i
 - A widget has **parameters**: the controls that change what it shows, such as a year or a team.
 - A widget has a **type**, which decides how the data is drawn: Markdown, HTML, news feed, PDF, iframe, or a type that a [plugin](plugin.md) adds.
 - The connector defines a widget in its `widgets.json`. A widget is a catalog entry until someone adds it to a dashboard.
-- A widget stores no data. The browser asks the connector each time.
+- A widget stores no data. The API asks the connector each time the browser needs the data.
 
 ## Where to go
 
