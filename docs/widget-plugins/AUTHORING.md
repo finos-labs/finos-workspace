@@ -453,7 +453,7 @@ The first runs discovery as the server does (files, links, caps, the manifest, t
 
 ## 11. Developing
 
-Develop on your own machine, with the repository's local stack (`local/LOCAL_SETUP.md`, section Widget plugins), where you are the administrator. That stack runs with `MODE=local`. Deployments, including those built from the `develop` and `main` branches, run with `MODE=production`, and none of the steps from 4 on exist there.
+Develop on your own machine, with the repository's local stack (`local/LOCAL_SETUP.md`, section Widget plugins) or its root `docker-compose.yml`, where you are the administrator and the plugins directory is `widget-plugins/` at the repository root. Both run with `MODE=local`. Deployments, including those built from the `develop` and `main` branches, run with `MODE=production`, and none of the steps from 4 on exist there.
 
 1. Mount a plugins directory into the API, writable, and set `WIDGET_PLUGINS_DIR`.
 2. Build the first version into `<dir>/<id>/<version>/` and check it (section 10).

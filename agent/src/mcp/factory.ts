@@ -1,6 +1,6 @@
-import { tool, type ToolSet, type StopCondition } from "ai";
+import type { ToolSet, StopCondition } from "ai";
 import type { AgentTool, WidgetMcpLink } from "../protocol/types.ts";
-import { sanitizeMcpToolName, buildToolInputSchema } from "./schema.ts";
+import { sanitizeMcpToolName, mcpTool } from "./schema.ts";
 import {
   WORKSPACE_BRIDGE_COMMAND_NAMES,
   BRIDGE_MOUNT_EXTRA_NAMES,
@@ -79,13 +79,9 @@ export function makeMcpTools(agentTools: AgentTool[]): McpToolsResult {
     }
     usedNames.add(sanitized);
 
-    const inputSchema = buildToolInputSchema(agentTool.input_schema);
     const description = agentTool.description ?? agentTool.name;
 
-    toolSet[sanitized] = tool({
-      description,
-      inputSchema,
-    });
+    toolSet[sanitized] = mcpTool(description, agentTool.input_schema);
 
     const entry: McpToolEntry = {
       serverId: agentTool.server_id,

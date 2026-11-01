@@ -16,6 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from starlette.middleware.cors import CORSMiddleware
 
 from api import auth_helpers, helpers
+from api.body_limit import BodyLimitMiddleware
 from api.events.role_permission_events import init_audit_listeners
 from api.rate_limit import limiter
 from api.worker_tasks import start_background_tasks
@@ -23,6 +24,7 @@ from routers import (
     admin,
     auth,
     entity,
+    identity,
     widget_plugins,
 )
 from routers.app import (
@@ -73,7 +75,7 @@ app.add_middleware(
     allow_origin_regex=config.settings.BACKEND_CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type", auth_helpers.CLIENT_HEADER],
+    allow_headers=["Authorization", "Content-Type", "X-Trace-Id", auth_helpers.CLIENT_HEADER],
 )
 
 
@@ -92,6 +94,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # ty
 
 routers = [
     auth.router,
+    identity.router,
     index.router,
     mcp_oauth.router,
     data_connectors.router,
@@ -123,13 +126,16 @@ async def api_exception_handler(request: Request, exc: Exception):
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    helpers.add_log(request.url.path, exc.detail, exc.status_code, request.method)
     extras = dict(
         method=request.method,
         path=request.url.path,
         status_code=exc.status_code,
     )
-    logger.bind(**extras).exception(exc)
+    if exc.headers and "X-Workspace-Proxy-Error" in exc.headers:
+        logger.bind(**extras).debug(f"data connection refused: {exc.detail}")
+    else:
+        helpers.add_log(request.url.path, exc.detail, exc.status_code, request.method)
+        logger.bind(**extras).exception(exc)
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail, "status": exc.status_code},
@@ -229,8 +235,22 @@ app.mount("", workspace_mcp_asgi_app, name="FINOS Workspace MCP App")
 add_pagination(app)
 
 
-app.add_middleware(GZipMiddleware)
+class SelectiveGZipMiddleware(GZipMiddleware):
+    async def __call__(self, scope, receive, send):
+        path = scope.get("path", "")
+        if scope["type"] == "http" and (
+            path.startswith(auth_helpers.FRAME_ROUTE)
+            or (path.startswith("/app/data-connectors/api-source") and path.endswith("/request"))
+        ):
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
+
+app.add_middleware(SelectiveGZipMiddleware)
 
 app.add_middleware(auth_helpers.NoStoreMiddleware)
+
+app.add_middleware(BodyLimitMiddleware)
 
 app.add_middleware(auth_helpers.AllowedOriginMiddleware)

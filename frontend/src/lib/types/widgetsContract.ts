@@ -50,6 +50,7 @@ export const RESERVED_HEADER_NAMES = [
   "accept",
   "x-microsoft-id-token",
   "x-okta-id-token",
+  "x-workspace-identity",
   "x-workspace-user",
 ] as const;
 
@@ -565,6 +566,13 @@ export const BUILT_IN_TYPES = {
     summary: "An existing web page",
     returns: "Nothing: the endpoint is the page's URL, which the browser opens",
     properties: {
+      requires_auth: z
+        .boolean()
+        .meta({
+          description:
+            "The page needs the backend connection's credentials. The browser then opens it through the FINOS Workspace API, which adds them, in a sandbox without storage. For trusted pages only: the API checks this declaration itself",
+        })
+        .optional(),
       storage: z
         .strictObject({
           mcpUrl: z

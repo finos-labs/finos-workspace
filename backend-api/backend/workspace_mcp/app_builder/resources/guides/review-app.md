@@ -18,8 +18,8 @@ A structured pass for reviewing an existing app. Read the file you're reviewing 
 
 - Does the backend serve `GET /widgets.json` returning a JSON **object**?
 - If app templates are shipped, does it serve `GET /apps.json` returning a JSON **array**?
-- Are CORS origins configured for the origin the FINOS Workspace is served from, and `http://localhost:1420`?
-- If the backend is reached from an HTTPS FINOS Workspace in production, is it served over HTTPS?
+- Are CORS origins configured for the origin the FINOS Workspace is served from, and `http://localhost:1420`, and does every route answer `OPTIONS`?
+- Is the backend reachable by the FINOS Workspace API, over public `https`, unless a superuser keeps the connection or the stack runs with `MODE=local`?
 - Is the auth path explicit? (header, query string, or none — pick one and document it)
 
 If any of these are wrong, fix before reviewing further.

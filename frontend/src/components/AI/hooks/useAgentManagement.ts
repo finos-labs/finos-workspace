@@ -37,6 +37,7 @@ export type AgentManagementState = {
     uuid: string;
     url: string;
     headerPairs: { key: string; value: string }[];
+    saved: string[];
   } | null;
 };
 
@@ -113,10 +114,8 @@ export function useAgentManagement() {
         holder.copilots = (holder.copilots || []).map((agent) => ({
           ...agent,
           endpoints: resolveAgentEndpoints(agent.endpoints, holder.url),
-          headers: holder.headers || {},
         }));
-        await putCustomCopilot(holder);
-        externalHolders[idx] = holder;
+        externalHolders[idx] = await putCustomCopilot(holder);
         store.updateExternalCopilotHolders(externalHolders);
       }
     },
@@ -252,16 +251,13 @@ export function useAgentManagement() {
   const handleEditGroup = useCallback(
     (holderUuid: string) => {
       const holder = externalCopilotHolders.find((h) => h.uuid === holderUuid);
-      const headers = holder?.headers || {};
-      const headerPairs = Object.entries(headers).map(([key, value]) => ({
-        key,
-        value,
-      }));
+      const saved = holder?.headerNames ?? [];
       dispatch({
         editGroup: {
           uuid: holderUuid,
           url: holder?.url || "",
-          headerPairs,
+          headerPairs: saved.map((key) => ({ key, value: "" })),
+          saved,
         },
       });
     },
@@ -270,12 +266,18 @@ export function useAgentManagement() {
 
   const handleSaveEdit = useCallback(
     async (editGroupData: NonNullable<AgentManagementState["editGroup"]>) => {
-      const { uuid: holderUuid, headerPairs, url } = editGroupData;
+      const { uuid: holderUuid, headerPairs, url, saved } = editGroupData;
       const filteredPairs = headerPairs.filter((p) => p.key.trim());
       const allKeys = filteredPairs.map((p) => p.key);
 
       if (allKeys.length !== new Set(allKeys).size) {
         toast.error("Duplicate header keys found");
+        return;
+      }
+
+      const missing = filteredPairs.find((p) => !p.value && !saved.includes(p.key));
+      if (missing) {
+        toast.error(`Enter a value for ${missing.key}`);
         return;
       }
 
@@ -288,7 +290,7 @@ export function useAgentManagement() {
       );
 
       try {
-        const copilots = await fetchAgentsData({ url, headers });
+        const copilots = await fetchAgentsData({ uuid: holderUuid, url, headers });
         await updateHolder(holderUuid, {
           url,
           headers,

@@ -93,6 +93,18 @@ def is_allowed_origin(origin: str | None) -> bool:
 
 
 HEALTH_PATHS = frozenset({"/health", "/healthz"})
+FRAME_ROUTE = "/app/data-connectors/frame/"
+PUBLIC_GET_PATHS = re.compile(
+    r"/app/sign-in/(?:microsoft|okta)/callback|/\.well-known/jwks\.json"
+)
+
+
+def _is_public_get(scope: Scope) -> bool:
+    return (
+        scope["type"] == "http"
+        and scope["method"] == "GET"
+        and PUBLIC_GET_PATHS.fullmatch(scope["path"]) is not None
+    )
 
 
 class AllowedOriginMiddleware:
@@ -100,9 +112,25 @@ class AllowedOriginMiddleware:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] in {"http", "websocket"} and scope["path"].startswith(FRAME_ROUTE):
+            if scope["type"] == "http" and scope["method"] == "OPTIONS":
+                requested = Headers(scope=scope).get("access-control-request-headers", "*")
+                await Response(
+                    status_code=status.HTTP_204_NO_CONTENT,
+                    headers={
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
+                        "Access-Control-Allow-Headers": requested,
+                        "Access-Control-Max-Age": "600",
+                    },
+                )(scope, receive, send)
+                return
+            await self.app(scope, receive, send)
+            return
         if (
             scope["type"] not in {"http", "websocket"}
             or (scope["type"] == "http" and scope["path"] in HEALTH_PATHS)
+            or _is_public_get(scope)
             or is_allowed_origin(Headers(scope=scope).get("origin"))
         ):
             await self.app(scope, receive, send)
@@ -158,7 +186,11 @@ async def delete_user_app_sessions(
 
 
 def set_session_cookie(
-    response: Response, name: str, token: str, lifetime: timedelta
+    response: Response,
+    name: str,
+    token: str,
+    lifetime: timedelta,
+    samesite: Literal["strict", "lax"] = "strict",
 ) -> None:
     response.set_cookie(
         name,
@@ -167,22 +199,14 @@ def set_session_cookie(
         path="/",
         secure=True,
         httponly=True,
-        samesite="strict",
+        samesite=samesite,
     )
 
 
-def clear_session_cookie(response: Response, name: str) -> None:
-    response.delete_cookie(name, path="/", secure=True, httponly=True, samesite="strict")
-
-
-def clearing_cookie(refusal: HTTPException, name: str) -> HTTPException:
-    cleared = Response()
-    clear_session_cookie(cleared, name)
-    return HTTPException(
-        refusal.status_code,
-        detail=refusal.detail,
-        headers={**(refusal.headers or {}), "Set-Cookie": cleared.headers["set-cookie"]},
-    )
+def clear_session_cookie(
+    response: Response, name: str, samesite: Literal["strict", "lax"] = "strict"
+) -> None:
+    response.delete_cookie(name, path="/", secure=True, httponly=True, samesite=samesite)
 
 
 def check_browser_sign_in(request: Request) -> None:

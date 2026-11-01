@@ -14,7 +14,7 @@ A backend's `widgets.json` is an object whose keys are widget ids and whose valu
 
 ## 1. A definition
 
-A definition needs `name`, `description`, `endpoint` and `type`. It may have `method`, `category`, `subCategory`, `source`, `showTitle`, `params`, `gridData`, `staleTime`, `refetchInterval`, `dataUpdateDisplay`, `runButton`, `disableRetrievalForCopilot`, `exportable`, `mcp_tool` and `data` (`dataKey`, and for some types more, section 2). `html` and plugin types also take `raw` (4.11), and `iframe` takes `storage`.
+A definition needs `name`, `description`, `endpoint` and `type`. It may have `method`, `category`, `subCategory`, `source`, `showTitle`, `params`, `gridData`, `staleTime`, `refetchInterval`, `dataUpdateDisplay`, `runButton`, `disableRetrievalForCopilot`, `exportable`, `mcp_tool` and `data` (`dataKey`, and for some types more, section 2). `html` and plugin types also take `raw` (4.11), and `iframe` takes `storage` and `requires_auth` (4.12).
 
 The contract defines every key, at any depth, and bounds every string and list. A key it does not define is ignored: the web app loads the widget without it and lists the key, by its JSON pointer, under the backend's unrecognized fields. Any other problem leaves the widget out of the catalog, reported with its JSON pointer.
 
@@ -23,7 +23,7 @@ The contract defines every key, at any depth, and bounds every string and list. 
 | `type` | Renders | Methods | Params go in |
 |---|---|---|---|
 | `markdown`, `html`, `newsfeed`, `pdf` | The built-in widgets | `GET`, `POST` | the query, a header, the body |
-| `iframe` | A page at the endpoint's URL | `GET` | the query |
+| `iframe` | A page at the endpoint's URL; `requires_auth` opens it through the API with the connection's credentials (4.12) | `GET` | the query |
 | a plugin type | The plugin that handles it (README) | `GET`, `POST` | the query, a header, the body |
 
 A plugin type exists for an organization when a plugin that handles it is enabled there; where two do, the organization admin's choice, else the lowest plugin id. A widget of a type nobody handles for the user is left out of their catalog.
@@ -119,7 +119,7 @@ The web app calls the backend from the browser. It builds every request in one p
 ### 4.1 The widget's request
 
 1. **URL.** `endpoint` is a path on the backend or an absolute URL with no `?` and no `#`; a static query value is a param with a default and `show: false`. Path placeholders are filled (4.2), then each `in: "query"` param is appended.
-2. **Headers.** The backend connection's credentials, the headers the deployment adds (`X-Microsoft-Id-Token`, `X-Okta-Id-Token`, `X-Workspace-User`, when enabled), then each `in: "header"` param as `paramName: value`.
+2. **Headers.** The FINOS Workspace API makes the request. It adds the backend connection's credentials, `X-Workspace-User` (the signed-in user's email) and `X-Workspace-Identity` (a signed token, see "Who is calling"), and the browser sends none of them. Then each `in: "header"` param goes as `paramName: value`.
 3. **Body.** With `POST`, the `in: "body"` params as one flat JSON object, with `Content-Type: application/json`. No body params, no body.
 4. **Host params.** `theme` (`dark` or `light`) for `markdown`, `html`, `iframe` and plugin types, and `raw=true` when the host asks a widget for its rows (4.11), go in the query whatever the method. A change of the site's theme sends the request again.
 
@@ -147,12 +147,24 @@ A `{name}` placeholder in `endpoint` takes the value of the param named `name`, 
 3. A `form` posts its `inputParams` as a JSON body to its own `endpoint` with its own method (`POST` or `PUT`); `in` is not accepted on it or its inputs.
 4. `iframe`: `GET`, params in the query or the path.
 5. `theme` is reserved as a query param name for `markdown`, `html`, `iframe` and plugin types, and `raw` for `html` and plugin types.
-6. A header param's `paramName` is 1 to 64 characters of the HTTP token set. Not allowed: the names a browser forbids page script to set (`Accept-Charset`, `Accept-Encoding`, `Access-Control-Request-Headers`, `Access-Control-Request-Method`, `Connection`, `Content-Length`, `Cookie`, `Date`, `DNT`, `Expect`, `Host`, `Keep-Alive`, `Origin`, `Referer`, `Set-Cookie`, `TE`, `Trailer`, `Transfer-Encoding`, `Upgrade`, `Via`, and names starting `Proxy-` or `Sec-`), the names FINOS Workspace sets (`Authorization`, `Content-Type`, `Accept`, `X-Microsoft-Id-Token`, `X-Okta-Id-Token`, `X-Workspace-User`), and any header the backend connection's credentials use. A header value is printable ASCII of at most 1,024 characters.
+6. A header param's `paramName` is 1 to 64 characters of the HTTP token set. Not allowed: the names a browser forbids page script to set (`Accept-Charset`, `Accept-Encoding`, `Access-Control-Request-Headers`, `Access-Control-Request-Method`, `Connection`, `Content-Length`, `Cookie`, `Date`, `DNT`, `Expect`, `Host`, `Keep-Alive`, `Origin`, `Referer`, `Set-Cookie`, `TE`, `Trailer`, `Transfer-Encoding`, `Upgrade`, `Via`, and names starting `Proxy-` or `Sec-`), the names FINOS Workspace sets or reserves (`Authorization`, `Content-Type`, `Accept`, `X-Microsoft-Id-Token`, `X-Okta-Id-Token`, `X-Workspace-Identity`, `X-Workspace-User`), and any header the backend connection's credentials use. A header value is printable ASCII of at most 1,024 characters.
 7. Credentials belong to the backend connection, never in params: a param's value is saved with the dashboard and shown in the UI. A param named like one of the connection's query credentials is refused.
 
 ### 4.5 CORS
 
-A header param, a JSON body or `POST` makes the browser send a preflight, so the backend answers `OPTIONS` with `Access-Control-Allow-Methods` including the method and `Access-Control-Allow-Headers` including `Content-Type` (with a body) and every header param name.
+A header param, a JSON body or `POST` makes the browser send a preflight, so the backend answers `OPTIONS` with `Access-Control-Allow-Methods` including the method and `Access-Control-Allow-Headers` including `Content-Type` (with a body) and every header param name. Every route answers `OPTIONS`: Validate Widgets (4.8) sends one to each and fails a route that does not answer.
+
+#### Who makes the request
+
+The browser asks the FINOS Workspace API (`POST /app/data-connectors/api-source/{id}/request`) to call the backend, sending only the connection's id, the URL, the method, the header params, the body and the `Accept` value. The API refuses a URL that is not on the connection's origin, a header the connection or the API sets, and a query name the connection's credentials use. Any HTTP method goes through, the connection's own headers are never overridden, redirects on the connection's origin are followed with the credentials, and the backend's response headers come back except cookies and hop-by-hop ones. It calls the backend with the stored credentials, `X-Workspace-User` and `X-Workspace-Identity`, and streams the answer back with the backend's status code. A refusal by the API carries the header `X-Workspace-Proxy-Error`, and a `429` or `503` carries `Retry-After`. The limits, per API process unless said otherwise: 128 requests open at once for one user and 2,000 for the process; 1,200 requests a minute for one user (a framed page's own requests have a separate 6,000 a minute, 120 grants and 120 sockets a minute); 50 seconds for the backend to start its answer, 120 seconds without a byte, an hour for one response, and an error, not a short answer, past 256 MB (a framed page has no size limit); request bodies of 2 MiB, or 10 MiB for a framed page, checked before they are read. The API holds no database connection while it waits for or streams a backend's answer, reuses connections to administrators' backends, does not compress what it relays, and counts requests in the shared rate limiter, which it skips for 30 seconds when that store does not answer. A process lets at most 512 requests wait at the same moment for the first byte of one backend and answers the others with `503` and `Retry-After`; after five failures in a row to reach a backend (no answer in time, or no connection) it refuses requests to that backend with `503` for ten seconds and then lets one try, and any answer from the backend ends the refusal; a request whose browser has gone away is cancelled and gives its place back. The grant reads a connection's `widgets.json` once a minute for all its grants, and a framed page's requests check the user's access at most every 30 seconds. The web app sends at most 6 of these requests at a time, gives up on one that has not started to answer after 60 seconds, waits as `Retry-After` says, and does not check a connection that it checked successfully in the last 30 minutes unless the connection changed or the user chose Refresh. A connection kept by a superuser, or added for an organization (`POST /entity/data-backends/{entity_uuid}`), may be a private or plain `http` address. Any other user's connection can only be a public `https` address, except on a developer's own machine (`MODE=local`), where it may be private or plain `http` too. Credentials are stored encrypted on the server and never reach the browser: a listing of connections names each header and whether it is a header or a query value, and saving a blank value keeps the stored one. A request to another origin than the connection's goes from the browser with no credentials.
+
+#### Who is calling
+
+Every call the API makes to a backend connection or an agent for a user carries who that user is, in two ways that need nothing from the browser.
+
+`X-Workspace-User` is the user's email. `X-Workspace-Identity` is a JWT that the API signs with ES256 and that is valid for five minutes. Its `iss` is the API's address (`SELFURL`), its `aud` is the connection's origin (scheme, host and port, in lower case, without a path or credentials), its `sub` is the user's UUID and its `email` is the user's email. A backend verifies it with the public keys at `GET <API address>/.well-known/jwks.json`, which anyone may read without a session and which are cached for five minutes. It checks the signature, `exp`, `iss` and `aud`; a backend that skips `aud` accepts a token that was made for another backend. The API signs with a key it creates when it needs one, keeps the private key encrypted in its database, signs with a key for 30 days, and publishes a key for one day more, so a backend that reads the keys again when it meets an unknown `kid` never fails a rotation.
+
+When the administrator sets `AUTHENTICATION_SEND_MICROSOFT_IDTOKEN` or `AUTHENTICATION_SEND_OKTA_IDTOKEN` to `true`, the API also sends the signed-in user's ID token from that provider, as `X-Microsoft-Id-Token` or `X-Okta-Id-Token`, so that a backend or an agent that verifies tokens with Microsoft Entra or Okta keeps working. The browser never holds that token. The user signs in on the server (the API redirects the browser to the provider and receives the authorization code itself, with PKCE), asks the provider for `offline_access`, and the API keeps the ID token and the refresh token encrypted, ties them to the session, renews the ID token before it expires (one renewal at a time for a session, whichever API process asks), replaces the refresh token whenever the provider rotates it, and deletes both as soon as the session ends, whether by sign-out, expiry, a password reset, the removal of the user or a new sign-in: sign-out deletes them at once, and any other end is found within a minute. Each time it also revokes the refresh token at the provider when the provider offers a revocation endpoint (Okta does; Microsoft Entra offers none, so the API only deletes its copy and Entra expires the token itself). A refresh token that the provider refuses ends the session, and the user signs in again. If the provider cannot be reached, the call goes without the provider's token. The token goes to every saved connection and agent the user can call, so turn the setting on only when all of them are to be trusted with it; a connection or an agent that is only being tried before it is saved gets the signed identity but never the provider's token.
 
 ### 4.6 Caching
 
@@ -221,6 +233,46 @@ A widget whose view is made from data, such as an html page or a plugin's chart,
 - **The rows view.** The card's database button switches between the widget's view and its rows, and the choice is kept with the widget. The plugin of `data.rawType` shows the rows when the user may use that type; otherwise an `html` widget shows them as a table, and a plugin type's own plugin shows them (AUTHORING 4.2).
 - **Rules.** `data.rawDataKey` and `data.rawType` only with `"raw": true`; `rawType` is a type name (`^[a-z][a-z0-9_-]{1,31}$`); `raw` is a reserved query param name for these types.
 - **Code.** `rowsOf` (`lib/utils/rawRows.ts`) reads the rows for every caller; `useRawRows`, `RowsToggle` and `RowsTable` (`components/Widgets/Helpers/RawRows.tsx`) serve the html and plugin widgets; `useRowsPlugin` (`plugins/registry.ts`) finds the plugin of `rawType`; `getCustomWidgetsData` asks a widget with `raw` for its rows.
+### 4.12 The iframe protocol
+
+An `iframe` widget opens the page at its endpoint, and the page can offer subwidgets and data to the host over `postMessage`. The host never asks the backend for that data itself: it asks the page, and the page gets it from its own backend. The code is `types/iframeProtocol.ts`, `useIframeProtocol` and `Iframe.tsx`; the tests are in `useIframeProtocol.test.ts`.
+
+| Direction | Message | Carries |
+|---|---|---|
+| page to host | `workspace-connect` | `widgets`: the subwidgets (`widgetId`, `name`, `description`, `category`, `dataType` of `table` or `markdown`); `params`: the page's param definitions (`paramName`, `label`, `type` of `text`, `number`, `date` or `boolean`, `value`, `options`, `min`, `max`, `step`) |
+| page to host | `workspace-data` | `widgetId`, `dataType`, `data` (rows or text) and `columns`: the answer to a `workspace-request` |
+| page to host | `workspace-error` | `widgetId`, `error`: the failure of a `workspace-request` |
+| page to host | `aiData` | `data`: what the page gives the AI Agent on its own |
+| page to host | `workspace:params:update`, `workspace:widget-params:update` | `params`, or `paramName` and `value`: the page changes the widget's params |
+| host to page | `workspace-request` | `widgetId`: asks for one subwidget's data, answered within 10 seconds |
+| host to page | `workspace-params-update` | `params`: the widget's current params; also how the AI Agent's `update_widget` reaches the page |
+| host to page | `workspace-auth` | `headers`: the headers the browser may hold, `X-Workspace-User` when `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER` is on. Sent once after `workspace-connect`, only to the page's own origin. It never carries the backend connection's credentials |
+
+The host trusts a message because it came from the iframe's own window, not because of its origin, and it answers to the origin of `workspace-connect`, or to any origin when the page has none (the sandbox below). The subwidgets in `workspace-connect` are the widgets a user or the AI Agent can add from the page.
+
+#### Pages that need the connection's credentials
+
+A page that calls its backend with the connection's key cannot be given the key: the browser never holds it. Declare `"requires_auth": true` on the `iframe` widget instead, and only for a page you trust:
+
+```json
+{
+  "dashboard": {
+    "name": "Dashboard",
+    "type": "iframe",
+    "endpoint": "/dash/index.html",
+    "requires_auth": true
+  }
+}
+```
+
+- **The grant.** The web app asks the API (`POST /app/data-connectors/api-source/{id}/frame`). The API reads the connection's own `widgets.json` and grants only a widget that is an `iframe` with `requires_auth: true` and whose endpoint is on the connection's origin. The widget saved in a dashboard is not trusted for this.
+- **The token** is signed, valid for an hour, and limited to the user, the connection, the widget and the endpoint's directory. It is a `ws_frame_` string in the address the browser opens, `/app/data-connectors/frame/<token>/<path>`, and it opens nothing outside that directory. It stops working when the user can no longer use the connection, is removed, or signs out of the session that asked for it, checked at most every 30 seconds for pages and every minute for sockets. The web app asks for a new one every 50 minutes, which reloads the page.
+- **The page** is fetched by the API with the connection's credentials, `X-Workspace-User` and `X-Workspace-Identity`, and runs in a sandbox without `allow-same-origin`. It has no `localStorage`, `sessionStorage`, `IndexedDB` or cookies, and cannot use the user's session. Every response carries `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups allow-downloads` and `Referrer-Policy: no-referrer`; the backend's own `Set-Cookie` is dropped.
+- **WebSockets** work. A page opens `new WebSocket(...)` on a URL below its own directory, for example `new URL('./stream', location.href)` with `http` replaced by `ws`, and the API opens the socket to the backend with the connection's credentials, `X-Workspace-User`, `X-Workspace-Identity` and the connection's own origin as `Origin`, and relays text and binary messages both ways with the subprotocol the backend chooses. The backend's close code reaches the page. The API refuses the handshake for a bad or expired token, a path outside the directory, and an unreachable backend, and ends the socket when the token expires or the user can no longer use the connection (checked every minute). A message may be 8 MB. A user may have 32 sockets open on one API process, and a process 1,000; past that the API closes the socket with code 1013 (try again). The backend has 15 seconds to answer the upgrade, a redirect of the upgrade is refused, and the API pings the backend every 30 seconds. A failed or slow access check, such as a database that does not answer, does not close a socket; only a refusal does.
+- **What it needs from the page.** Relative URLs below the endpoint's directory (a page that loads `/static/app.js` or opens a socket at `/_stcore/stream` asks the API's root, and fails); plain HTTP, server-sent events (streamed without a size limit) and WebSockets; no use of browser storage, which throws a `SecurityError`.
+- **Logs.** The API masks the token in its own logs. A load balancer or ingress logs the address too: mask the `ws_frame_` segment of the path in its access-log format.
+- **Without `requires_auth`** the page opens directly, in a sandbox with `allow-same-origin`, and signs in with its own session; storage and cookies are the page's own.
+
 
 ## 5. The MCP tool link
 
@@ -228,7 +280,7 @@ A widget may name one MCP tool of its own backend: the tool the agent uses to qu
 
 ### 5.1 Servers
 
-A backend declares MCP servers on the templates of its `apps.json` (`mcpServers`: `name`, `description`, `url`, `authType`). Connecting the backend registers each declared server once, with the backend's header credentials as its headers, recording its declared name and the backend's id; the declared name cannot be edited, unlike the server's display name. The agent's tools are the enabled tools of the connected servers that the user may use, sent when the agent has MCP tools on. A user may use every server that one of their roles grants and every server declared by a backend they can use: the `mcpServers` of its `apps.json` and the `storage.mcpUrl` of its `iframe` widgets. Using the backend is the approval; no server is granted one by one. The browser makes each call through `/app/mcp-proxy`, which checks the same access again for every `tools/call`.
+A backend declares MCP servers on the templates of its `apps.json` (`mcpServers`: `name`, `description`, `url`, `authType`). Connecting the backend registers each declared server once, recording its declared name and the backend's id, without the backend's credentials, which the browser does not hold; the declared name cannot be edited, unlike the server's display name. The agent's tools are the enabled tools of the connected servers that the user may use, sent when the agent has MCP tools on. A user may use every server that one of their roles grants and every server declared by a backend they can use: the `mcpServers` of its `apps.json` and the `storage.mcpUrl` of its `iframe` widgets. Using the backend is the approval; no server is granted one by one. The browser makes each call through `/app/mcp-proxy`, which checks the same access again for every `tools/call`.
 
 ### 5.2 The key
 

@@ -9,17 +9,16 @@ import { useAccessStore } from "~/lib/state/access";
 import { clearAgentToken, getAgentToken } from "~/lib/state/agentToken";
 import { useAuthStore } from "~/lib/state/auth";
 import { useCopilotStore } from "~/lib/state/copilot";
-import { getIdpTokens, setIdpTokens } from "~/lib/state/idpTokens";
 import { usePromptLibraryStore } from "~/lib/state/promptLibrary";
 import { useSidebarStore } from "~/lib/state/sidebar";
 import { useThemeStore } from "~/lib/state/theme";
 import { useToastStore } from "~/lib/state/toast";
 import { useUserAppsStore } from "~/lib/state/userApps";
+import { getUserEmail, setUserEmail } from "~/lib/state/userEmail";
 import { useWorkspaceBridgeStore } from "~/lib/state/workspaceBridge";
 import { getStorage } from "~/lib/utils/indexDB";
 import { showNotification } from "~/lib/utils/toast";
 import type { DisplaySettings, SessionResponse } from "~/types/auth.type";
-import { mockConfig } from "../../../mocks/runtimeConfig";
 import { makeAccess, makeAuthUser } from "../../factories";
 
 vi.mock("~/api/auth.api", () => ({
@@ -31,11 +30,6 @@ vi.mock("~/api/auth.api", () => ({
 vi.mock("~/lib/utils/toast", async (importOriginal) => ({
   ...(await importOriginal<typeof import("~/lib/utils/toast")>()),
   showNotification: vi.fn(),
-}));
-
-const mockClearCache = vi.fn();
-vi.mock("~/lib/microsoft-auth-config", () => ({
-  getMsalInstance: () => ({ clearCache: mockClearCache }),
 }));
 
 const onSessionRefused = vi.mocked(setOnSessionRefused).mock.calls[0]?.[0];
@@ -73,7 +67,6 @@ describe("useAuthStore", () => {
     clearAgentToken();
     window.sessionStorage.clear();
     window.history.pushState(null, "", "/");
-    mockConfig.authentication.identityProviders = [];
   });
 
   describe("lastVisitedPage and the changelog", () => {
@@ -181,9 +174,9 @@ describe("useAuthStore", () => {
       localStorage.clear();
       vi.mocked(apiLogout).mockResolvedValue({ success: true });
       useAuthStore.setState({ user: makeAuthUser() });
-      setIdpTokens({ microsoftIdToken: "ms-id-token", email: "user@example.com" });
+      setUserEmail("user@example.com");
       await getAgentToken();
-      window.sessionStorage.setItem("okta-transaction", "state");
+      window.sessionStorage.setItem("kept-by-the-page", "state");
       for (const store of [
         useThemeStore,
         useCopilotStore,
@@ -203,11 +196,7 @@ describe("useAuthStore", () => {
       await useAuthStore.getState().logout();
 
       expect(apiLogout).toHaveBeenCalledTimes(1);
-      expect(getIdpTokens()).toEqual({
-        microsoftIdToken: "",
-        oktaIdToken: "",
-        email: "",
-      });
+      expect(getUserEmail()).toBe("");
       expect(window.sessionStorage.length).toBe(0);
       expect(localStorage.length).toBe(0);
       expect(await getStorage("user-apps-storage")).toBeNull();
@@ -241,23 +230,15 @@ describe("useAuthStore", () => {
     it("keeps everything when the API could not end the session", async () => {
       vi.mocked(apiLogout).mockResolvedValue({ success: false });
       useAuthStore.setState({ user: makeAuthUser() });
-      setIdpTokens({ oktaIdToken: "okta-id-token" });
+      setUserEmail("user@example.com");
 
       await useAuthStore.getState().logout();
 
       expect(showNotification).toHaveBeenCalledWith(
         expect.objectContaining({ message: "Logout Failed" }),
       );
-      expect(getIdpTokens().oktaIdToken).toBe("okta-id-token");
+      expect(getUserEmail()).toBe("user@example.com");
       expect(window.location.pathname).not.toBe("/login");
-    });
-
-    it("clears the MSAL cache when Microsoft sign-in is on", async () => {
-      mockConfig.authentication.identityProviders = ["microsoft"];
-
-      await useAuthStore.getState().logout();
-
-      expect(mockClearCache).toHaveBeenCalledTimes(1);
     });
   });
 });

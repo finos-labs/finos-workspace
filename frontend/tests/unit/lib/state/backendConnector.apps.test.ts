@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Source } from "~/lib/state/backendConnector";
 import { validateBackend } from "~/lib/utils/validateBackend";
+import { throughSourceProxy } from "../../../mocks/sourceProxy";
 import { installWidgetsSchemaFixture } from "../../../mocks/widgetsSchema";
 
 installWidgetsSchemaFixture();
 
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+global.fetch = throughSourceProxy(mockFetch);
 
 describe("validateBackend - apps.json endpoint behavior", () => {
   const mockSource: Source = {
@@ -54,12 +55,12 @@ describe("validateBackend - apps.json endpoint behavior", () => {
     expect(mockFetch).toHaveBeenCalledTimes(3);
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
-      new URL("widgets.json", mockSource.url),
+      "https://test-backend.com/widgets.json",
       expect.any(Object),
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
       2,
-      new URL("apps.json", mockSource.url),
+      "https://test-backend.com/apps.json",
       expect.any(Object),
     );
   });
@@ -152,11 +153,11 @@ describe("validateBackend - apps.json endpoint behavior", () => {
     expect(result.templateErrorMessage).toBeNull();
 
     expect(mockFetch).toHaveBeenCalledWith(
-      new URL("apps.json", mockSource.url),
+      "https://test-backend.com/apps.json",
       expect.any(Object),
     );
     expect(mockFetch).toHaveBeenCalledWith(
-      new URL("templates.json", mockSource.url),
+      "https://test-backend.com/templates.json",
       expect.any(Object),
     );
   });

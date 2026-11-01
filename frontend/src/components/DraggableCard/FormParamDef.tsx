@@ -3,13 +3,12 @@ import { FormProvider, useForm, useFormContext, useWatch } from "react-hook-form
 import { toast } from "sonner";
 import { ToggleSelect } from "~/components/ToggleSelect";
 import { useJsonData } from "~/lib/api";
-import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { beautifySlug, cn, currentDateModifier } from "~/lib/utils";
+import { fetchRequest } from "~/lib/utils/fetch";
 import {
   buildFormRequest,
   buildOptionsRequest,
   formScope,
-  requestInit,
 } from "~/lib/utils/widgetRequest";
 import { Button } from "../ds/atoms/Button";
 import { FormInput } from "../ds/atoms/Input";
@@ -31,8 +30,6 @@ export function FormParamElement({
 }) {
   const { widget, updateWidget } = useWidgetContext();
   const [isLoading, setIsLoading] = useState(false);
-
-  const credentials = useSourceCredentials(widget.sourceId, formParamDef?.endpoint);
 
   const initialFormValues = useMemo(() => {
     if (!formParamDef?.inputParams) return {};
@@ -66,7 +63,7 @@ export function FormParamElement({
     async (data: ParamsForm) => {
       try {
         if (!formParamDef) return;
-        const built = buildFormRequest(formParamDef, data, widget, credentials);
+        const built = buildFormRequest(formParamDef, data, widget);
         if (!built.ok) {
           toast.error("Error", {
             description: built.problems.map((p) => p.message).join(". "),
@@ -76,10 +73,7 @@ export function FormParamElement({
         }
         setIsLoading(true);
 
-        const response = await fetch(
-          built.request.url,
-          requestInit(built.request, { credentials: "omit" }),
-        );
+        const response = await fetchRequest(built.request, { credentials: "omit" });
 
         const json = await response.json();
 
@@ -110,7 +104,7 @@ export function FormParamElement({
 
       setIsLoading(false);
     },
-    [formParamDef, widget, credentials, updateWidget],
+    [formParamDef, widget, updateWidget],
   );
 
   return (
@@ -162,11 +156,6 @@ function EndpointType(props: {
   const inputValues = useWatch({ control: form.control });
 
   const { widget } = useWidgetContext();
-  const credentials = useSourceCredentials(
-    widget?.sourceId,
-    inputParam.optionsEndpoint,
-  );
-
   const { paramName, label, description = [], multiSelect = false } = inputParam;
 
   const title = beautifySlug(label ?? paramName);
@@ -176,9 +165,9 @@ function EndpointType(props: {
       buildOptionsRequest(
         inputParam,
         formScope(props.form, inputValues, widget),
-        credentials,
+        widget?.sourceId,
       ),
-    [inputParam, props.form, inputValues, widget, credentials],
+    [inputParam, props.form, inputValues, widget],
   );
 
   const { data, isLoading, error, dataUpdatedAt } = useJsonData(

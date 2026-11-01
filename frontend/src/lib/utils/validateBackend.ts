@@ -24,9 +24,9 @@ function normalizeBackendTemplate(template: unknown) {
   return obj;
 }
 
+import { fetchFromSource } from "~/lib/utils/fetch";
 import { type InvalidItem, toInspectableJson } from "~/lib/utils/invalidItems";
 import {
-  convertHeadersToRecord,
   createParamDefs,
   createURL,
   createURLString,
@@ -499,7 +499,6 @@ const DEFAULT_OPTIONS = {
   widgetsSchema: undefined as ComposedWidgetsSchema | undefined,
   agents: true,
   apps: true,
-  extraHeaders: {} as Record<string, string>,
 };
 
 export type GetApiSourceWidgetsOptions = Partial<typeof DEFAULT_OPTIONS>;
@@ -600,15 +599,12 @@ export async function validateBackend(
   };
 
   const requestTimeout = 60000;
-  const { headers, newParams } = convertHeadersToRecord(source.endpointHeaders);
-
-  Object.assign(headers, options.extraHeaders || {});
-
   const backendUrl = createURL(source.url);
-  const widgetsUrl = createURL("widgets.json", backendUrl, newParams);
-  const reqInit = { headers, signal: AbortSignal.timeout(requestTimeout) };
+  const signal = AbortSignal.timeout(requestTimeout);
+  const getFile = (name: string) =>
+    fetchFromSource(source, createURL(name, backendUrl).toString(), { signal });
 
-  const widgetsRes = await fetch(widgetsUrl, reqInit).catch((error) => ({
+  const widgetsRes = await getFile("widgets.json").catch((error) => ({
     ok: false,
     status: error.code || 500,
     statusText: error.message || "Network error",
@@ -659,17 +655,13 @@ export async function validateBackend(
   };
 
   const appsPromise = getPromise(async () => {
-    const appsUrl = createURL("apps.json", backendUrl, newParams);
-    const templatesUrl = createURL("templates.json", backendUrl, newParams);
-    return fetch(appsUrl, reqInit).then((res) =>
-      res.ok ? res : fetch(templatesUrl, reqInit),
-    );
+    const apps = await getFile("apps.json");
+    if (apps.ok) return apps;
+    templatesFile = "templates.json";
+    return getFile("templates.json");
   }, options.apps);
 
-  const agentsPromise = getPromise(async () => {
-    const agentsUrl = createURL("agents.json", backendUrl, newParams);
-    return fetch(agentsUrl, reqInit);
-  }, options.agents);
+  const agentsPromise = getPromise(() => getFile("agents.json"), options.agents);
 
   let appsKnown = false;
   if (options.apps) {
@@ -677,10 +669,7 @@ export async function validateBackend(
     appsKnown = tempsRes.ok || tempsRes.status === 404;
 
     if (tempsRes.ok) {
-      const fileName = tempsRes.url?.endsWith("apps.json")
-        ? "apps.json"
-        : "templates.json";
-      templatesFile = fileName;
+      const fileName = templatesFile;
       const data = await tempsRes.json().catch(() => []);
       if (Array.isArray(data)) {
         templates = data;
@@ -727,7 +716,7 @@ export async function validateBackend(
 
   let probe: ProbeReport = { failed: [], unchecked: [] };
   if (options.validateAllWidgets && !widgetValidationError) {
-    probe = await validateBackendEndpoints(widgets, backendUrl, reqInit.signal);
+    probe = await validateBackendEndpoints(widgets, backendUrl, signal);
   }
   const failedEndpoints = probe.failed;
 
@@ -874,7 +863,7 @@ export async function getApiSourceWidgets(
 
 function withApiKeyFlag(source: Source) {
   source.hasApiKey = source.endpointHeaders?.some(
-    (h) => h.key.toLowerCase() === "authorization" && h.value.startsWith("Bearer "),
+    (h) => h.key.toLowerCase() === "authorization",
   );
   return source;
 }

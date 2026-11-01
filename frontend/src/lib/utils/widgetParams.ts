@@ -8,7 +8,7 @@ import type {
   WidgetT,
 } from "~/components/types";
 import { getConfig } from "~/lib/runtimeConfig";
-import { getIdpTokens } from "~/lib/state/idpTokens";
+import { getUserEmail } from "~/lib/state/userEmail";
 import { newParamDef, ParamsSchema } from "~/lib/types/app";
 import { isDate } from "~/lib/utils/format";
 import type { WidgetType } from "~/utils/zodForms";
@@ -16,8 +16,6 @@ import type { WidgetType } from "~/utils/zodForms";
 function getAuthFlags() {
   const cfg = getConfig();
   return {
-    sendMicrosoftIdToken: cfg.authentication.sendMicrosoftIdToken,
-    sendOktaIdToken: cfg.authentication.sendOktaIdToken,
     sendUserEmailAsHeader: cfg.authentication.sendUserEmailAsHeader,
   };
 }
@@ -55,15 +53,10 @@ export function convertHeadersToRecord<PT extends object = Record<string, unknow
 export function addExtraHeaders(
   headers: Record<string, string> = {},
 ): Record<string, string> {
-  const flags = getAuthFlags();
-  const { microsoftIdToken, oktaIdToken, email } = getIdpTokens();
-  const withExtras = { ...headers };
-  if (flags.sendMicrosoftIdToken && microsoftIdToken) {
-    withExtras["X-Microsoft-Id-Token"] = microsoftIdToken;
-  }
-  if (flags.sendOktaIdToken && oktaIdToken) withExtras["X-Okta-Id-Token"] = oktaIdToken;
-  if (flags.sendUserEmailAsHeader && email) withExtras["X-Workspace-User"] = email;
-  return withExtras;
+  const email = getUserEmail();
+  return getAuthFlags().sendUserEmailAsHeader && email
+    ? { ...headers, "X-Workspace-User": email }
+    : { ...headers };
 }
 
 export function cleanURL(url: string) {

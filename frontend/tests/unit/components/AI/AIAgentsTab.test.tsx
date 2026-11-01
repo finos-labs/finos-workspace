@@ -304,14 +304,14 @@ interface CopilotMock {
   holderUuid?: string;
   image?: string;
   endpoints: Record<string, string>;
-  headers?: Record<string, string>;
   features?: Record<string, boolean>;
 }
 
 interface ExternalCopilotHolderMock {
   uuid: string;
   url: string;
-  headers: Record<string, string>;
+  headers?: Record<string, string>;
+  headerNames?: string[];
   copilots?: CopilotMock[];
   status?: "success" | "error";
   enabled?: boolean;
@@ -325,7 +325,6 @@ function makeCopilot(overrides: Partial<CopilotMock> = {}): CopilotMock {
     holderUuid: "holder-1",
     image: "",
     endpoints: { query: "/api/query" },
-    headers: {},
     features: {},
     ...overrides,
   };
@@ -337,7 +336,7 @@ function makeHolder(
   return {
     uuid: "holder-1",
     url: "https://agents.example.com",
-    headers: {},
+    headerNames: [],
     copilots: [makeCopilot()],
     status: "success",
     enabled: true,
@@ -373,7 +372,7 @@ const TWO_HOLDERS = [
 const HOLDER_WITH_AUTH = makeHolder({
   uuid: "holder-auth",
   url: "https://auth-agents.example.com",
-  headers: { Authorization: "Bearer token123", "X-Custom": "custom-value" },
+  headerNames: ["Authorization", "X-Custom"],
   copilots: [
     makeCopilot({
       id: "agent-auth",
@@ -424,7 +423,12 @@ describe("AIAgentsTab", () => {
     mockRuntimeConfig.copilot.defaultCopilot = true;
     mockFetchAgentsData.mockResolvedValue([]);
     mockHasCopilotConflict.mockReturnValue(false);
-    mockPutCustomCopilot.mockResolvedValue({});
+    mockPutCustomCopilot.mockImplementation(
+      async ({ headers, ...saved }: ExternalCopilotHolderMock) => ({
+        ...saved,
+        headerNames: headers ? Object.keys(headers) : (saved.headerNames ?? []),
+      }),
+    );
     mockRemoveCustomCopilot.mockResolvedValue({});
     setupDefaultMocks();
     setAccess({ user_type: "Developer" });

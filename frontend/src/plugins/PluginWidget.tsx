@@ -17,7 +17,6 @@ import {
 import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGroupBindings";
 import { useJsonData } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
-import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
 import {
@@ -179,13 +178,12 @@ function PluginWidgetBody({
   const readsData = permissions.has("core:data:read") && !!endpointUrl;
   const [, setShowRows] = useRowsView();
   const rows = useRawRows(widget);
-  const credentials = useSourceCredentials(widget.sourceId, endpointUrl);
   const request = useMemo(
     () =>
-      buildWidgetRequest(widget, credentials, {
+      buildWidgetRequest(widget, {
         theme: theme === "light" ? "light" : "dark",
       }),
-    [widget.endpoint, widget.params, widget.storage?.params, theme, credentials],
+    [widget.endpoint, widget.params, widget.storage?.params, widget.sourceId, theme],
   );
   const dataKey = widget.data?.dataKey;
   const answer = useJsonData(

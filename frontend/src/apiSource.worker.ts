@@ -1,4 +1,5 @@
 import { debounce } from "lodash";
+import { loadConfigScript } from "~/lib/loadConfigScript";
 import {
   errorResponse,
   getApiSourceWidgets,
@@ -9,7 +10,6 @@ import type { ComposedWidgetsSchema } from "./lib/utils/widgetsSchemaValidation"
 
 interface EventData {
   apiSources: Source[];
-  extraHeaders?: Record<string, string>;
   pluginVizTypes?: string[];
   widgetsSchema: ComposedWidgetsSchema;
 }
@@ -24,9 +24,12 @@ const debouncedPartialResults = debounce(
   { maxWait: 800, trailing: true },
 );
 
+const configLoaded = loadConfigScript();
+
 self.onmessage = async (e: MessageEvent<EventData>) => {
   if (e.origin && e.origin !== self.location.origin) return;
-  const { apiSources, extraHeaders, pluginVizTypes = [], widgetsSchema } = e.data;
+  await configLoaded;
+  const { apiSources, pluginVizTypes = [], widgetsSchema } = e.data;
 
   const results: ResultT[] = [];
   const sliceSize = Math.ceil(apiSources.length / 5);
@@ -35,7 +38,6 @@ self.onmessage = async (e: MessageEvent<EventData>) => {
     let entry: ResultT;
     try {
       const result = await getApiSourceWidgets(source, {
-        extraHeaders,
         pluginVizTypes,
         widgetsSchema,
       });

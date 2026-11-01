@@ -94,7 +94,7 @@ A new version directory is `discovered` and waits; the active version keeps serv
 
 ### 5.1 Developing on a local stack
 
-A version is developed on the developer's own machine, where `MODE` is `local` (the repository's `local/compose.yaml` sets it). Every other stack, including those built from the `develop` and `main` branches, runs `MODE=production`, where the route below refuses and no version is served from changing files. It works like `pip install -e`: the app uses the files where they are.
+A version is developed on the developer's own machine, where `MODE` is `local` (both of the repository's compose files, `docker-compose.yml` and `local/compose.yaml`, set it, and mount `widget-plugins/` as the plugins directory). Every other stack, including those built from the `develop` and `main` branches, runs `MODE=production`, where the route below refuses and no version is served from changing files. It works like `pip install -e`: the app uses the files where they are.
 
 1. On the plugin's Deployment page, Patch, Minor or Major copies the active version to the next version number after the highest the plugin has, rewrites the copy's `version` and `checksum`, and marks it `development`. The plugins directory has to be writable for this. One version of a plugin is in development at a time.
 2. Until it is approved, everyone the plugin is granted to on that stack gets the copy instead of the active version, read again whenever the plugin list or one of its files is requested: its code, its policy, its proxies and routes, and its widgets' `definition`s. An edit never blocks it, and a `checksum` that no longer matches is a warning. A copy that fails a check (an invalid manifest, a missing file) is not served, and its Deployment page says why.
