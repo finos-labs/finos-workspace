@@ -5,9 +5,9 @@ import { toast } from "sonner";
 import * as z from "zod";
 import {
   type CustomCopilot,
-  fetchAgentsData,
   hasCopilotConflict,
   putCustomCopilot,
+  tryAgentsData,
 } from "~/api/auth.api";
 
 import { AGENT_ENABLED_FEATURES, ALL_AI_FEATURES } from "~/lib/constants";
@@ -152,7 +152,7 @@ export function AddCopilotDialog() {
         enabled: true,
         copilots: [],
       };
-      const copilots = await fetchAgentsData(candidate);
+      const copilots = await tryAgentsData(candidate);
       candidate.copilots = copilots;
       testedHolderRef.current = candidate;
       setTestResult({
@@ -182,8 +182,9 @@ export function AddCopilotDialog() {
         return;
       }
 
-      await putCustomCopilot(newHolder);
-      setExternalCopilotHolders([...externalCopilotHolders, newHolder]);
+      const saved = await putCustomCopilot(newHolder);
+      testedHolderRef.current = null;
+      setExternalCopilotHolders([...externalCopilotHolders, saved]);
 
       const selectedCopilot = newHolder.copilots[0];
       setSelectedCopilot(selectedCopilot);

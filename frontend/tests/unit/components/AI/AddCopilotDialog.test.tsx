@@ -25,7 +25,7 @@ const {
 let mockExternalCopilotHolders: Array<{ url: string; copilots?: unknown[] }> = [];
 
 vi.mock("~/api/auth.api", () => ({
-  fetchAgentsData: (...args: unknown[]) => mockFetchAgentsData(...args),
+  tryAgentsData: (...args: unknown[]) => mockFetchAgentsData(...args),
   hasCopilotConflict: (...args: unknown[]) => mockHasCopilotConflict(...args),
   putCustomCopilot: (...args: unknown[]) => mockPutCustomCopilot(...args),
 }));
@@ -94,7 +94,12 @@ describe("AddCopilotDialog", () => {
     vi.clearAllMocks();
     mockExternalCopilotHolders = [];
     mockHasCopilotConflict.mockReturnValue(false);
-    mockPutCustomCopilot.mockResolvedValue(undefined);
+    mockPutCustomCopilot.mockImplementation(
+      async ({ headers, ...saved }: { headers?: Record<string, string> }) => ({
+        ...saved,
+        headerNames: Object.keys(headers ?? {}),
+      }),
+    );
   });
 
   it("keeps Add disabled until a successful test", async () => {
@@ -150,7 +155,9 @@ describe("AddCopilotDialog", () => {
 
     await waitFor(() => {
       expect(mockPutCustomCopilot).toHaveBeenCalledTimes(1);
-      expect(mockSetExternalCopilotHolders).toHaveBeenCalled();
+      expect(mockSetExternalCopilotHolders).toHaveBeenCalledWith([
+        expect.not.objectContaining({ headers: expect.anything() }),
+      ]);
       expect(mockSetShowAddAgentsDialog).toHaveBeenCalledWith(false);
     });
     expect(mockFetchAgentsData).toHaveBeenCalledTimes(1);

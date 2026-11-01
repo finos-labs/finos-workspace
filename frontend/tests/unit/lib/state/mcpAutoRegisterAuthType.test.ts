@@ -120,7 +120,7 @@ describe("token-auth servers are not auto-connected without a token", () => {
       ]),
     );
     const server = useMcpToolsStore.getState().servers[0];
-    expect(server.customHeaders?.Authorization).toBe("Bearer abc");
+    expect(server.customHeaders).toBeUndefined();
     expect(server.enabled).toBe(true);
   });
 });

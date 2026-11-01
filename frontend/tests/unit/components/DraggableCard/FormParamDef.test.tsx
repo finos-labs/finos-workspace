@@ -48,18 +48,15 @@ vi.mock("sonner", () => ({
 }));
 
 const OPTIONS_ENDPOINT = "https://my-api.com/options/categories";
-const CUSTOM_HEADERS = {
-  "X-Api-Key": "secret-key",
-  "X-Custom-Header": "custom-value",
-};
+const HEADER_NAMES = ["X-Api-Key", "X-Custom-Header"];
 
 const SOURCE = partial<Source>({
   id: "src-1",
   name: "My API",
   url: "https://my-api.com",
-  endpointHeaders: Object.entries(CUSTOM_HEADERS).map(([key, value]) => ({
+  endpointHeaders: HEADER_NAMES.map((key) => ({
     key,
-    value,
+    value: "",
     location: "headers" as const,
   })),
 });
@@ -112,7 +109,7 @@ describe("FormParamElement - EndpointType", () => {
     useBackendConnectorStore.setState({ apiSources: [SOURCE] });
   });
 
-  it("requests the options with the credentials of the widget's source", () => {
+  it("requests the options through the widget's source, with no credentials", () => {
     renderForm();
 
     expect(vi.mocked(useJsonData)).toHaveBeenCalledWith(
@@ -122,7 +119,7 @@ describe("FormParamElement - EndpointType", () => {
           request: {
             url: OPTIONS_ENDPOINT,
             method: "GET",
-            credentials: CUSTOM_HEADERS,
+            sourceId: "src-1",
             paramHeaders: {},
           },
         },
@@ -138,7 +135,7 @@ describe("FormParamElement - EndpointType", () => {
     expect(callArgs).not.toHaveProperty("headers");
   });
 
-  it("ignores headers saved on the widget itself", () => {
+  it("never sends headers saved on the widget itself", () => {
     const widgetWithHeaders = partial<WidgetT>({
       ...mockWidget,
       endpoint: {
@@ -153,15 +150,9 @@ describe("FormParamElement - EndpointType", () => {
 
     renderForm();
 
-    expect(vi.mocked(useJsonData)).toHaveBeenCalledWith(
-      {
-        request: expect.objectContaining({
-          ok: true,
-          request: expect.objectContaining({ credentials: CUSTOM_HEADERS }),
-        }),
-      },
-      expect.anything(),
-    );
+    const request = vi.mocked(useJsonData).mock.calls[0]?.[0].request;
+    expect(request?.ok && request.request.sourceId).toBe("src-1");
+    expect(JSON.stringify(request)).not.toContain("stale-saved-key");
   });
 
   it("still fetches options when the source has no headers", () => {
@@ -175,7 +166,10 @@ describe("FormParamElement - EndpointType", () => {
       {
         request: expect.objectContaining({
           ok: true,
-          request: expect.objectContaining({ url: OPTIONS_ENDPOINT, credentials: {} }),
+          request: expect.objectContaining({
+            url: OPTIONS_ENDPOINT,
+            sourceId: "src-1",
+          }),
         }),
       },
       expect.anything(),
@@ -220,11 +214,7 @@ describe("FormParamElement - EndpointType", () => {
 });
 
 describe("FormParamElement - the source's query rows", () => {
-  const QUERY_ROW = {
-    key: "apikey",
-    value: "query-secret",
-    location: "query" as const,
-  };
+  const QUERY_ROW = { key: "apikey", value: "", location: "query" as const };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -235,7 +225,7 @@ describe("FormParamElement - the source's query rows", () => {
     });
   });
 
-  it("go in the options request's query, apart from the headers", () => {
+  it("stay out of the options request's query", () => {
     (useWidgetContext as Mock).mockReturnValue(createMockWidgetContext());
 
     renderForm();
@@ -245,8 +235,8 @@ describe("FormParamElement - the source's query rows", () => {
         request: expect.objectContaining({
           ok: true,
           request: expect.objectContaining({
-            url: `${OPTIONS_ENDPOINT}?apikey=query-secret`,
-            credentials: CUSTOM_HEADERS,
+            url: OPTIONS_ENDPOINT,
+            sourceId: "src-1",
           }),
         }),
       },
@@ -254,7 +244,7 @@ describe("FormParamElement - the source's query rows", () => {
     );
   });
 
-  it("go with the form's submit, as do the headers", async () => {
+  it("stay out of the form's submit, which goes through the API", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ message: "Saved" }),
@@ -284,8 +274,12 @@ describe("FormParamElement - the source's query rows", () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://my-api.com/submit?apikey=query-secret");
-    expect(init.headers).toMatchObject(CUSTOM_HEADERS);
+    expect(url).toMatch(/\/app\/data-connectors\/api-source\/src-1\/request$/);
+    expect(JSON.parse(init.body)).toMatchObject({
+      url: "https://my-api.com/submit",
+      method: "POST",
+    });
+    expect(init.body).not.toContain("apikey");
     vi.unstubAllGlobals();
   });
 });

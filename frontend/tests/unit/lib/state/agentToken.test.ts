@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "~/api/api";
 import { clearAgentToken, fetchAgent, getAgentToken } from "~/lib/state/agentToken";
+import { setAgentHolders } from "~/lib/utils/fetch";
+import { mockConfig } from "../../../mocks/runtimeConfig";
 
 const AGENT_URL = "http://localhost:3000/ai/v1/query";
 const MINUTE = 60 * 1000;
@@ -28,6 +30,7 @@ describe("agent token", () => {
   });
 
   afterEach(() => {
+    setAgentHolders(() => []);
     clearAgentToken();
     vi.useRealTimers();
     vi.unstubAllGlobals();
@@ -131,6 +134,68 @@ describe("agent token", () => {
 
       expect(response.status).toBe(401);
       expect(fetch).toHaveBeenCalledTimes(2);
+    });
+
+    describe("an agent whose credentials the API keeps", () => {
+      const holders = [
+        { uuid: "holder-root", url: "https://agent.example.test" },
+        { uuid: "holder-api", url: "https://agent.example.test/api" },
+        { uuid: "holder-other", url: "https://other.example.test" },
+      ];
+
+      beforeEach(() => setAgentHolders(() => holders));
+
+      it("goes through the API's relay with only the session and what the caller set", async () => {
+        const body = JSON.stringify({ messages: [] });
+
+        await fetchAgent("https://other.example.test/v1/query?x=1", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Trace-Id": "chat-1" },
+          body,
+        });
+
+        const [url, init] = vi.mocked(fetch).mock.calls[0];
+        expect(url).toBe(
+          `${mockConfig.urls.backend}/app/custom-copilot/holder-other/relay?target=${encodeURIComponent("https://other.example.test/v1/query?x=1")}`,
+        );
+        expect(init?.method).toBe("POST");
+        expect(init?.body).toBe(body);
+        expect(init?.credentials).toBe("include");
+        const headers = new Headers(init?.headers);
+        expect(headers.get("X-Workspace-Client")).toBe("web");
+        expect(headers.get("X-Trace-Id")).toBe("chat-1");
+        expect(headers.get("Authorization")).toBeNull();
+        expect(apiClient.post).not.toHaveBeenCalled();
+      });
+
+      it("picks the holder whose address is the longest prefix of the target", async () => {
+        await fetchAgent("https://agent.example.test/api/v1/query", { method: "POST" });
+        await fetchAgent("https://agent.example.test/elsewhere/query", {
+          method: "POST",
+        });
+
+        const [first, second] = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
+        expect(first).toContain("/custom-copilot/holder-api/relay");
+        expect(second).toContain("/custom-copilot/holder-root/relay");
+      });
+
+      it("goes straight to an address no holder owns", async () => {
+        const init = { method: "POST" };
+
+        await fetchAgent("https://stranger.example.test/v1/query", init);
+
+        expect(fetch).toHaveBeenCalledWith(
+          "https://stranger.example.test/v1/query",
+          init,
+        );
+      });
+
+      it("leaves the default Copilot to its own token", async () => {
+        await fetchAgent(AGENT_URL, { method: "POST" });
+
+        expect(String(vi.mocked(fetch).mock.calls[0][0])).toBe(AGENT_URL);
+        expect(authOf(vi.mocked(fetch).mock.calls[0])).toBe("Bearer agent-token-1");
+      });
     });
 
     it.each([

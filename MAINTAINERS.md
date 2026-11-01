@@ -7,11 +7,13 @@ For information about maintainer responsibilities and resources, see the [FINOS 
 ## Current maintainers
 
 | GitHub Username | Name | Organization | Email (Optional) |
-| @saracgil | Ihsan Saracgil | BrightQuery | saracgil@gmail.com |
-| @deeleeramone | Darren Lee | BrightQuery | dlee@brightquery.com | 
-| @jethin-bq | Jethin Abraham | BrightQuery | jabraham@brightquery.com |
+| --- | --- | --- | --- |
+| @saracgil-bq | Ihsan Saracgil | BrightQuery | isaracgil@brightquery.com |
+| @dlee-bq | Darren Lee | BrightQuery | dlee@brightquery.com |
 | @bq-dt2025 | Duy Ton | BrightQuery | duy@brightquery.com |
-| @srirambajrang1 | Sriram Bajrang| BrightQuery | sriram@brightquery.com |  
+| @ogonnaBQ | Ogonna Nnamani | BrightQuery | onnamani@brightquery.com |
+| @Shahid-BQ | Shahid Hussain | BrightQuery | shahid@brightquery.com |
+| @rahul-BQ | Rahul Chougule | BrightQuery | rahul@brightquery.com |
 
 ## Updating this file
 

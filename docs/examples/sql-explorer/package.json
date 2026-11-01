@@ -15,5 +15,8 @@
   "devDependencies": {
     "@duckdb/duckdb-wasm": "1.33.1-dev57.0",
     "esbuild": "0.28.2"
+  },
+  "overrides": {
+    "qs": "^6.17.1"
   }
 }

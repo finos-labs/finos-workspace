@@ -40,16 +40,10 @@ export const RuntimeConfigSchema = z.object({
   authentication: z.object({
     allowEmailLogin: boolField(true),
     identityProviders: strArrayField([]),
-    sendMicrosoftIdToken: boolField(false),
-    sendOktaIdToken: boolField(false),
     sendUserEmailAsHeader: boolField(false),
   }),
   authProviders: z.object({
     googleClientId: z.string().default(""),
-    azureClientId: z.string().default(""),
-    azureTenantId: z.string().default(""),
-    oktaClientId: z.string().default(""),
-    oktaDomain: z.string().default(""),
   }),
   copilot: z.object({
     enabled: boolField(false),
@@ -115,16 +109,10 @@ export const ENV_NAMES = {
   authentication: {
     allowEmailLogin: "VITE_AUTHENTICATION_ALLOW_EMAIL_LOGIN",
     identityProviders: "VITE_AUTHENTICATION_IDENTITY_PROVIDERS",
-    sendMicrosoftIdToken: "VITE_AUTHENTICATION_SEND_MICROSOFT_IDTOKEN",
-    sendOktaIdToken: "VITE_AUTHENTICATION_SEND_OKTA_IDTOKEN",
     sendUserEmailAsHeader: "VITE_AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER",
   },
   authProviders: {
     googleClientId: "VITE_GOOGLE_OAUTH_CLIENT_ID",
-    azureClientId: "VITE_AZURE_CLIENT_ID",
-    azureTenantId: "VITE_AZURE_TENANT_ID",
-    oktaClientId: "VITE_OKTA_CLIENT_ID",
-    oktaDomain: "VITE_OKTA_DOMAIN",
   },
   copilot: {
     enabled: "VITE_AI_COPILOT_ENABLED",

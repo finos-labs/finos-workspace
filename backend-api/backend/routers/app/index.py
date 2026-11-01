@@ -1,3 +1,4 @@
+import json
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import (
     date as dateType,
@@ -5,13 +6,24 @@ from datetime import (
     timedelta,
 )
 from typing import Annotated, Literal
-from urllib.parse import urlparse, urlsplit
+from urllib.parse import urlencode, urlparse, urlsplit
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Body,
+    Depends,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+    status,
+)
 from fastapi.responses import (
     JSONResponse,
+    RedirectResponse,
     Response,
     StreamingResponse,
 )
@@ -21,10 +33,22 @@ from sqlalchemy import RowMapping, and_, delete, insert, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from starlette.background import BackgroundTask
 
-from api import auth_helpers, base, crud, crypto, helpers, models, schemas, sign_in_providers
+from api import (
+    auth_helpers,
+    base,
+    crud,
+    crypto,
+    helpers,
+    models,
+    provider_tokens,
+    schemas,
+    sign_in_providers,
+    source_proxy,
+)
+from api.body_limit import AGENT_BODY_BYTES
 from api.database import aget_read_db, aget_write_db
+from api.identity import headers_for as identity_headers
 from api.models import (
     User,
     UserInvite,
@@ -110,6 +134,7 @@ async def process_create_user(
 async def logout(
     request: Request,
     response: Response,
+    background: BackgroundTasks,
     db: AsyncSession = Depends(aget_write_db),
 ):
     credential = auth_helpers.read_credential(request)
@@ -121,12 +146,20 @@ async def logout(
         )
     ).first()
     if session is not None:
+        if (tokens := await provider_tokens.take(db, session.uuid)) is not None:
+            background.add_task(provider_tokens.release, tokens)
         await auth_helpers.revoke_agent_tokens(session.uuid)
         await auth_helpers.delete_user_app_sessions(
             db, session.user_uuid, ["app", "oauth-app"]
         )
     auth_helpers.clear_session_cookie(response, auth_helpers.SESSION_COOKIE)
     return SuccessReturn(success=True)
+
+
+def _is_enrollment(answer: Response) -> bool:
+    return answer.status_code == status.HTTP_202_ACCEPTED and bool(
+        json.loads(bytes(answer.body)).get("two_factor_required")
+    )
 
 
 def two_factor_required() -> JSONResponse:
@@ -194,8 +227,17 @@ async def login(
     user: schemas.AppUserLogin,
     db: AsyncSession = Depends(aget_write_db),
 ):
-    source = user.source or "app"
     auth_helpers.check_browser_sign_in(request)
+    return await authenticate(request, response, user, db)
+
+
+async def authenticate(
+    request: Request,
+    response: Response,
+    user: schemas.AppUserLogin,
+    db: AsyncSession,
+):
+    source = user.source or "app"
 
     if not (
         result := (await db.execute(helpers.get_app_user_query(user.email))).first()
@@ -375,6 +417,7 @@ async def handle_oauth_user(
     db: AsyncSession,
     identity: sign_in_providers.SignInIdentity,
     auth_data: schemas.AuthData,
+    tokens: sign_in_providers.ProviderTokens | None = None,
 ):
     account = await _provider_account(db, identity)
     if account is None:
@@ -400,7 +443,17 @@ async def handle_oauth_user(
         password="",
         version=auth_data.version,
     ).bypass_password_check()
-    answer = await login(request, response, user_login, db)
+    answer = await authenticate(request, response, user_login, db)
+
+    if tokens is not None and (
+        not isinstance(answer, Response) or _is_enrollment(answer)
+    ):
+        await provider_tokens.store(
+            db,
+            user_login.email,
+            ("totp-enroll-oauth",) if isinstance(answer, Response) else ("oauth-app",),
+            tokens,
+        )
 
     if (
         identity.microsoft_id
@@ -445,46 +498,112 @@ async def post_reset_password(
     return SuccessReturn.success_instance()
 
 
-@router.post("/sign-in/nonce", response_model=schemas.SignInNonce)
+@router.post(
+    "/sign-in/{provider}/start",
+    response_model=schemas.SignInStarted,
+    summary="Start a Microsoft or Okta sign-in",
+    description=(
+        "Returns the address of the provider's sign-in page. The browser opens it, and the "
+        "provider sends it back to the callback, where the API signs the user in and keeps "
+        "the provider's tokens on the server."
+    ),
+)
 @limiter.limit(LIMIT_FEW)
-async def post_sign_in_nonce(request: Request, response: Response):
+async def post_sign_in_start(
+    request: Request,
+    response: Response,
+    provider: Annotated[
+        Literal["microsoft", "okta"], Path(description="The identity provider to sign in with")
+    ],
+    data: schemas.SignInStart,
+):
     auth_helpers.check_browser_sign_in(request)
-    return schemas.SignInNonce(
-        nonce=await sign_in_providers.issue_sign_in_nonce(response)
+    return schemas.SignInStarted(
+        authorization_url=await sign_in_providers.start(response, provider, data.version)
     )
 
 
-@router.post("/{provider}-auth", response_model=schemas.AppTokenWithContext)
+def _login_page(**params: str) -> RedirectResponse:
+    return RedirectResponse(
+        f"{settings.APPURL.rstrip('/')}/login?{urlencode(params)}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+def _sign_in_failed(message: str) -> RedirectResponse:
+    failed = _login_page(error=message)
+    sign_in_providers.clear_sign_in_cookie(failed)
+    return failed
+
+
+@router.get(
+    "/sign-in/{provider}/callback",
+    response_class=RedirectResponse,
+    status_code=status.HTTP_303_SEE_OTHER,
+    summary="Finish a Microsoft or Okta sign-in",
+    description=(
+        "The address the provider sends the browser back to. It exchanges the code for the "
+        "provider's tokens on the server, signs the user in, and redirects to the web app, "
+        "or to its sign-in page with the reason."
+    ),
+)
+@limiter.limit(LIMIT_FEW)
+async def get_sign_in_callback(
+    request: Request,
+    provider: Annotated[
+        Literal["microsoft", "okta"], Path(description="The identity provider that answered")
+    ],
+    db: Annotated[AsyncSession, Depends(aget_write_db)],
+    code: Annotated[str | None, Query(max_length=4096, description="The authorization code")] = None,
+    state: Annotated[str | None, Query(max_length=256, description="The value the sign-in began with")] = None,
+    error: Annotated[str | None, Query(max_length=256, description="Set when the provider refused")] = None,
+):
+    signed_in = RedirectResponse(settings.APPURL, status_code=status.HTTP_303_SEE_OTHER)
+    try:
+        if error:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail=f"{provider.title()} did not complete the sign-in",
+            )
+        done = await sign_in_providers.finish(request, provider, code=code, state=state)
+        answer = await handle_oauth_user(
+            request,
+            signed_in,
+            db,
+            done.identity,
+            schemas.AuthData(version=done.version),
+            done.tokens,
+        )
+    except HTTPException as refusal:
+        return _sign_in_failed(str(refusal.detail))
+
+    if not isinstance(answer, Response):
+        sign_in_providers.clear_sign_in_cookie(signed_in)
+        return signed_in
+    if _is_enrollment(answer):
+        enrolling = _login_page(step="totp-enroll")
+        for cookie in answer.headers.getlist("set-cookie"):
+            enrolling.headers.append("set-cookie", cookie)
+        sign_in_providers.clear_sign_in_cookie(enrolling)
+        return enrolling
+    if answer.status_code == status.HTTP_202_ACCEPTED:
+        return _sign_in_failed(
+            "This account uses an authenticator code. Sign in with your email, password and code."
+        )
+    return _sign_in_failed(json.loads(bytes(answer.body)).get("message", "Sign in failed"))
+
+
+@router.post("/google-auth", response_model=schemas.AppTokenWithContext)
 @limiter.limit("5/minute")
-async def oauth_auth(
+async def google_auth(
     request: Request,
     response: Response,
-    provider: Literal["google", "microsoft", "okta"],
     data: schemas.AuthData,
     db: AsyncSession = Depends(aget_write_db),
 ):
     auth_helpers.check_browser_sign_in(request)
-    if provider == "google":
-        identity = await sign_in_providers.google_identity(data.token)
-        return await handle_oauth_user(request, response, db, identity, data)
-
-    nonce_hash = await sign_in_providers.take_sign_in_nonce(request)
-    identify = (
-        sign_in_providers.microsoft_identity
-        if provider == "microsoft"
-        else sign_in_providers.okta_identity
-    )
-    try:
-        identity = await identify(data.id_token, nonce_hash)
-        answer = await handle_oauth_user(request, response, db, identity, data)
-    except HTTPException as refusal:
-        raise auth_helpers.clearing_cookie(
-            refusal, sign_in_providers.SIGN_IN_COOKIE
-        ) from refusal
-    sign_in_providers.clear_sign_in_cookie(
-        answer if isinstance(answer, Response) else response
-    )
-    return answer
+    identity = await sign_in_providers.google_identity(data.token)
+    return await handle_oauth_user(request, response, db, identity, data)
 
 
 @router.get("/2fa", response_model=schemas.TwoFactorAuthGet)
@@ -931,6 +1050,107 @@ async def get_custom_copilot(
     return await app_helpers.get_custom_copilots(db, user.uuid)
 
 
+@router.post(
+    "/custom-copilot/discover",
+    response_model=schemas.AgentDiscovery,
+    summary="Read an agent's agents.json from the server",
+    description=(
+        "Reads the `agents.json` (or `copilots.json`) of the agent connection with its credentials, which are "
+        "the stored ones of the saved connection `id` and, for the names given in `headers`, the ones being tried. "
+        "The credentials never reach the browser. The status the agent answered comes back in `status`."
+    ),
+)
+async def discover_custom_copilot(
+    payload: schemas.AgentDiscoverRequest,
+    db: Annotated[AsyncSession, Depends(aget_read_db)],
+    user=Depends(auth_helpers.GetCurrentUser(["uuid", "email", "is_superuser"], app_session=True)),
+):
+    await source_proxy.count(user.uuid, "agent-discover", source_proxy.GRANTS_PER_MINUTE)
+    try:
+        await app_helpers.check_may_add_connections(db, user.uuid)
+        saved = None
+        if payload.id is not None:
+            saved = await app_helpers.get_custom_copilot_connection(db, user.uuid, payload.id)
+            if saved is None:
+                raise source_proxy.refused("this agent is not available to you", 404)
+    finally:
+        await db.commit()
+    kept = (
+        {row["key"]: row["value"] for row in saved.endpointHeaders}
+        if saved and source_proxy.on_origin(saved.url, payload.url)
+        else None
+    )
+    headers = app_helpers.replace_headers(kept, payload.headers)
+    connection = app_helpers.agent_connection(payload.id, payload.url, headers, user.uuid)
+    signed = await identity_headers(
+        user.uuid, user.email, user.session_uuid, connection.url, provider_token=False
+    )
+    answered, agents = 0, None
+    for name in ("agents.json", "copilots.json"):
+        answered, agents = await source_proxy.read_json(
+            connection, user.email, bool(user.is_superuser), signed, name
+        )
+        if answered == status.HTTP_200_OK:
+            break
+    return schemas.AgentDiscovery(status=answered, agents=agents if isinstance(agents, dict) else None)
+
+
+AGENT_FORWARDED_HEADERS = ("accept", "accept-language", "content-type", "last-event-id", "x-trace-id")
+
+
+@router.api_route(
+    "/custom-copilot/{copilot_uuid}/relay",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    response_class=StreamingResponse,
+    summary="Call an agent from the server",
+    description=(
+        "Sends the request to `target`, an address on the agent connection's own origin, with the connection's "
+        "stored credentials, and streams the answer back with the agent's own status code. Nothing secret reaches "
+        "the browser. A refusal by this route carries the header `X-Workspace-Proxy-Error`."
+    ),
+)
+async def relay_to_custom_copilot(
+    copilot_uuid: Annotated[UUID, Path(..., description="The UUID of the agent connection to call")],
+    request: Request,
+    target: Annotated[
+        str, Query(max_length=8192, description="The absolute address to call on the connection's own origin")
+    ],
+    db: Annotated[AsyncSession, Depends(aget_read_db)],
+    user=Depends(auth_helpers.GetCurrentUser(["uuid", "email", "is_superuser"], app_session=True)),
+):
+    await source_proxy.count(user.uuid, "agent-request", source_proxy.AGENT_REQUESTS_PER_MINUTE)
+    try:
+        connection = await app_helpers.get_custom_copilot_connection(db, user.uuid, copilot_uuid)
+        if connection is None:
+            raise source_proxy.refused("this agent is not available to you", 404)
+    finally:
+        await db.commit()
+    signed = await identity_headers(user.uuid, user.email, user.session_uuid, str(connection.url))
+    url, headers = source_proxy.target_of(connection, target, {}, user.email, signed)
+    present = {name.lower() for name in headers}
+    for name in AGENT_FORWARDED_HEADERS:
+        if name in request.headers and name not in present:
+            headers[name] = request.headers[name]
+    async with source_proxy.buffered(request, AGENT_BODY_BYTES) as body:
+        answer = await source_proxy.send(
+            connection,
+            request.method,
+            url,
+            headers,
+            body or None,
+            None,
+            user.uuid,
+            trusted=bool(user.is_superuser),
+            request=request,
+            waits=source_proxy.AGENT_WAITS,
+        )
+    exposed = answer.headers.get("access-control-expose-headers")
+    answer.headers["Access-Control-Expose-Headers"] = ", ".join(
+        filter(None, [exposed, source_proxy.AGENT_EXPOSED_HEADERS])
+    )
+    return answer
+
+
 @router.delete("/custom-copilot/{uuid}", response_model=SuccessReturn)
 async def delete_custom_copilot(
     uuid: UUID,
@@ -1238,7 +1458,7 @@ async def check_mcp_tool_calls(
 
 
 async def _send_to_mcp_server(
-    data: MCPProxyRequest, stored_headers: dict[str, str], authorization: str | None
+    data: MCPProxyRequest, stored_headers: dict[str, str], authorization: str | None, browser: Request
 ) -> httpx.Response:
     headers = httpx.Headers(
         {
@@ -1251,19 +1471,26 @@ async def _send_to_mcp_server(
         headers[name] = value
     if authorization is not None:
         headers["Authorization"] = authorization
+    headers["Accept-Encoding"] = "identity"
     request = mcp_oauth.mcp_http.build_request(
         data.method, data.url, headers=headers, json=data.body
     )
-    return await mcp_oauth.mcp_http.send(request, stream=True, follow_redirects=False)
+    return await source_proxy.guard(
+        source_proxy.origin_of(data.url),
+        lambda: mcp_oauth.mcp_http.send(request, stream=True, follow_redirects=False),
+        browser,
+    )
 
 
 async def _mcp_answer(
     response: httpx.Response,
     server: str,
+    user_uuid: UUID,
     record_endpoint: Callable[[str], Awaitable[None]] | None = None,
 ) -> Response:
     if response.status_code == status.HTTP_401_UNAUTHORIZED:
         await response.aclose()
+        source_proxy.release(user_uuid)
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={"auth_required": True, "server_url": server},
@@ -1279,72 +1506,77 @@ async def _mcp_answer(
         if name in response.headers
     }
     headers["Access-Control-Expose-Headers"] = MCP_EXPOSED_HEADERS
-    content = response.aiter_bytes()
-    if (
+    announces = (
         record_endpoint is not None
         and response.status_code == status.HTTP_200_OK
         and response.headers.get("content-type", "").startswith("text/event-stream")
-    ):
-        content = _watch_sse_announcement(content, record_endpoint)
-    return StreamingResponse(
-        content=content,
-        status_code=response.status_code,
-        headers=headers,
-        background=BackgroundTask(response.aclose),
+    )
+    watch = (lambda chunks: _watch_sse_announcement(chunks, record_endpoint)) if announces else None
+    return source_proxy.Relayed(
+        response, None, user_uuid, None, watch, None, status_code=response.status_code, headers=headers
     )
 
 
 @router.post("/mcp-proxy", response_class=StreamingResponse)
 async def mcp_proxy(
     data: Annotated[MCPProxyRequest, Body()],
+    request: Request,
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(mcp_oauth.web_user),
 ):
+    await source_proxy.count(user.uuid, "mcp-request", source_proxy.MCP_REQUESTS_PER_MINUTE)
     server = schemas.normalize_mcp_url(data.server_url)
-    if not under_mcp_server_path(server, data.url) and not (
-        data.method == "POST" and await _announced_by_server(user.uuid, server, data.url)
-    ):
-        raise HTTPException(
-            status_code=422, detail="The request must go to the MCP server it names"
-        )
-    for url in (server, data.url):
-        await check_own_mcp_server(db, user.uuid, url)
-    await check_mcp_tool_calls(db, user.uuid, data)
-
-    stored_headers = await app_helpers.get_mcp_server_headers(db, user.uuid, server) or {}
-    token_auth = any(name.lower() == "authorization" for name in stored_headers)
     try:
-        authorization = (
-            None if token_auth else await mcp_oauth.grant_authorization(user.uuid, server)
-        )
-        response = await _send_to_mcp_server(data, stored_headers, authorization)
-        if response.status_code == status.HTTP_401_UNAUTHORIZED and authorization:
-            await response.aclose()
-            authorization = await mcp_oauth.grant_authorization(
-                user.uuid, server, refused=authorization
+        if not under_mcp_server_path(server, data.url) and not (
+            data.method == "POST" and await _announced_by_server(user.uuid, server, data.url)
+        ):
+            raise HTTPException(
+                status_code=422, detail="The request must go to the MCP server it names"
             )
-            if authorization is not None:
-                response = await _send_to_mcp_server(data, stored_headers, authorization)
-    except mcp_oauth.BlockedAddressError as e:
-        raise HTTPException(
-            status_code=403, detail=f"The MCP server may not be reached: {e}"
-        ) from e
-    except httpx.TimeoutException as e:
-        raise HTTPException(
-            status_code=504, detail="MCP service request timed out"
-        ) from e
-    except httpx.HTTPError as e:
-        logger.error(
-            f"An error occurred while requesting the MCP server at "
-            f"{urlsplit(server).hostname}: {type(e).__name__}"
-        )
-        raise HTTPException(
-            status_code=502, detail="Error connecting to MCP service"
-        ) from e
+        for url in (server, data.url):
+            await check_own_mcp_server(db, user.uuid, url)
+        await check_mcp_tool_calls(db, user.uuid, data)
+        stored_headers = await app_helpers.get_mcp_server_headers(db, user.uuid, server) or {}
+    finally:
+        await db.commit()
+    token_auth = any(name.lower() == "authorization" for name in stored_headers)
 
     async def record_endpoint(announced: str) -> None:
         await _record_sse_endpoint(user.uuid, server, data.url, announced)
 
-    return await _mcp_answer(
-        response, server, record_endpoint if data.method == "GET" else None
-    )
+    source_proxy.acquire(user.uuid)
+    try:
+        try:
+            authorization = (
+                None if token_auth else await mcp_oauth.grant_authorization(user.uuid, server)
+            )
+            response = await _send_to_mcp_server(data, stored_headers, authorization, request)
+            if response.status_code == status.HTTP_401_UNAUTHORIZED and authorization:
+                await response.aclose()
+                authorization = await mcp_oauth.grant_authorization(
+                    user.uuid, server, refused=authorization
+                )
+                if authorization is not None:
+                    response = await _send_to_mcp_server(data, stored_headers, authorization, request)
+        except mcp_oauth.BlockedAddressError as e:
+            raise HTTPException(
+                status_code=403, detail=f"The MCP server may not be reached: {e}"
+            ) from e
+        except httpx.TimeoutException as e:
+            raise HTTPException(
+                status_code=504, detail="MCP service request timed out"
+            ) from e
+        except httpx.HTTPError as e:
+            logger.error(
+                f"An error occurred while requesting the MCP server at "
+                f"{urlsplit(server).hostname}: {type(e).__name__}"
+            )
+            raise HTTPException(
+                status_code=502, detail="Error connecting to MCP service"
+            ) from e
+        return await _mcp_answer(
+            response, server, user.uuid, record_endpoint if data.method == "GET" else None
+        )
+    except BaseException:
+        source_proxy.release(user.uuid)
+        raise

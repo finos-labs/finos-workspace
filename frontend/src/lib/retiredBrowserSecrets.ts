@@ -1,5 +1,3 @@
-import { getConfig } from "~/lib/runtimeConfig";
-
 const AUTH_STORAGE_KEY = "auth-storage";
 const MCP_AUTH_PREFIX = "mcp:auth";
 const MSAL_PREFIX = "msal.";
@@ -25,7 +23,6 @@ const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
 
 function msalCacheKeys(storage: Storage, keys: string[]): string[] {
-  const clientId = getConfig().authProviders.azureClientId;
   const found = new Set(strings(readJson(storage, MSAL_ACCOUNT_KEYS)));
   for (const key of keys) {
     if (key.startsWith(MSAL_TOKEN_KEYS_PREFIX)) {
@@ -34,7 +31,7 @@ function msalCacheKeys(storage: Storage, keys: string[]): string[] {
         for (const entry of strings(index?.[kind])) found.add(entry);
       }
     }
-    if (key.startsWith(MSAL_PREFIX) || (clientId && key.includes(clientId))) {
+    if (key.startsWith(MSAL_PREFIX)) {
       found.add(key);
     }
   }

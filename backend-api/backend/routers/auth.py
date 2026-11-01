@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api import auth_helpers, helpers, models, schemas
+from api import auth_helpers, helpers, models, provider_tokens, schemas
 from api.database import aget_write_db
 from api.models import User
 from api.rate_limit import LIMIT_DEFAULT, LIMIT_FEW, exempt_service_token, limiter
@@ -119,11 +119,12 @@ async def confirm_totp(
     if (source := ENROLLED_SIGN_INS.get(user.session_source)) is None:
         return schemas.SuccessReturn.success_instance()
 
+    carried = await provider_tokens.take(db, user.session_uuid)
     await auth_helpers.end_session(db, user.session_uuid)
     db_user = schemas.AppUserSchema.model_validate(
         (await db.execute(helpers.get_app_user_query(user.email))).first()
     )
-    return await finish_sign_in(
+    answer = await finish_sign_in(
         request,
         response,
         db,
@@ -133,3 +134,6 @@ async def confirm_totp(
         remember=totp_submit.remember,
         version=totp_submit.version,
     )
+    if carried is not None:
+        await provider_tokens.store(db, user.email, (source,), carried)
+    return answer

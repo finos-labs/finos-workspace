@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Source } from "~/lib/state/backendConnector";
 import { validateBackend, validateBackendEndpoints } from "~/lib/utils/validateBackend";
 import type { WidgetsType } from "~/utils/zodForms";
+import { throughSourceProxy } from "../../../mocks/sourceProxy";
 import { installWidgetsSchemaFixture } from "../../../mocks/widgetsSchema";
 
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+global.fetch = throughSourceProxy(mockFetch);
 installWidgetsSchemaFixture();
 
 const backendUrl = new URL("https://backend.test");
@@ -31,6 +32,7 @@ const sentTo = () =>
         {
           method: init?.method ?? "GET",
           credentials: init?.credentials,
+          proxy: init?.proxy,
           headers: init?.headers,
           query: searchParams,
         },
@@ -78,14 +80,14 @@ describe("validateBackend", () => {
     mockFetch.mockImplementation(answer);
   });
 
-  it("sends the backend's credentials with every file it reads, and none with the route check", async () => {
+  it("reads every file through the API with the source's id, never with its credentials", async () => {
     const source = {
       id: "src-1",
       name: "Backend",
       url: backendUrl.href,
       endpointHeaders: [
-        { key: "X-API-KEY", value: "backend-key", location: "headers" },
-        { key: "token", value: "backend-token", location: "query" },
+        { key: "X-API-KEY", value: "", location: "headers" },
+        { key: "token", value: "", location: "query" },
       ],
     } as Source;
 
@@ -97,12 +99,10 @@ describe("validateBackend", () => {
 
     const sent = sentTo();
     for (const path of ["widgets.json", "apps.json", "agents.json"]) {
-      expect(sent[`https://backend.test/${path}`]?.query.get("token")).toBe(
-        "backend-token",
-      );
-      expect(sent[`https://backend.test/${path}`]?.headers).toMatchObject({
-        "X-API-KEY": "backend-key",
-      });
+      const call = sent[`https://backend.test/${path}`];
+      expect(call?.proxy).toEqual({ route: "saved", sourceId: "src-1" });
+      expect(call?.headers).toEqual({});
+      expect(call?.query.has("token")).toBe(false);
     }
     const route = sent["https://backend.test/stock/price"];
     expect(route?.method).toBe("OPTIONS");

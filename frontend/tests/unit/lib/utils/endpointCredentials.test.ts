@@ -1,38 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ParamDefT, WidgetJsonT, WidgetT } from "~/components/types";
 import type { Widget } from "~/lib/state/app";
-import {
-  getSourceCredentials,
-  type Source,
-  useBackendConnectorStore,
-} from "~/lib/state/backendConnector";
+import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { endpointOptionsRequest, getWidgetData } from "~/lib/utils/app";
-import {
-  splitEndpointHeaders,
-  withoutEndpointCredentials,
-} from "~/lib/utils/endpointCredentials";
-import { requestInit } from "~/lib/utils/widgetRequest";
+import { withoutEndpointCredentials } from "~/lib/utils/endpointCredentials";
 import { partial } from "../../mocks";
 
 vi.mock("sonner", () => ({
   toast: { warning: vi.fn(), success: vi.fn(), error: vi.fn() },
 }));
 
-const ROWS: Source["endpointHeaders"] = [
+const TYPED: Source["endpointHeaders"] = [
   { key: "Authorization", value: "Bearer data-backend-secret", location: "headers" },
   { key: "apikey", value: "query-secret", location: "query" },
-  { key: "X-Plain", value: "plain" },
 ];
-
-describe("splitEndpointHeaders", () => {
-  it("splits a source's credentials into request headers and URL query", () => {
-    expect(splitEndpointHeaders(ROWS)).toEqual({
-      headers: { Authorization: "Bearer data-backend-secret", "X-Plain": "plain" },
-      query: { apikey: "query-secret" },
-    });
-    expect(splitEndpointHeaders(null)).toEqual({ headers: {}, query: {} });
-  });
-});
 
 describe("withoutEndpointCredentials", () => {
   it("keeps a widget's URL and method only", () => {
@@ -55,47 +36,50 @@ describe("withoutEndpointCredentials", () => {
 
 describe("credentials of a data backend", () => {
   beforeEach(() => {
-    useBackendConnectorStore.setState({
-      apiSources: [
+    useBackendConnectorStore.setState({ apiSources: [] });
+  });
+
+  it("never stay in the page after a source is added, only their names do", () => {
+    useBackendConnectorStore.getState().addApiSource(
+      partial<Source>({
+        id: "src-1",
+        name: "Data API",
+        url: "https://api.example.com",
+        endpointHeaders: TYPED,
+      }),
+    );
+
+    const [source] = useBackendConnectorStore.getState().apiSources;
+    expect(source.endpointHeaders).toEqual([
+      { key: "Authorization", value: "", location: "headers" },
+      { key: "apikey", value: "", location: "query" },
+    ]);
+    expect(source.hasApiKey).toBe(true);
+    expect(
+      JSON.stringify(useBackendConnectorStore.getState().apiSources),
+    ).not.toContain("secret");
+  });
+
+  it("never stay in the page after a source list is loaded", () => {
+    useBackendConnectorStore.setState({ apiSources: [] });
+    useBackendConnectorStore
+      .getState()
+      .updateApiSources([
         partial<Source>({
           id: "src-1",
           name: "Data API",
           url: "https://api.example.com",
-          endpointHeaders: ROWS,
+          endpointHeaders: TYPED,
         }),
-      ],
-    });
-  });
+      ])
+      .catch(() => undefined);
 
-  it("are looked up in memory by the widget's source id", () => {
-    const url = "https://api.example.com/prices";
-    expect(getSourceCredentials("src-1", url).headers.Authorization).toBe(
-      "Bearer data-backend-secret",
-    );
-    expect(getSourceCredentials("src-1", "/prices").headers.Authorization).toBe(
-      "Bearer data-backend-secret",
-    );
-    expect(getSourceCredentials("unknown", url)).toEqual({ headers: {}, query: {} });
-    expect(getSourceCredentials(undefined, url)).toEqual({ headers: {}, query: {} });
-  });
-
-  it("go only to the backend's own origin, whatever a widget pairs with its source id", () => {
-    const none = { headers: {}, query: {} };
-    expect(getSourceCredentials("src-1", "https://attacker.example/collect")).toEqual(
-      none,
-    );
-    expect(getSourceCredentials("src-1", "https://api.example.com:8443/x")).toEqual(
-      none,
-    );
-    expect(getSourceCredentials("src-1", "http://api.example.com/x")).toEqual(none);
     expect(
-      getSourceCredentials("src-1", "https://api.example.com.evil.test/x"),
-    ).toEqual(none);
-    expect(getSourceCredentials("src-1", "//attacker.example/x")).toEqual(none);
-    expect(getSourceCredentials("src-1", undefined)).toEqual(none);
+      JSON.stringify(useBackendConnectorStore.getState().apiSources),
+    ).not.toContain("secret");
   });
 
-  it("go with an endpoint parameter's options request: headers, and query rows in its URL", () => {
+  it("are not part of an endpoint parameter's options request, only the source id is", () => {
     const built = endpointOptionsRequest(
       partial<Widget>({ sourceId: "src-1", params: [] }),
       partial<ParamDefT<"endpoint">>({
@@ -108,12 +92,9 @@ describe("credentials of a data backend", () => {
     );
     if (!built?.ok) throw new Error("The options request was not built");
 
-    const { searchParams } = new URL(built.request.url);
-    expect(searchParams.get("apikey")).toBe("query-secret");
-    expect(searchParams.get("region")).toBe("eu");
-    expect(requestInit(built.request).headers).toMatchObject({
-      Authorization: "Bearer data-backend-secret",
-    });
+    expect(built.request.sourceId).toBe("src-1");
+    expect(built.request.url).toBe("https://api.example.com/options?region=eu");
+    expect(built.request.paramHeaders).toEqual({});
   });
 
   it("never land in the widget a dashboard saves", () => {
@@ -126,7 +107,7 @@ describe("credentials of a data backend", () => {
         sourceId: "src-1",
         sourceName: "Data API",
         endpoint: "https://api.example.com/prices",
-        endpointHeaders: ROWS ?? [],
+        endpointHeaders: TYPED ?? [],
         params: [],
       }),
     });

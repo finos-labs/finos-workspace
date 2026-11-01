@@ -68,6 +68,40 @@ describe("useIframeProtocol", () => {
     expect(result.current.manifest).toEqual(widgets);
   });
 
+  it("answers a page without an origin of its own, as a sandbox without allow-same-origin is", () => {
+    const postMessage = vi.fn();
+    const frame = { postMessage } as unknown as Window;
+    const iframeRef = createMockIframeRef(
+      frame,
+      "https://api.test/app/frame/ws_frame_x/page",
+    );
+    const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "workspace-connect", widgets: [] },
+          source: frame,
+          origin: "null",
+        }),
+      );
+    });
+    act(() => {
+      void result.current.requestWidgetData("w1").catch(() => undefined);
+      result.current.sendParamsUpdate({ a: "1" });
+    });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      { type: "workspace-request", widgetId: "w1" },
+      "*",
+    );
+    expect(postMessage).toHaveBeenCalledWith(
+      { type: "workspace-params-update", params: { a: "1" } },
+      "*",
+    );
+    expect(postMessage).not.toHaveBeenCalledWith(expect.anything(), "null");
+  });
+
   it("requestWidgetData sends workspace-request and resolves on response", async () => {
     const iframeRef = createMockIframeRef();
     const postMessageSpy = vi.fn();
@@ -668,32 +702,10 @@ describe("useIframeProtocol", () => {
     });
   });
 
-  it("hands the iframe its source's headers from memory, not the saved widget's", async () => {
-    const { useWidgetContext } = await import("~/components/Widget.context");
-    vi.mocked(useWidgetContext).mockReturnValue({
-      widget: {
-        id: "w",
-        sourceId: "src-1",
-        endpoint: {
-          url: "http://localhost:8501/app",
-          method: "GET",
-          headers: { "X-Api-Key": "stale-saved-key" },
-        },
-      },
-    } as unknown as ReturnType<typeof useWidgetContext>);
-    const { useBackendConnectorStore } = await import("~/lib/state/backendConnector");
-    useBackendConnectorStore.setState({
-      apiSources: [
-        {
-          id: "src-1",
-          name: "Streamlit",
-          url: "http://localhost:8501",
-          endpointHeaders: [
-            { key: "X-Api-Key", value: "from-source", location: "headers" },
-          ],
-        },
-      ],
-    });
+  it("sends the iframe workspace-auth after the handshake, with the headers the browser may hold", async () => {
+    mockConfig.authentication.sendUserEmailAsHeader = true;
+    const { setUserEmail } = await import("~/lib/state/userEmail");
+    setUserEmail("someone@example.com");
     const postMessage = vi.fn();
     const frame = { postMessage } as unknown as Window;
     const iframeRef = createMockIframeRef(frame, "http://localhost:8501/app");
@@ -710,12 +722,37 @@ describe("useIframeProtocol", () => {
     });
 
     expect(postMessage).toHaveBeenCalledWith(
-      { type: "workspace-auth", headers: { "X-Api-Key": "from-source" } },
+      {
+        type: "workspace-auth",
+        headers: { "X-Workspace-User": "someone@example.com" },
+      },
       "http://localhost:8501",
     );
+    mockConfig.authentication.sendUserEmailAsHeader = false;
+    setUserEmail("");
   });
 
-  it("hands the iframe its source's headers when they arrive after the handshake", async () => {
+  it("sends no workspace-auth when there is no header to hand over, or to another origin", async () => {
+    mockConfig.authentication.sendUserEmailAsHeader = false;
+    const postMessage = vi.fn();
+    const frame = { postMessage } as unknown as Window;
+    const iframeRef = createMockIframeRef(frame, "http://localhost:8501/app");
+    renderHook(() => useIframeProtocol({ iframeRef }));
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "workspace-connect", widgets: [] },
+          source: frame,
+          origin: "http://localhost:8501",
+        }),
+      );
+    });
+
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("sends a widget request to the iframe after the handshake", async () => {
     const { useWidgetContext } = await import("~/components/Widget.context");
     vi.mocked(useWidgetContext).mockReturnValue({
       widget: {
@@ -724,17 +761,6 @@ describe("useIframeProtocol", () => {
         endpoint: { url: "http://localhost:8501/app", method: "GET" },
       },
     } as unknown as ReturnType<typeof useWidgetContext>);
-    const { useBackendConnectorStore } = await import("~/lib/state/backendConnector");
-    useBackendConnectorStore.setState({
-      apiSources: [
-        {
-          id: "src-1",
-          name: "Streamlit",
-          url: "http://localhost:8501",
-          endpointHeaders: null,
-        },
-      ],
-    });
     const postMessage = vi.fn();
     const frame = { postMessage } as unknown as Window;
     const iframeRef = createMockIframeRef(frame, "http://localhost:8501/app");
@@ -751,25 +777,6 @@ describe("useIframeProtocol", () => {
     });
     expect(postMessage).not.toHaveBeenCalled();
 
-    act(() => {
-      useBackendConnectorStore.setState({
-        apiSources: [
-          {
-            id: "src-1",
-            name: "Streamlit",
-            url: "http://localhost:8501",
-            endpointHeaders: [
-              { key: "X-Api-Key", value: "from-source", location: "headers" },
-            ],
-          },
-        ],
-      });
-    });
-
-    expect(postMessage).toHaveBeenCalledWith(
-      { type: "workspace-auth", headers: { "X-Api-Key": "from-source" } },
-      "http://localhost:8501",
-    );
     act(() => {
       result.current.requestWidgetData("w1");
     });
