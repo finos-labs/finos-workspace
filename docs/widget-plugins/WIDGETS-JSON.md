@@ -28,7 +28,9 @@ The contract defines every key, at any depth, and bounds every string and list. 
 
 A plugin type exists for an organization when a plugin that handles it is enabled there; where two do, the organization admin's choice, else the lowest plugin id. A widget of a type nobody handles for the user is left out of their catalog.
 
-A plugin type's own configuration lives in `data.<type>`: for a type `plotly`, the object at `data.plotly`. Its schema is the `definition` the plugin declares (AUTHORING 9), the plugin reads it as the `definition` trait, and a source refresh copies it, with `dataKey`, `rawDataKey` and `rawType`, onto widgets already on dashboards.
+A plugin type's own configuration lives in `data.<type>`: for a type `plotly`, the object at `data.plotly`. Its schema is the `definition` the plugin declares (AUTHORING 9), the plugin reads it as the `definition` trait, and a source refresh copies it, with `dataKey`, `rawDataKey`, `rawType` and `streamEndpoint`, onto widgets already on dashboards.
+
+A plugin type's widget can also have `data.streamEndpoint`, a path or an absolute URL with no `?` and no `#`, like `endpoint`. For a plugin that has the permission `core:data:stream` (AUTHORING 4.2.1), FINOS Workspace opens it as a WebSocket and passes the JSON messages to the plugin: the widget's params are query values, the backend connection's query credentials are added, and `http` and `https` become `ws` and `wss`. The path resolves against the backend's address when the backend is connected, like `endpoint`.
 
 ## 3. The schema
 

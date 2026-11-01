@@ -1,24 +1,26 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import widget, { contextOf, csvOf, formatCell, givenOf, gridColumns, gridOptions, gridRows, identifier, isNumeric, SOURCES, stateOf } from "../src/entry.js";
+import widget, { contextOf, csvOf, identifier, isNumeric, seedOf, SOURCES, startOf, stateOf } from "../src/entry.js";
 
-test("a result the agent gives is shown as rows, with the columns of its first row when it names none", () => {
-  assert.equal(givenOf(undefined), null);
-  assert.equal(givenOf({ sql: "SELECT 1" }), null);
-  const given = givenOf({ sql: "SELECT region, units FROM sales", rows: [{ region: "emea", units: 3 }, { region: "apac" }] });
-  assert.equal(given.sql, "SELECT region, units FROM sales");
-  assert.deepEqual(given.result.columns, [{ name: "region" }, { name: "units" }]);
-  assert.deepEqual(given.result.rows, [["emea", 3], ["apac", null]]);
-  const named = givenOf({ columns: [{ name: "units", type: "integer" }], rows: [{ units: 1, region: "x" }] });
-  assert.deepEqual(named.result.rows, [[1]]);
-  assert.equal(named.sql, "");
-  assert.equal(csvOf(named.result), "units\n1");
+test("a query the agent gives seeds the editor, for the source it names", () => {
+  assert.equal(seedOf(undefined), null);
+  assert.equal(seedOf({ source: "files" }), null);
+  assert.equal(seedOf({ sql: "  " }), null);
+  assert.deepEqual(seedOf({ source: "files", sql: "SELECT 1" }), { source: "files", sql: "SELECT 1" });
+  assert.deepEqual(seedOf({ source: "oracle", sql: "SELECT 1" }), { source: null, sql: "SELECT 1" });
+  assert.equal(seedOf({ sql: "x".repeat(100000) }).sql.length, 32768);
 });
 
-test("a given result reaches the agent's export and context under its own name", () => {
-  const given = givenOf({ sql: "SELECT 1", rows: [{ a: 1 }] });
-  assert.equal(contextOf({ source: "given", sql: given.sql, result: given.result }).source, "Given result");
+test("the seed is the start of a card that has not been used, and never replaces what the user saved", () => {
+  const seeded = startOf(null, { source: "files", sql: "SELECT region FROM sales" });
+  assert.equal(seeded.source, "files");
+  assert.equal(seeded.sql.files, "SELECT region FROM sales");
+  assert.equal(seeded.sql.postgres, stateOf(null).sql.postgres);
+  const kept = startOf({ source: "postgres", sql: { postgres: "SELECT 2", files: "SELECT 3" } }, { source: "files", sql: "SELECT 1" });
+  assert.deepEqual(kept, { source: "postgres", sql: { postgres: "SELECT 2", files: "SELECT 3" } });
+  assert.deepEqual(startOf(null, undefined), stateOf(null));
+  assert.equal(startOf(null, { sql: "SELECT 9" }).sql[stateOf(null).source], "SELECT 9");
 });
 
 test("a name is quoted only when it has to be", () => {
@@ -83,26 +85,4 @@ test("nothing to export before a query ran", async () => {
   assert.deepEqual(await exports.exportOptions(), []);
   assert.equal(await exports.exportData("csv"), null);
   assert.equal(await exports.copilotContext(), null);
-});
-
-test("a result as AgGrid columns and rows, addressed by position", () => {
-  const result = {
-    columns: [{ name: "site", type: "VARCHAR" }, { name: "n", type: "BIGINT" }, { name: "n", type: "BIGINT" }, { name: "a.b", type: "VARCHAR" }],
-    rows: [["north", 1234567, 2, null], ["south", 3, 4, "x"]],
-    truncated: false,
-  };
-  const columns = gridColumns(result);
-  assert.deepEqual(columns.map((c) => [c.field, c.headerName]), [["0", "site"], ["1", "n"], ["2", "n"], ["3", "a.b"]]);
-  assert.equal(columns[0].type, undefined);
-  assert.equal(columns[1].type, "numericColumn");
-  assert.deepEqual(gridRows(result)[0], { 0: "north", 1: 1234567, 2: 2, 3: null });
-  assert.equal(gridOptions(result).pagination, false);
-  assert.equal(gridOptions({ ...result, rows: Array(101).fill(result.rows[0]) }).pagination, true);
-});
-
-test("a cell shows NULL, grouped numbers and JSON", () => {
-  assert.equal(formatCell({ value: null }), "NULL");
-  assert.equal(formatCell({ value: 1234567.5 }), new Intl.NumberFormat(undefined, { maximumFractionDigits: 6 }).format(1234567.5));
-  assert.equal(formatCell({ value: "12345678901234567890" }), "12345678901234567890");
-  assert.equal(formatCell({ value: { a: 1 } }), '{"a":1}');
 });

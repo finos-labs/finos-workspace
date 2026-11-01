@@ -118,6 +118,7 @@ export type Widget = {
     dataKey?: string;
     rawDataKey?: string;
     rawType?: string;
+    streamEndpoint?: string;
     [vizType: string]: unknown;
   };
 

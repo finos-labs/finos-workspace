@@ -1,19 +1,29 @@
-# Writing SQL for the SQL explorer
+# Answering data questions with SQL explorer
 
-The SQL explorer runs one read-only query at a time against one of two sources, from the user's own session. You cannot run a query yourself: give the query to the user, who runs it in the explorer, or show rows you already have with the SQL result component (`sql-explorer/grid`).
+When the user asks about the deployment's data (the Postgres `demo` schema or the mounted files), do exactly this:
+
+1. Call `load_tools` with the group `components`.
+2. Call `show_plugin_artifact` with `component` `sql-explorer/explorer`, a short `name`, and `data` set to `{"source": "postgres" or "files", "sql": "<one SELECT>"}`.
+3. Answer in one sentence: what the query computes. The card runs the query and shows the rows.
+
+Do not use `execute_sql`, `get_widget_data` or `search_widgets` for this: they cannot reach the deployment's data. Do not pass the query as the call's own `sql`; it goes inside `data`. You do not see the result, so state no numbers.
+
+```json
+{ "source": "files", "sql": "SELECT region, sum(units) AS units FROM sales GROUP BY region ORDER BY region" }
+```
 
 ## The two sources
 
-| Source | Engine | Names |
+| `source` | Engine | Names |
 |---|---|---|
-| Postgres | The deployment's database, as a role that may only read | Schema-qualified tables, such as `demo.monthly_sales`. |
-| Files | DuckDB over the Parquet, CSV and JSON files the deployment mounts | Each file is a view named after it, such as `sales`, with no schema. |
+| `postgres` | The deployment's database, as a role that may only read | Schema-qualified tables, such as `demo.trades`. |
+| `files` | DuckDB over the Parquet, CSV and JSON files the deployment mounts | Each file is a view named after it, such as `sales`, with no schema. |
 
 ## What a query may be
 
-- One `SELECT` (or `VALUES`), nothing else: no `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `COPY`, no `SELECT INTO`, no second statement after a semicolon, no `ATTACH`, no reading a path outside the mounted files.
-- At most 32,768 characters, 15 seconds, 1,000 rows and 4 MiB of result. Aggregate in SQL and use `LIMIT`; do not select a whole table to summarize it.
-- Postgres dialect for the Postgres source (`date_trunc('month', month)`, `to_char`, `::numeric`); DuckDB dialect for the Files source (`strftime`, `date_trunc`, `round`, list and struct types).
+- One `SELECT` (or `VALUES`), nothing else: no `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `COPY`, no `SELECT INTO`, no second statement after a semicolon, no `ATTACH`, no reading a path outside the mounted files. The backend refuses anything else, and the card shows its message.
+- At most 8,000 characters here, and 15 seconds, 1,000 rows and 4 MiB of result. Aggregate in SQL and use `LIMIT`; do not select a whole table to summarize it. `demo.trades` has 200,000 rows.
+- Postgres dialect for `postgres` (`date_trunc('month', traded)`, `to_char`, `::numeric`); DuckDB dialect for `files` (`strftime`, `date_trunc`, `round`, list and struct types).
 - Quote an identifier that is not lowercase letters, digits and underscores with double quotes.
 
 ## The example deployment
@@ -23,6 +33,7 @@ Postgres, schema `demo`:
 - `demo.regions(region, name)`: `emea`, `apac`, `americas`.
 - `demo.monthly_sales(month, region, units, revenue)`: one row per month and region, January 2025 to September 2026.
 - `demo.sales_by_region(region, units, revenue)`: a view of the totals, with the region's long name.
+- `demo.trades(id, traded, region, desk, trader, product, currency, quantity, price, notional)`: 200,000 trades. Regions `EMEA`, `APAC`, `Americas`; desks Rates, Credit, Equities, Commodities, FX; currencies USD, EUR, GBP, JPY.
 
 Files:
 
@@ -31,13 +42,10 @@ Files:
 - `readings(taken_at, sensor, celsius)`: a reading every 15 minutes from `sensor-0` to `sensor-5`, from 2026-09-01.
 - `stations(sensor, site, installed)`: the six sensors, with a site (`north`, `south`, `east`).
 
-Another deployment has other tables: ask the user, or read the table list in the explorer's left panel, before you write a query against names you have not seen.
+Another deployment has other tables: ask the user, or read the table list in the widget's left panel, before you write a query against names you have not seen. A query that names a table that is not there fails, and the card says so.
 
-## Giving the user a query
+## Rules
 
-- Put the SQL in one code block, say which source it is for, and say what rows to expect. The user pastes it into the SQL explorer or the SQL grid and runs it with Ctrl+Enter or ⌘+Enter.
+- Pick the source from the table: a name with a schema (`demo.trades`) is Postgres, a bare file name is Files.
+- Ask for what the question needs: the columns, the filter, the order, a `LIMIT`.
 - The *SQL chart* widget reads the Files source with the same rules: its query's first column is the categories and the other columns are the bars.
-
-## Showing rows you have
-
-When the rows are in the conversation, show them with the SQL result component: `columns` (name and, when known, type) and `rows`, with `sql` set to the query that produced them if there is one. Fill `rows` from a loaded table with `sql` or `from_table_id` and `rows_key` set to `rows` rather than copying values. The card is a snapshot: it does not run anything. The user adds it to a dashboard as a widget, and opens the SQL explorer to run a query.

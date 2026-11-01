@@ -77,7 +77,7 @@ def _application_name(caller: str | None) -> str:
 
 
 @contextmanager
-def _postgres(url: str, caller: str | None) -> Iterator[psycopg.Connection]:
+def postgres_connection(url: str, caller: str | None) -> Iterator[psycopg.Connection]:
     try:
         connection = psycopg.connect(url, connect_timeout=CONNECT_SECONDS, application_name=_application_name(caller))
     except psycopg.Error as error:
@@ -93,7 +93,7 @@ def _postgres(url: str, caller: str | None) -> Iterator[psycopg.Connection]:
         connection.close()
 
 
-def _postgres_message(error: psycopg.Error) -> str:
+def postgres_message(error: psycopg.Error) -> str:
     diag = error.diag
     message = diag.message_primary or str(error).splitlines()[0]
     if diag.message_detail:
@@ -108,7 +108,7 @@ def _postgres_message(error: psycopg.Error) -> str:
 
 
 def postgres_query(url: str, text: str, caller: str | None) -> dict:
-    with _postgres(url, caller) as connection:
+    with postgres_connection(url, caller) as connection:
         try:
             with connection.transaction(), deadline(STATEMENT_SECONDS + 5, connection.cancel_safe):
                 connection.execute(pgsql.SQL("SET LOCAL statement_timeout = {}").format(STATEMENT_SECONDS * 1000))
@@ -117,18 +117,18 @@ def postgres_query(url: str, text: str, caller: str | None) -> dict:
                     columns = [{"name": c.name, "type": c.type_display} for c in cursor.description or []]
                     result = collect(columns, cursor.fetchmany)
         except psycopg.Error as error:
-            raise QueryError(_postgres_message(error)) from error
+            raise QueryError(postgres_message(error)) from error
     return {"engine": "postgres", **result}
 
 
 def postgres_schema(url: str, caller: str | None) -> dict:
-    with _postgres(url, caller) as connection:
+    with postgres_connection(url, caller) as connection:
         try:
             with connection.transaction():
                 version = connection.execute("SHOW server_version").fetchone()
                 rows = connection.execute(POSTGRES_COLUMNS, (MAX_SCHEMA_COLUMNS,)).fetchall()
         except psycopg.Error as error:
-            raise QueryError(_postgres_message(error)) from error
+            raise QueryError(postgres_message(error)) from error
     return {"engine": f"PostgreSQL {version[0] if version else ''}".strip(), "tables": _tables(rows)}
 
 

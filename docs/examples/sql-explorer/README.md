@@ -79,36 +79,31 @@ CSV, and with its query as JSON. The Copilot is told the query and the columns a
 count of the answer, not its values. Its look is its own, a light and a dark version that
 follow the site's mode.
 
-## The SQL grid
+## The editor in other plugins
 
-The package has a second widget, *SQL grid*. It is the explorer with the same editor, tables,
-completion and sources, and it shows the result in AgGrid Community instead of a plain table:
-columns that share the card's width, formatted and right-aligned numbers, sorting, filtering and
-resizing in the header, `NULL` for a missing value, JSON for a nested one, and pagination above 100
-rows. The widget decides by the `widgetId` of its `meta` trait, and the package bundles
-`ag-grid-community`, which the frame loads the first time a result arrives. Both widgets
-export the last result and tell the Copilot the query and the shape of the answer.
+The editor, the table list and the completion are `src/widget.js`: `createWidget({ showGrid })` returns
+the widget, and with a `showGrid(host, result, mode)` it draws a result there instead of in a plain table.
+The AgGrid plugin's *AgGrid SQL* widget is this widget with AgGrid as `showGrid`, built from these same
+sources, and its backend serves the same four routes from these same `backend/` files
+([AgGrid](../ag-grid/README.md)). `duckdb-assets.mjs` fetches, checks and lists the DuckDB-WASM files and licences
+that both builds ship.
 
 ## For the AI agent
 
-The agent cannot run a query through the explorer: the query runs from the user's own session,
-against the deployment's database and files. The plugin gives the agent two things instead.
-
-- **The skill `sql-explorer-queries`** (`src/skills/sql-explorer-queries.md`): the two sources and
-  their dialects, what a query may be (one read-only SELECT, with the limits above), the tables of
-  the example deployment, and how to give the user a query to run.
-- **An `artifact` on the SQL grid**, for rows the agent already has: the rows (up to 1,000, as
-  objects), optionally their columns with types, and the SQL that produced them. The card shows
-  the SQL above the result in AgGrid, with the CSV export of the explorer, and runs nothing: it is
-  a snapshot. The agent can fill the rows from a table it has loaded. The user can add the card to a
-  dashboard as a SQL grid widget that keeps its rows.
+The explorer declares an `artifact`: `source` (`postgres` or `files`) and `sql`. The agent writes a
+query for a question about the deployment's data and shows the explorer in the chat; the card runs
+the query from the user's own session, the user can edit and rerun it, and the dashboard widget made
+from the card keeps the query. The skill `sql-explorer-queries`
+(`src/skills/sql-explorer-queries.md`) gives the agent the exact steps, the two sources and their
+dialects, what a query may be (one read-only SELECT, with the limits above), and the tables of the
+example deployment. The [AgGrid plugin](../ag-grid/README.md) offers the same query in AgGrid.
 
 ## The package
 
 | Path | |
 |---|---|
 | `src/plugin.json` | The manifest: the widget, its permissions (`core:backend:call`, `core:state:write`, `core:export:provide`, `core:copilot:context`), the four routes, the `postgres_url` secret, `identity: "pseudonymous"`. |
-| `src/entry.js`, `src/entry.css`, `src/assets/` | The two widgets, an Anywidget front-end module, and the AgGrid theme the build adds to the stylesheet. |
+| `src/entry.js`, `src/widget.js`, `src/entry.css`, `src/assets/` | The widget, an Anywidget front-end module: `widget.js` builds it, `entry.js` exports it. |
 | `src/completion.js`, `src/duckdb.js` | Completion: the schema DuckDB mirrors and what it suggests, and DuckDB-WASM started in the frame from the package's assets. |
 | `third-party/` | Licence texts the DuckDB-WASM npm package does not carry. |
 | `backend/server.py` | The three requests a FINOS Workspace backend answers: `GET /.workspace/identity`, `GET /.workspace/health`, `POST /.workspace/routes/<route>`. |

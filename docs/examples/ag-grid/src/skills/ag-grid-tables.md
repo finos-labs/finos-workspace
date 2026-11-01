@@ -1,8 +1,17 @@
-# Tables with the AgGrid component
+# The AgGrid widgets
 
-Use the AgGrid component (`ag-grid/grid`) to show rows the user will want to work with: sort, filter, group, select, copy or export. Use a plain table in your answer for a handful of values. The user can add the card to a dashboard as a widget, so give it a clear name.
+The AgGrid plugin has four widgets. Show the table and the SQL widgets in the chat; add the live grid and the server-side table to a dashboard for the user.
 
-## The data
+| Widget | Shows | When it fits |
+|---|---|---|
+| `ag-grid/table` | Rows a backend returns, or rows you give | Any list of records the user will want to sort, filter, group, select, copy or export. This is the one you show in the chat. |
+| `ag-grid/livegrid` | Rows kept current by a WebSocket that FINOS Workspace opens | A feed that changes while the user watches, such as prices. It needs a backend that streams; you cannot make one from the chat. |
+| `ag-grid/ssrm` | A large Postgres table, paged, sorted, filtered, grouped and pivoted on the server | Tables too big to send (hundreds of thousands of rows). It needs the plugin's backend and a table name. |
+| `ag-grid/sql` | A read-only SQL query that the widget runs, with the result in AgGrid | A question about the deployment's data. Write the query and show it with this component; see the skill `ag-grid-sql`. |
+
+## The table component
+
+Use `ag-grid/table` to show rows in the conversation. The user can add the card to a dashboard as a widget that keeps its rows, so give it a clear name. For a handful of values, a table in your answer is enough.
 
 ```json
 {

@@ -2358,6 +2358,13 @@
         "type": "string",
         "pattern": "^[a-z][a-z0-9_-]{1,31}$",
         "description": "A plugin's type that shows the rows when the user switches the widget to them; without it, or when the user may not use that type, an html widget shows them in a table and a plugin's widget with its own plugin"
+      },
+      "streamEndpoint": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048,
+        "pattern": "^[^?#]+$",
+        "description": "The WebSocket the widget's plugin is fed from, as a path or an absolute URL with no `?` and no `#`: `http` and `https` become `ws` and `wss`. FINOS Workspace opens it with the backend connection's query credentials and the widget's params as query values, and passes the JSON messages it receives to the plugin"
       }
     },
     "methods": [

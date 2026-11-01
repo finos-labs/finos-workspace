@@ -15,6 +15,7 @@ import {
   dispatchUpdateWidget,
   generateRandomName,
 } from "~/lib/utils";
+import { streamEndpointOf } from "~/lib/utils/widgetParams";
 import type { WidgetsType } from "~/utils/zodForms";
 
 export function listToSortedSet(list: string[]): string[] {
@@ -87,12 +88,14 @@ export function createSourceWidget(
         }
       : widget.endpoint;
 
+  const streamEndpoint = streamEndpointOf(widget.data, source.url);
   const newWidget = {
     ...widget,
     groupById,
     id: uuidv4(),
     type: widget.type,
     endpoint,
+    ...(streamEndpoint ? { data: { ...widget.data, streamEndpoint } } : {}),
     params,
     external: true,
     sourceId: source.id,
@@ -268,6 +271,7 @@ export function updateWidgetEndpoints(
           dataKey,
           rawDataKey: widgetJson.data?.rawDataKey,
           rawType: widgetJson.data?.rawType,
+          streamEndpoint: streamEndpointOf(widgetJson.data, source.url),
           ...typeConfig,
         },
         endpoint: { url, method },

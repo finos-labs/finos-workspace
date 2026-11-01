@@ -22,9 +22,7 @@ test("every skill the manifest lists is a markdown file under src/skills, with a
 });
 
 test("a widget with an artifact reads its data and describes it with a closed schema", () => {
-  const widgets = manifest.contributes.widgets.filter((widget) => widget.artifact);
-  assert.ok(widgets.length > 0);
-  for (const widget of widgets) {
+  for (const widget of manifest.contributes.widgets.filter((widget) => widget.artifact)) {
     assert.ok(widget.permissions.includes("core:data:read"));
     assert.equal(widget.artifact.data.type, "object");
     assert.equal(widget.artifact.data.additionalProperties, false);

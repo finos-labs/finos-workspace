@@ -7,11 +7,13 @@ from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from starlette.routing import Mount, Route
+from starlette.routing import Mount, Route, WebSocketRoute
+from grid_server import app as grid_plugin
 from server import app as plugin
 
 import charts
 import grids
+import ticks
 from data import monthly_rows
 from widgets import WIDGETS
 
@@ -63,6 +65,13 @@ async def widgets(_request: Request) -> JSONResponse:
     return JSONResponse(WIDGETS)
 
 
+def static(answer: dict):
+    async def handler(_request: Request) -> JSONResponse:
+        return JSONResponse(answer)
+
+    return handler
+
+
 GRIDS = {
     "explicit": grids.explicit,
     "records": grids.records,
@@ -79,7 +88,11 @@ app = Starlette(
         *[Route(f"/plotly/{name}", chart(name), methods=["GET"]) for name in charts.FIGURES],
         *[Route(f"/ag-grid/{name}", grid(build), methods=["GET"]) for name, build in GRIDS.items()],
         Route("/ag-grid/stream", stream, methods=["GET"]),
+        Route("/ag-grid/live", grid(grids.live), methods=["GET"]),
+        Route("/ssrm/trades", static({"table": "demo.trades"}), methods=["GET"]),
+        WebSocketRoute("/ws/ticks", ticks.stream),
         Route("/sql/chart", sql_chart, methods=["GET"]),
+        Mount("/plugins/ag-grid", app=grid_plugin),
         Mount("/", app=plugin),
     ],
     middleware=[Middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "OPTIONS"], allow_headers=["*"])],

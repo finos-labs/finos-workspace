@@ -8,6 +8,7 @@ const SHA256_HEX = /^[a-f0-9]{64}$/;
 export const PERMISSIONS = [
   "core:default",
   "core:data:read",
+  "core:data:stream",
   "core:params:write",
   "core:state:write",
   "core:copilot:context",

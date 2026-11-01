@@ -272,20 +272,6 @@ body,
   font-style: italic;
 }
 
-.sx-given {
-  grid-template-rows: auto 1fr;
-}
-
-.sx-given-sql {
-  margin: 0;
-  padding: 8px;
-  border-bottom: 1px solid var(--sx-line);
-  max-height: 9.5em;
-  overflow: auto;
-  white-space: pre-wrap;
-  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
 .sx-message {
   margin: 0;
   padding: 10px;

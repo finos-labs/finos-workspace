@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+import ticks
 from data import DEALS
 
 COLUMN_DEFS = [
@@ -108,5 +109,18 @@ def stream(tick: int) -> dict:
             {"field": "rep", "headerName": "Rep"},
         ],
         "rowData": rows,
+        "gridOptions": {},
+    }
+
+
+def live() -> dict:
+    return {
+        "columnDefs": [
+            {"field": "id", "headerName": "ID", "pinned": "left"},
+            {"field": "name", "headerName": "Name"},
+            {"field": "price", "headerName": "Price", "type": "numericColumn", "cellRenderer": "agAnimateShowChangeCellRenderer"},
+            {"field": "ticks", "headerName": "Ticks", "type": "numericColumn"},
+        ],
+        "rowData": ticks.snapshot_rows(),
         "gridOptions": {},
     }
