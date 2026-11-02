@@ -14,7 +14,7 @@ This guide finds out why a backend does not show what you expect: no widgets, a 
 3. Set Validate widgets to Yes when you also want FINOS Workspace to check the routes, as [Check the routes](#check-the-routes) describes.
 4. Select Test.
 
-The result has up to three notices. A green notice titled Test successful counts what FINOS Workspace found, for example "2 Widgets found, 0 Apps found, 0 Prompts found", and it adds the number of failed widgets and of MCP servers when there are any. A yellow notice titled Warning lists things that FINOS Workspace skipped without failing the test. A red notice titled Error lists what made the test fail, and for a new connection Add stays disabled until a test succeeds. Fix the backend and select Test again, as often as you need. FINOS Workspace requests each file of the backend with a timeout of one minute.
+The result has up to four notices. A green notice titled Test successful counts what FINOS Workspace found, for example "2 Widgets found, 0 Apps found, 0 Prompts found", and it adds the number of failed widgets and of MCP servers when there are any. A yellow notice titled Warning lists things that FINOS Workspace skipped without failing the test. A second yellow notice, titled Not every route was checked, lists the routes that the route check could not test. A red notice titled Error lists what made the test fail, and for a new connection Add stays disabled until a test succeeds. Fix the backend and select Test again, as often as you need. FINOS Workspace requests each file of the backend with a timeout of one minute.
 
 This is what the notices of a backend with several problems look like. The first widget has a key that the contract does not know and a parameter without a name, the second one has a type that no plugin renders, and the second app has no name:
 
@@ -73,9 +73,9 @@ The Warning notice reports a layout item whose widget `widgets.json` does not de
 
 ## Check the routes
 
-Setting Validate widgets to Yes makes FINOS Workspace send an `OPTIONS` request to every route that the widgets use: the endpoint of each widget, the option lookups of its parameters and the endpoint of each form. FINOS Workspace checks the routes only when the widgets themselves are valid, so fix the problems above first.
+Setting Validate widgets to Yes makes the API send an `OPTIONS` request to every route that the widgets use: the endpoint of each widget, the option lookups of its parameters and the endpoint of each form. FINOS Workspace checks the routes only when the widgets themselves are valid, so fix the problems above first.
 
-First FINOS Workspace asks for a path that cannot exist. The check goes on only when the backend answers that request with 404, because a backend that answers every `OPTIONS` request would pass every route. Otherwise the Warning notice says "Routes not checked" and gives the reason, which is either that the backend did not answer `OPTIONS` at all, usually because its CORS settings do not allow it, or that it answers for paths that do not exist.
+First FINOS Workspace asks for a path that cannot exist. The check goes on only when the backend answers that request with 404, because a backend that answers every `OPTIONS` request would pass every route. Otherwise the notice Not every route was checked says "Routes not checked" and gives the reason, which is either that the backend did not answer `OPTIONS` at all or that it answers for paths that do not exist, with the status that it gave.
 
 After that, each route that answers 404 is listed as "no such route (404)", and each route that gives no response is listed as "no response". Both make the test fail, with the widget and the path of the route. Routes that the widgets do not use, such as the one that serves a picture, are not checked.
 

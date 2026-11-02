@@ -32,7 +32,7 @@ A placeholder such as `{name}` in `endpoint` takes the value of the parameter th
 
 ## The route check
 
-The request itself needs no CORS: the API calls the backend from the server, and the browser never talks to the backend. When you connect a backend with **Validate widgets** turned on, the API sends a plain `OPTIONS` request to every route and expects 204 for a route that exists and 404 for one that does not. Before it does so, it sends `OPTIONS` to a path that cannot exist; when that request does not receive a 404, the backend answers every `OPTIONS` request, and the dialog reports that the routes cannot be checked this way.
+The request itself needs no CORS: the API calls the backend from the server, and the browser never talks to the backend. When you connect a backend with **Validate widgets** turned on, the API sends a plain `OPTIONS` request to every route. A route that answers 404 fails the check, and any other answer counts as a route that exists, with 204 as the plain answer for it. Before it checks the routes, the API sends `OPTIONS` to a path that cannot exist. When that request does not receive a 404, the backend answers every `OPTIONS` request, and the dialog lists the routes as not checked.
 
 ## Caching
 
@@ -46,5 +46,5 @@ An `endpoint` parameter loads its choices from its `optionsEndpoint`, using `opt
 
 Two other features build requests from a definition:
 
-- **Validate widgets** in the Connect backend dialog checks that the routes exist without running any of them. For each distinct route, which means every widget `endpoint`, `optionsEndpoint` and form `endpoint`, it sends one plain `OPTIONS` request without credentials, query, headers or body, six at a time, with placeholders filled from their defaults. A `404` answer, or no answer, fails the route, as [The route check](#the-route-check) describes. It reports a route as not checked when a placeholder has no default or when the route is on another origin than the backend's.
+- **Validate widgets** in the Connect backend dialog checks that the routes exist without running any of them. For each distinct route, which means every widget `endpoint`, `optionsEndpoint` and form `endpoint`, the app asks the API to send one plain `OPTIONS` request, six at a time, with placeholders filled from their defaults. The app sends no parameter and no body, and the API adds the credentials of the connection and the identity headers, as it does to every other request. A `404` answer, or no answer, fails the route, as [The route check](#the-route-check) describes. The dialog reports a route as not checked when a placeholder has no default or when the route is on another origin than the backend's.
 - **The Agent** builds its data and option requests with the same builder, so the agent receives what the widget receives, except that its data request does not carry the host parameter `theme`. It refuses `input_args` that name no parameter of the widget, and it answers with the list of the widget's parameters.

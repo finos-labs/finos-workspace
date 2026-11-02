@@ -85,7 +85,7 @@ On Windows, activate the environment with `.venv\Scripts\activate` instead.
 Save the program as `main.py`:
 
 ```python title="main.py"
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
 
 app = FastAPI()
@@ -112,6 +112,15 @@ PALETTES = {
     "dark": {"background": "#0b2432", "card": "#12313f", "text": "#e7f2f8", "muted": "#9db4c0"},
     "light": {"background": "#ffffff", "card": "#f2f6f8", "text": "#1a3248", "muted": "#5a7282"},
 }
+
+ROUTES = {"/widgets.json", "/apps.json", "/portfolio_summary"}
+
+
+@app.middleware("http")
+async def check_routes(request: Request, call_next) -> Response:
+    if request.method == "OPTIONS":
+        return Response(status_code=204 if request.url.path in ROUTES else 404)
+    return await call_next(request)
 
 
 @app.get("/widgets.json")
@@ -188,6 +197,8 @@ const PALETTES: Record<string, { background: string; card: string; text: string;
   light: { background: "#ffffff", card: "#f2f6f8", text: "#1a3248", muted: "#5a7282" },
 };
 
+const ROUTES = new Set(["/widgets.json", "/apps.json", "/portfolio_summary"]);
+
 function portfolioSummary(theme: string): string {
   const colors = PALETTES[theme] ?? PALETTES.dark;
   const cards = METRICS.map(
@@ -216,6 +227,9 @@ function portfolioSummary(theme: string): string {
 
 createServer((request, response) => {
   const url = new URL(request.url ?? "/", "http://localhost:5050");
+  if (request.method === "OPTIONS") {
+    return response.writeHead(ROUTES.has(url.pathname) ? 204 : 404).end();
+  }
   const send = (type: string, body: string) => response.writeHead(200, { "Content-Type": type }).end(body);
   if (url.pathname === "/widgets.json") return send("application/json", JSON.stringify(WIDGETS));
   if (url.pathname === "/apps.json") return send("application/json", "[]");
@@ -239,7 +253,7 @@ Both programs return the same responses. Check the backend in your browser: [htt
 
 :::note[The routes are checked with OPTIONS]
 
-When you connect a backend with **Validate widgets** turned on, FINOS Workspace sends a plain `OPTIONS` request to every route and expects 204 for a route that exists and 404 for one that does not. The programs above answer every request that is not one of their three routes with 404, which includes `OPTIONS`, so validation would report their routes as failed; add an `OPTIONS` branch that answers 204 for the routes you offer, as the [first backend tutorial](../tutorials/build-a-backend/connect-a-backend-and-build-a-dashboard.mdx) shows. [Requests that a widget sends](../tutorials/build-a-backend/requests-from-a-widget.md#the-route-check) describes the check.
+When you connect a backend with **Validate widgets** turned on, FINOS Workspace sends a plain `OPTIONS` request to every route and expects 204 for a route that exists and 404 for one that does not. The programs above answer that way, with the middleware `check_routes` in Python and the `OPTIONS` branch in TypeScript. [Requests that a widget sends](../tutorials/build-a-backend/requests-from-a-widget.md#the-route-check) describes the check.
 
 :::
 
