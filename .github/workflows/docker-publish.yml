@@ -1,0 +1,93 @@
+name: Build and Publish Docker Images
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+env:
+  # The Docker Hub account of the DOCKER_PASSWORD secret.
+  DOCKER_HUB_USERNAME: finos
+  # An image is named <IMAGE_PREFIX>-<image> on Docker Hub, for example finos/workspace-agent.
+  IMAGE_PREFIX: finos/workspace
+
+jobs:
+  node:
+    name: Node for the web app and the agent
+    if: github.repository_owner == 'finos'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/agent-node.yml
+
+  docker-build-publish:
+    name: Build and Publish ${{ matrix.image }}
+    if: github.repository_owner == 'finos'
+    needs: node
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: backend
+            context: backend-api/backend
+            file: backend-api/backend/fastapi.Dockerfile
+          - image: web
+            context: frontend
+            file: frontend/Dockerfile
+            node: true
+          - image: agent
+            context: agent
+            file: agent/Dockerfile
+            target: agent
+            node: true
+          - image: agent-mcp
+            context: agent
+            file: agent/Dockerfile
+            target: agent-mcp
+            node: true
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
+
+      - name: Checkout Repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set Docker Image Tag
+        id: tags
+        env:
+          IMAGE: ${{ env.IMAGE_PREFIX }}-${{ matrix.image }}
+          TAG: ${{ github.ref_name }}
+        run: echo "tags=${IMAGE,,}:$TAG,${IMAGE,,}:latest" >> "$GITHUB_OUTPUT"
+
+      - name: Build and Publish Docker Image
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          build-contexts: ${{ matrix.node && format('node=docker-image://{0}', needs.node.outputs.image) || '' }}
+          build-args: ${{ matrix.image == 'agent' && format('GIT_SHA={0}', github.sha) || '' }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          provenance: true
