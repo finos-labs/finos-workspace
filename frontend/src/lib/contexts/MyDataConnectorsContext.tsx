@@ -236,6 +236,7 @@ export function createAllElements(params: {
   widgetMetadata?: WidgetMetadataItem[];
   rolePermissionsData?: UserResourcePermissionsT;
   withOthers?: boolean;
+  includeOrganizationBackends?: boolean;
 }): ElementType[] {
   const {
     storedFiles,
@@ -243,7 +244,12 @@ export function createAllElements(params: {
     widgetMetadata,
     rolePermissionsData,
     withOthers = true,
+    includeOrganizationBackends = false,
   } = params;
+
+  const isListed = (source: Source) =>
+    source.status === "success" ||
+    (includeOrganizationBackends && source.isEntityBackend === true);
 
   const fileIds = storedFiles?.reduce(
     (acc, file) => {
@@ -253,7 +259,7 @@ export function createAllElements(params: {
     {} as Record<string, boolean>,
   );
 
-  const ownedBackends = apiSources.filter((item) => item.status === "success");
+  const ownedBackends = apiSources.filter(isListed);
 
   const ownedBackendIds = ownedBackends.reduce(
     (acc, backend) => {
@@ -299,14 +305,12 @@ export function createAllElements(params: {
     {
       type: "backend",
       items: [
-        ...apiSources
-          .filter((item) => item.status === "success")
-          .map((item) => ({
-            ...item,
-            widgets: formatBackendWidgets(item),
-            selectionId: `backend,${item.uuid ?? item.id}`,
-            shared: (item.uuid && sharedBackendIds?.[item.uuid]) || false,
-          })),
+        ...apiSources.filter(isListed).map((item) => ({
+          ...item,
+          widgets: formatBackendWidgets(item),
+          selectionId: `backend,${item.uuid ?? item.id}`,
+          shared: (item.uuid && sharedBackendIds?.[item.uuid]) || false,
+        })),
         ...sharedBackends,
       ],
     },

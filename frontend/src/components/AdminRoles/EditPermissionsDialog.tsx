@@ -390,6 +390,7 @@ export function EditPermissionsDialog({
         storedFiles,
         apiSources,
         withOthers: false,
+        includeOrganizationBackends: true,
       }),
     [storedFiles, apiSources, rolePermissionsData],
   );
