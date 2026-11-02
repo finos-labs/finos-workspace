@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 import pytest
 from fastapi import HTTPException
 
@@ -41,7 +43,6 @@ WIDGETS = {
     "twin_b": {"name": "Twin B", "endpoint": "/shared"},
     "literal": {"name": "Literal", "endpoint": "/items/special"},
     "pattern": {"name": "Pattern", "endpoint": "/items/{id}"},
-    "nested": {"name": "Nested", "endpoint": "orders/{id}/{part}", "method": "post"},
     "broken": "not a widget",
     "empty": {"name": "Empty"},
 }
@@ -82,9 +83,12 @@ class TestSegments:
             ("/a/b%2Fc/", ["a", "b/c"]),
             ("/x%2F%2Fy", ["x//y"]),
             ("/caf%C3%A9", ["café"]),
+            ("/CORP%5Calice", ["CORP\\alice"]),
+            ("/100%25", ["100%"]),
+            ("/50%252F", ["50%2F"]),
         ],
     )
-    def test_the_segments_of_the_path_after_decoding_each(self, path, expected):
+    def test_the_segments_of_the_path_after_decoding_each_once(self, path, expected):
         assert segments_of(path) == expected
 
     @pytest.mark.parametrize(
@@ -93,16 +97,13 @@ class TestSegments:
             "/a/../b",
             "/a/./b",
             "/a/%2e%2e/b",
-            "/a/%252e%252e/b",
             "/a//b",
             "/a\\b",
-            "/a%5Cb",
             "/a%00b",
             "/a/%2e/b",
             "/a/x%2F..%2Fb",
             "/a/..%2Fb",
             "/a/.%2Fb",
-            "/a/%252e%252e%252fb",
         ],
     )
     def test_a_path_that_climbs_or_doubles_is_not_forwarded(self, path):
@@ -115,7 +116,7 @@ class TestPatterns:
         assert pattern_of("/files/{name}.csv") == (("files",), ("", ".csv"))
         assert pattern_of("/{a}-{b}/x/") == (("", "-", ""), ("x",))
 
-    @pytest.mark.parametrize("path", ["/a/../b", "/a//b", "/a%2Fb", "/a\\b", "/a/%2e%2e"])
+    @pytest.mark.parametrize("path", ["/a/../b", "/a//b", "/a/%2e%2e"])
     def test_a_path_that_cannot_be_matched_is_dropped(self, path):
         assert pattern_of(path) is None
 
@@ -171,7 +172,7 @@ class TestWhatAWidgetMayCall:
             (["literal", "pattern"], "GET", "/v1/items/special"),
             (["files"], "GET", "/v1/files/a%2Fb.csv"),
             (["pattern"], "GET", "/v1/items/BRK%2FB"),
-            (["orders", "nested"], "POST", "/v1/orders/1%2Fsecret"),
+            (["orders"], "POST", "/v1/orders/1%2Fsecret"),
         ],
     )
     def test_the_routes_of_the_widgets_a_role_grants(self, routes, granted, method, path):
@@ -191,7 +192,6 @@ class TestWhatAWidgetMayCall:
             (["form"], "GET", "/v1/forms/update"),
             (["sales"], "GET", "/v1/ws/ticks"),
             (["pattern"], "GET", "/v1/items/special"),
-            (["orders"], "POST", "/v1/orders/1%2Fsecret"),
             (["sales"], "GET", "/v1%2Fsales"),
             (["files"], "GET", "/v1%2Ffiles%2Fq.csv"),
         ],
@@ -241,19 +241,47 @@ class TestWhatAWidgetMayCall:
         for path in ("/v1%2Fsales", "/v1%2Ffiles%2Fq.csv", "%2Fv1%2Fsales"):
             assert "declares no route" in refused(routes, ["sales", "files"], "GET", path)
 
-    def test_a_value_with_a_slash_may_not_name_the_route_of_a_widget_the_role_lacks(self, routes):
-        assert "none of your roles" in refused(routes, ["orders"], "POST", "/v1/orders/1%2Fsecret")
-        allowed(routes, ["orders", "nested"], "POST", "/v1/orders/1%2Fsecret")
-        allowed(routes, ["orders"], "POST", "/v1/orders/1")
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "platform",
+            "data/science",
+            "BRK/B",
+            "EUR/USD",
+            "CORP\\alice",
+            "a b",
+            "café",
+            "日本",
+            "😀",
+            "100%",
+            "50%2F",
+            "%2e%2e",
+            "x+y",
+            "a;b",
+            "[1]",
+            "'q'",
+            '"q"',
+            "...",
+            "a..b",
+            "1.0..2.0",
+            ".hidden",
+            "~tilde",
+            "?x=1",
+            "#frag",
+            "a&b=c",
+            ":@$,!*()",
+            "x" * 2000,
+        ],
+    )
+    def test_every_value_the_app_can_send_is_allowed(self, routes, value):
+        segment = quote(value, safe="-_.!~*'()")
+        allowed(routes, ["pattern"], "GET", f"/v1/items/{segment}")
+        allowed(routes, ["files"], "GET", f"/v1/files/{segment}.csv")
+        allowed(routes, ["orders"], "POST", f"/v1/orders/{segment}")
 
     @pytest.mark.parametrize(
         "path",
-        [
-            "/v1/files/x%2F..%2Fsales.csv",
-            "/v1/files/..%2Fa.csv",
-            "/v1/files/.%2Fa.csv",
-            "/v1/files/a%252F..%252Fb.csv",
-        ],
+        ["/v1/files/x%2F..%2Fsales.csv", "/v1/files/..%2Fa.csv", "/v1/files/.%2Fa.csv"],
     )
     def test_a_value_may_not_climb_through_encoded_slashes(self, routes, path):
         assert "declares no route" in refused(routes, ["files", "sales"], "GET", path)

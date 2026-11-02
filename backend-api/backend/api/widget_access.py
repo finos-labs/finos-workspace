@@ -16,19 +16,12 @@ APP_FILES = ("apps.json", "templates.json")
 IMAGE_KEYS = ("img", "img_dark", "img_light")
 TABLE_SECONDS = 60.0
 TABLE_ENTRIES = 1024
-DECODINGS = 3
 PLACEHOLDER = re.compile(r"\{[^{}]+\}")
 SLASHES = re.compile(r"/{2,}")
 
 Pattern = tuple[tuple[str, ...], ...]
 
 _tables: dict[tuple[str, str], tuple[float, "Routes"]] = {}
-
-
-def _decoded(text: str) -> str:
-    for _ in range(DECODINGS):
-        text = unquote(text)
-    return text
 
 
 def _trimmed(parts: list[str]) -> list[str]:
@@ -42,8 +35,8 @@ def _trimmed(parts: list[str]) -> list[str]:
 def segments_of(path: str) -> list[str] | None:
     segments = []
     for part in _trimmed(path.split("/")):
-        text = _decoded(part)
-        if not text or "\\" in text or "\0" in text or any(piece in {".", ".."} for piece in text.split("/")):
+        text = unquote(part)
+        if not part or "\\" in part or "\0" in text or any(piece in {".", ".."} for piece in text.split("/")):
             return None
         segments.append(text)
     return segments
@@ -51,11 +44,8 @@ def segments_of(path: str) -> list[str] | None:
 
 def pattern_of(path: str) -> Pattern | None:
     pattern = []
-    parts = _trimmed(path.split("/"))
-    for part in parts:
-        literals = tuple(_decoded(literal) for literal in PLACEHOLDER.split(part))
-        if any("/" in literal or "\\" in literal for literal in literals):
-            return None
+    for part in _trimmed(path.split("/")):
+        literals = tuple(unquote(literal) for literal in PLACEHOLDER.split(part))
         if len(literals) == 1 and literals[0] in {"", ".", ".."}:
             return None
         pattern.append(literals)
@@ -167,14 +157,10 @@ def routes_of(widgets: object, apps: object, base_url: str) -> Routes:
 
 
 def check(routes: Routes, granted: frozenset[str], method: str, url: str) -> None:
-    verb = method.upper()
     segments = segments_of(urlsplit(url).path)
-    groups = routes.match(verb, segments) if segments is not None else []
-    if segments is None or not groups:
+    groups = routes.match(method.upper(), segments) if segments is not None else []
+    if not groups:
         raise source_proxy.refused("the connection's widgets.json declares no route like this one", 403)
-    separated = [piece for segment in segments for piece in segment.split("/") if piece]
-    if separated != segments:
-        groups += routes.match(verb, separated)
     for widget_ids in groups:
         if None not in widget_ids and not widget_ids & granted:
             raise source_proxy.refused("none of your roles gives you the widget that this route belongs to", 403)
