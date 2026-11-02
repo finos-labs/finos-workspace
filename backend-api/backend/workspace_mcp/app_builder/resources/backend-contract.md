@@ -44,20 +44,13 @@ An `html` widget that sets `raw` also answers `raw=true` with the underlying row
 
 See `workspace://specs/widget-types` for type guidance and `workspace://specs/widgets-json` for the metadata shape that wires endpoints to widget types.
 
-## CORS
+## Who calls the backend
 
-FINOS Workspace runs in a browser. Your backend MUST allow CORS from the origin the FINOS Workspace is served from: the address in the browser's address bar, for example `https://<your-workspace-host>`, and `http://localhost:1420` for a local development server.
+The FINOS Workspace API calls your backend, not the browser, so the backend needs no CORS settings. The API adds the backend connection's credentials, `X-Workspace-User` (the signed-in user's email) and `X-Workspace-Identity` (a signed token, described under Authentication) to every request.
 
-A widget whose request carries a header param, a JSON body or `POST` makes the browser send a preflight `OPTIONS` first, and the Validate Widgets check sends a plain `OPTIONS` to every route and fails the route that does not answer. The backend must answer it for that route with:
+The API must be able to reach the backend's address. A connection that is not a superuser's must be a public `https` address, and the API answers `502` when nothing answers.
 
-- `Access-Control-Allow-Methods` including the widget's method, and the `optionsMethod` of its option lookups;
-- `Access-Control-Allow-Headers` including `Content-Type` when there is a body, and every header param's name, plus the headers of the backend connection's credentials.
-
-Most CORS middleware does this when configured with the methods and headers.
-
-The FINOS Workspace API adds the backend connection's credentials, `X-Workspace-User` (the signed-in user's email) and `X-Workspace-Identity` (a signed token, described under Authentication) when it calls the backend.
-
-Production browsers also block mixed content, so a backend used from an HTTPS FINOS Workspace must serve over HTTPS. Local development over HTTP is fine for `http://localhost`.
+When a backend is connected with Validate Widgets turned on, the API sends a plain `OPTIONS` request to every route that `widgets.json` names, and a route that answers `404` fails the check. Answer `OPTIONS` on each of those routes with `204`, and answer a path that does not exist with `404`. A backend that answers every `OPTIONS` request, whatever the path, gets its routes listed as not checked.
 
 ## Authentication
 

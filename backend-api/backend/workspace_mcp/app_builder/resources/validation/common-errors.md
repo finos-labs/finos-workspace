@@ -55,12 +55,12 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 | Group exists but sync silently disabled | Group `type` doesn't match the underlying param shape | `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint` |
 | Sync works for some widgets, not others | A widget is missing from the group's `widgetIds`, or its layout entry is missing `"groups": [...]`, or its widget config uses a different `paramName`/`optionsEndpoint` | Make all three places agree |
 
-## Endpoint and CORS
+## Endpoint and route check
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| CORS error in browser | Backend doesn't allow the FINOS Workspace origin | Add the origin the FINOS Workspace is served from, and `http://localhost:1420` for local development |
-| CORS error only for some widgets, or Validate Widgets fails a route | Their request has a header param, a JSON body or `POST`, and the preflight `OPTIONS` does not allow it, or the route does not answer `OPTIONS` | Answer `OPTIONS` on every route and allow the method and the header names in the backend's CORS settings (`workspace://contract/backend`) |
+| Validate Widgets fails a route | The route answers `404` to the plain `OPTIONS` request that the API sends | Answer `OPTIONS` with `204` on every route in `widgets.json` (`workspace://contract/backend`) |
+| Validate Widgets lists routes as not checked | The backend answers every `OPTIONS` request, whatever the path, so the check cannot tell a route from a path that does not exist | Answer `OPTIONS` with `404` on a path that does not exist (`workspace://contract/backend`) |
 | A widget fails with the header `X-Workspace-Proxy-Error` | The API refused or could not make the request: `403` for a connection that is not a superuser's and is not a public `https` address, `502` when nothing answered | Use a public `https` address, or have a superuser add the connection |
 | A widget shows "`xxx` needs a value" instead of its data | A path param, or a placeholder of `optionsEndpoint`, has no value | Give the param a default `value`, or choose one |
 | The API cannot reach the backend | A connection that is not a superuser's must be a public `https` address, unless the stack runs with `MODE=local` | Serve the backend over public HTTPS, or develop on a local stack |

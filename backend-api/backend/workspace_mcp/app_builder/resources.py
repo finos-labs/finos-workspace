@@ -153,7 +153,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         title="Minimal Backend (Generic HTTP)",
         description=(
             "Framework-neutral picture of a FINOS Workspace backend — "
-            "routes, response shapes, CORS, auth."
+            "routes, response shapes, the route check, auth."
         ),
         relative_path="examples/generic-http-minimal.md",
     ),

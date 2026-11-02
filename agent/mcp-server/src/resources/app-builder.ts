@@ -128,7 +128,7 @@ const RESOURCES: readonly AppBuilderResource[] = [
     title: "Minimal Backend (Generic HTTP)",
     description:
       "Framework-neutral picture of a FINOS Workspace backend — " +
-      "routes, response shapes, CORS, auth.",
+      "routes, response shapes, the route check, auth.",
     relativePath: "examples/generic-http-minimal.md",
   },
   {
