@@ -11,8 +11,6 @@ import {
 const OUT = process.env.REFERENCE_OUT ?? "";
 const BACKEND = "https://backend.example";
 
-type Credentials = { headers: Record<string, string>; query: Record<string, string> };
-
 interface Built {
   method: string;
   url: string;
@@ -167,22 +165,6 @@ const problemCases: { label: string; built: ReturnType<typeof buildWidgetRequest
       ),
     },
     {
-      label: "A header that the backend connection sets",
-      built: buildWidgetRequest(
-        widgetOf("/p", "GET", [{ paramName: "X-Key", type: "text", in: "header" }], {
-          "X-Key": "a",
-        }),
-        { headers: { "X-Key": "secret" }, query: {} } satisfies Credentials,
-      ),
-    },
-    {
-      label: "A query value that the backend connection sets",
-      built: buildWidgetRequest(
-        widgetOf("/p", "GET", [{ paramName: "key", type: "text" }], { key: "a" }),
-        { headers: {}, query: { key: "secret" } } satisfies Credentials,
-      ),
-    },
-    {
       label: "A number that is not a number",
       built: buildWidgetRequest(
         widgetOf("/p", "GET", [{ paramName: "name", type: "number" }], { name: "x" }),
@@ -250,7 +232,7 @@ describe("the widget request reference", () => {
           "A POST widget with a path parameter, a query parameter, a header and a body field",
         widget: teamReport,
         optionsParam: teamOptions,
-        request: shown(buildWidgetRequest(teamReport, undefined, { theme: "dark" })),
+        request: shown(buildWidgetRequest(teamReport, { theme: "dark" })),
         options: shown(
           buildOptionsRequest(
             teamOptions as never,

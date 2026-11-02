@@ -3,7 +3,6 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 type Json = Record<string, any>;
 
-const APP_ORIGIN = process.env.APP_ORIGIN ?? "http://localhost:3000";
 const PORT = Number(process.env.PORT ?? 6060);
 
 const AGENTS = {
@@ -143,15 +142,6 @@ function send(response: ServerResponse, status: number, body: unknown) {
 
 createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://localhost:${PORT}`);
-  if (request.headers.origin === APP_ORIGIN) {
-    response.setHeader("Access-Control-Allow-Origin", APP_ORIGIN);
-    response.setHeader("Vary", "Origin");
-  }
-  if (request.method === "OPTIONS") {
-    response.setHeader("Access-Control-Allow-Methods", "GET, POST");
-    response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Trace-Id");
-    return response.writeHead(204).end();
-  }
   if (request.method === "GET" && url.pathname === "/agents.json") return send(response, 200, AGENTS);
   if (request.method === "POST" && url.pathname === "/v1/query") {
     let body: Json;

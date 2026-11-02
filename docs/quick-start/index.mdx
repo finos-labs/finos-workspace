@@ -239,7 +239,7 @@ Both programs return the same responses. Check the backend in your browser: [htt
 
 :::note[The routes are checked with OPTIONS]
 
-When you connect a backend with **Validate widgets** turned on, FINOS Workspace sends a plain `OPTIONS` request to every route and expects 204 for a route that exists and 404 for one that does not. The programs above answer every request that is not one of their three routes with 404, which includes `OPTIONS`, so validation would report their routes as failed; add an `OPTIONS` branch that answers 204 for the routes you offer, as the [first backend tutorial](../tutorials/build-a-backend/connect-a-backend-and-build-a-dashboard.mdx#the-route-check) shows. [Requests that a widget sends](../tutorials/build-a-backend/requests-from-a-widget.md#the-route-check) describes the check.
+When you connect a backend with **Validate widgets** turned on, FINOS Workspace sends a plain `OPTIONS` request to every route and expects 204 for a route that exists and 404 for one that does not. The programs above answer every request that is not one of their three routes with 404, which includes `OPTIONS`, so validation would report their routes as failed; add an `OPTIONS` branch that answers 204 for the routes you offer, as the [first backend tutorial](../tutorials/build-a-backend/connect-a-backend-and-build-a-dashboard.mdx) shows. [Requests that a widget sends](../tutorials/build-a-backend/requests-from-a-widget.md#the-route-check) describes the check.
 
 :::
 

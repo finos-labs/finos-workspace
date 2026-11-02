@@ -77,7 +77,6 @@ export const RuntimeConfigSchema = z.object({
       "OAuth client id of the Google sign-in. Set it when identityProviders includes google.",
     ),
   }),
-  }),
   copilot: z.object({
     enabled: boolField(
       false,

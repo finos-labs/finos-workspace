@@ -25,9 +25,8 @@ cd typescript
 node main.ts
 ```
 
-Then add `http://localhost:6060` in FINOS Workspace under AI, AI Agents, Add Agent. `APP_ORIGIN`
-sets the web app's address that the agent allows (`http://localhost:3000` by default), and `PORT`
-the port of the TypeScript version.
+Then add `http://localhost:6060` in FINOS Workspace under AI, AI Agents, Add Agent. `PORT`
+sets the port of the TypeScript version.
 
 ## Test it
 

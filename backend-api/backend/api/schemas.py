@@ -347,8 +347,10 @@ class CreateApiSource(ApiSourceBase):
 
 class ApiSourceHeaderName(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     model_config = get_camel_config()
-    key: str
-    location: Literal["headers", "query"] = "headers"
+    key: str = Field(description="The name of the credential: a header name or a query parameter name.")
+    location: Literal["headers", "query"] = Field(
+        "headers", description="Where the connection puts the credential: in a header or in the query."
+    )
 
 
 class SourceRequest(BaseModel, extra="forbid"):  # type: ignore[call-arg]
@@ -391,7 +393,7 @@ class SourceTestRequest(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     endpointHeaders: list[ApiSourceEndpointHeaders] = Field(
         default_factory=list, max_length=32, description="The credentials being tested; a blank value keeps the saved one"
     )
-    request: SourceRequest
+    request: SourceRequest = Field(description="The request that the test sends to the connection")
 
 
 class ReturnApiSource(ApiSourceBase, extra="ignore"):  # type: ignore[call-arg]

@@ -1,20 +1,10 @@
 import json
-import os
 import re
 
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
-APP_ORIGIN = os.environ.get("APP_ORIGIN", "http://localhost:3000")
-
 app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[APP_ORIGIN],
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "X-Trace-Id"],
-)
 
 AGENTS = {
     "reference_agent": {
