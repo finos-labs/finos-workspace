@@ -2,7 +2,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type AgentsFileReference, collectAgentsFile } from "./agents.ts";
 import { collectMcp, type McpReference } from "./mcp.ts";
-import { collectMetrics, type MetricEntry } from "./metrics.ts";
+import { collectMetricGroups, collectMetrics, type MetricEntry, type MetricGroupEntry } from "./metrics.ts";
 import { collectProtocol, type ProtocolReference } from "./protocol.ts";
 import { collectRoutes, type RoutesReference } from "./routes.ts";
 import { buildOpenApiDocument } from "../../src/lib/openapi.ts";
@@ -14,6 +14,7 @@ export const OPENAPI_OUTPUT = join(dirname(fileURLToPath(import.meta.url)), "../
 export interface Reference {
   http: RoutesReference;
   metrics: MetricEntry[];
+  metricGroups: MetricGroupEntry[];
   mcp: McpReference;
   protocol: ProtocolReference;
   agentsFile: AgentsFileReference;
@@ -23,6 +24,7 @@ export async function collectReference(): Promise<Reference> {
   return {
     http: collectRoutes(),
     metrics: collectMetrics(),
+    metricGroups: collectMetricGroups(),
     mcp: await collectMcp(),
     protocol: collectProtocol(),
     agentsFile: await collectAgentsFile(),

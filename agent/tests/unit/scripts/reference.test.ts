@@ -4,6 +4,7 @@ import { createApp } from "../../../src/app.ts";
 import { createLimits } from "../../../src/auth/limits.ts";
 import type { WorkspaceClient } from "../../../src/auth/workspace-client.ts";
 import { loadConfig } from "../../../src/lib/config.ts";
+import { PROCESS_METRICS, registry, renderMetrics } from "../../../src/lib/metrics.ts";
 import { createLocalStore } from "../../../src/lib/store.ts";
 import { collectReference, renderOpenApi, renderReference } from "../../../scripts/reference/index.ts";
 
@@ -32,9 +33,9 @@ const rejecting: WorkspaceClient = {
 };
 
 describe("the reference data", () => {
-  it("renders as JSON with its five parts", async () => {
+  it("renders as JSON with its six parts", async () => {
     const reference = JSON.parse(await renderReference());
-    expect(Object.keys(reference).sort()).toEqual(["agentsFile", "http", "mcp", "metrics", "protocol"]);
+    expect(Object.keys(reference).sort()).toEqual(["agentsFile", "http", "mcp", "metricGroups", "metrics", "protocol"]);
   });
 
   it("records the features of agents.json that an environment variable switches on", async () => {
@@ -116,6 +117,29 @@ describe("the reference data", () => {
       expect(metric.help.trim()).not.toBe("");
       expect(metric.name).toMatch(/^[a-z][a-z0-9_]*$/);
       for (const label of Object.keys(metric.labelValues ?? {})) expect(metric.labels).toContain(label);
+    }
+  });
+
+  it("describes every metric that the agent registers, with the group that it counts", async () => {
+    const { metrics, metricGroups } = await collectReference();
+    const registered = [...registry.definitions().map((definition) => definition.name), ...PROCESS_METRICS.map((metric) => metric.name)];
+    expect(metrics.map((metric) => metric.name).sort()).toEqual(registered.sort());
+    const groups = metricGroups.map((group) => group.id);
+    for (const metric of metrics) {
+      expect(groups).toContain(metric.group);
+    }
+    for (const group of metricGroups) {
+      expect(metrics.some((metric) => metric.group === group.id)).toBe(true);
+      expect(group.title.trim()).not.toBe("");
+      expect(group.detail.trim()).not.toBe("");
+    }
+  });
+
+  it("writes every metric that it describes, whether anything happened yet or not", async () => {
+    const { metrics } = await collectReference();
+    const text = renderMetrics();
+    for (const metric of metrics) {
+      expect(text).toContain(`# TYPE ${metric.name} ${metric.type}`);
     }
   });
 

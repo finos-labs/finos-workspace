@@ -5,6 +5,8 @@ import { amount, slug, type Unit } from "./format";
 import { Chip, Entry, firstSentence, ItemList, MethodBadge, Names, Section } from "./kit";
 import { InlineText, Prose } from "./prose";
 import { ApiOperations } from "./operations";
+import { TableWrap } from "./shared";
+import styles from "./styles.module.css";
 
 const MEBIBYTE = 1024 * 1024;
 
@@ -81,37 +83,66 @@ interface MetricRow {
   help: string;
 }
 
-export function MetricsTable({ metrics }: { metrics: MetricRow[] }) {
+function MetricLabels({ metric }: { metric: MetricRow }) {
+  if (metric.labels.length === 0) return <span className={styles.muted}>none</span>;
   return (
-    <ItemList
-      items={metrics.map((metric) => ({
-        key: metric.name,
-        title: <code>{metric.name}</code>,
-        chips: <Chip>{metric.type}</Chip>,
-        description: metric.help,
-        meta:
-          metric.labels.length === 0
-            ? []
-            : [
-                [
-                  "Labels",
-                  <ul key="labels" style={{ margin: 0, padding: 0, listStyle: "none" }}>
-                    {metric.labels.map((label) => (
-                      <li key={label}>
-                        <code>{label}</code>
-                        {metric.labelValues?.[label] ? <>: {metric.labelValues[label].join(", ")}</> : null}
-                      </li>
-                    ))}
-                  </ul>,
-                ],
-              ],
-      }))}
-    />
+    <ul className={styles.names}>
+      {metric.labels.map((label) => (
+        <li key={label}>
+          <code>{label}</code>
+          {metric.labelValues?.[label] ? <>: {metric.labelValues[label].join(", ")}</> : null}
+        </li>
+      ))}
+    </ul>
   );
 }
 
+/** The metrics of an API, one row each, with the labels that they carry and what they count. */
+export function MetricsTable({ metrics }: { metrics: MetricRow[] }) {
+  return (
+    <TableWrap>
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Type</th>
+            <th>Labels</th>
+            <th>What it counts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {metrics.map((metric) => (
+            <tr key={metric.name}>
+              <td>
+                <code>{metric.name}</code>
+              </td>
+              <td>
+                <Chip>{metric.type}</Chip>
+              </td>
+              <td>
+                <MetricLabels metric={metric} />
+              </td>
+              <td>{metric.help}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableWrap>
+  );
+}
+
+/** The metrics that the agent serves, grouped by the part of the agent that they count. */
 export function AgentMetrics() {
-  return <MetricsTable metrics={agentData.metrics} />;
+  return (
+    <>
+      {agentData.metricGroups.map((group) => (
+        <Section key={group.id} title={group.title}>
+          <p>{group.detail}</p>
+          <MetricsTable metrics={agentData.metrics.filter((metric) => metric.group === group.id)} />
+        </Section>
+      ))}
+    </>
+  );
 }
 
 export function AgentMcpCorsHeaders() {

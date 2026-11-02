@@ -341,6 +341,13 @@ interface AgentMetric {
   labels: string[];
   labelValues: Record<string, string[]> | null;
   help: string;
+  group: string;
+}
+
+interface AgentMetricGroup {
+  id: string;
+  title: string;
+  detail: string;
 }
 
 interface AgentMcpTool {
@@ -373,6 +380,7 @@ export interface AgentData {
     limits: { helperBodyBytes: number; transcribeBodyBytes: number; audioBytes: number; defaultMaxBodyMb: number };
   };
   metrics: AgentMetric[];
+  metricGroups: AgentMetricGroup[];
   mcp: {
     corsHeaders: string[];
     routes: { method: string; path: string; summary: string }[];
