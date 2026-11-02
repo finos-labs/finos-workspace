@@ -46,6 +46,7 @@ import {
   useRowsPlugin,
 } from "./registry";
 import { cleanSettings, SettingsForm } from "./SettingsForm";
+import { openStream, type Stream, webSocketUrl } from "./stream";
 import { readThemeTrait } from "./theme";
 import {
   MAX_CONFIG_BYTES,
@@ -198,11 +199,50 @@ function PluginWidgetBody({
   const { data: fetched, isLoading, error, dataUpdatedAt } = showRows ? rows : answer;
   const data = showRows || endpointUrl ? fetched : storagePlugin.data;
 
+  const streamHref = permissions.has("core:data:stream")
+    ? widget.data?.streamEndpoint
+    : undefined;
+  const streamTarget = useMemo(() => {
+    if (!streamHref) return null;
+    const built = buildWidgetRequest({
+      endpoint: { url: streamHref, method: "GET" },
+      params: widget.params,
+      storage: widget.storage,
+    });
+    return built?.ok ? webSocketUrl(built.request.url) : null;
+  }, [streamHref, widget.params, widget.storage?.params]);
+  const frameRunning = status.kind === "running";
+  const stream = useRef<Stream | null>(null);
+  useEffect(() => {
+    if (!streamTarget || !frameRunning) return;
+    const opened = openStream(streamTarget, {
+      onMessages: (messages) =>
+        frameRef.current?.sendEvent({
+          kind: "workspace-event",
+          name: "stream",
+          messages,
+        }),
+      onState: (state, retryIn) =>
+        frameRef.current?.sendEvent({
+          kind: "workspace-event",
+          name: "stream-status",
+          state,
+          retryIn,
+        }),
+    });
+    stream.current = opened;
+    return () => {
+      opened.close();
+      stream.current = null;
+    };
+  }, [streamTarget, frameRunning]);
+
   const refreshed = useRef(widget.refreshQuery);
   useEffect(() => {
     if (widget.refreshQuery === refreshed.current) return;
     refreshed.current = widget.refreshQuery;
     frameRef.current?.sendEvent({ kind: "workspace-event", name: "refresh" });
+    stream.current?.reconnect();
   }, [widget.refreshQuery]);
 
   const definitionValue = vizType ? widget.data?.[vizType] : undefined;

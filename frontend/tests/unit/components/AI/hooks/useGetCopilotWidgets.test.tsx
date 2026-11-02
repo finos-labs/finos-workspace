@@ -748,6 +748,18 @@ describe("createCopilotWidget - grouped parameters", () => {
     });
     expect(createCopilotWidget("t", table, {})?.widget_type).toBe("table");
   });
+
+  it("says a plugin's own widget is one, so that the agent does not look for data in it", () => {
+    const component = createWidget({
+      id: "p",
+      widgetId: "plugin:sql-explorer:explorer",
+      type: "custom" as WidgetT["type"],
+      plugin: { id: "sql-explorer", widget: "explorer" },
+    });
+    expect(
+      createCopilotWidget("plugin:sql-explorer:explorer", component, {})?.widget_type,
+    ).toBe("plugin");
+  });
 });
 
 describe("useGetCopilotWidgets - agent payload vs. advertised dashboard state", () => {

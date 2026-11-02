@@ -1,4 +1,4 @@
-name: sql-explorer
+name: widget-examples
 
 x-hardened: &hardened
   read_only: true
@@ -7,20 +7,21 @@ x-hardened: &hardened
   restart: unless-stopped
 
 services:
-  sql-explorer-backend:
+  backend:
     <<: *hardened
     build:
-      context: ../dist/sql-explorer/${VERSION:?set VERSION to the package version}
+      context: ..
       dockerfile: backend/Dockerfile
-    image: sql-explorer-backend:${VERSION}
+      args:
+        SQL_EXPLORER_VERSION: ${SQL_EXPLORER_VERSION:?set SQL_EXPLORER_VERSION to the SQL explorer package version}
+        AG_GRID_VERSION: ${AG_GRID_VERSION:?set AG_GRID_VERSION to the AgGrid package version}
+    image: widget-examples-backend:${SQL_EXPLORER_VERSION}-${AG_GRID_VERSION}
     tmpfs: ["/tmp:size=64m,noexec,nosuid"]
     mem_limit: 512m
     pids_limit: 128
-    volumes:
-      - ./data:/data:ro
     networks: [plugin-rpc, plugin-db]
 
-  sql-explorer-gateway:
+  examples-gateway:
     <<: *hardened
     image: nginx:1.31.6-alpine
     user: "101:101"
@@ -28,6 +29,8 @@ services:
     tmpfs: ["/tmp:size=16m,noexec,nosuid"]
     mem_limit: 64m
     pids_limit: 32
+    ports:
+      - "127.0.0.1:7798:7798"
     volumes:
       - ./gateway.conf:/etc/nginx/nginx.conf:ro
     networks: [workspace, plugin-rpc]
@@ -37,18 +40,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: explorer
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-    secrets: [postgres_password, explorer_password]
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run setup.py first}
+      EXPLORER_PASSWORD: ${EXPLORER_PASSWORD:?run setup.py first}
     volumes:
       - ./postgres:/docker-entrypoint-initdb.d:ro
       - postgres-data:/var/lib/postgresql
     networks: [plugin-db]
-
-secrets:
-  postgres_password:
-    file: ./secrets/postgres_password
-  explorer_password:
-    file: ./secrets/explorer_password
 
 volumes:
   postgres-data:

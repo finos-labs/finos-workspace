@@ -86,10 +86,12 @@ export type resetForm = z.infer<typeof resetSchema>;
 export type WidgetType = Omit<WidgetBaseContractT, "params"> & {
   type: WidgetVizType;
   params?: ParamDef[];
-  data?: { dataKey?: string; rawDataKey?: string; rawType?: string } & Record<
-    string,
-    unknown
-  >;
+  data?: {
+    dataKey?: string;
+    rawDataKey?: string;
+    rawType?: string;
+    streamEndpoint?: string;
+  } & Record<string, unknown>;
   raw?: boolean;
   storage?: { mcpUrl?: string };
 };

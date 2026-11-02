@@ -1,8 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { callPluginBackend } from "~/api/plugins.api";
 import type { PluginArtifactT } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { assetPath, commandPermission, traitBindings } from "./authority";
+import {
+  assetPath,
+  checkStateWrite,
+  commandPermission,
+  RateLimiter,
+  serverCallError,
+  serverCallRequest,
+  traitBindings,
+} from "./authority";
 import { BundleIntegrityError, loadAsset } from "./bundle";
 import PluginFrame, { type FrameStatus } from "./PluginFrame";
 import { CommandError } from "./protocol";
@@ -15,6 +24,8 @@ const IN_CHAT = new Set([
   "core:data:read",
   "core:ui:notify",
   "core:clipboard:write",
+  "core:backend:call",
+  "core:state:write",
 ]);
 const ROW_PX = 25;
 const MAX_NOTIFY_LENGTH = 500;
@@ -34,6 +45,8 @@ export function PluginArtifactFrame({ artifact }: { artifact: PluginArtifactT })
   const plugins = usePluginRegistryStore((state) => state.plugins);
   const theme = useShallowThemeStore((state) => state.theme);
   const [status, setStatus] = useState<FrameStatus>({ kind: "booting" });
+  const [state, setState] = useState<unknown>(null);
+  const serverLimiter = useRef(new RateLimiter(2, 10));
   const resolved = useMemo(
     () => resolvePluginWidget(artifact.plugin, { plugins }),
     [artifact.plugin, plugins],
@@ -46,7 +59,7 @@ export function PluginArtifactFrame({ artifact }: { artifact: PluginArtifactT })
     permissions.add("core:default");
     const bindings = traitBindings(widget, permissions).map((b) => ({
       ...b,
-      writable: false,
+      writable: b.writable && b.source === "state",
     }));
     const config = {
       ...(widget.settings?.defaults ?? {}),
@@ -85,6 +98,9 @@ export function PluginArtifactFrame({ artifact }: { artifact: PluginArtifactT })
         case "params":
           traits[binding.trait] = {};
           break;
+        case "state":
+          traits[binding.trait] = state;
+          break;
         case "definition":
           traits[binding.trait] = {};
           break;
@@ -93,7 +109,7 @@ export function PluginArtifactFrame({ artifact }: { artifact: PluginArtifactT })
       }
     }
     return { plugin, widget, permissions, bindings, traits };
-  }, [resolved, artifact.data, artifact.config, artifact.uuid, theme]);
+  }, [resolved, artifact.data, artifact.config, artifact.uuid, theme, state]);
 
   if (!(resolved && view))
     return (
@@ -123,8 +139,12 @@ export function PluginArtifactFrame({ artifact }: { artifact: PluginArtifactT })
           bindings={bindings}
           traits={traits}
           permissions={[...permissions].sort()}
-          onWrite={() => {
-            throw new CommandError("not_granted", "a chat artifact is read-only");
+          onWrite={(binding, value) => {
+            if (binding.source !== "state")
+              throw new CommandError("not_granted", `${binding.trait} is read-only`);
+            const next = checkStateWrite(value);
+            setState(next);
+            return next;
           }}
           onCommand={async (name, msg) => {
             commandPermission(name, permissions);
@@ -149,6 +169,19 @@ export function PluginArtifactFrame({ artifact }: { artifact: PluginArtifactT })
                 const text = String(args.text ?? "").slice(0, MAX_NOTIFY_LENGTH);
                 toast.info(text, { description: plugin.name });
                 return {};
+              }
+              case "core:backend:call": {
+                const call = serverCallRequest(args, "route", widget.routes);
+                if (!serverLimiter.current.take())
+                  throw new CommandError("rate_limited", "too many server calls");
+                const answer = await callPluginBackend(plugin.id, call.name, {
+                  widget: widget.id,
+                  instance: artifact.uuid,
+                  args: call.args,
+                }).catch((error) => {
+                  throw serverCallError(error);
+                });
+                return { value: answer.body };
               }
               case "core:clipboard:write": {
                 const text = String(args.text ?? "");

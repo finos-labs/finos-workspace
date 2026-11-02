@@ -22,6 +22,13 @@ vi.mock("~/plugins/PluginFrame", () => ({
   },
 }));
 
+const backend = vi.hoisted(() => ({ call: vi.fn() }));
+
+vi.mock("~/api/plugins.api", () => ({
+  callPluginBackend: backend.call,
+  postPluginReports: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ theme: "dark" }),
@@ -62,6 +69,27 @@ const listing = PluginListingSchema.parse({
           },
         },
         { id: "clock", name: "Clock", permissions: [], standalone: true },
+        {
+          id: "query",
+          name: "Query",
+          permissions: [
+            "core:default",
+            "core:data:read",
+            "core:backend:call",
+            "core:state:write",
+          ],
+          routes: ["run"],
+          model: {
+            traits: {
+              seed: { bind: "data" },
+              state: { bind: "state", access: "readwrite" },
+            },
+          },
+          artifact: {
+            description: "A query",
+            data: { type: "object", additionalProperties: false },
+          },
+        },
       ],
     },
   ],
@@ -122,10 +150,52 @@ describe("a plugin component in the chat", () => {
     ).rejects.toMatchObject({ code: "not_granted" });
   });
 
+  it("lets a component that declares routes call its backend as the user, and keep a state of its own", async () => {
+    usePluginRegistryStore.getState().setListing(listing);
+    backend.call.mockResolvedValue({ body: { rows: [[1]] } });
+    const query: PluginArtifactT = {
+      ...artifact,
+      uuid: "q1",
+      plugin: { id: "chart-kit", widget: "query" },
+      data: { source: "files", sql: "SELECT 1" },
+    };
+    render(<PluginArtifactFrame artifact={query} />);
+
+    expect(frame.props?.permissions).toEqual([
+      "core:backend:call",
+      "core:data:read",
+      "core:default",
+      "core:state:write",
+    ]);
+    expect(frame.props?.traits.seed).toEqual({ source: "files", sql: "SELECT 1" });
+    await expect(
+      frame.props?.onCommand(
+        "core:backend:call",
+        { route: "run", args: { sql: "SELECT 1" } },
+        [],
+      ),
+    ).resolves.toEqual({ value: { rows: [[1]] } });
+    expect(backend.call).toHaveBeenCalledWith("chart-kit", "run", {
+      widget: "query",
+      instance: "q1",
+      args: { sql: "SELECT 1" },
+    });
+    await expect(
+      frame.props?.onCommand("core:backend:call", { route: "other", args: {} }, []),
+    ).rejects.toMatchObject({ code: "out_of_scope" });
+
+    const stateBinding = frame.props?.bindings.find((b) => b.trait === "state");
+    expect(stateBinding?.writable).toBe(true);
+    expect(frame.props?.bindings.find((b) => b.trait === "seed")?.writable).toBe(false);
+  });
+
   it("lists the widgets that can be an artifact for the agent, with what it must send", () => {
     expect(getPluginArtifactCatalog()).toEqual([]);
     usePluginRegistryStore.getState().setListing(listing);
-    expect(getPluginArtifactCatalog()).toEqual([
+    expect(
+      getPluginArtifactCatalog().map((entry) => `${entry.plugin}/${entry.widget}`),
+    ).toEqual(["chart-kit/bars", "chart-kit/query"]);
+    expect(getPluginArtifactCatalog().slice(0, 1)).toEqual([
       {
         plugin: "chart-kit",
         widget: "bars",

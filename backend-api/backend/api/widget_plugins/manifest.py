@@ -33,6 +33,7 @@ PERMISSIONS = frozenset(
     {
         "core:default",
         "core:data:read",
+        "core:data:stream",
         "core:params:write",
         "core:state:write",
         "core:copilot:context",

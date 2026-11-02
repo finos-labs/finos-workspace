@@ -507,6 +507,13 @@ const RAW_DATA_PROPERTIES = {
     .optional(),
 };
 
+const STREAM_DATA_PROPERTIES = {
+  streamEndpoint: Endpoint.meta({
+    description:
+      "The WebSocket the widget's plugin is fed from, as a path or an absolute URL with no `?` and no `#`: `http` and `https` become `ws` and `wss`. FINOS Workspace opens it with the backend connection's query credentials and the widget's params as query values, and passes the JSON messages it receives to the plugin",
+  }).optional(),
+};
+
 export interface BuiltInTypeContract {
   summary: string;
   returns: string;
@@ -590,7 +597,7 @@ export const BUILT_IN_TYPES = {
 
 export const PLUGIN_TYPE_RULES = {
   properties: { raw: Raw },
-  dataProperties: RAW_DATA_PROPERTIES,
+  dataProperties: { ...RAW_DATA_PROPERTIES, ...STREAM_DATA_PROPERTIES },
   methods: HTTP_METHODS,
   locations: PARAM_LOCATIONS,
   reservedQueryNames: ["theme", "raw"] as readonly string[],
