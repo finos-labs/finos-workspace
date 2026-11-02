@@ -709,7 +709,10 @@ function Connections() {
       agentsByHostname.delete(hostname);
     }
 
+    const listedIds = new Set(apiSources.map((backend) => backend.uuid ?? backend.id));
+
     for (const sharedBackend of permissions.backends) {
+      if (listedIds.has(sharedBackend.uuid)) continue;
       const hostname = getHostname(sharedBackend.url);
       const promptCount = (sharedBackend.templates || []).reduce(
         (acc, t) => acc + (t.prompts?.length || 0),
