@@ -132,166 +132,6 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/numpy@2.5.4?package-id=a0fd77ec3fe44294",
-      "type": "library",
-      "name": "numpy",
-      "version": "2.5.4",
-      "licenses": [
-        {
-          "expression": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0"
-        }
-      ],
-      "cpe": "cpe:2.3:a:python-numpy:python-numpy:2.5.4:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/numpy@2.5.4",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "python-package-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "python-pip-requirements-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-numpy:python_numpy:2.5.4:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_numpy:python-numpy:2.5.4:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_numpy:python_numpy:2.5.4:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-numpy:2.5.4:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_numpy:2.5.4:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:numpy:python-numpy:2.5.4:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:numpy:python_numpy:2.5.4:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-numpy:numpy:2.5.4:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_numpy:numpy:2.5.4:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:numpy:2.5.4:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:numpy:numpy:2.5.4:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/examples/requirements.txt"
-        }
-      ]
-    },
-    {
-      "bom-ref": "pkg:pypi/plotly@7.1.0?package-id=ec560c1256607a70",
-      "type": "library",
-      "name": "plotly",
-      "version": "7.1.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:python-plotly:python-plotly:7.1.0:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/plotly@7.1.0",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "python-package-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "python-pip-requirements-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-plotly:python_plotly:7.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_plotly:python-plotly:7.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_plotly:python_plotly:7.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:plotly:python-plotly:7.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:plotly:python_plotly:7.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-plotly:plotly:7.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-plotly:7.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_plotly:7.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_plotly:plotly:7.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:plotly:plotly:7.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:plotly:7.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/examples/requirements.txt"
-        }
-      ]
-    },
-    {
       "bom-ref": "pkg:npm/plotly.js-strict-dist-min@4.1.2?package-id=a19f21cb20e5d0b2",
       "type": "library",
       "name": "plotly.js-strict-dist-min",
@@ -438,12 +278,12 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/workspace-plugin-plotly@2.1.0?package-id=2fd066989dd56498",
+      "bom-ref": "pkg:npm/workspace-plugin-plotly@2.4.0?package-id=874f90aad1ecb4b8",
       "type": "library",
       "name": "workspace-plugin-plotly",
-      "version": "2.1.0",
-      "cpe": "cpe:2.3:a:workspace-plugin-plotly:workspace-plugin-plotly:2.1.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/workspace-plugin-plotly@2.1.0",
+      "version": "2.4.0",
+      "cpe": "cpe:2.3:a:workspace-plugin-plotly:workspace-plugin-plotly:2.4.0:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/workspace-plugin-plotly@2.4.0",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -463,39 +303,39 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:workspace-plugin-plotly:workspace_plugin_plotly:2.1.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:workspace-plugin-plotly:workspace_plugin_plotly:2.4.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:workspace_plugin_plotly:workspace-plugin-plotly:2.1.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:workspace_plugin_plotly:workspace-plugin-plotly:2.4.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:workspace_plugin_plotly:workspace_plugin_plotly:2.1.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:workspace_plugin_plotly:workspace_plugin_plotly:2.4.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:workspace-plugin:workspace-plugin-plotly:2.1.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:workspace-plugin:workspace-plugin-plotly:2.4.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:workspace-plugin:workspace_plugin_plotly:2.1.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:workspace-plugin:workspace_plugin_plotly:2.4.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:workspace_plugin:workspace-plugin-plotly:2.1.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:workspace_plugin:workspace-plugin-plotly:2.4.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:workspace_plugin:workspace_plugin_plotly:2.1.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:workspace_plugin:workspace_plugin_plotly:2.4.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:workspace:workspace-plugin-plotly:2.1.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:workspace:workspace-plugin-plotly:2.4.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:workspace:workspace_plugin_plotly:2.1.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:workspace:workspace_plugin_plotly:2.4.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -512,7 +352,7 @@
       ]
     },
     {
-      "ref": "pkg:npm/workspace-plugin-plotly@2.1.0?package-id=2fd066989dd56498",
+      "ref": "pkg:npm/workspace-plugin-plotly@2.4.0?package-id=874f90aad1ecb4b8",
       "dependsOn": [
         "pkg:npm/mathjax@4.1.3?package-id=57c458ef8e3dd32b",
         "pkg:npm/plotly.js-strict-dist-min@4.1.2?package-id=a19f21cb20e5d0b2",
