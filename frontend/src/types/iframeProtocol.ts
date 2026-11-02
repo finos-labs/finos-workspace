@@ -120,7 +120,9 @@ export const WorkspaceAuthMessageSchema = z.object({
   type: z.literal("workspace-auth"),
   headers: z
     .record(z.string(), z.string())
-    .describe("The header credentials of the backend connection, by header name"),
+    .describe(
+      "The headers that FINOS Workspace passes to the page, by header name. The only one is `X-Workspace-User`, the signed-in user's email address",
+    ),
 });
 
 export interface IframeMessageDoc {
@@ -169,7 +171,7 @@ export const IFRAME_MESSAGES: IframeMessageDoc[] = [
     direction: "host",
     schema: WorkspaceAuthMessageSchema,
     meaning:
-      "The backend connection's header credentials, which the page can attach to its own requests. FINOS Workspace sends them only to a window whose origin equals the origin of the iframe's address, and again whenever the credentials change",
+      "The signed-in user's email address, in the header `X-Workspace-User`, which the page can attach to its own requests. FINOS Workspace sends it once after each `workspace-connect`, only when the deployment turns on `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER`, and only to a window whose origin equals the origin of the iframe's address",
   },
 ];
 

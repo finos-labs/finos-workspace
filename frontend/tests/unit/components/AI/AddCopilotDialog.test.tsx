@@ -32,10 +32,6 @@ vi.mock("~/api/auth.api", () => ({
 
 vi.mock("sonner", () => ({ toast: mockToast }));
 
-vi.mock("~/lib/api", () => ({
-  convertHeadersToRecord: (headers: Record<string, string>) => ({ headers }),
-}));
-
 vi.mock("~/lib/utils", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {

@@ -68,7 +68,7 @@ export const RuntimeConfigSchema = z.object({
     ),
     sendUserEmailAsHeader: boolField(
       false,
-      "Send the signed-in user's email address to data backends in the X-Workspace-User request header.",
+      "Pass the signed-in user's email address to an iframe page, in the X-Workspace-User header of the workspace-auth message that follows the page's workspace-connect message. The API sends the same header to every data backend whatever this is set to.",
     ),
   }),
   authProviders: z.object({
