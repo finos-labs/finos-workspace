@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useForm, useFormContext, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
@@ -589,10 +589,6 @@ export default function ManageAppDialog() {
 }
 
 export function TroubleshootMessage() {
-  const form = useFormContext<AppForm>();
-
-  const url = useWatch({ control: form.control, name: "url" });
-
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -653,37 +649,20 @@ export function TroubleshootMessage() {
               <span className="text-error-100/60 mt-0.5 flex-shrink-0">•</span>
               <div className="flex-1 text-left">
                 <p className="font-medium mb-1 text-ds-text-subtitle text-left">
-                  Certificate Issues
+                  Address Not Reachable
                 </p>
                 <p className="text-ds-text-body text-left">
-                  Your browser may block the connection due to certificate issues. Try
-                  opening{" "}
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline text-link-color hover:opacity-80"
-                  >
-                    {url}
-                  </a>{" "}
-                  directly in your browser first. If you see "Your connection is not
-                  private", accept the certificate to proceed.
-                </p>
-              </div>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-error-100/60 mt-0.5 flex-shrink-0">•</span>
-              <div className="flex-1 text-left">
-                <p className="font-medium mb-1 text-ds-text-subtitle text-left">
-                  CORS Configuration
-                </p>
-                <p className="text-ds-text-body text-left">
-                  Your backend may have CORS (Cross-Origin Resource Sharing)
-                  restrictions. Configure your server to allow requests from{" "}
+                  The FINOS Workspace API calls your backend, not your browser. When the
+                  API runs in a container, it reaches{" "}
                   <code className="bg-general-bg-secondary px-1 py-0.5 rounded text-[11px]">
-                    {window.location.origin}
+                    localhost
                   </code>{" "}
-                  by adding the appropriate CORS headers.
+                  on your computer through{" "}
+                  <code className="bg-general-bg-secondary px-1 py-0.5 rounded text-[11px]">
+                    host.docker.internal
+                  </code>
+                  , so the backend has to be running. On Linux it also has to listen on
+                  0.0.0.0 instead of 127.0.0.1.
                 </p>
               </div>
             </li>
