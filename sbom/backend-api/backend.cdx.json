@@ -2283,7 +2283,7 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/botocore@1.40.61?package-id=cdc888c0dd291261",
+      "bom-ref": "pkg:pypi/botocore@1.40.61?package-id=ae8258bcd6679457",
       "type": "library",
       "name": "botocore",
       "version": "1.40.61",
@@ -2636,6 +2636,87 @@
         {
           "name": "syft:cpe23",
           "value": "cpe:2.3:a:cffi:cffi:2.1.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/poetry.lock"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:pypi/chardet@7.7.0?package-id=25d59e02a62679a8",
+      "type": "library",
+      "name": "chardet",
+      "version": "7.7.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "0BSD"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:python-chardet:python-chardet:7.7.0:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/chardet@7.7.0",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "python-package-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "python-poetry-lock-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-chardet:python_chardet:7.7.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_chardet:python-chardet:7.7.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_chardet:python_chardet:7.7.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:chardet:python-chardet:7.7.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:chardet:python_chardet:7.7.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-chardet:chardet:7.7.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_chardet:chardet:7.7.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python-chardet:7.7.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python_chardet:7.7.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:chardet:chardet:7.7.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:chardet:7.7.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -4276,6 +4357,456 @@
         {
           "name": "syft:cpe23",
           "value": "cpe:2.3:a:python:frozenlist:1.8.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/poetry.lock"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:pypi/gcloud-aio-auth@5.6.0?package-id=fb5ffc55294e8ded",
+      "type": "library",
+      "name": "gcloud-aio-auth",
+      "version": "5.6.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:python-gcloud-aio-auth:python-gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/gcloud-aio-auth@5.6.0",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "python-package-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "python-poetry-lock-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio-auth:python_gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio_auth:python-gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio_auth:python_gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio:python-gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio:python_gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio:python-gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio:python_gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio-auth:python-gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio-auth:python_gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio_auth:python-gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio_auth:python_gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio-auth:gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio-auth:gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio_auth:gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio_auth:gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud:python-gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud:python_gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud:python-gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud:python_gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio:python-gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio:python_gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio:python-gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio:python_gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio:gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio:gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio:gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio:gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio-auth:gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio-auth:gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio_auth:gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio_auth:gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud:python-gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud:python_gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud:gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud:gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python-gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python_gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud:gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud:gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio:gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio:gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio:gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio:gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud:gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud:gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:gcloud-aio-auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:gcloud_aio_auth:5.6.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/poetry.lock"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:pypi/gcloud-aio-storage@9.6.5?package-id=500b1708c3479867",
+      "type": "library",
+      "name": "gcloud-aio-storage",
+      "version": "9.6.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:python-gcloud-aio-storage:python-gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/gcloud-aio-storage@9.6.5",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "python-package-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "python-poetry-lock-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio-storage:python_gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio_storage:python-gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio_storage:python_gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio-storage:python-gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio-storage:python_gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio_storage:python-gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio_storage:python_gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio-storage:gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio-storage:gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio_storage:gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio_storage:gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio:python-gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio:python_gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio:python-gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio:python_gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud:python-gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud:python_gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud:python-gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud:python_gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio-storage:gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio-storage:gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio_storage:gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio_storage:gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio:python-gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio:python_gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio:python-gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio:python_gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio:gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud-aio:gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio:gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud_aio:gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud:python-gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud:python_gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud:gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-gcloud:gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python-gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python_gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud:gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_gcloud:gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio:gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud-aio:gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio:gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud_aio:gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud:gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gcloud:gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:gcloud-aio-storage:9.6.5:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:gcloud_aio_storage:9.6.5:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -11830,6 +12361,87 @@
       ]
     },
     {
+      "bom-ref": "pkg:pypi/tenacity@9.2.1?package-id=779ce6b868b60e93",
+      "type": "library",
+      "name": "tenacity",
+      "version": "9.2.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:python-tenacity:python-tenacity:9.2.1:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/tenacity@9.2.1",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "python-package-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "python-poetry-lock-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-tenacity:python_tenacity:9.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_tenacity:python-tenacity:9.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_tenacity:python_tenacity:9.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-tenacity:tenacity:9.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_tenacity:tenacity:9.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:tenacity:python-tenacity:9.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:tenacity:python_tenacity:9.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python-tenacity:9.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python_tenacity:9.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:tenacity:tenacity:9.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:tenacity:9.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/poetry.lock"
+        }
+      ]
+    },
+    {
       "bom-ref": "pkg:pypi/testcontainers@4.15.0?package-id=31ef2c0e5338dc35",
       "type": "library",
       "name": "testcontainers",
@@ -13973,7 +14585,7 @@
         "pkg:pypi/aiohttp@3.14.5?package-id=317b9330e7ef14ba",
         "pkg:pypi/aioitertools@0.13.0?package-id=dca77f266bf1d0e0",
         "pkg:pypi/boto3@1.40.61?package-id=168cc2222a829d0e",
-        "pkg:pypi/botocore@1.40.61?package-id=cdc888c0dd291261",
+        "pkg:pypi/botocore@1.40.61?package-id=ae8258bcd6679457",
         "pkg:pypi/httpx@0.28.1?package-id=4e695980dd2d0101",
         "pkg:pypi/jmespath@1.1.0?package-id=2ca21ddcaf44c9ca",
         "pkg:pypi/multidict@6.9.1?package-id=eb8e02bc3480fd93",
@@ -14082,13 +14694,13 @@
     {
       "ref": "pkg:pypi/boto3@1.40.61?package-id=168cc2222a829d0e",
       "dependsOn": [
-        "pkg:pypi/botocore@1.40.61?package-id=cdc888c0dd291261",
+        "pkg:pypi/botocore@1.40.61?package-id=ae8258bcd6679457",
         "pkg:pypi/jmespath@1.1.0?package-id=2ca21ddcaf44c9ca",
         "pkg:pypi/s3transfer@0.14.0?package-id=81056afb76786dd9"
       ]
     },
     {
-      "ref": "pkg:pypi/botocore@1.40.61?package-id=cdc888c0dd291261",
+      "ref": "pkg:pypi/botocore@1.40.61?package-id=ae8258bcd6679457",
       "dependsOn": [
         "pkg:pypi/jmespath@1.1.0?package-id=2ca21ddcaf44c9ca",
         "pkg:pypi/python-dateutil@2.9.0.post0?package-id=997d12dbb2405315",
@@ -14250,6 +14862,24 @@
       "ref": "pkg:pypi/fastmcp@4.1.4?package-id=e0225313ac8c7fad",
       "dependsOn": [
         "pkg:pypi/fastmcp-slim@4.1.4?package-id=1de8da4af12f4b9a"
+      ]
+    },
+    {
+      "ref": "pkg:pypi/gcloud-aio-auth@5.6.0?package-id=fb5ffc55294e8ded",
+      "dependsOn": [
+        "pkg:pypi/aiohttp@3.14.5?package-id=317b9330e7ef14ba",
+        "pkg:pypi/chardet@7.7.0?package-id=25d59e02a62679a8",
+        "pkg:pypi/cryptography@50.0.0?package-id=959c190fb071fd33",
+        "pkg:pypi/pyjwt@2.15.1?package-id=061c55863e0041ea",
+        "pkg:pypi/tenacity@9.2.1?package-id=779ce6b868b60e93"
+      ]
+    },
+    {
+      "ref": "pkg:pypi/gcloud-aio-storage@9.6.5?package-id=500b1708c3479867",
+      "dependsOn": [
+        "pkg:pypi/aiofiles@25.1.0?package-id=f5d06750d40496a4",
+        "pkg:pypi/cryptography@50.0.0?package-id=959c190fb071fd33",
+        "pkg:pypi/gcloud-aio-auth@5.6.0?package-id=fb5ffc55294e8ded"
       ]
     },
     {
@@ -14603,6 +15233,7 @@
       "ref": "pkg:pypi/requests@2.34.2?package-id=6901bbd7cfdaabad",
       "dependsOn": [
         "pkg:pypi/certifi@2026.10.19?package-id=3a0d3ed83b77b094",
+        "pkg:pypi/chardet@7.7.0?package-id=25d59e02a62679a8",
         "pkg:pypi/charset-normalizer@3.5.1?package-id=1822a8bef7c619ea",
         "pkg:pypi/idna@3.19?package-id=3c748eb485248644",
         "pkg:pypi/urllib3@2.8.0?package-id=8d295feb6d124a27"
@@ -14634,7 +15265,7 @@
     {
       "ref": "pkg:pypi/s3transfer@0.14.0?package-id=81056afb76786dd9",
       "dependsOn": [
-        "pkg:pypi/botocore@1.40.61?package-id=cdc888c0dd291261"
+        "pkg:pypi/botocore@1.40.61?package-id=ae8258bcd6679457"
       ]
     },
     {
@@ -14695,6 +15326,13 @@
         "pkg:pypi/httpx@0.28.1?package-id=4e695980dd2d0101",
         "pkg:pypi/python-multipart@0.0.32?package-id=f52ce36f2988114f",
         "pkg:pypi/pyyaml@6.0.3?package-id=a0ed8b7e9bbeedc1"
+      ]
+    },
+    {
+      "ref": "pkg:pypi/tenacity@9.2.1?package-id=779ce6b868b60e93",
+      "dependsOn": [
+        "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334",
+        "pkg:pypi/tornado@6.6?package-id=049da7a948c45cb5"
       ]
     },
     {

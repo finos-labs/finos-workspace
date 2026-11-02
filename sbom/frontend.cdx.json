@@ -27152,43 +27152,6 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40types/katex@0.16.8?package-id=4bbf32922582a6df",
-      "type": "library",
-      "name": "@types/katex",
-      "version": "0.16.8",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:\\@types\\/katex:\\@types\\/katex:0.16.8:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40types/katex@0.16.8",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "javascript-lock-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "javascript"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "npm"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "javascript-npm-package-lock-entry"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/package-lock.json"
-        }
-      ]
-    },
-    {
       "bom-ref": "pkg:npm/%40types/linkify-it@5.0.0?package-id=63862952f59593fe",
       "type": "library",
       "name": "@types/linkify-it",
@@ -27985,43 +27948,6 @@
       ],
       "cpe": "cpe:2.3:a:\\@types\\/unist:\\@types\\/unist:3.0.3:*:*:*:*:*:*:*",
       "purl": "pkg:npm/%40types/unist@3.0.3",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "javascript-lock-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "javascript"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "npm"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "javascript-npm-package-lock-entry"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/package-lock.json"
-        }
-      ]
-    },
-    {
-      "bom-ref": "pkg:npm/%40types/uuid@10.0.0?package-id=331d0bafe6285b5e",
-      "type": "library",
-      "name": "@types/uuid",
-      "version": "10.0.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:\\@types\\/uuid:\\@types\\/uuid:10.0.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40types/uuid@10.0.0",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -38743,7 +38669,7 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/finos-workspace@1.0.0?package-id=814fc5a89d237b5d",
+      "bom-ref": "pkg:npm/finos-workspace@1.0.0?package-id=eae20c65faee738d",
       "type": "library",
       "name": "finos-workspace",
       "version": "1.0.0",
@@ -62118,43 +62044,6 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/swiper@12.1.2?package-id=0050f17e8b186c5a",
-      "type": "library",
-      "name": "swiper",
-      "version": "12.1.2",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:swiper:swiper:12.1.2:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/swiper@12.1.2",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "javascript-lock-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "javascript"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "npm"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "javascript-npm-package-lock-entry"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/package-lock.json"
-        }
-      ]
-    },
-    {
       "bom-ref": "pkg:npm/symbol-tree@3.2.4?package-id=82008e2599e28776",
       "type": "library",
       "name": "symbol-tree",
@@ -71969,7 +71858,7 @@
       ]
     },
     {
-      "ref": "pkg:npm/finos-workspace@1.0.0?package-id=814fc5a89d237b5d",
+      "ref": "pkg:npm/finos-workspace@1.0.0?package-id=eae20c65faee738d",
       "dependsOn": [
         "pkg:npm/%40fontsource-variable/montserrat@5.3.0?package-id=f37499b46dc9a80f",
         "pkg:npm/%40hookform/resolvers@5.2.2?package-id=5a5d3925216f0b67",
@@ -72025,7 +71914,6 @@
         "pkg:npm/react-complex-tree@2.6.1?package-id=27d883f0597b140e",
         "pkg:npm/react-day-picker@9.8.1?package-id=aebf840f51656725",
         "pkg:npm/react-dom@19.3.1?package-id=968b9255993be456",
-        "pkg:npm/react-draggable@4.7.2?package-id=d7cf993ae6f7b0d1",
         "pkg:npm/react-dropzone@14.3.8?package-id=ad7b2907f182cd0f",
         "pkg:npm/react-error-boundary@4.1.2?package-id=9fc55172e93ec37e",
         "pkg:npm/react-grid-layout@2.3.0?package-id=60c2d46763bdad00",
@@ -72038,7 +71926,6 @@
         "pkg:npm/react@19.3.1?package-id=97b15e6332b2fe2a",
         "pkg:npm/sonner@1.7.4?package-id=9304ded977dc154f",
         "pkg:npm/sql-formatter@15.6.6?package-id=f2ae0115d4564a8a",
-        "pkg:npm/swiper@12.1.2?package-id=0050f17e8b186c5a",
         "pkg:npm/tailwind-merge@3.7.0?package-id=1b63425ad325c4ca",
         "pkg:npm/tlds@1.259.0?package-id=7eff929dbfc197a9",
         "pkg:npm/use-debounce@10.0.5?package-id=72ca7e1cb4bf9322",
