@@ -13,7 +13,17 @@ An app is a template that a backend offers: a set of tabs of widgets, with their
 
 The web app's Zod schema `templateSpecificationSchema` in `frontend/src/lib/types/app.ts` defines the file, and the description of every field is part of that schema. The page below is generated from the JSON Schema (draft-07) that the web app's reference test writes to `frontend/reference-data/apps-schema.json`, as [Regenerate the reference data](../../tutorials/contribute/regenerate-reference-data.md) describes. A test fails when a field has no description.
 
-<SchemaDocs set="apps" />
+<SchemaDocs
+  set="apps"
+  root={false}
+  show={[
+    { name: "AppsJson", title: "App", description: "One element of the file." },
+    { name: "Group", title: "Group" },
+    { name: "Layout", title: "Layout" },
+    { name: "Tabs", title: "Tabs" },
+    { name: "WidgetState", title: "Widget state" },
+  ]}
+/>
 
 ## Example
 
