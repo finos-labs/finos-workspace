@@ -147,9 +147,9 @@ When the browser cannot read a data source, the entry for that source is an erro
 
 | `error_type` | Cause |
 |---|---|
-| `gateway_error` | The backend answered with a status other than 2xx. The `content` names the endpoint path and the status, and it holds the first <WebAppValue of="gatewayErrorBodyChars" /> characters of the response body. |
+| `gateway_error` | The backend, or the API when it refuses the request, answered with a status other than 2xx. The `content` names the endpoint path and the status, and it holds the first <WebAppValue of="gatewayErrorBodyChars" /> characters of the response body. |
 | `not_found` | The widget is not in the catalog and the dashboard holds nothing for it, the widget is a navigation tab, a parameter in `input_args` is not declared by the widget, or an uploaded file has no link. A message for the last case is `input_args names no param of this widget: quarter. Its params are: year.` |
-| `unexpected_error` | Anything else, including a network failure or a backend that refused the request because of its CORS policy. The `content` is the error's message. |
+| `unexpected_error` | Anything else, including a network failure. The `content` is the error's message. |
 
 ## How the agent reads the reply
 

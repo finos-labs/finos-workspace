@@ -210,7 +210,7 @@ If the test fails, the dialog says why:
 
 | Message | Cause |
 |---|---|
-| Could not reach the agent server. Check the URL, ensure the server is running, and allow CORS from this app origin. | The agent does not run at that address, or it does not allow the origin of the web app. |
+| the data connection could not be reached | The API could not reach the address: the agent does not run there, or the API has no route to it. |
 | A valid /agents.json was not found. | The agent answers `GET /agents.json` with the status 404. |
 | Unauthorized access to the agent URL. | The agent answers with the status 401. |
 | Invalid response from the agent server. Expected valid JSON in /agents.json. | The answer is not JSON. |
