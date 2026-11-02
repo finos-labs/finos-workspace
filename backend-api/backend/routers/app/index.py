@@ -1290,9 +1290,10 @@ async def discover_custom_copilot(
 AGENT_FORWARDED_HEADERS = ("accept", "accept-language", "content-type", "last-event-id", "x-trace-id")
 
 
-@router.api_route(
+@helpers.api_route_per_method(
+    router,
     "/custom-copilot/{copilot_uuid}/relay",
-    methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    ["GET", "POST", "PUT", "PATCH", "DELETE"],
     response_class=StreamingResponse,
     summary="Call an agent from the server",
     description=(

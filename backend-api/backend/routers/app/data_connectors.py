@@ -468,9 +468,10 @@ def _frame_url(source, remainder: str, query: str) -> str:
     return f"{origin.scheme}://{origin.netloc}{remainder}" + (f"?{query}" if query else "")
 
 
-@router.api_route(
+@helpers.api_route_per_method(
+    router,
     "/frame/{token}/{path:path}",
-    methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     response_class=StreamingResponse,
     summary="A page of an iframe widget, with the connection's credentials added",
     description="Authorized by the token in the address alone: the page runs without cookies or storage.",

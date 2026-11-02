@@ -7,7 +7,7 @@ from typing import Literal
 from uuid import UUID
 
 import pyotp
-from fastapi import HTTPException
+from fastapi import APIRouter, HTTPException
 from loguru import logger
 from rq.timeouts import JobTimeoutException
 from sqlalchemy import case, func, insert, or_, select, update
@@ -35,6 +35,17 @@ async def add_log_task(request: str, error: str, status_code: int, method: str):
 def add_log(request: str, error: str, status_code: int, method: str):
     with contextlib.suppress(Exception):
         asyncio.ensure_future(add_log_task(request, error, status_code, method))
+
+
+def api_route_per_method(router: APIRouter, path: str, methods: list[str], **options):
+    def register(endpoint):
+        for method in methods:
+            router.add_api_route(
+                path, endpoint, methods=[method], name=f"{endpoint.__name__}_{method.lower()}", **options
+            )
+        return endpoint
+
+    return register
 
 
 def handle_duplicate_pk(exc: IntegrityError):

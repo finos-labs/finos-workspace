@@ -70,6 +70,17 @@ def test_every_route_parameter_and_model_field_has_a_description():
     assert not missing, "\n".join(missing)
 
 
+def test_every_operation_has_an_id_of_its_own():
+    identifiers = [
+        operation["operationId"]
+        for item in export.collect_openapi()["paths"].values()
+        for operation in item.values()
+        if isinstance(operation, dict) and "operationId" in operation
+    ]
+    duplicated = sorted({name for name in identifiers if identifiers.count(name) > 1})
+    assert not duplicated, "\n".join(duplicated)
+
+
 def test_the_exporter_writes_every_file(tmp_path):
     assert export.main(["-o", str(tmp_path)]) == 0
     assert sorted(path.name for path in tmp_path.iterdir()) == sorted(export.FILES.values())
