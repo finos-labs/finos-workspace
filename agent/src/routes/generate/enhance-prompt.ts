@@ -3,6 +3,14 @@ import { z } from "zod";
 import type { AppEnv } from "../../auth/middleware.ts";
 import { truncate } from "../../lib/llm.ts";
 import { getLogger } from "../../lib/logger.ts";
+import {
+  bodyTooLarge,
+  defineRoute,
+  invalidRequest,
+  named,
+  tooManyRequests,
+  unauthorized,
+} from "../../lib/openapi.ts";
 import { helperLlm, invalidJson, MAX_HELPER_TEXT_CHARS, modelField, readJson } from "./helper.ts";
 
 const logger = getLogger(["app", "generate", "enhance-prompt"]);
@@ -46,9 +54,34 @@ function extractWidgetNames(widgets: unknown): string[] {
   return names.slice(0, ENHANCE_WIDGET_NAMES);
 }
 
+export const enhancePromptRoute = defineRoute({
+  method: "POST",
+  path: "/v1/enhance_prompt",
+  tag: "generate",
+  summary: "Rewrites a question to be more specific.",
+  description:
+    "Rewrites the last question of the user so that it names the data that it needs. The agent makes one call to the model and never runs tools.",
+  request: { contentType: "application/json", required: true, schema: named("EnhancePromptRequest", EnhancePromptSchema) },
+  responses: [
+    { code: "200", description: "The rewritten question, as plain text.", contentType: "text/plain" },
+    invalidRequest(),
+    unauthorized(),
+    bodyTooLarge(),
+    tooManyRequests(),
+  ],
+  secured: true,
+  helper: {
+    detail:
+      `The agent rewrites the last human message, cut to ${MAX_HELPER_TEXT_CHARS.toLocaleString("en-US")} characters, ` +
+      `and uses the names of up to ${ENHANCE_WIDGET_NAMES} widgets, each cut to ${ENHANCE_WIDGET_NAME_CHARS} characters, as hints.`,
+    answer: "Plain text, the rewritten question.",
+    fallback: "The original question, or an empty string when there is no human message.",
+  },
+});
+
 export const enhancePromptRouter = new Hono<AppEnv>();
 
-enhancePromptRouter.post("/v1/enhance_prompt", async (c) => {
+enhancePromptRouter.post(enhancePromptRoute.path, async (c) => {
   const raw = await readJson(c);
   if (raw === null) return invalidJson(c);
   const parsed = EnhancePromptSchema.safeParse(raw);

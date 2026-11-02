@@ -4,11 +4,13 @@ sidebar_position: 3
 ---
 
 import { EnvDefault } from "@site/src/components/Reference/config";
-import { AgentHelperRoutes, AgentBodyLimit, AgentMetrics, AgentRoutes } from "@site/src/components/Reference/agent";
+import { AgentHelperRoutes, AgentBodyLimit, AgentMetrics, AgentApiTag, AgentSchemas } from "@site/src/components/Reference/agent";
 
 # Agent HTTP API
 
-The agent is a separate service from the FINOS Workspace API. It is a Hono application on Node that listens on port <EnvDefault name="PORT" /> by default, and the web app talks to it directly from the browser. This page lists its routes, the checks that apply to them and the metrics that it serves. The questions that users ask travel over `POST /v1/query`, which has its own page, the [agent query protocol](../protocols/agent-query.mdx). The routes are defined in `agent/src/app.ts` and `agent/src/routes/`, and the tables on this page are generated from the running application, so they list the routes that it serves.
+The agent is a separate service from the FINOS Workspace API. It is a Hono application on Node that listens on port <EnvDefault name="PORT" /> by default, and the web app talks to it directly from the browser. This page lists its routes, the checks that apply to them and the metrics that it serves. The questions that users ask travel over `POST /v1/query`, which has its own page, the [agent query protocol](../protocols/agent-query.mdx).
+
+Every route is defined next to the handler that answers it, in `agent/src/app.ts` and `agent/src/routes/`. The definition holds the method, the path, what the route does, the request that it takes and the answers that it gives, and the code writes them into an OpenAPI document, `agent/reference-data/openapi.json`. The tables on this page come from that document, so they list the routes that the application serves, with the parameters, the request body and the responses of each one. The export fails when a route has no definition or when a definition has no route.
 
 ## Checks that apply to every route
 
@@ -20,9 +22,29 @@ The agent is a separate service from the FINOS Workspace API. It is a Hono appli
 
 **Body size.** A request body under `/v1` may not exceed `AGENT_MAX_BODY_MB` megabytes, which is <EnvDefault name="AGENT_MAX_BODY_MB" /> by default. The JSON helper routes accept at most <AgentBodyLimit name="helperBodyBytes" />, and `/v1/transcribe` accepts a little more than <AgentBodyLimit name="audioBytes" />. A larger body receives the status 413.
 
-## Routes
+## service
 
-<AgentRoutes />
+These routes tell whether the agent runs and what it can do. They need no token.
+
+<AgentApiTag tag="service" />
+
+## query
+
+This route asks the agent a question. It needs a token.
+
+<AgentApiTag tag="query" />
+
+## generate
+
+These are the helper routes, which make one call to the model and never run tools. They need a token. [Helper routes](#helper-routes) explains what each of them does with the request.
+
+<AgentApiTag tag="generate" />
+
+## speech
+
+This route turns a recording into text. It needs a token.
+
+<AgentApiTag tag="speech" />
 
 ## Helper routes
 
@@ -31,6 +53,12 @@ The helper routes make one call to the model and never run tools. Each user may 
 Every JSON helper accepts the optional field `model`. The agent uses it when this deployment offers the model and the user's roles allow it, and otherwise it uses `DEFAULT_MODEL` without reporting an error. When the model call fails, each helper answers with the fallback that its section gives, so that the interface never waits on a failure. The fields of each request come from its schema in the code.
 
 <AgentHelperRoutes />
+
+## Schemas
+
+The schemas below are the request and the response bodies of the routes above. The agent writes them from the Zod schemas that the handlers validate with, so the fields of a request are the fields that the code accepts.
+
+<AgentSchemas />
 
 ## Speech to text
 

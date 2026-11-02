@@ -1,9 +1,10 @@
 import type { AgentData, AgentField } from "../../data/types";
-import { agentData } from "./data";
-import { Fields, fromAgent } from "./fields";
+import { agentApiData, agentData } from "./data";
+import { Fields, fromAgent, fromSchema } from "./fields";
 import { amount, slug, type Unit } from "./format";
 import { Chip, Entry, firstSentence, ItemList, MethodBadge, Names, Section } from "./kit";
 import { InlineText, Prose } from "./prose";
+import { ApiOperations } from "./operations";
 
 const MEBIBYTE = 1024 * 1024;
 
@@ -24,21 +25,29 @@ export function AgentBodyLimit({ name }: { name: "helperBodyBytes" | "transcribe
   return <>{name === "defaultMaxBodyMb" ? limits[name] : bytes(limits[name])}</>;
 }
 
-export function AgentRoutes() {
+/** The routes of the agent, as the OpenAPI document that the agent writes describes them. */
+export function AgentApiTag({ tag, schemaPage = "/reference/http-api/agent-api" }: { tag: string; schemaPage?: string }) {
+  const found = agentApiData.tags.find((item) => item.name === tag);
+  if (found === undefined) throw new Error(`No agent API tag ${tag}`);
+  return <ApiOperations operations={found.operations} schemas={agentApiData.schemas} schemaPage={schemaPage} />;
+}
+
+/** The schemas of the request and the response bodies of the agent's routes. */
+export function AgentSchemas({ schemaPage = "/reference/http-api/agent-api" }: { schemaPage?: string }) {
   return (
-    <ItemList
-      items={agentData.http.routes.map((route) => ({
-        key: `${route.method} ${route.path}`,
-        title: (
-          <>
-            <MethodBadge method={route.method} />
-            <code>{route.path}</code>
-          </>
-        ),
-        chips: route.needsToken ? <Chip>needs a token</Chip> : undefined,
-        description: route.summary,
-      }))}
-    />
+    <>
+      {agentApiData.schemas.map((schema) => (
+        <Entry
+          key={schema.name}
+          id={`schema-${schema.name}`}
+          title={schema.name}
+          description={schema.description ?? ""}
+          collapsed
+        >
+          <Fields fields={fromSchema(schema.properties)} schemaPage={schemaPage} empty="This schema has no named properties." />
+        </Entry>
+      ))}
+    </>
   );
 }
 

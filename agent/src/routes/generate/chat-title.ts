@@ -3,6 +3,14 @@ import { z } from "zod";
 import type { AppEnv } from "../../auth/middleware.ts";
 import { truncate } from "../../lib/llm.ts";
 import { getLogger } from "../../lib/logger.ts";
+import {
+  bodyTooLarge,
+  defineRoute,
+  invalidRequest,
+  named,
+  tooManyRequests,
+  unauthorized,
+} from "../../lib/openapi.ts";
 import { helperLlm, invalidJson, modelField, readJson } from "./helper.ts";
 
 const logger = getLogger(["app", "generate", "chat-title"]);
@@ -20,9 +28,35 @@ export const ChatTitleSchema = z.object({
   model: modelField,
 });
 
+export const chatTitleRoute = defineRoute({
+  method: "POST",
+  path: "/v1/generate/chat/title",
+  tag: "generate",
+  summary: "Names a chat.",
+  description: "Names the chat that the messages belong to. The agent makes one call to the model and never runs tools.",
+  request: { contentType: "application/json", required: true, schema: named("ChatTitleRequest", ChatTitleSchema) },
+  responses: [
+    {
+      code: "200",
+      description: "The title of the chat, as a JSON string.",
+      schema: named("ChatTitle", z.string().describe("The title of the chat."), "output"),
+    },
+    invalidRequest(),
+    unauthorized(),
+    bodyTooLarge(),
+    tooManyRequests(),
+  ],
+  secured: true,
+  helper: {
+    detail: `The agent reads the last ${CHAT_TITLE_MESSAGES} messages that have the role human, each cut to ${CHAT_TITLE_MESSAGE_CHARS} characters.`,
+    answer: 'A JSON string that holds the title, for example "Revenue by region".',
+    fallback: `"${CHAT_TITLE_FALLBACK}", also when there is no human message.`,
+  },
+});
+
 export const chatTitleRouter = new Hono<AppEnv>();
 
-chatTitleRouter.post("/v1/generate/chat/title", async (c) => {
+chatTitleRouter.post(chatTitleRoute.path, async (c) => {
   const raw = await readJson(c);
   if (raw === null) return invalidJson(c);
   const parsed = ChatTitleSchema.safeParse(raw);

@@ -15,7 +15,7 @@ import {
 import { collectAgentsJson } from "./lib/agentsJson.mts";
 import { checkAgreement } from "./lib/agreement.mts";
 import { collectCss } from "./lib/css.mts";
-import { collectAgent } from "./lib/agent.mts";
+import { collectAgent, collectAgentApi } from "./lib/agent.mts";
 import { collectBridge } from "./lib/bridge.mts";
 import { checkAbuseCases, checkCoverage, checkExampleListings, checkReferenceLinks, checkRoutes, checkSettingNames } from "./lib/coverage.mts";
 import { collectEnv } from "./lib/env.mts";
@@ -43,6 +43,7 @@ const outputs: Record<string, unknown> = {
   webConfig: await collectWebConfig(),
   env,
   agent: collectAgent(),
+  agentApi: collectAgentApi(),
   settings: collectSettings(),
   api: collectApi(),
   widgetsSchema: collectWidgetsSchema(),

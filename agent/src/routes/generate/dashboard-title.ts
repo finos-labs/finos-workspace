@@ -3,6 +3,14 @@ import { z } from "zod";
 import type { AppEnv } from "../../auth/middleware.ts";
 import { truncate } from "../../lib/llm.ts";
 import { getLogger } from "../../lib/logger.ts";
+import {
+  bodyTooLarge,
+  defineRoute,
+  invalidRequest,
+  named,
+  tooManyRequests,
+  unauthorized,
+} from "../../lib/openapi.ts";
 import { helperLlm, invalidJson, modelField, readJson } from "./helper.ts";
 
 const logger = getLogger(["app", "generate", "dashboard-title"]);
@@ -27,9 +35,31 @@ export const DashboardTitleSchema = z.object({
   model: modelField,
 });
 
+export const dashboardTitleRoute = defineRoute({
+  method: "POST",
+  path: "/v1/generate/dashboard/title",
+  tag: "generate",
+  summary: "Names a dashboard.",
+  description: "Names the dashboard that the widgets belong to. The agent makes one call to the model and never runs tools.",
+  request: { contentType: "application/json", required: true, schema: named("DashboardTitleRequest", DashboardTitleSchema) },
+  responses: [
+    { code: "200", description: "The title of the dashboard, as plain text.", contentType: "text/plain" },
+    invalidRequest(),
+    unauthorized(),
+    bodyTooLarge(),
+    tooManyRequests(),
+  ],
+  secured: true,
+  helper: {
+    detail: `The agent reads the first ${DASHBOARD_TITLE_WIDGETS} widget names, each cut to ${DASHBOARD_TITLE_NAME_CHARS} characters.`,
+    answer: "Plain text, the title.",
+    fallback: `${DASHBOARD_TITLE_FALLBACK}, also when no widget has a name.`,
+  },
+});
+
 export const dashboardTitleRouter = new Hono<AppEnv>();
 
-dashboardTitleRouter.post("/v1/generate/dashboard/title", async (c) => {
+dashboardTitleRouter.post(dashboardTitleRoute.path, async (c) => {
   const raw = await readJson(c);
   if (raw === null) return invalidJson(c);
   const parsed = DashboardTitleSchema.safeParse(raw);

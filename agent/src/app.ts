@@ -1,9 +1,12 @@
 import { Hono, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
+import { z } from "zod";
 import { honoLogger, withContext } from "./lib/logger.ts";
 import { metrics } from "./lib/metrics.ts";
+import { defineRoute, named } from "./lib/openapi.ts";
 import { ANONYMOUS, authMiddleware, createAuthCache, servicesMiddleware, type AppEnv, type Services } from "./auth/middleware.ts";
+import { READY_TIMEOUT_MS } from "./auth/workspace-client.ts";
 import { agentsRouter } from "./routes/agents.ts";
 import { createStatusRouter } from "./routes/status.ts";
 import { queryRouter } from "./routes/query.ts";
@@ -27,6 +30,40 @@ const helperGate: MiddlewareHandler<AppEnv> = async (c, next) => {
   }
   await next();
 };
+
+export const readyRoute = defineRoute({
+  method: "GET",
+  path: "/ready",
+  tag: "service",
+  summary: "Answers whether the agent is ready to take questions.",
+  description:
+    `Answers {"status": "ready"}. With authentication on, the agent first calls the /health route of the Workspace API with a timeout of ${READY_TIMEOUT_MS / 1000} seconds, ` +
+    'and when that fails it answers 503 with {"status": "not ready", "reason": "the Workspace API does not answer"}.',
+  responses: [
+    {
+      code: "200",
+      description: "The agent is ready to take questions.",
+      schema: named(
+        "AgentReady",
+        z.object({ status: z.string().describe("The state of the agent, which is ready when it takes questions.") }),
+        "output",
+      ),
+    },
+    {
+      code: "503",
+      description: "The Workspace API does not answer.",
+      schema: named(
+        "AgentNotReady",
+        z.object({
+          status: z.string().describe("The state of the agent, which is not ready when the Workspace API does not answer."),
+          reason: z.string().describe("Why the agent is not ready."),
+        }),
+        "output",
+      ),
+    },
+  ],
+  secured: false,
+});
 
 export function createApp(services: Services): Hono<AppEnv> {
   const { config, workspace } = services;
@@ -54,7 +91,7 @@ export function createApp(services: Services): Hono<AppEnv> {
 
   app.route("/", agentsRouter);
   app.route("/", createStatusRouter(services.store));
-  app.get("/ready", async (c) => {
+  app.get(readyRoute.path, async (c) => {
     if (workspace && !(await workspace.ready())) {
       return c.json({ status: "not ready", reason: "the FINOS Workspace API does not answer" }, 503);
     }

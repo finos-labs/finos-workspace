@@ -5,7 +5,7 @@ import { createLimits } from "../../../src/auth/limits.ts";
 import type { WorkspaceClient } from "../../../src/auth/workspace-client.ts";
 import { loadConfig } from "../../../src/lib/config.ts";
 import { createLocalStore } from "../../../src/lib/store.ts";
-import { collectReference, renderReference } from "../../../scripts/reference/index.ts";
+import { collectReference, renderOpenApi, renderReference } from "../../../scripts/reference/index.ts";
 
 const ENV = {
   WORKSPACE_API_URL: "http://api:8000",
@@ -60,6 +60,52 @@ describe("the reference data", () => {
       })),
     );
     expect(answers.filter((answer) => answer.refused !== answer.needsToken)).toEqual([]);
+  });
+
+  it("describes every route that the app serves in the OpenAPI document", async () => {
+    const config = loadConfig(ENV);
+    const store = createLocalStore();
+    const app = createApp({ config, workspace: rejecting, store, limits: createLimits({ store, maxConcurrent: 4 }) });
+    const document = JSON.parse(renderOpenApi()) as {
+      openapi: string;
+      paths: Record<string, Record<string, { summary: string; description: string; responses: Record<string, unknown>; requestBody?: unknown; security?: unknown }>>;
+    };
+    expect(document.openapi).toBe("3.1.0");
+
+    const served = app.routes.filter((route) => route.method !== "ALL").map((route) => `${route.method} ${route.path}`);
+    const described = Object.entries(document.paths).flatMap(([path, item]) =>
+      Object.keys(item).map((method) => `${method.toUpperCase()} ${path}`),
+    );
+    expect(described.sort()).toEqual(served.sort());
+
+    for (const item of Object.values(document.paths)) {
+      for (const operation of Object.values(item)) {
+        expect(operation.summary.trim()).not.toBe("");
+        expect(operation.description.trim()).not.toBe("");
+        expect(Object.keys(operation.responses).length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("gives every route that needs a token the security scheme of the document", async () => {
+    const document = JSON.parse(renderOpenApi()) as {
+      paths: Record<string, Record<string, { security?: unknown }>>;
+    };
+    const secured = Object.entries(document.paths).flatMap(([path, item]) =>
+      Object.entries(item)
+        .filter(([, operation]) => operation.security !== undefined)
+        .map(([method]) => `${method.toUpperCase()} ${path}`),
+    );
+    expect(secured.sort()).toEqual([
+      "POST /v1/enhance_prompt",
+      "POST /v1/generate/chat/title",
+      "POST /v1/generate/code",
+      "POST /v1/generate/dashboard/title",
+      "POST /v1/generate/widget_info",
+      "POST /v1/generate/widget_info/file",
+      "POST /v1/query",
+      "POST /v1/transcribe",
+    ]);
   });
 
   it("describes each metric and the values of its labels", async () => {

@@ -3,6 +3,14 @@ import { z } from "zod";
 import type { AppEnv } from "../../auth/middleware.ts";
 import { parseJsonResponse, truncate } from "../../lib/llm.ts";
 import { getLogger } from "../../lib/logger.ts";
+import {
+  bodyTooLarge,
+  defineRoute,
+  invalidRequest,
+  named,
+  tooManyRequests,
+  unauthorized,
+} from "../../lib/openapi.ts";
 import { helperLlm, invalidJson, MAX_HELPER_TEXT_CHARS, modelField, readJson } from "./helper.ts";
 
 const MAX_CODE_CHARS = 30_000;
@@ -21,9 +29,44 @@ export const GenerateCodeSchema = z.object({
   model: modelField,
 });
 
+export const codeRoute = defineRoute({
+  method: "POST",
+  path: "/v1/generate/code",
+  tag: "generate",
+  summary: "Writes or changes SQL or Python code for a widget.",
+  description:
+    "Writes the code that answers a widget, or changes the code that the widget has. The agent makes one call to the model and never runs tools.",
+  request: { contentType: "application/json", required: true, schema: named("GenerateCodeRequest", GenerateCodeSchema) },
+  responses: [
+    {
+      code: "200",
+      description: "The code that the model wrote, or the reason why it wrote none.",
+      schema: named(
+        "GenerateCode",
+        z.object({
+          success: z.boolean().describe("Whether the model wrote the code."),
+          generated_code: z.string().optional().describe("The code that the model wrote."),
+          error_message: z.string().optional().describe("Why the model wrote no code."),
+        }),
+        "output",
+      ),
+    },
+    invalidRequest(),
+    unauthorized(),
+    bodyTooLarge(),
+    tooManyRequests(),
+  ],
+  secured: true,
+  helper: {
+    detail: "The language is sql or python.",
+    answer: '{"success": true, "generated_code": "..."} or {"success": false, "error_message": "..."}.',
+    fallback: '{"success": false, "error_message": "Code generation failed"}.',
+  },
+});
+
 export const codeRouter = new Hono<AppEnv>();
 
-codeRouter.post("/v1/generate/code", async (c) => {
+codeRouter.post(codeRoute.path, async (c) => {
   const raw = await readJson(c);
   if (raw === null) return invalidJson(c);
   const parsed = GenerateCodeSchema.safeParse(raw);

@@ -202,6 +202,8 @@ export interface ApiOperation {
   parameters: ApiParameter[];
   requestBody?: { contentType: string; required: boolean; schema: TypeLabel };
   responses: ApiResponse[];
+  /** The route needs a token, which the OpenAPI document states as a security scheme. */
+  secured?: boolean;
 }
 
 export interface ApiMetric {

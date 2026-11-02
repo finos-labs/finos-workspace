@@ -8,6 +8,15 @@ import { resolveModel } from "../lib/providers.ts";
 import { getLogger, withContext } from "../lib/logger.ts";
 import { bodyBudget } from "../lib/body-budget.ts";
 import { metrics } from "../lib/metrics.ts";
+import {
+  bodyTooLarge,
+  busy,
+  defineRoute,
+  invalidRequest,
+  named,
+  tooManyRequests,
+  unauthorized,
+} from "../lib/openapi.ts";
 import { scopeKey } from "../lib/scope.ts";
 import type { UsageCounts } from "../lib/token-usage.ts";
 import { ANONYMOUS, type AppEnv, type Principal, type Services } from "../auth/middleware.ts";
@@ -174,6 +183,25 @@ export const QueryRequestSchema = z.object({
     ),
 });
 
+export const queryRoute = defineRoute({
+  method: "POST",
+  path: "/v1/query",
+  tag: "query",
+  summary: "Asks a question.",
+  description:
+    "Asks the agent a question. The answer is a stream of events, as the agent query protocol describes. The request holds the conversation, the widgets of the dashboard, the tools that the workspace offers, the documents that the user sends and the state of the workspace.",
+  request: { contentType: "application/json", required: true, schema: named("QueryRequest", QueryRequestSchema) },
+  responses: [
+    { code: "200", description: "The stream of events that answers the question.", contentType: "text/event-stream" },
+    invalidRequest(),
+    unauthorized(),
+    bodyTooLarge(),
+    tooManyRequests(),
+    busy(),
+  ],
+  secured: true,
+});
+
 const WorkspaceStateSchema = z.object({
   current_page_context: z.string(),
   current_dashboard_uuid: z.string().optional(),
@@ -287,7 +315,7 @@ function declaredBodyBytes(c: Context<AppEnv>, services: Services | undefined): 
   return /^\d+$/.test(header) ? Number(header) : (services?.config.maxBodyBytes ?? MAX_BODY_BYTES);
 }
 
-queryRouter.post("/v1/query", async (c) => {
+queryRouter.post(queryRoute.path, async (c) => {
   const services = c.get("services") as Services | undefined;
   const principal = c.get("principal") ?? ANONYMOUS;
 

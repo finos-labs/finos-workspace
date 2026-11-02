@@ -1,4 +1,5 @@
 import agent from "../../generated/agent.json";
+import agentApi from "../../generated/agentApi.json";
 import agentsJson from "../../generated/agentsJson.json";
 import api from "../../generated/api.json";
 import appsSchema from "../../generated/appsSchema.json";
@@ -41,6 +42,7 @@ import type {
 } from "../../data/types";
 
 export const agentData = agent as unknown as AgentData;
+export const agentApiData = agentApi as unknown as ApiData;
 export const agentsJsonData = agentsJson as unknown as AgentsJsonData;
 export const widgetRequestData = widgetRequests as unknown as WidgetRequestData;
 export const iframeData = iframe as unknown as IframeData;
