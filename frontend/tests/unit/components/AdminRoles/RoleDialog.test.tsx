@@ -225,8 +225,8 @@ describe("RoleDialog", () => {
     const noLimit = (label: string) =>
       screen.getByRole("checkbox", { name: `${label}: no limit` });
     const LIMITS = ["Agent calls per day", "Agent tokens per day", "Upload size (GB)"];
-    const SEARCH_WEB = "Copilot may search the web (SEARCH_WEB)";
-    const FETCH_FROM_WEB = "Copilot may read pages from the web (FETCH_FROM_WEB)";
+    const SEARCH_WEB = "Agent may search the web (SEARCH_WEB)";
+    const FETCH_FROM_WEB = "Agent may read pages from the web (FETCH_FROM_WEB)";
     const checkbox = (name: string) => screen.getByRole("checkbox", { name });
     const sharingSelect = () =>
       within(screen.getByText("Sharing").parentElement as HTMLElement).getByRole(
