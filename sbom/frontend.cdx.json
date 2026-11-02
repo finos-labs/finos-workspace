@@ -12833,95 +12833,6 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40jose-donato/react-grid-layout@1.4.8?package-id=58be06919ef98929",
-      "type": "library",
-      "name": "@jose-donato/react-grid-layout",
-      "version": "1.4.8",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:\\@jose-donato\\/react-grid-layout:\\@jose-donato\\/react-grid-layout:1.4.8:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40jose-donato/react-grid-layout@1.4.8",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "javascript-lock-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "javascript"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "npm"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "javascript-npm-package-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose-donato\\/react-grid-layout:\\@jose_donato\\/react_grid_layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose_donato\\/react_grid_layout:\\@jose-donato\\/react-grid-layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose_donato\\/react_grid_layout:\\@jose_donato\\/react_grid_layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose-donato\\/react-grid:\\@jose-donato\\/react-grid-layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose-donato\\/react-grid:\\@jose_donato\\/react_grid_layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose_donato\\/react_grid:\\@jose-donato\\/react-grid-layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose_donato\\/react_grid:\\@jose_donato\\/react_grid_layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose-donato\\/react:\\@jose-donato\\/react-grid-layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose-donato\\/react:\\@jose_donato\\/react_grid_layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose_donato\\/react:\\@jose-donato\\/react-grid-layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose_donato\\/react:\\@jose_donato\\/react_grid_layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose:\\@jose-donato\\/react-grid-layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jose:\\@jose_donato\\/react_grid_layout:1.4.8:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/package-lock.json"
-        }
-      ]
-    },
-    {
       "bom-ref": "pkg:npm/%40joshwooding/vite-plugin-react-docgen-typescript@0.7.0?package-id=ee3332861d9b3052",
       "type": "library",
       "name": "@joshwooding/vite-plugin-react-docgen-typescript",
@@ -27836,79 +27747,6 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40types/react-grid-layout@1.3.6?package-id=ca30661a9c33a667",
-      "type": "library",
-      "name": "@types/react-grid-layout",
-      "version": "1.3.6",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:\\@types\\/react-grid-layout:\\@types\\/react-grid-layout:1.3.6:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40types/react-grid-layout@1.3.6",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "javascript-lock-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "javascript"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "npm"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "javascript-npm-package-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@types\\/react-grid-layout:\\@types\\/react_grid_layout:1.3.6:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@types\\/react_grid_layout:\\@types\\/react-grid-layout:1.3.6:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@types\\/react_grid_layout:\\@types\\/react_grid_layout:1.3.6:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@types\\/react-grid:\\@types\\/react-grid-layout:1.3.6:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@types\\/react-grid:\\@types\\/react_grid_layout:1.3.6:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@types\\/react_grid:\\@types\\/react-grid-layout:1.3.6:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@types\\/react_grid:\\@types\\/react_grid_layout:1.3.6:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@types\\/react:\\@types\\/react-grid-layout:1.3.6:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@types\\/react:\\@types\\/react_grid_layout:1.3.6:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/package-lock.json"
-        }
-      ]
-    },
-    {
       "bom-ref": "pkg:npm/%40types/react-resizable@3.0.8?package-id=2595e778a9c5ecab",
       "type": "library",
       "name": "@types/react-resizable",
@@ -38905,7 +38743,7 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/finos-workspace@1.0.0?package-id=36a9f5dd3c8ca95b",
+      "bom-ref": "pkg:npm/finos-workspace@1.0.0?package-id=814fc5a89d237b5d",
       "type": "library",
       "name": "finos-workspace",
       "version": "1.0.0",
@@ -56702,6 +56540,79 @@
       ]
     },
     {
+      "bom-ref": "pkg:npm/react-grid-layout@2.3.0?package-id=60c2d46763bdad00",
+      "type": "library",
+      "name": "react-grid-layout",
+      "version": "2.3.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:react-grid-layout:react-grid-layout:2.3.0:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/react-grid-layout@2.3.0",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "javascript-lock-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "javascript"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "npm"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "javascript-npm-package-lock-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:react-grid-layout:react_grid_layout:2.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:react_grid_layout:react-grid-layout:2.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:react_grid_layout:react_grid_layout:2.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:react-grid:react-grid-layout:2.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:react-grid:react_grid_layout:2.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:react_grid:react-grid-layout:2.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:react_grid:react_grid_layout:2.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:react:react-grid-layout:2.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:react:react_grid_layout:2.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/package-lock.json"
+        }
+      ]
+    },
+    {
       "bom-ref": "pkg:npm/react-hook-form@7.75.0?package-id=cafdb660459ead26",
       "type": "library",
       "name": "react-hook-form",
@@ -70299,17 +70210,6 @@
       ]
     },
     {
-      "ref": "pkg:npm/%40jose-donato/react-grid-layout@1.4.8?package-id=58be06919ef98929",
-      "dependsOn": [
-        "pkg:npm/clsx@2.1.1?package-id=445ef13ff3589083",
-        "pkg:npm/fast-equals@4.0.3?package-id=c08a1ba363c2c6bd",
-        "pkg:npm/prop-types@15.8.1?package-id=5fdf7c78e64cdf27",
-        "pkg:npm/react-draggable@4.7.2?package-id=d7cf993ae6f7b0d1",
-        "pkg:npm/react-resizable@3.2.0?package-id=9608433c3e9cac23",
-        "pkg:npm/resize-observer-polyfill@1.5.1?package-id=a7d07d9fdcfaf18d"
-      ]
-    },
-    {
       "ref": "pkg:npm/%40joshwooding/vite-plugin-react-docgen-typescript@0.7.0?package-id=ee3332861d9b3052",
       "dependsOn": [
         "pkg:npm/glob@14.0.3?package-id=da732d8160e38d84",
@@ -71147,12 +71047,6 @@
       "dependsOn": [
         "pkg:npm/%40types/node@14.18.63?package-id=3b8066a8fb57644a",
         "pkg:npm/%40types/node@22.19.1?package-id=c8eef905f5a16ff9"
-      ]
-    },
-    {
-      "ref": "pkg:npm/%40types/react-grid-layout@1.3.6?package-id=ca30661a9c33a667",
-      "dependsOn": [
-        "pkg:npm/%40types/react@19.3.0?package-id=cf69dd31291c2c4e"
       ]
     },
     {
@@ -72075,11 +71969,10 @@
       ]
     },
     {
-      "ref": "pkg:npm/finos-workspace@1.0.0?package-id=36a9f5dd3c8ca95b",
+      "ref": "pkg:npm/finos-workspace@1.0.0?package-id=814fc5a89d237b5d",
       "dependsOn": [
         "pkg:npm/%40fontsource-variable/montserrat@5.3.0?package-id=f37499b46dc9a80f",
         "pkg:npm/%40hookform/resolvers@5.2.2?package-id=5a5d3925216f0b67",
-        "pkg:npm/%40jose-donato/react-grid-layout@1.4.8?package-id=58be06919ef98929",
         "pkg:npm/%40modelcontextprotocol/sdk@1.32.0?package-id=aa5e8c0a25915080",
         "pkg:npm/%40radix-ui/react-avatar@1.3.1?package-id=347294c815b6c688",
         "pkg:npm/%40radix-ui/react-checkbox@1.4.1?package-id=97abbe40912f025b",
@@ -72135,6 +72028,7 @@
         "pkg:npm/react-draggable@4.7.2?package-id=d7cf993ae6f7b0d1",
         "pkg:npm/react-dropzone@14.3.8?package-id=ad7b2907f182cd0f",
         "pkg:npm/react-error-boundary@4.1.2?package-id=9fc55172e93ec37e",
+        "pkg:npm/react-grid-layout@2.3.0?package-id=60c2d46763bdad00",
         "pkg:npm/react-hook-form@7.75.0?package-id=cafdb660459ead26",
         "pkg:npm/react-pdf@10.1.0?package-id=ab2348b0a15b859e",
         "pkg:npm/react-resizable-panels@3.0.4?package-id=fc16f890d12d3b19",
@@ -73255,6 +73149,17 @@
       "ref": "pkg:npm/react-error-boundary@4.1.2?package-id=9fc55172e93ec37e",
       "dependsOn": [
         "pkg:npm/%40babel/runtime@7.28.6?package-id=c0a292b2770225d0"
+      ]
+    },
+    {
+      "ref": "pkg:npm/react-grid-layout@2.3.0?package-id=60c2d46763bdad00",
+      "dependsOn": [
+        "pkg:npm/clsx@2.1.1?package-id=445ef13ff3589083",
+        "pkg:npm/fast-equals@4.0.3?package-id=c08a1ba363c2c6bd",
+        "pkg:npm/prop-types@15.8.1?package-id=5fdf7c78e64cdf27",
+        "pkg:npm/react-draggable@4.7.2?package-id=d7cf993ae6f7b0d1",
+        "pkg:npm/react-resizable@3.2.0?package-id=9608433c3e9cac23",
+        "pkg:npm/resize-observer-polyfill@1.5.1?package-id=a7d07d9fdcfaf18d"
       ]
     },
     {
