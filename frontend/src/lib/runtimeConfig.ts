@@ -4,7 +4,6 @@ import {
   RuntimeConfigSchema,
 } from "./runtimeConfigSchema";
 
-export type { RuntimeConfig } from "./runtimeConfigSchema";
 export { parseBool, parseStringArray } from "./runtimeConfigSchema";
 
 declare global {

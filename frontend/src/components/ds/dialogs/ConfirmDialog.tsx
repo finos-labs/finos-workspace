@@ -21,7 +21,7 @@ interface PropsWithConfirmParams extends BaseProps {
   onConfirm: () => void;
 }
 
-export type ConfirmDialogProps = PropsWithConfirmButton | PropsWithConfirmParams;
+type ConfirmDialogProps = PropsWithConfirmButton | PropsWithConfirmParams;
 
 export function ConfirmDialog(props: ConfirmDialogProps) {
   const {

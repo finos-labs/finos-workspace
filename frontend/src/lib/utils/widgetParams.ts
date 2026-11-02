@@ -20,36 +20,6 @@ function getAuthFlags() {
   };
 }
 
-export function convertHeadersToRecord<PT extends object = Record<string, unknown>>(
-  headers: Record<string, string> | WidgetT["endpointHeaders"] | null,
-  params: PT = {} as PT,
-) {
-  headers = headers || {};
-
-  if (Array.isArray(headers)) {
-    const rows = headers.map(({ key, value, location = "headers" }) => ({
-      key,
-      value,
-      location,
-    }));
-    const entries = (located: (location: string) => boolean) =>
-      rows.filter((row) => located(row.location)).map(({ key, value }) => [key, value]);
-    const newHeaders: Record<string, string> = Object.fromEntries(
-      entries((location) => location === "headers"),
-    );
-    const newParams = {
-      ...params,
-      ...Object.fromEntries(entries((location) => location !== "headers")),
-    } as PT;
-
-    headers = addExtraHeaders(newHeaders);
-    return { headers, newParams };
-  }
-
-  headers = addExtraHeaders(headers);
-  return { headers, newParams: params };
-}
-
 export function addExtraHeaders(
   headers: Record<string, string> = {},
 ): Record<string, string> {
@@ -114,10 +84,6 @@ function modFunction(date: dayjs.Dayjs, dateModifier: DateModifier<string>) {
     return mod === "+" ? date.businessDaysAdd(num) : date.businessDaysSubtract(num);
   }
   return mod === "+" ? date.add(num, unit) : date.subtract(num, unit);
-}
-
-export function getDate(date: DateModifierValue | string) {
-  return date && dayjs(currentDateModifier(date));
 }
 
 export function currentDateModifier(value: DateModifierValue | string) {

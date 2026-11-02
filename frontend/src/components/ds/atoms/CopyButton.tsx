@@ -5,7 +5,7 @@ import { sleep } from "../utils";
 import { Button, type ButtonProps } from "./Button";
 import { Popover } from "./Popover";
 
-export interface CopyButtonProps extends ButtonProps {
+interface CopyButtonProps extends ButtonProps {
   text: string;
 }
 

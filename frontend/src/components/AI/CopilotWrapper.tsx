@@ -2,7 +2,7 @@ import { memo, type ReactNode, useMemo } from "react";
 import { useCopilotAvailable } from "./hooks/useCopilotAvailable";
 import { useHandleStreaming } from "./hooks/useStreamResponse";
 
-export function CopilotWrapper({ children }: { children: ReactNode }) {
+function CopilotWrapper({ children }: { children: ReactNode }) {
   useHandleStreaming();
   const copilotAvailable = useCopilotAvailable();
   const childrenMemo = useMemo(() => children, [children]);

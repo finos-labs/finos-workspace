@@ -2,7 +2,6 @@ import platform
 from contextlib import asynccontextmanager
 from time import time
 
-import prometheus_client
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
@@ -10,7 +9,6 @@ from fastapi.responses import JSONResponse
 from fastapi_pagination import add_pagination
 from fastmcp.utilities.lifespan import combine_lifespans
 from loguru import logger
-from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from slowapi import _rate_limit_exceeded_handler  # noqa: PLC2701
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.cors import CORSMiddleware
@@ -39,14 +37,13 @@ from routers.app import (
 )
 from routers.app.workspace_mcp.asgi import create_workspace_mcp_asgi_app
 from utilities import config
+from utilities.request_metrics import instrument
 from utilities.runtime_metrics import start_runtime_metrics
 
 config.settings.setup_logging()
 logger.info("START")
 logger.info(f"Python: {platform.python_version()}")
 logger.info(f"OS: {platform.system()}")
-
-FASTAPI_KWARGS = {}
 
 
 @asynccontextmanager
@@ -66,7 +63,6 @@ app = FastAPI(
     docs_url=None,
     openapi_url=None,
     lifespan=combine_lifespans(lifespan, workspace_mcp_asgi_app.lifespan),
-    generate_unique_id_function=lambda route: route.name,
 )
 
 app.add_middleware(
@@ -79,14 +75,8 @@ app.add_middleware(
 )
 
 
-ns = {"metric_namespace": "payment_backend", "metric_subsystem": "fastapi"}
-
 if config.settings.PROMETHEUS:
-    instrumentator = Instrumentator(should_group_status_codes=False)
-    instrumentator.add(metrics.requests(**ns))  # type: ignore
-    instrumentator.add(metrics.response_size(**ns))  # type: ignore
-    instrumentator.add(metrics.latency(buckets=(1, 2, 3, 4), **ns))  # type: ignore
-    instrumentator.instrument(app)
+    instrumentator = instrument(app)
 
 
 app.state.limiter = limiter
@@ -194,9 +184,30 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-@app.get("/health")
-@app.get("/healthz")
-@app.get("/")
+@app.get(
+    "/health",
+    summary="Check that the API is running",
+    description=(
+        "Answers `success` with the status 200 while the API runs. A request to `/health` or `/healthz` needs no "
+        "`Origin` header, and every other path, including `/`, needs one."
+    ),
+)
+@app.get(
+    "/healthz",
+    summary="Check that the API is running",
+    description=(
+        "Answers `success` with the status 200 while the API runs. A request to `/health` or `/healthz` needs no "
+        "`Origin` header, and every other path, including `/`, needs one."
+    ),
+)
+@app.get(
+    "/",
+    summary="Check that the API is running",
+    description=(
+        "Answers `success` with the status 200 while the API runs. A request to `/health` or `/healthz` needs no "
+        "`Origin` header, and every other path, including `/`, needs one."
+    ),
+)
 def nginx():
     return JSONResponse(content={"success": True}, status_code=200)
 
@@ -220,12 +231,6 @@ def include_routers():
     ]
     for route in routes_to_remove:
         app.routes.remove(route)
-
-
-def start_prometheus(fork_id: int):
-    if fork_id == 1:
-        logger.info("Starting prometheus server")
-        prometheus_client.start_http_server(6970)
 
 
 include_routers()

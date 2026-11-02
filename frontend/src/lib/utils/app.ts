@@ -917,7 +917,7 @@ export async function getDependentEndpointParamValues(
   return updates;
 }
 
-export function isValidParamOption(
+function isValidParamOption(
   widget: Widget,
   group: Group,
 ): group is GroupTypeT<"param"> {

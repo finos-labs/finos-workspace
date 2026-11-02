@@ -2006,12 +2006,14 @@
         "mcp_server": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 128
+          "maxLength": 128,
+          "description": "The name of a server in this backend's apps.json mcpServers"
         },
         "tool_id": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 128
+          "maxLength": 128,
+          "description": "The name of the tool on that server"
         },
         "args": {
           "type": "object",
@@ -2033,7 +2035,8 @@
               }
             ]
           },
-          "maxProperties": 32
+          "maxProperties": 32,
+          "description": "The arguments that the AI Agent passes to the tool, by name"
         }
       },
       "required": [
@@ -2159,6 +2162,7 @@
         "description": "Milliseconds a response is reused before it is fetched again; false fetches every time"
       },
       "refetchInterval": {
+        "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never",
         "anyOf": [
           {
             "anyOf": [
@@ -2176,8 +2180,7 @@
                 "minLength": 1,
                 "maxLength": 100
               }
-            ],
-            "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
+            ]
           },
           {
             "type": "null"
@@ -2368,7 +2371,7 @@
         "minLength": 1,
         "maxLength": 2048,
         "pattern": "^[^?#]+$",
-        "description": "The WebSocket the widget's plugin is fed from, as a path or an absolute URL with no `?` and no `#`: `http` and `https` become `ws` and `wss`. FINOS Workspace opens it with the backend connection's query credentials and the widget's params as query values, and passes the JSON messages it receives to the plugin"
+        "description": "The WebSocket the widget's plugin is fed from, as a path or an absolute URL with no `?` and no `#`: `http` and `https` become `ws` and `wss`. The widget's params are query values. The browser opens the socket through the FINOS Workspace API, which adds the backend connection's credentials, and passes the JSON messages it receives to the plugin"
       }
     },
     "methods": [

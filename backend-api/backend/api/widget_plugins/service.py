@@ -53,8 +53,11 @@ from .schema_lint import validate_settings_values
 
 CHANGED = "the files changed after discovery; versions are immutable, so publish a new version"
 MAX_REPORT_ORIGINS = 200
+MAX_REPORTS_PER_REQUEST = 50
+MAX_REPORT_DIRECTIVE_LENGTH = 32
+MAX_REPORT_ORIGIN_LENGTH = 255
 REPORT_RETENTION = timedelta(days=30)
-_REPORT_KEYWORDS = {"inline", "eval", "wasm-eval", "data", "blob"}
+REPORT_KEYWORDS = {"inline", "eval", "wasm-eval", "data", "blob"}
 _REPORT_ORIGIN = re.compile(r"^(https?|wss?)://[a-z0-9.-]{1,253}(:\d{1,5})?$")
 
 
@@ -1703,8 +1706,8 @@ async def served_file(
 
 
 def _clean_origin(origin: str) -> str | None:
-    origin = origin.strip().lower()[:255]
-    if origin in _REPORT_KEYWORDS or _REPORT_ORIGIN.match(origin):
+    origin = origin.strip().lower()[:MAX_REPORT_ORIGIN_LENGTH]
+    if origin in REPORT_KEYWORDS or _REPORT_ORIGIN.match(origin):
         return origin
     return None
 
@@ -1743,8 +1746,8 @@ async def record_reports(  # noqa: PLR0913
         ).scalars()
     }
     stored = 0
-    for report in reports[:50]:
-        directive = str(report.get("directive", ""))[:32]
+    for report in reports[:MAX_REPORTS_PER_REQUEST]:
+        directive = str(report.get("directive", ""))[:MAX_REPORT_DIRECTIVE_LENGTH]
         origin = _clean_origin(str(report.get("origin", "")))
         if directive not in {*csp_rules.POLICY_DIRECTIVES, "default-src"} or origin is None:
             continue

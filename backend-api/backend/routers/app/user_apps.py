@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from sqlalchemy import delete, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,7 +22,15 @@ async def validate_app_ownership(db: AsyncSession, app_uuid: UUID, user_uuid: UU
         raise HTTPException(status_code=403, detail=error_message)
 
 
-@router.get("/sync", response_model=schemas.UserAppsComplete)
+@router.get(
+    "/sync",
+    response_model=schemas.UserAppsComplete,
+    summary="List the user's apps",
+    description=(
+        "Returns the apps that the user owns and the apps that others shared with the user, each by UUID. Answers 404 "
+        "when there is no data."
+    ),
+)
 async def get_user_apps(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
@@ -32,9 +40,17 @@ async def get_user_apps(
     return result
 
 
-@router.post("/{app_uuid}", response_model=schemas.UserAppsComplete)
+@router.post(
+    "/{app_uuid}",
+    response_model=schemas.UserAppsComplete,
+    summary="Create or update an app",
+    description=(
+        "Saves the user's app under the UUID in the path: it creates the app, or replaces the content of the user's app "
+        "with that UUID, and returns the user's apps."
+    ),
+)
 async def post_user_app(
-    app_uuid: UUID,
+    app_uuid: Annotated[UUID, Path(description="The UUID of the app.")],
     user_app_data: schemas.UserAppCreate,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -74,9 +90,17 @@ async def post_user_app(
     return await app_helpers.get_user_apps_complete(user=user)
 
 
-@router.delete("/{app_uuid}", response_model=schemas.UserAppsComplete)
+@router.delete(
+    "/{app_uuid}",
+    response_model=schemas.UserAppsComplete,
+    summary="Delete an app",
+    description=(
+        "Deletes the user's own app with that UUID and returns the user's remaining apps. Answers 404 when the user has "
+        "no such app."
+    ),
+)
 async def delete_user_app(
-    app_uuid: UUID,
+    app_uuid: Annotated[UUID, Path(description="The UUID of the app.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
@@ -91,9 +115,17 @@ async def delete_user_app(
     return await app_helpers.get_user_apps_complete(user=user)
 
 
-@router.get("/{app_uuid}/shares", response_model=dict[str, schemas.UserAppShareReturn])
+@router.get(
+    "/{app_uuid}/shares",
+    response_model=dict[str, schemas.UserAppShareReturn],
+    summary="List the shares of an app",
+    description=(
+        "Returns the users with whom the signed-in owner shares the app, by email, each with the permissions that the "
+        "share gives. A share that waits for an admin's approval is included with `pending` set to true."
+    ),
+)
 async def get_shares(
-    app_uuid: UUID,
+    app_uuid: Annotated[UUID, Path(description="The UUID of the app.")],
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(
         auth_helpers.GetCurrentUser(["uuid", "email", "permissions_uuid"], app_session=True)
@@ -135,9 +167,20 @@ async def get_shares(
     return final_result
 
 
-@router.post("/{app_uuid}/share", response_model=schemas.ShareReturn)
+@router.post(
+    "/{app_uuid}/share",
+    response_model=schemas.ShareReturn,
+    summary="Share an app with users",
+    description=(
+        "Shares the app with the users in the request, who must belong to the owner's organization and be allowed to "
+        "receive shares, with the permissions that the request names. A user who already has a share is skipped. When "
+        "the owner is a Developer, the shares become requests that an admin must approve, and the answer has "
+        "`pending_approval` set to true. Answers 400 when the owner has no permissions map, 403 when the user does not "
+        "own the app or may not share, and 402 when none of the recipients is in the owner's organization."
+    ),
+)
 async def add_share(
-    app_uuid: UUID,
+    app_uuid: Annotated[UUID, Path(description="The UUID of the app.")],
     share: schemas.ShareUserApp,
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(
@@ -175,9 +218,18 @@ async def add_share(
     return schemas.ShareReturn.success_instance()
 
 
-@router.patch("/{app_uuid}/share", response_model=schemas.ShareReturn)
+@router.patch(
+    "/{app_uuid}/share",
+    response_model=schemas.ShareReturn,
+    summary="Change the permissions of an app share",
+    description=(
+        "Changes the permissions that the listed recipients have on the app. When the owner is a Developer, the changes "
+        "become requests that an admin must approve, and the answer has `pending_approval` set to true. Answers 403 "
+        "when the user does not own the app or may not share."
+    ),
+)
 async def update_share(
-    app_uuid: UUID,
+    app_uuid: Annotated[UUID, Path(description="The UUID of the app.")],
     share: schemas.ShareUserApp,
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid", "email"], app_session=True)),
@@ -235,9 +287,17 @@ async def update_share(
     return schemas.ShareReturn.success_instance()
 
 
-@router.delete("/{app_uuid}/share", response_model=schemas.SuccessReturn)
+@router.delete(
+    "/{app_uuid}/share",
+    response_model=schemas.SuccessReturn,
+    summary="Stop sharing an app with users",
+    description=(
+        "Ends the shares of the app with the listed emails, and cancels their pending share requests. The owner can end "
+        "any share of the app, and a recipient can end their own."
+    ),
+)
 async def delete_share(
-    app_uuid: UUID,
+    app_uuid: Annotated[UUID, Path(description="The UUID of the app.")],
     share: schemas.ShareUserAppList,
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid", "email"], app_session=True)),
@@ -284,9 +344,15 @@ async def delete_share(
 @router.get(
     "/{app_uuid}/shares/users",
     response_model=dict[str, schemas.UserAppShareReturn],
+    summary="List the users that an app can be shared with",
+    description=(
+        "Returns the other users of the owner's organization who can receive shares, by email. A user who already has a "
+        "share carries the permissions and the date of the share, and the others carry none. Answers 403 when the user "
+        "does not own the app and 400 when the user's organization cannot be found."
+    ),
 )
 async def see_available_users(
-    app_uuid: UUID,
+    app_uuid: Annotated[UUID, Path(description="The UUID of the app.")],
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(
         auth_helpers.GetCurrentUser(["uuid", "email", "permissions_uuid"], app_session=True)
@@ -351,11 +417,19 @@ async def see_available_users(
     return complete_list
 
 
-@router.get("/shared-app-viewed", response_model=list[schemas.SharedAppViewed])
+@router.get(
+    "/shared-app-viewed",
+    response_model=list[schemas.SharedAppViewed],
+    summary="List which shared apps the user has opened",
+    description=(
+        "Returns, for each app that is shared with the signed-in user, whether the user has viewed it. The query "
+        "parameter `app_uuid` limits the list to one app. Answers 400 when no app is shared with the user."
+    ),
+)
 async def get_shared_app_viewed(
     db: AsyncSession = Depends(aget_read_db),
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
-    app_uuid: UUID | None = None,
+    app_uuid: Annotated[UUID | None, Query(description="Return only whether the user has viewed this app.")] = None,
 ):
     shared_app_query = select(
         UserAppShare.user_app_uuid.label("app_uuid"),
@@ -376,9 +450,14 @@ async def get_shared_app_viewed(
     return shared_apps
 
 
-@router.patch("/shared-app-viewed/{app_uuid}", response_model=schemas.SuccessReturn)
+@router.patch(
+    "/shared-app-viewed/{app_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Mark a shared app as viewed",
+    description="Records that the signed-in user has viewed the app that is shared with them.",
+)
 async def patch_shared_app_viewed(
-    app_uuid: UUID,
+    app_uuid: Annotated[UUID, Path(description="The UUID of the app.")],
     db: AsyncSession = Depends(aget_read_db),
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):

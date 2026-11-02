@@ -8,9 +8,6 @@ const FIELDS = [
   ["copilot", "enabled", "AI_COPILOT_ENABLED", "bool"],
   ["copilot", "defaultCopilot", "AI_COPILOT_DEFAULT_COPILOT", "bool"],
   ["copilot", "documentationLinks", "AI_COPILOT_DOCUMENTATION_LINKS", "bool"],
-  ["copilot", "webSearch", "AI_COPILOT_WEB_SEARCH", "bool"],
-  ["copilot", "secFilings", "AI_COPILOT_SEC_FILINGS", "bool"],
-  ["copilot", "jinaAi", "AI_COPILOT_JINA_AI", "bool"],
   ["copilot", "aiEnhancements", "AI_COPILOT_AI_ENHANCEMENTS", "bool"],
   ["copilot", "saveSkillFromChat", "AI_COPILOT_SAVE_SKILL_FROM_CHAT", "bool"],
   ["copilot", "showCustomKey", "AI_SHOW_CUSTOM_COPILOT_KEY", "bool"],
@@ -26,17 +23,13 @@ const FIELDS = [
   ["links", "docsUrl", "DOCS_URL", "string"],
   ["contact", "supportEmail", "SUPPORT_EMAIL", "string"],
   ["whiteLabel", "name", "WL_NAME", "string"],
-  ["whiteLabel", "shortName", "WL_SHORT_NAME", "string"],
   ["whiteLabel", "loginImage", "WL_LOGIN_IMAGE", "string"],
-  ["whiteLabel", "loginImageDark", "WL_LOGIN_IMAGE_DARK", "string"],
   ["whiteLabel", "leftSidebarLogo", "WL_LEFT_SIDEBAR_LOGO", "string"],
   ["whiteLabel", "leftSidebarLogoDark", "WL_LEFT_SIDEBAR_LOGO_DARK", "string"],
   ["whiteLabel", "favicon", "WL_FAVICON", "string"],
   ["whiteLabel", "description", "WL_DESCRIPTION", "string"],
   ["whiteLabel", "keywords", "WL_KEYWORDS", "string"],
-  ["whiteLabel", "mainColor", "WL_MAIN_COLOR", "string"],
-  ["whiteLabel", "fontFamily", "WL_FONT_FAMILY", "string"],
-  ["whiteLabel", "showFloatingThemePreview", "WL_SHOW_FLOATING_THEME_PREVIEW", "bool"],
+  ["whiteLabel", "stylesheet", "WL_STYLESHEET", "string"],
 ];
 
 function valueOf(variable, type, raw) {

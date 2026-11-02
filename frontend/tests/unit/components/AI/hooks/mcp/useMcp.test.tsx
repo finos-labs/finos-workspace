@@ -40,10 +40,7 @@ vi.mock("@modelcontextprotocol/sdk/client/sse.js", () => ({
 
 const auth = vi.hoisted(() => ({
   proxyFetch: vi.fn(),
-  localFetch: vi.fn(),
   startMcpOAuth: vi.fn(),
-  getLocalMcpServerHeaders: vi.fn(),
-  createLocalMcpFetch: vi.fn(),
   createMcpProxyFetch: vi.fn(),
   deleteMcpOAuthGrant: vi.fn(),
 }));
@@ -51,8 +48,6 @@ const auth = vi.hoisted(() => ({
 vi.mock("~/components/AI/hooks/mcp/mcpServerAuth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("~/components/AI/hooks/mcp/mcpServerAuth")>()),
   startMcpOAuth: auth.startMcpOAuth,
-  getLocalMcpServerHeaders: auth.getLocalMcpServerHeaders,
-  createLocalMcpFetch: auth.createLocalMcpFetch,
   createMcpProxyFetch: auth.createMcpProxyFetch,
   deleteMcpOAuthGrant: auth.deleteMcpOAuthGrant,
 }));
@@ -82,7 +77,6 @@ const localOptions: UseMcpOptionsT = {
   serverName: "Local MCP",
   autoReconnect: false,
   autoRetry: false,
-  isLocal: true,
 };
 
 class FakeBroadcastChannel {
@@ -104,9 +98,7 @@ beforeEach(() => {
   sdk.transportOptions = [];
   sdk.connect.mockResolvedValue(undefined);
   auth.createMcpProxyFetch.mockReturnValue(auth.proxyFetch);
-  auth.createLocalMcpFetch.mockReturnValue(auth.localFetch);
   auth.startMcpOAuth.mockResolvedValue("https://auth.example.com/authorize?state=s1");
-  auth.getLocalMcpServerHeaders.mockResolvedValue({ "X-Api-Key": "local-key" });
   FakeBroadcastChannel.channels = [];
   vi.stubGlobal("BroadcastChannel", FakeBroadcastChannel);
   useThemeStore.setState({ mcpAuthPopup: null });
@@ -180,30 +172,25 @@ describe("useMcp", () => {
     expect(useThemeStore.getState().mcpAuthPopup).toBeNull();
   });
 
-  it("calls a local server directly with the headers the API keeps for it", async () => {
-    useMcpToolsStore.setState({
-      servers: [
-        {
-          id: "local-1",
-          name: "Local MCP",
-          url: localOptions.url,
-          enabled: true,
-          tools: [],
-          isLocal: true,
-          customHeaderNames: ["X-Api-Key"],
-        },
-      ],
-    });
+  it("connects a server on localhost through the API proxy like any other", async () => {
     const { result } = renderHook(() => useMcp(localOptions));
 
     await waitFor(() => expect(result.current.state).toBe("ready"));
 
-    expect(auth.getLocalMcpServerHeaders).toHaveBeenCalledWith(localOptions.url);
-    expect(auth.createLocalMcpFetch).toHaveBeenCalledWith({ "X-Api-Key": "local-key" });
-    expect(auth.createMcpProxyFetch).not.toHaveBeenCalled();
+    expect(auth.createMcpProxyFetch).toHaveBeenCalledWith(localOptions.url);
     expect((sdk.transportOptions[0] as Record<string, unknown>).fetch).toBe(
-      auth.localFetch,
+      auth.proxyFetch,
     );
+  });
+
+  it("signs in through the API when a server on localhost asks for it", async () => {
+    sdk.connect.mockRejectedValue(new McpAuthRequiredError(localOptions.url));
+    const { result } = renderHook(() => useMcp(localOptions));
+
+    await waitFor(() =>
+      expect(auth.startMcpOAuth).toHaveBeenCalledWith(localOptions.url),
+    );
+    expect(result.current.state).toBe("authenticating");
   });
 
   it("forgets the API's sign-in when its storage is cleared", async () => {

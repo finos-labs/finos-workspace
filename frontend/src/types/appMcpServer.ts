@@ -1,4 +1,4 @@
-export type McpServerAuthType = "oauth" | "token";
+type McpServerAuthType = "oauth" | "token";
 
 export type AppMcpServer = {
   name: string;

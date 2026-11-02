@@ -92,6 +92,7 @@ export async function createCustomTemplateTab({
 
   const shouldUseCurrentDashboard =
     !!currentDashboard &&
+    currentDashboardItem?.data?.locked !== true &&
     dashboardBehavior !== "new" &&
     (dashboardBehavior === "current" || hasZeroWidgets);
   const id = shouldUseCurrentDashboard ? currentDashboard : uuidv4();
@@ -281,6 +282,7 @@ export async function createCustomTemplateTab({
         widgets: templateWidgets,
         gridLayout,
         groups: newGroups,
+        ...(template.allowCustomization === false && { locked: true }),
       },
     },
     true,

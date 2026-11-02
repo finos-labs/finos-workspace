@@ -31,7 +31,6 @@ import {
   PopoverTrigger,
 } from "~/components/ds/atoms/Popover";
 import { Select, SelectTriggerVariants } from "~/components/ds/atoms/Select";
-import { Tag } from "~/components/ds/atoms/Tag";
 import { ConfirmDialog } from "~/components/ds/dialogs/ConfirmDialog";
 import SearchResultsNotFound from "~/components/General/SearchResultsNotFound";
 import Icon from "~/components/Icon";
@@ -53,7 +52,6 @@ import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowUserAppsStore } from "~/lib/state/userApps";
 import { cn } from "~/lib/utils";
 
-const BETA_TAG = <Tag color="dark-blue">Beta</Tag>;
 const FILTER_OPTIONS: FilterOption[] = [
   { label: "All Apps", value: "all" },
   { label: "My Apps", value: "user" },

@@ -4,7 +4,7 @@ from functools import partial
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, Path, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,6 +43,11 @@ SESSION_CHECK_SECONDS = 10.0
 @router.get(
     "/app/workspace-mcp/tokens",
     response_model=list[TokenMetadata],
+    summary="List the user's FINOS Workspace MCP tokens",
+    description=(
+        "Returns the personal access tokens that the signed-in user created for the FINOS Workspace MCP server and has "
+        "not revoked, newest first. A token's secret is shown only once, when it is created."
+    ),
 )
 async def list_tokens(
     user: Annotated[
@@ -65,6 +70,12 @@ async def list_tokens(
 @router.post(
     "/app/workspace-mcp/tokens",
     response_model=TokenCreateResponse,
+    summary="Create a FINOS Workspace MCP token",
+    description=(
+        "Creates a personal access token with the given name for the FINOS Workspace MCP server and returns it. The "
+        "field `token` holds the secret, and this answer is the only time that it can be read, because the API stores "
+        "only a hash of it."
+    ),
 )
 async def create_token(
     request: TokenCreateRequest,
@@ -99,9 +110,14 @@ async def create_token(
 @router.delete(
     "/app/workspace-mcp/tokens/{token_uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
+    summary="Revoke a FINOS Workspace MCP token",
+    description=(
+        "Revokes the user's token with the given UUID, so that it no longer authenticates. A UUID that is not one of "
+        "the user's active tokens is ignored, and the answer is 204 in both cases."
+    ),
 )
 async def revoke_token(
-    token_uuid: UUID,
+    token_uuid: Annotated[UUID, Path(description="The UUID of the token.")],
     user: Annotated[
         auth_helpers.CustomRow, Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True))
     ],
@@ -125,6 +141,12 @@ async def revoke_token(
 @router.post(
     "/app/workspace-mcp/bridge/session/start",
     response_model=BrowserSessionStartResponse,
+    summary="Start a bridge session for the open tab",
+    description=(
+        "Starts a session through which the FINOS Workspace MCP server sends commands to the signed-in user's browser "
+        "tab, and returns the session with the address of the WebSocket that the tab then opens. The request names the "
+        "client and the dashboard and inner tab that the tab shows."
+    ),
 )
 async def start_bridge_session(
     payload: BrowserSessionStartRequest,

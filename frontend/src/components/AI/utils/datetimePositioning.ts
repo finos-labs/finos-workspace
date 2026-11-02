@@ -1,13 +1,13 @@
 import type { AIMessage, MessageGroup } from "~/lib/state/copilot";
 
-export interface DatetimePositionStrategy {
+interface DatetimePositionStrategy {
   shouldShowDatetime: boolean;
   targetGroupId: string | null;
   timestamp: number;
   reason: string;
 }
 
-export function getDatetimePositionStrategy(
+function getDatetimePositionStrategy(
   message: AIMessage,
   allGroups: MessageGroup[],
   currentGroupIndex: number,

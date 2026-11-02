@@ -20,17 +20,6 @@ from api import base, crypto, database, schemas
 Base = database.Base
 
 
-def get_mediumblob(dialect: str) -> MEDIUMBLOB | BYTEA | LargeBinary:
-    if dialect == "mysql":
-        return MEDIUMBLOB()
-    elif dialect == "postgresql":
-        return BYTEA()
-    elif dialect == "sqlite":
-        return LargeBinary()
-    else:
-        raise NotImplementedError(f"Unsupported dialect: {dialect}")
-
-
 class JSONType(TypeDecorator):
     impl = JSON
     cache_ok = True
@@ -86,33 +75,6 @@ class DATETIME(TypeDecorator):
         params = {"timezone": self.timezone, "fsp": self.fsp}
         params_str = ", ".join(f"{k}={v}" for k, v in params.items() if v)
         return f"{self.__class__.__name__}({params_str})"
-
-
-class GzipType(TypeDecorator):
-    impl = MEDIUMBLOB
-    cache_ok = True
-
-    def process_bind_param(self, value, _):  # noqa: PLR6301
-        if value is not None:
-            return gzip.compress(value.encode("utf-8"))
-        return None
-
-    def process_result_value(self, value, _):  # noqa: PLR6301
-        if value is not None:
-            try:
-                return gzip.decompress(value).decode("utf-8")
-            except (gzip.BadGzipFile, UnicodeDecodeError, EOFError):
-                return None
-        return None
-
-    @classmethod
-    def load_dialect_impl(self, dialect):
-        if dialect.name == "postgresql":
-            return dialect.type_descriptor(BYTEA)
-        if dialect.name == "sqlite":
-            return dialect.type_descriptor(LargeBinary())
-
-        return dialect.type_descriptor(MEDIUMBLOB)
 
 
 class HttpUrlType(TypeDecorator):

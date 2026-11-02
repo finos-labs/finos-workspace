@@ -14,7 +14,7 @@ import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import type { DisplaySettings } from "~/types/auth.type";
 
-export function useSaveSettings(notify = true) {
+function useSaveSettings(notify = true) {
   const displaySettings = useShallowThemeStore((state) => state.getDisplaySettings());
 
   const hasItems = useShallowAppStore((state) => state.hasItems || !!state.rootItem);

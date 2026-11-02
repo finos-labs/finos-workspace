@@ -6,6 +6,8 @@ import {
   isApiUrl,
   isDefaultCopilotUrl,
   MAX_PROXIED_IN_FLIGHT,
+  setSourceUrlLookup,
+  sourceStreamHref,
 } from "~/lib/utils/fetch";
 import { mockConfig } from "../../../mocks/runtimeConfig";
 
@@ -95,6 +97,43 @@ describe("isDefaultCopilotUrl", () => {
     mockConfig.urls.ai = "";
 
     expect(isDefaultCopilotUrl("http://localhost:3000/ai/v1/query")).toBe(false);
+  });
+});
+
+describe("sourceStreamHref", () => {
+  const stream = {
+    url: "https://backend.test/v1/ws/ticks?symbol=A%26B",
+    method: "GET" as const,
+    paramHeaders: {},
+  };
+
+  afterEach(() => {
+    setSourceUrlLookup(() => undefined);
+    mockConfig.urls.backend = "http://localhost:3000";
+  });
+
+  it("opens a connection's socket through the API, which names the address and adds the credentials", () => {
+    expect(sourceStreamHref({ ...stream, sourceId: "src-1" })).toBe(
+      `http://localhost:3000/app/data-connectors/api-source/src-1/stream?url=${encodeURIComponent(stream.url)}`,
+    );
+  });
+
+  it("follows an API served under a path", () => {
+    mockConfig.urls.backend = "http://localhost:3000/api/";
+
+    expect(sourceStreamHref({ ...stream, sourceId: "src-1" })).toMatch(
+      /^http:\/\/localhost:3000\/api\/app\/data-connectors\/api-source\/src-1\/stream\?url=/,
+    );
+  });
+
+  it("opens the address itself for a widget that has no connection", () => {
+    expect(sourceStreamHref(stream)).toBe(stream.url);
+  });
+
+  it("opens an address off the connection's origin itself, with none of its credentials", () => {
+    setSourceUrlLookup(() => "https://other.test/v1");
+
+    expect(sourceStreamHref({ ...stream, sourceId: "src-1" })).toBe(stream.url);
   });
 });
 

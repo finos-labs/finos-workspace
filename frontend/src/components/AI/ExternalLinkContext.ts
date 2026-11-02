@@ -11,7 +11,7 @@ type ExternalLinkContextValue = {
 
 export const ExternalLinkContext = createContext<ExternalLinkContextValue | null>(null);
 
-export function useExternalLink() {
+function useExternalLink() {
   return useContext(ExternalLinkContext);
 }
 

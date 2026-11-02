@@ -5,7 +5,7 @@ backend whose `widgets.json` declares a widget of type `plotly`, and whose endpo
 a Plotly figure as JSON, is drawn by this plugin once a FINOS Workspace deployment has approved
 and enabled it. It is an example in the repository's `docs/examples/`, a package of its own
 that nothing in FINOS Workspace imports, built and deployed the way any plugin is
-([AUTHORING.md](../../widget-plugins/AUTHORING.md)).
+([Plugin package and manifest](../../reference/plugins/package-and-manifest.mdx)).
 
 ## The contract
 
@@ -48,7 +48,7 @@ figure plotly.js cannot draw shows why on the card.
 
 ### The rows: `raw`
 
-A widget can give the rows its chart is made from ([WIDGETS-JSON.md 4.11](../../widget-plugins/WIDGETS-JSON.md)).
+A widget can give the rows its chart is made from ([Widget rows](../../reference/protocols/raw-rows.md)).
 With `"raw": true`, FINOS Workspace asks the endpoint again with the widget's params and
 `raw=true`, and reads the rows at `data.rawDataKey`, else the answer's `results`, else the
 whole answer. The AI agent and MCP clients get those rows instead of the figure, and the
@@ -102,7 +102,7 @@ An endpoint that answers both in one shape, `{"results": {"chart": <figure>, "re
   time it needs them. Tile maps (`scattermap`, `densitymap`, `choroplethmap`) are drawn
   with the figure's own base map when the frame can reach it: the hosts its style names
   (by default `basemaps.cartocdn.com`), which a superuser allows in the plugin's CSP
-  override ([SECURITY.md](../../widget-plugins/SECURITY.md)); the plugin's Blocked
+  override ([Plugin frame policy](../../reference/plugins/frame-policy.mdx)); the plugin's Blocked
   requests list names them. Otherwise they are drawn over a base map made from the same
   outlines, at 1:50m: water, land, lakes, country borders and coastlines, in the site's
   light or dark mode. Labels on it are drawn with the browser's own fonts, so nothing is
@@ -185,7 +185,7 @@ On a FINOS Workspace deployment (`local/LOCAL_SETUP.md`, "Widget plugins", for y
 Every change is a new version: raise `version` in `package.json` and build again.
 FINOS Workspace blocks an approved version whose files change. On your own stack, the
 plugin's Deployment page starts the next version for you and serves it from its files
-as you rebuild them (`docs/widget-plugins/AUTHORING.md`, section 11).
+as you rebuild them (see the documentation site, How to build and try a widget plugin).
 
 ## Try it
 

@@ -41,6 +41,7 @@ import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import { buildAppArtifactSource, buildWidgetSourceResolver } from "./appArtifactUtils";
 import {
+  ARTIFACT_BASE_STYLE,
   artifactContentSecurityPolicy,
   artifactNonce,
   withArtifactPolicy,
@@ -140,8 +141,7 @@ const HTMLArtifact = memo<ArtifactProps<"html">>(({ artifact, inAiMessage }) => 
       WHOLE_DOCUMENT: true,
     });
 
-    const injectedStyle =
-      "<style>body{margin:0;padding:0}table{display:block;overflow-x:auto;max-width:100%}</style>";
+    const injectedStyle = ARTIFACT_BASE_STYLE;
 
     const nonce = allowJsExecution ? artifactNonce() : undefined;
     const injectedScript = nonce

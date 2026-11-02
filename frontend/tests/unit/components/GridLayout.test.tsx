@@ -60,6 +60,7 @@ describe("GridLayout", () => {
     setLayouts: vi.fn(),
     getWidget: vi.fn(),
     isShared: false,
+    locked: false,
   };
 
   const defaultThemeStoreValue = {
@@ -173,9 +174,14 @@ describe("GridLayout", () => {
     expect(lastCall.dragConfig.enabled).toBe(false);
   });
 
-  it("handles locked mode correctly", () => {
+  it("keeps widgets in place but lets them be resized on a locked dashboard", () => {
+    mockUseTabContext.mockReturnValue({
+      ...defaultTabContextValue,
+      locked: true,
+    });
+
     render(
-      <GridLayout locked={true} saveTab={true}>
+      <GridLayout saveTab={true}>
         <div>Content</div>
       </GridLayout>,
     );
@@ -184,7 +190,19 @@ describe("GridLayout", () => {
 
     const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
     expect(lastCall.dragConfig.enabled).toBe(false);
-    expect(lastCall.resizeConfig.enabled).toBe(false);
+    expect(lastCall.resizeConfig.enabled).toBe(true);
+  });
+
+  it("lets widgets be moved and resized on an unlocked dashboard", () => {
+    render(
+      <GridLayout saveTab={true}>
+        <div>Content</div>
+      </GridLayout>,
+    );
+
+    const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
+    expect(lastCall.dragConfig.enabled).toBe(true);
+    expect(lastCall.resizeConfig.enabled).toBe(true);
   });
 
   it("renders drag and drop input element", () => {

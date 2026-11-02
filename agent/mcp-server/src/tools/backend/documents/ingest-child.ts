@@ -15,7 +15,7 @@ export interface IngestChildOutput {
   totalChars: number;
 }
 
-export async function readAndChunk(input: IngestChildInput): Promise<IngestChildOutput> {
+async function readAndChunk(input: IngestChildInput): Promise<IngestChildOutput> {
   const extracted = await extractDocument(input.format, Uint8Array.from(Buffer.from(input.base64, "base64")));
   if (extracted.totalChars === 0) {
     throw new Error("it has no text to search (a scanned document is only pictures of text)");

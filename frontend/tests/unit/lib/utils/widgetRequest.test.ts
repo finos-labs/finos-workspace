@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ParamDef, ParamDefT, WidgetT } from "~/components/types";
-import { currentDateModifier } from "~/lib/utils/widgetParams";
+import { createParamDefs, currentDateModifier } from "~/lib/utils/widgetParams";
 import {
   type BuiltRequest,
   buildFormRequest,
@@ -466,5 +466,27 @@ describe("a form's submission", () => {
       paramName: "note",
       kind: "missing",
     });
+  });
+});
+
+describe("a default of false or 0", () => {
+  const params = createParamDefs({
+    params: [
+      { paramName: "active", type: "boolean", value: false },
+      { paramName: "offset", type: "number", value: 0 },
+    ],
+  } as Parameters<typeof createParamDefs>[0]);
+
+  it("is sent until the user changes it", () => {
+    const request = sent(buildWidgetRequest(widget("/rows", params), undefined));
+    expect(request.url).toBe(`${BACKEND}/rows?active=false&offset=0`);
+  });
+
+  it("is sent in the body of a POST", () => {
+    const inBody = params.map((param) => ({ ...param, in: "body" as const }));
+    const request = sent(
+      buildWidgetRequest(widget("/rows", inBody, {}, { method: "POST" }), undefined),
+    );
+    expect(JSON.parse(request.body ?? "")).toEqual({ active: false, offset: 0 });
   });
 });

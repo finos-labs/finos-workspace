@@ -12,7 +12,7 @@ export class BundleIntegrityError extends Error {
   }
 }
 
-export interface VerifiedBundle {
+interface VerifiedBundle {
   entry: ArrayBuffer;
   styles: string[];
 }

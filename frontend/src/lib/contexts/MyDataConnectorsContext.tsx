@@ -33,7 +33,7 @@ import { useAppStore } from "../state/app";
 import { isRenderableVizType } from "../types/app";
 import { convertAdvancedBackend, generateRandomName, uuidv4 } from "../utils";
 
-export type SelectedWidget = WidgetCardItem &
+type SelectedWidget = WidgetCardItem &
   Partial<Omit<WidgetType, keyof WidgetCardItem>> & {
     parentName?: string;
     extension?: string;
@@ -42,7 +42,7 @@ export type SelectedWidget = WidgetCardItem &
     backendId?: string;
   };
 
-export const createDashboardWidget = (
+const createDashboardWidget = (
   widget: SelectedWidget,
   widgetType: string,
 ): WidgetT | null => {
@@ -154,12 +154,12 @@ export const findDeletableWidgets = (
     (elem) => !(elem.shared || elem.selectionId.startsWith("backend,")),
   );
 
-export const FILE_TYPES = {
+const FILE_TYPES = {
   pdf: ["pdf"],
   text: ["txt", "md", "docx", "html"],
 };
 
-export type StoredFileWidget = {
+type StoredFileWidget = {
   selectionId: string;
   id: string;
   name: string;
@@ -187,12 +187,6 @@ type SelectedWidgetsContextType = {
 
 function formatType(type: string): string {
   return type.toUpperCase();
-}
-
-const formattedFileTypes = Object.keys(FILE_TYPES).map((key) => formatType(key));
-
-export function isFileRoot(type: string) {
-  return formattedFileTypes.includes(type);
 }
 
 function formatFile(files: StoredFile[]): StoredFileWidget[] {
@@ -242,6 +236,7 @@ export function createAllElements(params: {
   widgetMetadata?: WidgetMetadataItem[];
   rolePermissionsData?: UserResourcePermissionsT;
   withOthers?: boolean;
+  includeOrganizationBackends?: boolean;
 }): ElementType[] {
   const {
     storedFiles,
@@ -249,7 +244,12 @@ export function createAllElements(params: {
     widgetMetadata,
     rolePermissionsData,
     withOthers = true,
+    includeOrganizationBackends = false,
   } = params;
+
+  const isListed = (source: Source) =>
+    source.status === "success" ||
+    (includeOrganizationBackends && source.isEntityBackend === true);
 
   const fileIds = storedFiles?.reduce(
     (acc, file) => {
@@ -259,7 +259,7 @@ export function createAllElements(params: {
     {} as Record<string, boolean>,
   );
 
-  const ownedBackends = apiSources.filter((item) => item.status === "success");
+  const ownedBackends = apiSources.filter(isListed);
 
   const ownedBackendIds = ownedBackends.reduce(
     (acc, backend) => {
@@ -305,14 +305,12 @@ export function createAllElements(params: {
     {
       type: "backend",
       items: [
-        ...apiSources
-          .filter((item) => item.status === "success")
-          .map((item) => ({
-            ...item,
-            widgets: formatBackendWidgets(item),
-            selectionId: `backend,${item.uuid ?? item.id}`,
-            shared: (item.uuid && sharedBackendIds?.[item.uuid]) || false,
-          })),
+        ...apiSources.filter(isListed).map((item) => ({
+          ...item,
+          widgets: formatBackendWidgets(item),
+          selectionId: `backend,${item.uuid ?? item.id}`,
+          shared: (item.uuid && sharedBackendIds?.[item.uuid]) || false,
+        })),
         ...sharedBackends,
       ],
     },

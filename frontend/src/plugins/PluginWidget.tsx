@@ -18,6 +18,7 @@ import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGrou
 import { useJsonData } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { sourceStreamHref } from "~/lib/utils/fetch";
 import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
 import {
   assetPath,
@@ -37,6 +38,14 @@ import {
 } from "./authority";
 import { BundleIntegrityError, loadAsset } from "./bundle";
 import { validateDefinition } from "./definition";
+import {
+  MAX_CLIPBOARD_BYTES,
+  MAX_COPILOT_CONTEXT_BYTES,
+  MAX_NOTIFY_LENGTH,
+  NOTIFY_LEVELS,
+  NOTIFY_RATE,
+  SERVER_CALL_RATE,
+} from "./limits";
 import PluginFrame, { type FrameStatus, type PluginFrameHandle } from "./PluginFrame";
 import { CommandError, MAX_EXPORT_BYTES } from "./protocol";
 import {
@@ -53,9 +62,6 @@ import {
   type PluginInstanceStorage,
   type ResolvedPluginWidget,
 } from "./types";
-
-const MAX_COPILOT_CONTEXT_BYTES = 256 * 1024;
-const MAX_NOTIFY_LENGTH = 500;
 
 export function useResolvedPluginWidget(): ResolvedPluginWidget | null {
   const { widget, widgetFromJSON } = useWidgetContext();
@@ -157,8 +163,12 @@ function PluginWidgetBody({
   const [status, setStatus] = useState<FrameStatus>({ kind: "booting" });
   const [link, setLink] = useState<string | null>(null);
   const [copilotContext, setCopilotContext] = useState<unknown>(undefined);
-  const notifyLimiter = useRef(new RateLimiter(0.5, 5));
-  const serverLimiter = useRef(new RateLimiter(2, 10));
+  const notifyLimiter = useRef(
+    new RateLimiter(NOTIFY_RATE.perSecond, NOTIFY_RATE.burst),
+  );
+  const serverLimiter = useRef(
+    new RateLimiter(SERVER_CALL_RATE.perSecond, SERVER_CALL_RATE.burst),
+  );
   const { updateGroupedParams } = useParamGroupBindings();
 
   const permissions = useMemo(() => new Set(pluginWidget.permissions), [pluginWidget]);
@@ -208,9 +218,10 @@ function PluginWidgetBody({
       endpoint: { url: streamHref, method: "GET" },
       params: widget.params,
       storage: widget.storage,
+      sourceId: widget.sourceId,
     });
-    return built?.ok ? webSocketUrl(built.request.url) : null;
-  }, [streamHref, widget.params, widget.storage?.params]);
+    return built?.ok ? webSocketUrl(sourceStreamHref(built.request)) : null;
+  }, [streamHref, widget.params, widget.storage?.params, widget.sourceId]);
   const frameRunning = status.kind === "running";
   const stream = useRef<Stream | null>(null);
   useEffect(() => {
@@ -421,8 +432,10 @@ function PluginWidgetBody({
           if (!notifyLimiter.current.take())
             throw new CommandError("rate_limited", "too many notifications");
           const text = String(args.text ?? "").slice(0, MAX_NOTIFY_LENGTH);
-          const level = ["success", "warning", "error"].includes(String(args.level))
-            ? (args.level as "success" | "warning" | "error")
+          const level = (NOTIFY_LEVELS as readonly string[]).includes(
+            String(args.level),
+          )
+            ? (args.level as (typeof NOTIFY_LEVELS)[number])
             : "info";
           toast[level](text, { description: plugin.name });
           return {};
@@ -432,7 +445,7 @@ function PluginWidgetBody({
           return {};
         case "core:clipboard:write": {
           const text = String(args.text ?? "");
-          if (text.length > 1024 * 1024)
+          if (text.length > MAX_CLIPBOARD_BYTES)
             throw new CommandError("too_large", "at most 1 MiB");
           await navigator.clipboard.writeText(text).catch(() => {
             throw new CommandError("unavailable", "the clipboard refused the write");

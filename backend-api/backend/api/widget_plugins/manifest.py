@@ -50,8 +50,10 @@ PERMISSIONS_LATER = frozenset({"core:data:query"})
 MAX_ROUTE_BYTES = 5 * 1024 * 1024
 
 
+TRAITS = ("data", "params", "definition", "config", "adminSettings", "state", "theme", "capabilities", "meta")
+
 _TRAIT_BINDING = re.compile(
-    r"^(data|params|definition|config|adminSettings|state|theme|capabilities|meta)$"
+    rf"^({'|'.join(TRAITS)})$"
     r"|^param:[A-Za-z_][A-Za-z0-9_.-]{0,63}$"
     r"|^(config|adminSettings):[A-Za-z][A-Za-z0-9_]{0,63}$"
 )
@@ -84,15 +86,19 @@ class BaseModel(PydanticBaseModel):
 class Publisher(BaseModel):
     model_config = closed
 
-    name: Annotated[str, StringConstraints(min_length=1, max_length=100)]
-    url: Annotated[str, StringConstraints(pattern=r"^https://[^\s]{1,200}$")] | None = None
+    name: Annotated[str, StringConstraints(min_length=1, max_length=100)] = Field(description="The publisher's name.")
+    url: Annotated[str, StringConstraints(pattern=r"^https://[^\s]{1,200}$")] | None = Field(
+        default=None, description="The publisher's website, an https URL."
+    )
 
 
 class HostTarget(BaseModel):
     model_config = closed
 
-    api: int
-    afm: Annotated[str, StringConstraints(max_length=16)]
+    api: int = Field(description="The host API version that the package is built against.")
+    afm: Annotated[str, StringConstraints(max_length=16)] = Field(
+        description="The AFM version that the package follows, as text."
+    )
 
     @model_validator(mode="after")
     def supported(self):
@@ -106,8 +112,10 @@ class HostTarget(BaseModel):
 class Entry(BaseModel):
     model_config = closed
 
-    module: PackagePath
-    styles: list[PackagePath] = Field(default_factory=list, max_length=8)
+    module: PackagePath = Field(description="The module, one .js file outside backend/.")
+    styles: list[PackagePath] = Field(
+        default_factory=list, max_length=8, description="The style sheets, .css files outside backend/."
+    )
 
     @field_validator("module")
     @classmethod
@@ -127,55 +135,94 @@ class Entry(BaseModel):
 class Secret(BaseModel):
     model_config = closed
 
-    name: Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,63}$")]
-    purpose: Sentence
+    name: Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,63}$")] = Field(
+        description="The secret's name, in lowercase letters, digits and underscores."
+    )
+    purpose: Sentence = Field(description="What the secret is for. Admins read this text in the review.")
 
 
 class DataSource(BaseModel):
     model_config = closed
 
-    id: Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_-]{0,63}$")]
-    purpose: Sentence
+    id: Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_-]{0,63}$")] = Field(
+        description="The data source's id, unique within the plugin."
+    )
+    purpose: Sentence = Field(
+        description="What the backend reads from the data source. Admins read this text in the review."
+    )
 
 
 class RouteResponse(BaseModel):
     model_config = closed
 
-    maxBytes: int = Field(default=1024 * 1024, ge=1, le=MAX_ROUTE_BYTES)  # noqa: N815
-    timeoutMs: int = Field(default=10_000, ge=100, le=MAX_TIMEOUT_MS)  # noqa: N815
+    maxBytes: int = Field(  # noqa: N815
+        default=1024 * 1024,
+        ge=1,
+        le=MAX_ROUTE_BYTES,
+        description="The most bytes that the route may answer with. The deployment caps the value as well.",
+    )
+    timeoutMs: int = Field(  # noqa: N815
+        default=10_000,
+        ge=100,
+        le=MAX_TIMEOUT_MS,
+        description="How long a call may take, in milliseconds. The deployment caps the value as well.",
+    )
 
 
 class Route(BaseModel):
     model_config = closed
 
-    id: Annotated[str, StringConstraints(pattern=PROXY_ID_PATTERN)]
-    args: dict[Annotated[str, StringConstraints(pattern=NAME_PATTERN)], RouteArg] = Field(
-        default_factory=dict, max_length=32
+    id: Annotated[str, StringConstraints(pattern=PROXY_ID_PATTERN)] = Field(
+        description="The route's id, unique within the backend."
     )
-    secrets: list[Annotated[str, StringConstraints(pattern=NAME_PATTERN)]] = Field(default_factory=list, max_length=16)
-    response: RouteResponse = Field(default_factory=RouteResponse)
+    args: dict[Annotated[str, StringConstraints(pattern=NAME_PATTERN)], RouteArg] = Field(
+        default_factory=dict,
+        max_length=32,
+        description="The arguments that the route accepts, by name. The API checks them before it makes the call.",
+    )
+    secrets: list[Annotated[str, StringConstraints(pattern=NAME_PATTERN)]] = Field(
+        default_factory=list,
+        max_length=16,
+        description="The secrets that the route sends, by name. Each one is declared in the manifest's secrets.",
+    )
+    response: RouteResponse = Field(default_factory=RouteResponse, description="The limits of the route's answer.")
 
 
 class Backend(BaseModel):
     model_config = closed
 
-    protocol: Literal[1]
-    routes: list[Route] = Field(min_length=1, max_length=32)
+    protocol: Literal[1] = Field(description="The version of the protocol that the API speaks with the backend.")
+    routes: list[Route] = Field(min_length=1, max_length=32, description="The routes that the backend serves.")
 
 
 class Server(BaseModel):
     model_config = closed
 
-    network: list[Annotated[str, StringConstraints(max_length=255)]] = Field(default_factory=list, max_length=32)
-    proxies: list[Proxy] = Field(default_factory=list, max_length=32)
-    backend: Backend | None = None
+    network: list[Annotated[str, StringConstraints(max_length=255)]] = Field(
+        default_factory=list,
+        max_length=32,
+        description=(
+            "The https origins that the server may call for the plugin and, for a backend, "
+            "the tcp://host:port endpoints that it opens."
+        ),
+    )
+    proxies: list[Proxy] = Field(
+        default_factory=list, max_length=32, description="The requests that the server makes on behalf of widgets."
+    )
+    backend: Backend | None = Field(default=None, description="The plugin's own server-side code.")
 
 
 class SettingsSpec(BaseModel):
     model_config = closed
 
-    schema_: dict[str, Any] = Field(default_factory=dict, alias="schema")
-    defaults: dict[str, Any] = Field(default_factory=dict)
+    schema_: dict[str, Any] = Field(
+        default_factory=dict,
+        alias="schema",
+        description="The JSON Schema of the form, a flat object of simple properties.",
+    )
+    defaults: dict[str, Any] = Field(
+        default_factory=dict, description="The default value of each property. The defaults satisfy the schema."
+    )
 
     @model_validator(mode="after")
     def valid(self):
@@ -190,8 +237,16 @@ class SettingsSpec(BaseModel):
 class TraitBinding(BaseModel):
     model_config = closed
 
-    bind: Annotated[str, StringConstraints(max_length=80)]
-    access: Literal["read", "readwrite"] = "read"
+    bind: Annotated[str, StringConstraints(max_length=80)] = Field(
+        description=(
+            "The host state that the trait is bound to: one of the traits that the host offers, "
+            "or param:<name>, config:<key> or adminSettings:<key>."
+        )
+    )
+    access: Literal["read", "readwrite"] = Field(
+        default="read",
+        description="Whether the module may write the trait. Only params, param:<name> and state can be readwrite.",
+    )
 
     @model_validator(mode="after")
     def valid(self):
@@ -208,23 +263,35 @@ class ModelSpec(BaseModel):
     traits: dict[
         Annotated[str, StringConstraints(pattern=r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")],
         TraitBinding,
-    ] = Field(default_factory=dict, max_length=64)
+    ] = Field(default_factory=dict, max_length=64, description="The module's own trait names, each bound to host state.")
 
 
 class Response(BaseModel):
     model_config = closed
 
-    accepts: Literal["json"] = "json"
-    description: Sentence = ""
-    schema_: dict[str, Any] | None = Field(default=None, alias="schema")
+    accepts: Literal["json"] = Field(default="json", description="The kind of answer that the backend returns.")
+    description: Sentence = Field(default="", description="What the backend returns.")
+    schema_: dict[str, Any] | None = Field(default=None, alias="schema", description="A JSON Schema of the answer.")
 
 
 class Handle(BaseModel):
     model_config = closed
 
-    type: Annotated[str, StringConstraints(pattern=VIZ_TYPE_PATTERN)]
-    definition: dict[str, Any] | None = None
-    response: Response = Field(default_factory=Response)
+    type: Annotated[str, StringConstraints(pattern=VIZ_TYPE_PATTERN)] = Field(
+        description=(
+            'The viz type that the widget renders. It is the "type" value in a backend\'s widgets.json, '
+            "and it cannot be a built-in type."
+        )
+    )
+    definition: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "The JSON Schema of the data.<type> object that a backend writes for the type. It is closed and bounded."
+        ),
+    )
+    response: Response = Field(
+        default_factory=Response, description="The JSON that the backend's endpoint returns for the type."
+    )
 
     @model_validator(mode="after")
     def valid(self):
@@ -240,17 +307,25 @@ class Handle(BaseModel):
 class Grid(BaseModel):
     model_config = closed
 
-    w: Annotated[int, Field(ge=1, le=40)] = 20
-    h: Annotated[int, Field(ge=1, le=100)] = 12
-    minW: Annotated[int, Field(ge=1, le=40)] | None = None  # noqa: N815
-    minH: Annotated[int, Field(ge=1, le=100)] | None = None  # noqa: N815
+    w: Annotated[int, Field(ge=1, le=40)] = Field(default=20, description="The default width on the dashboard grid.")
+    h: Annotated[int, Field(ge=1, le=100)] = Field(default=12, description="The default height on the dashboard grid.")
+    minW: Annotated[int, Field(ge=1, le=40)] | None = Field(  # noqa: N815
+        default=None, description="The smallest width that the user may give the widget."
+    )
+    minH: Annotated[int, Field(ge=1, le=100)] | None = Field(  # noqa: N815
+        default=None, description="The smallest height that the user may give the widget."
+    )
 
 
 class WidgetArtifact(BaseModel):
     model_config = closed
 
-    description: Annotated[str, StringConstraints(min_length=1, max_length=300)]
-    data: dict[str, Any]
+    description: Annotated[str, StringConstraints(min_length=1, max_length=300)] = Field(
+        description="When the agent shows the widget in the chat."
+    )
+    data: dict[str, Any] = Field(
+        description="The JSON Schema of the data the agent may fill in."
+    )
 
     @model_validator(mode="after")
     def valid(self):
@@ -263,27 +338,74 @@ class WidgetArtifact(BaseModel):
 class WidgetServer(BaseModel):
     model_config = closed
 
-    proxies: list[Annotated[str, StringConstraints(max_length=64)]] = Field(default_factory=list, max_length=32)
-    routes: list[Annotated[str, StringConstraints(max_length=64)]] = Field(default_factory=list, max_length=32)
+    proxies: list[Annotated[str, StringConstraints(max_length=64)]] = Field(
+        default_factory=list,
+        max_length=32,
+        description=(
+            "The ids of the proxies that the widget may call. "
+            "The widget then needs the permission core:proxy:call, and it needs it only for this purpose."
+        ),
+    )
+    routes: list[Annotated[str, StringConstraints(max_length=64)]] = Field(
+        default_factory=list,
+        max_length=32,
+        description=(
+            "The ids of the backend routes that the widget may call. "
+            "The widget then needs the permission core:backend:call, and it needs it only for this purpose."
+        ),
+    )
 
 
 class Widget(BaseModel):
     model_config = closed
 
-    id: Annotated[str, StringConstraints(pattern=WIDGET_ID_PATTERN)]
-    name: ShortText
-    description: Sentence = ""
-    category: Annotated[str, StringConstraints(max_length=60)] | None = None
-    subCategory: Annotated[str, StringConstraints(max_length=60)] | None = None  # noqa: N815
-    handles: list[Handle] = Field(default_factory=list, max_length=8)
-    standalone: bool = False
-    artifact: WidgetArtifact | None = None
-    permissions: list[str] = Field(default_factory=list, max_length=32)
-    server: WidgetServer | None = None
-    model: ModelSpec | None = None
-    params: list[dict[str, Any]] = Field(default_factory=list, max_length=32)
-    settings: SettingsSpec | None = None
-    grid: Grid = Field(default_factory=Grid)
+    id: Annotated[str, StringConstraints(pattern=WIDGET_ID_PATTERN)] = Field(
+        description="The widget's id, unique within the plugin."
+    )
+    name: ShortText = Field(description="The name that Add widget shows.")
+    description: Sentence = Field(default="", description="What the widget shows.")
+    category: Annotated[str, StringConstraints(max_length=60)] | None = Field(
+        default=None, description="The category in Add widget."
+    )
+    subCategory: Annotated[str, StringConstraints(max_length=60)] | None = Field(  # noqa: N815
+        default=None, description="The sub-category in Add widget."
+    )
+    handles: list[Handle] = Field(
+        default_factory=list, max_length=8, description="The viz types that the widget renders for backend widgets."
+    )
+    standalone: bool = Field(
+        default=False,
+        description=(
+            "Whether the widget appears in Add widget on its own and needs no backend. "
+            "A widget handles at least one type or is standalone."
+        ),
+    )
+    artifact: WidgetArtifact | None = Field(
+        default=None,
+        description=(
+            "What the widget gives the agent when the user asks for it in the chat: "
+            "when it is useful, and the data the agent may fill in."
+        ),
+    )
+    permissions: list[str] = Field(
+        default_factory=list, max_length=32, description="The host permissions that the widget asks for."
+    )
+    server: WidgetServer | None = Field(
+        default=None, description="The proxies and backend routes that the widget may call."
+    )
+    model: ModelSpec | None = Field(default=None, description="The module's own traits and what they are bound to.")
+    params: list[dict[str, Any]] = Field(
+        default_factory=list,
+        max_length=32,
+        description=(
+            "The parameters of a standalone widget, written as in widgets.json. "
+            "Every parameter has a paramName, and the names are unique."
+        ),
+    )
+    settings: SettingsSpec | None = Field(
+        default=None, description="A form that the user edits for each widget instance."
+    )
+    grid: Grid = Field(default_factory=Grid, description="The widget's size on the dashboard grid.")
 
     def _check_artifact(self) -> None:
         if self.artifact is None:
@@ -327,16 +449,24 @@ SKILL_FILE_PATTERN = r"^skills/[A-Za-z0-9._-]{1,100}\.md$"
 
 
 class Skill(BaseModel):
-    slug: Annotated[str, StringConstraints(pattern=SKILL_SLUG_PATTERN, min_length=2, max_length=50)]
-    description: Annotated[str, StringConstraints(min_length=1, max_length=300)]
-    file: Annotated[str, StringConstraints(pattern=SKILL_FILE_PATTERN)]
+    slug: Annotated[str, StringConstraints(pattern=SKILL_SLUG_PATTERN, min_length=2, max_length=50)] = Field(
+        description="The slug of the skill: lowercase letters, digits and single `-`."
+    )
+    description: Annotated[str, StringConstraints(min_length=1, max_length=300)] = Field(
+        description="What the skill is for."
+    )
+    file: Annotated[str, StringConstraints(pattern=SKILL_FILE_PATTERN)] = Field(
+        description="The markdown file of the skill, under `skills/` in the plugin."
+    )
 
 
 class Contributes(BaseModel):
     model_config = closed
 
-    widgets: list[Widget] = Field(min_length=1, max_length=20)
-    skills: list[Skill] = Field(default_factory=list, max_length=20)
+    widgets: list[Widget] = Field(min_length=1, max_length=20, description="The widget types that the plugin offers.")
+    skills: list[Skill] = Field(
+        default_factory=list, max_length=20, description="The skills that the plugin gives the agent."
+    )
 
     @model_validator(mode="after")
     def unique(self):
@@ -358,25 +488,67 @@ class Contributes(BaseModel):
 class Manifest(BaseModel):
     model_config = closed
 
-    manifestVersion: Literal[1]  # noqa: N815
-    id: Annotated[str, StringConstraints(pattern=PLUGIN_ID_PATTERN)]
-    version: Annotated[str, StringConstraints(pattern=VERSION_PATTERN)]
-    name: ShortText
-    description: Sentence = ""
-    publisher: Publisher
-    icon: PackagePath | None = None
-    host: HostTarget
-    checksum: Annotated[str, StringConstraints(pattern=DIGEST_PATTERN)]
-    entry: Entry
-    csp: dict[str, list[str]] | None = None
-    cspNotes: dict[str, Sentence] | None = None  # noqa: N815
-    secrets: list[Secret] = Field(default_factory=list, max_length=16)
-    dataSources: list[DataSource] = Field(default_factory=list, max_length=16)  # noqa: N815
-    identity: Literal["none", "pseudonymous"] = "none"
-    server: Server | None = None
-    adminSettings: SettingsSpec | None = None  # noqa: N815
-    contributes: Contributes
-    signatures: None = None
+    manifestVersion: Literal[1] = Field(description="The version of the manifest format.")  # noqa: N815
+    id: Annotated[str, StringConstraints(pattern=PLUGIN_ID_PATTERN)] = Field(
+        description="The plugin's id. It equals the name of the directory that holds the plugin's versions."
+    )
+    version: Annotated[str, StringConstraints(pattern=VERSION_PATTERN)] = Field(
+        description=(
+            "The version, in the form major.minor.patch with numbers only. It equals the name of the version's directory."
+        )
+    )
+    name: ShortText = Field(description="The name that admins and users see.")
+    description: Sentence = Field(default="", description="A short description of the plugin.")
+    publisher: Publisher = Field(
+        description=(
+            "Who publishes the plugin. Admins see the values as the package states them, "
+            "and Workspace does not verify them."
+        )
+    )
+    icon: PackagePath | None = Field(default=None, description="A file under assets/ that serves as the plugin's icon.")
+    host: HostTarget = Field(
+        description=(
+            "The host API version and the AFM version that the package is built against. "
+            "A host that implements other versions blocks the package."
+        )
+    )
+    checksum: Annotated[str, StringConstraints(pattern=DIGEST_PATTERN)] = Field(
+        description=(
+            "The text sha256- followed by the base64url SHA-256 of the sorted lines that each hold a file's path, "
+            "a zero byte, the file's SHA-256 in hexadecimal and a newline, for every file except plugin.json. "
+            "The command plugin_check --digest prints it."
+        )
+    )
+    entry: Entry = Field(description="The module and the style sheets that the frame receives.")
+    csp: dict[str, list[str]] | None = Field(
+        default=None, description="The sources that the frame itself may reach, by directive."
+    )
+    cspNotes: dict[str, Sentence] | None = Field(  # noqa: N815
+        default=None, description="One sentence for each directive in csp that explains why the frame needs it."
+    )
+    secrets: list[Secret] = Field(
+        default_factory=list,
+        max_length=16,
+        description="The secrets that proxies and backend routes send. A manifest never contains a value.",
+    )
+    dataSources: list[DataSource] = Field(  # noqa: N815
+        default_factory=list, max_length=16, description="The data that the backend reads for the user."
+    )
+    identity: Literal["none", "pseudonymous"] = Field(
+        default="none", description="Whether the backend learns a pseudonymous id of the user."
+    )
+    server: Server | None = Field(
+        default=None,
+        description="What the server does for the plugin: the hosts that it calls, its proxies and its backend.",
+    )
+    adminSettings: SettingsSpec | None = Field(  # noqa: N815
+        default=None, description="A settings form that an organization's admin fills in. It must not hold secrets."
+    )
+    contributes: Contributes = Field(description="The widgets that the plugin contributes.")
+    signatures: None = Field(
+        default=None,
+        description="Reserved. A manifest that sets it is blocked, because this host verifies no signatures.",
+    )
 
     @model_validator(mode="after")
     def valid(self):

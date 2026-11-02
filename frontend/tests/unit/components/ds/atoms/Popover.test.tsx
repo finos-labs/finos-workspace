@@ -57,7 +57,7 @@ vi.mock("@radix-ui/react-popover", () => {
         </PopoverContext.Provider>
       );
     },
-    Trigger: ({ children }: { children?: ReactNode; asChild?: boolean }) => {
+    Trigger: ({ children }: { children?: ReactNode }) => {
       const { setOpen } = React.useContext(PopoverContext);
       return <div onClick={() => setOpen(true)}>{children}</div>;
     },

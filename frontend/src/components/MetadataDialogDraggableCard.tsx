@@ -45,7 +45,7 @@ const metadataSchema = z.object({
   source: z.string().optional(),
 });
 
-export type MetadataForm = z.infer<typeof metadataSchema>;
+type MetadataForm = z.infer<typeof metadataSchema>;
 
 export function MetadataDialog(props: Props) {
   const { open, setOpen, className } = props;

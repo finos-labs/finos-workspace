@@ -18,15 +18,15 @@ const domino = createRequire(import.meta.url)("@mixmark-io/domino") as {
   createDocument(html?: string, force?: boolean): DomDocument;
 };
 
-export const MAX_MARKDOWN_CHARS = 1_500_000;
+const MAX_MARKDOWN_CHARS = 1_500_000;
 const MAX_REGION_ELEMENTS = 50;
 const MAX_JSON_SOURCE_CHARS = 5_000_000;
 
-export const MAX_TABLES_PER_VIEW = 5;
-export const MAX_TABLE_ROWS = 2000;
-export const MAX_TABLE_COLUMNS = 60;
+const MAX_TABLES_PER_VIEW = 5;
+const MAX_TABLE_ROWS = 2000;
+const MAX_TABLE_COLUMNS = 60;
 
-export interface DataSource {
+interface DataSource {
   index: number;
   kind: string;
   bytes: number;

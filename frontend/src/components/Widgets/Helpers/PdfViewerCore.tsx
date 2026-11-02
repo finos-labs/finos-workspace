@@ -19,7 +19,7 @@ export type Highlight = {
   height: number;
 };
 
-export interface PdfViewerCoreProps {
+interface PdfViewerCoreProps {
   file: string | { data: Uint8Array } | null;
   currentPage: number;
   currentScale: number;
@@ -43,7 +43,7 @@ export type QuoteBoundingBox = {
   x1: number;
 };
 
-export const LoadingElement = () => (
+const LoadingElement = () => (
   <div className="flex h-full w-full items-center justify-center">
     <BrandedLogo className="mt-32" />
   </div>
@@ -271,7 +271,7 @@ export function PdfViewerCore({
   );
 }
 
-export function usePdfTextSearch(
+function usePdfTextSearch(
   file: string | { data: Uint8Array } | null,
   searchString: string,
 ) {

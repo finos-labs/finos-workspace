@@ -1,6 +1,6 @@
 import type { ArtifactT, CopilotWidget, Message } from "~/lib/state/copilot";
 
-export interface ConversationContext {
+interface ConversationContext {
   user_prompt: string;
   recent_messages: Message[];
   selected_widgets: (Omit<CopilotWidget, "metadata"> & {

@@ -36,7 +36,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
         )
     )
     async def manage_navigation_bar(
-        operation: NavigationOperation,
+        operation: Annotated[NavigationOperation, Field(description="What to do with the navigation tabs.")],
         dashboard_id: Annotated[
             str | None, Field(description=DASHBOARD_ID_PARAM)
         ] = None,
@@ -106,7 +106,10 @@ def register(server: FastMCP, run: CommandRunner) -> None:
         )
     )
     async def navigate_workspace(
-        operation: WorkspaceNavigationOperation,
+        operation: Annotated[
+            WorkspaceNavigationOperation,
+            Field(description="Whether to move to a dashboard or to an inner tab."),
+        ],
         dashboard_id: Annotated[
             str | None, Field(description=DASHBOARD_ID_PARAM)
         ] = None,

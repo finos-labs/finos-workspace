@@ -999,7 +999,7 @@ interface TabGroupElementProps extends SuggestionElementProps {
   onWidgetMouseLeave?: () => void;
 }
 
-export const TabGroupElement = memo((props: TabGroupElementProps) => {
+const TabGroupElement = memo((props: TabGroupElementProps) => {
   const {
     widget,
     getAppWidget,
@@ -1151,7 +1151,7 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
   );
 });
 
-export const ICON_MAP = {
+const ICON_MAP = {
   all: "file-plus-03",
   dashboard: "file-check-03",
   web: "globe-01",
@@ -1159,41 +1159,7 @@ export const ICON_MAP = {
   tab: "folder-closed",
 } as const;
 
-type ExtraWidgetsSelectButtonProps = {
-  enabled: boolean;
-  onToggle: () => void;
-  buttonEnabled?: boolean;
-};
 type Action = (uuid: string) => void;
-
-export const ExtraWidgetsSelectButton = (props: ExtraWidgetsSelectButtonProps) => {
-  const { enabled, onToggle, buttonEnabled = true } = props;
-  return (
-    <Tooltip
-      message={
-        buttonEnabled
-          ? "Search across widgets and tabs"
-          : "Searching across all widgets is not enabled for this agent."
-      }
-    >
-      <button
-        disabled={!buttonEnabled}
-        onClick={onToggle}
-        className={cn(
-          "flex items-center justify-center w-6 h-6 rounded transition-colors duration-200 min-w-6",
-          {
-            "opacity-25": !buttonEnabled,
-            "bg-brand-main border-brand-main text-white": enabled,
-            "text-light-700 dark:text-light-300 hover:bg-light-100 dark:border-dark-400 dark:hover:bg-dark-400":
-              !enabled && buttonEnabled,
-          },
-        )}
-      >
-        <Icon id="layout-top" className="text-lg" />
-      </button>
-    </Tooltip>
-  );
-};
 
 interface DropdownState {
   searchQuery: string;

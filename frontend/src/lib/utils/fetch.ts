@@ -200,14 +200,24 @@ export function fetchRequest(
   );
 }
 
+export function sourceStreamHref(request: BackendRequest): string {
+  if (!viaSource(request)) return request.url;
+  const base = getConfig().urls.backend.replace(/\/+$/, "");
+  return `${base}${SOURCE_API}/api-source/${request.sourceId}/stream?url=${encodeURIComponent(request.url)}`;
+}
+
 type SourceHeaderRow = { key: string; value?: string; location?: "headers" | "query" };
 
 export function fetchFromSource(
   source: { id?: string; url: string; endpointHeaders?: SourceHeaderRow[] | null },
   url: string,
-  init: { signal?: AbortSignal | null } = {},
+  init: { signal?: AbortSignal | null; method?: "GET" | "OPTIONS" } = {},
 ): Promise<Response> {
-  const request: BackendRequest = { url, method: "GET", paramHeaders: {} };
+  const request: BackendRequest = {
+    url,
+    method: init.method ?? "GET",
+    paramHeaders: {},
+  };
   const typed = (source.endpointHeaders ?? []).some((header) => header.value);
   if (source.id && !typed)
     return postToApi(

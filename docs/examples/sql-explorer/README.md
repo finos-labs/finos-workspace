@@ -13,8 +13,8 @@ It is the counterpart of a plugin that only draws (the Plotly plugin). Here the 
 happen in the browser: the database speaks its own protocol, its password must never
 reach a browser, and the files are on a server. It is an example in the repository's
 `docs/examples/`, a package of its own that nothing in FINOS Workspace imports, built and deployed the
-way any plugin is ([AUTHORING.md](../../widget-plugins/AUTHORING.md), section 8 for
-backends).
+way any plugin is ([build and try a widget plugin](../../tutorials/plugins/build-a-plugin.md), and
+[run a plugin backend](../../tutorials/plugins/run-a-plugin-backend.md) for backends).
 
 ```
 widget (frame)  ── core:backend:call {route, args: {sql}} ──▶  FINOS Workspace API
@@ -159,7 +159,7 @@ tested with the [examples backend](../backend/README.md).
 2. Build the backend's image. The [examples backend](../backend/README.md) does it: its
    `Dockerfile` copies this package's `dist/sql-explorer/<version>/` and serves the package's
    `backend/` beside the routes of the other examples.
-3. Run it as `docs/widget-plugins/README.md` 6.5 describes: no privileges, a read-only
+3. Run it as [run a plugin backend](../../tutorials/plugins/run-a-plugin-backend.md) describes: no privileges, a read-only
    root, its own network that only a gateway joins from the FINOS Workspace side, the database
    on a second network, the data files at `/data`. The examples backend's `compose.yaml`
    does exactly this.

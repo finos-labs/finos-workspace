@@ -14,7 +14,7 @@ export function getExportFns(exportFns?: ExportFns) {
   return exportFunctions.filter(({ fn }) => fn !== undefined && fn !== null);
 }
 
-export async function ScrollToWidget() {
+async function ScrollToWidget() {
   const element =
     document.getElementsByClassName("react-grid-layout")?.[0].lastElementChild;
   element?.scrollIntoView();

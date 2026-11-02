@@ -1,9 +1,24 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  BUILD_VARIABLES,
   configFromEnv,
   ENV_NAMES,
+  IDENTITY_PROVIDERS,
   RuntimeConfigSchema,
 } from "~/lib/runtimeConfigSchema";
+
+type Described = {
+  description?: string;
+  meta(): { itemValues?: string[] } | undefined;
+};
+
+const fields = Object.entries(RuntimeConfigSchema.shape).flatMap(([group, schema]) =>
+  Object.entries((schema as unknown as { shape: Record<string, Described> }).shape).map(
+    ([field, node]) => ({ path: `${group}.${field}`, node }),
+  ),
+);
 
 describe("configFromEnv", () => {
   it("is the schema's defaults when nothing is set", () => {
@@ -106,10 +121,10 @@ describe("ENV_NAMES", () => {
 
   it("reads each setting from its variable", () => {
     const env = Object.fromEntries(
-      Object.entries(ENV_NAMES.whiteLabel)
-        .filter(([field]) => field !== "showFloatingThemePreview")
-        .filter(([field]) => field !== "mainColor")
-        .map(([field, name]) => [name, `value of ${field}`]),
+      Object.entries(ENV_NAMES.whiteLabel).map(([field, name]) => [
+        name,
+        `value of ${field}`,
+      ]),
     );
 
     const cfg = configFromEnv(env);
@@ -117,5 +132,64 @@ describe("ENV_NAMES", () => {
     expect(cfg.whiteLabel.name).toBe("value of name");
     expect(cfg.whiteLabel.favicon).toBe("value of favicon");
     expect(cfg.whiteLabel.keywords).toBe("value of keywords");
+  });
+});
+
+describe("RuntimeConfigSchema documentation", () => {
+  it("describes every setting", () => {
+    const missing = fields
+      .filter(({ node }) => !node.description?.trim())
+      .map(({ path }) => path);
+    expect(missing).toEqual([]);
+  });
+
+  it("names the identity providers that the login page can offer", () => {
+    const providers = fields.find(
+      ({ path }) => path === "authentication.identityProviders",
+    );
+    expect(providers?.node.meta()?.itemValues).toEqual([...IDENTITY_PROVIDERS]);
+  });
+});
+
+describe("the build variables", () => {
+  const root = resolve(__dirname, "../../..");
+
+  function sourceFiles(directory: string): string[] {
+    return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) return sourceFiles(path);
+      return /\.(ts|tsx)$/.test(entry.name) ? [path] : [];
+    });
+  }
+
+  function variablesRead(): Set<string> {
+    const files = [...sourceFiles(join(root, "src")), join(root, "vite.config.ts")];
+    const found = new Set<string>();
+    for (const file of files) {
+      const text = readFileSync(file, "utf8");
+      for (const match of text.matchAll(
+        /(?:import\.meta\.env|\benv)\.(VITE_[A-Z0-9_]+)/g,
+      )) {
+        found.add(match[1] as string);
+      }
+    }
+    return found;
+  }
+
+  it("describes each one", () => {
+    const missing = Object.entries(BUILD_VARIABLES)
+      .filter(([, variable]) => !variable.description.trim())
+      .map(([name]) => name);
+    expect(missing).toEqual([]);
+  });
+
+  it("are, with the settings, every VITE_ variable that the code reads", () => {
+    const settings = Object.values(ENV_NAMES).flatMap((fields) =>
+      Object.values(fields),
+    );
+    const known = new Set<string>([...settings, ...Object.keys(BUILD_VARIABLES)]);
+    const read = variablesRead();
+    expect([...read].filter((name) => !known.has(name))).toEqual([]);
+    expect(Object.keys(BUILD_VARIABLES).filter((name) => !read.has(name))).toEqual([]);
   });
 });

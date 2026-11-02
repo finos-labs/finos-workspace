@@ -96,17 +96,14 @@ That's it. Add more data routes for each widget you expose.
 ]
 ```
 
-## CORS
+## The route check
 
-Allow the origin the FINOS Workspace is served from, and `http://localhost:1420` for local development, on every route, and answer `OPTIONS` on each:
+The FINOS Workspace API calls the backend, so the backend needs no CORS settings. When a backend is connected with Validate Widgets turned on, the API sends a plain `OPTIONS` request to every route that `widgets.json` names. Answer it like this:
 
-```text
-Access-Control-Allow-Origin: <the origin of your FINOS Workspace>
-Access-Control-Allow-Methods: GET, POST, OPTIONS
-Access-Control-Allow-Headers: *
-```
-
-In practice, send the matching origin from the request rather than echoing a list. Most frameworks have a CORS plugin for this.
+| Request | Answer |
+|---------|--------|
+| `OPTIONS` on `/widgets.json`, `/apps.json`, `/summary` or `/teams` | `204` |
+| `OPTIONS` on any other path | `404` |
 
 ## Auth (optional)
 
@@ -115,7 +112,7 @@ If the backend requires auth, accept either:
 - A custom header (e.g. `X-API-KEY: <key>`), or
 - A query string parameter (e.g. `?api_key=<key>`).
 
-FINOS Workspace lets users register the backend connection with header or query-string credentials, which it then attaches to every widget request. Header is preferred — keys stay out of URLs and access logs.
+FINOS Workspace lets users register the backend connection with header or query-string credentials, which the API attaches to every request that it sends to the backend. Header is preferred — keys stay out of URLs and access logs.
 
 ## Encoding
 

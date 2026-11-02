@@ -2,7 +2,7 @@ import Icon from "~/components/Icon";
 import type { IconId } from "~/components/Icon.types";
 import { cn } from "../utils";
 
-export type ConnectionTestStatus = "success" | "error";
+type ConnectionTestStatus = "success" | "error";
 
 const STATUS_STYLES: Record<
   ConnectionTestStatus,
@@ -22,7 +22,7 @@ const STATUS_STYLES: Record<
   },
 };
 
-export interface ConnectionTestResultProps {
+interface ConnectionTestResultProps {
   status: ConnectionTestStatus;
   message: string;
   title?: string;

@@ -4,7 +4,7 @@ import { DayPicker, type SelectProps } from "react-day-picker";
 import { cn } from "~/lib/utils";
 import { Select, type SelectOptionObject } from "../ds/atoms/Select";
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   isSingle?: boolean;
 };
 

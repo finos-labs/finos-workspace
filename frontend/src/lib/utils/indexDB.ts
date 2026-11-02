@@ -38,21 +38,18 @@ function createStore(dbName: string, storeName: string): UseStore {
     );
 }
 
-export function get<T = unknown>(
-  key: IDBValidKey,
-  store: UseStore,
-): Promise<T | undefined> {
+function get<T = unknown>(key: IDBValidKey, store: UseStore): Promise<T | undefined> {
   return store("readonly", (store) => promisifyRequest(store.get(key)));
 }
 
-export function set(key: IDBValidKey, value: unknown, store: UseStore): Promise<void> {
+function set(key: IDBValidKey, value: unknown, store: UseStore): Promise<void> {
   return store("readwrite", (store) => {
     store.put(value, key);
     return promisifyRequest(store.transaction);
   });
 }
 
-export function del(key: IDBValidKey, store: UseStore): Promise<void> {
+function del(key: IDBValidKey, store: UseStore): Promise<void> {
   return store("readwrite", (store) => {
     store.delete(key);
     return promisifyRequest(store.transaction);

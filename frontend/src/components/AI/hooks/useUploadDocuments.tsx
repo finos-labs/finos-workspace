@@ -2,7 +2,11 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiClient } from "~/api/api";
 import type { PostUploadFileResponse } from "~/api/auth.api";
-import { AI_SUPPORTED_FILE_TYPES } from "~/lib/constants";
+import {
+  AI_SUPPORTED_FILE_TYPES,
+  MAX_FILE_SIZE,
+  UPLOAD_BATCH_BYTES,
+} from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
 import { fetchAgent } from "~/lib/state/agentToken";
 import { useShallowAuthStore } from "~/lib/state/auth";
@@ -10,8 +14,6 @@ import { type CopilotFile, useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
 import { useShallowStreamingStore } from "./useStreaming";
-
-const MEGABYTE = 1024 * 1024;
 
 export function updateFileStatus<T extends CopilotFile>(
   prevFiles: T[],
@@ -107,7 +109,7 @@ export function useUploadDocuments() {
     mutationFn: async (filesToUpload: File[]) => {
       const { fileChunks } = filesToUpload.reduce(
         ({ fileChunks, chunkSize }, file) => {
-          if (file.size > 25 * MEGABYTE) {
+          if (file.size > MAX_FILE_SIZE) {
             dispatch({
               files: (prevFiles) => prevFiles.filter((f) => f.name !== file.name),
             });
@@ -125,7 +127,7 @@ export function useUploadDocuments() {
             return { fileChunks, chunkSize };
           }
           chunkSize += file.size;
-          if (chunkSize > 150 * MEGABYTE) fileChunks.push([]);
+          if (chunkSize > UPLOAD_BATCH_BYTES) fileChunks.push([]);
           fileChunks[fileChunks.length - 1].push(file);
           return { fileChunks, chunkSize };
         },

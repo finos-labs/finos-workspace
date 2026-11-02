@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="200" viewBox="0 0 360 200" font-family="system-ui, sans-serif" font-size="12">
+  <rect width="360" height="200" fill="#12313f"/>
+  <text x="16" y="24" fill="#e7f2f8" font-size="14" font-weight="600">Revenue by company (invented data)</text>
+  <g fill="#00b5e2">
+    <rect x="30" y="58" width="60" height="112"/>
+    <rect x="110" y="92" width="60" height="78"/>
+    <rect x="190" y="116" width="60" height="54"/>
+    <rect x="270" y="128" width="60" height="42"/>
+  </g>
+  <g fill="#9db4c0" text-anchor="middle">
+    <text x="60" y="188">Alder</text>
+    <text x="140" y="188">Birchfield</text>
+    <text x="220" y="188">Cedarline</text>
+    <text x="300" y="188">Dunmore</text>
+  </g>
+</svg>

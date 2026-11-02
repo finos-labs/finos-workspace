@@ -96,7 +96,7 @@ export function autoRegisterMcpForSource(source: Source) {
 }
 
 // biome-ignore format: off
-export const ConnectionTypes= ["file", "single", "advanced-backend", "database", "widgetMetadata", "plugin"] as const;
+const ConnectionTypes= ["file", "single", "advanced-backend", "database", "widgetMetadata", "plugin"] as const;
 
 export type ConnectionType = (typeof ConnectionTypes)[number];
 

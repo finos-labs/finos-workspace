@@ -55,8 +55,6 @@ import { useSidebarStore } from "./sidebar";
 
 export type Selector<S, T> = (state: S) => T;
 
-export type KeySelector<S, K extends keyof S> = K extends keyof S ? K : never;
-
 export type Items = {
   [key: string]: Item;
 };
@@ -115,7 +113,7 @@ type WidgetTypes = NewWidget | WidgetJsonT;
 
 export type InnerTab = { id: string; name: string; newId?: string };
 export type InnerTabsT = { [tabId: string]: InnerTab };
-export type TabParamT = { total: number; options: (string | number | boolean)[] };
+type TabParamT = { total: number; options: (string | number | boolean)[] };
 export type TabParams = { [key: string]: TabParamT };
 export type TabEndpointParams = { [key: string]: number };
 
@@ -128,7 +126,7 @@ export type AppState = {
   isDashboardShared: (id: string) => boolean;
   setDashboardShared: (id: string, shared: boolean) => void;
   getLatestDashboard: () => string | undefined;
-  setTabLocked: (tabId: string, locked: boolean) => void;
+  isDashboardLocked: (id: string) => boolean;
   moveTabToFolder: (folderId: string, tabId: string, newName: string) => void;
   getAllTabs: () => Item[];
   getAllFoldersFlat: () => SideBarItem[];
@@ -216,6 +214,16 @@ export type AppState = {
 };
 
 const itemsOf = (state: AppState): Items => state.items ?? {};
+
+export const DASHBOARD_LOCKED_MESSAGE =
+  "The app that this dashboard was created from does not allow adding, removing or moving its widgets.";
+
+function refuseWhenLocked(items: Items | null, tabId: string) {
+  const data = items?.[tabId]?.data;
+  if (data?.locked !== true) return false;
+  toast.error(`${data.name} is locked`, { description: DASHBOARD_LOCKED_MESSAGE });
+  return true;
+}
 
 function getLatestDashboardId(currentItems: Items | null) {
   const items = Object.values(currentItems || {});
@@ -587,20 +595,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       }));
     },
     deletedItems: [],
-    setTabLocked: (tabId: string, locked: boolean) => {
-      set((state: AppState) => ({
-        items: {
-          ...state.items,
-          [tabId]: {
-            ...itemsOf(state)[tabId],
-            data: {
-              ...itemsOf(state)[tabId].data,
-              locked,
-            },
-          },
-        },
-      }));
-    },
+    isDashboardLocked: (id: string) => get().items?.[id]?.data?.locked === true,
     getWidgetById(widgetId: string) {
       const { items } = get();
       for (const key in items) {
@@ -880,6 +875,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       const { items } = get();
       const tab = items?.[tabId];
       if (!tab) return;
+      if (refuseWhenLocked(items, tabId)) return;
       const widget = tab.data.widgets.find((w) => w.id === widgetId);
 
       if (!widget) return;
@@ -904,6 +900,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       const { items } = get();
       const tab = items?.[tabId];
       if (!tab) return;
+      if (refuseWhenLocked(items, tabId)) return;
 
       if (!widget) return;
 
@@ -1293,6 +1290,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       const { items } = get();
       const tab = items?.[tabId];
       if (!tab) return;
+      if (refuseWhenLocked(items, tabId)) return;
 
       const newGridLayout = {} as GridLayout;
       const currentTab = tab.data.currentTab;
@@ -1407,6 +1405,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         });
         return;
       }
+      if (refuseWhenLocked(items, tabId)) return;
       const widgetsToAdd = widgets;
       let currentTab = tab.data.currentTab ?? "";
       const storedFileUUIDs = new Set<string>(tab.data?.storedFileUUIDs || []);
@@ -1540,6 +1539,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       const { items } = get();
       const tab = items?.[tabId];
       if (!tab) return;
+      if (refuseWhenLocked(items, tabId)) return;
 
       let gridLayout = { ...(tab.data.gridLayout ?? {}) };
 
@@ -1769,6 +1769,10 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
 export function useShallowAppStore<T>(selector: Selector<AppState, T>): T {
   return useAppStore(useShallow(selector), (prev, next) => isEqual(prev, next));
+}
+
+export function useIsDashboardLocked(id: string | undefined) {
+  return useAppStore((state) => !!id && state.isDashboardLocked(id));
 }
 
 export type { GridData, GridLayout, Group, Widget };

@@ -1,11 +1,10 @@
 import { z } from "zod";
 import { BridgeErrorSchema } from "./types.ts";
 
-export const WorkspaceWidgetConfigSchema = z.object({
+const WorkspaceWidgetConfigSchema = z.object({
   data_args: z.record(z.string(), z.unknown()).nullable().optional(),
   ui_args: z.record(z.string(), z.unknown()).nullable().optional(),
 });
-export type WorkspaceWidgetConfig = z.infer<typeof WorkspaceWidgetConfigSchema>;
 
 export const BackendEndpointHeaderSchema = z.object({
   key: z.string(),
@@ -17,39 +16,38 @@ const baseCommand = {
   request_id: z.string().nullable().optional(),
 };
 
-
-export const GetWidgetDataCommandSchema = z.object({
+const GetWidgetDataCommandSchema = z.object({
   command: z.literal("get_widget_data"),
   ...baseCommand,
   data_sources: z.array(z.record(z.string(), z.unknown())).default([]),
 });
 
-export const ListAvailableWidgetsCommandSchema = z.object({
+const ListAvailableWidgetsCommandSchema = z.object({
   command: z.literal("list_available_widgets"),
   ...baseCommand,
   origin: z.string().nullable().optional(),
   backend_id: z.string().nullable().optional(),
 });
 
-export const GetWidgetSchemaCommandSchema = z.object({
+const GetWidgetSchemaCommandSchema = z.object({
   command: z.literal("get_widget_schema"),
   ...baseCommand,
   origin: z.string().nullable().optional(),
   widget_id: z.string(),
 });
 
-export const GetWidgetsSchemaCommandSchema = z.object({
+const GetWidgetsSchemaCommandSchema = z.object({
   command: z.literal("get_widgets_schema"),
   ...baseCommand,
 });
 
-export const GetParamOptionsCommandSchema = z.object({
+const GetParamOptionsCommandSchema = z.object({
   command: z.literal("get_params_options"),
   ...baseCommand,
   param_options_queries: z.array(z.record(z.string(), z.unknown())).default([]),
 });
 
-export const ReadWidgetCommandSchema = z.object({
+const ReadWidgetCommandSchema = z.object({
   command: z.literal("read_widget"),
   ...baseCommand,
   dashboard_id: z.string().nullable().optional(),
@@ -57,7 +55,7 @@ export const ReadWidgetCommandSchema = z.object({
   widget_id: z.string().nullable().optional(),
 });
 
-export const CreateWidgetCommandSchema = z.object({
+const CreateWidgetCommandSchema = z.object({
   command: z.literal("create_widget"),
   ...baseCommand,
   dashboard_id: z.string().nullable().optional(),
@@ -66,7 +64,7 @@ export const CreateWidgetCommandSchema = z.object({
   config: WorkspaceWidgetConfigSchema.nullable().optional(),
 });
 
-export const UpdateWidgetCommandSchema = z.object({
+const UpdateWidgetCommandSchema = z.object({
   command: z.literal("update_widget"),
   ...baseCommand,
   dashboard_id: z.string().nullable().optional(),
@@ -75,7 +73,7 @@ export const UpdateWidgetCommandSchema = z.object({
   config: WorkspaceWidgetConfigSchema,
 });
 
-export const DeleteWidgetCommandSchema = z.object({
+const DeleteWidgetCommandSchema = z.object({
   command: z.literal("delete_widget"),
   ...baseCommand,
   dashboard_id: z.string().nullable().optional(),
@@ -83,7 +81,7 @@ export const DeleteWidgetCommandSchema = z.object({
   widget_id: z.string().nullable().optional(),
 });
 
-export const ManageDashboardCommandSchema = z.object({
+const ManageDashboardCommandSchema = z.object({
   command: z.literal("manage_dashboard"),
   ...baseCommand,
   operation: z.enum(["create", "read", "update"]),
@@ -92,7 +90,7 @@ export const ManageDashboardCommandSchema = z.object({
   activate: z.boolean().nullable().optional(),
 });
 
-export const UpdateDashboardLayoutCommandSchema = z.object({
+const UpdateDashboardLayoutCommandSchema = z.object({
   command: z.literal("update_dashboard_layout"),
   ...baseCommand,
   dashboard_id: z.string().nullable().optional(),
@@ -109,7 +107,7 @@ export const UpdateDashboardLayoutCommandSchema = z.object({
   max_h: z.number().nullable().optional(),
 });
 
-export const NavigateWorkspaceCommandSchema = z.object({
+const NavigateWorkspaceCommandSchema = z.object({
   command: z.literal("navigate_workspace"),
   ...baseCommand,
   operation: z.enum(["dashboard", "tab"]),
@@ -117,7 +115,7 @@ export const NavigateWorkspaceCommandSchema = z.object({
   tab_id: z.string().nullable().optional(),
 });
 
-export const ManageNavigationBarCommandSchema = z.object({
+const ManageNavigationBarCommandSchema = z.object({
   command: z.literal("manage_navigation_bar"),
   ...baseCommand,
   dashboard_id: z.string().nullable().optional(),
@@ -126,7 +124,7 @@ export const ManageNavigationBarCommandSchema = z.object({
   rename_map: z.record(z.string(), z.string()).default({}),
 });
 
-export const AddGenerativeWidgetCommandSchema = z.object({
+const AddGenerativeWidgetCommandSchema = z.object({
   command: z.literal("add_generative_widget"),
   ...baseCommand,
   dashboard_id: z.string().nullable().optional(),
@@ -141,25 +139,25 @@ export const AddGenerativeWidgetCommandSchema = z.object({
   inner_tab: z.string().nullable().optional(),
 });
 
-export const AssignTasksToAgentsCommandSchema = z.object({
+const AssignTasksToAgentsCommandSchema = z.object({
   command: z.literal("assign_tasks_to_agents"),
   ...baseCommand,
   task_requests: z.array(z.record(z.string(), z.unknown())).default([]),
 });
 
-export const GetSkillContentCommandSchema = z.object({
+const GetSkillContentCommandSchema = z.object({
   command: z.literal("get_skill_content"),
   ...baseCommand,
   slug: z.string(),
   reason: z.string().nullable().optional(),
 });
 
-export const GetWorkspaceSnapshotCommandSchema = z.object({
+const GetWorkspaceSnapshotCommandSchema = z.object({
   command: z.literal("get_workspace_snapshot"),
   ...baseCommand,
 });
 
-export const ManageBackendsCommandSchema = z.object({
+const ManageBackendsCommandSchema = z.object({
   command: z.literal("manage_backends"),
   ...baseCommand,
   operation: z.enum(["list", "add", "update", "refresh", "remove"]),
@@ -170,7 +168,7 @@ export const ManageBackendsCommandSchema = z.object({
   validate_widgets: z.boolean().nullable().optional(),
 });
 
-export const ManageAppsCommandSchema = z.object({
+const ManageAppsCommandSchema = z.object({
   command: z.literal("manage_apps"),
   ...baseCommand,
   operation: z.enum(["list", "read", "instantiate"]),
@@ -181,7 +179,7 @@ export const ManageAppsCommandSchema = z.object({
   activate: z.boolean().nullable().optional(),
 });
 
-export const WorkspaceCommandSchema = z.discriminatedUnion("command", [
+const WorkspaceCommandSchema = z.discriminatedUnion("command", [
   GetWidgetDataCommandSchema,
   ListAvailableWidgetsCommandSchema,
   GetWidgetSchemaCommandSchema,
@@ -232,4 +230,3 @@ export const WorkspaceSnapshotSchema = z.object({
   tools: z.array(z.record(z.string(), z.unknown())).default([]),
   skills: z.array(z.record(z.string(), z.unknown())).default([]),
 });
-export type WorkspaceSnapshot = z.infer<typeof WorkspaceSnapshotSchema>;

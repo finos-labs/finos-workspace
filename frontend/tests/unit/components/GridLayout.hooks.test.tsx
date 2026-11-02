@@ -71,15 +71,17 @@ vi.mock("~/lib/utils", () => ({
   uuidv4: () => "uuid",
 }));
 
+const tabContext = vi.hoisted(() => ({ isShared: false, locked: false }));
+
 vi.mock("~/lib/contexts/TabContext", () => ({
-  useTabContext: () => ({
-    isShared: false,
-  }),
+  useTabContext: () => tabContext,
 }));
 
 describe("useDragAndDropFiles", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    tabContext.isShared = false;
+    tabContext.locked = false;
     (useDropzone as Mock).mockReturnValue({
       getRootProps: vi.fn(),
       getInputProps: vi.fn(),
@@ -89,7 +91,7 @@ describe("useDragAndDropFiles", () => {
   });
 
   it("uses the DOCX MIME type in the dashboard dropzone accept config", () => {
-    renderHook(() => useDragAndDropFiles(false));
+    renderHook(() => useDragAndDropFiles());
 
     expect(useDropzone).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -108,8 +110,17 @@ describe("useDragAndDropFiles", () => {
     ["User", true],
   ])("disables dropping files on the dashboard for %s: %s", (userType, disabled) => {
     setAccess({ user_type: userType });
-    renderHook(() => useDragAndDropFiles(false));
+    renderHook(() => useDragAndDropFiles());
 
     expect(useDropzone).toHaveBeenCalledWith(expect.objectContaining({ disabled }));
+  });
+
+  it("disables dropping files on a locked dashboard", () => {
+    tabContext.locked = true;
+    renderHook(() => useDragAndDropFiles());
+
+    expect(useDropzone).toHaveBeenCalledWith(
+      expect.objectContaining({ disabled: true }),
+    );
   });
 });

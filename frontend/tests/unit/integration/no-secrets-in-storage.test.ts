@@ -95,13 +95,7 @@ describe("browser storage after a session full of credentials", () => {
           uuid: "holder-1",
           url: "https://agent.example.test",
           headers: { "X-Agent-Key": SECRETS.agentKey },
-          copilots: [
-            {
-              id: "custom-agent",
-              holderUuid: "holder-1",
-              headers: { "X-Agent-Key": SECRETS.agentKey },
-            },
-          ],
+          copilots: [{ id: "custom-agent", holderUuid: "holder-1" }],
         },
       ] as never,
     });

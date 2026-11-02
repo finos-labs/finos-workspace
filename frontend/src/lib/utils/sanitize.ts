@@ -30,10 +30,6 @@ export const MARKDOWN_SANITIZE_CONFIG: DOMPurifyConfig = {
   ALLOWED_ATTR: ["href", "target", "rel"],
 };
 
-export function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, HTML_SANITIZE_CONFIG);
-}
-
 export function sanitizeMarkdown(markdown: string): string {
   if (!markdown) return markdown;
 

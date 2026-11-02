@@ -23,8 +23,6 @@ import { useShallowPermissionsStore } from "./state/permissions";
 import { resolveCronRefetchInterval } from "./utils/cronSchedule";
 import { jitteredRefreshInterval } from "./utils/refreshInterval";
 
-export { convertHeadersToRecord } from "~/lib/utils/widgetParams";
-
 type ApiErrorBody = {
   warnings?: string[];
   detail?: unknown;

@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
-import type { Citation, QueryRequest, ToolMessage, Widget } from "../../../src/protocol/types.ts";
+import type { Citation, QueryRequest, ToolMessage } from "../../../src/protocol/types.ts";
 import {
   llmCallsTool,
   llmEmitsText,

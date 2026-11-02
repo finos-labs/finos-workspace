@@ -45,12 +45,6 @@ interface GroupBase<T> {
   groupById: unknown;
 }
 
-export type EndpointParam = {
-  label: string;
-  paramName: string;
-  value: string;
-};
-
 interface LinkedParamGroup extends GroupBase<"param"> {
   type: "param";
   groupById: string;
@@ -193,7 +187,7 @@ export interface WidgetProps {
   activeDashboardId?: string;
   contextOverride?: Partial<WidgetContextType>;
 }
-type ParamValueT<T extends ParamType> = Extract<ParamDef, { type: T }>["value"];
+
 type ParamType =
   | "date"
   | "text"

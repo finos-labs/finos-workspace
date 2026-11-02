@@ -134,9 +134,9 @@ The backend declares a widget of type `aggrid-livegrid` with a `data.streamEndpo
 ```
 
 The socket is FINOS Workspace's, not the plugin's: the plugin has the permission `core:data:stream`, the host opens the
-address as it builds the widget's request (the params as query values, the backend connection's query credentials, `ws` or
-`wss` for `http` or `https`), and hands the JSON messages to the frame as events
-([AUTHORING.md 4.2.1](../../widget-plugins/AUTHORING.md)). The frame needs no network, no policy override and no secret.
+address through the FINOS Workspace API as it builds the widget's request (the params as query values, `ws` or `wss` for
+`http` or `https`), the API adds the backend connection's credentials, and the host hands the JSON messages to the frame as events
+([the plugin permissions](../../reference/plugins/commands-and-permissions.mdx)). The frame needs no network, no policy override and no secret.
 
 The endpoint returns the grid before the first message, `{ columnDefs, rowData, gridOptions }`, with an `id` in every row.
 The socket then sends JSON messages:
@@ -298,7 +298,7 @@ They create a schema and a read-only role of their own and drop them.
 2. Check it with the server's validator, from `backend-api/backend`:
    `python -m scripts.plugin_check <plugins dir>/ag-grid/<version> --digest`.
 3. Where versions must be pinned, add the printed digest to `WIDGET_PLUGINS_PINS` as `"ag-grid@<version>": "<digest>"`.
-4. Run the plugin's backend (`backend/grid_server.py`, as [AUTHORING.md](../../widget-plugins/AUTHORING.md) section 8
+4. Run the plugin's backend (`backend/grid_server.py`, as [run a plugin backend](../../tutorials/plugins/run-a-plugin-backend.md)
    describes) and list it in `WIDGET_PLUGIN_BACKENDS`. Set the `postgres_url` secret, and add the Postgres's
    `tcp://<host>:<port>` to the server network.
 5. Admin, Widgets, Deployment: Rescan, review, approve, and enable the plugin. Grant it to the roles that may use it.

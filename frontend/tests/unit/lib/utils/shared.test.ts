@@ -44,4 +44,25 @@ describe("shared utils", () => {
     });
     expect(toast.success).toHaveBeenCalled();
   });
+
+  it("keeps a locked dashboard locked in its duplicate", () => {
+    const item = makeItem({
+      index: "dashboard-1",
+      data: {
+        name: "Locked Dashboard",
+        widgets: [],
+        groups: [],
+        gridLayout: {},
+        locked: true,
+      },
+    });
+
+    duplicateDashboard(item);
+
+    expect(addTabMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ locked: true }),
+      }),
+    );
+  });
 });

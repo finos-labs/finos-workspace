@@ -28,7 +28,7 @@ import useCopilotDataWidget from "../Widgets/Helpers/useCopilotDataWidget";
 import Navbar, { type NavBarProps } from "./NavBar";
 import { LoadingElement } from "./SetLoadingOnResize";
 
-export interface DraggableCardProps extends NavBarProps {
+interface DraggableCardProps extends NavBarProps {
   aiData?: unknown;
   lastUpdated?: number | null;
   children: ReactNode;

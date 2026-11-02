@@ -1,0 +1,87 @@
+---
+title: Agent MCP server
+sidebar_position: 2
+---
+
+import { EnvDefault } from "@site/src/components/Reference/config";
+import {
+  AgentLimit,
+  AgentCount,
+  AgentMcpCorsHeaders,
+  AgentMcpPrompts,
+  AgentMcpResources,
+  AgentMcpRoutes,
+  AgentMcpTools,
+  AgentScopedTools,
+} from "@site/src/components/Reference/agent";
+
+# Agent MCP server
+
+The agent keeps the work that needs no state of the agent's own in a second process, an MCP server in `agent/mcp-server`. It searches the web, reads web pages in parts, and searches the documents that a user attached to a chat. The agent never connects to it. When the model calls one of its tools, the agent ends its response with an `execute_agent_tool` call, and the browser calls the tool through the FINOS Workspace API, as the [agent query protocol](../protocols/agent-query.mdx) describes. The browser never connects to the server itself. It sends each MCP request to the API's route `POST /app/mcp-proxy`, which checks that the user's roles allow the tool, adds the credentials that are stored for the server, and forwards the request. The API therefore has to reach the server, and a browser does not. A deployment lists the server in `DEFAULT_MCP_SERVERS` to make it available to every user. The server is a separate service from the [FINOS Workspace MCP server](workspace-mcp.mdx), which lets outside AI hosts work with a user's dashboards.
+
+## Transport
+
+The server listens on port <EnvDefault name="MCP_PORT" />, or on `MCP_PORT`, and serves MCP over streamable HTTP at `POST /mcp`. It is stateless: every request gets a new server instance, and there is no session to open or close. The table lists every route that the server serves, with the companion mode on.
+
+<AgentMcpRoutes />
+
+The server answers cross-origin requests from every origin and allows the headers <AgentMcpCorsHeaders />. It has no sign-in of its own. The tools that keep something for a chat protect it with a signed scope instead, which the next section describes. The server also serves Prometheus metrics on `MCP_METRICS_PORT`, which is <EnvDefault name="MCP_METRICS_PORT" /> by default, as [Agent HTTP API](../http-api/agent-api.mdx#metrics) lists.
+
+## Chat scope
+
+A tool that keeps state for a chat, such as the pages that were fetched or the documents that were loaded, must know whose chat a call belongs to. The agent supplies two arguments for this, `x-agent-conversation-id` and `x-agent-scope-sig`, which [Tool results](../protocols/agent-tool-results.mdx#arguments-that-tool-calls-carry) describes. The signature is an HMAC of the chat key made with the secret `AGENT_SCOPE_SECRET`, which the agent and the MCP server share and which must have at least <AgentLimit name="minScopeSecretChars" /> characters.
+
+The tools <AgentScopedTools /> check the signature. A call whose signature is missing or wrong is refused with a typed error item, so that nobody can read another user's chat by naming it:
+
+```json
+{ "$agent_kind": "error", "error": { "code": "SCOPE_REJECTED", "message": "The call carries no signed chat scope. Tools that keep state for a chat only act on calls made through the agent.", "retryable": false } }
+```
+
+The server refuses to start without the secret, unless `AGENT_AUTH` is `none`.
+
+## Tools
+
+The server registers <AgentCount what="backendTools" /> tools that it always has, and <AgentCount what="documentTools" /> more when document search is set up. This section lists them as the server serves them. The description of a tool is the text that the model reads, and the arguments come from the tool's schema. The tools that keep something for the chat also accept arguments whose names start with `x-agent-`, which the agent fills in and which are hidden from the model, so they are left out of the tables.
+
+<AgentMcpTools group="backend" />
+
+### What the tools return
+
+**`web_search`** searches the web with DuckDuckGo and needs no key. It returns one text item that lists the results, each as a title, an address and a snippet, separated by lines of dashes, followed by one `citation` item for each result, which the agent turns into a source under the answer. This is the result of a search with one result:
+
+```json
+[
+  { "type": "text", "text": "EXAMPLE | English meaning - Cambridge Dictionary\nhttps://dictionary.cambridge.org/dictionary/english/example\nLearn the meaning of example as a noun in English, ..." },
+  { "type": "text", "text": "{\"$agent_kind\":\"citation\",\"citation\":{\"type\":\"web\",\"url\":\"https://dictionary.cambridge.org/dictionary/english/example\",\"title\":\"EXAMPLE | English meaning - Cambridge Dictionary\"}}" }
+]
+```
+
+**`fetch_webpage`** fetches a page and keeps it for the chat. It returns an overview, which has the title, an outline of the page, a description of what the page contains and the start of its text, together with a `page_id`. It does not return the whole page. It adds a `citation` item for the page. The server keeps the page only for a call with a valid chat scope, and without one the overview says that the rest of the page cannot be read. The agent signs an address with `x-agent-url-sig` only when the address was in what the model was given, such as the user's message or an earlier search result. When the server has a scope secret, it refuses to fetch an address that is not signed and answers with a text that tells the model to fetch only addresses that appeared in the conversation. Setting `AGENT_FETCH_ANY_URL` to `true` turns that check off.
+
+**`inspect_webpage`** reads parts of a page that `fetch_webpage` kept, so the page is neither fetched again nor handed over whole. The `view` says what to read, and its description in the table above says what each view returns.
+
+Every view returns a bounded amount, and the `offset` continues where the last answer stopped.
+
+**`query_documents`** searches the documents that are loaded into the chat by meaning. It returns the most relevant passages with their sources, and it can be restricted to some documents with `doc_ids`. A document is in the chat's store only after the agent has loaded it with `get_widget_data` for a file widget, so a search finds nothing in a file that was never loaded. **`list_documents`** lists the documents of the chat with each one's id, name, format and number of passages.
+
+## Document search
+
+The two document tools exist only when the server has an embedding model, which the setting `AGENT_EMBED_MODEL` names in the form `<provider>:<model>`, as [the configuration reference](../configuration/agent.mdx) lists with the providers that embed. Without a valid model the server logs the reason, leaves the two tools out, and keeps serving the others. The embedding model is separate from the chat model and does not have to come from the same provider.
+
+<AgentMcpTools group="documents" />
+
+## Companion mode
+
+When `COMPANION_TOOLS_ENABLED` is `true`, the server also registers <AgentCount what="workspaceTools" /> tools for working with dashboards, <AgentCount what="prompts" /> prompts and <AgentCount what="resources" /> resources, and it serves a bridge of its own at `/bridge/session/start`, `/bridge/ws` and `/bridge/health`. The tools, prompts and resources have the same names as those of the [FINOS Workspace MCP server](workspace-mcp.mdx), but the two servers implement them separately. The setting is off by default, and a deployment that uses the FINOS Workspace MCP server does not need it. The agent leaves a tool of this server out of the model's tool list when its name is one that the agent already handles itself, so the model sees each capability once.
+
+### Companion tools
+
+<AgentMcpTools group="workspace" />
+
+### Prompts
+
+<AgentMcpPrompts />
+
+### Resources
+
+<AgentMcpResources />

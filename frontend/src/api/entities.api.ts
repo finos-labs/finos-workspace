@@ -14,19 +14,12 @@ interface SuccessResponse {
   success: boolean;
 }
 
-export interface EntityRelationship {
-  uuid: string;
-  parent: Entity;
-  child: Entity;
-  supreme: Entity;
-}
-
 export interface EntityBody {
   name: string;
   sharing_enabled: boolean;
 }
 
-export interface EntityAdminBody {
+interface EntityAdminBody {
   email: string;
   permissions_uuid: string;
   first_name: string;
@@ -56,8 +49,6 @@ export async function validateEntityAdmin() {
 }
 
 export const getEntities = () => getAllPages<Entity>("/entity/entity");
-export const getEntityRelationships = () =>
-  getAllPages<EntityRelationship>("/entity/entity-relationship");
 export const getEntityMaps = () => getAllPages<EntityMapItem>("/entity/entity-map");
 export const getEntityUsers = () => getAllPages<EntityUser>("/entity/user");
 
@@ -85,29 +76,6 @@ export async function registerEntityAdmin(body: EntityAdminBody) {
   const { data } = await apiClient.post<SuccessResponse>(
     "/entity/register-admin",
     body,
-  );
-  return data;
-}
-
-export async function createEntityRelationship(parentUuid: string, childUuid: string) {
-  const { data } = await apiClient.post<{ uuid: string }>(
-    "/entity/entity-relationship",
-    {
-      parent_uuid: parentUuid,
-      child_uuid: childUuid,
-    },
-  );
-  return data;
-}
-
-export async function updateEntityRelationship(
-  uuid: string,
-  parentUuid: string,
-  childUuid: string,
-) {
-  const { data } = await apiClient.put<SuccessResponse>(
-    `/entity/entity-relationship/${uuid}`,
-    { parent_uuid: parentUuid, child_uuid: childUuid },
   );
   return data;
 }

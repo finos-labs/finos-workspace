@@ -8,7 +8,6 @@ import type {
 } from "../protocol/types.ts";
 import { extractWidgetItems, type WidgetItem } from "../widgets/parse.ts";
 import { asWidgetDataMessage } from "./workspace-widget-data.ts";
-import { readParseAs, routeForParseAs } from "../widgets/parse-as.ts";
 import { analyzeTable, sanitizeName, type TableInfo } from "../sql/loader.ts";
 import { processMcpResult, type McpCitation, type McpResultSummary } from "../mcp/results.ts";
 import type { CitedWidget } from "../protocol/citations.ts";
@@ -681,11 +680,9 @@ export function injectWidgetData(
       });
     }
 
-    const parseAs = readParseAs(item as unknown as { data_format?: Record<string, unknown> });
-    const route = routeForParseAs(parseAs);
     let loadedAsTable = false;
 
-    if (route.toSqlite && item.content.trim()) {
+    if (item.content.trim()) {
       try {
         const data = JSON.parse(item.content);
         if (
@@ -738,15 +735,7 @@ export function injectWidgetData(
       }
     }
 
-    if (!loadedAsTable && route.brief && item.content.trim()) {
-      const summary = item.content.length > 500
-        ? `${item.content.slice(0, 500)}... [truncated, ${item.content.length} chars total]`
-        : item.content;
-      parts.push({
-        type: "text",
-        text: `--- ${item.name} (uuid: ${item.uuid}) [HTML — brief] ---\n${inputArgsLine}${summary}`,
-      });
-    } else if (!loadedAsTable && route.asText && item.content.trim()) {
+    if (!loadedAsTable && item.content.trim()) {
       const searchable = ctx.documentSearchAvailable && (ctx.pendingDocuments?.has(item.uuid) ?? false);
       const content = clipForModel(
         item.content,
@@ -797,7 +786,7 @@ export function injectSkill(slug: string, content: string, ctx: RoundTripContext
   });
 }
 
-export function extractSkillContent(toolMsg: ToolMessage): { slug: string; content: string } {
+function extractSkillContent(toolMsg: ToolMessage): { slug: string; content: string } {
   const skillResult = toolMsg.data?.[0] as Record<string, unknown> | undefined;
   const slug = (toolMsg.input_arguments?.slug as string) ?? "unknown";
 
@@ -813,7 +802,7 @@ export function extractSkillContent(toolMsg: ToolMessage): { slug: string; conte
   return { slug, content: `Skill "${slug}" could not be loaded: ${err}` };
 }
 
-export interface InjectFromRebootResult {
+interface InjectFromRebootResult {
   terminal?: boolean;
   terminalMessage?: string;
   suppressWidgetDataTool?: boolean;

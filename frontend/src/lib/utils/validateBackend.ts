@@ -72,7 +72,7 @@ function fillRoute(endpoint: string, value: (name: string) => unknown): string |
   return missing ? null : filled;
 }
 
-export function probeRoutes(widgets: WidgetsType, backendUrl: URL) {
+function probeRoutes(widgets: WidgetsType, backendUrl: URL) {
   const routes = new Map<string, string[]>();
   const unchecked: string[] = [];
 
@@ -129,14 +129,13 @@ export function probeRoutes(widgets: WidgetsType, backendUrl: URL) {
   return { routes, unchecked };
 }
 
-async function sendOptions(url: string, signal?: AbortSignal): Promise<number | null> {
+async function sendOptions(
+  source: Source,
+  url: string,
+  signal?: AbortSignal,
+): Promise<number | null> {
   try {
-    const response = await fetch(url, {
-      method: "OPTIONS",
-      credentials: "omit",
-      cache: "no-store",
-      signal,
-    });
+    const response = await fetchFromSource(source, url, { signal, method: "OPTIONS" });
     return response.status;
   } catch (error) {
     if (signal?.aborted) throw error;
@@ -146,21 +145,23 @@ async function sendOptions(url: string, signal?: AbortSignal): Promise<number | 
 
 export async function validateBackendEndpoints(
   widgets: WidgetsType,
-  backendUrl: URL,
+  source: Source,
   signal?: AbortSignal,
 ): Promise<ProbeReport> {
+  const backendUrl = createURL(source.url);
   const { routes, unchecked } = probeRoutes(widgets, backendUrl);
   if (routes.size === 0) return { failed: [], unchecked };
 
   const token = Math.random().toString(36).slice(2, 12);
   const canary = await sendOptions(
+    source,
     createURLString(`__workspace_route_probe_${token}`, backendUrl),
     signal,
   );
   if (canary !== 404) {
     const why =
       canary === null
-        ? "the backend did not answer OPTIONS from this origin (it is unreachable, or its CORS settings do not allow OPTIONS)"
+        ? "the backend did not answer OPTIONS"
         : `the backend answers OPTIONS for a path that does not exist (status ${canary})`;
     return { failed: [], unchecked: [`Routes not checked: ${why}`, ...unchecked] };
   }
@@ -170,7 +171,7 @@ export async function validateBackendEndpoints(
   const worker = async () => {
     for (let next = queue.shift(); next; next = queue.shift()) {
       const [url, refs] = next;
-      const status = await sendOptions(url, signal);
+      const status = await sendOptions(source, url, signal);
       const path = new URL(url).pathname;
       if (status === 404)
         failed.push(`${refs.join("; ")} - \`${path}\`: no such route (404)`);
@@ -716,7 +717,7 @@ export async function validateBackend(
 
   let probe: ProbeReport = { failed: [], unchecked: [] };
   if (options.validateAllWidgets && !widgetValidationError) {
-    probe = await validateBackendEndpoints(widgets, backendUrl, signal);
+    probe = await validateBackendEndpoints(widgets, source, signal);
   }
   const failedEndpoints = probe.failed;
 

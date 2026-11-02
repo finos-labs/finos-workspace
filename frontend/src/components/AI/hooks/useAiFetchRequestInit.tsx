@@ -66,7 +66,7 @@ const withGrantedModelSetting = (
   return modelId ? { ...options, [MODEL_SETTING]: modelId } : options;
 };
 
-export function parseSkillSlashCommands(message: string) {
+function parseSkillSlashCommands(message: string) {
   const regex = /\/skill:([a-z0-9]+(?:-[a-z0-9]+)*)\b/gi;
   const slugs = new Set<string>();
   let cleanedMessage = message;

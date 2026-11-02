@@ -10,7 +10,7 @@ import { getAiApiUrl } from "~/lib/constants";
 import { getIframeWidget } from "~/lib/iframeWidgetRegistry";
 import { getConfig } from "~/lib/runtimeConfig";
 import { fetchAgent } from "~/lib/state/agentToken";
-import { useAppStore } from "~/lib/state/app";
+import { DASHBOARD_LOCKED_MESSAGE, useAppStore } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import {
   type ArtifactT,
@@ -141,12 +141,14 @@ function normalizeGenerativeWidgetArtifact(artifact: unknown): ArtifactT | null 
   return normalizedArtifact as ArtifactT;
 }
 
+export const GATEWAY_ERROR_BODY_CHARS = 300;
+
 async function readErrorBody(response: Response): Promise<string | null> {
   try {
     const body = await response.clone().text();
     if (!body) return null;
     const normalized = body.replace(/\s+/g, " ").trim();
-    return normalized ? normalized.slice(0, 300) : null;
+    return normalized ? normalized.slice(0, GATEWAY_ERROR_BODY_CHARS) : null;
   } catch {
     return null;
   }
@@ -615,6 +617,15 @@ export function useFunctionCall() {
         ];
       }
 
+      if (dashboard.data?.locked) {
+        return [
+          {
+            status: "error",
+            message: `Dashboard '${dashboardId}' is locked. ${DASHBOARD_LOCKED_MESSAGE}`,
+          },
+        ];
+      }
+
       if (import.meta.env.DEV) {
         console.log("[GenerativeWidget] Creating widget:", {
           type: widget_type,
@@ -789,7 +800,7 @@ function getRequest(
 
 type GetDashboardWidgetData = (widgetId: string) => DashboardWidgetData | undefined;
 
-export async function getCustomWidgetsData(
+async function getCustomWidgetsData(
   dataSource: DataSourceT,
   getWidgetFromBackend: (backendName: string, widgetId: string) => WidgetT | null,
   getDashboardWidgetData: GetDashboardWidgetData,

@@ -58,7 +58,7 @@ interface GroupDropdownProps {
 export const GroupDropdownAnchorContext =
   createContext<RefObject<HTMLDivElement | null> | null>(null);
 
-export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
+const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
   (
     { children, className = "ws-parameter", paramDef, ...rest }: GroupDropdownProps,
     _ref,
@@ -547,7 +547,7 @@ const GroupContentItem = memo(
   },
 );
 
-export function getNewGroup(
+function getNewGroup(
   widget: Widget,
   groups: Group[],
   type?: GroupTypes,

@@ -3,7 +3,7 @@ import React from "react";
 import Icon from "~/components/Icon";
 import { cn } from "../utils";
 
-export interface CheckboxProps
+interface CheckboxProps
   extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> {
   label?: React.ReactNode;
   error?: boolean;

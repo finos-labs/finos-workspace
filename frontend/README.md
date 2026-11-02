@@ -4,7 +4,7 @@ The web application of FINOS Workspace: dashboards of widgets that read from the
 
 ## Tech stack
 
-- **Framework**: React 18, TypeScript
+- **Framework**: React 19, TypeScript
 - **Build tool**: Vite
 - **Styling**: Tailwind CSS, Radix UI
 - **State**: Zustand, React Query (TanStack Query)

@@ -1,0 +1,64 @@
+---
+title: Color palette
+sidebar_position: 4
+---
+
+import { PaletteGroup } from "@site/src/components/Reference/theme";
+
+# Color palette
+
+The palette is the set of raw colors from which the semantic properties are built. The file `frontend/src/styles/tokens.css` declares it as custom properties that are named `--color-<ramp>-<step>`. The `@theme` block of `frontend/src/index.css` names each step, and Tailwind defines the classes `bg-<ramp>-<step>`, `text-<ramp>-<step>`, `border-<ramp>-<step>` and the other color utilities from those names. Each class reads its property, so the file is the only place that holds a palette value. The semantic properties on the other pages refer to the palette with `var()`.
+
+A palette step is declared once, on `:root`. The dark theme does not change the value of a step. It changes which step a semantic property refers to.
+
+Each table lists a step with its value and where it is used. The used column lists the classes that read the property and the places that use them, and it counts the properties of the token files whose value contains `var()` of this step. The tables are generated from the stylesheet and from the frontend source.
+
+## Base
+
+This ramp holds white and the near-black navy that the dark theme uses for the page.
+
+<PaletteGroup group="--color-base-" />
+
+## Main
+
+This is the brand ramp, and it uses the colors that FINOS supplies. The property `--color-main-100` is FINOS Dark Blue, which is the brand color, and `--color-main-50` is FINOS Light Blue. The property `--color-main-200` is the darker step. The steps are independent values, as [Brand color, font and text size](brand-font-size.mdx) describes.
+
+<PaletteGroup group="--color-main-" />
+
+## Dark
+
+This is the navy ramp from which the dark theme draws its surfaces, borders and muted text. Step 900 is the dark theme's panel and header color.
+
+<PaletteGroup group="--color-dark-" />
+
+## Light
+
+This is the blue-gray ramp of the light theme's surfaces, borders and text, and it also supplies the lightest text in the dark theme. Step 50 is the lightest and step 900 is the darkest.
+
+<PaletteGroup group="--color-light-" />
+
+## Status colors
+
+Each status ramp has a pale tint at step 50, a mid tone at step 100 and a deep tone at step 200.
+
+### Error
+
+<PaletteGroup group="--color-error-" />
+
+### Success
+
+<PaletteGroup group="--color-success-" />
+
+### Warning
+
+<PaletteGroup group="--color-warning-" />
+
+### Informative
+
+<PaletteGroup group="--color-informative-" />
+
+## Accent colors
+
+This group has eleven hues with the same three steps, and the `--tag-*` properties draw on them.
+
+<PaletteGroup group="--color-extra-" />

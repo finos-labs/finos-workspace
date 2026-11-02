@@ -9,9 +9,7 @@ import {
 import { type UseFormReturn, useFieldArray, useWatch } from "react-hook-form";
 import { Button } from "~/components/ds/atoms/Button";
 import Icon from "../../Icon";
-import type { AppMetadataForm } from "./schema";
-
-const MAX_PROMPTS = 5;
+import { type AppMetadataForm, MAX_APP_PROMPT_LENGTH, MAX_APP_PROMPTS } from "./schema";
 
 type PromptsSectionProps = {
   form: UseFormReturn<AppMetadataForm>;
@@ -34,7 +32,7 @@ export function PromptsSection({ form }: PromptsSectionProps) {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const count = watchedPrompts.length;
-  const isMax = count >= MAX_PROMPTS;
+  const isMax = count >= MAX_APP_PROMPTS;
   const canOpenInput = !isMax && !isInputOpen;
   const showEmptyZone = count === 0 && !isInputOpen;
 
@@ -105,7 +103,7 @@ export function PromptsSection({ form }: PromptsSectionProps) {
               aria-live="polite"
               data-testid="_prompts-counter"
             >
-              {count} / {MAX_PROMPTS}
+              {count} / {MAX_APP_PROMPTS}
             </span>
           )}
           <Button
@@ -146,7 +144,7 @@ export function PromptsSection({ form }: PromptsSectionProps) {
               onKeyDown={handleKeyDown}
               placeholder="Insert prompt suggestion (Shift+Enter for newline)"
               rows={1}
-              maxLength={2000}
+              maxLength={MAX_APP_PROMPT_LENGTH}
               data-testid="_prompts-input"
               className="flex-1 min-h-8 max-h-40 resize-none overflow-y-auto
                 px-3 py-1.5 rounded-sm body-xs-regular leading-[1.5]

@@ -59,12 +59,12 @@ const textareaVariants = cva(
   },
 );
 
-export type ReactTextareaProps = Omit<
+type ReactTextareaProps = Omit<
   React.TextareaHTMLAttributes<HTMLTextAreaElement>,
   "onChange"
 >;
 
-export interface TextareaProps extends ReactTextareaProps {
+interface TextareaProps extends ReactTextareaProps {
   copiable?: boolean;
   autoheight?: boolean;
   label?: React.ReactNode;
@@ -146,7 +146,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 );
 Textarea.displayName = "Textarea";
 
-export type FormTextareaProps = Omit<TextareaProps, "error">;
+type FormTextareaProps = Omit<TextareaProps, "error">;
 
 export const FormTextarea = React.forwardRef<HTMLTextAreaElement, FormTextareaProps>(
   (props, ref) => {

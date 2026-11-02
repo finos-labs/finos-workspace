@@ -151,49 +151,6 @@ def lint_fragment(schema: Any) -> list[str]:  # noqa: PLR0915
     return problems
 
 
-_CONDITIONS = ("if", "then", "else", "not", "contains")
-
-
-def closedness_problems(schema: Any) -> list[str]:  # noqa: PLR0912
-    problems: list[str] = []
-
-    def walk(node: Any, path: list[str], shape: bool) -> None:  # noqa: PLR0912
-        if not isinstance(node, dict):
-            return
-        where = _pointer(path)
-        declared = node.get("type")
-        types = {declared} if isinstance(declared, str) else set(declared or [])
-        if shape and "object" in types:
-            additional = node.get("additionalProperties")
-            if additional is not False and not isinstance(additional, dict):
-                problems.append(f"{where}: an object needs additionalProperties false or a value schema")
-        if shape and "array" in types and not isinstance(node.get("maxItems"), int):
-            problems.append(f"{where}: an array needs maxItems")
-        if (
-            shape
-            and "string" in types
-            and not any(k in node for k in ("maxLength", "enum", "const", "pattern", "format"))
-        ):
-            problems.append(f"{where}: a string needs maxLength, enum, const, pattern or format")
-        for name, child in (node.get("properties") or {}).items():
-            walk(child, [*path, "properties", name], shape)
-        for key in ("additionalProperties", "items", "propertyNames"):
-            if isinstance(node.get(key), dict):
-                walk(node[key], [*path, key], shape)
-        for key in ("anyOf", "oneOf", "allOf"):
-            for i, child in enumerate(node.get(key) or []):
-                walk(child, [*path, key, str(i)], shape)
-        for key in _CONDITIONS:
-            if isinstance(node.get(key), dict):
-                walk(node[key], [*path, key], False)
-        for key in ("definitions", "$defs"):
-            for name, child in (node.get(key) or {}).items():
-                walk(child, [*path, key, name], True)
-
-    walk(schema, [], True)
-    return problems
-
-
 SETTINGS_PROPERTY_KEYWORDS = ANNOTATIONS | {
     "type",
     "enum",

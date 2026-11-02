@@ -10,13 +10,24 @@ import { FormTextarea } from "~/components/ds/atoms/TextArea";
 import { BaseDialog } from "~/components/ds/dialogs/BaseDialog";
 import { DialogFooter, DialogTitle } from "~/components/ds/dialogs/Dialog";
 import { Form, FormField } from "~/components/ds/molecules/Form";
+import {
+  MAX_SKILL_DESCRIPTION_LENGTH,
+  MAX_SKILL_SLUG_LENGTH,
+  MIN_SKILL_SLUG_LENGTH,
+} from "~/lib/constants";
 import { type Skill, useShallowSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 
 const skillSchema = z.object({
   slug: z
     .string()
-    .min(2, "Slug must be at least 2 characters")
-    .max(50, "Slug must be at most 50 characters")
+    .min(
+      MIN_SKILL_SLUG_LENGTH,
+      `Slug must be at least ${MIN_SKILL_SLUG_LENGTH} characters`,
+    )
+    .max(
+      MAX_SKILL_SLUG_LENGTH,
+      `Slug must be at most ${MAX_SKILL_SLUG_LENGTH} characters`,
+    )
     .regex(
       /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
       "Slug must be lowercase letters, numbers, and hyphens only (no leading/trailing hyphens)",
@@ -24,7 +35,10 @@ const skillSchema = z.object({
   description: z
     .string()
     .min(1, "Description is required")
-    .max(500, "Description must be at most 500 characters"),
+    .max(
+      MAX_SKILL_DESCRIPTION_LENGTH,
+      `Description must be at most ${MAX_SKILL_DESCRIPTION_LENGTH} characters`,
+    ),
   content: z.string().min(1, "Content is required"),
 });
 
@@ -169,10 +183,10 @@ export default function AddSkillDialog() {
                     {...field}
                     label="Description"
                     placeholder="Analyzes financial statements and provides insights"
-                    maxLength={500}
+                    maxLength={MAX_SKILL_DESCRIPTION_LENGTH}
                     message={
                       <span className="text-ds-text-caption text-right block">
-                        {field.value?.length || 0}/500
+                        {field.value?.length || 0}/{MAX_SKILL_DESCRIPTION_LENGTH}
                       </span>
                     }
                     className="min-h-[80px] text-sm"

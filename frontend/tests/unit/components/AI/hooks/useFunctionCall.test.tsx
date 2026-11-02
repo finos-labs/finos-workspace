@@ -31,11 +31,13 @@ let mockItems: Record<
         widgetId: string;
         storage: Record<string, unknown>;
       }>[];
+      locked?: boolean;
     };
   }
 > = {};
 
 vi.mock("~/lib/state/app", () => ({
+  DASHBOARD_LOCKED_MESSAGE: "Locked.",
   useAppStore: {
     getState: () => ({
       addWidget: mockAddWidget,
@@ -548,6 +550,28 @@ describe("useFunctionCall", () => {
   describe("addGenerativeWidget", () => {
     beforeEach(() => {
       setupDashboard();
+    });
+
+    it("refuses to add a widget to a locked dashboard and says why", async () => {
+      mockItems["test-dashboard-id"].data = { widgets: [], locked: true };
+      const { result } = renderUseFunctionCall();
+
+      let response: CopilotCommandResultT[] | undefined;
+      await act(async () => {
+        response = await result.current.addGenerativeWidget({
+          widget_type: "note",
+          data: "<p>Hello</p>",
+          name: "Note",
+        });
+      });
+
+      expect(response).toEqual([
+        {
+          status: "error",
+          message: "Dashboard 'test-dashboard-id' is locked. Locked.",
+        },
+      ]);
+      expect(mockAddWidget).not.toHaveBeenCalled();
     });
 
     describe("note widget creation", () => {

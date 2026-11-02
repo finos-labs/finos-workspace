@@ -39,6 +39,12 @@ const schemaPaths = Object.entries(RuntimeConfigSchema.shape).flatMap(
       (field) => `${group}.${field}`,
     ),
 );
+const undescribed = Object.entries(RuntimeConfigSchema.shape).flatMap(([group, groupSchema]) =>
+  Object.entries((groupSchema as unknown as { shape: Record<string, { description?: string }> }).shape)
+    .filter(([, node]) => !node.description?.trim())
+    .map(([field]) => `${group}.${field}`),
+);
+for (const path of undescribed) errors.push(`${path} has no description`);
 const tablePaths = rows.map((row) => row.path);
 for (const path of schemaPaths) {
   if (!tablePaths.includes(path)) errors.push(`${path} is missing from FIELDS`);

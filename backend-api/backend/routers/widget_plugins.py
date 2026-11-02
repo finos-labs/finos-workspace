@@ -3,7 +3,7 @@ import re
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy import Row
@@ -54,64 +54,115 @@ async def _json_object(request: Request, limit: int) -> dict[str, Any]:
 class ApproveBody(BaseModel):
     model_config = closed
 
-    digest: Annotated[str, StringConstraints(max_length=80)]
-    acknowledged: list[Annotated[str, StringConstraints(max_length=400)]] = Field(default_factory=list, max_length=500)
+    digest: Annotated[str, StringConstraints(max_length=80)] = Field(
+        description=(
+            "The digest of the version as the superuser reviewed it. The approval fails when the digest has changed."
+        ),
+    )
+    acknowledged: list[Annotated[str, StringConstraints(max_length=400)]] = Field(
+        default_factory=list,
+        max_length=500,
+        description="The requests of the version that the superuser acknowledges.",
+    )
 
 
 class DevelopBody(BaseModel):
     model_config = closed
 
-    bump: Literal["patch", "minor", "major"]
+    bump: Literal["patch", "minor", "major"] = Field(
+        description="Which part of the version number to raise: `patch`, `minor` or `major`."
+    )
 
 
 class OverridesBody(BaseModel):
     model_config = closed
 
-    csp: dict[str, list[str]] | None = None
-    server_network: list[Annotated[str, StringConstraints(max_length=255)]] | None = Field(default=None, max_length=32)
-    confirmations: list[Literal["insecure-scheme", "private-host", "remote-script"]] = Field(default_factory=list)
+    csp: dict[str, list[str]] | None = Field(
+        None,
+        description="The override of the frame policy, as the sources that each directive allows.",
+    )
+    server_network: list[Annotated[str, StringConstraints(max_length=255)]] | None = Field(
+        default=None,
+        max_length=32,
+        description="The override of the server network: the hosts that the plugin's server side may reach.",
+    )
+    confirmations: list[Literal["insecure-scheme", "private-host", "remote-script"]] = Field(
+        default_factory=list,
+        description=(
+            "The risky choices that the superuser confirms: `insecure-scheme`, `private-host` or `remote-script`."
+        ),
+    )
 
 
 class EntityChanges(BaseModel):
     model_config = closed
 
-    enabled: bool | None = None
-    narrowed_permissions: list[str] | None = Field(default=None, max_length=32)
-    csp_narrow: dict[str, list[str]] | None = None
+    enabled: bool | None = Field(None, description="Whether the organization enables the plugin.")
+    narrowed_permissions: list[str] | None = Field(
+        default=None,
+        max_length=32,
+        description="The permissions that the organization removes from what the plugin may do.",
+    )
+    csp_narrow: dict[str, list[str]] | None = Field(
+        None,
+        description="The frame sources that the organization removes, by directive.",
+    )
     server_network_narrow: list[Annotated[str, StringConstraints(max_length=255)]] | None = Field(
-        default=None, max_length=32
+        default=None,
+        max_length=32,
+        description="The server hosts that the organization removes.",
     )
     data_sources: dict[Annotated[str, StringConstraints(max_length=64)], UUID | None] | None = Field(
-        default=None, max_length=16
+        default=None,
+        max_length=16,
+        description=(
+            "The organization's backend for each data source that the plugin declares, by data source id. A null "
+            "value clears the mapping."
+        ),
     )
-    settings: dict[str, Any] | None = None
-    handlers: dict[str, Annotated[str, StringConstraints(pattern=WIDGET_ID_PATTERN)] | None] | None = None
+    settings: dict[str, Any] | None = Field(None, description="The values of the plugin's settings.")
+    handlers: dict[str, Annotated[str, StringConstraints(pattern=WIDGET_ID_PATTERN)] | None] | None = Field(
+        None,
+        description=(
+            "For each widget type that the plugin handles, the id of the plugin widget that renders it for the "
+            "organization, or null to clear the choice."
+        ),
+    )
 
 
 class AllEntitiesChanges(BaseModel):
     model_config = closed
 
-    enabled: bool
+    enabled: bool = Field(description="Whether the plugin is enabled for every organization.")
 
 
 class RoleGrant(BaseModel):
     model_config = closed
 
-    plugin_id: PluginId
-    widget_id: Annotated[str, StringConstraints(pattern=r"^(\*|[a-z][a-z0-9_-]{0,47})$")] = "*"
+    plugin_id: PluginId = Field(description="The id of the plugin.")
+    widget_id: Annotated[str, StringConstraints(pattern=r"^(\*|[a-z][a-z0-9_-]{0,47})$")] = Field(
+        "*",
+        description="The id of the widget, or `*` for every widget of the plugin.",
+    )
 
 
 class RoleGrants(BaseModel):
     model_config = closed
 
-    grants: list[RoleGrant] = Field(default_factory=list, max_length=500)
+    grants: list[RoleGrant] = Field(
+        default_factory=list,
+        max_length=500,
+        description="The plugin widgets that the role grants.",
+    )
 
 
 class Report(BaseModel):
     model_config = closed
 
-    directive: Annotated[str, StringConstraints(max_length=32)]
-    origin: Annotated[str, StringConstraints(max_length=255)]
+    directive: Annotated[str, StringConstraints(max_length=32)] = Field(
+        description="The directive of the frame policy that refused the request.",
+    )
+    origin: Annotated[str, StringConstraints(max_length=255)] = Field(description="The origin that the policy refused.")
 
 
 FrameFailure = Literal["sandbox-failed", "integrity-failed", "load-failed", "plugin-error", "unresponsive", "ended"]
@@ -120,13 +171,32 @@ FrameFailure = Literal["sandbox-failed", "integrity-failed", "load-failed", "plu
 class ReportBody(BaseModel):
     model_config = closed
 
-    plugin_id: PluginId
-    version: Annotated[str, StringConstraints(pattern=VERSION_PATTERN)]
-    reports: list[Report] = Field(default_factory=list, max_length=50)
-    failure: FrameFailure | None = None
+    plugin_id: PluginId = Field(description="The id of the plugin.")
+    version: Annotated[str, StringConstraints(pattern=VERSION_PATTERN)] = Field(description="The version of the plugin.")
+    reports: list[Report] = Field(
+        default_factory=list,
+        max_length=50,
+        description="The requests that the frame policy refused.",
+    )
+    failure: FrameFailure | None = Field(
+        None,
+        description=(
+            "How the frame failed, if it did: `sandbox-failed`, `integrity-failed`, `load-failed`, `plugin-error`, "
+            "`unresponsive` or `ended`."
+        ),
+    )
 
 
-@platform_router.get("")
+@platform_router.get(
+    "",
+    summary="List the plugins at the deployment",
+    description=(
+        "Returns every plugin that a rescan has found, ordered by id. Each entry has the plugin's status, its active "
+        "version, the newer version that waits for approval, its overrides, the organizations that enabled it, its "
+        "versions with their reviews, the state of its secrets and the state of its backend. The field `enabled` says "
+        "whether the deployment has the plugin feature turned on. Only a superuser can call it."
+    ),
+)
 async def list_plugins(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     _: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
@@ -134,16 +204,32 @@ async def list_plugins(
     return await service.platform_listing(db)
 
 
-@platform_router.get("/{plugin_id}")
+@platform_router.get(
+    "/{plugin_id}",
+    summary="Get a plugin",
+    description=(
+        "Returns one plugin with the same detail as the listing, and adds every organization with whether the plugin is "
+        "enabled for it, and the plugin's latest events. Answers 404 when no plugin has that id. Only a superuser can "
+        "call it."
+    ),
+)
 async def get_plugin(
-    plugin_id: PluginId,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     _: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
     return await service.platform_plugin(db, plugin_id)
 
 
-@platform_router.post("/rescan")
+@platform_router.post(
+    "/rescan",
+    summary="Rescan the plugin directory",
+    description=(
+        "Reads every version directory of the plugins directory, validates the manifests, hashes the files, and records "
+        "each version as discovered, or as blocked with the reason. The API scans only when someone asks, and never at "
+        "startup. Only a superuser can call it."
+    ),
+)
 async def rescan_plugins(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
@@ -151,10 +237,24 @@ async def rescan_plugins(
     return await service.rescan(db, superuser.uuid)
 
 
-@platform_router.post("/{plugin_id}/versions/{version}/approve")
+@platform_router.post(
+    "/{plugin_id}/versions/{version}/approve",
+    summary="Approve a plugin version",
+    description=(
+        "Approves a version that the superuser reviewed. The request's `digest` must be the digest that the version has "
+        "now, and `acknowledged` lists every request that the version adds to what the active version asked for. The "
+        "first approval enables the plugin at the deployment, and approving a newer version retires the active one. "
+        "Answers 404 when the version does not exist, and 409 when the version cannot be approved in its state or its "
+        "files changed since the review. Only a superuser can call it."
+    ),
+)
 async def approve_version(
-    plugin_id: PluginId,
-    version: Annotated[str, StringConstraints(pattern=VERSION_PATTERN)],
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
+    version: Annotated[
+        str,
+        StringConstraints(pattern=VERSION_PATTERN),
+        Path(description="The version of the plugin, as `major.minor.patch`."),
+    ],
     body: ApproveBody,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
@@ -169,10 +269,26 @@ async def approve_version(
     )
 
 
-@platform_router.post("/{plugin_id}/versions/{version}/develop")
+@platform_router.post(
+    "/{plugin_id}/versions/{version}/develop",
+    summary="Start the next version of a plugin",
+    description=(
+        "Copies an approved version of the plugin to the next patch, minor or major number, rewrites the version and the "
+        "checksum in the copy's manifest, and records the copy as a version in development. The API serves the copy "
+        "from its files as they change until a superuser approves it. Only one version of a plugin is in development at "
+        "a time. Answers the plugin id, the new version and its path. Answers 404 when the plugin or the version does "
+        "not exist, and 409 when the deployment is not a local stack, where `MODE` is `local`, when the version is not "
+        "approved, when another version is in development, or when the plugins directory cannot be written. Only a "
+        "superuser can call it."
+    ),
+)
 async def develop_version(
-    plugin_id: PluginId,
-    version: Annotated[str, StringConstraints(pattern=VERSION_PATTERN)],
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
+    version: Annotated[
+        str,
+        StringConstraints(pattern=VERSION_PATTERN),
+        Path(description="The approved version, as `major.minor.patch`, that the new version starts from."),
+    ],
     body: DevelopBody,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
@@ -180,27 +296,50 @@ async def develop_version(
     return await service.start_development(db, plugin_id, version, body.bump, superuser.uuid)
 
 
-@platform_router.post("/{plugin_id}/revoke")
+@platform_router.post(
+    "/{plugin_id}/revoke",
+    summary="Revoke a plugin",
+    description=(
+        "Marks the plugin as revoked, so that it stops serving its widgets until a superuser restores it. The versions "
+        "and the settings stay. Answers 404 when no plugin has that id. Only a superuser can call it."
+    ),
+)
 async def revoke_plugin(
-    plugin_id: PluginId,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
     return await service.set_status(db, plugin_id, True, superuser.uuid)
 
 
-@platform_router.post("/{plugin_id}/restore")
+@platform_router.post(
+    "/{plugin_id}/restore",
+    summary="Restore a revoked plugin",
+    description=(
+        "Marks the plugin as enabled again when it has an active version, and as disabled when it has none, and resets "
+        "the state of its backend. Answers 404 when no plugin has that id. Only a superuser can call it."
+    ),
+)
 async def restore_plugin(
-    plugin_id: PluginId,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
     return await service.set_status(db, plugin_id, False, superuser.uuid)
 
 
-@platform_router.put("/{plugin_id}/overrides")
+@platform_router.put(
+    "/{plugin_id}/overrides",
+    summary="Set the overrides of a plugin",
+    description=(
+        "Replaces the plugin's overrides of the frame policy (`csp`) and of the server network (`server_network`) with "
+        "the ones in the request, after checking them. `confirmations` names the risky choices that the superuser "
+        "accepts. Answers 422 with the list of errors when an override is not valid, and 404 when no plugin has that "
+        "id. Only a superuser can call it."
+    ),
+)
 async def put_overrides(
-    plugin_id: PluginId,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
     body: OverridesBody,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
@@ -210,19 +349,34 @@ async def put_overrides(
     )
 
 
-@platform_router.post("/{plugin_id}/backend/check")
+@platform_router.post(
+    "/{plugin_id}/backend/check",
+    summary="Check a plugin's backend now",
+    description=(
+        "Contacts the plugin's registered backend, when it has one, and returns the state of its registration and "
+        "identity. Answers 409 when no version of the plugin is active. Only a superuser can call it."
+    ),
+)
 async def check_plugin_backend(
-    plugin_id: PluginId,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     _: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
     return await calls.check_backend(db, plugin_id)
 
 
-@platform_router.put("/{plugin_id}/secrets/{name}")
+@platform_router.put(
+    "/{plugin_id}/secrets/{name}",
+    summary="Set a plugin secret",
+    description=(
+        "Stores the value of a secret that a version of the plugin declares. The body is "
+        '`{"value": "<the secret>"}`. Answers 404 when no version declares the secret, 409 when the deployment '
+        "sets the secret itself, and 422 when the body or the value is not valid. Only a superuser can call it."
+    ),
+)
 async def put_plugin_secret(
-    plugin_id: str,
-    name: str,
+    plugin_id: Annotated[str, Path(description="The id of the plugin.")],
+    name: Annotated[str, Path(description="The name of the secret that the plugin declares.")],
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
@@ -240,10 +394,19 @@ async def put_plugin_secret(
     return {"success": True}
 
 
-@platform_router.delete("/{plugin_id}/secrets/{name}")
+@platform_router.delete(
+    "/{plugin_id}/secrets/{name}",
+    summary="Clear a plugin secret",
+    description=(
+        "Deletes the stored value of a plugin's secret. Answers 404 when no value is stored. Only a superuser can call "
+        "it."
+    ),
+)
 async def delete_plugin_secret(
-    plugin_id: PluginId,
-    name: Annotated[str, StringConstraints(pattern=NAME_PATTERN)],
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
+    name: Annotated[
+        str, StringConstraints(pattern=NAME_PATTERN), Path(description="The name of the secret that the plugin declares.")
+    ],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
@@ -251,9 +414,16 @@ async def delete_plugin_secret(
     return {"success": True}
 
 
-@platform_router.put("/{plugin_id}/entities")
+@platform_router.put(
+    "/{plugin_id}/entities",
+    summary="Enable or disable a plugin for every organization",
+    description=(
+        "Sets whether the plugin is enabled for all organizations and returns how many organizations it changed, in the "
+        "field `entities`. Only a superuser can call it."
+    ),
+)
 async def put_plugin_all_entities(
-    plugin_id: PluginId,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
     body: AllEntitiesChanges,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
@@ -264,10 +434,19 @@ async def put_plugin_all_entities(
     return {"success": True, "entities": count}
 
 
-@platform_router.put("/{plugin_id}/entities/{entity_uuid}")
+@platform_router.put(
+    "/{plugin_id}/entities/{entity_uuid}",
+    summary="Change a plugin for one organization",
+    description=(
+        "Applies the changes in the request to what one organization does with the plugin: enabling it, narrowing its "
+        "permissions, frame sources and server hosts, mapping its data sources to the organization's backends, filling "
+        "in its settings, and choosing which plugin renders a widget type. Answers 404 when the organization does not "
+        "exist. Only a superuser can call it."
+    ),
+)
 async def put_plugin_entity(
-    plugin_id: PluginId,
-    entity_uuid: UUID,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
+    entity_uuid: Annotated[UUID, Path(description="The UUID of the organization.")],
     body: EntityChanges,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
@@ -280,27 +459,50 @@ async def put_plugin_entity(
     return {"success": True}
 
 
-@platform_router.get("/{plugin_id}/events")
+@platform_router.get(
+    "/{plugin_id}/events",
+    summary="List the events of a plugin",
+    description=(
+        "Returns the recorded events of the plugin, newest first: versions that were found, changed, gone or back, "
+        "approvals, blocks, revocations, restores, overrides, enablement, secrets and backend mismatches. Only a "
+        "superuser can call it."
+    ),
+)
 async def get_plugin_events(
-    plugin_id: PluginId,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     _: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
     return await service.plugin_events(db, plugin_id)
 
 
-@platform_router.get("/{plugin_id}/csp-reports")
+@platform_router.get(
+    "/{plugin_id}/csp-reports",
+    summary="List the requests that a plugin's frame was refused",
+    description=(
+        "Returns the reports of requests that the plugin's frame policy refused, one for each directive and origin, "
+        "most frequent first, with the version, the organization, the number of times it occurred and when it was first "
+        "and last seen. Only a superuser can call it."
+    ),
+)
 async def get_plugin_reports(
-    plugin_id: PluginId,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     _: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
     return await service.list_reports(db, plugin_id)
 
 
-@platform_router.delete("/{plugin_id}")
+@platform_router.delete(
+    "/{plugin_id}",
+    summary="Forget a plugin",
+    description=(
+        "Deletes the record of a plugin and its secrets. Answers 409 unless the files of all its versions are gone. "
+        "Only a superuser can call it."
+    ),
+)
 async def forget_plugin(
-    plugin_id: PluginId,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     _: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
@@ -315,7 +517,15 @@ async def _admin_entity(db: AsyncSession, admin: Row) -> UUID:
     return entity_uuid
 
 
-@admin_router.get("/plugins")
+@admin_router.get(
+    "/plugins",
+    summary="List the plugins of the organization",
+    description=(
+        "Returns whether the deployment has the plugin feature turned on, the plugins that are approved at the "
+        "deployment with what the admin's organization has done with each, and the organization's backends that a "
+        "plugin's data source can map to."
+    ),
+)
 async def list_entity_plugins(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
@@ -328,9 +538,17 @@ async def list_entity_plugins(
     }
 
 
-@admin_router.put("/plugins/{plugin_id}")
+@admin_router.put(
+    "/plugins/{plugin_id}",
+    summary="Change a plugin for the organization",
+    description=(
+        "Applies the changes in the request to what the admin's organization does with the plugin: enabling it, "
+        "narrowing its permissions, frame sources and server hosts, mapping its data sources to the organization's "
+        "backends, filling in its settings, and choosing which plugin renders a widget type."
+    ),
+)
 async def put_entity_plugin(
-    plugin_id: PluginId,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
     body: EntityChanges,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
@@ -341,27 +559,47 @@ async def put_entity_plugin(
     return {"success": True}
 
 
-@admin_router.get("/plugins/{plugin_id}/csp-reports")
+@admin_router.get(
+    "/plugins/{plugin_id}/csp-reports",
+    summary="List the requests that a plugin's frame was refused for the organization",
+    description=(
+        "Returns the reports of requests that the plugin's frame policy refused for users of the admin's organization, "
+        "one for each directive and origin, most frequent first, with the number of times it occurred and when it was "
+        "first and last seen."
+    ),
+)
 async def get_entity_plugin_reports(
-    plugin_id: PluginId,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
     return await service.list_reports(db, plugin_id, await _admin_entity(db, admin))
 
 
-@admin_router.get("/plugins/{plugin_id}/events")
+@admin_router.get(
+    "/plugins/{plugin_id}/events",
+    summary="List the events of a plugin for the organization",
+    description="Returns the recorded events of the plugin that concern the admin's organization, newest first.",
+)
 async def get_entity_plugin_events(
-    plugin_id: PluginId,
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
     return await service.plugin_events(db, plugin_id, await _admin_entity(db, admin))
 
 
-@admin_router.get("/role/{role_uuid}/plugin-access", response_model=RoleGrants)
+@admin_router.get(
+    "/role/{role_uuid}/plugin-access",
+    response_model=RoleGrants,
+    summary="List the plugin widgets that a role grants",
+    description=(
+        "Returns the plugin widgets that the role grants, each as a plugin id and a widget id, where `*` stands for "
+        "every widget of the plugin. Answers 404 when the role does not exist in the organization."
+    ),
+)
 async def get_role_plugin_access(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
@@ -370,9 +608,16 @@ async def get_role_plugin_access(
     return {"grants": await service.get_role_grants(db, role_uuid)}
 
 
-@admin_router.put("/role/{role_uuid}/plugin-access")
+@admin_router.put(
+    "/role/{role_uuid}/plugin-access",
+    summary="Set the plugin widgets that a role grants",
+    description=(
+        "Replaces the plugin widgets that the role grants with the list in the request. Answers 404 when the role does "
+        "not exist in the organization."
+    ),
+)
 async def put_role_plugin_access(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     body: RoleGrants,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
@@ -383,7 +628,14 @@ async def put_role_plugin_access(
     return {"success": True}
 
 
-@app_router.get("")
+@app_router.get(
+    "",
+    summary="List the plugins that the user may use",
+    description=(
+        "Returns `{ enabled, etag, plugins, vizHandlers }`, which describes the plugins and the widget types that the "
+        "signed-in user may use. The answer carries an `ETag` and the header `Cache-Control: private, no-cache`."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT)
 async def get_available_plugins(
     request: Request,
@@ -397,14 +649,26 @@ async def get_available_plugins(
     return listing
 
 
-@app_router.get("/widgets-schema")
+@app_router.get(
+    "/widgets-schema",
+    summary="Get the widgets.json schema of the user's organization",
+    description=(
+        "Returns the JSON Schema of `widgets.json`, extended with the widget types that the organization's plugins add. "
+        "The answer carries an `ETag`, and a request whose `If-None-Match` names it receives 304. A superuser can read "
+        "the schema of another organization with the query parameter `entity`, and other users receive 403 when they "
+        "name one."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT)
 async def get_widgets_schema(
     request: Request,
     response: Response,
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid", "is_superuser"], app_session=True)),
-    entity: UUID | None = None,
+    entity: Annotated[
+        UUID | None,
+        Query(description="The UUID of the organization whose schema to read. Only a superuser may name one."),
+    ] = None,
 ):
     if entity is not None and not user.is_superuser:
         raise HTTPException(403, detail="Only a superuser may read another entity's schema")
@@ -417,11 +681,21 @@ async def get_widgets_schema(
     return schema
 
 
-@app_router.get("/{plugin_id}/{digest}/files/{file_path:path}")
+@app_router.get(
+    "/{plugin_id}/{digest}/files/{file_path:path}",
+    summary="Download a file of a plugin version",
+    description=(
+        "Returns a file of the approved plugin version whose digest is in the path, as `application/octet-stream` with "
+        "`Content-Disposition: attachment`. The API checks the file against its recorded hash and lets the browser "
+        "cache it for good. The user must be allowed to use the plugin."
+    ),
+)
 async def get_plugin_file(
-    plugin_id: PluginId,
-    digest: Annotated[str, StringConstraints(max_length=80)],
-    file_path: Annotated[str, StringConstraints(max_length=200)],
+    plugin_id: Annotated[PluginId, Path(description="The id of the plugin.")],
+    digest: Annotated[str, StringConstraints(max_length=80), Path(description="The digest of the plugin version.")],
+    file_path: Annotated[
+        str, StringConstraints(max_length=200), Path(description="The path of the file inside the plugin version.")
+    ],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
@@ -438,10 +712,19 @@ async def get_plugin_file(
     )
 
 
-@app_router.post("/{plugin_id}/proxy/{proxy_id}")
+@app_router.post(
+    "/{plugin_id}/proxy/{proxy_id}",
+    summary="Call a proxy of a plugin",
+    description=(
+        "Runs one of the proxies that the plugin's manifest declares on behalf of the signed-in user. The body is "
+        '`{"widget": "<widget id>", "args": {...}}`, and the answer is `{ content_type, body }`. Answers 404 '
+        "when the plugin, the widget or the proxy does not exist, 422 when the body is not valid, 413 when it is "
+        "too large, and a refusal with `{ code, message }` when the call is not allowed or fails."
+    ),
+)
 async def post_proxy_call(
-    plugin_id: str,
-    proxy_id: str,
+    plugin_id: Annotated[str, Path(description="The id of the plugin.")],
+    proxy_id: Annotated[str, Path(description="The id of a proxy that the plugin's manifest declares.")],
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -464,10 +747,19 @@ async def post_proxy_call(
     return {"content_type": result.content_type, "body": result.body}
 
 
-@app_router.post("/{plugin_id}/backend/{route_id}")
+@app_router.post(
+    "/{plugin_id}/backend/{route_id}",
+    summary="Call a route of a plugin's backend",
+    description=(
+        "Calls a route of the plugin's backend on behalf of the signed-in user. The body is "
+        '`{"widget": "<widget id>", "instance": "<id>", "args": {...}}`, and the answer is `{ body }`. '
+        "Answers 404 when the plugin, the widget or the route does not exist, 422 when the body is not valid, 413 "
+        "when it is too large, and a refusal with `{ code, message }` when the call is not allowed or fails."
+    ),
+)
 async def post_backend_call(
-    plugin_id: str,
-    route_id: str,
+    plugin_id: Annotated[str, Path(description="The id of the plugin.")],
+    route_id: Annotated[str, Path(description="The id of a backend route that the plugin's manifest declares.")],
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -497,7 +789,15 @@ async def post_backend_call(
     return {"body": result.body}
 
 
-@app_router.post("/report")
+@app_router.post(
+    "/report",
+    summary="Report refused requests and frame failures",
+    description=(
+        "Stores the reports that the web app sends when a plugin's frame policy refuses a request, and the failure of a "
+        "frame, for the plugin version in the body. The answer is `{ stored }`, the number of reports that the API "
+        "kept."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT)
 async def post_plugin_report(
     request: Request,
@@ -511,9 +811,21 @@ async def post_plugin_report(
     return {"stored": stored}
 
 
-@broker_router.post("/data/{data_source_id}")
+@broker_router.post(
+    "/data/{data_source_id}",
+    summary="Read from a data source for a plugin backend",
+    description=(
+        "Lets a plugin's backend read through FINOS Workspace from the backend that an organization mapped to the data "
+        "source. The caller proves the call with the header `X-Workspace-Call`, and the body is `{ path, method, query, "
+        "body }`, where `path` starts with `/` below the mapped backend's address. Browsers do not call this route. "
+        "Answers 404 when the data source does not exist, 422 when the body is not valid, and a refusal with `{ code, "
+        "message }` when the call is not allowed or fails."
+    ),
+)
 async def post_broker_read(
-    data_source_id: str,
+    data_source_id: Annotated[
+        str, Path(description="The id of the data source that the organization mapped to a backend.")
+    ],
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_read_db)],
 ):

@@ -3,7 +3,7 @@ import re
 
 from rq.job import JobStatus
 
-from utilities.config import settings
+from utilities.config import RQ_QUEUE_NAME, settings
 
 if settings.REDIS_CLUSTER_MODE or settings.REDIS_RQ_HASH_TAGS:
     from rq import worker_registration
@@ -16,7 +16,7 @@ else:
     from rq import Queue
 
 redis_conn_bots = settings.get_redis_session("bot")
-rq_que = Queue(name="payments_queue", connection=redis_conn_bots, failure_ttl=5)
+rq_que = Queue(name=RQ_QUEUE_NAME, connection=redis_conn_bots, failure_ttl=5)
 
 JOB_STATUSES = {
     JobStatus.CANCELED,

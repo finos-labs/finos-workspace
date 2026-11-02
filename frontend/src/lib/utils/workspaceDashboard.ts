@@ -2,7 +2,7 @@ import { useAppStore } from "~/lib/state/app";
 
 const NO_TAB_ID = "__no_tab__";
 
-export type DashboardLayoutEntryT = {
+type DashboardLayoutEntryT = {
   widget_uuid: string;
   x: number;
   y: number;
@@ -14,19 +14,19 @@ export type DashboardLayoutEntryT = {
   max_h?: number;
 };
 
-export type DashboardTabWidgetInfoT = {
+type DashboardTabWidgetInfoT = {
   widget_uuid: string;
   name: string | undefined;
 };
 
-export type DashboardTabInfoT = {
+type DashboardTabInfoT = {
   tab_id: string;
   tab_name: string;
   widgets: DashboardTabWidgetInfoT[];
   layout: DashboardLayoutEntryT[];
 };
 
-export type DashboardGroupInfoT = {
+type DashboardGroupInfoT = {
   group_id: string;
   name: string;
   type: string;

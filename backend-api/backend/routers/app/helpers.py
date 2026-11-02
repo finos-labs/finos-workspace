@@ -32,11 +32,7 @@ async def set_app_user_data(user, db: AsyncSession) -> schemas.AppUserReturn:
         last_name=user.last_name,
         display_settings=user.display_settings,
         file_widgets=[x.__dict__ for x in user.FileWidget] if own_connections else [],
-        api_sources=[
-            x.__dict__
-            for x in user.ApiSource
-            if own_connections or x.entity_uuid is not None
-        ],
+        api_sources=[x.__dict__ for x in user.ApiSource] if own_connections else [],
         username=user.username,
         email=user.email,
         uuid=user.uuid,
@@ -232,17 +228,44 @@ async def get_user_questions_history(db: AsyncSession, user_uuid: UUID) -> list[
     return (await db.execute(query)).scalars().all()
 
 
-async def get_entity_theme_settings(db: AsyncSession, entity_uuid: UUID):
+async def get_stored_theme_settings(
+    db: AsyncSession, entity_uuid: UUID
+) -> models.EntityThemeSettings | None:
     query = (
-        select(models.EntityThemeSettings.settings)
+        select(models.EntityThemeSettings)
         .where(models.EntityThemeSettings.entity_uuid == entity_uuid)
         .limit(1)
     )
-    result = (await db.execute(query)).scalar_one_or_none()
+    return (await db.execute(query)).scalar_one_or_none()
+
+
+async def get_entity_theme_settings(db: AsyncSession, entity_uuid: UUID):
+    stored = await get_stored_theme_settings(db, entity_uuid)
+    result = stored.settings if stored else None
     if not result:
         return schemas.EntityThemeSettings()
 
-    return schemas.EntityThemeSettings.model_validate(result)
+    settings = schemas.EntityThemeSettings.model_validate(result)
+    active = str(result.get("active_preset") or "")
+    for preset in result.get("presets", []):
+        if str(preset.get("uuid")) == active:
+            settings.properties = schemas.ThemeVariants.model_validate(
+                {"light": preset["light"], "dark": preset["dark"]}
+            )
+    return settings
+
+
+async def save_stored_theme_settings(
+    db: AsyncSession,
+    entity_uuid: UUID,
+    stored: models.EntityThemeSettings | None,
+    settings: dict,
+) -> None:
+    if stored:
+        stored.settings = settings
+    else:
+        db.add(models.EntityThemeSettings(entity_uuid=entity_uuid, settings=settings))
+    await db.commit()
 
 
 async def user_app_task(
@@ -405,7 +428,7 @@ async def readable_backends(db: AsyncSession, user_uuid: UUID, entity_uuid: UUID
                 models.RoleBackend.access == "access",
             )
         )
-        rules += [models.ApiSource.entity_uuid == entity_uuid, models.ApiSource.uuid.in_(granted)]
+        rules.append(models.ApiSource.uuid.in_(granted))
     if await may_add_connections(db, user_uuid):
         rules.append(models.ApiSource.user_uuid == user_uuid)
     return or_(*rules) if rules else false()
@@ -1403,14 +1426,24 @@ async def _get_role_backend_permissions(
                     ),
                     func.concat(models.User.first_name, " ", models.User.last_name),
                 ),
-                else_=models.User.email,
+                (models.User.email.is_not(None), models.User.email),
+                else_=models.Entity.name,
             ).label("created_by"),
         )
         .select_from(models.RoleBackend)
         .join(
             models.ApiSource, models.ApiSource.uuid == models.RoleBackend.backend_uuid
         )
-        .join(models.User, models.User.uuid == models.ApiSource.user_uuid)
+        .join(
+            models.User,
+            models.User.uuid == models.ApiSource.user_uuid,
+            isouter=True,
+        )
+        .join(
+            models.Entity,
+            models.Entity.uuid == models.ApiSource.entity_uuid,
+            isouter=True,
+        )
         .where(
             models.RoleBackend.role_uuid == role_uuid,
             models.RoleBackend.access != "no-access",

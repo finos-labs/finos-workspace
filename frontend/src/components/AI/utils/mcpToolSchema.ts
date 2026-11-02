@@ -1,6 +1,6 @@
-export type JsonSchemaObject = Record<string, unknown>;
+type JsonSchemaObject = Record<string, unknown>;
 
-export type SchemaParameter = {
+type SchemaParameter = {
   name: string;
   typeLabel: string;
   description?: string;

@@ -887,6 +887,16 @@ class TestAFramedPageAsAnOpaqueOrigin:
 
 
 @pytest.fixture(autouse=True)
+def every_widget_is_granted(monkeypatch):
+    from api import widget_access
+
+    async def unrestricted(*_args):
+        return None
+
+    monkeypatch.setattr(widget_access, "granted_widgets", unrestricted)
+
+
+@pytest.fixture(autouse=True)
 def fresh_caches():
     from api import frame_proxy, source_proxy
 

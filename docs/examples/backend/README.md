@@ -18,9 +18,9 @@ One backend serves the three example plugins, so that a single connection gives 
 - The files in the image, `sales.csv`, `deals.csv`, `readings.parquet` and `stations.csv`, hold the data of the charts and grids. The SQL explorer's Files source, the *AgGrid SQL* widget and the *SQL chart* all read them with the same read-only DuckDB, so a query written in the explorer gives the same rows in the grid and in the chart.
 - *AgGrid SQL* is a widget of the AgGrid plugin: the explorer's own editor, with its tables and its DuckDB completion, and the result in AgGrid in the same card, with the row group, pivot and column panels. *SQL chart* is a widget of type `plotly` that the Plotly plugin draws from `/sql/chart`.
 - *Trades, server-side* shows `demo.trades`, 200,000 rows in the Postgres, through the AgGrid plugin's backend: every page, sort, filter, row group, aggregate and pivot is a query.
-- *Live prices* declares `data.streamEndpoint: "/ws/ticks"`: the web app opens that WebSocket on port 7798, as it opens the widget's endpoint, and passes the messages to the AgGrid plugin. Nothing in the plugin's policy changes.
+- *Live prices* declares `data.streamEndpoint: "/ws/ticks"`: the web app opens that WebSocket through the API, which connects to port 7798 as it does for the widget's endpoint, and passes the messages to the AgGrid plugin. Nothing in the plugin's policy changes.
 - The SQL explorer declares the parameter `sql` and writes it when a query on its Files source has run. Put the explorer and the *SQL chart* on one dashboard and add their `sql` parameters to one group (the link beside the parameter, then +): the editor with its completion is then the input of the chart.
-- *Sales by region* has `raw` and `data.rawType: "aggrid-table"`, so the database button of its card shows its rows in the AgGrid plugin ([WIDGETS-JSON.md 4.11](../../widget-plugins/WIDGETS-JSON.md)).
+- *Sales by region* has `raw` and `data.rawType: "aggrid-table"`, so the database button of its card shows its rows in the AgGrid plugin ([the widgets.json contract](../../reference/schemas/widgets-json.mdx)).
 
 ## What can reach what
 
@@ -46,7 +46,7 @@ writes the Postgres passwords to `.env`, which Compose reads, and each plugin's 
 SQL_EXPLORER_VERSION=<sql version> AG_GRID_VERSION=<grid version> WORKSPACE_NETWORK=<network> docker compose up -d --build
 ```
 
-Place the three built packages in the plugins directory and approve, enable and grant them as [AUTHORING.md](../../widget-plugins/AUTHORING.md) describes. For the SQL explorer and for AgGrid, list the backends in the API's environment, `WIDGET_PLUGIN_BACKENDS={"sql-explorer": "http://examples-gateway:8081", "ag-grid": "http://examples-gateway:8082"}`, add `tcp://postgres:5432` to each one's server network with private hosts confirmed, and set each one's `postgres_url` secret from `secrets/workspace/<plugin>/postgres_url`. Then add `http://localhost:7798` under Connections and put the widgets of the categories *Plotly examples* and *AgGrid examples*, and the SQL explorer and AgGrid SQL, on a dashboard.
+Place the three built packages in the plugins directory and approve, enable and grant them as [review and enable a plugin](../../tutorials/plugins/review-and-enable-a-plugin.md) describes. For the SQL explorer and for AgGrid, list the backends in the API's environment, `WIDGET_PLUGIN_BACKENDS={"sql-explorer": "http://examples-gateway:8081", "ag-grid": "http://examples-gateway:8082"}`, add `tcp://postgres:5432` to each one's server network with private hosts confirmed, and set each one's `postgres_url` secret from `secrets/workspace/<plugin>/postgres_url`. Then add `http://localhost:7798` under Connections and put the widgets of the categories *Plotly examples* and *AgGrid examples*, and the SQL explorer and AgGrid SQL, on a dashboard.
 
 On Postgres, the SQL explorer has the `demo` schema; on Files it has `sales`, `deals`, `readings` and `stations`. For example:
 

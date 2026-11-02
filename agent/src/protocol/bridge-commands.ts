@@ -3,8 +3,8 @@ import { z } from "zod";
 
 const widgetConfigSchema = z
   .object({
-    data_args: z.record(z.string(), z.unknown()).nullable().optional(),
-    ui_args: z.record(z.string(), z.unknown()).nullable().optional(),
+    data_args: z.record(z.string(), z.unknown()).nullable().optional().describe("The values of the widget's data parameters."),
+    ui_args: z.record(z.string(), z.unknown()).nullable().optional().describe("The values of the widget's interface settings."),
   })
   .describe(
     "Widget config split into data_args (data inputs) and ui_args (UI inputs). " +
@@ -12,9 +12,9 @@ const widgetConfigSchema = z
   );
 
 const backendEndpointHeaderSchema = z.object({
-  key: z.string(),
-  value: z.string(),
-  location: z.enum(["headers", "query"]).optional(),
+  key: z.string().describe("The name of the header or of the query parameter."),
+  value: z.string().describe("The value that the backend's endpoints receive."),
+  location: z.enum(["headers", "query"]).optional().describe("Whether it goes in the headers or in the query. The default is headers."),
 });
 
 const DASHBOARD_ID_DESCRIPTION =
@@ -25,8 +25,7 @@ const optionalDashboardId = z
   .optional()
   .describe(DASHBOARD_ID_DESCRIPTION);
 
-
-export const getWorkspaceSnapshotInputSchema = z.object({});
+const getWorkspaceSnapshotInputSchema = z.object({});
 
 export const listAvailableWidgetsInputSchema = z.object({
   origin: z
@@ -41,7 +40,7 @@ export const listAvailableWidgetsInputSchema = z.object({
     .describe("Optional backend UUID returned by manage_backends."),
 });
 
-export const getWidgetSchemaInputSchema = z.object({
+const getWidgetSchemaInputSchema = z.object({
   origin: z
     .string()
     .min(1)
@@ -52,14 +51,14 @@ export const getWidgetSchemaInputSchema = z.object({
     .describe("Widget id from list_available_widgets."),
 });
 
-export const getParamsOptionsInputSchema = z.object({
+const getParamsOptionsInputSchema = z.object({
   param_options_queries: z
     .array(
       z.object({
-        origin: z.string(),
-        widget_id: z.string(),
-        param_name: z.string(),
-        data_args: z.record(z.string(), z.unknown()).optional(),
+        origin: z.string().describe("The origin of the widget."),
+        widget_id: z.string().describe("The widget type id."),
+        param_name: z.string().describe("The name of the parameter to resolve."),
+        data_args: z.record(z.string(), z.unknown()).optional().describe("The values that the lookup needs."),
       }),
     )
     .describe(
@@ -68,7 +67,7 @@ export const getParamsOptionsInputSchema = z.object({
     ),
 });
 
-export const readWidgetInputSchema = z.object({
+const readWidgetInputSchema = z.object({
   widget_uuid: z
     .string()
     .optional()
@@ -97,7 +96,7 @@ export const createWidgetInputSchema = z.object({
   config: widgetConfigSchema.optional(),
 });
 
-export const updateWidgetInputSchema = z.object({
+const updateWidgetInputSchema = z.object({
   widget_uuid: z
     .string()
     .optional()
@@ -112,7 +111,7 @@ export const updateWidgetInputSchema = z.object({
   config: widgetConfigSchema.optional(),
 });
 
-export const deleteWidgetInputSchema = z.object({
+const deleteWidgetInputSchema = z.object({
   widget_uuid: z
     .string()
     .optional()
@@ -124,7 +123,7 @@ export const deleteWidgetInputSchema = z.object({
   dashboard_id: optionalDashboardId,
 });
 
-export const manageDashboardInputSchema = z.object({
+const manageDashboardInputSchema = z.object({
   operation: z
     .enum(["create", "read", "update"])
     .describe("Operation to perform on the dashboard."),
@@ -143,7 +142,7 @@ export const manageDashboardInputSchema = z.object({
     ),
 });
 
-export const updateDashboardLayoutInputSchema = z.object({
+const updateDashboardLayoutInputSchema = z.object({
   x: z.number().describe("Grid column position (0-based)."),
   y: z.number().describe("Grid row position (0-based)."),
   w: z.number().describe("Grid width. 40 = full row."),
@@ -169,7 +168,7 @@ export const updateDashboardLayoutInputSchema = z.object({
   max_h: z.number().optional().describe("Maximum height."),
 });
 
-export const manageNavigationBarInputSchema = z.object({
+const manageNavigationBarInputSchema = z.object({
   operation: z
     .enum(["create", "add_tabs", "remove_tabs", "rename_tabs"])
     .describe("Operation: create | add_tabs | remove_tabs | rename_tabs."),
@@ -177,7 +176,7 @@ export const manageNavigationBarInputSchema = z.object({
     "Dashboard UUID. Omit to target the current FINOS Workspace route.",
   ),
   tabs: z
-    .array(z.object({ name: z.string() }))
+    .array(z.object({ name: z.string().describe("The name of the tab.") }))
     .optional()
     .describe(
       "Tab objects, e.g. [{name:'Quarterly Review'}]. Required for create, add_tabs, remove_tabs. " +
@@ -191,7 +190,7 @@ export const manageNavigationBarInputSchema = z.object({
     ),
 });
 
-export const addGenerativeWidgetInputSchema = z.object({
+const addGenerativeWidgetInputSchema = z.object({
   widget_type: z
     .enum(["note", "html"])
     .describe("Generative widget kind: a markdown note or an HTML widget (tables and charts are HTML)."),
@@ -211,14 +210,14 @@ export const addGenerativeWidgetInputSchema = z.object({
     ),
 });
 
-export const assignTasksToAgentsInputSchema = z.object({
+const assignTasksToAgentsInputSchema = z.object({
   task_requests: z
     .array(
       z.object({
-        id: z.string(),
-        description: z.string(),
-        assigned_holder_url: z.string().optional(),
-        assigned_agent_id: z.string().optional(),
+        id: z.string().describe("The id of the task."),
+        description: z.string().describe("What the agent has to do."),
+        assigned_holder_url: z.string().optional().describe("The URL of the agent's holder."),
+        assigned_agent_id: z.string().optional().describe("The id of the agent."),
       }),
     )
     .describe(
@@ -226,7 +225,7 @@ export const assignTasksToAgentsInputSchema = z.object({
     ),
 });
 
-export const navigateWorkspaceInputSchema = z.object({
+const navigateWorkspaceInputSchema = z.object({
   operation: z
     .enum(["dashboard", "tab"])
     .describe(
@@ -243,7 +242,7 @@ export const navigateWorkspaceInputSchema = z.object({
     ),
 });
 
-export const manageBackendsInputSchema = z.object({
+const manageBackendsInputSchema = z.object({
   operation: z
     .enum(["list", "add", "update", "refresh", "remove"])
     .describe("Operation to perform on backends."),
@@ -267,7 +266,7 @@ export const manageBackendsInputSchema = z.object({
     ),
 });
 
-export const manageAppsInputSchema = z.object({
+const manageAppsInputSchema = z.object({
   operation: z
     .enum(["list", "read", "instantiate"])
     .describe("Operation: list | read | instantiate."),

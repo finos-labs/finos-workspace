@@ -1,6 +1,8 @@
+import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type AppState,
+  DASHBOARD_LOCKED_MESSAGE,
   type Group,
   type Item,
   type Items,
@@ -11,6 +13,7 @@ import { appItems, makeParamGroup, makeTabData, makeWidget } from "../../factori
 import { malformed, partial, required } from "../../mocks";
 
 type NewTab = Parameters<AppState["addTab"]>[0];
+type NewWidgetArg = Parameters<AppState["addWidget"]>[1];
 
 const sharedAppMocks = vi.hoisted(() => {
   const state = {
@@ -321,20 +324,141 @@ describe("useAppStore", () => {
     });
   });
 
-  describe("setTabLocked", () => {
-    it("should lock a tab", () => {
-      useAppStore.getState().setTabLocked("tab-1", true);
+  describe("locked dashboard", () => {
+    const lockedItems = () => {
+      const items = createTestItems();
+      required(items["tab-1"].data).locked = true;
+      return items;
+    };
 
-      const tab = useAppStore.getState().getTabById("tab-1");
-      expect(tab?.data?.locked).toBe(true);
+    const widgetOf = (name: string) =>
+      partial<NewWidgetArg>({ widgetId: "equity_profile", name, innerTab: "overview" });
+
+    beforeEach(() => {
+      useAppStore.setState({ items: lockedItems() });
     });
 
-    it("should unlock a tab", () => {
-      useAppStore.getState().setTabLocked("tab-1", true);
-      useAppStore.getState().setTabLocked("tab-1", false);
+    it("reports which dashboards are locked", () => {
+      expect(useAppStore.getState().isDashboardLocked("tab-1")).toBe(true);
+      expect(useAppStore.getState().isDashboardLocked("folder-1")).toBe(false);
+      expect(useAppStore.getState().isDashboardLocked("non-existent")).toBe(false);
+    });
+
+    it("does not add widgets and says why", async () => {
+      const id = await useAppStore.getState().addWidget("tab-1", widgetOf("New"));
+
+      expect(id).toBeUndefined();
+      expect(useAppStore.getState().getTabById("tab-1")?.data?.widgets).toHaveLength(1);
+      expect(toast.error).toHaveBeenCalledWith(
+        "Test Tab is locked",
+        expect.objectContaining({ description: DASHBOARD_LOCKED_MESSAGE }),
+      );
+    });
+
+    it("does not add several widgets at once", async () => {
+      await useAppStore
+        .getState()
+        .addWidgets("tab-1", [widgetOf("One"), widgetOf("Two")]);
+
+      expect(useAppStore.getState().getTabById("tab-1")?.data?.widgets).toHaveLength(1);
+    });
+
+    it("skips only the locked dashboards when adding to several", async () => {
+      const items = lockedItems();
+      items["tab-2"] = {
+        ...items["tab-1"],
+        index: "tab-2",
+        data: {
+          ...required(items["tab-1"].data),
+          name: "Other Tab",
+          locked: undefined,
+          widgets: [],
+          gridLayout: {},
+        },
+      };
+      useAppStore.setState({ items });
+
+      await useAppStore
+        .getState()
+        .addWidgetsToTabs(["tab-1", "tab-2"], widgetOf("Shared"));
+
+      expect(useAppStore.getState().getTabById("tab-1")?.data?.widgets).toHaveLength(1);
+      expect(useAppStore.getState().getTabById("tab-2")?.data?.widgets).toHaveLength(1);
+    });
+
+    it("does not remove widgets", () => {
+      useAppStore.getState().removeWidget("tab-1", "widget-1");
 
       const tab = useAppStore.getState().getTabById("tab-1");
-      expect(tab?.data?.locked).toBe(false);
+      expect(tab?.data?.widgets).toHaveLength(1);
+      expect(tab?.data?.gridLayout?.overview).toHaveLength(1);
+    });
+
+    it("does not duplicate widgets", () => {
+      const widget = required(
+        useAppStore.getState().getTabWidgetById("tab-1", "widget-1"),
+      );
+
+      useAppStore.getState().duplicateWidget("tab-1", widget);
+      useAppStore.getState().duplicateWidgetById("tab-1", "widget-1");
+
+      expect(useAppStore.getState().getTabById("tab-1")?.data?.widgets).toHaveLength(1);
+    });
+
+    it("does not change the tabs of the dashboard", () => {
+      useAppStore.getState().updateInnerTabs("tab-1", {});
+
+      const tab = useAppStore.getState().getTabById("tab-1");
+      expect(tab?.data?.widgets).toHaveLength(1);
+      expect(tab?.data?.gridLayout?.overview).toHaveLength(1);
+    });
+
+    it("still lets the parameters of a widget change", () => {
+      const widget = required(
+        useAppStore.getState().getTabWidgetById("tab-1", "widget-1"),
+      );
+
+      useAppStore.getState().updateWidget("tab-1", { ...widget, name: "Renamed" });
+
+      expect(useAppStore.getState().getTabWidgetById("tab-1", "widget-1")?.name).toBe(
+        "Renamed",
+      );
+    });
+
+    it("still lets a widget be resized", () => {
+      useAppStore
+        .getState()
+        .updateTabWidgetsLayout(
+          "tab-1",
+          [{ i: "widget-1", x: 0, y: 0, w: 12, h: 8 }],
+          "overview",
+        );
+
+      const [layout] = required(
+        useAppStore.getState().getTabById("tab-1")?.data?.gridLayout?.overview,
+      );
+      expect(layout).toMatchObject({ w: 12, h: 8 });
+    });
+
+    it("keeps the lock on a duplicate of the dashboard", () => {
+      const copyId = required(useAppStore.getState().duplicateTab("tab-1"));
+
+      expect(useAppStore.getState().isDashboardLocked(copyId)).toBe(true);
+    });
+
+    it("offers a locked dashboard as a copy target that is marked as locked", () => {
+      const items = lockedItems();
+      items["root-id"].children = ["folder-1", "tab-2"];
+      items["tab-2"] = {
+        ...items["tab-1"],
+        index: "tab-2",
+        data: { ...required(items["tab-1"].data), name: "Other Tab" },
+      };
+      useAppStore.setState({ items });
+
+      const targets = useAppStore.getState().getMoveToTabs("tab-1");
+
+      expect(targets.find((tab) => tab.index === "tab-2")?.data.locked).toBe(true);
     });
   });
 

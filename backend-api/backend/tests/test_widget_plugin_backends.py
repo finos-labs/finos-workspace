@@ -3,7 +3,6 @@ import time
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import update
 
 from api import models
 from api.widget_plugins import backends
@@ -326,10 +325,6 @@ class TestBroker:
     ):
         token = await _token(member, superuser, plugins_dir, plugin_backend)
         await enable(superuser, data_sources={"sales": str(data_source.uuid)})
-        await db_session.execute(
-            update(models.ApiSource).where(models.ApiSource.uuid == data_source.uuid).values(entity_uuid=None)
-        )
-        await db_session.commit()
         call = lambda: member.post(BROKER, headers={"X-Workspace-Call": token}, json={"path": "/sales"})  # noqa: E731
 
         response = await call()

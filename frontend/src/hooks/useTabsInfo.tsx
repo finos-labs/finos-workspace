@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { Item } from "~/lib/state/app";
 import type { TabInfo } from "~/lib/utils";
 
-export interface TabsInfoResult {
+interface TabsInfoResult {
   hasMultipleTabs: boolean;
   tabsInfo: TabInfo[];
 }

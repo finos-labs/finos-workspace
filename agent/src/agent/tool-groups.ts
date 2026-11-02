@@ -13,7 +13,7 @@ export const CORE_TOOLS: ReadonlySet<string> = new Set([
   "load_tools",
 ]);
 
-export interface ToolGroup {
+interface ToolGroup {
   id: string;
   summary: string;
   tools: string[];
@@ -120,7 +120,7 @@ interface StaticGroup {
   always?: true;
 }
 
-const STATIC_GROUPS: readonly StaticGroup[] = [
+export const STATIC_GROUPS: readonly StaticGroup[] = [
   {
     id: "sql",
     summary: "query the tables you have loaded and show results as table artifacts",
@@ -264,7 +264,7 @@ export function renderToolNotes(catalog: ToolCatalog, loaded: ReadonlySet<string
   return parts.length > 0 ? `\n${parts.join("\n\n")}` : "";
 }
 
-export interface LoadToolsOptions {
+interface LoadToolsOptions {
   catalog: ToolCatalog;
   loaded: Set<string>;
 }

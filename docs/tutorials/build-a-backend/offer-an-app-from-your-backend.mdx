@@ -1,0 +1,134 @@
+---
+title: Offer an app from your backend
+sidebar_label: "Tutorial: offer an app"
+sidebar_position: 9
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# Offer an app from your backend
+
+In this tutorial, your backend offers an app. An app is a ready-made dashboard that a backend describes. The app gives the widgets, their positions and their start values. A user opens the app with one click on the Apps page.
+
+You add an app to the backend of [Tutorial: your first backend](connect-a-backend-and-build-a-dashboard.mdx). At the end, the Apps page shows a card for the app. The card creates a dashboard with two widgets, with the year already set and a suggested question for the Agent.
+
+## What you need
+
+- The backend of the first tutorial. It must run, and it must be connected to FINOS Workspace with the name Sales demo.
+- A browser in which you are signed in.
+- For the last step only: an Agent. [Run the stack from source](../build-from-source/run-the-stack-from-source.md) starts one. You can skip the last step.
+
+## Describe the app
+
+An app is an object in `apps.json`. The backend serves `apps.json` next to [`widgets.json`](../../reference/schemas/widgets-json.mdx). Do these two steps in the program of the first tutorial:
+
+1. Add the constant `APPS` above the constant `ROUTES`.
+2. Change the route `/apps.json`. It returned an empty list. Now it returns `APPS`.
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="main.py"
+APPS = [
+    {
+        "name": "Regional sales",
+        "description": "Revenue by region next to the notes of the sales team.",
+        "templateId": "regional-sales",
+        "prompts": ["Which region has the highest revenue?"],
+        "tabs": {
+            "overview": {
+                "id": "overview",
+                "name": "Overview",
+                "layout": [
+                    {"i": "revenue_by_region", "x": 0, "y": 0, "w": 20, "h": 12, "state": {"params": {"year": 2024}}},
+                    {"i": "sales_notes", "x": 20, "y": 0, "w": 20, "h": 12},
+                ],
+            },
+        },
+    },
+]
+```
+
+```python title="main.py"
+@app.get("/apps.json")
+def apps() -> list:
+    return APPS
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="backend.ts"
+const APPS = [
+  {
+    name: "Regional sales",
+    description: "Revenue by region next to the notes of the sales team.",
+    templateId: "regional-sales",
+    prompts: ["Which region has the highest revenue?"],
+    tabs: {
+      overview: {
+        id: "overview",
+        name: "Overview",
+        layout: [
+          { i: "revenue_by_region", x: 0, y: 0, w: 20, h: 12, state: { params: { year: 2024 } } },
+          { i: "sales_notes", x: 20, y: 0, w: 20, h: 12 },
+        ],
+      },
+    },
+  },
+];
+```
+
+```ts title="backend.ts"
+  if (url.pathname === "/apps.json") return send("application/json", JSON.stringify(APPS));
+```
+
+</TabItem>
+</Tabs>
+
+The app has four parts:
+
+- **The card.** `name` and `description` are what the card on the Apps page shows. `templateId` is a name for the app that never changes, which roles use to grant the app to people, so choose it once.
+- **The question.** `prompts` is a list of questions that the Agent suggests to the person who works on a dashboard from this app.
+- **The tabs.** A dashboard has one tab for each entry of `tabs`. This app has one, named Overview.
+- **The layout.** Each item names a widget by its id in `i` and places it on a grid that is 40 columns wide: `x` and `y` are the position, and `w` and `h` are the width and the height. The two widgets are 20 columns wide, so they sit side by side. The `state` of the first one sets its parameter `year` to 2024, in place of the 2025 that the widget starts with otherwise.
+
+Stop the backend with Ctrl+C in its terminal. Then start it again:
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```bash
+uvicorn main:app --port 9100
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```bash
+node backend.ts
+```
+
+</TabItem>
+</Tabs>
+
+[apps.json](../../reference/schemas/apps-json.mdx) lists everything that an app may contain.
+
+## Refresh the connection
+
+FINOS Workspace reads the apps of a backend when it connects the backend and when it refreshes it. Select Connections in the sidebar, and select the refresh button, which is the one with two arrows beside Connect Backend. A message says "Backends refreshed", and the row of Sales demo now shows 1 under Apps.
+
+## Open the app
+
+Select Apps in the sidebar. The page lists the apps of all your connections, and it has a card for Regional sales. The card shows the name of the connection, Sales demo, the name of the app and its description. Its footer shows 2, the number of widgets, and 1, the number of suggested questions.
+
+Select the card. FINOS Workspace creates a dashboard named Regional sales and opens it. It has the two widgets side by side, Revenue by region on the left and Sales notes on the right. The table of Revenue by region shows 110, 90 and 70, which are the values of 2024, because the app set the year.
+
+## Look at the suggested question
+
+Open the Agent, which is the panel on the right of a dashboard, and start a new chat. The empty chat says "Get started with these suggested prompts for this dashboard" and shows the question from your app, "Which region has the highest revenue?". Select it to ask it, as [Ask the Agent about a dashboard](../../features/agent/ask-the-agent-about-a-dashboard.md) shows.
+
+## Where to go next
+
+You made your backend offer a dashboard. To give the app to some people and not to others, read [Give a role access to data](../../features/administration/give-a-role-access-to-data.md), which grants an app by its `templateId`. To check a backend that does not show what you expect, read [Review and debug a backend](review-and-debug-a-backend.md). To turn a dashboard that you built by hand into an app file, read [Export a dashboard as an app](export-a-dashboard-as-an-app.mdx).

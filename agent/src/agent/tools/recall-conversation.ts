@@ -11,7 +11,7 @@ const MAX_TOTAL_CHARS = 20_000;
 const SNIPPET_BEFORE = 300;
 const SNIPPET_AFTER = 500;
 
-export const recallConversationSchema = z.object({
+const recallConversationSchema = z.object({
   display_summary: displaySummarySchema,
   last: z
     .number()
@@ -28,7 +28,7 @@ export const recallConversationSchema = z.object({
   to: z.number().int().min(1).optional().describe("…up to and including this one (default: the same as from)."),
 });
 
-export const recallConversationDescription =
+const recallConversationDescription =
   "Read the earlier part of this conversation, which you are not shown (you see only the current question and this turn). " +
   "Use it before answering anything that refers back to what was said or done earlier. " +
   "`last`: the latest earlier messages; `query`: search them by words; `from`/`to`: numbered messages. A call returns a limited amount: narrow it down.";

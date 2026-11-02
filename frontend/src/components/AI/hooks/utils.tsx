@@ -1,8 +1,6 @@
 import isEqual from "lodash.isequal";
-import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import type { WidgetT } from "~/components/types";
-import { docsUrl } from "~/lib/docsUrl";
 import type {
   Citation,
   Copilot,
@@ -88,35 +86,6 @@ export function getWidgetOrigin(widget: WidgetT): string {
   if (widget.external) return widget.sourceName ?? "Unknown";
   return "Workspace";
 }
-
-export const showDeprecatedFlagsToast = (copilot: Copilot, outdatedFlags: string[]) => {
-  const agentsDocsHref = docsUrl(
-    "workspace/developers/json-specs/agents-json-reference",
-  );
-  toast.warning("Outdated copilots.json or agents.json detected", {
-    description: (
-      <>
-        Deprecated config flags detected for '{copilot.name}':{" "}
-        {outdatedFlags.join(", ")}.
-        {agentsDocsHref && (
-          <>
-            {" "}
-            Check the{" "}
-            <a
-              href={agentsDocsHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline text-primary-500 hover:text-primary-600"
-            >
-              documentation
-            </a>{" "}
-            for the latest schema.
-          </>
-        )}
-      </>
-    ),
-  });
-};
 
 export function dispatchExpandCopilotIfHidden() {
   return window.dispatchEvent(new CustomEvent("expandCopilotIfHidden"));

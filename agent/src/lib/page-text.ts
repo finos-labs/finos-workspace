@@ -8,7 +8,7 @@ export function cut(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
-export function formatKb(bytes: number): string {
+function formatKb(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
@@ -31,7 +31,7 @@ export function excerpt(text: string, max: number): string {
 
 export const MAX_COUNTED_MATCHES = 1000;
 
-export interface TextMatch {
+interface TextMatch {
   at: number;
   snippet: string;
 }

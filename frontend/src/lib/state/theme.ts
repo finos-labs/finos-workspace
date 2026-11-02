@@ -258,11 +258,7 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
             }
 
             if (fontSize) {
-              const root = document?.documentElement;
-              root?.style?.setProperty(
-                "--text-scale",
-                fontSize === "large" ? "1.25" : "1",
-              );
+              document.documentElement.dataset.fontSize = fontSize;
             }
 
             if (state.aiEnhancements === undefined) {
@@ -298,8 +294,7 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
           setShowMinimizeButton: (show) => set({ showMinimizeButton: show }),
           fontSize: "medium" as "medium" | "large",
           setFontSize: (size) => {
-            const root = document?.documentElement;
-            root?.style?.setProperty("--text-scale", size === "large" ? "1.25" : "1");
+            document.documentElement.dataset.fontSize = size;
             set({ fontSize: size });
           },
           isEditingTab: true,

@@ -11,7 +11,6 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    select,
     true,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,22 +37,6 @@ SHARING_SHARE = "share"
 SHARING_LEVELS = (SHARING_NONE, SHARING_RECEIVE, SHARING_SHARE)
 
 
-async def entity_get_supreme(db: AsyncSession, self_uuid: UUID) -> None | UUID:
-    query = select(EntityRelationship.supreme_uuid).where(
-        EntityRelationship.child_uuid == self_uuid
-    )
-    child = (await db.execute(query)).first()
-    if child:
-        return child[0]
-    query = select(EntityRelationship.supreme_uuid).where(
-        EntityRelationship.parent_uuid == self_uuid
-    )
-    parent = (await db.execute(query)).first()
-    if parent:
-        return parent.supreme_uuid
-    return None
-
-
 class Entity(Base, UUIDMixin, DateMixin):
     __tablename__ = "entity"
 
@@ -61,37 +44,6 @@ class Entity(Base, UUIDMixin, DateMixin):
     require_authenticator: Mapped[bool] = mapped_column(Boolean, default=False)
     sharing_enabled: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=true()
-    )
-
-    async def get_all_children(self, db: AsyncSession) -> list["Entity"]:
-        children = [self]
-        stack = [self]
-
-        all_rels: list[EntityRelationship] = (
-            (await db.execute(select(EntityRelationship))).scalars().all()
-        )
-
-        while stack:
-            current = stack.pop()
-            temp = [x for x in all_rels if x.parent_uuid == current.uuid]
-            children.extend([x.child for x in temp])
-            stack.extend([x.child for x in temp])
-        return children
-
-    async def get_supreme(self, db: AsyncSession) -> UUID | None:
-        return await entity_get_supreme(db, self.uuid)
-
-
-class EntityRelationship(Base, UUIDMixin, DateMixin):
-    __tablename__ = "entity_relationship"
-
-    parent_uuid: Mapped[UUID] = mapped_column(ForeignKey("entity.uuid"), index=True)
-    parent: Mapped["Entity"] = relationship(foreign_keys=[parent_uuid], lazy="selectin")
-    child_uuid: Mapped[UUID] = mapped_column(ForeignKey("entity.uuid"), index=True)
-    child: Mapped["Entity"] = relationship(foreign_keys=[child_uuid], lazy="selectin")
-    supreme_uuid: Mapped[UUID] = mapped_column(ForeignKey("entity.uuid"), index=True)
-    supreme: Mapped["Entity"] = relationship(
-        foreign_keys=[supreme_uuid], lazy="selectin"
     )
 
 
@@ -118,7 +70,6 @@ class AuditEntityRolesPermissions(Base, UUIDMixin, DateMixin):
     resource_type: Mapped[str] = mapped_column(String(100))
     resource_uuid: Mapped[UUID] = mapped_column(UUIDType, index=True)
     performed_by_uuid: Mapped[UUID] = mapped_column(ForeignKey("user.uuid"), index=True)
-    performed_by = relationship("User")
     details: Mapped[dict] = mapped_column(GzipJsonType)
 
 

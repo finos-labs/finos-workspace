@@ -52,10 +52,7 @@ const { allowEmailLogin: authenticationAllowEmailLoginFF } = getConfig().authent
 const { supportEmail } = getConfig().contact;
 const contactTarget = supportEmail ? `your admin (${supportEmail})` : "your admin";
 
-export function getErrorMessage(
-  statusCode: number,
-  detail: string,
-): undefined | string {
+function getErrorMessage(statusCode: number, detail: string): undefined | string {
   switch (statusCode) {
     case 200:
       return undefined;
@@ -498,7 +495,7 @@ function useLogin(props: { dispatch: StateDispatch<LoginState>; state: LoginStat
   };
 }
 
-export async function loginSuccess(data: LoginResponse) {
+async function loginSuccess(data: LoginResponse) {
   useAuthStore.getState().login(data);
   const user = data.user;
 

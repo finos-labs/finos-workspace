@@ -46,7 +46,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api import auth_helpers, crypto, database, models, schemas
 from api.database import aget_write_db
 from api.rate_limit import LIMIT_DEFAULT, limiter
-from api.source_proxy import KEEPALIVE_SECONDS, MAX_CONNECTIONS, MAX_KEEPALIVE
+from api.source_proxy import KEEPALIVE_SECONDS, MAX_CONNECTIONS, MAX_KEEPALIVE, host_machine_address
+from api.widget_plugins.service import local_development
 from utilities.config import settings
 
 router = APIRouter(
@@ -103,8 +104,9 @@ async def public_address(host: str, port: int) -> str:
 
 
 class _PublicNetwork(httpcore.AsyncNetworkBackend):
-    def __init__(self, network: httpcore.AsyncNetworkBackend):
+    def __init__(self, network: httpcore.AsyncNetworkBackend, trusted: bool = False):
         self._network = network
+        self._trusted = trusted
 
     @override
     async def connect_tcp(
@@ -115,9 +117,12 @@ class _PublicNetwork(httpcore.AsyncNetworkBackend):
         local_address: str | None = None,
         socket_options: Any = None,
     ) -> httpcore.AsyncNetworkStream:
-        address = (
-            host if may_reach_any_address(host, port) else await public_address(host, port)
-        )
+        if self._trusted:
+            address = await host_machine_address(host) if local_development() else host
+        elif may_reach_any_address(host, port):
+            address = host
+        else:
+            address = await public_address(host, port)
         return await self._network.connect_tcp(
             address,
             port,
@@ -138,22 +143,22 @@ class _PublicNetwork(httpcore.AsyncNetworkBackend):
 
 
 class PublicAddressTransport(httpx.AsyncHTTPTransport):
-    def __init__(self, network: httpcore.AsyncNetworkBackend | None = None):
+    def __init__(self, network: httpcore.AsyncNetworkBackend | None = None, trusted: bool = False):
         super().__init__()
         self._pool = httpcore.AsyncConnectionPool(
             ssl_context=httpx.create_ssl_context(),
             max_connections=MAX_CONNECTIONS,
             max_keepalive_connections=MAX_KEEPALIVE,
             keepalive_expiry=KEEPALIVE_SECONDS,
-            network_backend=_PublicNetwork(network or httpcore.AnyIOBackend()),
+            network_backend=_PublicNetwork(network or httpcore.AnyIOBackend(), trusted),
         )
 
 
 def create_mcp_http_client(
-    network: httpcore.AsyncNetworkBackend | None = None,
+    network: httpcore.AsyncNetworkBackend | None = None, trusted: bool = False
 ) -> httpx.AsyncClient:
     return httpx.AsyncClient(
-        transport=PublicAddressTransport(network),
+        transport=PublicAddressTransport(network, trusted),
         timeout=httpx.Timeout(10.0, read=300.0, connect=5.0),
         follow_redirects=False,
         trust_env=False,
@@ -162,6 +167,12 @@ def create_mcp_http_client(
 
 
 mcp_http = create_mcp_http_client()
+trusted_mcp_http = create_mcp_http_client(trusted=True)
+
+
+def mcp_client(trusted: bool) -> httpx.AsyncClient:
+    return trusted_mcp_http if trusted or local_development() else mcp_http
+
 
 CALLBACK_PATH = "/oauth/callback"
 CLIENT_NAME = "FINOS Workspace"
@@ -194,7 +205,7 @@ class _SignIn:
 
 async def web_user(
     request: Request,
-    user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
+    user=Depends(auth_helpers.GetCurrentUser(["uuid", "is_superuser"], app_session=True)),
 ):
     if request.headers.get(auth_helpers.CLIENT_HEADER) != auth_helpers.WEB_CLIENT:
         raise auth_helpers.credentials_exception
@@ -205,9 +216,10 @@ def _callback_uri(request: Request) -> str:
     return f"{request.headers['Origin']}{CALLBACK_PATH}"
 
 
-async def _fetch(method: str, url: str, **kwargs: Any) -> tuple[httpx.Response, bytes]:
-    request = mcp_http.build_request(method, url, timeout=OAUTH_TIMEOUT, **kwargs)
-    response = await mcp_http.send(request, stream=True)
+async def _fetch(method: str, url: str, trusted: bool, **kwargs: Any) -> tuple[httpx.Response, bytes]:
+    client = mcp_client(trusted)
+    request = client.build_request(method, url, timeout=OAUTH_TIMEOUT, **kwargs)
+    response = await client.send(request, stream=True)
     body = bytearray()
     try:
         async for chunk in response.aiter_bytes():
@@ -219,28 +231,29 @@ async def _fetch(method: str, url: str, **kwargs: Any) -> tuple[httpx.Response, 
     return response, bytes(body)
 
 
-async def _challenge(server: str) -> httpx.Response:
-    request = mcp_http.build_request(
+async def _challenge(server: str, trusted: bool) -> httpx.Response:
+    client = mcp_client(trusted)
+    request = client.build_request(
         "POST",
         server,
         json={"jsonrpc": "2.0", "id": 0, "method": "ping"},
         headers={**_METADATA_HEADERS, "Accept": "application/json, text/event-stream"},
         timeout=OAUTH_TIMEOUT,
     )
-    response = await mcp_http.send(request, stream=True)
+    response = await client.send(request, stream=True)
     await response.aclose()
     return response
 
 
 async def _protected_resource(
-    server: str, challenge: httpx.Response
+    server: str, challenge: httpx.Response, trusted: bool
 ) -> ProtectedResourceMetadata | None:
     failed: int | None = None
     urls = build_protected_resource_metadata_discovery_urls(
         extract_resource_metadata_from_www_auth(challenge), server
     )
     for url in urls:
-        response, body = await _fetch("GET", url, headers=_METADATA_HEADERS)
+        response, body = await _fetch("GET", url, trusted, headers=_METADATA_HEADERS)
         if response.status_code == status.HTTP_200_OK:
             try:
                 metadata = ProtectedResourceMetadata.model_validate_json(body)
@@ -263,7 +276,7 @@ async def _protected_resource(
 
 
 async def _authorization_server(
-    server: str, resource: ProtectedResourceMetadata | None
+    server: str, resource: ProtectedResourceMetadata | None, trusted: bool
 ) -> OAuthMetadata:
     authorization_server = str(resource.authorization_servers[0]) if resource else None
     parts = urlsplit(server)
@@ -272,7 +285,7 @@ async def _authorization_server(
         authorization_server, server
     )
     for url in urls:
-        response, body = await _fetch("GET", url, headers=_METADATA_HEADERS)
+        response, body = await _fetch("GET", url, trusted, headers=_METADATA_HEADERS)
         if httpx.codes.is_server_error(response.status_code):
             break
         if response.status_code != status.HTTP_200_OK:
@@ -298,7 +311,7 @@ async def _authorization_server(
 
 
 async def _register(
-    metadata: OAuthMetadata, redirect_uri: str, scope: str | None
+    metadata: OAuthMetadata, redirect_uri: str, scope: str | None, trusted: bool
 ) -> OAuthClientInformationFull:
     if metadata.registration_endpoint is None:
         raise OAuthFlowError("its authorization server does not register clients")
@@ -313,6 +326,7 @@ async def _register(
     response, body = await _fetch(
         "POST",
         str(metadata.registration_endpoint),
+        trusted,
         json=client.model_dump(by_alias=True, mode="json", exclude_none=True),
         headers={"Accept": "application/json"},
     )
@@ -326,10 +340,10 @@ async def _register(
     return registered
 
 
-async def _prepare(server: str, redirect_uri: str) -> _SignIn:
-    challenge = await _challenge(server)
-    resource = await _protected_resource(server, challenge)
-    metadata = await _authorization_server(server, resource)
+async def _prepare(server: str, redirect_uri: str, trusted: bool) -> _SignIn:
+    challenge = await _challenge(server, trusted)
+    resource = await _protected_resource(server, challenge, trusted)
+    metadata = await _authorization_server(server, resource, trusted)
     if metadata.code_challenge_methods_supported is not None and (
         "S256" not in metadata.code_challenge_methods_supported
     ):
@@ -339,7 +353,7 @@ async def _prepare(server: str, redirect_uri: str) -> _SignIn:
     )
     return _SignIn(
         metadata=metadata,
-        client=await _register(metadata, redirect_uri, scope),
+        client=await _register(metadata, redirect_uri, scope, trusted),
         resource=str(resource.resource) if resource else resource_url_from_server_url(server),
         scope=scope,
     )
@@ -377,7 +391,7 @@ def _oauth_error(body: bytes) -> str | None:
 
 
 async def _token_request(
-    endpoint: str, client: OAuthClientInformationFull, form: dict[str, str]
+    endpoint: str, client: OAuthClientInformationFull, form: dict[str, str], trusted: bool
 ) -> OAuthToken:
     headers = {"Accept": "application/json"}
     form = {**form, "client_id": client.client_id}
@@ -387,7 +401,7 @@ async def _token_request(
         headers["Authorization"] = "Basic " + base64.b64encode(pair.encode()).decode()
     elif client.client_secret and method == "client_secret_post":
         form["client_secret"] = client.client_secret
-    response, body = await _fetch("POST", endpoint, data=form, headers=headers)
+    response, body = await _fetch("POST", endpoint, trusted, data=form, headers=headers)
     if response.status_code != status.HTTP_200_OK:
         raise TokenEndpointError(response.status_code, _oauth_error(body))
     return OAuthToken.model_validate_json(body)
@@ -502,7 +516,7 @@ def _expired(credentials: dict) -> bool:
     return expires_at is not None and time.time() >= expires_at - EXPIRY_MARGIN_SECONDS
 
 
-async def _refreshed(db: AsyncSession, user_uuid: UUID, server: str) -> dict | None:
+async def _refreshed(db: AsyncSession, user_uuid: UUID, server: str, trusted: bool) -> dict | None:
     credentials = await _load_grant(db, user_uuid, server)
     if credentials is None:
         return None
@@ -516,7 +530,7 @@ async def _refreshed(db: AsyncSession, user_uuid: UUID, server: str) -> dict | N
             "resource": credentials["resource"],
         }
         try:
-            fresh = await _token_request(credentials["token_endpoint"], client, form)
+            fresh = await _token_request(credentials["token_endpoint"], client, form, trusted)
         except TokenEndpointError as exc:
             if httpx.codes.is_server_error(exc.status_code) or exc.status_code in {
                 status.HTTP_408_REQUEST_TIMEOUT,
@@ -545,7 +559,7 @@ async def _refreshed(db: AsyncSession, user_uuid: UUID, server: str) -> dict | N
 
 
 async def grant_authorization(
-    user_uuid: UUID, server: str, *, refused: str | None = None
+    user_uuid: UUID, server: str, trusted: bool, *, refused: str | None = None
 ) -> str | None:
     async with database.AsyncWriteSessionLocal.session() as db:
         credentials = await _load_grant(db, user_uuid, server)
@@ -568,14 +582,24 @@ async def grant_authorization(
             current = await _load_grant(db, user_uuid, server)
             if current is not None and _bearer(current) != header and not _expired(current):
                 return _bearer(current)
-            credentials = await _refreshed(db, user_uuid, server)
+            credentials = await _refreshed(db, user_uuid, server, trusted)
     except LockError:
         logger.warning("MCP sign-in: a token refresh did not get the lock")
         return None
     return _bearer(credentials) if credentials else None
 
 
-@router.post("/start", response_model=schemas.MCPOAuthAuthorization)
+@router.post(
+    "/start",
+    response_model=schemas.MCPOAuthAuthorization,
+    summary="Start signing in to an MCP server",
+    description=(
+        "Finds the authorization server of the MCP server in the request, registers FINOS Workspace as its client when "
+        "the server needs that, and returns the address at which the user grants access. The API remembers the attempt "
+        "for the user's session. Only the web app can call it, so the request must carry the header "
+        "`X-Workspace-Client: web`."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT)
 async def start_mcp_oauth(
     request: Request,
@@ -584,7 +608,7 @@ async def start_mcp_oauth(
 ):
     redirect_uri = _callback_uri(request)
     async with _outbound("prepare the sign-in"):
-        sign_in = await _prepare(payload.server_url, redirect_uri)
+        sign_in = await _prepare(payload.server_url, redirect_uri, bool(user.is_superuser))
         pkce = PKCEParameters.generate()
         state = secrets.token_urlsafe(32)
         authorization_url = _authorization_url(sign_in, redirect_uri, state, pkce)
@@ -605,7 +629,17 @@ async def start_mcp_oauth(
     return schemas.MCPOAuthAuthorization(authorization_url=authorization_url)
 
 
-@router.post("/complete", response_model=schemas.MCPOAuthCompleted)
+@router.post(
+    "/complete",
+    response_model=schemas.MCPOAuthCompleted,
+    summary="Finish signing in to an MCP server",
+    description=(
+        "Exchanges the authorization code that the MCP server's authorization server returned for tokens, and stores "
+        "them as the user's grant for that server, replacing an earlier grant. Answers 400 when the attempt has "
+        "expired, was not started by this user and session, or came back to another address. Only the web app can call "
+        "it."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT)
 async def complete_mcp_oauth(
     request: Request,
@@ -633,7 +667,7 @@ async def complete_mcp_oauth(
         "resource": record["resource"],
     }
     async with _outbound("complete the sign-in"):
-        token = await _token_request(record["token_endpoint"], client, form)
+        token = await _token_request(record["token_endpoint"], client, form, bool(user.is_superuser))
     token.scope = token.scope or record["scope"]
 
     server = record["server_url"]
@@ -651,7 +685,15 @@ async def complete_mcp_oauth(
     return schemas.MCPOAuthCompleted(server_url=server)
 
 
-@router.post("/disconnect", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/disconnect",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Disconnect from an MCP server",
+    description=(
+        "Deletes the user's grant for the MCP server in the request, so that the Copilot can no longer use the user's "
+        "sign-in there. Only the web app can call it."
+    ),
+)
 async def disconnect_mcp_oauth(
     payload: schemas.MCPOAuthServer,
     db: Annotated[AsyncSession, Depends(aget_write_db)],

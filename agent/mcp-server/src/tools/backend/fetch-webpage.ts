@@ -1,23 +1,18 @@
 import { z } from "zod";
 import { textItem, webCitationItem, type ContentItem } from "../../lib/typed.ts";
-import { describePage, fetchPage, MAX_PAGE_BYTES } from "../../../../src/lib/html-page.ts";
+import { describePage, fetchPage } from "../../../../src/lib/html-page.ts";
 import { renderOverview } from "../../../../src/lib/page-text.ts";
 import { getLogger } from "../../lib/logger.ts";
 import { holdPage, pageIdFor } from "../../lib/page-store.ts";
-import { scopeProblem, scopeSigSchema } from "../../lib/scope-check.ts";
+import { conversationIdSchema, scopeProblem, scopeSigSchema } from "../../lib/scope-check.ts";
 import { urlProblem, urlSigSchema } from "../../lib/url-check.ts";
 
 const logger = getLogger(["mcp", "fetch-webpage"]);
 
-export { MAX_PAGE_BYTES };
-
 export const fetchWebpageSchema = {
   url: z.string().url().describe("The URL to fetch"),
   "x-agent-url-sig": urlSigSchema,
-  "x-agent-conversation-id": z
-    .string()
-    .optional()
-    .describe("INTERNAL — populated by agent decoration. Do not set."),
+  "x-agent-conversation-id": conversationIdSchema,
   "x-agent-scope-sig": scopeSigSchema,
 };
 

@@ -41,7 +41,7 @@ If this is your first time touching FINOS Workspace, read the two **overview** d
 - `widgets.json` is a JSON **object** keyed by widget id. Not an array. Its keys are the contract's: a key it does not define is ignored and named under the backend's unrecognized fields.
 - `apps.json` is a JSON **array** of app objects. Not an object.
 - Layout uses `i` for the widget id, not `id`.
-- Prefer `Group 1`, `Group 2`, ... names for parameter groups; put human-readable meaning in descriptions/categories.
+- A parameter group's `name` must be the same text in `groups` and in every layout item that joins the group; any name works.
 - A schema-valid app still needs a semantic output pass: verify default values, parameter scenarios, units, and the shape of each widget's response.
 - Try to ship app thumbnails via `img`, `img_dark`, and `img_light`; a small backend-served SVG is enough.
 - FastAPI is one option. Use whatever fits the project.

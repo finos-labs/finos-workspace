@@ -2,7 +2,13 @@ import { readFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { authFile, deleteDashboard, userInfo } from "./helpers";
-import { type ApiResponse, grantPlugins, type PageApi, pageApi } from "./plugins/api";
+import {
+  type ApiResponse,
+  grantBackend,
+  grantPlugins,
+  type PageApi,
+  pageApi,
+} from "./plugins/api";
 import {
   HOSTILE_ENTRY,
   hostileManifest,
@@ -160,6 +166,10 @@ test.beforeAll(async ({ browser }, testInfo) => {
       data: { name: BACKEND_NAME, url: `http://${BACKEND_HOST}:${BACKEND_PORT}` },
     }),
   );
+  await grantBackend(api, roleUuid as string, entityUuid, BACKEND_NAME, [
+    "e2e_rows",
+    "e2e_probe",
+  ]);
 
   await page.goto("/app");
   await page.waitForLoadState("networkidle");
@@ -214,10 +224,12 @@ test("plugin-cannot-leave-its-frame", async () => {
     expect.soft(outcome, attempt).toBe("blocked");
   expect(await page.evaluate(() => "e2ePolluted" in {})).toBe(false);
   await expect(card("E2E probe").getByText("forged")).toHaveCount(0);
-  const toasts = (await seen()).toasts.filter((t) => t.includes("e2e-markup"));
-  expect(toasts).toHaveLength(1);
-  expect(toasts[0]).toContain("<img src=x onerror=alert(1)>");
-  expect(toasts[0]).toContain("|img:false");
+  const markup = async () =>
+    (await seen()).toasts.filter((t) => t.includes("e2e-markup"));
+  await expect.poll(markup, { timeout: 10000 }).toHaveLength(1);
+  const [toast] = await markup();
+  expect(toast).toContain("<img src=x onerror=alert(1)>");
+  expect(toast).toContain("|img:false");
 });
 
 test("plugin-policy-violations-reach-the-administrator", async ({ browserName }) => {

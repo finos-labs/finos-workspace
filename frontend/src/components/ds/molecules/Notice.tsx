@@ -3,7 +3,7 @@ import Icon from "~/components/Icon";
 import type { IconId } from "~/components/Icon.types";
 import { cn } from "../utils";
 
-export type NoticeVariant = "success" | "warning" | "error" | "info";
+type NoticeVariant = "success" | "warning" | "error" | "info";
 
 const VARIANT_STYLES: Record<NoticeVariant, { box: string; accent: string }> = {
   success: {
@@ -28,7 +28,7 @@ const VARIANT_ICONS: Record<NoticeVariant, IconId> = {
   info: "info-circle",
 };
 
-export interface NoticeProps {
+interface NoticeProps {
   variant: NoticeVariant;
   title: string;
   icon?: IconId;

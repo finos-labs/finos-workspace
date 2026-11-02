@@ -13,8 +13,12 @@ concurrency:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
+  node:
+    uses: ./.github/workflows/agent-node.yml
+
   lint:
     name: Biome
     runs-on: ubuntu-latest
@@ -25,37 +29,55 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 26.12.1
       - run: npm ci --ignore-scripts
       - run: npx biome ci .
 
   typecheck:
     name: Types
+    needs: node
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
-      - run: npm ci --ignore-scripts
-      - run: npm run typecheck
+          node-version: 26.12.1
+      - run: npm ci --ignore-scripts --os=linux --cpu=x64 --libc=musl
+        working-directory: frontend
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check the types on the images' Node
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo/frontend "$NODE_IMAGE" /usr/local/bin/node \
+            node_modules/typescript/bin/tsc --noEmit
 
   unit-tests:
     name: Unit tests
+    needs: node
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
-      - run: npm ci --ignore-scripts
-      - run: npm run test:unit
+          node-version: 26.12.1
+      - run: npm ci --ignore-scripts --os=linux --cpu=x64 --libc=musl
+        working-directory: frontend
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run the tests on the images' Node
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo/frontend "$NODE_IMAGE" /usr/local/bin/node \
+            node_modules/vitest/vitest.mjs run tests/unit
 
   typos:
     name: Spelling

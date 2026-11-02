@@ -1,8 +1,9 @@
 import asyncio
 from time import time
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from loguru import logger
 from sqlalchemy import not_, or_, select, update
 from sqlalchemy.exc import SQLAlchemyError
@@ -34,7 +35,12 @@ async def validate_dashboard_ownership(
         raise HTTPException(status_code=403, detail=error_message)
 
 
-@router.get("/sync/owned", response_model=schemas.DashboardOwned)
+@router.get(
+    "/sync/owned",
+    response_model=schemas.DashboardOwned,
+    summary="List the dashboards that the user owns",
+    description="Returns the dashboards that the signed-in user owns, by UUID.",
+)
 async def get_owned_items(
     db: AsyncSession = Depends(aget_read_db),
     user: User = Depends(
@@ -45,7 +51,16 @@ async def get_owned_items(
     return schemas.DashboardOwned(owned=owned)
 
 
-@router.get("/sync/shared", response_model=schemas.DashboardShared)
+@router.get(
+    "/sync/shared",
+    response_model=schemas.DashboardShared,
+    summary="List the dashboards shared with the user",
+    description=(
+        "Returns the dashboards that other users shared with the signed-in user, and, separately, the dashboards that "
+        "the user's organization shares with all of its users. A dashboard that is in both lists appears only in "
+        "`shared`."
+    ),
+)
 async def get_shared_items(
     user: User = Depends(
         auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)
@@ -62,7 +77,15 @@ async def get_shared_items(
     return schemas.DashboardShared(shared=shared, entity_shared=entity_shared)
 
 
-@router.get("/sync", response_model=schemas.DashboardComplete)
+@router.get(
+    "/sync",
+    response_model=schemas.DashboardComplete,
+    summary="List all of the user's dashboards",
+    description=(
+        "Returns the dashboards that the user owns, the dashboards shared with the user, and the dashboards that the "
+        "user's organization shares, each by UUID."
+    ),
+)
 async def get_items(
     user: User = Depends(
         auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)
@@ -71,7 +94,16 @@ async def get_items(
     return await app_helpers.get_dashboards_complete(user=user)
 
 
-@router.get("/validate-and-sync", response_model=schemas.DashboardCompleteWithContext)
+@router.get(
+    "/validate-and-sync",
+    response_model=schemas.DashboardCompleteWithContext,
+    summary="Load everything the web app needs at start",
+    description=(
+        "Checks the session and returns, in one answer, the data that the web app needs when it starts: the user's "
+        "dashboards and apps, Copilot chats and question history, MCP servers, skills, usage, access and Copilot "
+        "access, display settings, file widgets, widget metadata and the organization's theme settings."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def dash_validate_and_get_items(  # noqa: PLR0914, PLR0915
     request: Request,
@@ -132,7 +164,16 @@ async def dash_validate_and_get_items(  # noqa: PLR0914, PLR0915
     )
 
 
-@router.post("/sync", response_model=schemas.SuccessReturn)
+@router.post(
+    "/sync",
+    response_model=schemas.SuccessReturn,
+    summary="Save the user's dashboards",
+    description=(
+        "Creates, updates and deletes dashboards in one request. Each key of `items` is a dashboard UUID, and its value "
+        "is the dashboard's content, or the string `DELETE` to delete the dashboard. The API strips credentials from "
+        "the endpoints in the content. Answers 400 when the database rejects the change."
+    ),
+)
 async def update_items(
     dashboard: schemas.DashboardsCreate,
     db: AsyncSession = Depends(aget_write_db),
@@ -153,9 +194,19 @@ async def update_items(
     return {"success": True}
 
 
-@router.get("/{dashboard_uuid}/versions", response_model=list[schemas.DashboardSave])
+@router.get(
+    "/{dashboard_uuid}/versions",
+    response_model=list[schemas.DashboardSave],
+    summary="List the saved versions of a dashboard",
+    description=(
+        "Returns the saved versions of the dashboard, newest first, each with its content. The owner can read them, and "
+        "so can a user with whom the dashboard is shared and, when the dashboard is shared with the organization, any "
+        "user of the organization whose roles allow sharing. Answers 403 to any other user and 400 when the user's "
+        "organization cannot be found."
+    ),
+)
 async def dashboard_versions(
-    dashboard_uuid: UUID,
+    dashboard_uuid: Annotated[UUID, Path(description="The UUID of the dashboard.")],
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(
         auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)
@@ -218,10 +269,18 @@ async def dashboard_versions(
 
 
 @router.post(
-    "/{dashboard_uuid}/toggle-entity-sharing", response_model=schemas.ShareReturn
+    "/{dashboard_uuid}/toggle-entity-sharing",
+    response_model=schemas.ShareReturn,
+    summary="Share a dashboard with the organization, or stop",
+    description=(
+        "Switches sharing with the whole organization on when it is off, and off when it is on. When the user is a "
+        "Developer, switching it on does not take effect at once: the route files a request that an admin must approve "
+        "and answers with `pending_approval` set to true. Answers 403 when the user does not own the dashboard or the "
+        "user's roles do not allow sharing."
+    ),
 )
 async def toggle_entity_sharing(
-    dashboard_uuid: UUID,
+    dashboard_uuid: Annotated[UUID, Path(description="The UUID of the dashboard.")],
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(
         auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)
@@ -247,10 +306,16 @@ async def toggle_entity_sharing(
 
 
 @router.get(
-    "/{dashboard_uuid}/shares", response_model=dict[str, schemas.DashboardShareReturn]
+    "/{dashboard_uuid}/shares",
+    response_model=dict[str, schemas.DashboardShareReturn],
+    summary="List the shares of a dashboard",
+    description=(
+        "Returns the users with whom the signed-in owner shares the dashboard, by email, each with the permissions that "
+        "the share gives. A share that waits for an admin's approval is included with `pending` set to true."
+    ),
 )
 async def get_shares(
-    dashboard_uuid: UUID,
+    dashboard_uuid: Annotated[UUID, Path(description="The UUID of the dashboard.")],
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(
         auth_helpers.GetCurrentUser(["uuid", "email", "permissions_uuid"], app_session=True)
@@ -294,9 +359,20 @@ async def get_shares(
     return final_result
 
 
-@router.post("/{dashboard_uuid}/share", response_model=schemas.ShareReturn)
+@router.post(
+    "/{dashboard_uuid}/share",
+    response_model=schemas.ShareReturn,
+    summary="Share a dashboard with users",
+    description=(
+        "Shares the dashboard with the users in the request, who must belong to the owner's organization and be allowed "
+        "to receive shares, with the permissions that the request names. A user who already has a share is skipped. "
+        "When the owner is a Developer, the shares become requests that an admin must approve, and the answer has "
+        "`pending_approval` set to true. Answers 400 when the owner has no permissions map, 403 when the user does not "
+        "own the dashboard or may not share, and 402 when none of the recipients is in the owner's organization."
+    ),
+)
 async def add_share(
-    dashboard_uuid: UUID,
+    dashboard_uuid: Annotated[UUID, Path(description="The UUID of the dashboard.")],
     share: schemas.ShareDashboard,
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(
@@ -336,9 +412,18 @@ async def add_share(
     return schemas.ShareReturn.success_instance()
 
 
-@router.patch("/{dashboard_uuid}/share", response_model=schemas.ShareReturn)
+@router.patch(
+    "/{dashboard_uuid}/share",
+    response_model=schemas.ShareReturn,
+    summary="Change the permissions of a dashboard share",
+    description=(
+        "Changes the permissions that the listed recipients have on the dashboard. When the owner is a Developer, the "
+        "changes become requests that an admin must approve, and the answer has `pending_approval` set to true. Answers "
+        "403 when the user does not own the dashboard or may not share."
+    ),
+)
 async def update_share(
-    dashboard_uuid: UUID,
+    dashboard_uuid: Annotated[UUID, Path(description="The UUID of the dashboard.")],
     share: schemas.ShareDashboard,
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid", "email"], app_session=True)),
@@ -396,9 +481,17 @@ async def update_share(
     return schemas.ShareReturn.success_instance()
 
 
-@router.delete("/{dashboard_uuid}/share", response_model=schemas.SuccessReturn)
+@router.delete(
+    "/{dashboard_uuid}/share",
+    response_model=schemas.SuccessReturn,
+    summary="Stop sharing a dashboard with users",
+    description=(
+        "Ends the shares of the dashboard with the listed emails, and cancels their pending share requests. The owner "
+        "can end any share of the dashboard, and a recipient can end their own."
+    ),
+)
 async def delete_share(
-    dashboard_uuid: UUID,
+    dashboard_uuid: Annotated[UUID, Path(description="The UUID of the dashboard.")],
     share: schemas.ShareDashboardList,
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid", "email"], app_session=True)),
@@ -451,9 +544,15 @@ async def delete_share(
 @router.get(
     "/{dashboard_uuid}/shares/users",
     response_model=dict[str, schemas.DashboardShareReturn],
+    summary="List the users that a dashboard can be shared with",
+    description=(
+        "Returns the other users of the owner's organization who can receive shares, by email. A user who already has a "
+        "share carries the permissions and the date of the share, and the others carry none. Answers 403 when the user "
+        "does not own the dashboard and 400 when the user's organization cannot be found."
+    ),
 )
 async def see_available_users(
-    dashboard_uuid: UUID,
+    dashboard_uuid: Annotated[UUID, Path(description="The UUID of the dashboard.")],
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(
         auth_helpers.GetCurrentUser(["uuid", "email", "permissions_uuid"], app_session=True)
@@ -519,12 +618,21 @@ async def see_available_users(
 
 
 @router.get(
-    "/shared-dashboard-viewed", response_model=list[schemas.SharedDashboardViewed]
+    "/shared-dashboard-viewed",
+    response_model=list[schemas.SharedDashboardViewed],
+    summary="List which shared dashboards the user has opened",
+    description=(
+        "Returns, for each dashboard that is shared with the signed-in user, whether the user has viewed it. The query "
+        "parameter `dashboard_uuid` limits the list to one dashboard. Answers 400 when no dashboard is shared with the "
+        "user."
+    ),
 )
 async def get_shared_dashboard_viewed(
     db: AsyncSession = Depends(aget_read_db),
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
-    dashboard_uuid: UUID | None = None,
+    dashboard_uuid: Annotated[
+        UUID | None, Query(description="Return only whether the user has viewed this dashboard.")
+    ] = None,
 ):
     shared_dashboard_query = select(
         DashboardShare.dashboard_item_uuid.label("dashboard_uuid"),
@@ -546,10 +654,13 @@ async def get_shared_dashboard_viewed(
 
 
 @router.patch(
-    "/shared-dashboard-viewed/{dashboard_uuid}", response_model=schemas.SuccessReturn
+    "/shared-dashboard-viewed/{dashboard_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Mark a shared dashboard as viewed",
+    description="Records that the signed-in user has viewed the dashboard that is shared with them.",
 )
 async def patch_shared_dashboard_viewed(
-    dashboard_uuid: UUID,
+    dashboard_uuid: Annotated[UUID, Path(description="The UUID of the dashboard.")],
     db: AsyncSession = Depends(aget_read_db),
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):

@@ -16,7 +16,7 @@ import Widgets, { getWidgetComponent, type WidgetId } from "./Widgets";
 
 const PluginWidget = lazy(() => import("~/plugins/PluginWidget"));
 
-export function isPluginRendered(
+function isPluginRendered(
   widget: { plugin?: unknown; type?: string | null } | undefined,
 ) {
   if (!widget) return false;
@@ -40,7 +40,7 @@ const WidgetFallback = () => {
 export function WidgetWrapper(props: { uuid: string; activeDashboardId: string }) {
   const { uuid, activeDashboardId } = props;
 
-  const { getWidget, isShared } = useTabContext();
+  const { getWidget, isShared, locked } = useTabContext();
   const { widgetId, pluginRendered, ...value } = useMemo(
     () => ({
       uuid,
@@ -77,6 +77,7 @@ export function WidgetWrapper(props: { uuid: string; activeDashboardId: string }
                 className="mt-2.5"
                 variant="secondary"
                 size="sm"
+                disabled={locked}
                 onClick={() => {
                   if (widgetId)
                     useAppStore.getState().removeWidget(activeDashboardId, uuid);
@@ -89,7 +90,7 @@ export function WidgetWrapper(props: { uuid: string; activeDashboardId: string }
         </div>
       ),
     }),
-    [uuid, widgetId, activeDashboardId],
+    [uuid, widgetId, activeDashboardId, locked],
   );
 
   if (uuid === "empty-dashboard-cta") return <EmptyDashboardCTA />;
@@ -102,7 +103,7 @@ function loadWidgetComponent(widgetId: WidgetId) {
   return Component ? <Component /> : null;
 }
 
-export function WidgetComponent() {
+function WidgetComponent() {
   const { widget, widgetFromJSON } = useWidgetContext();
   if (!widget?.widgetId) {
     return null;

@@ -92,7 +92,7 @@ function getFileTag(w: Widget): string {
   return "";
 }
 
-export const MAX_LISTED_WIDGETS = 60;
+const MAX_LISTED_WIDGETS = 60;
 
 function describeWidgets(
   label: string,
@@ -171,7 +171,7 @@ function describeSkillsCatalog(catalog: CatalogSkill[]): string {
 
 const FALLBACK_TIMEZONE = "UTC";
 
-export function resolveTimezone(timezone: string | undefined): string {
+function resolveTimezone(timezone: string | undefined): string {
   if (!timezone) return FALLBACK_TIMEZONE;
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: timezone });
@@ -200,7 +200,7 @@ function buildDateSection(timezone: string): string {
   );
 }
 
-export function describeDisabledCapabilities(disabled: readonly string[]): string | null {
+function describeDisabledCapabilities(disabled: readonly string[]): string | null {
   const search = disabled.includes("SEARCH_WEB");
   const fetch = disabled.includes("FETCH_FROM_WEB");
   if (!search && !fetch) return null;

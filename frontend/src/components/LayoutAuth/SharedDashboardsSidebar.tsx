@@ -44,7 +44,7 @@ export default function SharedDashboardsSidebar() {
   );
 }
 
-export function SharedDashboardItem({ item }: { item: Item }) {
+function SharedDashboardItem({ item }: { item: Item }) {
   const { id } = useParams();
   const { user } = useShallowAuthStore((state) => ({
     user: state.user,

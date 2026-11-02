@@ -12,7 +12,7 @@ import { entityAdminKeys } from "~/hooks/useEntityAdmin";
 import { type EntityMapItem, type EntityUser, USER_TYPES } from "~/types/entity.type";
 import { FormDialog } from "./FormDialog";
 
-export const moveFormSchema = z.object({
+const moveFormSchema = z.object({
   entityUuid: z.uuid("Choose an entity"),
   name: z.string().min(1, "Choose a user type"),
 });

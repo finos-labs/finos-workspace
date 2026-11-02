@@ -10,7 +10,7 @@ import Icon from "../Icon";
 
 const isFirstLogin = false;
 
-export default function EmptyDashboardCTA({ locked = false }: { locked?: boolean }) {
+export default function EmptyDashboardCTA() {
   const navigate = useNavigate();
   const { changeSearch, setInitialSelectedSearchTab } = useShallowThemeStore(
     (state) => ({
@@ -28,7 +28,7 @@ export default function EmptyDashboardCTA({ locked = false }: { locked?: boolean
     navigate("/app");
   }
 
-  const { getRootProps, getInputProps, isDragActive } = useDragAndDropFiles(locked);
+  const { getRootProps, getInputProps, isDragActive } = useDragAndDropFiles();
   const mayUpload = useShallowAccessStore((s) => canAddConnections(s.access));
 
   return (

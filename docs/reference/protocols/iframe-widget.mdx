@@ -1,0 +1,31 @@
+---
+title: Iframe widget protocol
+sidebar_position: 5
+---
+
+import { SchemaDocs } from "@site/src/components/Reference/schemas";
+import { IframeLimits, ParamUpdateTexts } from "@site/src/components/Reference/iframe";
+
+# Iframe widget protocol
+
+An iframe widget embeds a page that can talk to FINOS Workspace through `window.postMessage`. Every message is an object with a `type` field. The messages are defined in `frontend/src/types/iframeProtocol.ts` and handled in `frontend/src/components/Widgets/Helpers/useIframeProtocol.tsx`. [Talk to FINOS Workspace from an iframe page](../../tutorials/build-a-backend/iframe-page-protocol.md) explains the order of the messages and which of them FINOS Workspace accepts.
+
+## Messages from the page
+
+<SchemaDocs set="iframePage" root={false} />
+
+FINOS Workspace validates each message against its schema. A message that does not match is ignored, and a warning appears in the browser console that names the problem.
+
+## Messages from FINOS Workspace
+
+<SchemaDocs set="iframeHost" root={false} />
+
+## Parameter values
+
+FINOS Workspace turns every value of a parameter update into a string:
+
+<ParamUpdateTexts />
+
+## Limits
+
+<IframeLimits />

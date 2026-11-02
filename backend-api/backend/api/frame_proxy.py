@@ -94,5 +94,9 @@ def cached_access(user_uuid: UUID, source_uuid: UUID):
     return None
 
 
-def remember_access(user_uuid: UUID, source_uuid: UUID, source, email: str, trusted: bool):
-    remember(_access, ACCESS_ENTRIES, (user_uuid, source_uuid), (time.monotonic(), (snapshot(source), email, trusted)))
+def remember_access(
+    user_uuid: UUID, source_uuid: UUID, source, email: str, trusted: bool, granted: frozenset[str] | None
+):
+    held = (snapshot(source), email, trusted, granted)
+    remember(_access, ACCESS_ENTRIES, (user_uuid, source_uuid), (time.monotonic(), held))
+    return held

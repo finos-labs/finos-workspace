@@ -3,12 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ColorPicker } from "~/components/ds/molecules/ColorPicker";
 
 vi.mock("react-colorful", () => ({
-  HexColorPicker: ({
-    onChange,
-  }: {
-    color?: string;
-    onChange: (value: string) => void;
-  }) => (
+  HexColorPicker: ({ onChange }: { onChange: (value: string) => void }) => (
     <div data-testid="hex-color-picker">
       <button onClick={() => onChange("#000000")}>Select Black</button>
     </div>

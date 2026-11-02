@@ -1,20 +1,22 @@
 [![badge-labs](https://user-images.githubusercontent.com/327285/230928932-7c75f8ed-e57b-41db-9fb7-a292a13a1e58.svg)](https://community.finos.org/docs/governance/lifecycle-stages/labs)
 
-# FINOS Workspace
+<h1 align="center">
+  <img alt="FINOS Workspace: an open, self-hosted analytics workspace for financial institutions to connect data, tools, and AI agents" src="website/static/img/banner.svg">
+</h1>
 
-Source code for FINOS Workspace and the components that build and run it.
+<div align="center">
 
-## Layout
+**[Run it on your machine](docs/tutorials/build-from-source/run-the-stack-from-source.md)** · [Features](docs/features/index.md) · [Concepts](docs/concepts/index.md) · [Tutorials](docs/tutorials/index.md) · [Reference](docs/reference/index.md)
 
-| Directory | What it is |
-|---|---|
-| `frontend/` | The FINOS Workspace frontend (React 18 + TypeScript + Vite) |
-| `backend-api/` | Backend API (FastAPI + SQLAlchemy), admin CLI, and admin dashboard |
-| `agent/` | The Copilot's agent, and `agent/mcp-server/`, the tools it uses (Node + TypeScript); see [agent/README.md](agent/README.md) |
-| `local/` | Development stack with hot reload for the frontend and the API (`make up`); see [local/LOCAL_SETUP.md](local/LOCAL_SETUP.md) |
+</div>
 
-Each component keeps its own README with setup and development instructions.
+<p align="center">
+  <img alt="A FINOS Workspace dashboard with tables of revenue by region, notes and key figures" src="frontend/public/assets/images/features/grouping.png" width="640">
+</p>
 
+Users connect their own data backends and arrange the data in dashboards of widgets. An AI agent answers questions about the dashboards, outside AI tools reach them through an MCP server, roles decide who may use what, and plugins add new kinds of widgets.
+
+The code is in `frontend/`, `backend-api/`, `agent/` (the agent and its MCP server), `local/` (the development stack) and `docs/` with `website/` (the documentation).
 ## Developing locally
 
 Both stacks below, the root `docker-compose.yml` and `local/`, are a developer's own machine: they run the API with `MODE=local`, and nothing in them needs editing for what follows.
@@ -23,9 +25,11 @@ Both stacks below, the root `docker-compose.yml` and `local/`, are a developer's
 
 **An agent on your machine.** Under AI Library, AI Agents, Add Agent, give the address you use in your browser, for example `http://localhost:7777`. The API reads the agent's `agents.json` and makes every call to it, queries and tool round trips included, through `host.docker.internal` like a data backend, so the agent needs no CORS settings. The keys you type are stored encrypted in this stack's database and added by the API; the browser never holds them, and the list of agents names them without their values.
 
-**Widget plugins on your machine.** Put a built plugin in `widget-plugins/<plugin-id>/<version>/` next to `docker-compose.yml` (git ignores the folder, and `WORKSPACE_PLUGINS_DIR` points compose at another folder). It is mounted into the API as `/opt/widget-plugins`, where it can be written because a superuser may develop a version in place. Open Admin, Widgets, Deployment and choose Rescan. The steps after that are in [docs/widget-plugins/README.md](docs/widget-plugins/README.md).
+**An MCP server on your machine.** Under AI, MCP Servers, Add Server, give the address you use in your browser, for example `http://localhost:8787/mcp`. The API makes every call to the server, sign-in included, through `host.docker.internal` like a data backend, so the server needs no CORS settings. The headers you type are stored encrypted in this stack's database and added by the API; the browser never holds them. On Linux the server must listen on `0.0.0.0`.
 
-**Docker Compose is the standard way to develop locally**: the frontend, the API and the services run on your machine, and a backend on your machine is a connection to `localhost`, as above. **A deployed Workspace cannot reach a backend on your machine**, because its API makes the calls from the deployment's network. To test the deployed dev frontend against a local backend, expose the backend through a secured HTTPS tunnel and add the tunnel's public `https` address as a connection; the backend keeps checking its key, so the tunnel must not be left open to anyone. Use the tunnel only for that case. A connection kept by a superuser may be a private or plain `http` address on any stack, added on the Connections page like any other. For every other user, only a stack with `MODE=local` accepts one; elsewhere their connections must be public `https` addresses.
+**Widget plugins on your machine.** Put a built plugin in `widget-plugins/<plugin-id>/<version>/` next to `docker-compose.yml` (git ignores the folder, and `WORKSPACE_PLUGINS_DIR` points compose at another folder). It is mounted into the API as `/opt/widget-plugins`, where it can be written because a superuser may develop a version in place. Open Admin, Widgets, Deployment and choose Rescan. The steps after that are in [Build and try a widget plugin](docs/tutorials/plugins/build-a-plugin.md).
+
+**Docker Compose is the standard way to develop locally**: the frontend, the API and the services run on your machine, and a backend on your machine is a connection to `localhost`, as above. **A deployed Workspace cannot reach a backend or an MCP server on your machine**, because its API makes the calls from the deployment's network. To test the deployed dev frontend against a local backend, expose the backend through a secured HTTPS tunnel and add the tunnel's public `https` address as a connection; the backend keeps checking its key, so the tunnel must not be left open to anyone. Use the tunnel only for that case. A connection kept by a superuser may be a private or plain `http` address on any stack, added on the Connections page like any other. For every other user, only a stack with `MODE=local` accepts one; elsewhere their connections must be public `https` addresses.
 
 ## Running the whole stack
 
@@ -104,7 +108,7 @@ the code, so the API does not start without them.
 
 | Variable | Written by `create_local_env` | What it is |
 |---|---|---|
-| `MODE` | `production` | One of `production`, `local` or `test`. `local` is a developer's own machine: both compose files set it, whatever the file says. It lets any user's connection point at a private or plain `http` address, `localhost` among them (see Developing locally), and lets a superuser develop widget plugin versions in place (`docs/widget-plugins/README.md`, 5.1). |
+| `MODE` | `production` | One of `production`, `local` or `test`. `local` is a developer's own machine: both compose files set it, whatever the file says. It lets any user's connection point at a private or plain `http` address, `localhost` among them (see Developing locally), and lets a superuser develop widget plugin versions in place ([Build and try a widget plugin](docs/tutorials/plugins/build-a-plugin.md)). |
 | `FRONTENDURL` | `http://localhost:3000` | Address of the web app. |
 | `APPURL` | `http://localhost:3000` | Address of the web app that the API uses for links back to it, such as login redirects. |
 | `SELFURL` | `http://localhost:8000` | The API's own address, used to build links to files. |
@@ -128,14 +132,18 @@ The rest of `envs/.env.example` stays as it is: `DATABASE_TYPE=mysql`, `DB_PORT=
   they add (a user's own entry for the same URL wins, so they can still switch one off). Compose sets it to the agent's tools,
   `http://agent-mcp:8787/mcp`. The URL is the one the API calls, so it may be an address only the deployment can resolve: the
   API reaches a default server's host and port wherever they are. Other MCP servers it reaches only at public addresses (it
-  refuses `localhost` and raw IP addresses) unless their host is in `ALLOWED_MCP_HOSTNAMES`.
+  refuses `localhost` and raw IP addresses) unless their host is in `ALLOWED_MCP_HOSTNAMES`, the user is a superuser, or the
+  stack runs with `MODE=local`.
 
 `.env.example` explains every setting in comments.
 
 ### Web (`environment:` of the `web` service)
 
 `BACKEND_URL`, `AI_API_URL` and `AI_COPILOT_ENABLED` are set in the compose file (from `API_URL`, `AI_API_URL` and
-`AI_COPILOT_ENABLED` above). Every other setting is one more `environment:` entry. A variable that is not set keeps its
+`AI_COPILOT_ENABLED` above), and so are `ALLOW_HTML_JS_EXECUTION` and `UI_SHOW_COMPANION_MCP_MODE`, which this stack turns
+on for development: scripts run in HTML widgets and Copilot artifacts, and the MCP Companion entry shows in the menu. A
+deployment sets neither, so both keep their code default of `false`, unless its environment says otherwise. Every other
+setting is one more `environment:` entry. A variable that is not set keeps its
 default (in `frontend/src/lib/runtimeConfigSchema.ts`); a true/false variable must be exactly `true` or `false`, or the
 container refuses to start.
 
@@ -243,7 +251,7 @@ Everything a web app used to ask of a data backend directly now goes through the
 **Logs** go to stdout, one JSON object per line (`LOG_FORMAT=pretty` for people), at `LOG_LEVEL` (`info` in production, `debug`
 otherwise). Every record carries the request id (the `X-Trace-Id` header); a record made while a question is answered also carries the user and the chat. Before it is
 written, every record is cleaned of session tokens, API keys, signed file URLs, file bytes, the messages of a conversation and
-email addresses, so a provider's error shows what went wrong without the conversation. The token in the address of an iframe page that needs the connection's credentials (`/app/data-connectors/frame/ws_frame_…`, `docs/widget-plugins/WIDGETS-JSON.md` 4.12) is masked in the API's logs; mask it in the access log of your load balancer or ingress too. One `audit` record is written for each
+email addresses, so a provider's error shows what went wrong without the conversation. The token in the address of an iframe page that needs the connection's credentials (`/app/data-connectors/frame/ws_frame_…`) is masked in the API's logs; mask it in the access log of your load balancer or ingress too. One `audit` record is written for each
 question (outcome, tokens, duration), each refusal (not signed in, model, role, limit) and each tool call.
 
 **Metrics** are Prometheus text on a port of their own that compose does not publish: `agent:9464/metrics` and

@@ -124,10 +124,10 @@ const LIMIT_FIELDS = [
 ] as const;
 
 const SWITCH_FIELDS = [
-  { name: "search_web", label: "Copilot may search the web (SEARCH_WEB)" },
+  { name: "search_web", label: "Agent may search the web (SEARCH_WEB)" },
   {
     name: "fetch_from_web",
-    label: "Copilot may read pages from the web (FETCH_FROM_WEB)",
+    label: "Agent may read pages from the web (FETCH_FROM_WEB)",
   },
 ] as const;
 

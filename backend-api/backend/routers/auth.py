@@ -21,7 +21,16 @@ ENROLLED_SIGN_INS = {
 }
 
 
-@router.put("/user", response_model=schemas.SuccessReturn)
+@router.put(
+    "/user",
+    response_model=schemas.SuccessReturn,
+    summary="Change the signed-in user's password",
+    description=(
+        "Changes the password of the signed-in user when the request carries both `old_password` and `new_password`, "
+        "and ends every other session of the user. Answers 401 when the old password is wrong and 400 when the request "
+        "is too large."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def put_user(
     request: Request,
@@ -50,7 +59,16 @@ async def put_user(
     return {"success": True}
 
 
-@router.delete("/user", response_model=schemas.MessageReturn)
+@router.delete(
+    "/user",
+    response_model=schemas.MessageReturn,
+    summary="Delete the signed-in user's account",
+    description=(
+        "Deletes the account of the signed-in user: every session ends, the account is marked as deleted, and its "
+        "email, username and password are overwritten. The user's agent tokens are revoked and the session cookie is "
+        "cleared."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def delete_user(
     request: Request,
@@ -64,7 +82,16 @@ async def delete_user(
     return response
 
 
-@router.post("/totp", response_model=schemas.TotpGenerateReturn)
+@router.post(
+    "/totp",
+    response_model=schemas.TotpGenerateReturn,
+    summary="Start the setup of two-factor authentication",
+    description=(
+        "Generates a new authenticator secret for the signed-in user and returns it with the provisioning URI that an "
+        "authenticator app reads. The secret has no effect until `POST /totp/activate` confirms it. Answers 400 when "
+        "two-factor authentication is already active."
+    ),
+)
 @limiter.limit(LIMIT_FEW, exempt_when=exempt_service_token)
 async def generate_totp(
     request: Request,
@@ -92,6 +119,14 @@ async def generate_totp(
 @router.post(
     "/totp/activate",
     response_model=schemas.AppTokenWithContext | schemas.SuccessReturn,
+    summary="Activate two-factor authentication",
+    description=(
+        "Checks the code from the authenticator app against the generated secret and activates two-factor "
+        "authentication. When the user signed in only to enroll, as a user whose organization requires two-factor "
+        "authentication must, the enrollment session ends and the answer is the user's app token with a new session. "
+        "Otherwise the answer is a success message. Answers 400 when no secret has been generated and 401 when the code "
+        "is wrong."
+    ),
 )
 @limiter.limit(LIMIT_FEW, exempt_when=exempt_service_token)
 async def confirm_totp(

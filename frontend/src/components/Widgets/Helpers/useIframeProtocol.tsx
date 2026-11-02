@@ -17,7 +17,7 @@ import {
   type WorkspaceWidgetManifest,
 } from "~/types/iframeProtocol";
 
-const REQUEST_TIMEOUT_MS = 10_000;
+export const REQUEST_TIMEOUT_MS = 10_000;
 
 interface UseIframeProtocolOptions {
   iframeRef: React.RefObject<HTMLIFrameElement | null>;
@@ -33,7 +33,7 @@ const getIframeOrigin = (iframeRef: React.RefObject<HTMLIFrameElement | null>) =
   }
 };
 
-const MAX_FRAME_DEPTH = 8;
+export const MAX_FRAME_DEPTH = 8;
 
 function isWindowWithin(
   source: MessageEventSource | null,

@@ -6,9 +6,8 @@ import {
   type LogLevel,
   type Sink,
 } from "@logtape/logtape";
+import { LOG_FORMATS, LOG_LEVELS } from "./env-reference.ts";
 import { redactRecord } from "./redact.ts";
-
-const LEVELS: readonly LogLevel[] = ["trace", "debug", "info", "warning", "error", "fatal"];
 
 function isProduction(env: Record<string, string | undefined>): boolean {
   return env.NODE_ENV === "production";
@@ -17,8 +16,8 @@ function isProduction(env: Record<string, string | undefined>): boolean {
 export function parseLogLevel(env: Record<string, string | undefined> = process.env): LogLevel {
   const raw = (env.LOG_LEVEL ?? (isProduction(env) ? "info" : "debug")).toLowerCase();
   const level = raw === "warn" ? "warning" : raw;
-  if (!(LEVELS as readonly string[]).includes(level)) {
-    throw new Error(`LOG_LEVEL must be one of ${LEVELS.join(", ")}; got "${env.LOG_LEVEL}".`);
+  if (!(LOG_LEVELS as readonly string[]).includes(level)) {
+    throw new Error(`LOG_LEVEL must be one of ${LOG_LEVELS.join(", ")}; got "${env.LOG_LEVEL}".`);
   }
   return level as LogLevel;
 }
@@ -27,10 +26,10 @@ export function parseLogFormat(
   env: Record<string, string | undefined> = process.env,
 ): "json" | "pretty" {
   const raw = (env.LOG_FORMAT ?? (isProduction(env) ? "json" : "pretty")).toLowerCase();
-  if (raw !== "json" && raw !== "pretty") {
-    throw new Error(`LOG_FORMAT must be json or pretty; got "${env.LOG_FORMAT}".`);
+  if (!(LOG_FORMATS as readonly string[]).includes(raw)) {
+    throw new Error(`LOG_FORMAT must be ${LOG_FORMATS.join(" or ")}; got "${env.LOG_FORMAT}".`);
   }
-  return raw;
+  return raw as (typeof LOG_FORMATS)[number];
 }
 
 export function redactingSink(next: Sink): Sink {

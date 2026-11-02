@@ -144,7 +144,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         title="Convert an Existing Endpoint to a Widget",
         description=(
             "Turn an existing HTTP endpoint into a FINOS Workspace widget — type "
-            "selection, params, columns, validation."
+            "selection, params, validation."
         ),
         relative_path="guides/convert-endpoint-to-widget.md",
     ),
@@ -153,7 +153,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         title="Minimal Backend (Generic HTTP)",
         description=(
             "Framework-neutral picture of a FINOS Workspace backend — "
-            "routes, response shapes, CORS, auth."
+            "routes, response shapes, the route check, auth."
         ),
         relative_path="examples/generic-http-minimal.md",
     ),

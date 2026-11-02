@@ -1,9 +1,9 @@
 import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 
-const MAX_REDIRECTS = 3;
+export const MAX_REDIRECTS = 3;
 export const DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
-export const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 const private_ = new BlockList();
 for (const [network, prefix, family] of [
@@ -43,7 +43,7 @@ function isInternalName(hostname: string): boolean {
   );
 }
 
-export interface FetchPolicy {
+interface FetchPolicy {
   workspace?: { publicUrl: string; internalUrl: string; origin: string };
   resolve?: (hostname: string) => Promise<string[]>;
 }

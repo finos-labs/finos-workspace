@@ -200,6 +200,23 @@ describe("useAgentManagement", () => {
       });
     });
 
+    it("keeps the holder's headers on the holder and not on its agents", async () => {
+      const holder = makeHolder({ headers: { Authorization: "Bearer token123" } });
+      mockCopilotStoreState.externalCopilotHolders = [holder];
+      mockFetchAgentsData.mockResolvedValue([makeCopilot({ id: "agent-refreshed" })]);
+
+      const { result } = renderHook(() => useAgentManagement());
+
+      await act(async () => {
+        await result.current.handleSaveRefresh("holder-1");
+      });
+
+      const [saved] = mockPutCustomCopilot.mock.calls[0];
+      expect(saved.headers).toEqual({ Authorization: "Bearer token123" });
+      expect(saved.copilots).toHaveLength(1);
+      expect(saved.copilots[0]).not.toHaveProperty("headers");
+    });
+
     it("shows error toast when fetchAgentsData rejects", async () => {
       const holder = makeHolder();
       mockCopilotStoreState.externalCopilotHolders = [holder];

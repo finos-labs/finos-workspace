@@ -57,6 +57,7 @@ const sharedTemplate = {
   name: "Shared Org App",
   templateId: "shared-org-app",
   description: "Shared with the org",
+  allowCustomization: false,
   tabs: {},
   prompts: [],
   source: sharedBackendSource,
@@ -1125,6 +1126,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     expect(widget.data_args_schema).toEqual({
       type: "object",
       additionalProperties: false,
+      description: expect.any(String),
       properties: {
         symbols: {
           type: ["array", "string"],
@@ -1910,6 +1912,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
             backend_id: "backend-1",
             backend_name: "My Custom Backend",
             is_shared: false,
+            allow_customization: true,
           }),
           expect.objectContaining({
             name: "Shared Org App",
@@ -1918,6 +1921,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
             backend_name: "Org Shared Backend",
             is_shared: true,
             created_by: "teammate@example.com",
+            allow_customization: false,
           }),
           expect.objectContaining({
             name: "My Saved App",

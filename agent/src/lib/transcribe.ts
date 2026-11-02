@@ -11,6 +11,8 @@ const PROVIDERS: Record<string, { keyEnv: string }> = {
   nvidia: { keyEnv: "NVIDIA_API_KEY" },
 };
 
+export const TRANSCRIBE_PROVIDER_NAMES = Object.keys(PROVIDERS);
+
 function splitModelId(raw: string): { provider: string; modelId: string } | null {
   const colon = raw.indexOf(":");
   if (colon <= 0 || colon === raw.length - 1) return null;
@@ -35,7 +37,7 @@ export function transcribeModelProblem(env: Env = process.env): string | null {
   return null;
 }
 
-export interface WavAudio {
+interface WavAudio {
   bytes: Uint8Array;
   sampleRate: number;
   channels: number;

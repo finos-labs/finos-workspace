@@ -11,52 +11,135 @@ import {
   getCopilotChat,
   getExternalCopilotHolders,
 } from "~/api/auth.api";
-import { showDeprecatedFlagsToast } from "~/components/AI/hooks/utils";
 import { getConfig } from "~/lib/runtimeConfig";
 import { setAgentHolders } from "~/lib/utils/fetch";
 import type { ActiveMcpLink } from "~/lib/utils/mcpLink";
-import { AI_SUPPORTED_FILE_TYPES, getDefaultCopilot } from "../constants";
+import {
+  AI_SUPPORTED_FILE_TYPES,
+  getDefaultCopilot,
+  UPLOAD_BATCH_BYTES,
+} from "../constants";
 import { type FunctionCallT, mergeDuplicateChats } from "../utils";
 import type { Selector } from "./app";
 
-export const copilotSchema = z
-  .object({
-    holderUuid: z.string().optional(),
-    id: z.string(),
-    name: z.string(),
-    description: z.string(),
-    image: z.url().optional(),
-    link: z.url().optional(),
-    hasStreaming: z.boolean().optional(),
-    hasDocuments: z.boolean().optional(),
-    hasFunctionCalling: z.boolean().optional(),
-    endpoints: z.object({
-      upload_docs: z.url().optional(),
-      query: z.url().optional(),
-      feedback: z.url().optional(),
-    }),
-    features: z
-      .record(
-        z.string(),
-        z.union([
-          z.boolean(),
-          z.object({
-            label: z.string(),
-            type: z.enum(["toggle", "text", "select"]).optional(),
-            default: z.union([z.boolean(), z.string()]).optional(),
-            description: z.string().optional(),
-            placeholder: z.string().optional(),
-            options: z
-              .array(z.object({ label: z.string(), value: z.string() }))
-              .optional(),
-          }),
-        ]),
-      )
-      .optional(),
-    headers: z.record(z.string(), z.string()).optional(),
-    models: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
-    skills: z.array(z.object({ slug: z.string(), description: z.string() })).optional(),
-  })
+const featureSettingSchema = z.object({
+  label: z.string().describe("The name that the options menu shows"),
+  type: z
+    .enum(["toggle", "text", "select"])
+    .optional()
+    .describe(
+      "The kind of control: `toggle`, which is the default, `text` or `select`",
+    ),
+  default: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .describe(
+      "The starting value: a boolean for a toggle and a string for the other types. A `select` without a default starts on its first option",
+    ),
+  description: z.string().optional().describe("An explanation of the setting"),
+  placeholder: z.string().optional().describe("The hint of a `text` setting"),
+  options: z
+    .array(
+      z.object({
+        label: z.string().describe("The name that the choice shows"),
+        value: z
+          .string()
+          .describe("The value that the web app sends when the choice is selected"),
+      }),
+    )
+    .optional()
+    .describe("The choices of a `select`"),
+});
+
+export const agentEntrySchema = z.object({
+  id: z
+    .string()
+    .optional()
+    .describe(
+      "The agent's id. It defaults to the key of the object. The web app refuses to add an agent whose id or name matches one that the user already has",
+    ),
+  name: z.string().describe("The name that the interface shows"),
+  description: z.string().describe("A sentence about the agent"),
+  image: z
+    .url()
+    .optional()
+    .describe(
+      "The agent's avatar. A relative address is resolved against the address of the file",
+    ),
+  link: z.url().optional().describe("A page about the agent"),
+  hasStreaming: z
+    .boolean()
+    .optional()
+    .describe(
+      "A shortcut for the feature `streaming`. It replaces the entry of that feature in `features`, whichever value the entry has",
+    ),
+  hasDocuments: z
+    .boolean()
+    .optional()
+    .describe(
+      "A shortcut for the feature `file-upload`. It replaces the entry of that feature in `features`, whichever value the entry has",
+    ),
+  hasFunctionCalling: z
+    .boolean()
+    .optional()
+    .describe(
+      "A shortcut for the features `widget-dashboard-select`, `widget-dashboard-search` and `widget-global-search`. It replaces their entries in `features`, whichever value the entries have",
+    ),
+  endpoints: z
+    .object({
+      upload_docs: z
+        .url()
+        .optional()
+        .describe(
+          `Where the web app sends documents that the user attaches to a chat with this agent, as a multipart form with the files in the field \`files\`, in batches of at most ${UPLOAD_BATCH_BYTES} bytes. An agent without it does not accept documents`,
+        ),
+      query: z.url().optional().describe("Where the web app sends questions"),
+      feedback: z
+        .url()
+        .optional()
+        .describe(
+          "Where the web app posts a thumbs up or down on an answer, when the agent has the feature `feedback`. The body has `vote`, which is `thumbs_up` or `thumbs_down`, `tags`, `user_comment`, `ai_response`, `user_prompt` and `trace_id`",
+        ),
+    })
+    .describe(
+      "Where the web app sends requests. Each endpoint is a URL, and a relative address is resolved against the address of `agents.json`",
+    ),
+  features: z
+    .record(z.string(), z.union([z.boolean(), featureSettingSchema]))
+    .optional()
+    .describe(
+      "What the agent can do and which settings it offers. A key is either `true`, which switches a feature on, or an object that describes a setting that the user can change",
+    ),
+  models: z
+    .array(
+      z.object({
+        id: z.string().describe("The id of the model"),
+        name: z.string().describe("The name that the interface shows"),
+      }),
+    )
+    .optional()
+    .describe(
+      "The models that a user can pick. When the list is empty or missing, the web app uses the options of a `select` setting named `model`",
+    ),
+  skills: z
+    .array(
+      z.object({
+        slug: z
+          .string()
+          .describe("The word that the user types after a slash to invoke the skill"),
+        description: z
+          .string()
+          .describe("What the skill does, which the web app sends with the slug"),
+      }),
+    )
+    .optional()
+    .describe(
+      "Skills that the agent provides. The web app sends the slug and the description of the skill that a user invokes in `selected_skills`",
+    ),
+});
+
+export const copilotSchema = agentEntrySchema
+  .extend({ holderUuid: z.string().optional(), id: z.string() })
   .refine((data) => {
     if (data.hasStreaming !== undefined) {
       data.features = {
@@ -70,6 +153,12 @@ export const copilotSchema = z
         "widget-dashboard-select": data.hasFunctionCalling,
         "widget-dashboard-search": data.hasFunctionCalling,
         "widget-global-search": data.hasFunctionCalling,
+      };
+    }
+    if (data.hasDocuments !== undefined) {
+      data.features = {
+        ...data.features,
+        "file-upload": data.hasDocuments,
       };
     }
     return true;
@@ -112,7 +201,7 @@ interface DataFormatBase<P extends ParseAs = ParseAs> {
   parse_as?: P;
 }
 
-export type DataFormat = DataFormatBase;
+type DataFormat = DataFormatBase;
 
 export interface DataContent {
   content: string;
@@ -244,14 +333,13 @@ export const CopilotDataSchema = z.object({
   extra_citations: z.array(ExtraCitationSchema).optional(),
 });
 
-export const CopilotCommandResultSchema = z.looseObject({
+const CopilotCommandResultSchema = z.looseObject({
   status: z.enum(["success", "error"]),
   message: z.string().optional(),
 });
 
-export type CopilotDataItemT = z.infer<typeof CopilotDataItemSchema>;
 export type CopilotDataT = z.infer<typeof CopilotDataSchema>;
-export type CopilotAiDataT = Partial<DataContent & DataUrl & CopilotError>;
+
 export type CopilotCommandResultT = z.infer<typeof CopilotCommandResultSchema>;
 
 export type CopilotFile = {
@@ -362,7 +450,7 @@ type AppArtifactGroup = {
   widgetIds: string[];
 };
 
-export type AppArtifactDef = {
+type AppArtifactDef = {
   name: string;
   description?: string;
   allowCustomization?: boolean;
@@ -398,7 +486,7 @@ export type ArtifactType<T extends ArtifactT["type"]> = Extract<ArtifactT, { typ
 
 export type DetailT = Record<string, unknown> | null;
 
-export interface DatetimeState {
+interface DatetimeState {
   timestamp: number;
   targetGroupId: string;
 }
@@ -472,7 +560,7 @@ export interface SystemMessage extends BaseMessage {
   orchestrationModeEnabled?: boolean;
 }
 
-export interface ToolMessageBase extends BaseMessage {
+interface ToolMessageBase extends BaseMessage {
   role: "tool";
   data: CopilotDataT[] | CopilotCommandResultT[];
 }
@@ -494,13 +582,13 @@ export type Chat<M = Message> = {
   agentIds?: string[];
 };
 
-export type CopilotTextSuggestion = {
+type CopilotTextSuggestion = {
   question: string;
   matchCount: number;
   idsLength: number;
 };
 
-export interface MetadataFormValues {
+interface MetadataFormValues {
   name: string;
   description?: string;
   category?: string;
@@ -517,7 +605,7 @@ export interface CreateWidgetMetadataDialogState {
   dashboardId?: string;
 }
 
-export interface CopilotState {
+interface CopilotState {
   copilotTextSuggestions: CopilotTextSuggestion[];
   setCopilotTextSuggestions: (suggestions: CopilotTextSuggestion[]) => void;
   actionHistory: string[];
@@ -1029,20 +1117,7 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
           })),
         getSelectedModelForAgent: (agentId) => get().selectedModelByAgent[agentId],
         selectedCopilot: aiCopilotDefaultCopilotFF ? getDefaultCopilot() : null,
-        setSelectedCopilot: (copilot) => {
-          const outdatedFlags = copilot
-            ? [
-                copilot.hasDocuments !== undefined && "hasDocuments",
-                copilot.hasFunctionCalling !== undefined && "hasFunctionCalling",
-                copilot.hasStreaming !== undefined && "hasStreaming",
-              ].filter((flag): flag is string => typeof flag === "string")
-            : [];
-          if (copilot && copilot.id !== "default-copilot" && outdatedFlags.length > 0) {
-            showDeprecatedFlagsToast(copilot, outdatedFlags);
-          }
-
-          set({ selectedCopilot: copilot });
-        },
+        setSelectedCopilot: (copilot) => set({ selectedCopilot: copilot }),
         orchestrationModeEnabled: false,
         setOrchestrationModeEnabled: (enabled) =>
           set({ orchestrationModeEnabled: enabled }),
@@ -1387,12 +1462,8 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
           }
 
           return {
-            externalCopilotHolders: state.externalCopilotHolders.map((holder) => ({
-              ...withoutHeaders(holder),
-              copilots: holder.copilots?.map(withoutHeaders),
-            })),
-            selectedCopilot:
-              state.selectedCopilot && withoutHeaders(state.selectedCopilot),
+            externalCopilotHolders: state.externalCopilotHolders.map(withoutHeaders),
+            selectedCopilot: state.selectedCopilot,
             lastPanelState: state.lastPanelState,
             isFullscreen: state.isFullscreen,
             isIntentionallyCollapsed: state.isIntentionallyCollapsed,

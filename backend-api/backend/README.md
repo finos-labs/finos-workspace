@@ -111,11 +111,12 @@ provider has a revocation endpoint (Okta has one; Microsoft Entra has none), and
 `X-Microsoft-Id-Token` or `X-Okta-Id-Token`. A provider that issues no refresh token refuses
 the sign-in, and one that refuses a refresh token ends the session. Every call also carries
 `X-Workspace-Identity`, a short-lived token that the API signs and publishes the keys of at
-`<SELFURL>/.well-known/jwks.json`; see "Who is calling" in `docs/widget-plugins/WIDGETS-JSON.md`.
+`<SELFURL>/.well-known/jwks.json`; see [Requests that a widget sends](../../docs/tutorials/build-a-backend/requests-from-a-widget.md).
 
 The API reaches users' MCP servers only at public internet addresses. An MCP server on a
 private network (an internal host, a compose service) has to be listed by host name in
-`ALLOWED_MCP_HOSTNAMES`, a JSON list.
+`ALLOWED_MCP_HOSTNAMES`, a JSON list. A superuser's servers, and every user's servers when
+`MODE=local`, may be at any address, as a data backend may.
 
 No password is printed, logged or kept in a file: `scripts.init_users` creates the first
 administrator without one, and `python -m scripts.init_users --new-password <email>` sets it,

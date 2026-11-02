@@ -3,7 +3,7 @@ import { useGetWidgetsStore } from "~/components/AI/hooks/useGetAppWidgets";
 import { getWidgetOrigin } from "~/components/AI/hooks/utils";
 import type { ParamDef, StoredParamValue, WidgetT } from "~/components/types";
 import type { WidgetId } from "~/components/Widgets";
-import { useAppStore } from "~/lib/state/app";
+import { DASHBOARD_LOCKED_MESSAGE, useAppStore } from "~/lib/state/app";
 import { useCopilotDataStore } from "~/lib/state/copilotData";
 import { triggerCustomEvent } from "~/lib/utils";
 import {
@@ -96,6 +96,12 @@ function validateDashboardLayout(
   if (maxH !== undefined && config.h > maxH) {
     throw new Error(`Widget height ${config.h} exceeds the maximum height ${maxH}.`);
   }
+}
+
+function lockedDashboardError(dashboardId: string, detail = "") {
+  return new Error(
+    `Dashboard '${dashboardId}' is locked. ${DASHBOARD_LOCKED_MESSAGE}${detail}`,
+  );
 }
 
 function createDashboard(dashboardId: string, config: DashboardConfig): string {
@@ -219,6 +225,17 @@ function updateDashboardLayout(
     gridLayout?: Record<string, LayoutItem[]>;
   };
   const sourceTabId = widget.innerTab || "";
+  if (
+    appState.isDashboardLocked(dashboardId) &&
+    (sourceTabId !== targetTabId ||
+      config.x !== existingGridData.x ||
+      config.y !== existingGridData.y)
+  ) {
+    throw lockedDashboardError(
+      dashboardId,
+      " Only the width and height of its widgets can change.",
+    );
+  }
   const targetLayout = [...(gridLayout?.[targetTabId] || [])].filter(
     (entry) => entry.i !== widgetUuid,
   );
@@ -243,6 +260,9 @@ async function createWidget(
   widgetId: string,
   config: WidgetConfig,
 ): Promise<string> {
+  if (useAppStore.getState().isDashboardLocked(dashboardId)) {
+    throw lockedDashboardError(dashboardId);
+  }
   const widgetDefinition = getWidgetDefinitionOrThrow(backendName, widgetId);
   const widget = updateWidgetState(widgetDefinition, config);
   const { id: _defId, ...rest } = widget;
@@ -334,6 +354,7 @@ async function updateWidget(
 async function deleteWidget(dashboardId: string, widgetUuid: string): Promise<void> {
   const appState = useAppStore.getState();
   getDashboardWidgetOrThrow(dashboardId, widgetUuid);
+  if (appState.isDashboardLocked(dashboardId)) throw lockedDashboardError(dashboardId);
   appState.removeWidget(dashboardId, widgetUuid);
 
   if (useAppStore.getState().getTabWidgetById(dashboardId, widgetUuid)) {

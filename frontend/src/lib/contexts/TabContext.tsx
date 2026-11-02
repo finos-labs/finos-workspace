@@ -8,12 +8,12 @@ import {
   useState,
 } from "react";
 import type { LayoutItem } from "react-grid-layout";
-import { useShallowAppStore, type Widget } from "~/lib/state/app";
+import { useIsDashboardLocked, useShallowAppStore, type Widget } from "~/lib/state/app";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 
 export type GridItem = LayoutItem & { mobileH?: number };
 
-export type TabProviderProps = {
+type TabProviderProps = {
   currentTab: string;
   tabId?: string;
   layouts: GridItem[];
@@ -24,9 +24,10 @@ export type TabProviderProps = {
 
 type TabContextType = Omit<TabProviderProps, "children"> & {
   getWidget: (widgetId: string) => Widget | undefined;
+  locked: boolean;
 };
 
-export const TabContext = createContext<TabContextType | null>(null);
+const TabContext = createContext<TabContextType | null>(null);
 
 export function useTabContext() {
   const context = useContext(TabContext);
@@ -39,6 +40,7 @@ export function useTabContext() {
 export function TabProvider(props: TabProviderProps) {
   const { children, currentTab, tabId, layouts, isShared } = props;
   const [internalLayouts, setInternalLayouts] = useState(layouts);
+  const locked = useIsDashboardLocked(tabId);
 
   const getSharedWidgetById = useShallowSharedAppStore((state) => state.getWidgetById);
   const { getWidgetById, updateTabData } = useShallowAppStore((state) => ({
@@ -78,10 +80,11 @@ export function TabProvider(props: TabProviderProps) {
       tabId,
       layouts: internalLayouts,
       isShared,
+      locked,
       setLayouts: setLayoutsCb,
       getWidget,
     }),
-    [currentTab, tabId, internalLayouts, isShared, setLayoutsCb, getWidget],
+    [currentTab, tabId, internalLayouts, isShared, locked, setLayoutsCb, getWidget],
   );
 
   const childrenMemo = useMemo(() => children, [children]);
