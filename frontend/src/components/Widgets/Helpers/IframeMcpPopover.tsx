@@ -124,7 +124,6 @@ export const IframeMcpPopover = memo(
         name: widgetName || getServerName(trimmed),
         url: trimmed,
         enabled: true,
-        isLocal: trimmed.includes("localhost") || trimmed.includes("127.0.0.1"),
       };
 
       if (serverId) {

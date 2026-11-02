@@ -115,7 +115,8 @@ the sign-in, and one that refuses a refresh token ends the session. Every call a
 
 The API reaches users' MCP servers only at public internet addresses. An MCP server on a
 private network (an internal host, a compose service) has to be listed by host name in
-`ALLOWED_MCP_HOSTNAMES`, a JSON list.
+`ALLOWED_MCP_HOSTNAMES`, a JSON list. A superuser's servers, and every user's servers when
+`MODE=local`, may be at any address, as a data backend may.
 
 No password is printed, logged or kept in a file: `scripts.init_users` creates the first
 administrator without one, and `python -m scripts.init_users --new-password <email>` sets it,

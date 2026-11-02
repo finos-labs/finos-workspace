@@ -19,9 +19,7 @@ import {
   PENDING_CONNECTION_STATES,
   useShallowMcpToolsStore,
 } from "~/lib/state/mcpTools";
-import { isLoopbackUrl } from "~/lib/utils/mcp";
 import { EndpointHeadersForm } from "./DataConnectors/EndpointHeadersForm";
-import { Checkbox } from "./ds/atoms/Checkbox";
 import { FormInput, Input } from "./ds/atoms/Input";
 import { Form, FormField, useForm } from "./ds/molecules/Form";
 import SettingsMenu from "./ds/molecules/SettingsMenu";
@@ -367,7 +365,6 @@ const mcpServerSchema = z.object({
   name: z.string().min(1, "Server name is required"),
   url: z.url("Invalid URL format").min(1, "URL is required"),
   clientName: z.string().optional(),
-  isLocal: z.boolean().optional(),
   customHeaders: z
     .array(
       z.object({
@@ -538,7 +535,6 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
       name: serverToEdit?.name || "",
       url: serverToEdit?.url || "",
       clientName: serverToEdit?.clientName || "",
-      isLocal: serverToEdit?.isLocal,
       customHeaders: [],
       removedHeaders: [],
     },
@@ -552,11 +548,10 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
     (server: McpServerSchema) => {
       const newServerData: Pick<
         McpServer,
-        "name" | "url" | "clientName" | "isLocal" | "customHeaders"
+        "name" | "url" | "clientName" | "customHeaders"
       > = {
         name: server.name.trim(),
         clientName: (server.clientName ?? "").trim(),
-        isLocal: server.isLocal,
         url: server.url.trim(),
         customHeaders: undefined,
       };
@@ -599,7 +594,6 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
         name: serverToEdit.name,
         url: serverToEdit.url,
         clientName: serverToEdit.clientName || "",
-        isLocal: serverToEdit.isLocal,
         customHeaders: [],
         removedHeaders: [],
       });
@@ -654,7 +648,6 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
                 onBlur={(e) => {
                   const url = e.target.value.trim();
                   form.setValue("url", url, { shouldValidate: url !== "" });
-                  if (isLoopbackUrl(url)) form.setValue("isLocal", true);
                 }}
               />
             )}
@@ -671,33 +664,6 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
               />
             )}
           />
-          <FormField
-            name="isLocal"
-            control={form.control}
-            render={({ field }) => (
-              <div className="flex items-center gap-1.5 body-xs-regular">
-                <Checkbox
-                  label={<span className="whitespace-nowrap">Local Server</span>}
-                  className="text-ds-text-body whitespace-nowrap [&_label]:-mt-1"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-                <Tooltip
-                  message="Enable this if the MCP server is running on localhost or within the same network."
-                  className="max-w-[300px] break-words"
-                  position="top"
-                >
-                  <span>
-                    <Icon
-                      id="help-outline-circle"
-                      className="inline text-ds-text-caption"
-                    />
-                  </span>
-                </Tooltip>
-              </div>
-            )}
-          />
-
           <div className="overflow-y-auto max-h-[200px] pr-1">
             {savedHeaderNames.map((name) => (
               <div

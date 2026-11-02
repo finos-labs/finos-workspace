@@ -6,7 +6,7 @@ from datetime import (
     timedelta,
 )
 from typing import Annotated, Literal
-from urllib.parse import urlencode, urlparse, urlsplit
+from urllib.parse import urlencode, urlsplit
 from uuid import UUID
 
 import httpx
@@ -1501,33 +1501,6 @@ async def post_mcp_servers(
     return await app_helpers.get_mcp_servers(db, user)
 
 
-LOCAL_MCP_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
-
-
-@router.post(
-    "/mcp-servers/local-headers",
-    response_model=schemas.MCPServerHeaders,
-    summary="Get the headers of a local MCP server",
-    description=(
-        "Returns the headers that the user saved for an MCP server on `localhost`. Answers 400 when the address is not "
-        "local, 403 when the user's type may not add connections, and 404 when no MCP server is saved at that address. "
-        "Only the web app can call it."
-    ),
-)
-async def get_local_mcp_server_headers(
-    payload: schemas.MCPLocalServer,
-    db: Annotated[AsyncSession, Depends(aget_read_db)],
-    user=Depends(mcp_oauth.web_user),
-):
-    if urlparse(payload.url.strip()).hostname not in LOCAL_MCP_HOSTS:
-        raise HTTPException(400, detail="Only the headers of a local server are served")
-    await app_helpers.check_may_add_connections(db, user.uuid)
-    headers = await app_helpers.get_mcp_server_headers(db, user.uuid, payload.url)
-    if headers is None:
-        raise HTTPException(404, detail="No MCP server is saved at this URL")
-    return schemas.MCPServerHeaders(headers=headers)
-
-
 @router.get(
     "/copilot-keys",
     response_model=schemas.CopilotKeysStatus,
@@ -1727,7 +1700,11 @@ async def check_mcp_tool_calls(
 
 
 async def _send_to_mcp_server(
-    data: MCPProxyRequest, stored_headers: dict[str, str], authorization: str | None, browser: Request
+    data: MCPProxyRequest,
+    stored_headers: dict[str, str],
+    authorization: str | None,
+    browser: Request,
+    trusted: bool,
 ) -> httpx.Response:
     headers = httpx.Headers(
         {
@@ -1741,12 +1718,11 @@ async def _send_to_mcp_server(
     if authorization is not None:
         headers["Authorization"] = authorization
     headers["Accept-Encoding"] = "identity"
-    request = mcp_oauth.mcp_http.build_request(
-        data.method, data.url, headers=headers, json=data.body
-    )
+    client = mcp_oauth.mcp_client(trusted)
+    request = client.build_request(data.method, data.url, headers=headers, json=data.body)
     return await source_proxy.guard(
         source_proxy.origin_of(data.url),
-        lambda: mcp_oauth.mcp_http.send(request, stream=True, follow_redirects=False),
+        lambda: client.send(request, stream=True, follow_redirects=False),
         browser,
     )
 
@@ -1820,6 +1796,7 @@ async def mcp_proxy(
     finally:
         await db.commit()
     token_auth = any(name.lower() == "authorization" for name in stored_headers)
+    trusted = bool(user.is_superuser)
 
     async def record_endpoint(announced: str) -> None:
         await _record_sse_endpoint(user.uuid, server, data.url, announced)
@@ -1828,16 +1805,20 @@ async def mcp_proxy(
     try:
         try:
             authorization = (
-                None if token_auth else await mcp_oauth.grant_authorization(user.uuid, server)
+                None
+                if token_auth
+                else await mcp_oauth.grant_authorization(user.uuid, server, trusted)
             )
-            response = await _send_to_mcp_server(data, stored_headers, authorization, request)
+            response = await _send_to_mcp_server(data, stored_headers, authorization, request, trusted)
             if response.status_code == status.HTTP_401_UNAUTHORIZED and authorization:
                 await response.aclose()
                 authorization = await mcp_oauth.grant_authorization(
-                    user.uuid, server, refused=authorization
+                    user.uuid, server, trusted, refused=authorization
                 )
                 if authorization is not None:
-                    response = await _send_to_mcp_server(data, stored_headers, authorization, request)
+                    response = await _send_to_mcp_server(
+                        data, stored_headers, authorization, request, trusted
+                    )
         except mcp_oauth.BlockedAddressError as e:
             raise HTTPException(
                 status_code=403, detail=f"The MCP server may not be reached: {e}"

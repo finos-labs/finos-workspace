@@ -81,7 +81,7 @@ The backend reads `backend-api/backend/envs/.env`, the same file the root `docke
 
 | Setting | Value | Why |
 |---|---|---|
-| `MODE` | `production` | What `create_local_env` writes; both compose files set `local`, which wins (Widget plugins, Your own data backend) |
+| `MODE` | `production` | What `create_local_env` writes; both compose files set `local`, which wins (Widget plugins, Your own data backend, Your own MCP server) |
 | `SELFURL` | `http://localhost:8000` | Links the backend builds point at the API |
 | `DB_HOST`, `REDIS_HOST` | `mysql`, `valkey` | The container names |
 | `DB_NAME` | `workspace` | The database the MySQL container creates |
@@ -89,7 +89,7 @@ The backend reads `backend-api/backend/envs/.env`, the same file the root `docke
 | `JWT_SECRET`, `WORKSPACE_AES_KEY`, `WORKSPACE_AUTH_TOKEN`, `LOCAL_STORAGE_SECRET_KEY` | generated | `WORKSPACE_AUTH_TOKEN` is a JWT signed with `JWT_SECRET`; the example leaves them blank, and the API refuses to start without strong values |
 | `BACKEND_CORS_ORIGINS` | `http://localhost:3000`, `:1420` | The origins of the web app: the root `docker-compose.yml`'s and this stack's dev server |
 
-`compose.yaml` sets `MODE` to `local`, and overrides `FRONTENDURL` and `APPURL` with `http://localhost:1420`, the address of the dev server, so links and redirects point at it. The dev server on another port reaches the API because `http://localhost:1420` is one of `BACKEND_CORS_ORIGINS`. An MCP server on your machine or network that the API should reach goes in `ALLOWED_MCP_HOSTNAMES` (see `envs/.env.example`).
+`compose.yaml` sets `MODE` to `local`, and overrides `FRONTENDURL` and `APPURL` with `http://localhost:1420`, the address of the dev server, so links and redirects point at it. The dev server on another port reaches the API because `http://localhost:1420` is one of `BACKEND_CORS_ORIGINS`.
 
 Edit `envs/.env` freely, then `make restart s=backend`. To get a fresh one, delete it, and `config.toml` next to it, and run `ADMIN_EMAIL=<your-email> make up`; if the database already holds the old administrator, run `make reset` instead.
 
@@ -115,6 +115,10 @@ Widget plugins are packages built outside this repository (see the documentation
 Add it under Connections with the address you use in your browser, for example `http://localhost:9000`. This stack runs with `MODE=local`, so the API accepts a private or plain `http` address for any user's connection, and for `localhost`, `127.0.0.1` and `[::1]` it calls your machine through `host.docker.internal`, which `compose.yaml` maps for the backend. You need no CORS settings, and the keys you type stay in this stack's database, encrypted, and are added by the API. On Linux the backend must listen on `0.0.0.0`, not only on `127.0.0.1`.
 
 A deployment's data backend works the same way as long as it has a public `https` address: add it with your own key, read-only where the backend has such keys. The key is stored in this stack's database, so nothing is written to the deployment's FINOS Workspace. A deployment's agent and plugin backends accept only that deployment's sessions and call tokens; run them on your machine instead (the root `docker-compose.yml` runs the agent, `docs/examples/backend/compose.yaml` a plugin backend). The reverse does not work: a deployed Workspace cannot call a backend on your machine, so develop against a local backend on this stack.
+
+### Your own MCP server
+
+Add it under AI, MCP Servers, Add Server with the address you use in your browser, for example `http://localhost:8787/mcp`. The API makes every call to it, sign-in included, and for `localhost`, `127.0.0.1` and `[::1]` it calls your machine through `host.docker.internal`, like a data backend. You need no CORS settings, and the headers you type stay in this stack's database, encrypted, and are added by the API. On Linux the server must listen on `0.0.0.0`, not only on `127.0.0.1`. A deployed Workspace cannot reach an MCP server on your machine either.
 
 ## What does not work locally
 

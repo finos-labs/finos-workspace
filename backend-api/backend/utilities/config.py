@@ -869,7 +869,9 @@ class GeneralSettings(BaseModel):
         description=(
             "The mode of the deployment. With test, the API keeps its rate limits and the state of the Workspace MCP in "
             "its own process instead of Redis. With local, a developer's own machine, a superuser can also develop a "
-            "new version of an approved widget plugin in place; production and local are otherwise alike."
+            "new version of an approved widget plugin in place, and the API accepts a private or plain http address "
+            "from any user for a data backend, an agent or an MCP server, reaching localhost through "
+            "host.docker.internal where that name resolves; production and local are otherwise alike."
         ),
     )
     RATE_LIMIT_EXEMPT_ENABLED: bool = Field(
@@ -1058,7 +1060,8 @@ class GeneralSettings(BaseModel):
             "MCP servers on a private network, by host name exactly as their URLs name them, as a JSON list. The API "
             "reaches the MCP servers of users only at public internet addresses, so a server whose name resolves to a "
             "private, loopback or link-local address, such as an internal host or a Compose service, must be listed. The "
-            "servers of DEFAULT_MCP_SERVERS need not be."
+            "servers of DEFAULT_MCP_SERVERS need not be, nor the servers of a superuser, nor any user's servers "
+            "when MODE is local."
         ),
     )
     DEFAULT_MCP_SERVERS: list[DefaultMCPServer] = Field(

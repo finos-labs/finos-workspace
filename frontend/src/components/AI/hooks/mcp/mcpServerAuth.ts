@@ -54,21 +54,6 @@ export async function deleteMcpOAuthGrant(serverUrl: string) {
   await apiClient.post("/app/mcp-oauth/disconnect", { server_url: serverUrl });
 }
 
-export async function getLocalMcpServerHeaders(
-  serverUrl: string,
-): Promise<Record<string, string>> {
-  try {
-    const { data } = await apiClient.post<{ headers: Record<string, string> }>(
-      "/app/mcp-servers/local-headers",
-      { url: serverUrl },
-    );
-    return data.headers;
-  } catch (error) {
-    console.warn(`[mcp] no saved headers for ${serverUrl}`, error);
-    return {};
-  }
-}
-
 export function createMcpProxyFetch(serverUrl: string) {
   const proxyUrl = `${getConfig().urls.backend}/app/mcp-proxy`;
   return async (url: string | URL, init?: RequestInit): Promise<Response> => {
@@ -112,13 +97,5 @@ export function createMcpProxyFetch(serverUrl: string) {
     }
 
     return response;
-  };
-}
-
-export function createLocalMcpFetch(headers: Record<string, string>) {
-  return (url: string | URL, init?: RequestInit) => {
-    const merged = new Headers(init?.headers);
-    for (const [name, value] of Object.entries(headers)) merged.set(name, value);
-    return fetch(url, { ...init, headers: merged });
   };
 }

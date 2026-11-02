@@ -31,12 +31,9 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { mcpServersSaved, useMcpToolsStore } from "~/lib/state/mcpTools";
 import { useThemeStore } from "~/lib/state/theme";
-import { isLoopbackUrl } from "~/lib/utils/mcp";
 import {
-  createLocalMcpFetch,
   createMcpProxyFetch,
   deleteMcpOAuthGrant,
-  getLocalMcpServerHeaders,
   MCP_AUTH_CHANNEL,
   type McpAuthCallbackMessage,
   McpAuthRequiredError,
@@ -110,7 +107,6 @@ export type UseMcpOptionsT = {
   autoReconnect?: boolean | number;
   transportType?: "auto" | "http" | "sse";
   handleDisconnect?: () => void;
-  isLocal?: boolean;
   authType?: "oauth" | "token";
 };
 
@@ -148,12 +144,10 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
     autoRetry,
     autoReconnect,
     transportType,
-    isLocal: isLocalOption,
     authType,
     handleDisconnect,
   } = useMemo(() => getOptions(options), [options]);
 
-  const isLocal = isLocalOption || isLoopbackUrl(url);
   const usesTokenAuth = authType === "token";
 
   const [data, dispatch] = useStateReducer<MCPDataType>({
@@ -265,13 +259,6 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
         );
         return false;
       }
-      if (isLocal) {
-        failConnection(
-          `Couldn't authenticate with ${serverName || "the MCP server"}. Check the headers saved for this local server.`,
-          error,
-        );
-        return false;
-      }
       if (stateRef.current === "authenticating") return true;
 
       dispatch({ state: "authenticating" });
@@ -299,25 +286,8 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
         return false;
       }
     },
-    [
-      url,
-      usesTokenAuth,
-      isLocal,
-      serverName,
-      addLog,
-      failConnection,
-      handleAuthTimeout,
-    ],
+    [url, usesTokenAuth, serverName, addLog, failConnection, handleAuthTimeout],
   );
-
-  const createFetch = useCallback(async (): Promise<FetchLike> => {
-    if (!isLocal) return createMcpProxyFetch(url);
-    const server = useMcpToolsStore.getState().servers.find((s) => s.id === serverId);
-    const headers = server?.customHeaderNames?.length
-      ? await getLocalMcpServerHeaders(url)
-      : {};
-    return createLocalMcpFetch(headers);
-  }, [url, isLocal, serverId]);
 
   const connect = useCallback(async () => {
     if (connectingRef.current) {
@@ -338,7 +308,7 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
     let fetchFn: FetchLike;
     try {
       await mcpServersSaved();
-      fetchFn = await createFetch();
+      fetchFn = createMcpProxyFetch(url);
     } catch (err) {
       failConnection(
         `Failed to prepare the connection: ${err instanceof Error ? err.message : String(err)}`,
@@ -601,7 +571,6 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
     failConnection,
     handleAuthRequired,
     handleDisconnect,
-    createFetch,
     url,
     clientName,
     transportType,

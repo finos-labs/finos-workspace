@@ -25,9 +25,11 @@ Both stacks below, the root `docker-compose.yml` and `local/`, are a developer's
 
 **An agent on your machine.** Under AI Library, AI Agents, Add Agent, give the address you use in your browser, for example `http://localhost:7777`. The API reads the agent's `agents.json` and makes every call to it, queries and tool round trips included, through `host.docker.internal` like a data backend, so the agent needs no CORS settings. The keys you type are stored encrypted in this stack's database and added by the API; the browser never holds them, and the list of agents names them without their values.
 
+**An MCP server on your machine.** Under AI, MCP Servers, Add Server, give the address you use in your browser, for example `http://localhost:8787/mcp`. The API makes every call to the server, sign-in included, through `host.docker.internal` like a data backend, so the server needs no CORS settings. The headers you type are stored encrypted in this stack's database and added by the API; the browser never holds them. On Linux the server must listen on `0.0.0.0`.
+
 **Widget plugins on your machine.** Put a built plugin in `widget-plugins/<plugin-id>/<version>/` next to `docker-compose.yml` (git ignores the folder, and `WORKSPACE_PLUGINS_DIR` points compose at another folder). It is mounted into the API as `/opt/widget-plugins`, where it can be written because a superuser may develop a version in place. Open Admin, Widgets, Deployment and choose Rescan. The steps after that are in [Build and try a widget plugin](docs/tutorials/plugins/build-a-plugin.md).
 
-**Docker Compose is the standard way to develop locally**: the frontend, the API and the services run on your machine, and a backend on your machine is a connection to `localhost`, as above. **A deployed Workspace cannot reach a backend on your machine**, because its API makes the calls from the deployment's network. To test the deployed dev frontend against a local backend, expose the backend through a secured HTTPS tunnel and add the tunnel's public `https` address as a connection; the backend keeps checking its key, so the tunnel must not be left open to anyone. Use the tunnel only for that case. A connection kept by a superuser may be a private or plain `http` address on any stack, added on the Connections page like any other. For every other user, only a stack with `MODE=local` accepts one; elsewhere their connections must be public `https` addresses.
+**Docker Compose is the standard way to develop locally**: the frontend, the API and the services run on your machine, and a backend on your machine is a connection to `localhost`, as above. **A deployed Workspace cannot reach a backend or an MCP server on your machine**, because its API makes the calls from the deployment's network. To test the deployed dev frontend against a local backend, expose the backend through a secured HTTPS tunnel and add the tunnel's public `https` address as a connection; the backend keeps checking its key, so the tunnel must not be left open to anyone. Use the tunnel only for that case. A connection kept by a superuser may be a private or plain `http` address on any stack, added on the Connections page like any other. For every other user, only a stack with `MODE=local` accepts one; elsewhere their connections must be public `https` addresses.
 
 ## Running the whole stack
 
@@ -130,7 +132,8 @@ The rest of `envs/.env.example` stays as it is: `DATABASE_TYPE=mysql`, `DB_PORT=
   they add (a user's own entry for the same URL wins, so they can still switch one off). Compose sets it to the agent's tools,
   `http://agent-mcp:8787/mcp`. The URL is the one the API calls, so it may be an address only the deployment can resolve: the
   API reaches a default server's host and port wherever they are. Other MCP servers it reaches only at public addresses (it
-  refuses `localhost` and raw IP addresses) unless their host is in `ALLOWED_MCP_HOSTNAMES`.
+  refuses `localhost` and raw IP addresses) unless their host is in `ALLOWED_MCP_HOSTNAMES`, the user is a superuser, or the
+  stack runs with `MODE=local`.
 
 `.env.example` explains every setting in comments.
 

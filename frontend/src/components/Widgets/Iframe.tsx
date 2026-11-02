@@ -331,7 +331,6 @@ export default function Iframe() {
       enabled: true,
       tools: [],
       iframeWidgetId: widget.id,
-      isLocal: storedMcpUrl.includes("localhost") || storedMcpUrl.includes("127.0.0.1"),
     });
   }, [storedMcpUrl, widget.id, widget.name, mcpServerId, addMcpServer]);
 
@@ -339,13 +338,7 @@ export default function Iframe() {
     if (!mcpServerId) return;
     updateMcpServer(mcpServerId, {
       name: widget.name || (storedMcpUrl ? getServerName(storedMcpUrl) : undefined),
-      ...(storedMcpUrl
-        ? {
-            url: storedMcpUrl,
-            isLocal:
-              storedMcpUrl.includes("localhost") || storedMcpUrl.includes("127.0.0.1"),
-          }
-        : {}),
+      ...(storedMcpUrl ? { url: storedMcpUrl } : {}),
     });
   }, [mcpServerId, storedMcpUrl, updateMcpServer, widget.name]);
 

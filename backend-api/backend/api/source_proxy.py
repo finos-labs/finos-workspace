@@ -324,6 +324,10 @@ async def _host_machine_resolves() -> bool:
     return _host_machine[HOST_MACHINE]
 
 
+async def host_machine_address(host: str) -> str:
+    return HOST_MACHINE if host in LOOPBACK_HOSTS and await _host_machine_resolves() else host
+
+
 async def reach_host_machine(url: str) -> tuple[str, str | None]:
     parts = urlsplit(url)
     if parts.hostname not in LOOPBACK_HOSTS or not await _host_machine_resolves():

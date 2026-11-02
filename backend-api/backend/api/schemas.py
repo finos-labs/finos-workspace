@@ -986,7 +986,6 @@ class MCPServer(BaseModel):
     name: str = Field(description="The name that the user gave the server.")
     url: str = Field(description="The server's address.")
     enabled: bool = Field(description="Whether the user switched the server on.")
-    is_local: bool = Field(False, description="Whether the server runs on the user's own machine.")
     custom_headers: dict[MCPHeaderName, MCPHeaderValue | None] | None = Field(
         default=None,
         exclude=True,
@@ -1011,16 +1010,6 @@ class MCPServers(BaseModel):
 
     def get_servers_json(self):
         return self.model_dump(by_alias=True).get("servers", [])
-
-
-class MCPLocalServer(BaseModel):
-    model_config = main_config
-    url: str = Field(max_length=2048, description="The address of the MCP server on the user's own machine.")
-
-
-class MCPServerHeaders(BaseModel):
-    model_config = main_config
-    headers: dict[str, str] = Field(description="The headers that the user saved for the server, by name.")
 
 
 def mcp_header_flags(headers: dict[str, str] | None) -> dict[str, list[str] | bool]:

@@ -81,7 +81,7 @@ API, worker, init (`backend-api/backend/envs/.env`). The API does not start if a
 | `LOCAL_STORAGE_SECRET_KEY` | With `STORAGE_PROVIDER=folder` (default) | ≥ 32 bytes |
 | `APPURL` | Yes | Web app address; password links point at it |
 | `GOOGLE_OAUTH_CLIENT_ID`, `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `OKTA_CLIENT_ID`, `OKTA_DOMAIN` | For that sign-in | Same as the web app |
-| `ALLOWED_MCP_HOSTNAMES` | For MCP servers on private networks | JSON list; also applies to MCP OAuth |
+| `ALLOWED_MCP_HOSTNAMES` | For MCP servers on private networks | JSON list; also applies to MCP OAuth. A superuser's servers, and every user's when `MODE=local`, may be at any address |
 | `RATE_LIMIT_EXEMPT_ENABLED`, `WORKSPACE_AUTH_TOKEN` | No | `1` and a JWT signed with `JWT_SECRET`: the only rate-limit exemption |
 
 | Component | Setting |
@@ -118,7 +118,7 @@ Tests: `backend-api/backend/tests/test_user_access.py`, `test_copilot_access.py`
 | Origin | `AllowedOriginMiddleware`, outermost (`api/auth_helpers.py`, `HEALTH_PATHS`) |
 | At rest | AES-256-GCM bound to `table.column` (`api/crypto.py`, `v2.`): backend headers, custom Copilot headers, MCP servers and headers, MCP OAuth grants, TOTP secrets, users' OpenAI and Perplexity keys |
 | Browser | No keys or tokens stored. A backend's credentials (headers and query rows) go only to that backend's origin; saved dashboards and apps carry none. |
-| MCP OAuth | In the API (`routers/app/mcp_oauth.py`); public addresses only, unless in `ALLOWED_MCP_HOSTNAMES` |
+| MCP OAuth | In the API (`routers/app/mcp_oauth.py`); public addresses only, unless in `ALLOWED_MCP_HOSTNAMES`, the user is a superuser or `MODE=local` |
 | Sign-in | Provider tokens must be issued to this deployment's client id; Microsoft and Okta use a nonce from `POST /app/sign-in/nonce`. TOTP codes work once. Sign-in routes: 5 per minute per address. |
 | Passwords | Admin → Users → Reset password, or Add Users with "Bypass invitation", gives the link `APPURL/reset-password#<token>`: 24 h, single use, SHA-256 in Redis, set with `POST /app/reset-password`. Sign-in page: "Ask your admin". |
 
@@ -143,7 +143,7 @@ Tests: `backend-api/backend/tests/test_user_access.py`, `test_copilot_access.py`
 
 ### 4.4 Routes added
 
-`GET /app/session`, `GET /session`, `POST /logout`, `POST /app/sign-in/nonce`, `GET /app/access`, `GET`/`PUT /app/copilot-keys`, `POST /app/copilot/token`, `POST /app/mcp-servers/local-headers`, `POST /app/mcp-oauth/start`, `/complete`, `/disconnect`, `GET /admin/share-requests`, `POST /admin/share-requests/{uuid}/approve`, `/decline`, `POST /app/reset-password`; web app page `/reset-password`.
+`GET /app/session`, `GET /session`, `POST /logout`, `POST /app/sign-in/nonce`, `GET /app/access`, `GET`/`PUT /app/copilot-keys`, `POST /app/copilot/token`, `POST /app/mcp-oauth/start`, `/complete`, `/disconnect`, `GET /admin/share-requests`, `POST /admin/share-requests/{uuid}/approve`, `/decline`, `POST /app/reset-password`; web app page `/reset-password`.
 
 ### 4.5 Removed
 
