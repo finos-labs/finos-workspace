@@ -6,9 +6,9 @@ sidebar_position: 0
 
 # White label
 
-FINOS Workspace can carry your organization's brand instead of its own: your product name, logos, icons, images, colors and fonts. This section lists every place where the product shows a brand element, how you change each one, and what you cannot change yet.
+FINOS Workspace can carry your organization's brand instead of its own: your product name, logos, icons, images, colors and fonts. This section lists every place where the product shows a brand element, how you change each one, and which ones are written in the code.
 
-Most changes need no rebuild. They are settings of the web container, which it reads each time it starts, or files that you place in the container's document root. A few things are fixed when the web app is built, and some are still written in the code.
+Most changes need no rebuild. They are settings of the web container, which it reads each time it starts, or files that you place in the container's document root. A few things are fixed when the web app is built, and some are written in the code.
 
 ## Where each brand element is set
 
@@ -29,7 +29,7 @@ Most changes need no rebuild. They are settings of the web container, which it r
 | A font that the app does not ship | `@font-face` in the theme stylesheet | No | [Change the brand color and font](change-brand-color-and-font.md) |
 | Light or dark theme by default | `UI_DEFAULT_THEME` | No | [Name and text](name-and-text.md) |
 | HTML widgets, plugin widgets and Agent reports | The widget's author, and the agent's skills | Depends | [Widgets, reports and exports](widgets-reports-and-exports.md) |
-| Agent name, MCP server names, export watermark and other fixed text | The code | Yes | [What you cannot change yet](what-you-cannot-change-yet.md) |
+| Agent name, MCP server names, export watermark and other fixed text | The code | Yes | [Brand elements in the code](brand-elements-in-the-code.md) |
 
 ## How the settings reach the app
 
@@ -54,4 +54,4 @@ Three layers decide the colors, and a later layer wins where two set the same pr
 4. Write a theme stylesheet with your brand color and font, and set `WL_STYLESHEET`.
 5. Set `SUPPORT_EMAIL` and `DOCS_URL`, or hide the documentation links.
 6. If users install the app on their devices, build the web image with `VITE_WL_NAME`, `VITE_WL_SHORT_NAME` and `VITE_WL_DESCRIPTION`.
-7. Read [What you cannot change yet](what-you-cannot-change-yet.md), so the remaining product names do not surprise you.
+7. Read [Brand elements in the code](brand-elements-in-the-code.md), so the remaining product names do not surprise you.
