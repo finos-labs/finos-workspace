@@ -217,7 +217,6 @@
   font-size: 0.74rem;
   line-height: 1.5;
   color: var(--ifm-color-emphasis-700);
-  white-space: nowrap;
 }
 
 .required {
@@ -474,7 +473,7 @@
 
 .meta {
   display: grid;
-  grid-template-columns: max-content 1fr;
+  grid-template-columns: max-content minmax(0, 1fr);
   gap: 0.2rem 1rem;
   margin: 0 0 0.8rem;
   font-size: 0.88rem;
@@ -487,6 +486,7 @@
 
 .meta dd {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .settings {

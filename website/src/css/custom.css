@@ -225,9 +225,16 @@
   overflow: visible;
 }
 
+.markdown {
+  overflow-wrap: anywhere;
+}
+
 .markdown td,
-.markdown th {
-  overflow-wrap: break-word;
+.markdown th,
+.markdown td *,
+.markdown th * {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .theme-code-block pre,
