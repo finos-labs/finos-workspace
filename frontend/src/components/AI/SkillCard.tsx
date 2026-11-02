@@ -8,7 +8,6 @@ import { CollapsibleSection } from "~/components/ds/atoms/CollapsibleSection";
 import { LibraryRow } from "~/components/ds/molecules/LibraryList";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
-import type { Copilot } from "~/lib/state/copilot";
 import { sanitizeMarkdown } from "~/lib/utils/sanitize";
 import type { Skill } from "~/types/auth.type";
 
@@ -118,7 +117,7 @@ export const AgentSkillCard = memo(function AgentSkillCard({
   skill,
   agentName,
 }: {
-  skill: NonNullable<Copilot["skills"]>[number];
+  skill: Pick<Skill, "slug" | "description">;
   agentName: string;
 }) {
   return (

@@ -110,6 +110,18 @@ An endpoint that answers both in one shape, `{"results": {"chart": <figure>, "re
 - **LaTeX.** Text plotly.js reads as LaTeX, `$...$`, is typeset with MathJax 4, read
   from the package the first time a figure has some.
 
+- **Chat.** The widget declares an `artifact` (`src/plugin.json`): the AI agent can show a
+  chart under its answer, from a bounded subset of a Plotly figure (up to eight traces of
+  `bar`, `scatter` or `pie`, with names, x/y or labels/values, and a title, axis titles and
+  `barmode`). The user adds the card to a dashboard as a full-width widget that keeps the
+  figure. A figure with no `template`, `paper_bgcolor` or `plot_bgcolor`, as an agent writes
+  it, is drawn in the site's light or dark mode, and again when the mode changes; a figure
+  that sets any of them is drawn as its author made it.
+
+- **Skill.** `plotly-charts` (`src/skills/plotly-charts.md`) tells the AI agent which trace fits
+  which question, the shape of the data, and the limits above, so that it shows a chart
+  instead of drawing one as HTML.
+
 It asks for `core:data:read`, `core:export:provide` and `core:copilot:context`. It
 declares no network access, proxies or backend: everything it draws comes from the
 widget's own endpoint through FINOS Workspace, and the outlines and MathJax from its package.
@@ -177,28 +189,7 @@ as you rebuild them (`docs/widget-plugins/AUTHORING.md`, section 11).
 
 ## Try it
 
-`examples/backend.py` is a backend with four `plotly` widgets made with plotly.py:
-stacked bars, lines, a sampled signal from numpy arrays, and a heatmap. It answers
-`theme=dark` with plotly.py's `plotly_dark` template and `theme=light` with
-`plotly_white`.
-
-```bash
-python3 -m venv examples/.venv
-```
-
-```bash
-examples/.venv/bin/pip install -r examples/requirements.txt
-```
-
-```bash
-npm run demo-backend
-```
-
-It listens on `http://localhost:7798` and allows the FINOS Workspace web app at
-`http://localhost:3000`; `examples/.venv/bin/python examples/backend.py <port> <web app
-origin>` changes either. Connect it as a backend under Connections, then add *Sales by
-region*, *Sales trend*, *Signal and noise* and *Correlation* to a dashboard. *Sales by
-region* has `raw`: its database button shows its rows, and the AI agent reads them.
+The [examples backend](../backend/README.md) has five `plotly` widgets made with plotly.py: stacked bars, lines, a sampled signal from numpy arrays, a heatmap, and the bars of any SQL query. It answers `theme=dark` with plotly.py's `plotly_dark` template and `theme=light` with `plotly_white`. Connect it as a backend under Connections, then add *Sales by region*, *Sales trend*, *Signal and noise*, *Correlation* and *SQL chart* to a dashboard. *Sales by region* has `raw`: its database button shows its rows, drawn by the AgGrid plugin, and the AI agent reads them.
 
 ## Notes
 

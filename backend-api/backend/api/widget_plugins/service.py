@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, TypeVar
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from fastapi import HTTPException
 from sqlalchemy import Select, delete, func, select
@@ -139,7 +139,7 @@ def _record(row: models.WidgetPluginVersion, found: DiscoveredVersion) -> None:
     row.files = found.served_files()
     row.path = found.path
     findings = dict(row.findings or {})
-    findings.update({"errors": found.errors, "warnings": found.warnings})
+    findings.update({"errors": found.errors, "warnings": found.warnings, "skills": found.skill_hashes()})
     row.findings = findings
 
 
@@ -486,6 +486,32 @@ def _backend_items(manifest: dict | None, previous: dict | None) -> list[dict[st
     return items
 
 
+def _skill_items(
+    row: "models.WidgetPluginVersion | LiveVersion", previous: dict | None, active: models.WidgetPluginVersion | None
+) -> list[dict[str, Any]]:
+    def skills_of(manifest: dict | None) -> dict[str, dict]:
+        return {s["slug"]: s for s in ((manifest or {}).get("contributes") or {}).get("skills", [])}
+
+    new, old = skills_of(row.manifest), skills_of(previous)
+    hashes = row.skills if isinstance(row, LiveVersion) else (row.findings or {}).get("skills") or {}
+    old_hashes = ((active.approved if active is not None else None) or {}).get("skills") or {}
+    items: list[dict[str, Any]] = []
+    for slug, skill in new.items():
+        before = old.get(slug)
+        same = before is not None and before == skill and hashes.get(skill["file"]) == old_hashes.get(before["file"])
+        items.append(
+            {
+                "key": f"skill:{slug}",
+                "family": "skills",
+                "label": f"gives the agent the skill {slug}: {skill['description']}",
+                "risk": "medium",
+                "added": not same,
+            }
+        )
+    items.extend(_removed(f"skill:{slug}", "skills", slug) for slug in old if slug not in new)
+    return items
+
+
 def review_items(
     plugin: models.WidgetPlugin,
     row: models.WidgetPluginVersion,
@@ -508,6 +534,19 @@ def review_items(
                 "added": previous is None or widget_id not in old_widgets,
             }
         )
+        if widget.get("artifact"):
+            items.append(
+                {
+                    "key": f"artifact:{widget_id}",
+                    "family": "artifacts",
+                    "label": f"{widget_id}: the agent can show it in the chat with data it chooses, "
+                    f"and a user can add it to a dashboard: {widget['artifact']['description']}",
+                    "risk": "medium",
+                    "added": previous is None or (old_widgets.get(widget_id) or {}).get("artifact") != widget["artifact"],
+                }
+            )
+        elif (old_widgets.get(widget_id) or {}).get("artifact"):
+            items.append(_removed(f"artifact:{widget_id}", "artifacts", widget_id))
         old_permissions = set((old_widgets.get(widget_id) or {}).get("permissions", []))
         for permission in widget.get("permissions", []):
             items.append(
@@ -565,6 +604,7 @@ def review_items(
 
     items.extend(_server_items(plugin, row.manifest, previous))
     items.extend(_backend_items(row.manifest, previous))
+    items.extend(_skill_items(row, previous, active))
 
     changed = active is None or active.digest != row.digest
     items.append(
@@ -764,6 +804,7 @@ class LiveVersion:
     manifest: dict | None
     files: dict[str, dict[str, Any]]
     approved: dict[str, Any]
+    skills: dict[str, str] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -802,6 +843,7 @@ async def development_versions(db: AsyncSession, plugins: list[models.WidgetPlug
             manifest=found.manifest,
             files=found.served_files(),
             approved=_approval_of(found.manifest or {}, found.digest),
+            skills=found.skill_hashes(),
             errors=found.errors,
             warnings=found.warnings,
         )
@@ -960,6 +1002,7 @@ async def approve(
     row.blocked_reason = None
     row.approved = {
         **_approval_of(manifest, row.digest),
+        "skills": dict((row.findings or {}).get("skills") or {}),
         "acknowledged": sorted({i["key"] for i in items if i["added"]}),
     }
     row.approved_by_uuid = actor_uuid
@@ -1155,6 +1198,7 @@ async def entity_listing(db: AsyncSession, entity_uuid: UUID) -> list[dict[str, 
                         "description": w.get("description", ""),
                         "handles": [h["type"] for h in w.get("handles", [])],
                         "standalone": bool(w.get("standalone")),
+                        "artifact": bool(w.get("artifact")),
                         "permissions": (active.approved or {}).get("permissions", {}).get(w["id"], []),
                     }
                     for w in _widgets(manifest)
@@ -1469,6 +1513,80 @@ async def available(db: AsyncSession, user_uuid: UUID) -> list[dict[str, Any]]:
     return plugins
 
 
+_skill_texts: dict[tuple[str, str], str] = {}
+SKILL_TEXT_ENTRIES = 512
+
+
+def _read_skill(version: models.WidgetPluginVersion, file_path: str) -> str | None:
+    key = (version.digest or "", file_path)
+    if (cached := _skill_texts.get(key)) is not None:
+        return cached
+    approved = ((version.approved or {}).get("skills") or {}).get(file_path)
+    path = resolve_served_file(settings.WIDGET_PLUGINS_DIR or "", version.path, file_path)
+    if approved is None or path is None or cached_sha256(path) != approved:
+        return None
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    if len(_skill_texts) >= SKILL_TEXT_ENTRIES:
+        _skill_texts.pop(next(iter(_skill_texts)))
+    _skill_texts[key] = text
+    return text
+
+
+async def plugin_skills(db: AsyncSession, user_uuid: UUID) -> list[dict[str, Any]]:
+    if not feature_enabled():
+        return []
+    entity_uuid = await user_entity(db, user_uuid)
+    if entity_uuid is None:
+        return []
+    rows = (
+        await db.execute(
+            select(models.WidgetPlugin, models.WidgetPluginVersion)
+            .join(
+                models.WidgetPluginVersion,
+                (models.WidgetPluginVersion.plugin_uuid == models.WidgetPlugin.uuid)
+                & (models.WidgetPluginVersion.version == models.WidgetPlugin.active_version),
+            )
+            .join(
+                models.EntityWidgetPlugin,
+                (models.EntityWidgetPlugin.plugin_uuid == models.WidgetPlugin.uuid)
+                & (models.EntityWidgetPlugin.entity_uuid == entity_uuid),
+            )
+            .where(
+                models.WidgetPlugin.status == PLUGIN_ENABLED,
+                models.WidgetPluginVersion.state == VERSION_ACTIVE,
+                models.EntityWidgetPlugin.enabled.is_(True),
+            )
+            .order_by(models.WidgetPlugin.plugin_id)
+        )
+    ).all()
+    skills: list[dict[str, Any]] = []
+    taken: set[str] = set()
+    for plugin, version in rows:
+        for skill in ((version.manifest or {}).get("contributes") or {}).get("skills", []):
+            if skill["slug"] in taken:
+                continue
+            text = await asyncio.to_thread(_read_skill, version, skill["file"])
+            if text is None:
+                continue
+            taken.add(skill["slug"])
+            stamp = version.approved_at or version.discovered_at or get_now()
+            skills.append(
+                {
+                    "uuid": uuid5(NAMESPACE_URL, f"widget-plugin-skill:{plugin.plugin_id}/{skill['slug']}"),
+                    "slug": skill["slug"],
+                    "description": skill["description"],
+                    "content": text,
+                    "plugin_name": plugin.name,
+                    "created_date": stamp,
+                    "updated_date": stamp,
+                }
+            )
+    return skills
+
+
 async def user_listing(db: AsyncSession, user_uuid: UUID) -> dict[str, Any]:
     if not feature_enabled():
         return {"enabled": False, "etag": "off", "plugins": []}
@@ -1533,6 +1651,7 @@ async def user_listing(db: AsyncSession, user_uuid: UUID) -> dict[str, Any]:
                         "routes": (w.get("server") or {}).get("routes", [])
                         if "core:backend:call" in w["permissions"]
                         else [],
+                        "artifact": w.get("artifact"),
                         "model": w.get("model"),
                         "params": w.get("params", []),
                         "settings": w.get("settings"),

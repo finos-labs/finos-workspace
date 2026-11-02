@@ -133,6 +133,7 @@ A policy belongs to a version. A new version's policy is compared per directive 
 3. **Misleading content** inside the frame's own card.
 4. **A mistaken or hostile approval.** The review's egress summary, risk ratings, closed defaults, narrowing and the event log are the mitigation; a digest ties execution to what was approved, not to what is safe.
 5. **A hostile backend** is limited by the isolation the deployer gives it. Proxies keep a secret out of plugin code entirely; a backend that receives one can misuse it within the hosts it may reach.
+6. **What a plugin gives the AI agent.** A skill is text the model follows, so a hostile skill can steer the model's answers; the review lists each skill, asks again when its text changes, and a file that differs from the approved one is not given out. A component the agent shows runs in the same frame as any widget, with the data the model chose and, in the chat, only `core:data:read`, `core:ui:notify`, `core:clipboard:write`, `core:backend:call`, `core:state:write` and the plugin's own assets: its backend calls run from the user's own session as for any widget, and its state stays in the card; there is no proxy, link, download or write to params. The data is checked against the schema the reviewer saw, and what the schema does not name is dropped, but the model can still put misleading content in it.
 
 ## 8. Abuse cases and their tests
 

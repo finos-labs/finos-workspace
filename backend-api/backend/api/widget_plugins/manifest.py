@@ -33,6 +33,7 @@ PERMISSIONS = frozenset(
     {
         "core:default",
         "core:data:read",
+        "core:data:stream",
         "core:params:write",
         "core:state:write",
         "core:copilot:context",
@@ -245,6 +246,20 @@ class Grid(BaseModel):
     minH: Annotated[int, Field(ge=1, le=100)] | None = None  # noqa: N815
 
 
+class WidgetArtifact(BaseModel):
+    model_config = closed
+
+    description: Annotated[str, StringConstraints(min_length=1, max_length=300)]
+    data: dict[str, Any]
+
+    @model_validator(mode="after")
+    def valid(self):
+        problems = lint_fragment(self.data)
+        if problems:
+            raise ValueError("the artifact data schema is not closed and bounded: " + "; ".join(problems[:10]))
+        return self
+
+
 class WidgetServer(BaseModel):
     model_config = closed
 
@@ -262,12 +277,21 @@ class Widget(BaseModel):
     subCategory: Annotated[str, StringConstraints(max_length=60)] | None = None  # noqa: N815
     handles: list[Handle] = Field(default_factory=list, max_length=8)
     standalone: bool = False
+    artifact: WidgetArtifact | None = None
     permissions: list[str] = Field(default_factory=list, max_length=32)
     server: WidgetServer | None = None
     model: ModelSpec | None = None
     params: list[dict[str, Any]] = Field(default_factory=list, max_length=32)
     settings: SettingsSpec | None = None
     grid: Grid = Field(default_factory=Grid)
+
+    def _check_artifact(self) -> None:
+        if self.artifact is None:
+            return
+        if "core:data:read" not in self.permissions:
+            raise ValueError("a widget with an artifact reads its data, so it has the permission core:data:read")
+        if self.model is not None and not any(t.bind == "data" for t in self.model.traits.values()):
+            raise ValueError("a widget with an artifact binds a trait to data")
 
     @model_validator(mode="after")
     def valid(self):
@@ -283,6 +307,7 @@ class Widget(BaseModel):
                 raise ValueError(f"{permission!r} is not a host permission")
         if len(set(self.permissions)) != len(self.permissions):
             raise ValueError("a permission is listed twice")
+        self._check_artifact()
         calls_proxies = bool(self.server and self.server.proxies)
         if calls_proxies != ("core:proxy:call" in self.permissions):
             raise ValueError("a widget that names proxies has the permission core:proxy:call, and only then")
@@ -297,16 +322,33 @@ class Widget(BaseModel):
         return self
 
 
+SKILL_SLUG_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+SKILL_FILE_PATTERN = r"^skills/[A-Za-z0-9._-]{1,100}\.md$"
+
+
+class Skill(BaseModel):
+    slug: Annotated[str, StringConstraints(pattern=SKILL_SLUG_PATTERN, min_length=2, max_length=50)]
+    description: Annotated[str, StringConstraints(min_length=1, max_length=300)]
+    file: Annotated[str, StringConstraints(pattern=SKILL_FILE_PATTERN)]
+
+
 class Contributes(BaseModel):
     model_config = closed
 
     widgets: list[Widget] = Field(min_length=1, max_length=20)
+    skills: list[Skill] = Field(default_factory=list, max_length=20)
 
     @model_validator(mode="after")
     def unique(self):
         ids = [w.id for w in self.widgets]
         if len(set(ids)) != len(ids):
             raise ValueError("widget ids must be unique")
+        slugs = [s.slug for s in self.skills]
+        if len(set(slugs)) != len(slugs):
+            raise ValueError("skill slugs must be unique")
+        files = [s.file for s in self.skills]
+        if len(set(files)) != len(files):
+            raise ValueError("two skills name the same file")
         types = [h.type for w in self.widgets for h in w.handles]
         if len(set(types)) != len(types):
             raise ValueError("two widgets of the plugin handle the same type")
@@ -396,6 +438,9 @@ class Manifest(BaseModel):
             if len(set(route.secrets)) != len(route.secrets):
                 problems.append(f"server.backend.routes[{route.id}]: a secret is listed twice")
         return problems
+
+    def skill_paths(self) -> set[str]:
+        return {skill.file for skill in self.contributes.skills}
 
     def served_paths(self) -> set[str]:
         paths = {self.entry.module, *self.entry.styles}

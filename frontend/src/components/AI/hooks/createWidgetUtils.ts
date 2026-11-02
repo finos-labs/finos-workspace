@@ -16,6 +16,7 @@ export function getFallbackName(widgetType: string): string {
   const typeNames: Record<string, string> = {
     text: "Text Artifact",
     html: "HTML Artifact",
+    plugin: "Plugin Artifact",
   };
   return typeNames[widgetType] || "Artifact";
 }

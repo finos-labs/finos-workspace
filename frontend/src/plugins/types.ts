@@ -8,6 +8,7 @@ const SHA256_HEX = /^[a-f0-9]{64}$/;
 export const PERMISSIONS = [
   "core:default",
   "core:data:read",
+  "core:data:stream",
   "core:params:write",
   "core:state:write",
   "core:copilot:context",
@@ -66,6 +67,12 @@ export const PluginWidgetSchema = z.object({
   subCategory: z.string().nullish(),
   handles: z.array(HandleSchema).default([]),
   standalone: z.boolean().default(false),
+  artifact: z
+    .object({
+      description: z.string(),
+      data: z.record(z.string(), z.unknown()),
+    })
+    .nullish(),
   permissions: z.array(z.enum(PERMISSIONS)),
   proxies: z.array(z.string()).default([]),
   routes: z.array(z.string()).default([]),
@@ -130,6 +137,7 @@ export interface ResolvedPluginWidget {
 }
 
 export interface PluginInstanceStorage {
+  data?: unknown;
   state?: unknown;
   config?: Record<string, unknown>;
 }

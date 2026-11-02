@@ -21,6 +21,7 @@ A plugin is a package of files that adds widget types to FINOS Workspace. Its co
   entry.js           the module, one bundled file
   entry.css          optional styles
   assets/            optional: the icon, and files the module reads with core:asset:read
+  skills/            optional: one markdown file for each skill the plugin gives the agent (section 3.2)
 ```
 
 - `<plugin-id>`: 2 to 48 characters, lowercase letters, digits and `-`, starting with a letter.
@@ -71,6 +72,7 @@ The manifest is closed: an unknown key blocks the version. Strings and lists are
 | `dataSources`, `identity` | no | For a backend (section 8): the data it reads for the user, by `id` and `purpose`, and `"pseudonymous"` to learn an anonymous id of the user (default `"none"`). |
 | `adminSettings` | no | A settings form an organization's admin fills in (section 9). Not for secrets. |
 | `contributes.widgets` | yes | 1 to 20 widgets (below). |
+| `contributes.skills` | no | Up to 20 skills for the agent (section 3.2). |
 
 A manifest that asks for the permission `core:data:query` or has `signatures` is blocked: neither exists on this host.
 
@@ -90,6 +92,7 @@ A manifest that asks for the permission `core:data:query` or has `signatures` is
     }
   ],
   "standalone": false,
+  "artifact": { "description": "<when the agent shows it>", "data": { "type": "object", "additionalProperties": false, "properties": {} } },
   "permissions": ["core:data:read"],
   "server": { "proxies": [] },
   "model": { "traits": {} },
@@ -105,6 +108,7 @@ A manifest that asks for the permission `core:data:query` or has `signatures` is
 | `name`, `description`, `category`, `subCategory` | What Add widget shows. |
 | `handles` | Up to 8 viz types this widget renders for backend widgets (`"type"` in a backend's `widgets.json`). A type is 2 to 32 lowercase characters and cannot be a built-in type (`markdown`, `html`, `iframe`, `newsfeed`, `pdf`). `definition` is the JSON Schema of the `data.<type>` object a backend writes for it (section 9); `response` describes the JSON the backend's endpoint returns. |
 | `standalone` | `true` lists the widget in Add widget on its own, with no backend. A widget handles at least one type or is standalone. |
+| `artifact` | Lets the AI Agent show the widget in the chat with data it chooses (section 3.3). |
 | `permissions` | The host permissions it asks for (section 5). |
 | `server.proxies` | The ids of the proxies it may call; it then needs `core:proxy:call`, and only then. |
 | `server.routes` | The ids of the backend routes it may call; it then needs `core:backend:call`, and only then. |
@@ -116,6 +120,59 @@ A manifest that asks for the permission `core:data:query` or has `signatures` is
 One plugin cannot handle the same type twice. When two plugins handle a type, the organization's admin chooses which renders it.
 
 A type you handle works with any backend whose `widgets.json` declares a widget of that type and whose endpoint returns what `response` describes. FINOS Workspace adds `theme=dark` or `theme=light` to that endpoint's query, the site's mode, and asks again when the user switches it, as it does for `markdown` and `html`. What each mode looks like is the backend author's to decide. `theme` and `raw` (4.2) are names the backend's widgets cannot use for query params of their own.
+
+### 3.2 Skills
+
+A plugin can give the agent skills: instructions it follows for one kind of task, such as how to ask for the data a widget needs. Each skill is a markdown file under `skills/` and an entry in `contributes.skills`:
+
+```jsonc
+"contributes": {
+  "widgets": [],
+  "skills": [
+    { "slug": "forecast-charts", "description": "How to draw a forecast", "file": "skills/forecast.md" }
+  ]
+}
+```
+
+| Key | What it is |
+|---|---|
+| `slug` | 2 to 50 characters: lowercase letters, digits and single `-`. Unique in the plugin. The user starts the skill with `/skill:<slug>`, and the agent can pick it up from its description. |
+| `description` | One line, at most 300 characters, which tells the agent when to use the skill. |
+| `file` | `skills/<name>.md`, UTF-8 text that is not empty and is at most 32 KiB. Unique in the plugin. |
+
+The skills of a plugin that is approved and enabled for an organization appear in the Skills tab of every user of that organization, with the plugin's name and without edit or delete. They need no role grant. They go when the plugin is disabled or a later version drops them. A skill the user made with the same slug wins, and when two plugins use one slug the one whose id comes first in the alphabet wins. A skill file is part of the package: the version's checksum covers it, the reviewer sees each skill in the review and acknowledges it, and a file that differs from the approved one is not given out. A skill is text for the model, so it cannot run code or call tools by itself.
+
+### 3.3 Artifacts
+
+A widget with `artifact` is a component the AI Agent can use in the chat: it shows the widget under its answer, filled with data it has from the conversation or from the tables it loaded. The user can add the card to a dashboard as a widget of the plugin, which keeps that data.
+
+```jsonc
+"artifact": {
+  "description": "Bars of x labels and y values, for a comparison across a few categories",
+  "data": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["rows"],
+    "properties": {
+      "title": { "type": "string", "maxLength": 80 },
+      "rows": {
+        "type": "array",
+        "maxItems": 200,
+        "items": { "type": "object", "additionalProperties": false, "required": ["x", "y"], "properties": { "x": { "type": "string", "maxLength": 40 }, "y": { "type": "number" } } }
+      }
+    }
+  }
+}
+```
+
+| Key | What it is |
+|---|---|
+| `description` | At most 300 characters. Tells the agent when the component fits the question. |
+| `data` | The JSON Schema of the data the agent gives, in the form of a `definition` (section 9): an object, closed and bounded. The agent reads it to build the data, the agent drops what it does not name, and data over 256 KiB is refused. |
+
+Nobody who wrote the data themed it: the widget follows the `theme` trait (4.2) for what the data leaves open. The widget reads the data through its `data` trait, so it needs the permission `core:data:read` and, when it declares `model.traits`, a trait bound to `data` (4.2). Its `settings` (section 9) are the agent's `config`. In the chat the widget runs with `core:data:read`, `core:ui:notify`, `core:clipboard:write`, `core:backend:call`, `core:state:write` and `core:asset:read`, with its state kept in the card; a proxy, a write to params, a link or a download work once the widget is on a dashboard. A widget on a dashboard made from an artifact has no endpoint, so its `data` trait is the data it was made with.
+
+The artifact is part of the version the reviewer approves: the review lists it, and a change to its description or its data schema is asked for again. Only users whose roles grant the widget (section 5) are offered it, and the agent is told of the components of the plugins that are approved and enabled for the user's organization.
 
 ## 4. The module
 
@@ -157,7 +214,7 @@ Every frame runs its own `initialize`, a fullscreen view included. Do not rely o
 | `model.save_changes()` | Sends the changed traits that are bound and writable. The host echoes what it accepted; a refused write is echoed with the previous value, which fires `change:` again. |
 | `model.on(event, callback)`, `model.off(event?, callback?)` | `change:<name>` callbacks get no arguments. `off()` removes everything; `off(event)` that event's listeners. |
 | `model.send(content, callbacks, buffers)` | Only anywidget's own `invoke` message (`kind: "anywidget-command"`) is answered, as a `msg:custom` with the same `id`. Anything else is dropped. |
-| `model.on("msg:custom", (content, buffers) => ...)` | Host events: `{ kind: "workspace-event", name: "refresh" }` when the user refreshes, and `{ kind: "workspace-event", name: "visibility", visible }`. |
+| `model.on("msg:custom", (content, buffers) => ...)` | Host events: `{ kind: "workspace-event", name: "refresh" }` when the user refreshes, `{ kind: "workspace-event", name: "visibility", visible }`, and with `core:data:stream`, `stream` and `stream-status` (4.2.1). |
 
 Traits are bound to host state. Without `model.traits`, they take these names:
 
@@ -174,6 +231,19 @@ Traits are bound to host state. Without `model.traits`, they take these names:
 | `meta` | `{ pluginId, version, widgetId, instanceId }`. | no |
 
 A backend widget with `raw` (WIDGETS-JSON 4.11) has a button that shows its rows instead of its view. When it has no `data.rawType`, or one the user may not use, your module shows them: `data` is then the rows, typically an array of objects, and the frame starts again with them, and again when the user switches back. Show them as a table, or say they cannot be shown. The AI Agent gets the rows either way, so `copilotContext` (4.5) is not asked for a widget with `raw`.
+
+#### 4.2.1 A stream
+
+A backend widget of your type can declare `data.streamEndpoint` (WIDGETS-JSON 2), a WebSocket of its backend. With the permission `core:data:stream`, FINOS Workspace, not your frame, opens it: the frame has no network and never holds a credential. The host builds the address as it builds the widget's request, from the path against the backend's address (`http` becomes `ws`, `https` becomes `wss`), the widget's params as query values and the backend connection's query credentials. A header credential cannot ride a browser's WebSocket, so a stream authenticates with a query value or not at all.
+
+The host opens the socket once your module is running, so the first message reaches `msg:custom`, and closes it with the widget. Your module hears two events:
+
+| Event | Content |
+|---|---|
+| `{ kind: "workspace-event", name: "stream", messages }` | The JSON messages received since the last event, in order: a text message that is not JSON, longer than 256,000 characters or binary is dropped. At most 200 messages, sent every 100 ms at the most. |
+| `{ kind: "workspace-event", name: "stream-status", state, retryIn }` | `state` is `connecting`, `live`, `retrying` (with `retryIn`, the seconds until the next try: 1, then doubling up to 15) or `closed`. |
+
+A refresh event opens the socket again. What the messages mean is between your plugin and the backend; the host only carries them.
 
 To keep an existing module's trait names, bind them: `"model": { "traits": { "rows": { "bind": "data" }, "filter": { "bind": "param:filter", "access": "readwrite" } } }`. A binding is one of the names above, `param:<name>`, `config:<key>` or `adminSettings:<key>`; only `params`, `param:<name>` and `state` can be `readwrite`. A trait with no binding stays in the frame.
 
@@ -239,6 +309,7 @@ async initialize({ model }) {
 |---|---|
 | `core:default` | The lifecycle, error reporting and logs. Always granted. |
 | `core:data:read` | The `data` trait. |
+| `core:data:stream` | The host opens the widget's `data.streamEndpoint` and sends you its messages (4.2.1). |
 | `core:params:write` | Writes to `params` and `param:<name>`, declared names only, values coerced to the param's type. |
 | `core:state:write` | Writes to `state`. |
 | `core:copilot:context` | The host may call `copilotContext()`. |

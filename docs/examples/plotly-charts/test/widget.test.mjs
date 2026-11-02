@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 globalThis.document = { querySelector: () => null };
-const { default: widget, baseStyle, featuresOf, hasLatex, mapSubplots, topojsonNames, withMapStyle } = await import("../src/entry.js");
+const { default: widget, baseStyle, featuresOf, followsTheme, hasLatex, mapSubplots, themedFigure, topojsonNames, withMapStyle } = await import("../src/entry.js");
 
 function start(data) {
   const model = { get: (name) => structuredClone({ data }[name]), on() {} };
@@ -21,6 +21,26 @@ const SALES = {
   ],
   layout: { title: { text: "Sales" }, xaxis: { title: { text: "month" } }, template: { layout: { paper_bgcolor: "white" } } },
 };
+
+test("a figure its author did not theme follows the workspace's mode, and keeps what the author set", () => {
+  const plain = { data: [{ type: "bar", x: ["a"], y: [1] }], layout: { title: "t", yaxis: { gridcolor: "red" } } };
+  assert.equal(followsTheme(plain), true);
+  const dark = themedFigure(plain, "dark");
+  assert.equal(dark.layout.paper_bgcolor, "rgb(17,17,17)");
+  assert.equal(dark.layout.font.color, "#f2f5fa");
+  assert.equal(dark.layout.yaxis.gridcolor, "red");
+  assert.equal(dark.layout.title, "t");
+  assert.equal(themedFigure(plain, "light").layout.paper_bgcolor, "white");
+  assert.equal(plain.layout.paper_bgcolor, undefined);
+});
+
+test("a figure with its own template or background is drawn as its author made it", () => {
+  for (const layout of [{ template: {} }, { paper_bgcolor: "black" }, { plot_bgcolor: "black" }]) {
+    const figure = { data: [], layout };
+    assert.equal(followsTheme(figure), false);
+    assert.equal(themedFigure(figure, "dark"), figure);
+  }
+});
 
 test("traces sharing x values export one row per x", async () => {
   const sales = start(SALES);

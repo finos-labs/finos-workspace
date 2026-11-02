@@ -20,7 +20,7 @@ const logger = getLogger(["app", "routes", "query"]);
 const audit = getLogger(["audit"]);
 
 const MAX_BODY_BYTES = 64 * 1024 * 1024;
-const LIMITS = { messages: 20_000, widgets: 20_000, tools: 500, skills: 500, documents: 50 } as const;
+const LIMITS = { messages: 20_000, widgets: 20_000, tools: 500, skills: 500, pluginArtifacts: 100, documents: 50 } as const;
 
 const MessageSchema = z.object({ role: z.enum(["human", "ai", "tool"]) }).passthrough();
 const WidgetSchema = z
@@ -69,6 +69,19 @@ const QueryRequestSchema = z.object({
   skills_catalog: z
     .array(z.object({ slug: z.string().max(200), description: z.string().max(4_000), updatedAt: z.string().max(100).optional() }))
     .max(LIMITS.skills)
+    .optional(),
+  plugin_artifacts: z
+    .array(
+      z.object({
+        plugin: z.string().max(100),
+        widget: z.string().max(100),
+        name: z.string().max(500),
+        description: z.string().max(4_000),
+        data_schema: z.record(z.string(), z.unknown()),
+        config_schema: z.record(z.string(), z.unknown()).optional(),
+      }),
+    )
+    .max(LIMITS.pluginArtifacts)
     .optional(),
   selected_skills: z
     .array(z.object({
