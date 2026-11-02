@@ -52302,10 +52302,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/minimatch@11.0.3?package-id=1eb1e77dccf4109e",
+      "bom-ref": "pkg:npm/minimatch@11.0.4?package-id=446a5ccdb24b6bf5",
       "type": "library",
       "name": "minimatch",
-      "version": "11.0.3",
+      "version": "11.0.4",
       "licenses": [
         {
           "license": {
@@ -52313,8 +52313,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:minimatch_project:minimatch:11.0.3:*:*:*:*:node.js:*:*",
-      "purl": "pkg:npm/minimatch@11.0.3",
+      "cpe": "cpe:2.3:a:minimatch_project:minimatch:11.0.4:*:*:*:*:node.js:*:*",
+      "purl": "pkg:npm/minimatch@11.0.4",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -59548,63 +59548,6 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/side-channel@1.1.0?package-id=721337d2b81a43dd",
-      "type": "library",
-      "name": "side-channel",
-      "version": "1.1.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:side-channel:side-channel:1.1.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/side-channel@1.1.0",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "javascript-lock-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "javascript"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "npm"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "javascript-npm-package-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side-channel:side_channel:1.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side_channel:side-channel:1.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side_channel:side_channel:1.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side:side-channel:1.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side:side_channel:1.1.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/package-lock.json"
-        }
-      ]
-    },
-    {
       "bom-ref": "pkg:npm/side-channel@1.1.1?package-id=c2762c1438059cff",
       "type": "library",
       "name": "side-channel",
@@ -59654,79 +59597,6 @@
         {
           "name": "syft:cpe23",
           "value": "cpe:2.3:a:side:side_channel:1.1.1:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/package-lock.json"
-        }
-      ]
-    },
-    {
-      "bom-ref": "pkg:npm/side-channel-list@1.0.0?package-id=ead789d391c3ab50",
-      "type": "library",
-      "name": "side-channel-list",
-      "version": "1.0.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:side-channel-list:side-channel-list:1.0.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/side-channel-list@1.0.0",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "javascript-lock-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "javascript"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "npm"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "javascript-npm-package-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side-channel-list:side_channel_list:1.0.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side_channel_list:side-channel-list:1.0.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side_channel_list:side_channel_list:1.0.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side-channel:side-channel-list:1.0.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side-channel:side_channel_list:1.0.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side_channel:side-channel-list:1.0.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side_channel:side_channel_list:1.0.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side:side-channel-list:1.0.0:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:side:side_channel_list:1.0.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -71837,7 +71707,7 @@
     {
       "ref": "pkg:npm/filelist@1.0.6?package-id=78d6afa886b8e8f2",
       "dependsOn": [
-        "pkg:npm/minimatch@11.0.3?package-id=1eb1e77dccf4109e"
+        "pkg:npm/minimatch@11.0.4?package-id=446a5ccdb24b6bf5"
       ]
     },
     {
@@ -72034,7 +71904,7 @@
     {
       "ref": "pkg:npm/glob@14.0.3?package-id=da732d8160e38d84",
       "dependsOn": [
-        "pkg:npm/minimatch@11.0.3?package-id=1eb1e77dccf4109e",
+        "pkg:npm/minimatch@11.0.4?package-id=446a5ccdb24b6bf5",
         "pkg:npm/minipass@7.1.3?package-id=a4e62963fcdf0651",
         "pkg:npm/path-scurry@3.0.0?package-id=e2f95b05da6bae3e"
       ]
@@ -72149,7 +72019,6 @@
       "dependsOn": [
         "pkg:npm/es-errors@1.3.0?package-id=c843d7d8a902ed74",
         "pkg:npm/hasown@2.0.4?package-id=412951afa1e49469",
-        "pkg:npm/side-channel@1.1.0?package-id=721337d2b81a43dd",
         "pkg:npm/side-channel@1.1.1?package-id=c2762c1438059cff"
       ]
     },
@@ -72781,7 +72650,7 @@
       ]
     },
     {
-      "ref": "pkg:npm/minimatch@11.0.3?package-id=1eb1e77dccf4109e",
+      "ref": "pkg:npm/minimatch@11.0.4?package-id=446a5ccdb24b6bf5",
       "dependsOn": [
         "pkg:npm/%40isaacs/nonrecursive-glob-match@1.0.3?package-id=8a48602a2c30cdd8",
         "pkg:npm/brace-expansion@5.0.12?package-id=6f581d903fa6a43a"
@@ -72961,7 +72830,6 @@
       "ref": "pkg:npm/qs@6.17.0?package-id=fcdea98c75c2a8f7",
       "dependsOn": [
         "pkg:npm/es-define-property@1.0.1?package-id=ff4ca55380f5d9bd",
-        "pkg:npm/side-channel@1.1.0?package-id=721337d2b81a43dd",
         "pkg:npm/side-channel@1.1.1?package-id=c2762c1438059cff"
       ]
     },
@@ -73131,7 +72999,7 @@
     {
       "ref": "pkg:npm/readdir-glob@1.1.3?package-id=40d602b67356f6b1",
       "dependsOn": [
-        "pkg:npm/minimatch@11.0.3?package-id=1eb1e77dccf4109e"
+        "pkg:npm/minimatch@11.0.4?package-id=446a5ccdb24b6bf5"
       ]
     },
     {
@@ -73334,13 +73202,6 @@
       ]
     },
     {
-      "ref": "pkg:npm/side-channel-list@1.0.0?package-id=ead789d391c3ab50",
-      "dependsOn": [
-        "pkg:npm/es-errors@1.3.0?package-id=c843d7d8a902ed74",
-        "pkg:npm/object-inspect@1.13.4?package-id=fda191deb49ff60f"
-      ]
-    },
-    {
       "ref": "pkg:npm/side-channel-list@1.0.1?package-id=bde204631a71ec9d",
       "dependsOn": [
         "pkg:npm/es-errors@1.3.0?package-id=c843d7d8a902ed74",
@@ -73367,22 +73228,10 @@
       ]
     },
     {
-      "ref": "pkg:npm/side-channel@1.1.0?package-id=721337d2b81a43dd",
-      "dependsOn": [
-        "pkg:npm/es-errors@1.3.0?package-id=c843d7d8a902ed74",
-        "pkg:npm/object-inspect@1.13.4?package-id=fda191deb49ff60f",
-        "pkg:npm/side-channel-list@1.0.0?package-id=ead789d391c3ab50",
-        "pkg:npm/side-channel-list@1.0.1?package-id=bde204631a71ec9d",
-        "pkg:npm/side-channel-map@1.0.1?package-id=80f77f9e133664ba",
-        "pkg:npm/side-channel-weakmap@1.0.2?package-id=38bcfddc6894011e"
-      ]
-    },
-    {
       "ref": "pkg:npm/side-channel@1.1.1?package-id=c2762c1438059cff",
       "dependsOn": [
         "pkg:npm/es-errors@1.3.0?package-id=c843d7d8a902ed74",
         "pkg:npm/object-inspect@1.13.4?package-id=fda191deb49ff60f",
-        "pkg:npm/side-channel-list@1.0.0?package-id=ead789d391c3ab50",
         "pkg:npm/side-channel-list@1.0.1?package-id=bde204631a71ec9d",
         "pkg:npm/side-channel-map@1.0.1?package-id=80f77f9e133664ba",
         "pkg:npm/side-channel-weakmap@1.0.2?package-id=38bcfddc6894011e"
@@ -73476,7 +73325,6 @@
         "pkg:npm/internal-slot@1.1.0?package-id=a0f2414a4cc47819",
         "pkg:npm/regexp.prototype.flags@1.5.4?package-id=ab35d9804f8badec",
         "pkg:npm/set-function-name@2.0.2?package-id=1906abef5290f916",
-        "pkg:npm/side-channel@1.1.0?package-id=721337d2b81a43dd",
         "pkg:npm/side-channel@1.1.1?package-id=c2762c1438059cff"
       ]
     },

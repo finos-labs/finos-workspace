@@ -42683,10 +42683,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/joi@17.13.8?package-id=b23ec75a3b33f086",
+      "bom-ref": "pkg:npm/joi@17.13.9?package-id=04a090b59ed2f5e6",
       "type": "library",
       "name": "joi",
-      "version": "17.13.8",
+      "version": "17.13.9",
       "licenses": [
         {
           "license": {
@@ -42694,8 +42694,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:joi:joi:17.13.8:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/joi@17.13.8",
+      "cpe": "cpe:2.3:a:joi:joi:17.13.9:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/joi@17.13.9",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -71996,7 +71996,7 @@
         "pkg:npm/commander@5.1.0?package-id=93d8180508b6ccf1",
         "pkg:npm/commander@7.2.0?package-id=48f70b5eaf0b88c6",
         "pkg:npm/commander@8.3.0?package-id=5071fdeff09d67f5",
-        "pkg:npm/joi@17.13.8?package-id=b23ec75a3b33f086",
+        "pkg:npm/joi@17.13.9?package-id=04a090b59ed2f5e6",
         "pkg:npm/utility-types@3.11.0?package-id=80c6e886a36cf555",
         "pkg:npm/webpack-merge@5.10.0?package-id=362cbe54ad048816",
         "pkg:npm/webpack-merge@6.0.1?package-id=0cdc205dc6aff004",
@@ -72019,7 +72019,7 @@
         "pkg:npm/%40docusaurus/utils@3.10.2?package-id=fd3726c6d179fbbb",
         "pkg:npm/fs-extra@10.1.0?package-id=d0dd95b0313ee262",
         "pkg:npm/fs-extra@11.4.1?package-id=dfdb9b8e788b5de9",
-        "pkg:npm/joi@17.13.8?package-id=b23ec75a3b33f086",
+        "pkg:npm/joi@17.13.9?package-id=04a090b59ed2f5e6",
         "pkg:npm/js-yaml@4.3.2?package-id=be858c43fc869c14",
         "pkg:npm/lodash@4.18.1?package-id=ac9c211256bf6980",
         "pkg:npm/tslib@1.14.1?package-id=d85d41bdc424d450",
@@ -74349,7 +74349,7 @@
       ]
     },
     {
-      "ref": "pkg:npm/joi@17.13.8?package-id=b23ec75a3b33f086",
+      "ref": "pkg:npm/joi@17.13.9?package-id=04a090b59ed2f5e6",
       "dependsOn": [
         "pkg:npm/%40hapi/hoek@9.3.0?package-id=b136e2497f27d8d8",
         "pkg:npm/%40hapi/topo@5.1.0?package-id=cc12a5019df70a2f",
