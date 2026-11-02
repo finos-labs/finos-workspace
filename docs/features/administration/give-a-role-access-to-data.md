@@ -18,11 +18,15 @@ A backend reaches the other people of your organization only through a role. Thi
 
 Before it saves, FINOS Workspace shows Confirm Permission Changes. The dialog warns that you are about to make critical changes to the permissions of the role, and it counts what you changed: how many widgets and prompts you added and how many you removed. Select Yes, Continue. A message says that the role permissions were updated.
 
+The dialog lists the widgets of a backend only when one of your own roles grants the backend, because the web app reads the widgets as you. A backend of the organization that no role grants yet appears without widgets. Set it to Access for a role that you belong to and save, then open the dialog again and set its widgets.
+
 The search box at the top filters the lists by name. The tab Apps lists the apps that the backends offer, with the prompts that belong to them, and the tab Prompt Library lists the prompts that people saved. Each has the same menus. A tab says "No items found" when its backends offer none.
 
 ## What people see
 
-A person gets the data of the widgets that at least one of their roles grants, and of no others. The library of a person in the role lists every widget of the backend, marked as shared, but a widget that no role grants shows "You don't have access to this widget" and a button, Remove Widget, when it is on a dashboard, and a widget that a role grants shows its data.
+The web app loads the data of the widgets that at least one of a person's roles grants, and of no others. The library of a person in the role lists every widget of the backend, marked as shared, but a widget that no role grants shows "You don't have access to this widget" and a button, Remove Widget, when it is on a dashboard, and a widget that a role grants shows its data.
+
+The API checks the grant of the backend as a whole. It passes every request of a person who has the backend through a role on to the backend, whichever widget the request belongs to, and it adds the person's email as `X-Workspace-User` and the signed header `X-Workspace-Identity`. A backend that has to withhold some data from some people decides that itself, from those headers, which [Requests that a widget sends](../../tutorials/build-a-backend/requests-from-a-widget.md#the-widgets-request) describes.
 
 Dashboards that people share carry their widgets with them, but not the right to see the data. When a person opens a shared dashboard and has no way to reach the backend of a widget on it, because it is not theirs and no role gives it to them, the widget shows "This data connection is not available to you" with the same button Remove Widget. When a role grants the backend and the widget, the widget shows its data as it does for the owner. That is why the message that appears when someone shares a dashboard says "Please note that shared users will not be able to view Data connectors widgets.": the share gives the recipient the dashboard and not the data.
 
