@@ -45,7 +45,7 @@ export function collectApi(): ApiData {
     skipCodes: ["422"],
     skipSchemas: [...FASTAPI_ERROR_MODELS],
   });
-  return { tags, schemas, metrics: collectApiMetrics() };
+  return { tags, schemas, metrics: collectApiMetrics(), webSockets: (spec as { "x-websocket-routes": string[] })["x-websocket-routes"] };
 }
 
 export function collectWidgetsSchema(): SchemaSet {

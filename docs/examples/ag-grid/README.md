@@ -134,8 +134,8 @@ The backend declares a widget of type `aggrid-livegrid` with a `data.streamEndpo
 ```
 
 The socket is FINOS Workspace's, not the plugin's: the plugin has the permission `core:data:stream`, the host opens the
-address as it builds the widget's request (the params as query values, the backend connection's query credentials, `ws` or
-`wss` for `http` or `https`), and hands the JSON messages to the frame as events
+address through the FINOS Workspace API as it builds the widget's request (the params as query values, `ws` or `wss` for
+`http` or `https`), the API adds the backend connection's credentials, and the host hands the JSON messages to the frame as events
 ([the plugin permissions](../../reference/plugins/commands-and-permissions.mdx)). The frame needs no network, no policy override and no secret.
 
 The endpoint returns the grid before the first message, `{ columnDefs, rowData, gridOptions }`, with an `id` in every row.

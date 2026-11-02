@@ -1,17 +1,24 @@
 import json
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import update
 
-from api import auth_helpers, frame_proxy, models, source_proxy, widget_access
+from api import auth_helpers, frame_proxy, models, source_proxy, widget_access, ws_relay
+from routers.app import data_connectors
 from tests.fixtures.plugin_backends import SOURCE_SECRET
 from tests.fixtures.upstream import Answer
+from tests.fixtures.widget_plugins import ADMIN, MEMBER
 
 CATALOG = {
     "sales": {"name": "Sales", "endpoint": "/sales"},
     "hr": {"name": "HR", "endpoint": "/hr/{team}", "params": [{"paramName": "team", "type": "text"}]},
     "framed": {"name": "Framed", "type": "iframe", "endpoint": "/dash/index.html", "requires_auth": True},
     "other_frame": {"name": "Other", "type": "iframe", "endpoint": "/other/index.html", "requires_auth": True},
+    "live": {"name": "Live", "endpoint": "/live", "data": {"streamEndpoint": "/ws/ticks"}},
+    "secret_live": {"name": "Secret live", "endpoint": "/secret", "data": {"streamEndpoint": "/ws/secret"}},
 }
 APPS = [{"name": "App", "img": "/static/app.png"}]
 
@@ -268,3 +275,139 @@ class TestAFramedPageOfAWidgetARoleGrants:
     async def test_the_owner_may_open_any_page(self, superuser, source):
         url = f"/app/data-connectors/api-source/{source.uuid}/frame"
         assert (await superuser.post(url, json={"widgetId": "other_frame"})).status_code == 200
+
+
+class FakeSocket:
+    def __init__(self):
+        self.closed: int | None = None
+        self.accepted = False
+        self.scope: dict = {"subprotocols": []}
+
+    async def accept(self, subprotocol=None):
+        self.accepted = True
+
+    async def close(self, code: int = 1000):
+        self.closed = code
+
+
+@pytest.fixture
+def sockets(monkeypatch):
+    opened = []
+
+    async def session(_socket):
+        return auth_helpers.WebSocketSession(MEMBER, uuid4(), datetime.now(UTC) + timedelta(days=1))
+
+    async def alive(_session_uuid):
+        return True
+
+    async def relay(socket, url, headers, origin, trusted, user_uuid, expires_at, authorized):
+        opened.append(SimpleNamespace(url=url, headers=headers, origin=origin, trusted=trusted, authorized=authorized))
+
+    monkeypatch.setattr(auth_helpers, "websocket_session", session)
+    monkeypatch.setattr(auth_helpers, "web_session_alive", alive)
+    monkeypatch.setattr(ws_relay, "relay", relay)
+    return opened
+
+
+async def stream(db_session, source, path: str, query: str = "") -> FakeSocket:
+    socket = FakeSocket()
+    address = f"http://127.0.0.1:{source.server.port}{path}{query}"
+    await data_connectors.stream_through_api_source(socket, source.uuid, address, db_session)
+    return socket
+
+
+class TestTheStreamOfAWidget:
+    @pytest.mark.asyncio
+    async def test_a_granted_widgets_stream_opens_with_the_credentials(self, member, source, db_session, sockets):
+        await grant(member, db_session, source, {"live": "access"})
+
+        socket = await stream(db_session, source, "/api/ws/ticks", "?symbol=ABC")
+
+        assert socket.closed is None
+        [opened] = sockets
+        assert opened.url.startswith(f"http://127.0.0.1:{source.server.port}/api/ws/ticks?")
+        assert "symbol=ABC" in opened.url and f"token={SOURCE_SECRET}" in opened.url
+        assert opened.headers["X-Api-Key"] == SOURCE_SECRET
+        assert opened.headers["X-Workspace-User"]
+        assert opened.origin == f"http://127.0.0.1:{source.server.port}"
+        assert opened.trusted is True
+        assert await opened.authorized() is True
+
+    @pytest.mark.asyncio
+    async def test_the_stream_of_a_widget_no_role_grants_does_not_open(self, member, source, db_session, sockets):
+        await grant(member, db_session, source, {"live": "access"})
+
+        socket = await stream(db_session, source, "/api/ws/secret")
+
+        assert socket.closed == ws_relay.POLICY_CLOSE_CODE
+        assert sockets == []
+
+    @pytest.mark.asyncio
+    async def test_a_socket_to_a_route_no_widget_declares_does_not_open(self, member, source, db_session, sockets):
+        await grant(member, db_session, source, {"live": "access"})
+
+        for path in ("/api/ws/other", "/api/ws/ticks/../secret", "/api/sales"):
+            assert (await stream(db_session, source, path)).closed == ws_relay.POLICY_CLOSE_CODE, path
+        assert sockets == []
+
+    @pytest.mark.asyncio
+    async def test_an_address_on_another_origin_does_not_open(self, member, source, db_session, sockets):
+        await grant(member, db_session, source, {"live": "access"})
+        socket = FakeSocket()
+
+        await data_connectors.stream_through_api_source(
+            socket, source.uuid, "wss://elsewhere.example/api/ws/ticks", db_session
+        )
+
+        assert socket.closed == ws_relay.POLICY_CLOSE_CODE
+        assert sockets == []
+
+    @pytest.mark.asyncio
+    async def test_a_connection_the_user_cannot_read_does_not_open(self, member, source, db_session, sockets):
+        assert (await stream(db_session, source, "/api/ws/ticks")).closed == ws_relay.POLICY_CLOSE_CODE
+        assert sockets == []
+
+    @pytest.mark.asyncio
+    async def test_a_socket_without_a_session_does_not_open(self, member, source, db_session, sockets, monkeypatch):
+        async def none(_socket):
+            return None
+
+        monkeypatch.setattr(auth_helpers, "websocket_session", none)
+        await grant(member, db_session, source, {"live": "access"})
+
+        assert (await stream(db_session, source, "/api/ws/ticks")).closed == ws_relay.POLICY_CLOSE_CODE
+        assert sockets == []
+
+    @pytest.mark.asyncio
+    async def test_the_owner_may_open_any_route_of_the_connection(
+        self, superuser, source, db_session, sockets, monkeypatch
+    ):
+        async def session(_socket):
+            return auth_helpers.WebSocketSession(ADMIN, uuid4(), datetime.now(UTC) + timedelta(days=1))
+
+        monkeypatch.setattr(auth_helpers, "websocket_session", session)
+
+        socket = await stream(db_session, source, "/api/anything/at/all")
+
+        assert socket.closed is None
+        assert len(sockets) == 1
+
+    @pytest.mark.asyncio
+    async def test_the_access_is_checked_again_while_the_socket_is_open(
+        self, member, source, db_session, sockets, monkeypatch
+    ):
+        monkeypatch.setattr(source_proxy, "DECISION_SECONDS", 0.0)
+        role = await grant(member, db_session, source, {"live": "access"})
+        await stream(db_session, source, "/api/ws/ticks")
+        [opened] = sockets
+        assert await opened.authorized() is True
+
+        await db_session.execute(
+            update(models.RoleBackend)
+            .where(models.RoleBackend.role_uuid == role)
+            .values(widgets=[{"widgetId": "live", "access": "no-access"}])
+        )
+        await db_session.commit()
+        widget_access._tables.clear()
+
+        assert await opened.authorized() is False

@@ -6,6 +6,7 @@ from dataclasses import fields as dataclass_fields
 from pathlib import Path
 from typing import Any, Literal, get_args, get_origin
 
+from fastapi.routing import APIWebSocketRoute
 from prometheus_client import CollectorRegistry
 from pydantic_core import PydanticUndefined
 
@@ -94,11 +95,21 @@ def describe_pages(schema: dict[str, Any]) -> None:
                 prop["description"] = description
 
 
+def websocket_paths() -> list[str]:
+    paths = []
+    for route in app.routes:
+        for item in route.effective_route_contexts() if hasattr(route, "effective_route_contexts") else [route]:
+            original = getattr(item, "original_route", item)
+            if isinstance(original, APIWebSocketRoute):
+                paths.append(original.path)
+    return sorted(paths)
+
+
 def collect_openapi() -> dict[str, Any]:
     schema = app.openapi()
     describe_pages(schema)
     paths = {path: item for path, item in schema["paths"].items() if path != "/metrics"}
-    return {**schema, "paths": paths}
+    return {**schema, "paths": paths, "x-websocket-routes": websocket_paths()}
 
 
 SAMPLE_PLUGIN_TYPE = "plugin_type"
@@ -279,7 +290,7 @@ PERMISSION_MEANINGS = {
     "core:data:read": "Reading the data trait.",
     "core:data:stream": (
         "Receiving the messages of the widget's stream, which the host opens as a WebSocket "
-        "at the `data.streamEndpoint` of the widget."
+        "through the FINOS Workspace API, at the `data.streamEndpoint` of the widget."
     ),
     "core:params:write": (
         "Writing to params and to param:<name>. Only declared names can be written, "

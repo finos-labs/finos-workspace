@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { AgentData, ApiData, BridgeData, CssData, PluginsData, SettingsData, WebConfigData } from "../src/data/types.ts";
+import type { AgentData, ApiData, CssData, PluginsData, SettingsData, WebConfigData } from "../src/data/types.ts";
 import {
   collectApi,
   collectAppsSchema,
@@ -75,7 +75,7 @@ const settingNames = new Set<string>([
 ]);
 checkSettingNames(settingNames, ["docs/reference/configuration/overview.md", "docs/reference/css/html-documents.mdx"]);
 checkCoverage(outputs.plugins as PluginsData, outputs.agent as AgentData);
-checkRoutes(outputs.api as ApiData, outputs.agent as AgentData, outputs.bridge as BridgeData, outputs.plugins as PluginsData);
+checkRoutes(outputs.api as ApiData, outputs.agent as AgentData, outputs.plugins as PluginsData);
 
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });

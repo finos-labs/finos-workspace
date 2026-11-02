@@ -41,6 +41,7 @@ A widget declares routes in these fields, each with its method:
 | `endpoint` | The widget's `method`, which defaults to `GET`. |
 | `optionsEndpoint` of an `endpoint` parameter, also inside a form's `inputParams` | The parameter's `optionsMethod`, which defaults to `GET`. |
 | `endpoint` of a `form` parameter | The form's `method`, which defaults to `POST`. |
+| `data.streamEndpoint` | `GET`, for the WebSocket. |
 
 The API also sends the catalog files of the backend, which are `widgets.json`, [`apps.json`](../../reference/schemas/apps-json.mdx), `templates.json` and [`agents.json`](../../reference/schemas/agents-json.mdx), and the images that `apps.json` names in `img`, `img_dark` and `img_light`, whatever the person's roles grant.
 

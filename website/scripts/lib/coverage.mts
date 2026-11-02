@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
-import type { AgentData, ApiData, BridgeData, PluginsData } from "../../src/data/types.ts";
+import type { AgentData, ApiData, PluginsData } from "../../src/data/types.ts";
 import { fromRepo } from "./paths.mts";
 
 interface Requirement {
@@ -64,7 +64,7 @@ function shape(path: string): string {
     .replace(/\/+$/, "");
 }
 
-export function checkRoutes(api: ApiData, agent: AgentData, bridge: BridgeData, plugins: PluginsData): void {
+export function checkRoutes(api: ApiData, agent: AgentData, plugins: PluginsData): void {
   const known: KnownRoute[] = [
     { method: "GET", path: "/metrics" },
     { method: "GET", path: String(plugins.values["backend.identityPath"]) },
@@ -72,7 +72,7 @@ export function checkRoutes(api: ApiData, agent: AgentData, bridge: BridgeData, 
     ...api.tags.flatMap((tag) => tag.operations.map((operation) => ({ method: operation.method, path: operation.path }))),
     ...agent.http.routes.map((route) => ({ method: route.method, path: route.path })),
     ...agent.mcp.routes.map((route) => ({ method: route.method, path: route.path })),
-    { method: "GET", path: String(bridge.values["constants.webSocketPath"]) },
+    ...(api.webSockets ?? []).map((path) => ({ method: "GET", path })),
   ];
   for (const example of SERVED_BY_EXAMPLES) {
     if (!readFileSync(fromRepo(example.source), "utf8").includes(example.path)) {

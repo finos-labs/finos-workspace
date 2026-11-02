@@ -218,6 +218,7 @@ export interface ApiData {
   tags: { name: string; operations: ApiOperation[] }[];
   schemas: SchemaDoc[];
   metrics: ApiMetric[];
+  webSockets?: string[];
 }
 
 interface SettingField {

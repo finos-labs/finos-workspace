@@ -518,7 +518,7 @@ const RAW_DATA_PROPERTIES = {
 const STREAM_DATA_PROPERTIES = {
   streamEndpoint: Endpoint.meta({
     description:
-      "The WebSocket the widget's plugin is fed from, as a path or an absolute URL with no `?` and no `#`: `http` and `https` become `ws` and `wss`. The browser opens it with the widget's params as query values, and passes the JSON messages it receives to the plugin. The connection does not go through the API, so it carries none of the backend connection's credentials",
+      "The WebSocket the widget's plugin is fed from, as a path or an absolute URL with no `?` and no `#`: `http` and `https` become `ws` and `wss`. The widget's params are query values. The browser opens the socket through the FINOS Workspace API, which adds the backend connection's credentials, and passes the JSON messages it receives to the plugin",
   }).optional(),
 };
 

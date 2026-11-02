@@ -4,7 +4,7 @@ from typing import Annotated
 from urllib.parse import urlsplit
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Request, WebSocket
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, WebSocket
 from fastapi.responses import StreamingResponse
 from sqlalchemy import delete, insert, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -432,6 +432,71 @@ async def grant_frame(
     page = frame_proxy.page_of(widgets, payload.widget_id, str(source.url))
     token = frame_proxy.issue(user.uuid, source.uuid, payload.widget_id, frame_proxy.directory_of(page), session_uuid)
     return schemas.FrameGrant(token=token, prefix=frame_proxy.directory_of(page), expires_in=frame_proxy.TTL_SECONDS)
+
+
+async def _socket_user(db: AsyncSession, user_uuid: UUID):
+    try:
+        row = (
+            await db.execute(select(models.User.email, models.User.permissions_uuid).where(models.User.uuid == user_uuid))
+        ).first()
+    finally:
+        await db.commit()
+    if row is None:
+        raise source_proxy.refused("this user is not available", 401)
+    return SimpleNamespace(uuid=user_uuid, email=row.email, permissions_uuid=row.permissions_uuid)
+
+
+@router.websocket("/api-source/{source_uuid}/stream")
+async def stream_through_api_source(
+    websocket: WebSocket,
+    source_uuid: UUID = Path(description="The UUID of the data connection"),
+    url: str = Query(
+        max_length=8192, description="The address on the connection's origin that the socket opens, with the params"
+    ),
+    db: AsyncSession = Depends(aget_read_db),
+):
+    session = await auth_helpers.websocket_session(websocket)
+    if session is None:
+        await websocket.close(code=ws_relay.POLICY_CLOSE_CODE)
+        return
+
+    async def opened():
+        user = await _socket_user(db, session.user_uuid)
+        source, trusted, granted = await _readable_source(db, user, source_uuid)
+        signed = await identity_headers(user.uuid, user.email, session.session_uuid, str(source.url))
+        target, headers = source_proxy.target_of(source, url, {}, user.email, signed)
+        if granted is not None:
+            await widget_access.require(source, user.email, trusted, signed, granted, "GET", target)
+        return source, trusted, target, headers
+
+    try:
+        await source_proxy.count(session.user_uuid, "data-socket", source_proxy.SOCKETS_PER_MINUTE)
+        source, trusted, target, headers = await opened()
+    except HTTPException:
+        await websocket.close(code=ws_relay.POLICY_CLOSE_CODE)
+        return
+
+    async def authorized() -> bool:
+        try:
+            if not await auth_helpers.web_session_alive(session.session_uuid):
+                return False
+            await opened()
+        except HTTPException:
+            return False
+        return True
+
+    origin = urlsplit(str(source.url))
+    expires = session.expiration_date if session.expiration_date.tzinfo else session.expiration_date.replace(tzinfo=UTC)
+    await ws_relay.relay(
+        websocket,
+        target,
+        headers,
+        f"{origin.scheme}://{origin.netloc}",
+        trusted,
+        session.user_uuid,
+        expires.timestamp(),
+        authorized,
+    )
 
 
 async def _frame_access(db: AsyncSession, claims: dict, fresh: bool = False):

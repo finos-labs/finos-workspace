@@ -81,6 +81,13 @@ def test_every_operation_has_an_id_of_its_own():
     assert not duplicated, "\n".join(duplicated)
 
 
+def test_the_websocket_routes_of_the_api_are_listed():
+    sockets = export.collect_openapi()["x-websocket-routes"]
+    assert "/app/workspace-mcp/bridge/ws" in sockets
+    assert "/app/data-connectors/api-source/{source_uuid}/stream" in sockets
+    assert not set(sockets) & set(export.collect_openapi()["paths"].get("/app/workspace-mcp/bridge/ws", {}))
+
+
 def test_the_exporter_writes_every_file(tmp_path):
     assert export.main(["-o", str(tmp_path)]) == 0
     assert sorted(path.name for path in tmp_path.iterdir()) == sorted(export.FILES.values())
