@@ -69,7 +69,7 @@ class TestOrganizationBackends:
         assert (await auth_client.get("/app/data-connectors/api-source")).json() == []
 
     @pytest.mark.asyncio
-    async def test_a_role_that_grants_it_gives_it_with_its_credentials(
+    async def test_a_role_that_grants_it_gives_it_without_the_values_of_its_credentials(
         self, organization, auth_client, db_session, backend
     ):
         role = await organization.role(MEMBER_UUID)
@@ -80,9 +80,8 @@ class TestOrganizationBackends:
         assert granted["uuid"] == str(backend)
         assert granted["name"] == "Organization"
         assert granted["url"] == "https://backend.example.com/organization"
-        assert granted["endpointHeaders"] == [
-            {"key": "X-Api-Key", "value": SECRET, "location": "headers"}
-        ]
+        assert granted["endpointHeaders"] == [{"key": "X-Api-Key", "location": "headers"}]
+        assert SECRET not in str(granted)
         assert granted["createdBy"] == "Admin Entity"
 
     @pytest.mark.asyncio

@@ -353,7 +353,7 @@ async def finish_sign_in(  # noqa: PLR0914
         auth_helpers.CURRENT_APP_USER["tables"],
     )
 
-    if db_user.entity_uuid is not None:
+    if access.user_type == models.ADMIN_TYPE and db_user.entity_uuid is not None:
         entity_query = select(models.ApiSource).where(
             models.ApiSource.entity_uuid == db_user.entity_uuid
         )
