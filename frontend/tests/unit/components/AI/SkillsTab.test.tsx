@@ -281,6 +281,35 @@ describe("SkillsTab", () => {
     });
   });
 
+  describe("Skills that come with a plugin", () => {
+    const fromPlugin = {
+      ...createMockSkill({
+        id: "plugin-skill",
+        slug: "forecast-charts",
+        description: "How to draw a forecast",
+      }),
+      pluginName: "Forecast chart",
+    };
+
+    it("shows them with the plugin's name and without edit, delete or select", () => {
+      setupMocks([...mockSkills, fromPlugin]);
+      renderSkillsTab();
+
+      expect(screen.getByText("forecast-charts")).toBeInTheDocument();
+      expect(screen.getByText("How to draw a forecast")).toBeInTheDocument();
+      expect(screen.getByText("Forecast chart")).toBeInTheDocument();
+      expect(screen.getAllByRole("checkbox")).toHaveLength(mockSkills.length);
+    });
+
+    it("shows them when they are the only skills", () => {
+      setupMocks([fromPlugin]);
+      renderSkillsTab();
+
+      expect(screen.getByText("forecast-charts")).toBeInTheDocument();
+      expect(screen.queryByText("No Skills added")).not.toBeInTheDocument();
+    });
+  });
+
   describe("Empty state", () => {
     it("shows empty state when no skills exist", () => {
       setupMocks([]);

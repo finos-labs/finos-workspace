@@ -123,7 +123,7 @@ test("the descriptor names the agent, its endpoint and its features", async () =
   assert.equal(agent.endpoints.query, "/v1/query");
   assert.equal(agent.features.streaming, true);
   assert.equal(agent.features["widget-dashboard-select"], true);
-  assert.equal(result.cors, ORIGIN);
+  assert.equal(result.cors, null);
 });
 
 test("a question that names no widget gets an overview and a suggestion", async () => {
@@ -205,9 +205,13 @@ test("other routes are not found", async () => {
   await same("/v1/query");
 });
 
-test("the preflight allows the methods and headers of the web app and no others", async () => {
+test("the example sends no CORS headers, because the API calls the agent", async () => {
   for (const { port } of Object.values(servers)) {
-    const response = await fetch(`http://127.0.0.1:${port}/v1/query`, {
+    for (const origin of [ORIGIN, "http://localhost:9999"]) {
+      const response = await fetch(`http://127.0.0.1:${port}/agents.json`, { headers: { Origin: origin } });
+      assert.equal(response.headers.get("access-control-allow-origin"), null, `port ${port}: ${origin}`);
+    }
+    const preflight = await fetch(`http://127.0.0.1:${port}/v1/query`, {
       method: "OPTIONS",
       headers: {
         Origin: ORIGIN,
@@ -215,18 +219,8 @@ test("the preflight allows the methods and headers of the web app and no others"
         "Access-Control-Request-Headers": "content-type,x-trace-id",
       },
     });
-    assert.ok(response.status < 300, `port ${port}: ${response.status}`);
-    const headers = (response.headers.get("access-control-allow-headers") ?? "").toLowerCase().split(/\s*,\s*/);
-    const methods = (response.headers.get("access-control-allow-methods") ?? "").toUpperCase().split(/\s*,\s*/);
-    assert.ok(headers.includes("content-type") && headers.includes("x-trace-id"), `port ${port}: ${headers}`);
-    assert.ok(!headers.includes("*") && !headers.includes("authorization"), `port ${port}: ${headers}`);
-    assert.ok(methods.includes("POST") && methods.includes("GET") && !methods.includes("DELETE"), `port ${port}: ${methods}`);
-  }
-});
-
-test("only the web app's origin is allowed", async () => {
-  for (const { port } of Object.values(servers)) {
-    const response = await fetch(`http://127.0.0.1:${port}/agents.json`, { headers: { Origin: "http://localhost:9999" } });
-    assert.equal(response.headers.get("access-control-allow-origin"), null, `port ${port}`);
+    assert.equal(preflight.headers.get("access-control-allow-origin"), null, `port ${port}`);
+    assert.equal(preflight.headers.get("access-control-allow-headers"), null, `port ${port}`);
+    assert.equal(preflight.headers.get("access-control-allow-methods"), null, `port ${port}`);
   }
 });

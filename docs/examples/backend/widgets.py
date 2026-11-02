@@ -21,12 +21,12 @@ def plotly(name: str, description: str, endpoint: str, **extra) -> dict:
     }
 
 
-def grid(name: str, description: str, endpoint: str, **extra) -> dict:
+def grid(name: str, description: str, endpoint: str, kind: str = "aggrid-table", **extra) -> dict:
     return {
         "name": name,
         "description": description,
         "category": GRID,
-        "type": "ag-grid",
+        "type": kind,
         "endpoint": endpoint,
         "gridData": {"w": 24, "h": 14},
         **extra,
@@ -39,7 +39,7 @@ WIDGETS = {
         "Monthly sales of three regions, stacked; the rows button shows them in AgGrid",
         "/plotly/sales",
         raw=True,
-        data={"rawType": "ag-grid"},
+        data={"rawType": "aggrid-table"},
     ),
     "plotly_trend": plotly("Sales trend", "The same sales, as lines", "/plotly/trend"),
     "plotly_signal": plotly("Signal and noise", "A sampled signal, from numpy arrays", "/plotly/signal"),
@@ -62,5 +62,20 @@ WIDGETS = {
         "New rows every five seconds, applied as transactions",
         "/ag-grid/stream",
         refetchInterval=5000,
+    ),
+    "grid_live": grid(
+        "Live prices",
+        "A WebSocket sends a snapshot, then upserts and removals by row id",
+        "/ag-grid/live",
+        "aggrid-livegrid",
+        data={"streamEndpoint": "/ws/ticks"},
+    ),
+    "grid_ssrm": grid(
+        "Trades, server-side",
+        "200,000 trades paged, sorted, filtered, grouped and pivoted in Postgres",
+        "/ssrm/trades",
+        "aggrid-ssrm",
+        data={"aggrid-ssrm": {"table": "demo.trades", "pageSize": 100}},
+        gridData={"w": 30, "h": 18},
     ),
 }

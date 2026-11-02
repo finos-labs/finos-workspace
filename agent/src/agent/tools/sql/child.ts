@@ -4,8 +4,15 @@ import { runCreateArtifact, type CreateArtifactArgs } from "./create-artifact.ts
 import { runExecuteSql } from "./execute-sql.ts";
 import { runPeekColumnValues } from "./peek-column-values.ts";
 import { runPeekTable } from "./peek-table.ts";
+import { runPluginArtifact, type PluginArtifactArgs } from "../plugin-artifact.ts";
+import type { PluginArtifactEntry } from "../../../protocol/types.ts";
 
-export type SqlOp = "execute_sql" | "peek_table" | "peek_column_values" | "create_artifact";
+export type SqlOp =
+  | "execute_sql"
+  | "peek_table"
+  | "peek_column_values"
+  | "create_artifact"
+  | "show_plugin_artifact";
 
 export interface SqlChildInput {
   op: SqlOp;
@@ -30,6 +37,10 @@ function runSqlOp(input: SqlChildInput): SqlChildOutput {
       return { text: runPeekColumnValues(input.args as { column: string; table_name?: string }, ctx), events };
     case "create_artifact":
       return { text: runCreateArtifact(input.args as CreateArtifactArgs, ctx), events };
+    case "show_plugin_artifact": {
+      const args = input.args as PluginArtifactArgs & { catalog: PluginArtifactEntry[] };
+      return { text: runPluginArtifact(args, { ...ctx, catalog: args.catalog }), events };
+    }
     default:
       throw new Error(`Unknown SQL operation: ${String(input.op)}`);
   }

@@ -146,6 +146,7 @@ export interface Skill extends SkillCreate {
   id: string;
   createdDate: string;
   updatedDate: string;
+  pluginName?: string | null;
 }
 
 export interface SkillCatalogEntry {

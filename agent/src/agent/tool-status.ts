@@ -355,6 +355,8 @@ function startSummary(toolName: string, input: unknown, options: ToolStatusOptio
       return "Extracting table from text";
     case "create_html_artifact":
       return "Rendering HTML artifact";
+    case "show_plugin_artifact":
+      return `Showing ${asString(record.name) ?? "a plugin component"}`;
     default:
       return `Calling ${displayName}`;
   }

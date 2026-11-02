@@ -24,6 +24,10 @@ import { useShallowSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 import { extractUrlsFromText } from "~/lib/utils";
 import { withMcpLinks } from "~/lib/utils/mcpLink";
 import type { DashboardInfoT } from "~/lib/utils/workspaceDashboard";
+import {
+  getPluginArtifactCatalog,
+  type PluginArtifactCatalogEntry,
+} from "~/plugins/registry";
 import type { SkillCatalogEntry, SkillPayload } from "~/types/auth.type";
 import { useGetWidgetsStore } from "./useGetAppWidgets";
 import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
@@ -199,6 +203,7 @@ export function useAiFetchRequestInit() {
         finalWorkspaceState.agents = undefined;
 
       const skillsCatalog = getSkillsCatalog();
+      const pluginArtifacts = getPluginArtifactCatalog();
       const { slugs: forcedSkillSlugs } = parseSkillSlashCommands(incomingMessage);
       const selectedSkills: SkillPayload[] = [];
 
@@ -261,6 +266,7 @@ export function useAiFetchRequestInit() {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         tools: mcpToolsEnabled ? enabledTools : [],
         skills_catalog: skillsCatalog.length > 0 ? skillsCatalog : undefined,
+        plugin_artifacts: pluginArtifacts.length > 0 ? pluginArtifacts : undefined,
         selected_skills: selectedSkills.length > 0 ? selectedSkills : undefined,
       };
 
@@ -347,6 +353,7 @@ export function useAiFetchRequestInit() {
         finalWorkspaceState.agents = undefined;
 
       const skillsCatalog = getSkillsCatalog();
+      const pluginArtifacts = getPluginArtifactCatalog();
       const agentForModel = targetAgent ?? selectedCopilot;
       const agentModels = agentForModel?.models;
       const selectedModelId =
@@ -382,6 +389,7 @@ export function useAiFetchRequestInit() {
         ),
         tools: mcpToolsEnabled ? enabledTools : [],
         skills_catalog: skillsCatalog.length > 0 ? skillsCatalog : undefined,
+        plugin_artifacts: pluginArtifacts.length > 0 ? pluginArtifacts : undefined,
       };
 
       const queryUrl =
@@ -549,7 +557,7 @@ export function convertArtifactsToContextItems(
   artifacts: ArtifactT[],
 ): CopilotContextItem[] {
   return artifacts
-    .filter((artifact) => artifact.type !== "app")
+    .filter((artifact) => artifact.type === "text" || artifact.type === "html")
     .map((artifact) => {
       return {
         uuid: artifact.uuid,
@@ -619,6 +627,7 @@ type HumanQueryPayload = {
   timezone: string;
   tools?: AgentToolConfig[];
   skills_catalog?: SkillCatalogEntry[];
+  plugin_artifacts?: PluginArtifactCatalogEntry[];
   selected_skills?: SkillPayload[];
 };
 
@@ -631,6 +640,7 @@ type FunctionCallPayload = {
   workspace_options?: Record<string, boolean | string>;
   tools: AgentToolConfig[];
   skills_catalog?: SkillCatalogEntry[];
+  plugin_artifacts?: PluginArtifactCatalogEntry[];
   selected_skills?: SkillPayload[];
 };
 

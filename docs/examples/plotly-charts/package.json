@@ -1,14 +1,13 @@
 {
   "name": "workspace-plugin-plotly",
-  "version": "2.1.1",
+  "version": "2.4.0",
   "private": true,
   "description": "A FINOS Workspace widget plugin that draws any backend's Plotly figure with plotly.js",
   "author": "dlee-bq",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --test",
-    "demo-backend": "examples/.venv/bin/python examples/backend.py"
+    "test": "node --test"
   },
   "dependencies": {
     "mathjax": "4.1.3",

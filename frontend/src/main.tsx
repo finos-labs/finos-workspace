@@ -1,4 +1,4 @@
-import "@jose-donato/react-grid-layout/css/styles.css";
+import "react-grid-layout/css/styles.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
   Fragment,

@@ -1376,7 +1376,9 @@ class SharedAppViewed(BaseModel):
 class SignInStart(BaseModel):
     model_config = main_config
 
-    version: None | str = Field(default=None, max_length=64, description="The version of the web app that asks for the sign-in.")
+    version: None | str = Field(
+        default=None, max_length=64, description="The version of the web app that asks for the sign-in."
+    )
 
 
 class SignInStarted(BaseModel):
@@ -1464,6 +1466,13 @@ class SkillCreate(BaseModel, extra="ignore"):  # type: ignore[call-arg]
 class SkillReturn(SkillCreate):
     model_config = get_camel_config(from_attributes=True)
 
+    plugin_name: str | None = Field(
+        default=None,
+        description=(
+            "The widget plugin that provides this skill. A plugin's skill is read-only; "
+            "left out for the user's own skills"
+        ),
+    )
     uuid: UUID = Field(description="The UUID of the skill.")
     id_: UUID = Field(serialization_alias="id", alias="uuid", description="The UUID of the skill, repeated as `id`.")
     created_date: datetime = Field(

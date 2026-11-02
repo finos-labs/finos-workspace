@@ -41,6 +41,32 @@ SELECT r.name AS region, sum(s.units) AS units, sum(s.revenue) AS revenue
 FROM demo.monthly_sales s JOIN demo.regions r USING (region)
 GROUP BY r.name;
 
+CREATE TABLE demo.trades (
+  id integer PRIMARY KEY,
+  traded date NOT NULL,
+  region text NOT NULL,
+  desk text NOT NULL,
+  trader text NOT NULL,
+  product text NOT NULL,
+  currency text NOT NULL,
+  quantity integer NOT NULL,
+  price numeric(12, 2) NOT NULL,
+  notional numeric(16, 2) NOT NULL
+);
+INSERT INTO demo.trades
+SELECT i,
+       date '2024-01-01' + (i * 7 % 900),
+       (ARRAY['EMEA', 'APAC', 'Americas'])[1 + i % 3],
+       (ARRAY['Rates', 'Credit', 'Equities', 'Commodities', 'FX'])[1 + i % 5],
+       'Trader ' || lpad((1 + i * 13 % 40)::text, 2, '0'),
+       (ARRAY['Swap', 'Bond', 'Option', 'Future', 'Spot', 'Forward', 'Note'])[1 + i % 7],
+       (ARRAY['USD', 'EUR', 'GBP', 'JPY'])[1 + i * 3 % 4],
+       10 + i * 37 % 990,
+       round((20 + (i * 7919 % 48000) / 100.0)::numeric, 2),
+       round(((10 + i * 37 % 990) * (20 + (i * 7919 % 48000) / 100.0))::numeric, 2)
+FROM generate_series(1, 200000) AS i;
+CREATE INDEX trades_traded ON demo.trades (traded);
+
 GRANT USAGE ON SCHEMA demo TO explorer;
 GRANT SELECT ON ALL TABLES IN SCHEMA demo TO explorer;
 SQL

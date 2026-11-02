@@ -8,6 +8,7 @@ import {
   createWidgetEndpoint,
   createWidgetInitParams,
   currentDateModifier,
+  streamEndpointOf,
 } from "~/lib/utils/widgetParams";
 import { malformed, partial } from "../../mocks";
 
@@ -234,6 +235,28 @@ describe("Widget Params Utility Functions", () => {
     it("should handle undefined/null", () => {
       expect(cleanURL(malformed(undefined))).toBe(undefined);
       expect(cleanURL(malformed(null))).toBe(undefined);
+    });
+  });
+
+  describe("streamEndpointOf", () => {
+    it("resolves the path of a stream against the backend's address, as the endpoint is", () => {
+      expect(
+        streamEndpointOf({ streamEndpoint: "/ws/ticks" }, "http://localhost:7798"),
+      ).toBe("http://localhost:7798/ws/ticks");
+      expect(
+        streamEndpointOf({ streamEndpoint: "ws/ticks" }, "http://localhost:7798/"),
+      ).toBe("http://localhost:7798/ws/ticks");
+    });
+
+    it("keeps an absolute address, and says nothing when the widget has no stream", () => {
+      expect(
+        streamEndpointOf(
+          { streamEndpoint: "https://other.example/ws" },
+          "http://localhost:7798",
+        ),
+      ).toBe("https://other.example/ws");
+      expect(streamEndpointOf({}, "http://localhost:7798")).toBeUndefined();
+      expect(streamEndpointOf(undefined, "http://localhost:7798")).toBeUndefined();
     });
   });
 

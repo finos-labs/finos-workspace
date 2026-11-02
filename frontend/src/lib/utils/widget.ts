@@ -19,6 +19,7 @@ import type { BackendConnectorStore, Source } from "~/lib/state/backendConnector
 import { useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { isRenderableVizType } from "~/lib/types/app";
 import { createURLString } from "~/lib/utils";
+import { streamEndpointOf } from "~/lib/utils/widgetParams";
 import WIDGETS from "~/lib/widgets.json";
 import { getPluginVizTypes } from "~/plugins/registry";
 import type { WidgetType } from "~/utils/zodForms";
@@ -116,6 +117,7 @@ export function convertAdvancedBackend(source: Source): WidgetT[] {
   return Object.keys(widgets).flatMap((widgetId) => {
     const widget = widgets[widgetId];
     if (!isRenderableVizType(widget.type, pluginTypes)) return [];
+    const streamEndpoint = streamEndpointOf(widget.data, source.url);
     const newWidget = {
       ...cloneDeep({ ...widget }),
       type: widget.type,
@@ -123,6 +125,7 @@ export function convertAdvancedBackend(source: Source): WidgetT[] {
         url: createURLString(widget.endpoint, source.url),
         method: widget.method ?? "GET",
       },
+      ...(streamEndpoint ? { data: { ...widget.data, streamEndpoint } } : {}),
       external: true,
       widgetType: "backend",
       sourceId: source.id,

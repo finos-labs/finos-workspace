@@ -1,7 +1,27 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import widget, { contextOf, csvOf, identifier, isNumeric, SOURCES, stateOf } from "../src/entry.js";
+import widget, { contextOf, csvOf, identifier, isNumeric, seedOf, SOURCES, startOf, stateOf } from "../src/entry.js";
+
+test("a query the agent gives seeds the editor, for the source it names", () => {
+  assert.equal(seedOf(undefined), null);
+  assert.equal(seedOf({ source: "files" }), null);
+  assert.equal(seedOf({ sql: "  " }), null);
+  assert.deepEqual(seedOf({ source: "files", sql: "SELECT 1" }), { source: "files", sql: "SELECT 1" });
+  assert.deepEqual(seedOf({ source: "oracle", sql: "SELECT 1" }), { source: null, sql: "SELECT 1" });
+  assert.equal(seedOf({ sql: "x".repeat(100000) }).sql.length, 32768);
+});
+
+test("the seed is the start of a card that has not been used, and never replaces what the user saved", () => {
+  const seeded = startOf(null, { source: "files", sql: "SELECT region FROM sales" });
+  assert.equal(seeded.source, "files");
+  assert.equal(seeded.sql.files, "SELECT region FROM sales");
+  assert.equal(seeded.sql.postgres, stateOf(null).sql.postgres);
+  const kept = startOf({ source: "postgres", sql: { postgres: "SELECT 2", files: "SELECT 3" } }, { source: "files", sql: "SELECT 1" });
+  assert.deepEqual(kept, { source: "postgres", sql: { postgres: "SELECT 2", files: "SELECT 3" } });
+  assert.deepEqual(startOf(null, undefined), stateOf(null));
+  assert.equal(startOf(null, { sql: "SELECT 9" }).sql[stateOf(null).source], "SELECT 9");
+});
 
 test("a name is quoted only when it has to be", () => {
   assert.equal(identifier("readings"), "readings");

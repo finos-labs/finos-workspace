@@ -250,7 +250,7 @@ data: {"suggestions":["Show it as a chart"]}
 
 ### Artifacts
 
-An artifact is an object with a `type`, a `uuid`, a `name` and a `description`. An `html` artifact also has a `content` string that holds a complete HTML document, which the web app shows in a sandboxed frame. An `app` artifact has an `app` object, which is a definition in the format of [apps.json](../schemas/apps-json.mdx), and `widget_refs`, which lists the widgets that the app uses. The agent turns a table of rows into an `html` artifact that is styled for the light and the dark theme.
+An artifact is an object with a `type`, a `uuid`, a `name` and a `description`. An `html` artifact also has a `content` string that holds a complete HTML document, which the web app shows in a sandboxed frame. An `app` artifact has an `app` object, which is a definition in the format of [apps.json](../schemas/apps-json.mdx), and `widget_refs`, which lists the widgets that the app uses. A `plugin` artifact has a `plugin` object with the id of the plugin and the id of the widget, a `data` object with the data that the agent filled in, and an optional `config` object with the settings of the card. The agent turns a table of rows into an `html` artifact that is styled for the light and the dark theme.
 
 ### Citations
 

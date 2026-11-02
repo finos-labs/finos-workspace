@@ -72,6 +72,15 @@ export function createURLString(endpoint: string, base?: string | URL) {
   return cleanURL(`${baseURL}/${endpoint}`);
 }
 
+export function streamEndpointOf(
+  data: { streamEndpoint?: string } | undefined,
+  base: string | undefined,
+): string | undefined {
+  return typeof data?.streamEndpoint === "string"
+    ? createURLString(data.streamEndpoint, base)
+    : undefined;
+}
+
 export function createURL(
   endpoint: string,
   base?: string | URL,

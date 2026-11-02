@@ -10,3 +10,4 @@ psycopg-binary==3.3.6
 starlette==1.8.0
 typing_extensions==4.16.0
 uvicorn==0.54.0
+websockets==17.3

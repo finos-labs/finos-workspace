@@ -1,6 +1,9 @@
-import { Responsive } from "@jose-donato/react-grid-layout";
 import { render, screen } from "@testing-library/react";
-import type { ComponentType, ReactNode } from "react";
+import {
+  noCompactor,
+  ResponsiveGridLayout,
+  verticalCompactor,
+} from "react-grid-layout";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { GridLayout } from "~/components/GridLayout";
 import useIsMobile from "~/hooks/useIsMobile";
@@ -18,16 +21,13 @@ vi.mock("~/lib/utils", () => ({
   saveToLS: vi.fn(),
 }));
 
-vi.mock("@jose-donato/react-grid-layout", () => ({
-  Responsive: vi.fn(({ children }) => (
+vi.mock("react-grid-layout", () => ({
+  ResponsiveGridLayout: vi.fn(({ children }) => (
     <div data-testid="responsive-grid">{children}</div>
   )),
-  WidthProvider: vi.fn(
-    (Component: ComponentType<{ children?: ReactNode }>) =>
-      ({ children, ...props }: { children?: ReactNode }) => (
-        <Component {...props}>{children}</Component>
-      ),
-  ),
+  useContainerWidth: vi.fn(() => ({ width: 1280, containerRef: { current: null } })),
+  noCompactor: { type: null },
+  verticalCompactor: { type: "vertical" },
 }));
 
 vi.mock("~/components/GridLayout.hooks", () => ({
@@ -46,6 +46,7 @@ vi.mock("~/components/Icon", () => ({
   default: vi.fn(() => <div data-testid="icon">Icon</div>),
 }));
 
+const mockResponsiveGridLayout = ResponsiveGridLayout as unknown as Mock;
 const mockUseTabContext = vi.mocked(useTabContext);
 const mockUseShallowThemeStore = vi.mocked(useShallowThemeStore);
 const mockUseShallowAppStore = vi.mocked(useShallowAppStore);
@@ -151,8 +152,8 @@ describe("GridLayout", () => {
 
     expect(screen.getByTestId("grid-root")).toBeInTheDocument();
 
-    const lastCall = nthLastCall(Responsive as Mock)[0];
-    expect(lastCall.isDraggable).toBe(false);
+    const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
+    expect(lastCall.dragConfig.enabled).toBe(false);
   });
 
   it("handles shared mode correctly", () => {
@@ -169,8 +170,8 @@ describe("GridLayout", () => {
 
     expect(screen.getByTestId("grid-root")).toBeInTheDocument();
 
-    const lastCall = nthLastCall(Responsive as Mock)[0];
-    expect(lastCall.isDraggable).toBe(false);
+    const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
+    expect(lastCall.dragConfig.enabled).toBe(false);
   });
 
   it("keeps widgets in place but lets them be resized on a locked dashboard", () => {
@@ -187,9 +188,9 @@ describe("GridLayout", () => {
 
     expect(screen.getByTestId("grid-root")).toBeInTheDocument();
 
-    const lastCall = nthLastCall(Responsive as Mock)[0];
-    expect(lastCall.isDraggable).toBe(false);
-    expect(lastCall.isResizable).toBe(true);
+    const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
+    expect(lastCall.dragConfig.enabled).toBe(false);
+    expect(lastCall.resizeConfig.enabled).toBe(true);
   });
 
   it("lets widgets be moved and resized on an unlocked dashboard", () => {
@@ -199,9 +200,9 @@ describe("GridLayout", () => {
       </GridLayout>,
     );
 
-    const lastCall = nthLastCall(Responsive as Mock)[0];
-    expect(lastCall.isDraggable).toBe(true);
-    expect(lastCall.isResizable).toBe(true);
+    const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
+    expect(lastCall.dragConfig.enabled).toBe(true);
+    expect(lastCall.resizeConfig.enabled).toBe(true);
   });
 
   it("renders drag and drop input element", () => {
@@ -224,8 +225,8 @@ describe("GridLayout", () => {
 
     expect(screen.getByTestId("grid-root")).toBeInTheDocument();
 
-    const lastCall = nthLastCall(Responsive as Mock)[0];
-    expect(lastCall.isDroppable).toBe(true);
+    const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
+    expect(lastCall.dropConfig.enabled).toBe(true);
   });
 
   it("applies isBounded prop correctly", () => {
@@ -237,8 +238,8 @@ describe("GridLayout", () => {
 
     expect(screen.getByTestId("grid-root")).toBeInTheDocument();
 
-    const lastCall = nthLastCall(Responsive as Mock)[0];
-    expect(lastCall.isBounded).toBe(true);
+    const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
+    expect(lastCall.dragConfig.bounded).toBe(true);
   });
 
   it("applies custom draggableHandle prop", () => {
@@ -250,8 +251,8 @@ describe("GridLayout", () => {
 
     expect(screen.getByTestId("grid-root")).toBeInTheDocument();
 
-    const lastCall = nthLastCall(Responsive as Mock)[0];
-    expect(lastCall.draggableHandle).toBe(".custom-handle");
+    const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
+    expect(lastCall.dragConfig.handle).toBe(".custom-handle");
   });
 
   it("applies custom rowHeight prop", () => {
@@ -263,21 +264,8 @@ describe("GridLayout", () => {
 
     expect(screen.getByTestId("grid-root")).toBeInTheDocument();
 
-    const lastCall = nthLastCall(Responsive as Mock)[0];
+    const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
     expect(lastCall.rowHeight).toBe(50);
-  });
-
-  it("applies custom transformScale prop", () => {
-    render(
-      <GridLayout transformScale={1.5}>
-        <div>Content</div>
-      </GridLayout>,
-    );
-
-    expect(screen.getByTestId("grid-root")).toBeInTheDocument();
-
-    const lastCall = nthLastCall(Responsive as Mock)[0];
-    expect(lastCall.transformScale).toBe(1.5);
   });
 
   it("calls setIsResizingGridElement from theme store", () => {
@@ -296,10 +284,21 @@ describe("GridLayout", () => {
     expect(mockSetIsResizingGridElement).not.toHaveBeenCalled();
   });
 
-  it("handles grid snapping settings", () => {
+  it("compacts vertically when grid snapping is vertical", () => {
+    render(
+      <GridLayout>
+        <div>Content</div>
+      </GridLayout>,
+    );
+
+    const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
+    expect(lastCall.compactor).toBe(verticalCompactor);
+  });
+
+  it("does not compact when grid snapping is off", () => {
     mockUseShallowThemeStore.mockReturnValue({
       ...defaultThemeStoreValue,
-      gridSnapping: "horizontal",
+      gridSnapping: "off",
     });
 
     render(
@@ -308,10 +307,8 @@ describe("GridLayout", () => {
       </GridLayout>,
     );
 
-    expect(screen.getByTestId("grid-root")).toBeInTheDocument();
-
-    const lastCall = nthLastCall(Responsive as Mock)[0];
-    expect(lastCall.compactType).toBe("horizontal");
+    const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
+    expect(lastCall.compactor).toBe(noCompactor);
   });
 
   it("handles grid corners settings", () => {
@@ -328,8 +325,8 @@ describe("GridLayout", () => {
 
     expect(screen.getByTestId("grid-root")).toBeInTheDocument();
 
-    const lastCall = nthLastCall(Responsive as Mock)[0];
-    expect(lastCall.resizeHandles).toEqual(["se", "sw", "ne", "nw"]);
+    const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
+    expect(lastCall.resizeConfig.handles).toEqual(["se", "sw", "ne", "nw"]);
   });
 
   it("handles undefined tabId gracefully", () => {
@@ -400,7 +397,7 @@ describe("GridLayout", () => {
         </GridLayout>,
       );
 
-      const lastCall = nthLastCall(Responsive as Mock)[0];
+      const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
       const xxs = lastCall.layouts.xxs;
       const xs = lastCall.layouts.xs;
 
@@ -424,7 +421,7 @@ describe("GridLayout", () => {
         </GridLayout>,
       );
 
-      const lastCall = nthLastCall(Responsive as Mock)[0];
+      const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
       expect(lastCall.layouts.xxs[0].h).toBe(8);
     });
 
@@ -442,7 +439,7 @@ describe("GridLayout", () => {
         </GridLayout>,
       );
 
-      const lastCall = nthLastCall(Responsive as Mock)[0];
+      const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
       expect(lastCall.layouts.xxs[0].h).toBe(12);
     });
 
@@ -458,7 +455,7 @@ describe("GridLayout", () => {
         </GridLayout>,
       );
 
-      const lastCall = nthLastCall(Responsive as Mock)[0];
+      const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
       expect(lastCall.layouts.xxs).toEqual([]);
       expect(lastCall.layouts.xs).toEqual([]);
     });
@@ -480,7 +477,7 @@ describe("GridLayout", () => {
         </GridLayout>,
       );
 
-      const lastCall = nthLastCall(Responsive as Mock)[0];
+      const lastCall = nthLastCall(mockResponsiveGridLayout)[0];
 
       for (const breakpoint of ["sm", "md", "lg", "xl"] as const) {
         expect(lastCall.layouts[breakpoint]).toEqual(mockLayouts);

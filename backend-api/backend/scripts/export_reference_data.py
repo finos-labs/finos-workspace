@@ -277,6 +277,10 @@ def collect_admin_cli() -> dict[str, Any]:
 PERMISSION_MEANINGS = {
     "core:default": "The lifecycle, error reporting and logs. Every widget always has it.",
     "core:data:read": "Reading the data trait.",
+    "core:data:stream": (
+        "Receiving the messages of the widget's stream, which the host opens as a WebSocket "
+        "at the `data.streamEndpoint` of the widget."
+    ),
     "core:params:write": (
         "Writing to params and to param:<name>. Only declared names can be written, "
         "and the host coerces each value to the type of its parameter."

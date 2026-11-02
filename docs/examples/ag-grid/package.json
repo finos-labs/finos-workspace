@@ -1,16 +1,17 @@
 {
   "name": "workspace-plugin-ag-grid",
-  "version": "1.0.6",
+  "version": "2.2.1",
   "private": true,
-  "description": "A FINOS Workspace widget plugin that renders ag-grid Community tables with streaming updates and grid events",
+  "description": "A FINOS Workspace widget plugin with four AgGrid widgets: a table, a live grid on a WebSocket, a server-side table over Postgres and a SQL editor with the result in AgGrid",
   "author": "dlee-bq",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --test"
+    "test": "node --test && .venv/bin/python -m pytest -q tests"
   },
   "dependencies": {
-    "ag-grid-community": "^32.3.3"
+    "ag-grid-community": "32.3.9",
+    "ag-grid-enterprise": "32.3.9"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",
@@ -18,8 +19,5 @@
   },
   "engines": {
     "node": ">=20"
-  },
-  "optionalDependencies": {
-    "ag-grid-enterprise": "^32.3.3"
   }
 }

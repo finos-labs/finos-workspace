@@ -7,11 +7,11 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { Layout } from "react-grid-layout";
+import type { LayoutItem } from "react-grid-layout";
 import { useIsDashboardLocked, useShallowAppStore, type Widget } from "~/lib/state/app";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 
-export type GridItem = Layout & { mobileH?: number };
+export type GridItem = LayoutItem & { mobileH?: number };
 
 type TabProviderProps = {
   currentTab: string;
@@ -49,7 +49,7 @@ export function TabProvider(props: TabProviderProps) {
   }));
 
   const setLayoutsCb = useCallback(
-    (layouts: Layout[]) => {
+    (layouts: LayoutItem[]) => {
       if (props.setLayouts) {
         props.setLayouts(layouts);
 

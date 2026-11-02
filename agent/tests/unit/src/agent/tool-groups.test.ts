@@ -169,6 +169,35 @@ describe("buildToolCatalog", () => {
   });
 });
 
+describe("the components group", () => {
+  const component = (name: string, description: string) => ({
+    plugin: "kit",
+    widget: name.toLowerCase(),
+    name,
+    description,
+    data_schema: { type: "object" },
+  });
+
+  it("names each component the user has, so the model can match one to the question", () => {
+    const c = buildToolCatalog(["show_plugin_artifact"], [], [
+      component("Plotly chart", "A chart of a few series over categories or time."),
+      component("Funnel", "Pipeline stages with a count for each."),
+    ]);
+    const group = c.groups.find((g) => g.id === "components");
+    expect(group?.summary).toContain("Plotly chart: A chart of a few series");
+    expect(group?.summary).toContain("Funnel: Pipeline stages with a count for each.");
+    expect(renderToolCatalog(c, new Set())).toContain("Funnel: Pipeline stages");
+  });
+
+  it("lists at most twelve, each cut short", () => {
+    const many = Array.from({ length: 20 }, (_, i) => component(`C${i}`, "x".repeat(500)));
+    const group = buildToolCatalog(["show_plugin_artifact"], [], many).groups[0];
+    expect(group.summary).toContain("C11:");
+    expect(group.summary).not.toContain("C12:");
+    expect(group.summary.length).toBeLessThan(2_500);
+  });
+});
+
 describe("activeToolNames", () => {
   const catalog = buildToolCatalog(ALL, MCP);
 

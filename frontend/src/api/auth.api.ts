@@ -656,9 +656,7 @@ async function readAgentsDirectly(
   const initRequest: RequestInit = { signal };
   let res: Response;
   try {
-    res = await fetch(createURL("agents.json", url), initRequest).then((res) =>
-      res.ok ? res : fetch(createURL("copilots.json", url), initRequest),
-    );
+    res = await fetch(createURL("agents.json", url), initRequest);
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw error;

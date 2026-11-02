@@ -29,7 +29,7 @@ const logger = getLogger(["app", "routes", "query"]);
 const audit = getLogger(["audit"]);
 
 const MAX_BODY_BYTES = 64 * 1024 * 1024;
-const LIMITS = { messages: 20_000, widgets: 20_000, tools: 500, skills: 500, documents: 50, context: 500, options: 100 } as const;
+const LIMITS = { messages: 20_000, widgets: 20_000, tools: 500, skills: 500, pluginArtifacts: 100, documents: 50, context: 500, options: 100 } as const;
 
 const MessageSchema = z
   .object({
@@ -135,6 +135,20 @@ export const QueryRequestSchema = z.object({
     .max(LIMITS.skills)
     .optional()
     .describe("The skills in the user's library."),
+  plugin_artifacts: z
+    .array(
+      z.object({
+        plugin: z.string().max(100).describe("The id of the plugin that offers the artifact."),
+        widget: z.string().max(100).describe("The id of the widget the artifact is."),
+        name: z.string().max(500).describe("The name the artifact is shown under."),
+        description: z.string().max(4_000).describe("What the artifact holds and when it is useful."),
+        data_schema: z.record(z.string(), z.unknown()).describe("The JSON Schema of the data the artifact holds."),
+        config_schema: z.record(z.string(), z.unknown()).optional().describe("The JSON Schema of the settings the user picks for the artifact, when it has any."),
+      }),
+    )
+    .max(LIMITS.pluginArtifacts)
+    .optional()
+    .describe("The artifacts that the plugins of the organization offer the agent, each with the data it may fill in."),
   selected_skills: z
     .array(z.object({
       slug: z.string().max(200).describe("The slug of the skill."),

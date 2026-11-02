@@ -97,6 +97,36 @@ export function resolvePluginWidget(
   return findWidget(state.plugins, reference.id, reference.widget);
 }
 
+export interface PluginArtifactCatalogEntry {
+  plugin: string;
+  widget: string;
+  name: string;
+  description: string;
+  data_schema: Record<string, unknown>;
+  config_schema?: Record<string, unknown>;
+}
+
+export function getPluginArtifactCatalog(): PluginArtifactCatalogEntry[] {
+  return usePluginRegistryStore.getState().plugins.flatMap((plugin) =>
+    plugin.widgets.flatMap((widget) =>
+      widget.artifact
+        ? [
+            {
+              plugin: plugin.id,
+              widget: widget.id,
+              name: widget.name,
+              description: widget.artifact.description,
+              data_schema: widget.artifact.data,
+              ...(Object.keys(widget.settings?.schema.properties ?? {}).length
+                ? { config_schema: widget.settings?.schema }
+                : {}),
+            },
+          ]
+        : [],
+    ),
+  );
+}
+
 export function pluginWidgetId(pluginId: string, widgetId: string) {
   return `plugin:${pluginId}:${widgetId}`;
 }
