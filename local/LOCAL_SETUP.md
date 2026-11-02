@@ -93,7 +93,9 @@ The backend reads `backend-api/backend/envs/.env`, the same file the root `docke
 
 Edit `envs/.env` freely, then `make restart s=backend`. To get a fresh one, delete it, and `config.toml` next to it, and run `ADMIN_EMAIL=<your-email> make up`; if the database already holds the old administrator, run `make reset` instead.
 
-The frontend uses `frontend/.env`, except that `compose.yaml` points the backend and AI URLs at `localhost`.
+The frontend uses `frontend/.env`, except that `compose.yaml` points the backend and AI URLs at `localhost`, and turns the
+MCP Companion entry in the menu and the scripts of HTML widgets on (`VITE_UI_SHOW_COMPANION_MCP_MODE` and
+`VITE_ALLOW_HTML_JS_EXECUTION`), which deployments leave off.
 
 A new backend setting needs adding in more places than this folder: `envs/.env.example` for local runs, and the values of every environment you deploy to.
 

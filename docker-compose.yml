@@ -136,7 +136,8 @@ services:
       BACKEND_URL: ${API_URL:-http://localhost:8000}
       AI_API_URL: ${AI_API_URL:-http://localhost:7777}
       AI_COPILOT_ENABLED: ${AI_COPILOT_ENABLED:-true}
-      ALLOW_HTML_JS_EXECUTION: ${ALLOW_HTML_JS_EXECUTION:-false}
+      ALLOW_HTML_JS_EXECUTION: ${ALLOW_HTML_JS_EXECUTION:-true}
+      UI_SHOW_COMPANION_MCP_MODE: ${UI_SHOW_COMPANION_MCP_MODE:-true}
     ports:
       - "3000:8080"
     depends_on:

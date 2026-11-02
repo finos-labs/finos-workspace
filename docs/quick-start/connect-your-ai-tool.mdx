@@ -17,7 +17,9 @@ You need:
 
 ## 1. Show the MCP Companion entry
 
-The MCP Companion entry is off by default. The operator of the deployment turns it on:
+The MCP Companion entry is off by default on a deployment. The two development stacks of the repository, the root
+`docker-compose.yml` and `local/`, turn it on for you, so if you run one of them, the main menu already shows the entry
+**MCP Companion** and you can go on with step 2. On a deployment, the operator turns it on:
 
 1. Set `UI_SHOW_COMPANION_MCP_MODE` to `true` on the container of the web app. [Web app configuration](../reference/configuration/web-app.mdx) describes this setting.
 2. Restart the container.

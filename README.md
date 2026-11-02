@@ -137,7 +137,10 @@ The rest of `envs/.env.example` stays as it is: `DATABASE_TYPE=mysql`, `DB_PORT=
 ### Web (`environment:` of the `web` service)
 
 `BACKEND_URL`, `AI_API_URL` and `AI_COPILOT_ENABLED` are set in the compose file (from `API_URL`, `AI_API_URL` and
-`AI_COPILOT_ENABLED` above). Every other setting is one more `environment:` entry. A variable that is not set keeps its
+`AI_COPILOT_ENABLED` above), and so are `ALLOW_HTML_JS_EXECUTION` and `UI_SHOW_COMPANION_MCP_MODE`, which this stack turns
+on for development: scripts run in HTML widgets and Copilot artifacts, and the MCP Companion entry shows in the menu. A
+deployment sets neither, so both keep their code default of `false`, unless its environment says otherwise. Every other
+setting is one more `environment:` entry. A variable that is not set keeps its
 default (in `frontend/src/lib/runtimeConfigSchema.ts`); a true/false variable must be exactly `true` or `false`, or the
 container refuses to start.
 
