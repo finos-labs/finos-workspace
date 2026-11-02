@@ -166,7 +166,10 @@ test.beforeAll(async ({ browser }, testInfo) => {
       data: { name: BACKEND_NAME, url: `http://${BACKEND_HOST}:${BACKEND_PORT}` },
     }),
   );
-  await grantBackend(api, roleUuid as string, entityUuid, BACKEND_NAME);
+  await grantBackend(api, roleUuid as string, entityUuid, BACKEND_NAME, [
+    "e2e_rows",
+    "e2e_probe",
+  ]);
 
   await page.goto("/app");
   await page.waitForLoadState("networkidle");

@@ -10,7 +10,7 @@ from sqlalchemy import delete, insert, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api import auth_helpers, crud, crypto, frame_proxy, helpers, models, schemas, source_proxy, ws_relay
+from api import auth_helpers, crud, crypto, frame_proxy, helpers, models, schemas, source_proxy, widget_access, ws_relay
 from api.database import aget_read_db, aget_write_db
 from api.identity import headers_for as identity_headers
 from api.models import ApiSource, FileWidget
@@ -299,20 +299,22 @@ async def delete_user_api_source(
 
 async def _readable_source(db: AsyncSession, user, source_uuid: UUID):
     try:
-        trusted = source_proxy.decided(user.uuid, source_uuid)
-        if trusted is None:
+        held = source_proxy.decided(user.uuid, source_uuid)
+        if held is None:
             entity_uuid = await crud.get_user_entity_uuid(db, user.permissions_uuid)
             source = await readable_backend(db, user.uuid, entity_uuid, source_uuid)
             if source is not None:
                 trusted = await source_proxy.owned_by_superuser(db, source)
-                source_proxy.decide(user.uuid, source_uuid, trusted)
+                granted = await widget_access.granted_widgets(db, user.uuid, entity_uuid, source)
+                source_proxy.decide(user.uuid, source_uuid, trusted, granted)
         else:
+            trusted, granted = held
             source = (
                 await db.execute(select(models.ApiSource).where(models.ApiSource.uuid == source_uuid))
             ).scalar_one_or_none()
         if source is None:
             raise source_proxy.refused("this data connection is not available to you", 404)
-        return source_proxy.snapshot(source), trusted
+        return source_proxy.snapshot(source), trusted, granted
     finally:
         await db.commit()
 
@@ -324,7 +326,10 @@ async def _readable_source(db: AsyncSession, user, source_uuid: UUID):
     description=(
         "Sends the request to the data connection with its stored credentials and the user's email as "
         "`X-Workspace-User`, and streams the answer back with the connection's own status code. Nothing "
-        "secret reaches the browser. A refusal by this route carries the header `X-Workspace-Proxy-Error`."
+        "secret reaches the browser. For a connection that a role grants and the user does not keep, the route "
+        "forwards only the catalog files of the connection and the routes that its widgets.json declares for "
+        "widgets that one of the user's roles grants, and answers 403 to any other. A refusal by this route "
+        "carries the header `X-Workspace-Proxy-Error`."
     ),
 )
 async def request_through_api_source(
@@ -335,9 +340,11 @@ async def request_through_api_source(
     db: AsyncSession = Depends(aget_read_db),
 ):
     await source_proxy.count(user.uuid)
-    source, trusted = await _readable_source(db, user, source_uuid)
+    source, trusted, granted = await _readable_source(db, user, source_uuid)
     signed = await identity_headers(user.uuid, user.email, user.session_uuid, str(source.url))
     url, headers = source_proxy.target_of(source, payload.url, payload.headers, user.email, signed)
+    if granted is not None:
+        await widget_access.require(source, user.email, trusted, signed, granted, payload.method, url)
     return await source_proxy.send(
         source, payload.method, url, headers, payload.body, payload.accept, user.uuid, trusted=trusted, request=request
     )
@@ -417,7 +424,9 @@ async def grant_frame(
                 select(models.Session.uuid).where(models.Session.token_hash == crypto.hash_token(session_token))
             )
         ).scalar_one_or_none()
-    source, trusted = await _readable_source(db, user, source_uuid)
+    source, trusted, granted = await _readable_source(db, user, source_uuid)
+    if granted is not None and payload.widget_id not in granted:
+        raise source_proxy.refused("none of your roles gives you this widget", 403)
     signed = await identity_headers(user.uuid, user.email, session_uuid, str(source.url))
     widgets = await source_proxy.fetch_json(source, user.email, trusted, signed)
     page = frame_proxy.page_of(widgets, payload.widget_id, str(source.url))
@@ -427,8 +436,16 @@ async def grant_frame(
 
 async def _frame_access(db: AsyncSession, claims: dict, fresh: bool = False):
     user_uuid, source_uuid = UUID(claims["sub"]), UUID(claims["src"])
-    if not fresh and (held := frame_proxy.cached_access(user_uuid, source_uuid)) is not None:
-        return held
+    held = None if fresh else frame_proxy.cached_access(user_uuid, source_uuid)
+    if held is None:
+        held = await _read_frame_access(db, claims, user_uuid, source_uuid)
+    source, email, trusted, granted = held
+    if granted is not None and claims["wid"] not in granted:
+        raise source_proxy.refused("none of your roles gives you this widget", 403)
+    return source, email, trusted
+
+
+async def _read_frame_access(db: AsyncSession, claims: dict, user_uuid: UUID, source_uuid: UUID):
     try:
         user = (
             await db.execute(select(models.User.email, models.User.permissions_uuid).where(models.User.uuid == user_uuid))
@@ -448,8 +465,8 @@ async def _frame_access(db: AsyncSession, claims: dict, fresh: bool = False):
         if source is None:
             raise source_proxy.refused("this data connection is not available to you", 404)
         trusted = await source_proxy.owned_by_superuser(db, source)
-        frame_proxy.remember_access(user_uuid, source_uuid, source, user.email, trusted)
-        return frame_proxy.cached_access(user_uuid, source_uuid)
+        granted = await widget_access.granted_widgets(db, user_uuid, entity_uuid, source)
+        return frame_proxy.remember_access(user_uuid, source_uuid, source, user.email, trusted, granted)
     finally:
         await db.commit()
 

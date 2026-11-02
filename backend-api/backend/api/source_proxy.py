@@ -363,18 +363,18 @@ def remember(cache: dict, limit: int, key, value) -> None:
     cache[key] = value
 
 
-_decisions: dict[tuple[UUID, UUID], tuple[float, bool]] = {}
+_decisions: dict[tuple[UUID, UUID], tuple[float, bool, frozenset[str] | None]] = {}
 
 
-def decided(user_uuid: UUID, source_uuid: UUID) -> bool | None:
+def decided(user_uuid: UUID, source_uuid: UUID) -> tuple[bool, frozenset[str] | None] | None:
     held = _decisions.get((user_uuid, source_uuid))
     if held and time.monotonic() - held[0] < DECISION_SECONDS:
-        return held[1]
+        return held[1], held[2]
     return None
 
 
-def decide(user_uuid: UUID, source_uuid: UUID, trusted: bool) -> None:
-    remember(_decisions, DECISION_ENTRIES, (user_uuid, source_uuid), (time.monotonic(), trusted))
+def decide(user_uuid: UUID, source_uuid: UUID, trusted: bool, granted: frozenset[str] | None) -> None:
+    remember(_decisions, DECISION_ENTRIES, (user_uuid, source_uuid), (time.monotonic(), trusted, granted))
 
 
 def origin_of(url: str) -> str:

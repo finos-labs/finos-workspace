@@ -91,6 +91,7 @@ export async function grantBackend(
   roleUuid: string,
   entityUuid: string,
   name: string,
+  widgetIds: string[] = [],
 ): Promise<void> {
   const listed = await api.get(`/entity/data-backends/${entityUuid}`);
   if (!listed.ok()) throw new Error(`${listed.url()}: ${listed.status()}`);
@@ -105,6 +106,7 @@ export async function grantBackend(
         type: "backend",
         category: "data-connectors",
         access: "access",
+        widgets: widgetIds.map((widgetId) => ({ widgetId, access: "access" })),
       },
     ],
   });

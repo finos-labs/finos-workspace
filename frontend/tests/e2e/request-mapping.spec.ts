@@ -64,7 +64,7 @@ test.beforeAll(async ({ browser }, testInfo) => {
     }),
   );
   roleUuid = await createRole(api, userInfo().email, SOURCE_NAME);
-  await grantBackend(api, roleUuid, entityUuid, SOURCE_NAME);
+  await grantBackend(api, roleUuid, entityUuid, SOURCE_NAME, ["e2e_team_report"]);
 
   await page.goto("/app");
   await page.waitForLoadState("networkidle");
