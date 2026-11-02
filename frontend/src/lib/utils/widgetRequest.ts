@@ -15,7 +15,7 @@ import { PLACEHOLDER, placeholders } from "./widgetsContractChecks";
 
 export interface BackendRequest {
   url: string;
-  method: HttpMethod | "PUT";
+  method: HttpMethod | "PUT" | "OPTIONS";
   sourceId?: string;
   paramHeaders: Record<string, string>;
   body?: string;

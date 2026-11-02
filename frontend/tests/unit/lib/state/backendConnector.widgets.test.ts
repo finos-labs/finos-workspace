@@ -2,10 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Source } from "~/lib/state/backendConnector";
 import { validateBackend, validateBackendEndpoints } from "~/lib/utils/validateBackend";
 import type { WidgetsType } from "~/utils/zodForms";
+import { throughSourceProxy } from "../../../mocks/sourceProxy";
 import { installWidgetsSchemaFixture } from "../../../mocks/widgetsSchema";
 
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+global.fetch = throughSourceProxy(mockFetch);
 installWidgetsSchemaFixture();
 
 describe("validateBackend - widgets.json endpoint behavior", () => {
@@ -18,7 +19,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
     id: "test-uuid",
   };
 
-  const mockBackendUrl = new URL(mockSource.url);
   const mockHeaders = { Authorization: "Bearer test-token" };
 
   beforeEach(() => {
@@ -336,7 +336,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
     const probedPaths = () =>
       mockFetch.mock.calls.map(([url]) => new URL(url as string).pathname);
 
-    it("sends one plain OPTIONS per distinct route, with no credentials", async () => {
+    it("has the API send one plain OPTIONS per distinct route", async () => {
       answer({ "/a": 405, "/teams/eu": 405, "/rows/1": 405, "/items/7": 200 });
       const widgets = {
         first: widget("/a"),
@@ -362,7 +362,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         ]),
       } as unknown as WidgetsType;
 
-      const report = await validateBackendEndpoints(widgets, mockBackendUrl);
+      const report = await validateBackendEndpoints(widgets, mockSource);
 
       expect(report).toEqual({ failed: [], unchecked: [] });
       const [canary, ...routes] = probedPaths();
@@ -370,8 +370,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       expect(routes.sort()).toEqual(["/a", "/items/7", "/rows/1", "/teams/eu"]);
       for (const [url, init] of mockFetch.mock.calls) {
         expect(new URL(url as string).search).toBe("");
-        expect(init).toMatchObject({ method: "OPTIONS", credentials: "omit" });
-        expect(init).not.toHaveProperty("headers");
+        expect(init).toMatchObject({ method: "OPTIONS", headers: {} });
         expect(init).not.toHaveProperty("body");
       }
     });
@@ -384,7 +383,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         also_missing: widget("/gone"),
       } as unknown as WidgetsType;
 
-      const report = await validateBackendEndpoints(widgets, mockBackendUrl);
+      const report = await validateBackendEndpoints(widgets, mockSource);
 
       expect(report.failed).toEqual([
         "Widget: missing; Widget: also_missing - `/gone`: no such route (404)",
@@ -395,7 +394,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       answer({}, 200);
       const report = await validateBackendEndpoints(
         { a: widget("/gone") } as unknown as WidgetsType,
-        mockBackendUrl,
+        mockSource,
       );
 
       expect(report.failed).toEqual([]);
@@ -409,7 +408,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       answer({}, "unreachable");
       const report = await validateBackendEndpoints(
         { a: widget("/a") } as unknown as WidgetsType,
-        mockBackendUrl,
+        mockSource,
       );
 
       expect(report.failed).toEqual([]);
@@ -423,7 +422,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         elsewhere: widget("https://elsewhere.invalid/page"),
       } as unknown as WidgetsType;
 
-      const report = await validateBackendEndpoints(widgets, mockBackendUrl);
+      const report = await validateBackendEndpoints(widgets, mockSource);
 
       expect(report.failed).toEqual([]);
       expect(report.unchecked).toEqual([
@@ -441,7 +440,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
             { paramName: "name", type: "text", value: "a/b c" },
           ]),
         } as unknown as WidgetsType,
-        mockBackendUrl,
+        mockSource,
       );
 
       expect(report.failed).toEqual([]);
@@ -452,23 +451,25 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       answer({ "/slow": "unreachable" });
       const report = await validateBackendEndpoints(
         { slow: widget("/slow") } as unknown as WidgetsType,
-        mockBackendUrl,
+        mockSource,
       );
 
       expect(report.failed).toEqual(["Widget: slow - `/slow`: no response"]);
     });
 
-    it("passes the abort signal to every request", async () => {
+    it("sends nothing once the abort signal has fired", async () => {
       answer({ "/a": 405 });
-      const signal = new AbortController().signal;
-      await validateBackendEndpoints(
-        { a: widget("/a") } as unknown as WidgetsType,
-        mockBackendUrl,
-        signal,
-      );
+      const controller = new AbortController();
+      controller.abort();
 
-      for (const [, init] of mockFetch.mock.calls)
-        expect(init).toMatchObject({ signal });
+      await expect(
+        validateBackendEndpoints(
+          { a: widget("/a") } as unknown as WidgetsType,
+          mockSource,
+          controller.signal,
+        ),
+      ).rejects.toBeDefined();
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 

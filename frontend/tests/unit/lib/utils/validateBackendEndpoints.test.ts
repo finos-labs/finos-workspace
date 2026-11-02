@@ -58,13 +58,16 @@ describe("validateBackendEndpoints", () => {
     mockFetch.mockImplementation(answer);
   });
 
-  it("asks the backend's own routes with a plain OPTIONS, without its credentials", async () => {
-    const report = await validateBackendEndpoints(widgets, backendUrl);
+  it("has the API send a plain OPTIONS to the backend's own routes", async () => {
+    const report = await validateBackendEndpoints(widgets, {
+      name: "Backend",
+      url: backendUrl.href,
+    } as Source);
 
     const own = sentTo()["https://backend.test/stock/price"];
     expect(own.method).toBe("OPTIONS");
-    expect(own.credentials).toBe("omit");
-    expect(own.headers).toBeUndefined();
+    expect(own.proxy).toEqual({ route: "candidate", typedHeaders: [] });
+    expect(own.headers).toEqual({});
     expect([...own.query.keys()]).toEqual([]);
     expect(sentTo()["https://elsewhere.test/stock/price"]).toBeUndefined();
     expect(report.failed).toEqual([]);
@@ -106,7 +109,8 @@ describe("validateBackend", () => {
     }
     const route = sent["https://backend.test/stock/price"];
     expect(route?.method).toBe("OPTIONS");
-    expect(route?.headers).toBeUndefined();
+    expect(route?.proxy).toEqual({ route: "saved", sourceId: "src-1" });
+    expect(route?.headers).toEqual({});
     expect(route?.query.has("token")).toBe(false);
   });
 });

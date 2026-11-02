@@ -30,6 +30,7 @@ import { validateSource } from "~/lib/utils/validateBackend";
 import {
   formatBackendErrorMessage,
   formatBackendWarningMessage,
+  formatZodErrorMessage,
 } from "~/utils/zodErrors";
 import { updateWidgetEndpoints } from "../DataConnectors/common/helpers";
 import { motionElemProps } from "../ds/atoms/collapsible-motion";
@@ -60,6 +61,7 @@ const initialState = {
   errorMessage: null as null | string,
   templateErrorMessage: null as null | string,
   templateWarningMessage: null as null | string,
+  uncheckedRoutes: [] as string[],
   backendToAdd: null as Partial<Source> | null,
   isLocalhost: false,
   isConnected: false,
@@ -216,6 +218,7 @@ export default function ManageAppDialog() {
           templateWarningMessage,
           totalFailed,
           templates,
+          uncheckedRoutes = [],
         } = await validateSource(source, validateWidgets === "true");
 
         const widgetsCount = Object.keys(widgets).length;
@@ -252,6 +255,7 @@ export default function ManageAppDialog() {
           errorMessage: errorMessage || null,
           templateErrorMessage: templateErrorMessage || null,
           templateWarningMessage: templateWarningMessage || null,
+          uncheckedRoutes,
           isSuccess,
           backendToAdd: {
             name,
@@ -480,6 +484,22 @@ export default function ManageAppDialog() {
                 "!text-ds-text-body",
                 "!text-ds-text-body",
               )}
+            </Notice>
+          )}
+
+          {state.uncheckedRoutes.length > 0 && (
+            <Notice
+              variant="warning"
+              title="Not every route was checked"
+              className="mt-2 w-[560px] max-w-full"
+            >
+              <ul className="list-disc pl-4">
+                {state.uncheckedRoutes.map((line) => (
+                  <li key={line}>
+                    {formatZodErrorMessage(line, "!text-ds-text-body")}
+                  </li>
+                ))}
+              </ul>
             </Notice>
           )}
 
