@@ -46,7 +46,7 @@ To give a person a place in a particular organization or role before their first
 
 ## Pass the provider's token to a data backend
 
-A backend may need to know who the user is. Set `AUTHENTICATION_SEND_MICROSOFT_IDTOKEN` or `AUTHENTICATION_SEND_OKTA_IDTOKEN` to `true`, and the API sends the signed-in user's ID token to data backends in the header `X-Microsoft-Id-Token` or `X-Okta-Id-Token`. The API keeps the token and its refresh token encrypted, renews the token before it expires, and never gives either to the browser. The API always sends the email address in the header `X-Workspace-User`, and `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER` makes the web app pass it to an iframe page as well, in the `workspace-auth` message. [Requests that a widget sends](../build-a-backend/requests-from-a-widget.md) describes the headers that a backend receives.
+A backend may need to know who the user is. Set `AUTHENTICATION_SEND_MICROSOFT_IDTOKEN` or `AUTHENTICATION_SEND_OKTA_IDTOKEN` to `true`, and the API sends the signed-in user's ID token to data backends in the header `X-Microsoft-Id-Token` or `X-Okta-Id-Token`. The API keeps the token and its refresh token encrypted, renews the token before it expires, and never gives either to the browser. The API always sends the email address in the header `X-Workspace-User`, and `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER` makes the web app pass it to an iframe page as well, in the `workspace-auth` message of the [iframe widget protocol](../../reference/protocols/iframe-widget.mdx). [Requests that a widget sends](../build-a-backend/requests-from-a-widget.md) describes the headers that a backend receives.
 
 ## Check it
 
