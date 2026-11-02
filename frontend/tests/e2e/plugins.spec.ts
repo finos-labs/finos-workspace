@@ -2,7 +2,13 @@ import { readFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { authFile, deleteDashboard, userInfo } from "./helpers";
-import { type ApiResponse, grantPlugins, type PageApi, pageApi } from "./plugins/api";
+import {
+  type ApiResponse,
+  grantBackend,
+  grantPlugins,
+  type PageApi,
+  pageApi,
+} from "./plugins/api";
 import {
   HOSTILE_ENTRY,
   hostileManifest,
@@ -160,6 +166,7 @@ test.beforeAll(async ({ browser }, testInfo) => {
       data: { name: BACKEND_NAME, url: `http://${BACKEND_HOST}:${BACKEND_PORT}` },
     }),
   );
+  await grantBackend(api, roleUuid as string, entityUuid, BACKEND_NAME);
 
   await page.goto("/app");
   await page.waitForLoadState("networkidle");

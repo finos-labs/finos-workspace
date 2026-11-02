@@ -1,8 +1,14 @@
 import type { Server } from "node:http";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { type ReceivedRequest, startEchoBackend } from "./echoBackend";
-import { authFile, deleteDashboard } from "./helpers";
-import { type ApiResponse, type PageApi, pageApi } from "./plugins/api";
+import { authFile, deleteDashboard, userInfo } from "./helpers";
+import {
+  type ApiResponse,
+  createRole,
+  grantBackend,
+  type PageApi,
+  pageApi,
+} from "./plugins/api";
 
 const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const BACKEND_PORT = Number(process.env.E2E_ECHO_BACKEND_PORT ?? 7791);
@@ -17,6 +23,7 @@ test.describe.configure({ mode: "serial" });
 let context: BrowserContext;
 let page: Page;
 let api: PageApi;
+let roleUuid: string | undefined;
 let backend: Server;
 let received: ReceivedRequest[];
 let entityUuid: string;
@@ -56,6 +63,8 @@ test.beforeAll(async ({ browser }, testInfo) => {
       },
     }),
   );
+  roleUuid = await createRole(api, userInfo().email, SOURCE_NAME);
+  await grantBackend(api, roleUuid, entityUuid, SOURCE_NAME);
 
   await page.goto("/app");
   await page.waitForLoadState("networkidle");
@@ -78,6 +87,7 @@ test.afterAll(async () => {
     await api.delete(
       `/entity/data-backends/${entityUuid}/${encodeURIComponent(SOURCE_NAME)}`,
     );
+  if (api && roleUuid) await api.delete(`/admin/role/${roleUuid}`);
   await api?.dispose();
   await context?.close();
   backend?.close();

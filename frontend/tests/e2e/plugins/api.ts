@@ -59,20 +59,54 @@ export async function pageApi(
   };
 }
 
+export async function createRole(
+  api: PageApi,
+  email: string,
+  name: string,
+): Promise<string> {
+  const uuid = crypto.randomUUID();
+  const role = { uuid, name, description: name, users: [email] };
+  const created = await api.post("/admin/role", { data: role });
+  if (!created.ok()) throw new Error(`${created.url()}: ${created.status()}`);
+  return uuid;
+}
+
 export async function grantPlugins(
   api: PageApi,
   email: string,
   name: string,
   pluginIds: string[],
 ): Promise<string> {
-  const uuid = crypto.randomUUID();
-  const role = { uuid, name, description: name, users: [email] };
-  const created = await api.post("/admin/role", { data: role });
-  if (!created.ok()) throw new Error(`${created.url()}: ${created.status()}`);
+  const uuid = await createRole(api, email, name);
   const grants = pluginIds.map((plugin_id) => ({ plugin_id, widget_id: "*" }));
   const granted = await api.put(`/admin/role/${uuid}/plugin-access`, {
     data: { grants },
   });
   if (!granted.ok()) throw new Error(`${granted.url()}: ${granted.status()}`);
   return uuid;
+}
+
+export async function grantBackend(
+  api: PageApi,
+  roleUuid: string,
+  entityUuid: string,
+  name: string,
+): Promise<void> {
+  const listed = await api.get(`/entity/data-backends/${entityUuid}`);
+  if (!listed.ok()) throw new Error(`${listed.url()}: ${listed.status()}`);
+  const backend = (await listed.json()).find(
+    (item: { name: string }) => item.name === name,
+  );
+  if (!backend) throw new Error(`The organization has no backend named ${name}`);
+  const granted = await api.put(`/admin/role-permissions/${roleUuid}`, {
+    data: [
+      {
+        uuid: backend.uuid,
+        type: "backend",
+        category: "data-connectors",
+        access: "access",
+      },
+    ],
+  });
+  if (!granted.ok()) throw new Error(`${granted.url()}: ${granted.status()}`);
 }
