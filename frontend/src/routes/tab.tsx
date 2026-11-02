@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import type { Layout } from "react-grid-layout";
+import type { LayoutItem } from "react-grid-layout";
 import { useParams, useSearchParams } from "react-router-dom";
 
 import EmptyDashboardCTA from "~/components/General/EmptyDashboardCTA";
@@ -86,7 +86,7 @@ function TabContent({ id }: { id: string }) {
   }, [hasLayout, gridLayout, currentTab, lastInnerTab, searchParams, setSearchParams]);
 
   const currentGrid = useMemo(
-    () => (gridLayout?.[currentTab] || []) as Layout[],
+    () => (gridLayout?.[currentTab] || []) as LayoutItem[],
     [gridLayout?.[currentTab]],
   );
 

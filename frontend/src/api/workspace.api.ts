@@ -1,4 +1,4 @@
-import type { Layout } from "react-grid-layout";
+import type { LayoutItem } from "react-grid-layout";
 import { useGetWidgetsStore } from "~/components/AI/hooks/useGetAppWidgets";
 import { getWidgetOrigin } from "~/components/AI/hooks/utils";
 import type { ParamDef, StoredParamValue, WidgetT } from "~/components/types";
@@ -215,7 +215,9 @@ function updateDashboardLayout(
     ...(config.maxW !== undefined ? { maxW: config.maxW } : {}),
     ...(config.maxH !== undefined ? { maxH: config.maxH } : {}),
   };
-  const { gridLayout } = dashboard.data as { gridLayout?: Record<string, Layout[]> };
+  const { gridLayout } = dashboard.data as {
+    gridLayout?: Record<string, LayoutItem[]>;
+  };
   const sourceTabId = widget.innerTab || "";
   const targetLayout = [...(gridLayout?.[targetTabId] || [])].filter(
     (entry) => entry.i !== widgetUuid,

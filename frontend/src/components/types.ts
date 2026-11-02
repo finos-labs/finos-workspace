@@ -1,5 +1,5 @@
 import type { MutableRefObject } from "react";
-import type { Layout } from "react-grid-layout";
+import type { LayoutItem } from "react-grid-layout";
 import type { InnerTab } from "~/lib/state/app";
 import type { ArtifactT, Citation, QuoteBoundingBox } from "~/lib/state/copilot";
 import type { EditorLanguage, WidgetVizType } from "~/lib/types/app";
@@ -12,7 +12,7 @@ import type { DateModifierValue } from "~/lib/utils/widgetParams";
 import type { ConnectionType } from "../lib/state/backendConnector";
 import type { WidgetId } from "./Widgets";
 
-export type GridData = Partial<Layout> & {
+export type GridData = Partial<LayoutItem> & {
   i?: string;
   x?: number;
   y?: number;
