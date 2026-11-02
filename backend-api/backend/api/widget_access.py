@@ -31,25 +31,27 @@ def _decoded(text: str) -> str:
     return text
 
 
-def segments_of(path: str) -> list[str] | None:
-    decoded = _decoded(path)
-    if "\\" in decoded or "\0" in decoded:
-        return None
-    parts = decoded.split("/")
-    if not parts[0]:
+def _trimmed(parts: list[str]) -> list[str]:
+    if parts and not parts[0]:
         parts = parts[1:]
     if parts and not parts[-1]:
         parts = parts[:-1]
-    return None if any(part in {"", ".", ".."} for part in parts) else parts
+    return parts
+
+
+def segments_of(path: str) -> list[str] | None:
+    segments = []
+    for part in _trimmed(path.split("/")):
+        text = _decoded(part)
+        if not text or "\\" in text or "\0" in text or any(piece in {".", ".."} for piece in text.split("/")):
+            return None
+        segments.append(text)
+    return segments
 
 
 def pattern_of(path: str) -> Pattern | None:
-    parts = path.split("/")
-    if not parts[0]:
-        parts = parts[1:]
-    if parts and not parts[-1]:
-        parts = parts[:-1]
     pattern = []
+    parts = _trimmed(path.split("/"))
     for part in parts:
         literals = tuple(_decoded(literal) for literal in PLACEHOLDER.split(part))
         if any("/" in literal or "\\" in literal for literal in literals):
@@ -165,10 +167,14 @@ def routes_of(widgets: object, apps: object, base_url: str) -> Routes:
 
 
 def check(routes: Routes, granted: frozenset[str], method: str, url: str) -> None:
+    verb = method.upper()
     segments = segments_of(urlsplit(url).path)
-    groups = routes.match(method.upper(), segments) if segments is not None else []
-    if not groups:
+    groups = routes.match(verb, segments) if segments is not None else []
+    if segments is None or not groups:
         raise source_proxy.refused("the connection's widgets.json declares no route like this one", 403)
+    separated = [piece for segment in segments for piece in segment.split("/") if piece]
+    if separated != segments:
+        groups += routes.match(verb, separated)
     for widget_ids in groups:
         if None not in widget_ids and not widget_ids & granted:
             raise source_proxy.refused("none of your roles gives you the widget that this route belongs to", 403)

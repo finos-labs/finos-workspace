@@ -15,6 +15,8 @@ from tests.fixtures.widget_plugins import ADMIN, MEMBER
 CATALOG = {
     "sales": {"name": "Sales", "endpoint": "/sales"},
     "hr": {"name": "HR", "endpoint": "/hr/{team}", "params": [{"paramName": "team", "type": "text"}]},
+    "hr_member": {"name": "HR member", "endpoint": "/hr/{team}/{member}"},
+    "fx": {"name": "FX", "endpoint": "/fx/{pair}"},
     "framed": {"name": "Framed", "type": "iframe", "endpoint": "/dash/index.html", "requires_auth": True},
     "other_frame": {"name": "Other", "type": "iframe", "endpoint": "/other/index.html", "requires_auth": True},
     "live": {"name": "Live", "endpoint": "/live", "data": {"streamEndpoint": "/ws/ticks"}},
@@ -161,6 +163,44 @@ class TestTheRoutesOfTheWidgetsARoleGrants:
         await grant(member, db_session, source, {"sales": "access"})
 
         assert (await call(member, source, path)).status_code in {400, 403, 422}
+        assert data_requests(source) == []
+
+    @pytest.mark.asyncio
+    async def test_a_value_with_a_slash_reaches_the_backend_as_one_encoded_segment(self, member, source, db_session):
+        await grant(member, db_session, source, {"fx": "access"})
+
+        response = await call(member, source, "/api/fx/EUR%2FUSD?period=week")
+
+        assert response.status_code == 200, response.text
+        assert data_requests(source) == ["/api/fx/EUR%2FUSD"]
+
+    @pytest.mark.asyncio
+    async def test_a_value_with_a_slash_does_not_reach_the_route_of_a_widget_the_role_lacks(
+        self, member, source, db_session
+    ):
+        await grant(member, db_session, source, {"hr": "access"})
+
+        response = await call(member, source, "/api/hr/emea%2Fnorth")
+
+        assert response.status_code == 403, response.text
+        assert "none of your roles" in response.json()["detail"]
+        assert data_requests(source) == []
+
+    @pytest.mark.asyncio
+    async def test_a_value_with_a_slash_reaches_the_route_of_a_widget_the_role_grants(self, member, source, db_session):
+        await grant(member, db_session, source, {"hr": "access", "hr_member": "access"})
+
+        assert (await call(member, source, "/api/hr/emea%2Fnorth")).status_code == 200
+        assert data_requests(source) == ["/api/hr/emea%2Fnorth"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "path", ["/api/fx/a%2F..%2F..%2Fsecret", "/api/fx/..%2Fsecret", "/api/fx/a%252F..%252Fsecret"]
+    )
+    async def test_a_value_that_climbs_through_encoded_slashes_is_not_called(self, member, source, db_session, path):
+        await grant(member, db_session, source, {"fx": "access"})
+
+        assert (await call(member, source, path)).status_code == 403
         assert data_requests(source) == []
 
     @pytest.mark.asyncio
