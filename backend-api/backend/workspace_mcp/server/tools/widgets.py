@@ -483,10 +483,10 @@ def register(
         )
     )
     async def update_widget_layout(  # noqa: PLR0913, PLR0917
-        x: float,
-        y: float,
-        w: float,
-        h: float,
+        x: Annotated[float, Field(description="The column of the widget's left edge on the dashboard grid.")],
+        y: Annotated[float, Field(description="The row of the widget's top edge on the dashboard grid.")],
+        w: Annotated[float, Field(description="The widget's width in grid columns.")],
+        h: Annotated[float, Field(description="The widget's height in grid rows.")],
         widget_uuid: WidgetUuid = None,
         widget_id: WidgetIdFallback = None,
         dashboard_id: DashboardId = None,

@@ -56,11 +56,13 @@ jobs:
                 - "proxy-upstream.e2e.test:host-gateway"
                 - "plugin-backend.e2e.test:host-gateway"
           EOF
-          echo "E2E_PLUGINS_DIR=$RUNNER_TEMP/widget-plugins" >> "$GITHUB_ENV"
-          echo "E2E_PROXY_TLS_DIR=$RUNNER_TEMP/proxy-tls" >> "$GITHUB_ENV"
-          echo "E2E_BACKENDS=1" >> "$GITHUB_ENV"
-          echo "E2E_PROXY_LISTEN=0.0.0.0" >> "$GITHUB_ENV"
-          echo "E2E_BACKEND_LISTEN=0.0.0.0" >> "$GITHUB_ENV"
+          {
+            echo "E2E_PLUGINS_DIR=$RUNNER_TEMP/widget-plugins"
+            echo "E2E_PROXY_TLS_DIR=$RUNNER_TEMP/proxy-tls"
+            echo "E2E_BACKENDS=1"
+            echo "E2E_PROXY_LISTEN=0.0.0.0"
+            echo "E2E_BACKEND_LISTEN=0.0.0.0"
+          } >> "$GITHUB_ENV"
 
       - name: Make the stack's certificate
         run: |
@@ -107,7 +109,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 26.12.1
 
       - name: Install dependencies
         working-directory: frontend

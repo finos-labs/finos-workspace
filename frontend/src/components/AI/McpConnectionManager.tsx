@@ -4,7 +4,7 @@ import { type UseMcpOptionsT, useMcp } from "./hooks/mcp/useMcp";
 
 type McpConnectionServer = Pick<
   McpServer,
-  "enabled" | "url" | "clientName" | "autoReconnect" | "isLocal" | "authType" | "id"
+  "enabled" | "url" | "clientName" | "autoReconnect" | "authType" | "id"
 > & { serverName: string };
 
 const McpConnection = memo(({ serverId }: { serverId: string }) => {
@@ -18,7 +18,6 @@ const McpConnection = memo(({ serverId }: { serverId: string }) => {
       url: server.url,
       clientName: server.clientName,
       autoReconnect: server.autoReconnect,
-      isLocal: server.isLocal,
       authType: server.authType,
       id: server.id,
     };
@@ -42,7 +41,6 @@ const McpServerConnection = memo(({ server }: { server: McpConnectionServer }) =
       clientName: server.clientName || "FINOS Workspace",
       serverName: server.serverName,
       autoReconnect: server.autoReconnect ?? true,
-      isLocal: server.isLocal ?? false,
       authType: server.authType,
       handleDisconnect: () => {
         updateServer(server.id, { enabled: false });

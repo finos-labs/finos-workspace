@@ -1,0 +1,41 @@
+---
+title: Connect a backend
+sidebar_position: 3
+---
+
+# Connect a backend
+
+This guide adds a data backend to your own FINOS Workspace account, gives it a credential if it needs one, and refreshes, edits or removes it later. A backend is a web server that describes its widgets in `widgets.json`. To write one, follow the [first tutorial](../../tutorials/build-a-backend/connect-a-backend-and-build-a-dashboard.mdx). To make a backend available to a whole organization, an admin follows [Add a data backend for your organization](../administration/add-a-data-backend-for-your-organization.md).
+
+## What you need
+
+You need an account of type Admin or Developer, because a User cannot add connections and has no Connections page. The FINOS Workspace API calls the backend for the browser, so the backend has to be running at an address that the API can reach. The connection's credentials are stored encrypted on the server and the API adds them itself; the browser holds none of them, and the backend needs no CORS settings for the web app. [Requests that a widget sends](../../tutorials/build-a-backend/requests-from-a-widget.md#the-route-check) describes what a backend receives.
+
+## Add the backend
+
+1. Select Connections in the sidebar, and then Connect Backend. The dialog Connect backend opens.
+2. In Name, type the name that the connection will have. People see it as the origin of the backend's widgets.
+3. In Endpoint URL, type the base address of the backend, for example `http://localhost:9100`. FINOS Workspace removes any slashes from the end.
+4. Leave Validate widgets at No, or choose Yes to make the test also send a plain `OPTIONS` request to every route that the widgets use, as [Requests that a widget sends](../../tutorials/build-a-backend/requests-from-a-widget.md#other-requests) describes.
+5. If the backend needs a credential, select Add Authentication, as the next section describes.
+6. Select Test. Add stays disabled until a test has succeeded.
+7. Select Add.
+
+A successful test says "Test successful" and counts what it found, such as "2 Widgets found, 0 Apps found, 0 Prompts found". It adds the number of MCP servers when the backend's apps declare any, and it says how many widgets failed when Validate widgets is Yes. A yellow notice titled Not every route was checked lists the routes that the check could not test. After Add, the connection appears in the list. When the backend declares apps, a message says "Backend added successfully", counts the widgets, apps and prompts, and has a button Open App, or Open Apps, that opens them. A backend without apps gets no message.
+
+A failed test shows an Error notice. A backend that cannot be reached gives "Server error occurred. Please try again later or check the console logs for more details. (Status: 502)". When the address is on `localhost` or `127.0.0.1`, the notice adds a section Troubleshooting localhost, which you open with its arrow. It lists two causes: an address that the API cannot reach, because the API runs in a container and reaches `localhost` on your computer through `host.docker.internal`, so that the backend has to be running and, on Linux, listen on `0.0.0.0`, and an address that answers with an HTML page instead of JSON.
+
+## Give the backend a credential
+
+Select Add Authentication and fill the row. Key and Value are the name and the value of the credential, and Location says where FINOS Workspace puts it, either Header or Query Parameter. Select Add Authentication again for another row, and the cross at the end of a row removes it. The credential belongs to the connection, and FINOS Workspace sends it only with the requests that go to the backend's own address. It is not part of a widget's parameters, so a dashboard that you share never contains it. [Share a dashboard](../sharing/share-a-dashboard.md) explains what a recipient's requests carry instead.
+
+## Refresh, edit or remove a connection
+
+The Connections page lists each connection with the number of its widgets, apps, prompts and agents and the time of its last update. Point at a row to see its buttons.
+
+- **Refresh backend** asks the backend for `widgets.json` again, so that a widget you added or changed on the backend shows up. The refresh button at the top of the page, Refresh all backends, does this for every connection and answers "Backends refreshed". Loading the page again does it too.
+- **Edit backend** opens the same dialog with the connection's values. After you save, a message says "Backend updated successfully", or "Backend activated successfully" when the connection was inactive and works again.
+- **Delete connection** asks for confirmation and removes the connection. You can also tick one or more rows and select Delete connection at the top of the list. A message says that the connection was deleted successfully.
+- The copy button next to a connection's name copies its address.
+
+When you open an active connection, select Test, and the test fails, closing the dialog marks the connection inactive. FINOS Workspace then says "Backend marked as inactive" and that the connection test failed.

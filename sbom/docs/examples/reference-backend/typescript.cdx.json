@@ -1,0 +1,23 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.7",
+  "version": 1,
+  "metadata": {
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "author": "anchore",
+          "name": "syft",
+          "version": "1.54.1"
+        }
+      ]
+    },
+    "component": {
+      "bom-ref": "81d9b8483a3ddc7f",
+      "type": "file",
+      "name": "docs/examples/reference-backend/typescript"
+    }
+  }
+}

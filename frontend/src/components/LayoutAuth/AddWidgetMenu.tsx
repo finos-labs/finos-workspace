@@ -1,6 +1,10 @@
 import { useParams } from "react-router-dom";
 import Icon from "~/components/Icon";
-import { useShallowAppStore } from "~/lib/state/app";
+import {
+  DASHBOARD_LOCKED_MESSAGE,
+  useIsDashboardLocked,
+  useShallowAppStore,
+} from "~/lib/state/app";
 import { useSharedAppStore } from "~/lib/state/sharedApp";
 import { useThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
@@ -26,6 +30,7 @@ export default function AddWidgetMenu() {
   const isShared = useShallowAppStore((state) => !!id && state.isDashboardShared(id));
 
   const notOwner = !!(id && sharedItems?.[id]);
+  const isLocked = useIsDashboardLocked(id);
 
   const handleClickWidget = () => {
     setInitialSelectedSearchTab("widgets");
@@ -36,16 +41,24 @@ export default function AddWidgetMenu() {
     setOpen(true);
   };
 
-  if (isShared && notOwner) {
+  if (isLocked || (isShared && notOwner)) {
     return (
       <Tooltip
         message={
-          <p className="body-xs-regular max-w-md break-words whitespace-normal">
-            <strong>{"This dashboard is shared — "}</strong>
-            You're allowed to change parameters and switch tabs. You don’t have
-            permission to add, remove or resize widgets. Duplicate the template first
-            before applying any modifications.
-          </p>
+          isLocked ? (
+            <p className="body-xs-regular max-w-md break-words whitespace-normal">
+              <strong>{"This dashboard is locked — "}</strong>
+              {DASHBOARD_LOCKED_MESSAGE} You're still allowed to change parameters and
+              resize widgets.
+            </p>
+          ) : (
+            <p className="body-xs-regular max-w-md break-words whitespace-normal">
+              <strong>{"This dashboard is shared — "}</strong>
+              You're allowed to change parameters and switch tabs. You don’t have
+              permission to add, remove or resize widgets. Duplicate the template first
+              before applying any modifications.
+            </p>
+          )
         }
       >
         <button

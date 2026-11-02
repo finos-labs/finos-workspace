@@ -1,0 +1,34 @@
+---
+title: FINOS Workspace MCP server
+sidebar_position: 1
+---
+
+import { McpReference } from "@site/src/components/Reference/tools";
+
+# FINOS Workspace MCP server
+
+The instructions, tools, resources and prompts that the FINOS Workspace API serves to an AI tool. [MCP Companion](../../features/mcp-companion/index.mdx) explains how the server works, and [Connect your AI tool](../../quick-start/connect-your-ai-tool.mdx) shows how to connect.
+
+| | |
+|---|---|
+| Address | `/mcp` on the FINOS Workspace API |
+| Transport | MCP over streamable HTTP, stateless |
+| Authentication | The header `Authorization: Bearer <token>`, with a personal access token |
+| Origin | The header `Origin: <address of the web app>` on every request |
+| Code | `backend-api/backend/workspace_mcp` |
+
+## Instructions
+
+<McpReference part="instructions" />
+
+## Tools
+
+<McpReference part="tools" />
+
+## Resources
+
+<McpReference part="resources" />
+
+## Prompts
+
+<McpReference part="prompts" />

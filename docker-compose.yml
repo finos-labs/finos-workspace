@@ -5,10 +5,14 @@ x-backend: &backend
     - ./backend-api/backend/envs/.env
   platform: ${PLATFORM:-linux/amd64}
   environment:
+    MODE: local
+    WIDGET_PLUGINS_DIR: /opt/widget-plugins
     DB_HOST: mysql
     REDIS_HOST: valkey
     FOLDER_STORAGE_PATH: /opt/code/local_storage
     DEFAULT_MCP_SERVERS: '[{"id": "agent-tools", "name": "Agent Tools", "url": "http://agent-mcp:8787/mcp"}]'
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   networks:
     - workspace
 
@@ -72,6 +76,7 @@ services:
     volumes:
       - ./backend-api/backend/user_create.json:/opt/code/user_create.json
       - ./backend-api/backend/scripts/cfgs:/opt/code/scripts/cfgs:ro
+      - ${WORKSPACE_PLUGINS_DIR:-./widget-plugins}:/opt/widget-plugins
     depends_on:
       mysql:
         condition: service_healthy
@@ -88,6 +93,7 @@ services:
     volumes:
       - ./backend-api/backend/user_create.json:/opt/code/user_create.json:ro
       - storage:/opt/code/local_storage
+      - ${WORKSPACE_PLUGINS_DIR:-./widget-plugins}:/opt/widget-plugins
     healthcheck:
       test:
         [
@@ -113,6 +119,7 @@ services:
     volumes:
       - ./backend-api/backend/user_create.json:/opt/code/user_create.json:ro
       - storage:/opt/code/local_storage
+      - ${WORKSPACE_PLUGINS_DIR:-./widget-plugins}:/opt/widget-plugins
     depends_on:
       init:
         condition: service_completed_successfully
@@ -121,7 +128,7 @@ services:
     build:
       context: ./frontend
       additional_contexts:
-        node: docker-image://ghcr.io/openbq-org/finos-node:26.12.1-1@sha256:ead12e53441802ae738c130ba285e2517e7aa9a39449e9e4fd9bc9bbf03c5352
+        node: docker-image://ghcr.io/finos-labs/finos-node:26.12.1-1@sha256:ead12e53441802ae738c130ba285e2517e7aa9a39449e9e4fd9bc9bbf03c5352
     platform: ${PLATFORM:-linux/amd64}
     image: workspace-web:local
     restart: unless-stopped
@@ -129,7 +136,8 @@ services:
       BACKEND_URL: ${API_URL:-http://localhost:8000}
       AI_API_URL: ${AI_API_URL:-http://localhost:7777}
       AI_COPILOT_ENABLED: ${AI_COPILOT_ENABLED:-true}
-      ALLOW_HTML_JS_EXECUTION: ${ALLOW_HTML_JS_EXECUTION:-false}
+      ALLOW_HTML_JS_EXECUTION: ${ALLOW_HTML_JS_EXECUTION:-true}
+      UI_SHOW_COMPANION_MCP_MODE: ${UI_SHOW_COMPANION_MCP_MODE:-true}
     ports:
       - "3000:8080"
     depends_on:
@@ -143,7 +151,7 @@ services:
       context: ./agent
       target: agent
       additional_contexts:
-        node: docker-image://ghcr.io/openbq-org/finos-node:26.12.1-1@sha256:ead12e53441802ae738c130ba285e2517e7aa9a39449e9e4fd9bc9bbf03c5352
+        node: docker-image://ghcr.io/finos-labs/finos-node:26.12.1-1@sha256:ead12e53441802ae738c130ba285e2517e7aa9a39449e9e4fd9bc9bbf03c5352
     image: workspace-agent:local
     restart: unless-stopped
     init: true
@@ -179,7 +187,7 @@ services:
       context: ./agent
       target: agent-mcp
       additional_contexts:
-        node: docker-image://ghcr.io/openbq-org/finos-node:26.12.1-1@sha256:ead12e53441802ae738c130ba285e2517e7aa9a39449e9e4fd9bc9bbf03c5352
+        node: docker-image://ghcr.io/finos-labs/finos-node:26.12.1-1@sha256:ead12e53441802ae738c130ba285e2517e7aa9a39449e9e4fd9bc9bbf03c5352
     image: workspace-agent-mcp:local
     restart: unless-stopped
     init: true

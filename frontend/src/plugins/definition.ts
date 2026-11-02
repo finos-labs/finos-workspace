@@ -1,6 +1,6 @@
 type Schema = Record<string, unknown>;
 
-export interface DefinitionError {
+interface DefinitionError {
   path: string;
   message: string;
 }

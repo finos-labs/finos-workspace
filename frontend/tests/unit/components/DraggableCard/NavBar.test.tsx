@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { act, type ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import NavBar from "~/components/DraggableCard/NavBar";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
@@ -11,12 +11,15 @@ vi.mock("~/components/Widget.context", () => ({
   useWidgetContext: vi.fn(),
 }));
 
+const dashboard = vi.hoisted(() => ({ locked: false }));
+
 vi.mock("~/lib/state/app", () => ({
   useShallowAppStore: vi.fn(() => ({
     removeWidget: vi.fn(),
     minimizeWidget: vi.fn(),
   })),
   useAppStore: vi.fn(),
+  useIsDashboardLocked: () => dashboard.locked,
 }));
 
 vi.mock("~/lib/state/theme", () => ({
@@ -470,6 +473,75 @@ describe("NavBar - Auto-locked controls for active widgets", () => {
     expect(screen.getByTestId("_navbar-controls-right")).toHaveAttribute(
       "data-collapsed",
       "false",
+    );
+  });
+});
+
+describe("NavBar - Locked dashboard", () => {
+  const mockUseWidgetContext = vi.mocked(useWidgetContext);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dashboard.locked = false;
+
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        disconnect() {}
+        unobserve() {}
+      },
+    );
+
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "test-widget",
+            widgetId: "test-widget",
+            name: "Test Widget",
+            isMinimized: false,
+          },
+        },
+        activeDashboardId: "dashboard-1",
+        isShared: false,
+        updateWidget: vi.fn(),
+        widgetFromJSON: { params: [] },
+      }),
+    );
+  });
+
+  afterEach(() => {
+    dashboard.locked = false;
+  });
+
+  it("lets the widget be removed from an unlocked dashboard", () => {
+    render(<NavBar title="Test Widget" />);
+
+    expect(document.getElementById("close-widget-test-widget")).toBeEnabled();
+  });
+
+  it("does not let the widget be removed from a locked dashboard", () => {
+    dashboard.locked = true;
+
+    render(<NavBar title="Test Widget" />);
+
+    expect(document.getElementById("close-widget-test-widget")).toBeDisabled();
+  });
+
+  it("shows the move cursor on the title of a widget that can be moved", () => {
+    render(<NavBar title="Test Widget" />);
+
+    expect(document.querySelector(".draggable-handle")).toHaveClass("md:cursor-move");
+  });
+
+  it("does not show the move cursor on the title of a locked widget", () => {
+    dashboard.locked = true;
+
+    render(<NavBar title="Test Widget" />);
+
+    expect(document.querySelector(".draggable-handle")).not.toHaveClass(
+      "md:cursor-move",
     );
   });
 });

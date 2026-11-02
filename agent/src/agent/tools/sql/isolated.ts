@@ -7,12 +7,12 @@ const logger = getLogger(["app", "tools", "sql", "isolated"]);
 
 const CHILD = new URL("./child.ts", import.meta.url).pathname;
 
-export function sqlTimeoutMs(): number {
+function sqlTimeoutMs(): number {
   const configured = Number(process.env.AGENT_SQL_TIMEOUT_MS);
   return Number.isFinite(configured) && configured >= 100 ? configured : 10_000;
 }
 
-export interface IsolatedSqlContext {
+interface IsolatedSqlContext {
   pendingTables: Map<string, Record<string, unknown>[]>;
   artifactQueue: SSEEvent[];
 }

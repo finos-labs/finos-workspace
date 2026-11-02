@@ -11,7 +11,7 @@ const logger = getLogger(["app", "tools", "sql", "peek_column_values"]);
 
 const MAX_VALUES = 50;
 
-export const peekColumnValuesSchema = z.object({
+const peekColumnValuesSchema = z.object({
   display_summary: displaySummarySchema,
   column: z.string().describe("Sanitized column name to inspect."),
   table_name: z
@@ -20,7 +20,7 @@ export const peekColumnValuesSchema = z.object({
     .describe("Table name. Optional if only one table is loaded."),
 });
 
-export const peekColumnValuesDescription =
+const peekColumnValuesDescription =
   "Show up to 50 unique values from a column. " +
   "Useful for understanding categorical data before filtering with execute_sql.";
 
@@ -31,7 +31,7 @@ function sanitize(name: string): string {
     .toLowerCase();
 }
 
-export interface PeekColumnValuesContext {
+interface PeekColumnValuesContext {
   pendingTables: Map<string, Record<string, unknown>[]>;
 }
 

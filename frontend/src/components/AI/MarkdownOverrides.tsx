@@ -33,7 +33,7 @@ type StarryNightInstance = {
 let starryNightInstance: StarryNightInstance | null = null;
 const starryNightListeners = new Set<() => void>();
 
-const starryNightReady = import("@wooorm/starry-night")
+import("@wooorm/starry-night")
   .then(({ common, createStarryNight }) =>
     createStarryNight(common, {
       getOnigurumaUrlFetch: () =>

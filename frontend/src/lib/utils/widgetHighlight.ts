@@ -1,16 +1,13 @@
-import { getConfig } from "~/lib/runtimeConfig";
-
 let stylesInjected = false;
 
 function injectHighlightStyles() {
   if (stylesInjected) return;
 
-  const mainColor = getConfig().whiteLabel.mainColor ?? "#0086BF";
   const style = document.createElement("style");
   style.id = "widget-highlight-styles";
   style.textContent = `
     .widget-highlight {
-      outline: 2px solid ${mainColor};
+      outline: 2px solid var(--color-main-100);
       transition: outline-color 1.3s ease-out;
     }
 
@@ -19,10 +16,10 @@ function injectHighlightStyles() {
     }
 
     @keyframes outline-fade-out {
-      0% { outline-color: ${mainColor}; }
-      30% { outline-color: ${mainColor}b3; }
-      60% { outline-color: ${mainColor}66; }
-      85% { outline-color: ${mainColor}1a; }
+      0% { outline-color: var(--color-main-100); }
+      30% { outline-color: color-mix(in srgb, var(--color-main-100) 70%, transparent); }
+      60% { outline-color: color-mix(in srgb, var(--color-main-100) 40%, transparent); }
+      85% { outline-color: color-mix(in srgb, var(--color-main-100) 10%, transparent); }
       100% { outline-color: transparent; }
     }
   `;
@@ -103,7 +100,7 @@ async function highlightElement(element: HTMLElement): Promise<void> {
   }, 1300);
 }
 
-export interface ScrollToWidgetOptions {
+interface ScrollToWidgetOptions {
   waitForLayout?: boolean;
   layoutDelay?: number;
 }

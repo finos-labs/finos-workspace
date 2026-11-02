@@ -15,6 +15,7 @@ from .manifest import PLUGIN_ID_PATTERN, VERSION_PATTERN, Manifest
 
 MANIFEST_FILE = "plugin.json"
 MAX_MANIFEST_BYTES = 256 * 1024
+MAX_SKILL_BYTES = 32 * 1024
 _FILE_NAME = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _REMOTE_IMPORT = re.compile(rb"""(?:\bimport\s*\(\s*|\bfrom\s*|\bimport\s+)["'](?:https?:)?//""", re.IGNORECASE)
 _DYNAMIC_CODE = re.compile(rb"\beval\s*\(|\bnew\s+Function\s*\(")
@@ -24,7 +25,6 @@ _DYNAMIC_CODE = re.compile(rb"\beval\s*\(|\bnew\s+Function\s*\(")
 class FileInfo:
     size: int
     sha256: str
-    mtime_ns: int
 
 
 @dataclass
@@ -49,6 +49,11 @@ class DiscoveredVersion:
     def fail(self, reason: str, *messages: str) -> None:
         self.errors.extend(messages)
         self.block_reason = self.block_reason or reason
+
+    def skill_hashes(self) -> dict[str, str]:
+        skills = ((self.manifest or {}).get("contributes") or {}).get("skills") or []
+        paths = {skill.get("file") for skill in skills if isinstance(skill, dict)}
+        return {path: self.files[path].sha256 for path in sorted(p for p in paths if p in self.files)}
 
     def served_files(self) -> dict[str, dict[str, Any]]:
         if self.manifest is None:
@@ -137,7 +142,6 @@ def _walk(root: Path, version: DiscoveredVersion, max_files: int, max_bytes: int
                 version.files[relative] = FileInfo(
                     size=info.st_size,
                     sha256=hasher(Path(entry.path)),
-                    mtime_ns=info.st_mtime_ns,
                 )
 
 
@@ -160,6 +164,22 @@ def _check_pin(found: DiscoveredVersion, pin: str | None, require_pins: bool) ->
     else:
         found.pin_status = "mismatch"
         found.fail("pin", f"the version digest differs from its pin {pin}")
+
+
+def _check_skill_file(found: DiscoveredVersion, version_dir: Path, path: str) -> None:
+    info = found.files.get(path)
+    if info is None:
+        found.fail("manifest", f"{path}: named by a skill but missing")
+    elif info.size > MAX_SKILL_BYTES:
+        found.fail("manifest", f"{path}: a skill is at most {MAX_SKILL_BYTES} bytes")
+    else:
+        try:
+            text = (version_dir / path).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            found.fail("manifest", f"{path}: a skill is UTF-8 text")
+            return
+        if not text.strip():
+            found.fail("manifest", f"{path}: a skill is not empty")
 
 
 def inspect_version(  # noqa: PLR0911, PLR0912
@@ -221,6 +241,8 @@ def inspect_version(  # noqa: PLR0911, PLR0912
     for path in sorted(manifest.served_paths()):
         if path not in found.files:
             found.fail("manifest", f"{path}: named by the manifest but missing")
+    for path in sorted(manifest.skill_paths()):
+        _check_skill_file(found, version_dir, path)
     if not development:
         _check_pin(found, pins.get(f"{plugin_id}@{version_name}"), require_pins)
 

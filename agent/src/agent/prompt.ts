@@ -31,6 +31,7 @@ const BASE_PROMPT =
   "- get_widget_data is only for a task that needs the widget's data (its numbers, rows, text or file). Never call it to change a widget, to find out what a widget is set to (its parameters in the lists say: symbol, interval, ...), or before an update: none of that needs data.\n" +
   "- get_widget_data reads what a widget shows now. For data the widget does not show (other symbols, more history, details), use the MCP tools of that widget's own backend (they are in your tool list, with their descriptions and parameters) instead of asking the widget for it; a widget tagged [query tool: name] names the one for it.\n" +
   "- A widget tagged [iframe] embeds a page of its own backend. Its parameters in the lists are what it shows now: that is its state, so do not fetch the widget, and do not fetch its page (get_widget_data on it returns HTML, not data; what the page publishes is its `::iframe::` entry in the lists). To change a parameter of it, update the widget: the page gets the value and the result confirms it. The tools of the widget's own backend are for what parameters cannot say (indicators, drawings, chart type...): their descriptions and parameters say how to use them, including how to find the one they act on.\n" +
+  "- A widget tagged [plugin] is a component of a widget plugin, with no endpoint: get_widget_data returns nothing for it. Add it to a dashboard with the FINOS Workspace's tools; the data of a question comes from the user's words, their other widgets and your tools.\n" +
   "- A result that says a call was not dispatched, not confirmed, or failed means that nothing is known to have changed: say exactly that, and never say a widget changed because you asked for it. After a change, the widget's parameters in the next list are the proof.\n" +
   "- In get_widget_data the argument key is `widget_uuid`, never `uuid`. Copy the EXACT value of the `uuid` field from search_widgets, or of the [uuid: ...] tag in the lists below; these are usually slugs (e.g. 'home_cards'), not UUID-shaped. Never fabricate or guess an identifier. " +
   "The FINOS Workspace's tools for a widget (its get_widget_data among them) also take the widget's `origin` and `widget_id`: copy them from the [origin: ...] tag and the name's parentheses in the lists below, or from search_widgets; a widget_id is never an origin. " +
@@ -91,7 +92,7 @@ function getFileTag(w: Widget): string {
   return "";
 }
 
-export const MAX_LISTED_WIDGETS = 60;
+const MAX_LISTED_WIDGETS = 60;
 
 function describeWidgets(
   label: string,
@@ -105,10 +106,10 @@ function describeWidgets(
     .map((w) => {
       const params = w.params.map(describeParam).join(", ");
       const fileTag = getFileTag(w);
-      const iframeTag = w.widget_type === "iframe" ? " [iframe]" : "";
+      const typeTag = w.widget_type === "iframe" ? " [iframe]" : w.widget_type === "plugin" ? " [plugin]" : "";
       const tool = linkedTool(w);
       const toolTag = tool ? ` [query tool: ${tool}]` : "";
-      return `- ${w.name} (${w.widget_id}) [origin: ${w.origin}] [uuid: ${w.uuid}]:${fileTag}${iframeTag}${toolTag} ${w.description}${params ? ` [${params}]` : ""}`;
+      return `- ${w.name} (${w.widget_id}) [origin: ${w.origin}] [uuid: ${w.uuid}]:${fileTag}${typeTag}${toolTag} ${w.description}${params ? ` [${params}]` : ""}`;
     })
     .join("\n");
   const rest = more > 0 ? `\n- …and ${more} more: use search_widgets to see them.` : "";
@@ -170,7 +171,7 @@ function describeSkillsCatalog(catalog: CatalogSkill[]): string {
 
 const FALLBACK_TIMEZONE = "UTC";
 
-export function resolveTimezone(timezone: string | undefined): string {
+function resolveTimezone(timezone: string | undefined): string {
   if (!timezone) return FALLBACK_TIMEZONE;
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: timezone });
@@ -199,7 +200,7 @@ function buildDateSection(timezone: string): string {
   );
 }
 
-export function describeDisabledCapabilities(disabled: readonly string[]): string | null {
+function describeDisabledCapabilities(disabled: readonly string[]): string | null {
   const search = disabled.includes("SEARCH_WEB");
   const fetch = disabled.includes("FETCH_FROM_WEB");
   if (!search && !fetch) return null;

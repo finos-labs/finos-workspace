@@ -3,7 +3,7 @@ import type {
   WorkspaceWidgetManifest,
 } from "~/types/iframeProtocol";
 
-export type IframeWidgetEntry = {
+type IframeWidgetEntry = {
   requestWidgetData: (widgetId: string) => Promise<WorkspaceDataMessage>;
   sendRefresh: () => void;
   manifest: WorkspaceWidgetManifest[];

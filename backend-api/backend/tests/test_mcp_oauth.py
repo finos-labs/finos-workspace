@@ -3,15 +3,15 @@ import base64
 import hashlib
 import json
 from types import SimpleNamespace
-from urllib.parse import parse_qsl, unquote
+from urllib.parse import parse_qsl, unquote, urlsplit
 from uuid import UUID, uuid4
 
 import httpx
 import pytest
 from loguru import logger
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, select, text, update
 
-from api import crypto, models
+from api import crypto, models, source_proxy
 from routers.app import mcp_oauth
 from tests.fixtures.base import (
     _AUTH_USER,
@@ -245,11 +245,14 @@ async def servers(monkeypatch, db_session):
     hosts.add("intranet.example.com", "10.0.0.7", handler=lambda request: _mcp_answer())
     monkeypatch.setattr(mcp_oauth, "resolve_host", hosts.resolve)
     client = mcp_oauth.create_mcp_http_client(FakeNetwork(hosts))
+    trusted_client = mcp_oauth.create_mcp_http_client(FakeNetwork(hosts), trusted=True)
     monkeypatch.setattr(mcp_oauth, "mcp_http", client)
+    monkeypatch.setattr(mcp_oauth, "trusted_mcp_http", trusted_client)
 
     yield SimpleNamespace(hosts=hosts, auth=auth, mcp=mcp, sse=sse)
 
     await client.aclose()
+    await trusted_client.aclose()
     user_uuids = [USER_UUID, UUID(_SECOND_USER["user_uuid"])]
     for model in (models.MCPOAuthGrant, models.MCPServers):
         await db_session.execute(delete(model).where(model.user_uuid.in_(user_uuids)))
@@ -258,6 +261,19 @@ async def servers(monkeypatch, db_session):
     for pattern in ("mcp_oauth_state:*", "mcp_oauth_refresh:*", "mcp_sse_endpoint:*"):
         for key in redis.keys(pattern):
             redis.delete(key)
+
+
+@pytest.fixture
+async def superuser_caller(db_session):
+    async def set_superuser(value: bool) -> None:
+        await db_session.execute(
+            update(models.User).where(models.User.uuid == USER_UUID).values(is_superuser=value)
+        )
+        await db_session.commit()
+
+    await set_superuser(True)
+    yield
+    await set_superuser(False)
 
 
 def _proxy(client, server_url=MCP_URL, url=None, headers=None):
@@ -480,7 +496,7 @@ class TestSignIn:
         await _expire_the_token(db_session)
 
         headers = await asyncio.gather(
-            *[mcp_oauth.grant_authorization(USER_UUID, MCP_URL) for _ in range(3)]
+            *[mcp_oauth.grant_authorization(USER_UUID, MCP_URL, False) for _ in range(3)]
         )
 
         assert headers == ["Bearer access-2"] * 3
@@ -519,17 +535,13 @@ class TestSignIn:
                     await _start(bearer),
                     await _proxy(bearer),
                     await bearer.post("/app/mcp-oauth/disconnect", json={"server_url": MCP_URL}),
-                    await bearer.post(
-                        "/app/mcp-servers/local-headers",
-                        json={"url": "http://localhost:8123/mcp"},
-                    ),
                 ]
         finally:
             await db_session.execute(
                 delete(models.Session).where(models.Session.uuid == session_uuid)
             )
             await db_session.commit()
-        assert [response.status_code for response in responses] == [401] * 4
+        assert [response.status_code for response in responses] == [401] * 3
         assert servers.hosts.requests == []
         assert await _grant(db_session) is not None
 
@@ -602,6 +614,26 @@ class TestSignInReachesPublicAddressesOnly:
             response = await _start(auth_client, server_url)
             assert response.status_code == 400
         assert servers.hosts.connections == []
+
+    @pytest.mark.asyncio
+    async def test_a_superusers_server_on_a_private_address_is_reached(
+        self, auth_client, servers, superuser_caller
+    ):
+        response = await _start(auth_client, "http://intranet.example.com/mcp")
+
+        assert response.status_code != 400
+        assert ("intranet.example.com", 80) in servers.hosts.connections
+
+    @pytest.mark.asyncio
+    async def test_on_a_local_machine_a_private_address_is_reached_by_anyone(
+        self, auth_client, servers, monkeypatch
+    ):
+        monkeypatch.setattr(settings, "MODE", "local")
+
+        response = await _start(auth_client, "http://intranet.example.com/mcp")
+
+        assert response.status_code != 400
+        assert ("intranet.example.com", 80) in servers.hosts.connections
 
     @pytest.mark.asyncio
     async def test_metadata_of_another_resource_is_refused(self, auth_client, servers):
@@ -879,3 +911,65 @@ class TestTheProxy:
         response = await _proxy(auth_client, "http://intranet.example.com/mcp")
 
         assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_a_superusers_servers_may_be_private_and_plain(
+        self, auth_client, servers, superuser_caller
+    ):
+        for server_url in ("http://intranet.example.com/mcp", "http://10.0.0.1/mcp"):
+            servers.hosts.add(urlsplit(server_url).hostname, "10.0.0.7", handler=lambda request: _mcp_answer())
+
+            response = await _proxy(auth_client, server_url)
+
+            assert response.status_code == 200, server_url
+        assert servers.hosts.connections == [("intranet.example.com", 80), ("10.0.0.1", 80)]
+
+    @pytest.mark.asyncio
+    async def test_on_a_local_machine_anyones_servers_may_be_private_and_plain(
+        self, auth_client, servers, monkeypatch
+    ):
+        monkeypatch.setattr(settings, "MODE", "local")
+
+        response = await _proxy(auth_client, "http://intranet.example.com/mcp")
+
+        assert response.status_code == 200
+        assert servers.hosts.connections == [("intranet.example.com", 80)]
+
+    @pytest.mark.asyncio
+    async def test_on_a_local_machine_loopback_servers_are_reached_through_the_host_machine(
+        self, auth_client, servers, monkeypatch
+    ):
+        monkeypatch.setattr(settings, "MODE", "local")
+        monkeypatch.setitem(source_proxy._host_machine, source_proxy.HOST_MACHINE, True)
+        servers.hosts.add("localhost", "127.0.0.1", handler=lambda request: _mcp_answer())
+
+        response = await _proxy(auth_client, "http://localhost:8123/mcp")
+
+        assert response.status_code == 200
+        assert servers.hosts.connections == [(source_proxy.HOST_MACHINE, 8123)]
+        assert servers.hosts.requests[0].headers["host"] == "localhost:8123"
+
+    @pytest.mark.asyncio
+    async def test_a_loopback_server_is_reached_as_it_is_where_there_is_no_host_machine(
+        self, auth_client, servers, monkeypatch
+    ):
+        monkeypatch.setattr(settings, "MODE", "local")
+        monkeypatch.setitem(source_proxy._host_machine, source_proxy.HOST_MACHINE, False)
+        servers.hosts.add("localhost", "127.0.0.1", handler=lambda request: _mcp_answer())
+
+        response = await _proxy(auth_client, "http://localhost:8123/mcp")
+
+        assert response.status_code == 200
+        assert servers.hosts.connections == [("localhost", 8123)]
+
+    @pytest.mark.asyncio
+    async def test_a_superusers_trust_is_not_shared_with_the_next_user(
+        self, auth_client, second_user_client, servers, superuser_caller
+    ):
+        servers.hosts.add("intranet.example.com", "10.0.0.7", handler=lambda request: _mcp_answer())
+
+        assert (await _proxy(auth_client, "http://intranet.example.com/mcp")).status_code == 200
+        refused = await _proxy(second_user_client, "http://intranet.example.com/mcp")
+        assert refused.status_code == 403
+        assert "may not be reached" in refused.json()["detail"]
+        assert servers.hosts.connections == [("intranet.example.com", 80)]

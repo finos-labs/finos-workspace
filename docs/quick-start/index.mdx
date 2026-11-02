@@ -1,0 +1,278 @@
+---
+title: Quick Start
+pagination_next: quick-start/connect-your-ai-tool
+sidebar_position: 1
+slug: /quick-start
+sidebar_label: "1. Run FINOS Workspace"
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# Quick Start
+
+In about 15 minutes you run FINOS Workspace on your own computer, write a small data backend, and put its widget on a dashboard. FINOS Workspace is self-hosted, so there is no shared instance to sign in to: you start your own first.
+
+## What you need
+
+- Docker with Docker Compose.
+- Python 3, to run the script that writes the configuration.
+- A clone of the [FINOS Workspace repository](https://github.com/finos-labs/workspace), for the Compose file and the configuration script.
+- A GitHub account that can read the packages of `finos-labs`, and a personal access token (classic) of that account with the `read:packages` scope. The images build on a base image that GitHub's container registry serves to logged-in readers only.
+- For the backend: Python 3.10 or later, or Node.js 22.18 or later. Use whichever language you prefer; every example on this site comes in both.
+
+## 1. Log in to the container registry
+
+Log in once, with your GitHub user name and the token. Docker keeps the login, so later builds need nothing more:
+
+```bash
+echo <token> | docker login ghcr.io -u <github-username> --password-stdin
+```
+
+The next step builds the images from the clone. [Run the stack from source](../tutorials/build-from-source/run-the-stack-from-source.md) describes the same build in more detail.
+
+## 2. Start FINOS Workspace
+
+A script writes the secrets and addresses that FINOS Workspace needs. Run it from the clone, with the email address of the first administrator:
+
+```bash
+cd backend-api/backend
+python3 -m scripts.create_local_env --admin-email <your-email>
+cd ../..
+```
+
+To let the Agent answer questions, open `agent/.env` and set `DEFAULT_MODEL` and the API key of that model's provider. You can skip this for now.
+
+Start the stack from the root of the clone:
+
+```bash
+docker compose up --build
+```
+
+The first build takes several minutes. The stack is ready when `docker compose ps`, in a second terminal, shows the API as healthy. Then set the administrator's password. The command asks for it twice:
+
+```bash
+docker compose run --rm init python -m scripts.init_users --new-password <your-email>
+```
+
+Open [http://localhost:3000](http://localhost:3000) and sign in with your email address and that password. The Apps page is empty, because no backend is connected yet.
+
+## 3. Write a backend with one HTML widget
+
+A backend is a small web server that the FINOS Workspace API calls for your browser. It answers three requests:
+
+- `/widgets.json` describes the widgets that the backend offers.
+- `/apps.json` lists ready-made dashboards. This backend has none.
+- `/portfolio_summary` returns the content of the one widget, an HTML page.
+
+FINOS Workspace adds `theme=dark` or `theme=light` to the widget's request, so the page can match the app's colors. The API calls the backend, so the backend needs no CORS settings; it only answers its three routes.
+
+Create an empty directory and put this program in it:
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+Create a virtual environment, and install the two packages that the program uses in it:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install fastapi uvicorn
+```
+
+On Windows, activate the environment with `.venv\Scripts\activate` instead.
+
+Save the program as `main.py`:
+
+```python title="main.py"
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import HTMLResponse
+
+app = FastAPI()
+
+WIDGETS = {
+    "portfolio_summary": {
+        "name": "Portfolio summary",
+        "description": "Key figures of a sample portfolio",
+        "category": "Quick start",
+        "type": "html",
+        "endpoint": "portfolio_summary",
+        "gridData": {"w": 20, "h": 12},
+    }
+}
+
+METRICS = [
+    ("Total value", "$124,563", "+5.4%"),
+    ("Daily P&L", "$8,421", "+12.3%"),
+    ("Active positions", "42", "+3"),
+    ("Sharpe ratio", "0.87", "-0.05"),
+]
+
+PALETTES = {
+    "dark": {"background": "#0b2432", "card": "#12313f", "text": "#e7f2f8", "muted": "#9db4c0"},
+    "light": {"background": "#ffffff", "card": "#f2f6f8", "text": "#1a3248", "muted": "#5a7282"},
+}
+
+ROUTES = {"/widgets.json", "/apps.json", "/portfolio_summary"}
+
+
+@app.middleware("http")
+async def check_routes(request: Request, call_next) -> Response:
+    if request.method == "OPTIONS":
+        return Response(status_code=204 if request.url.path in ROUTES else 404)
+    return await call_next(request)
+
+
+@app.get("/widgets.json")
+def widgets() -> dict:
+    return WIDGETS
+
+
+@app.get("/apps.json")
+def apps() -> list:
+    return []
+
+
+@app.get("/portfolio_summary", response_class=HTMLResponse)
+def portfolio_summary(theme: str = "dark") -> str:
+    colors = PALETTES.get(theme, PALETTES["dark"])
+    cards = "".join(
+        f'<div class="card"><div class="label">{label}</div>'
+        f'<div class="value">{value}</div>'
+        f'<div class="{"down" if change.startswith("-") else "up"}">{change}</div></div>'
+        for label, value, change in METRICS
+    )
+    return f"""<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {{ margin: 0; padding: 16px; background: {colors["background"]}; color: {colors["text"]}; font: 14px/1.4 system-ui, sans-serif; }}
+  .grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }}
+  .card {{ background: {colors["card"]}; border-radius: 8px; padding: 12px; }}
+  .label {{ color: {colors["muted"]}; font-size: 12px; }}
+  .value {{ font-size: 22px; font-weight: 600; }}
+  .up {{ color: #2e9e6a; }}
+  .down {{ color: #d0504f; }}
+</style>
+</head>
+<body><div class="grid">{cards}</div></body>
+</html>"""
+```
+
+Start it:
+
+```bash
+uvicorn main:app --port 5050
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+The program uses only the modules that Node.js includes, so there is nothing to install. Save it as `main.ts`:
+
+```ts title="main.ts"
+import { createServer } from "node:http";
+
+const WIDGETS = {
+  portfolio_summary: {
+    name: "Portfolio summary",
+    description: "Key figures of a sample portfolio",
+    category: "Quick start",
+    type: "html",
+    endpoint: "portfolio_summary",
+    gridData: { w: 20, h: 12 },
+  },
+};
+
+const METRICS: [string, string, string][] = [
+  ["Total value", "$124,563", "+5.4%"],
+  ["Daily P&L", "$8,421", "+12.3%"],
+  ["Active positions", "42", "+3"],
+  ["Sharpe ratio", "0.87", "-0.05"],
+];
+
+const PALETTES: Record<string, { background: string; card: string; text: string; muted: string }> = {
+  dark: { background: "#0b2432", card: "#12313f", text: "#e7f2f8", muted: "#9db4c0" },
+  light: { background: "#ffffff", card: "#f2f6f8", text: "#1a3248", muted: "#5a7282" },
+};
+
+const ROUTES = new Set(["/widgets.json", "/apps.json", "/portfolio_summary"]);
+
+function portfolioSummary(theme: string): string {
+  const colors = PALETTES[theme] ?? PALETTES.dark;
+  const cards = METRICS.map(
+    ([label, value, change]) =>
+      `<div class="card"><div class="label">${label}</div>` +
+      `<div class="value">${value}</div>` +
+      `<div class="${change.startsWith("-") ? "down" : "up"}">${change}</div></div>`,
+  ).join("");
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 16px; background: ${colors.background}; color: ${colors.text}; font: 14px/1.4 system-ui, sans-serif; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .card { background: ${colors.card}; border-radius: 8px; padding: 12px; }
+  .label { color: ${colors.muted}; font-size: 12px; }
+  .value { font-size: 22px; font-weight: 600; }
+  .up { color: #2e9e6a; }
+  .down { color: #d0504f; }
+</style>
+</head>
+<body><div class="grid">${cards}</div></body>
+</html>`;
+}
+
+createServer((request, response) => {
+  const url = new URL(request.url ?? "/", "http://localhost:5050");
+  if (request.method === "OPTIONS") {
+    return response.writeHead(ROUTES.has(url.pathname) ? 204 : 404).end();
+  }
+  const send = (type: string, body: string) => response.writeHead(200, { "Content-Type": type }).end(body);
+  if (url.pathname === "/widgets.json") return send("application/json", JSON.stringify(WIDGETS));
+  if (url.pathname === "/apps.json") return send("application/json", "[]");
+  if (url.pathname === "/portfolio_summary") {
+    return send("text/html; charset=utf-8", portfolioSummary(url.searchParams.get("theme") ?? "dark"));
+  }
+  response.writeHead(404, { "Content-Type": "application/json" }).end(JSON.stringify({ detail: "Not Found" }));
+}).listen(5050, () => console.log("Backend on http://localhost:5050"));
+```
+
+Start it:
+
+```bash
+node main.ts
+```
+
+</TabItem>
+</Tabs>
+
+Both programs return the same responses. Check the backend in your browser: [http://localhost:5050/portfolio_summary](http://localhost:5050/portfolio_summary) shows four cards with sample portfolio figures. Leave the backend running.
+
+:::note[The routes are checked with OPTIONS]
+
+When you connect a backend with **Validate widgets** turned on, FINOS Workspace sends a plain `OPTIONS` request to every route and expects 204 for a route that exists and 404 for one that does not. The programs above answer that way, with the middleware `check_routes` in Python and the `OPTIONS` branch in TypeScript. [Requests that a widget sends](../tutorials/build-a-backend/requests-from-a-widget.md#the-route-check) describes the check.
+
+:::
+
+## 4. Connect the backend and add the widget
+
+1. In FINOS Workspace, select **Connections** in the sidebar, then **Connect Backend**.
+2. In **Name**, type `Quick start`. In **Endpoint URL**, type `http://localhost:5050`.
+3. Select **Test**. The dialog finds 1 widget, 0 apps and 0 prompts. Select **Add**.
+4. Select **Create Dashboard** under **My Dashboards** in the sidebar, then **Add widgets**.
+5. Choose **Portfolio summary** under the category **Quick start**, and select **Add widgets**.
+
+The dashboard shows your widget. Switch the app between dark and light mode, and the widget follows, because FINOS Workspace asks the backend again with the new `theme`.
+
+If the test fails, check that the backend is still running and that the API can reach it. For an address on `localhost`, the stack's API container reaches your machine through `host.docker.internal`, and on Linux the backend has to listen on `0.0.0.0`.
+
+## Next: configure the MCP Companion to build your apps
+
+With FINOS Workspace running and a backend connected, let your AI coding tool work with it. The MCP Companion connects AI tools, like your IDE, to your open FINOS Workspace tab, so the tool can add widgets, build dashboards and turn them into apps for you.
+
+**[Configure the MCP Companion →](../features/mcp-companion/index.mdx)**
+
+Afterwards, run the [reference backend](../tutorials/build-a-backend/index.mdx) to see every widget type, parameter and setting in action. [Features](../features/index.md) explains dashboards, widgets, apps and the Agent, and the other [tutorials](../tutorials/index.md) cover deployment and building backends in depth.

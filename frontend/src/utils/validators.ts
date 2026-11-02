@@ -4,10 +4,13 @@ export function validateEmail(email: string): boolean {
   return typeof email === "string" && re.test(email);
 }
 
+export const MAX_FOLDER_NAME_LENGTH = 20;
+export const RESERVED_FOLDER_NAMES = ["root", "New folder"];
+
 export function validateFolderName(folderName: string): boolean {
   return (
     Boolean(folderName) &&
-    !["root", "New folder"].includes(folderName) &&
-    folderName.length <= 20
+    !RESERVED_FOLDER_NAMES.includes(folderName) &&
+    folderName.length <= MAX_FOLDER_NAME_LENGTH
   );
 }

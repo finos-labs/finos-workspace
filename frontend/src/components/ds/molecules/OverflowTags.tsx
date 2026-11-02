@@ -4,7 +4,7 @@ import { Tag, type TagProps } from "~/components/ds/atoms/Tag";
 import Tooltip from "~/components/Tooltip";
 import { cn } from "../utils";
 
-export interface OverflowTagsProps {
+interface OverflowTagsProps {
   items: string[];
   max?: number;
   color?: TagProps["color"];

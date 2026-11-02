@@ -1,5 +1,6 @@
 import asyncio
 from time import time
+from types import SimpleNamespace
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -11,8 +12,9 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql import quoted_name
 
-from api import base, crud, database, models, schemas
+from api import base, crud, database, models, schemas, source_proxy
 from api.auth_helpers import CustomRow
+from api.widget_plugins import service as widget_plugin_service
 from utilities.config import settings
 
 EXCEPTION_401 = HTTPException(
@@ -30,11 +32,7 @@ async def set_app_user_data(user, db: AsyncSession) -> schemas.AppUserReturn:
         last_name=user.last_name,
         display_settings=user.display_settings,
         file_widgets=[x.__dict__ for x in user.FileWidget] if own_connections else [],
-        api_sources=[
-            x.__dict__
-            for x in user.ApiSource
-            if own_connections or x.entity_uuid is not None
-        ],
+        api_sources=[x.__dict__ for x in user.ApiSource] if own_connections else [],
         username=user.username,
         email=user.email,
         uuid=user.uuid,
@@ -230,17 +228,44 @@ async def get_user_questions_history(db: AsyncSession, user_uuid: UUID) -> list[
     return (await db.execute(query)).scalars().all()
 
 
-async def get_entity_theme_settings(db: AsyncSession, entity_uuid: UUID):
+async def get_stored_theme_settings(
+    db: AsyncSession, entity_uuid: UUID
+) -> models.EntityThemeSettings | None:
     query = (
-        select(models.EntityThemeSettings.settings)
+        select(models.EntityThemeSettings)
         .where(models.EntityThemeSettings.entity_uuid == entity_uuid)
         .limit(1)
     )
-    result = (await db.execute(query)).scalar_one_or_none()
+    return (await db.execute(query)).scalar_one_or_none()
+
+
+async def get_entity_theme_settings(db: AsyncSession, entity_uuid: UUID):
+    stored = await get_stored_theme_settings(db, entity_uuid)
+    result = stored.settings if stored else None
     if not result:
         return schemas.EntityThemeSettings()
 
-    return schemas.EntityThemeSettings.model_validate(result)
+    settings = schemas.EntityThemeSettings.model_validate(result)
+    active = str(result.get("active_preset") or "")
+    for preset in result.get("presets", []):
+        if str(preset.get("uuid")) == active:
+            settings.properties = schemas.ThemeVariants.model_validate(
+                {"light": preset["light"], "dark": preset["dark"]}
+            )
+    return settings
+
+
+async def save_stored_theme_settings(
+    db: AsyncSession,
+    entity_uuid: UUID,
+    stored: models.EntityThemeSettings | None,
+    settings: dict,
+) -> None:
+    if stored:
+        stored.settings = settings
+    else:
+        db.add(models.EntityThemeSettings(entity_uuid=entity_uuid, settings=settings))
+    await db.commit()
 
 
 async def user_app_task(
@@ -403,7 +428,7 @@ async def readable_backends(db: AsyncSession, user_uuid: UUID, entity_uuid: UUID
                 models.RoleBackend.access == "access",
             )
         )
-        rules += [models.ApiSource.entity_uuid == entity_uuid, models.ApiSource.uuid.in_(granted)]
+        rules.append(models.ApiSource.uuid.in_(granted))
     if await may_add_connections(db, user_uuid):
         rules.append(models.ApiSource.user_uuid == user_uuid)
     return or_(*rules) if rules else false()
@@ -623,31 +648,52 @@ async def delete_user(db: AsyncSession, user_uuid: UUID) -> bool:
     return response.rowcount == 1
 
 
+def replace_headers(
+    stored: dict[str, str] | None, incoming: dict[str, str] | None
+) -> dict[str, str]:
+    if incoming is None:
+        return dict(stored or {})
+    kept = {name.lower(): value for name, value in (stored or {}).items()}
+    return {
+        name: value or kept[name.lower()]
+        for name, value in incoming.items()
+        if value or name.lower() in kept
+    }
+
+
 async def insert_or_update_custom_copilot(
     db: AsyncSession, user_uuid: UUID, custom_copilot: schemas.CustomCopilot
 ):
-    update_stmt = (
-        update(models.CustomCopilot)
-        .where(
-            models.CustomCopilot.uuid == custom_copilot.uuid,
-            models.CustomCopilot.user_uuid == user_uuid,
+    stored = (
+        await db.execute(
+            select(models.CustomCopilot.url, models.CustomCopilot.headers).where(
+                models.CustomCopilot.uuid == custom_copilot.uuid,
+                models.CustomCopilot.user_uuid == user_uuid,
+            )
         )
-        .values(
-            headers=custom_copilot.headers,
-            copilots=custom_copilot.copilots,
-        )
-    )
-    result = await db.execute(update_stmt)
+    ).first()
+    kept = stored.headers if stored and source_proxy.on_origin(stored.url, custom_copilot.url) else None
+    headers = replace_headers(kept, custom_copilot.headers)
 
-    if result.rowcount == 0:
-        db_copilot = models.CustomCopilot(
-            uuid=custom_copilot.uuid,
-            user_uuid=user_uuid,
-            url=custom_copilot.url,
-            headers=custom_copilot.headers,
-            copilots=custom_copilot.copilots,
+    if stored is not None:
+        await db.execute(
+            update(models.CustomCopilot)
+            .where(
+                models.CustomCopilot.uuid == custom_copilot.uuid,
+                models.CustomCopilot.user_uuid == user_uuid,
+            )
+            .values(url=custom_copilot.url, headers=headers, copilots=custom_copilot.copilots)
         )
-        db.add(db_copilot)
+    else:
+        db.add(
+            models.CustomCopilot(
+                uuid=custom_copilot.uuid,
+                user_uuid=user_uuid,
+                url=custom_copilot.url,
+                headers=headers,
+                copilots=custom_copilot.copilots,
+            )
+        )
 
     await db.commit()
 
@@ -662,8 +708,42 @@ async def get_custom_copilots(
     )
     result = await db.execute(query)
     return [
-        schemas.CustomCopilot.model_validate(item) for item in result.scalars().all()
+        schemas.CustomCopilot(
+            uuid=item.uuid,
+            url=item.url,
+            header_names=sorted(item.headers or {}),
+            copilots=item.copilots,
+        )
+        for item in result.scalars().all()
     ]
+
+
+async def get_custom_copilot_connection(
+    db: AsyncSession, user_uuid: UUID, copilot_uuid: UUID
+) -> SimpleNamespace | None:
+    if not await may_add_connections(db, user_uuid):
+        return None
+    row = (
+        await db.execute(
+            select(models.CustomCopilot.uuid, models.CustomCopilot.url, models.CustomCopilot.headers).where(
+                models.CustomCopilot.uuid == copilot_uuid,
+                models.CustomCopilot.user_uuid == user_uuid,
+            )
+        )
+    ).first()
+    return None if row is None else agent_connection(row.uuid, row.url, row.headers, user_uuid)
+
+
+def agent_connection(
+    copilot_uuid: UUID | None, url: str, headers: dict[str, str] | None, user_uuid: UUID
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        uuid=copilot_uuid,
+        url=url,
+        endpointHeaders=[{"key": name, "value": value, "location": "headers"} for name, value in (headers or {}).items()],
+        entity_uuid=None,
+        user_uuid=user_uuid,
+    )
 
 
 async def delete_custom_copilot(
@@ -784,8 +864,14 @@ async def get_user_skill_state(db: AsyncSession, user_uuid: UUID):
         .where(models.UserSkills.user_uuid == user_uuid)
         .order_by(models.UserSkills.created_date.desc())
     )
-    result = await db.execute(query)
-    return result.scalars().all()
+    own = (await db.execute(query)).scalars().all()
+    taken = {skill.slug for skill in own}
+    provided = [
+        SimpleNamespace(**skill)
+        for skill in await widget_plugin_service.plugin_skills(db, user_uuid)
+        if skill["slug"] not in taken
+    ]
+    return [*own, *provided]
 
 
 async def entity_require_authenticator(db: AsyncSession, entity_uuid: UUID) -> bool:
@@ -1340,14 +1426,24 @@ async def _get_role_backend_permissions(
                     ),
                     func.concat(models.User.first_name, " ", models.User.last_name),
                 ),
-                else_=models.User.email,
+                (models.User.email.is_not(None), models.User.email),
+                else_=models.Entity.name,
             ).label("created_by"),
         )
         .select_from(models.RoleBackend)
         .join(
             models.ApiSource, models.ApiSource.uuid == models.RoleBackend.backend_uuid
         )
-        .join(models.User, models.User.uuid == models.ApiSource.user_uuid)
+        .join(
+            models.User,
+            models.User.uuid == models.ApiSource.user_uuid,
+            isouter=True,
+        )
+        .join(
+            models.Entity,
+            models.Entity.uuid == models.ApiSource.entity_uuid,
+            isouter=True,
+        )
         .where(
             models.RoleBackend.role_uuid == role_uuid,
             models.RoleBackend.access != "no-access",

@@ -33,6 +33,7 @@ import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
 import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import {
   type Source,
+  useBackendConnectorStore,
   useShallowBackendConnectorStore,
 } from "~/lib/state/backendConnector";
 import {
@@ -708,7 +709,10 @@ function Connections() {
       agentsByHostname.delete(hostname);
     }
 
+    const listedIds = new Set(apiSources.map((backend) => backend.uuid ?? backend.id));
+
     for (const sharedBackend of permissions.backends) {
+      if (listedIds.has(sharedBackend.uuid)) continue;
       const hostname = getHostname(sharedBackend.url);
       const promptCount = (sharedBackend.templates || []).reduce(
         (acc, t) => acc + (t.prompts?.length || 0),
@@ -777,6 +781,7 @@ function Connections() {
         }
       },
       enabled: true,
+      staleTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
     })),
   });
@@ -801,6 +806,7 @@ function Connections() {
   const handleRefresh = useCallback(async () => {
     dispatch({ isRefreshing: true });
     try {
+      useBackendConnectorStore.getState().forgetValidation();
       const agentsRefresh = agentQueries.map(async (q) => await q.refetch());
       await refetch();
       await Promise.all(agentsRefresh);

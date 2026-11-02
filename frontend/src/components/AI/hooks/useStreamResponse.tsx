@@ -1072,8 +1072,6 @@ export function useHandleStreaming() {
   }, [handleSubmitRef, stopSubmitRef, handleSubmit, stopSubmit]);
 }
 
-export default useStreamResponse;
-
 type HandleEventProps = {
   event: string;
   data?: unknown;

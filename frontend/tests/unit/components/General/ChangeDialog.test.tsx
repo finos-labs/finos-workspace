@@ -15,7 +15,7 @@ class IntersectionObserverMock {
 
 global.IntersectionObserver = IntersectionObserverMock;
 
-vi.mock("~/../CHANGELOG.md", () => ({
+vi.mock("~/../CHANGELOG.md?import", () => ({
   markdown: `
 # Changelog
 

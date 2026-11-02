@@ -3,7 +3,7 @@ import type { WidgetT } from "~/components/types";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 
-export interface TabHighlightContextType {
+interface TabHighlightContextType {
   hoveredWidgetTabId: string | null;
 }
 

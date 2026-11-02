@@ -1,0 +1,37 @@
+---
+title: Theme scopes and cascade
+sidebar_position: 2
+---
+
+import { ForceLightList } from "@site/src/components/Reference/theme";
+
+# Theme scopes and cascade
+
+The web app has a light theme and a dark theme, and a stylesheet that changes colors has to know how the two are told apart and which declaration wins when several set the same property. This page describes both.
+
+## The light and dark themes
+
+The user picks a theme in the settings, and `UI_DEFAULT_THEME` sets the theme that a new user starts with ([Web app configuration](../configuration/web-app.mdx)). Several mechanisms make the choice take effect:
+
+| Mechanism | What it does |
+|---|---|
+| The `dark` class on `<html>` | The class is present in the dark theme and absent in the light theme. |
+| `@custom-variant dark` in `frontend/src/index.css` | This declaration makes the `dark:` variant of a Tailwind utility follow that class. |
+| `<meta name="color-scheme">` | The content of this element is `dark` or `light`, to match the theme. |
+| `:root` | A declaration on `:root` sets the light value of a custom property. |
+| `.dark` | A declaration on `.dark` sets the dark value. A property that `.dark` does not declare keeps its `:root` value in the dark theme. |
+| `data-font-size` on `<html>` | The attribute is `medium` or `large`, from the user's Font size setting, and the rule `:root[data-font-size="large"]` sets `--text-scale`. |
+| `.force-light` | This class redeclares a subset of the properties for the elements inside it, so that they stay light in either theme. The login form and the select menus use it. |
+
+The class `.force-light` redeclares these properties:
+
+<ForceLightList />
+
+## How the cascade resolves a property
+
+The selectors `:root` and `.dark` have the same specificity, so the declaration that comes later in the cascade wins. In `tokens.css`, `.dark` comes after `:root`. Four rules follow from this:
+
+- The theme stylesheet that `WL_STYLESHEET` names loads after the base stylesheets, so it wins at equal specificity. A rule on `:root` in that stylesheet also applies in the dark theme, because it comes after the `.dark` rule of `tokens.css`. To give a property one value in each theme, declare it on `:root` and then on `.dark`, in that order.
+- The applied [theme preset](theme-presets.mdx) comes after that stylesheet in the same way. Its `light` values form a `:root` rule, and its `dark` values form a `.dark` rule.
+- A rule on `.dark` alone changes the dark theme only.
+- A custom property that refers to another with `var()` follows the other property. When `--color-light-100` changes, every property whose value is `var(--color-light-100)` changes with it, and so does every class that names the step, such as `bg-light-100`.

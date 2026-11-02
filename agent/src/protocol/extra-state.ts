@@ -3,12 +3,24 @@ import type { Citation, ToolMessage } from "./types.ts";
 import type { DocumentCitation } from "../mcp/results.ts";
 import type { TurnUsage } from "../lib/token-usage.ts";
 
-export interface ExtraState {
+export const EXTRA_STATE_KEYS = [
+  "copilot_function_call_arguments",
+  "intermediate_citations",
+  "document_hits",
+  "documents_shipped",
+  "loaded_skill_slugs",
+  "loaded_tool_groups",
+  "pending_bridge_calls",
+  "pending_workspace_calls",
+  "traceparent",
+  "turn_usage",
+  "timezone",
+] as const satisfies readonly (keyof ExtraState)[];
+
+interface ExtraState {
   copilot_function_call_arguments?: Record<string, unknown>;
   intermediate_citations?: Citation[];
   document_hits?: DocumentCitation[];
-  intermediate_context?: string;
-  continue_from?: string;
   pending_bridge_calls?: Array<{
     function: string;
     input_arguments: Record<string, unknown>;
@@ -27,7 +39,6 @@ export interface ExtraState {
 
 const MAX_LIST = 500;
 const MAX_CITATIONS = 200;
-const MAX_TEXT = 200_000;
 
 const boundedString = (max: number) => z.string().max(max);
 const record = z.record(z.string(), z.unknown());
@@ -82,8 +93,6 @@ export function readExtraState(toolMsg: ToolMessage): ExtraState {
     copilot_function_call_arguments: valueOf(r.copilot_function_call_arguments, record),
     intermediate_citations: elementsOf(r.intermediate_citations, citationSchema, MAX_CITATIONS) as Citation[] | undefined,
     document_hits: elementsOf(r.document_hits, documentHitSchema, MAX_CITATIONS),
-    intermediate_context: valueOf(r.intermediate_context, boundedString(MAX_TEXT)),
-    continue_from: valueOf(r.continue_from, boundedString(MAX_TEXT)),
     pending_bridge_calls: elementsOf(r.pending_bridge_calls, bridgeCallSchema, 100),
     pending_workspace_calls: elementsOf(r.pending_workspace_calls, workspaceCallSchema, 100),
     loaded_skill_slugs: elementsOf(r.loaded_skill_slugs, names, 100),

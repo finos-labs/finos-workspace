@@ -4,7 +4,12 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import { motion } from "framer-motion";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { type Item, useShallowAppStore } from "~/lib/state/app";
+import {
+  DASHBOARD_LOCKED_MESSAGE,
+  type Item,
+  useIsDashboardLocked,
+  useShallowAppStore,
+} from "~/lib/state/app";
 import { useShallowSharedAppStore, useSharedAppStore } from "~/lib/state/sharedApp";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn, getGroupKindLabel } from "~/lib/utils";
@@ -21,10 +26,6 @@ import Tooltip from "../Tooltip";
 import { GroupPanelHeader, GroupRow } from "../Widgets/Helpers/GroupRow";
 
 dayjs.extend(relativeTime);
-
-const formatDistanceToNow = (date: number) => {
-  return dayjs(date).fromNow();
-};
 
 function getDashboardInfo(
   item: (Item & { created_by?: string }) | undefined,
@@ -63,6 +64,7 @@ export default function DashboardToolbar() {
     getDashboardInfo(state?.sharedItems?.[id], true),
   );
   const isShared = !!sharedDashboardInfo;
+  const isLocked = useIsDashboardLocked(id);
 
   const { quickAddButtonVisible, toggleSearch, setInitialSelectedSearchTab } =
     useShallowThemeStore((state) => ({
@@ -106,6 +108,14 @@ export default function DashboardToolbar() {
   }, [setInitialSelectedSearchTab, toggleSearch]);
 
   const SharedDashboardTooltipMessage = useMemo(() => {
+    if (isLocked) {
+      return (
+        <p className="body-xs-regular max-w-md break-words whitespace-normal">
+          <strong>This dashboard is locked</strong> — {DASHBOARD_LOCKED_MESSAGE} You're
+          still allowed to change parameters and resize widgets.
+        </p>
+      );
+    }
     if (!isShared) return "Share";
     return (
       <div className="max-w-[457px]">
@@ -129,7 +139,7 @@ export default function DashboardToolbar() {
         </Button>
       </div>
     );
-  }, [id, isShared]);
+  }, [id, isShared, isLocked, navigate]);
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -302,12 +312,12 @@ export default function DashboardToolbar() {
       >
         <Tooltip
           position="top"
-          message={isShared ? SharedDashboardTooltipMessage : "Add widgets"}
-          {...(isShared ? { align: "end", alignOffset: -4 } : {})}
+          message={isShared || isLocked ? SharedDashboardTooltipMessage : "Add widgets"}
+          {...(isShared || isLocked ? { align: "end", alignOffset: -4 } : {})}
         >
           <button
             data-testid="dashboard-toolbar-add-widget-button"
-            disabled={isShared}
+            disabled={isShared || isLocked}
             className="disabled:opacity-50 size-6 hover:bg-brand-main flex items-center justify-center rounded"
             onClick={handleClickWidget}
           >

@@ -10,7 +10,7 @@ export interface ActiveMcpLink {
   args?: McpToolContractT["args"];
 }
 
-export function linkedServer(
+function linkedServer(
   widget: LinkedWidget | undefined,
   servers: McpServer[],
 ): McpServer | undefined {
@@ -61,7 +61,7 @@ function literals(link: McpToolContractT): [string, unknown][] {
   return Object.entries(link.args ?? {}).filter(([, value]) => !isParamRef(value));
 }
 
-export interface McpCallCitation<W> {
+interface McpCallCitation<W> {
   widget: W;
   inputArgs: Record<string, unknown>;
   details: Record<string, unknown>;

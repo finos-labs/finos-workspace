@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import {
   getEntities,
   getEntityMaps,
-  getEntityRelationships,
   getEntityUsers,
   validateEntityAdmin,
 } from "~/api/entities.api";
@@ -14,7 +13,6 @@ export const entityAdminKeys = {
   root: ROOT,
   validate: [...ROOT, "validate"] as const,
   entities: [...ROOT, "entities"] as const,
-  relationships: [...ROOT, "relationships"] as const,
   maps: [...ROOT, "maps"] as const,
   users: [...ROOT, "users"] as const,
 };
@@ -40,13 +38,6 @@ export const useEntities = () =>
   useQuery({
     queryKey: entityAdminKeys.entities,
     queryFn: getEntities,
-    staleTime: STALE_TIME,
-  });
-
-export const useEntityRelationships = () =>
-  useQuery({
-    queryKey: entityAdminKeys.relationships,
-    queryFn: getEntityRelationships,
     staleTime: STALE_TIME,
   });
 

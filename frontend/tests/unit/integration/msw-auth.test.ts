@@ -139,19 +139,24 @@ describe("MSW Integration - Auth API", () => {
   });
 
   describe("identity provider sign-in", () => {
-    it("refuses Microsoft sign-in without the ID token", async () => {
-      const error = await refusal(
-        testClient.post("/app/microsoft-auth", { token: "graph-token" }),
+    it("gives the address of the provider's sign-in page", async () => {
+      const { data, status } = await testClient.post(
+        "/app/sign-in/microsoft/start",
+        { version: "1.0.0" },
+        WEB_CLIENT,
       );
-      expect(error.response?.status).toBe(401);
+
+      expect(status).toBe(200);
+      expect(data).toEqual({
+        authorization_url: "https://idp.example.com/microsoft/authorize?state=s",
+      });
     });
 
-    it("signs in with Okta when the ID token is sent", async () => {
-      const { status } = await testClient.post("/app/okta-auth", {
-        token: "okta-access-token",
-        id_token: "okta-id-token",
-      });
-      expect(status).toBe(200);
+    it("does not start a sign-in with a provider it does not know", async () => {
+      const error = await refusal(
+        testClient.post("/app/sign-in/other/start", {}, WEB_CLIENT),
+      );
+      expect(error.response?.status).toBe(404);
     });
   });
 

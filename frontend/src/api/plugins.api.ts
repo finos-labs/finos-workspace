@@ -147,7 +147,7 @@ export interface PlatformVersion {
   review: ReviewItem[] | null;
 }
 
-export interface PluginProxy {
+interface PluginProxy {
   id: string;
   method?: "GET" | "POST";
   url: string;
@@ -157,14 +157,14 @@ export interface PluginProxy {
   response?: { accepts?: string[]; maxBytes?: number; timeoutMs?: number };
 }
 
-export interface PluginRoute {
+interface PluginRoute {
   id: string;
   args?: Record<string, { type: string; required?: boolean }>;
   secrets?: string[];
   response?: { maxBytes?: number; timeoutMs?: number };
 }
 
-export interface PluginBackendStatus {
+interface PluginBackendStatus {
   registered: boolean;
   identity: {
     state: "ok" | "mismatch" | "unreachable" | "unregistered";
@@ -204,7 +204,7 @@ export interface PlatformPlugin {
   backend: PluginBackendStatus;
 }
 
-export interface PluginEvent {
+interface PluginEvent {
   action: string;
   version: string | null;
   entity_uuid: string | null;
@@ -213,7 +213,7 @@ export interface PluginEvent {
   created_date: string;
 }
 
-export interface CspReport {
+interface CspReport {
   directive: string;
   origin: string;
   count: number;
@@ -223,7 +223,7 @@ export interface CspReport {
   last_seen: string;
 }
 
-export interface RescanSummary {
+interface RescanSummary {
   discovered: string[];
   blocked: string[];
   missing: string[];

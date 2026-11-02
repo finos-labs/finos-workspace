@@ -5,12 +5,12 @@ import { makePeekTableTool } from "./peek-table.ts";
 import { makePeekColumnValuesTool } from "./peek-column-values.ts";
 import { makeCreateArtifactTool } from "./create-artifact.ts";
 
-export interface SqlToolsContext {
+interface SqlToolsContext {
   pendingTables: Map<string, Record<string, unknown>[]>;
   artifactQueue: SSEEvent[];
 }
 
-export const SQL_TOOL_NAMES = [
+const SQL_TOOL_NAMES = [
   "execute_sql",
   "peek_table",
   "peek_column_values",

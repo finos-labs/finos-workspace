@@ -209,7 +209,7 @@ export function PermissionItemRow({
   );
 }
 
-export function PermissionRowItem({
+function PermissionRowItem({
   item,
   onAccessChange,
   onCheckChange,

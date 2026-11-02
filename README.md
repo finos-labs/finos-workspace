@@ -1,19 +1,35 @@
 [![badge-labs](https://user-images.githubusercontent.com/327285/230928932-7c75f8ed-e57b-41db-9fb7-a292a13a1e58.svg)](https://community.finos.org/docs/governance/lifecycle-stages/labs)
 
-# FINOS Workspace
+<h1 align="center">
+  <img alt="FINOS Workspace: an open, self-hosted analytics workspace for financial institutions to connect data, tools, and AI agents" src="website/static/img/banner.svg">
+</h1>
 
-Source code for FINOS Workspace and the components that build and run it.
+<div align="center">
 
-## Layout
+**[Run it on your machine](docs/tutorials/build-from-source/run-the-stack-from-source.md)** · [Features](docs/features/index.md) · [Concepts](docs/concepts/index.md) · [Tutorials](docs/tutorials/index.md) · [Reference](docs/reference/index.md)
 
-| Directory | What it is |
-|---|---|
-| `frontend/` | The FINOS Workspace frontend (React 18 + TypeScript + Vite) |
-| `backend-api/` | Backend API (FastAPI + SQLAlchemy), admin CLI, and admin dashboard |
-| `agent/` | The Copilot's agent, and `agent/mcp-server/`, the tools it uses (Node + TypeScript); see [agent/README.md](agent/README.md) |
-| `local/` | Development stack with hot reload for the frontend and the API (`make up`); see [local/LOCAL_SETUP.md](local/LOCAL_SETUP.md) |
+</div>
 
-Each component keeps its own README with setup and development instructions.
+<p align="center">
+  <img alt="A FINOS Workspace dashboard with tables of revenue by region, notes and key figures" src="frontend/public/assets/images/features/grouping.png" width="640">
+</p>
+
+Users connect their own data backends and arrange the data in dashboards of widgets. An AI agent answers questions about the dashboards, outside AI tools reach them through an MCP server, roles decide who may use what, and plugins add new kinds of widgets.
+
+The code is in `frontend/`, `backend-api/`, `agent/` (the agent and its MCP server), `local/` (the development stack) and `docs/` with `website/` (the documentation).
+## Developing locally
+
+Both stacks below, the root `docker-compose.yml` and `local/`, are a developer's own machine: they run the API with `MODE=local`, and nothing in them needs editing for what follows.
+
+**A data backend on your machine.** Under Connections, add it with the address you use in your browser, for example `http://localhost:9000`. The API makes every call to a backend, so for `localhost`, `127.0.0.1` and `[::1]` it calls your machine through `host.docker.internal`, which both compose files map for the API container. You need no CORS settings. The keys you type are stored encrypted in this stack's database and added by the API; the browser never holds them. On Linux the backend must listen on `0.0.0.0`, not only on `127.0.0.1`, because the container reaches your machine over the Docker network.
+
+**An agent on your machine.** Under AI Library, AI Agents, Add Agent, give the address you use in your browser, for example `http://localhost:7777`. The API reads the agent's `agents.json` and makes every call to it, queries and tool round trips included, through `host.docker.internal` like a data backend, so the agent needs no CORS settings. The keys you type are stored encrypted in this stack's database and added by the API; the browser never holds them, and the list of agents names them without their values.
+
+**An MCP server on your machine.** Under AI, MCP Servers, Add Server, give the address you use in your browser, for example `http://localhost:8787/mcp`. The API makes every call to the server, sign-in included, through `host.docker.internal` like a data backend, so the server needs no CORS settings. The headers you type are stored encrypted in this stack's database and added by the API; the browser never holds them. On Linux the server must listen on `0.0.0.0`.
+
+**Widget plugins on your machine.** Put a built plugin in `widget-plugins/<plugin-id>/<version>/` next to `docker-compose.yml` (git ignores the folder, and `WORKSPACE_PLUGINS_DIR` points compose at another folder). It is mounted into the API as `/opt/widget-plugins`, where it can be written because a superuser may develop a version in place. Open Admin, Widgets, Deployment and choose Rescan. The steps after that are in [Build and try a widget plugin](docs/tutorials/plugins/build-a-plugin.md).
+
+**Docker Compose is the standard way to develop locally**: the frontend, the API and the services run on your machine, and a backend on your machine is a connection to `localhost`, as above. **A deployed Workspace cannot reach a backend or an MCP server on your machine**, because its API makes the calls from the deployment's network. To test the deployed dev frontend against a local backend, expose the backend through a secured HTTPS tunnel and add the tunnel's public `https` address as a connection; the backend keeps checking its key, so the tunnel must not be left open to anyone. Use the tunnel only for that case. A connection kept by a superuser may be a private or plain `http` address on any stack, added on the Connections page like any other. For every other user, only a stack with `MODE=local` accepts one; elsewhere their connections must be public `https` addresses.
 
 ## Running the whole stack
 
@@ -83,6 +99,7 @@ panel, are used when the images are built, so changing them needs `docker compos
 | `AI_API_URL` | `http://localhost:7777` | The agent's address as the browser sees it. The browser calls it directly. |
 | `WEB_URL` | unset: every origin | The web app's address as the browser sees it. When set, the agent allows requests from this origin only (`AGENT_CORS_ORIGINS`); unset, it allows every origin. The browser calls the agent directly, so the origin is whatever address you opened the web app on — `localhost`, `127.0.0.1`, your machine's address on the network, a tunnel — and an origin it does not allow is a Copilot that fails with nothing in the interface to say why. A developer machine cannot know which address you will use, and the API allows every origin here too (`DISABLE_CORS=1`), so the default matches it. Set it for a deployment: the agent refuses to start with users and no origins at all. It is also the Origin of the agent's calls to the API (`WORKSPACE_ORIGIN`), `http://localhost:3000` when unset. |
 | `AI_COPILOT_ENABLED` | `true` | Shows the Copilot panel. Must be `true` or `false`. |
+| `WORKSPACE_PLUGINS_DIR` | `./widget-plugins` | The folder on your machine that is mounted into the API as `/opt/widget-plugins`, where widget plugins are placed (`local/compose.yaml`: `../widget-plugins`). |
 
 ### Backend (`backend-api/backend/envs/.env`)
 
@@ -91,7 +108,7 @@ the code, so the API does not start without them.
 
 | Variable | Written by `create_local_env` | What it is |
 |---|---|---|
-| `MODE` | `production` | One of `production`, `local` or `test`. `local` is a developer's own machine: `local/compose.yaml` sets it, and it lets a superuser develop widget plugin versions in place (`docs/widget-plugins/README.md`, 5.1). |
+| `MODE` | `production` | One of `production`, `local` or `test`. `local` is a developer's own machine: both compose files set it, whatever the file says. It lets any user's connection point at a private or plain `http` address, `localhost` among them (see Developing locally), and lets a superuser develop widget plugin versions in place ([Build and try a widget plugin](docs/tutorials/plugins/build-a-plugin.md)). |
 | `FRONTENDURL` | `http://localhost:3000` | Address of the web app. |
 | `APPURL` | `http://localhost:3000` | Address of the web app that the API uses for links back to it, such as login redirects. |
 | `SELFURL` | `http://localhost:8000` | The API's own address, used to build links to files. |
@@ -110,25 +127,29 @@ The rest of `envs/.env.example` stays as it is: `DATABASE_TYPE=mysql`, `DB_PORT=
   `BACKEND_CORS_ORIGINS`.
 - `DISABLE_REGISTRATION=1` stops the creation of new users; existing users still sign in.
 - `STORAGE_PROVIDER=aws`, `azure` or `gcp` needs the matching block of the file (`S3_*`, `AZURE_*`, `GCP_STORAGE_BUCKET`).
-- `OKTA_DOMAIN` is for Okta sign-in. `ADMIN_NOTIFY_*` sends admin notifications to a webhook; without a URL they are logged.
+- Sign-in with Microsoft or Okta is set in `envs/.env` only (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_CLIENT_SECRET`, `OKTA_CLIENT_ID`, `OKTA_DOMAIN`, `OKTA_CLIENT_SECRET`): the API runs the sign-in on the server and the browser holds no token of the provider. `ADMIN_NOTIFY_*` sends admin notifications to a webhook; without a URL they are logged.
 - `DEFAULT_MCP_SERVERS` is a JSON list of `{"id", "name", "url"}`: MCP servers that every user has, enabled, besides the ones
   they add (a user's own entry for the same URL wins, so they can still switch one off). Compose sets it to the agent's tools,
   `http://agent-mcp:8787/mcp`. The URL is the one the API calls, so it may be an address only the deployment can resolve: the
   API reaches a default server's host and port wherever they are. Other MCP servers it reaches only at public addresses (it
-  refuses `localhost` and raw IP addresses) unless their host is in `ALLOWED_MCP_HOSTNAMES`.
+  refuses `localhost` and raw IP addresses) unless their host is in `ALLOWED_MCP_HOSTNAMES`, the user is a superuser, or the
+  stack runs with `MODE=local`.
 
 `.env.example` explains every setting in comments.
 
 ### Web (`environment:` of the `web` service)
 
 `BACKEND_URL`, `AI_API_URL` and `AI_COPILOT_ENABLED` are set in the compose file (from `API_URL`, `AI_API_URL` and
-`AI_COPILOT_ENABLED` above). Every other setting is one more `environment:` entry. A variable that is not set keeps its
+`AI_COPILOT_ENABLED` above), and so are `ALLOW_HTML_JS_EXECUTION` and `UI_SHOW_COMPANION_MCP_MODE`, which this stack turns
+on for development: scripts run in HTML widgets and Copilot artifacts, and the MCP Companion entry shows in the menu. A
+deployment sets neither, so both keep their code default of `false`, unless its environment says otherwise. Every other
+setting is one more `environment:` entry. A variable that is not set keeps its
 default (in `frontend/src/lib/runtimeConfigSchema.ts`); a true/false variable must be exactly `true` or `false`, or the
 container refuses to start.
 
 | Group | Variables (default) |
 |---|---|
-| Sign-in | `AUTHENTICATION_ALLOW_EMAIL_LOGIN` (`true`); `AUTHENTICATION_IDENTITY_PROVIDERS` (comma-separated, none); `GOOGLE_OAUTH_CLIENT_ID`, `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `OKTA_CLIENT_ID`, `OKTA_DOMAIN` (empty); `AUTHENTICATION_SEND_MICROSOFT_IDTOKEN`, `AUTHENTICATION_SEND_OKTA_IDTOKEN`, `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER` (`false`) |
+| Sign-in | `AUTHENTICATION_ALLOW_EMAIL_LOGIN` (`true`); `AUTHENTICATION_IDENTITY_PROVIDERS` (comma-separated, none); `GOOGLE_OAUTH_CLIENT_ID` (empty); `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER` (`false`) |
 | Copilot | `AI_COPILOT_DEFAULT_COPILOT`, `AI_COPILOT_DOCUMENTATION_LINKS`, `AI_COPILOT_WEB_SEARCH`, `AI_COPILOT_JINA_AI`, `AI_COPILOT_AI_ENHANCEMENTS`, `AI_SHOW_CUSTOM_COPILOT_KEY` (`true`); `AI_COPILOT_SEC_FILINGS`, `AI_COPILOT_SAVE_SKILL_FROM_CHAT` (`false`) |
 | Interface | `UI_SHOW_MINIMIZE_WIDGET`, `UI_SHOW_EXTERNAL_DOCUMENTATION_LINKS`, `UI_SHOW_HELP_DOCUMENTATION`, `UI_SHOW_CHANGELOG`, `UI_SHOW_COPILOT_SWITCHER`, `UI_SHOW_REMOVE_FROM_ORG` (`true`); `UI_SHOW_COMPANION_MCP_MODE` (`false`); `UI_DEFAULT_THEME` (`dark`; `light` or `dark`) |
 | Other | `ALLOW_HTML_JS_EXECUTION` (`false`: scripts in HTML widgets and Copilot artifacts; iframe widgets always run theirs, sandboxed); `DOCS_URL`, `SUPPORT_EMAIL` (empty: the links are hidden) |
@@ -211,12 +232,26 @@ The agent holds its state (the rows of a chat's widgets, its documents) in memor
 survive a restart and is not shared between replicas, so run one replica, or send a chat's requests to the same one: a request
 that reaches another replica in the middle of a turn is counted as a new turn.
 
+## Running at scale
+
+Everything a web app used to ask of a data backend directly now goes through the API, so size and place the API for that.
+
+- **Replicas and workers.** Each API process keeps its own caps (128 open backend requests per user, 2,000 per process, 1,000 sockets per process) and its own file descriptors; add processes for more. The database pool is sized from `WORKERS` and shared with every other route: the API gives a connection back before it calls a backend, so streams do not use pool connections.
+- **Ingress and load balancer.** Allow requests and idle connections of at least 125 seconds on the API's routes (the API ends a request that has had no answer for 50 seconds and a stream that has been quiet for 120), and keep WebSocket upgrades. Serve the API over HTTP/2: browsers open six HTTP/1.1 connections to an origin, and long streams or sockets from framed pages would use them up. Do not buffer responses. Mask the `ws_frame_` part of the path in the access log.
+- **Worker recycling.** `run.py` restarts a worker only after about a million requests, with 120 seconds for its open requests to finish, so that a restart does not cut every stream; lower `max_requests` only if you see memory grow.
+- **Database.** A proxied request reads the session and the connection, two queries, and gives the connection back before it calls the backend. Who may read a connection (the user's role grants, the owner being a superuser) is worked out once per user and connection and kept by each API process for 30 seconds, so a role change or a revoked grant reaches an open page within that time; the connection's own address and credentials are read on every request, so an edit applies at once.
+- **Valkey.** The rate limiter and the sessions use it. The per-user rates (1,200 proxied calls, 6,000 framed-page requests, 120 frame grants and 120 sockets a minute) are counted there and hold across replicas; the caps on open requests and sockets are per process. If Valkey does not answer for a second, the API stops counting proxied requests for 30 seconds instead of failing them; the per-process caps still hold.
+- **MCP servers.** The calls the agent makes to a user's MCP servers, and the streams the web app keeps open to them, go through the API's `/app/mcp-proxy` with the same care as the data connections: a user's open requests count once whether they go to a data connection or an MCP server, no database connection is held while a server answers, a server that fails five times in a row is refused for ten seconds, a call whose browser has gone away is cancelled, a request body is read only up to 10 MiB, and a user may make 1,200 calls a minute. A stream to an MCP server has no time limit of its own; it ends when the server, the browser or a deployment ends it. The connection pool is as large as the process admits.
+- **Agents.** The questions a user puts to an agent they added, the answers it streams back, its tool round trips, its feedback and its uploads go through the API's `/app/custom-copilot/{id}/relay`, with the same care as the data connections: places are shared with them, the same breaker and the same abandon-and-cancel apply (a question the browser stopped waiting for is cancelled at the agent, so it stops paying for the model), no database connection is held while the agent works, and a user may make 1,200 calls a minute. An agent has 120 seconds to start answering and 10 minutes between two bytes, longer than a data connection, because a model can think for a while. A body is read in memory before it is sent, up to 64 MiB, and a process holds at most 256 MiB of such bodies at the same moment; past that it answers `503` with `Retry-After`. The built-in agent is not relayed: the web app calls it with its own short-lived token.
+- **Streams and sockets.** A streamed answer or a WebSocket is held by the process that accepted it until it ends, and ends when that process does, so a rolling deployment closes the ones of the replicas it replaces and the page has to open them again.
+- **Backends that are slow or down.** Waiting for a backend takes no thread and no database connection: the request is an asyncio task that holds a socket and one place in the process's counts. A process lets at most 512 requests wait at the same moment for the first byte of one backend and answers the others at once with a 503 and `Retry-After`, so one slow backend cannot take the places the others need; a request that already has its headers is no longer waiting, so streams are not counted. After five failures in a row to reach a backend (no answer within 50 seconds, or no connection), the process refuses requests to it for ten seconds, then lets one request through to try it, and an answer of any status, an error included, ends the refusal. A request whose browser has gone away is cancelled at once and gives its place back.
+
 ## Logs, metrics and health
 
 **Logs** go to stdout, one JSON object per line (`LOG_FORMAT=pretty` for people), at `LOG_LEVEL` (`info` in production, `debug`
 otherwise). Every record carries the request id (the `X-Trace-Id` header); a record made while a question is answered also carries the user and the chat. Before it is
 written, every record is cleaned of session tokens, API keys, signed file URLs, file bytes, the messages of a conversation and
-email addresses, so a provider's error shows what went wrong without the conversation. One `audit` record is written for each
+email addresses, so a provider's error shows what went wrong without the conversation. The token in the address of an iframe page that needs the connection's credentials (`/app/data-connectors/frame/ws_frame_…`) is masked in the API's logs; mask it in the access log of your load balancer or ingress too. One `audit` record is written for each
 question (outcome, tokens, duration), each refusal (not signed in, model, role, limit) and each tool call.
 
 **Metrics** are Prometheus text on a port of their own that compose does not publish: `agent:9464/metrics` and
@@ -232,13 +267,8 @@ it does not answer.
 ## Notes
 
 - The workflows in the root `.github/workflows/` are the ones GitHub Actions runs: the checks on pull requests
-  (`frontend-checks.yml`, `backend-checks.yml`, `pr-description.yml`), the end-to-end tests (`e2e.yml`), the Docker images and build check (`backend-image.yml`,
-  `frontend-image.yml`, `pr-build-check.yml`) and the deployment to the dev environment (`deploy-dev.yml`, which builds
-  the images and deploys them). The app's settings are
-  defaults in its code; the values the dev environment sets differently are in the infrastructure repository. The image
-  workflows and `deploy-dev.yml` read the repository variables `AWS_REGION` and `AWS_IMAGE_PUSH_ROLE_ARN`;
-  `deploy-dev.yml` also reads `ECR_REGISTRY`, `INFRA_APP_ID`, `INFRA_REPO` and `DEV_VALUES_FILE`, and the secret
-  `INFRA_APP_PRIVATE_KEY`.
+  (`frontend-checks.yml`, `backend-checks.yml`, `pr-description.yml`), the end-to-end tests (`e2e.yml`) and the build
+  check (`pr-build-check.yml`). The app's settings are defaults in its code.
 
 ## Steering and Advisory Committee
 

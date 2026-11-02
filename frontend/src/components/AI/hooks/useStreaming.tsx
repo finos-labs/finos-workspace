@@ -1,5 +1,5 @@
 import isEqual from "lodash.isequal";
-import { type Dispatch, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDebounce } from "use-debounce";
 import { subscribeWithSelector } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
@@ -57,8 +57,6 @@ export const useStreamingStore = createWithEqualityFn<StreamingState>()(
 export function useShallowStreamingStore<T>(selector: Selector<StreamingState, T>): T {
   return useStreamingStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }
-
-export type DispatchActionType = Dispatch<DispatchAction<StreamingData>>;
 
 export const StreamingStatus = {
   READY: { streamingStatus: "streaming-ready" },

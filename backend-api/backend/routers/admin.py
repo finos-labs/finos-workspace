@@ -3,8 +3,8 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from pydantic import BaseModel, Field
 from sqlalchemy import Row, delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -25,7 +25,12 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 class AdminPutEntity(BaseModel):
-    require_authenticator: None | bool = None
+    require_authenticator: None | bool = Field(
+        None,
+        description=(
+            "Whether the organization requires two-factor authentication. Leave it out to keep the current value."
+        ),
+    )
 
 
 async def get_admin_entity(db: AsyncSession, permissions_uuid: UUID) -> UUID:
@@ -38,7 +43,16 @@ async def get_admin_entity(db: AsyncSession, permissions_uuid: UUID) -> UUID:
     return admin_entity_uuid
 
 
-@router.patch("/entity", response_model=SuccessReturn)
+@router.patch(
+    "/entity",
+    response_model=SuccessReturn,
+    summary="Change the organization's two-factor requirement",
+    description=(
+        "Stores whether the organization requires two-factor authentication. The new value also applies to every user "
+        "of the organization who has not yet activated an authenticator app, and users who have one keep their setting. "
+        "Answers 404 when the admin's organization does not exist."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def patch_entity(
     request: Request,
@@ -62,7 +76,15 @@ async def patch_entity(
     return SuccessReturn.success_instance()
 
 
-@router.get("/entity", response_model=AdminPutEntity)
+@router.get(
+    "/entity",
+    response_model=AdminPutEntity,
+    summary="Get the organization's two-factor requirement",
+    description=(
+        "Returns whether the admin's organization requires two-factor authentication, in the field "
+        "`require_authenticator`."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_entity(
     request: Request,
@@ -74,7 +96,15 @@ async def get_entity(
     return (await db.execute(query)).first()
 
 
-@router.get("/entity-map", response_model=list[schemas.EntityMapReturn])
+@router.get(
+    "/entity-map",
+    response_model=list[schemas.EntityMapReturn],
+    summary="List the permission maps of the organization",
+    description=(
+        "Returns the permission maps of the admin's organization, one for each user type: Admin, Developer and User. "
+        "The `permissions_uuid` of a user is the UUID of the map that gives the user their type."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_entity_maps(
     request: Request,
@@ -91,7 +121,17 @@ async def get_entity_maps(
     return (await db.execute(query)).scalars().all()
 
 
-@router.post("/register", response_model=SuccessReturn)
+@router.post(
+    "/register",
+    response_model=SuccessReturn,
+    summary="Invite a user",
+    description=(
+        "Records an invitation for the email address, so that the person can register in the organization with the user "
+        "type of the given permissions map. Answers 409 when a user with that email exists or the address is already "
+        "invited, 403 when registration is disabled or the permissions map belongs to another organization, and 404 "
+        "when the permissions map does not exist."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def register_user(
     request: Request,
@@ -124,10 +164,18 @@ async def register_user(
     return SuccessReturn.from_bool(result)
 
 
-@router.delete("/register/{invite_uuid}", response_model=SuccessReturn)
+@router.delete(
+    "/register/{invite_uuid}",
+    response_model=SuccessReturn,
+    summary="Revoke an invitation",
+    description=(
+        "Deletes an invitation, so that it can no longer be used to register. Answers 404 when the invitation does not "
+        "exist and 403 when it belongs to another organization."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def revoke_register_user(
-    invite_uuid: UUID,
+    invite_uuid: Annotated[UUID, Path(description="The UUID of the invitation.")],
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
@@ -161,10 +209,20 @@ async def revoke_register_user(
     return SuccessReturn.success_instance()
 
 
-@router.delete("/users/{user_uuid}/remove", response_model=SuccessReturn)
+@router.delete(
+    "/users/{user_uuid}/remove",
+    response_model=SuccessReturn,
+    summary="Remove a user from the organization",
+    description=(
+        "Takes the user out of the organization: the user is left without a permissions map, the shares between the "
+        "user and the organization's other users are removed in both directions, and every session of the user ends. "
+        "Answers 404 when the user is not found in the admin's organization and 403 when the user is a superuser, "
+        "because only a superuser may manage one."
+    ),
+)
 async def remove_user(
     request: Request,
-    user_uuid: UUID,
+    user_uuid: Annotated[UUID, Path(description="The UUID of the user.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
@@ -181,11 +239,20 @@ async def remove_user(
     return SuccessReturn.success_instance()
 
 
-@router.delete("/users/{user_uuid}", response_model=SuccessReturn)
+@router.delete(
+    "/users/{user_uuid}",
+    response_model=SuccessReturn,
+    summary="Delete a user",
+    description=(
+        "Deletes the user's account: every session of the user ends, the account is marked as deleted, and its email, "
+        "username and password are overwritten. Answers 404 when the user is not found in the admin's organization and "
+        "403 when the user is a superuser, because only a superuser may manage one."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def delete_user(
     request: Request,
-    user_uuid: UUID,
+    user_uuid: Annotated[UUID, Path(description="The UUID of the user.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
@@ -195,11 +262,20 @@ async def delete_user(
     return SuccessReturn.from_bool(result)
 
 
-@router.patch("/users/{user_uuid}", response_model=SuccessReturn)
+@router.patch(
+    "/users/{user_uuid}",
+    response_model=SuccessReturn,
+    summary="Change a user's type",
+    description=(
+        "Moves the user to another permissions map of the admin's organization, which changes the user's type. Answers "
+        "403 when the map belongs to another organization or the user is a superuser, and 404 when the user is not "
+        "found."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def update_user(
     request: Request,
-    user_uuid: UUID,
+    user_uuid: Annotated[UUID, Path(description="The UUID of the user.")],
     update_info: schemas.UserAdminUpdate,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
@@ -251,7 +327,14 @@ async def update_user(
     return SuccessReturn.success_instance()
 
 
-@router.get("/validate", response_model=SuccessReturn)
+@router.get(
+    "/validate",
+    response_model=SuccessReturn,
+    summary="Check that the caller is an admin",
+    description=(
+        "Answers success when the signed-in user is a user of type Admin, and the status 403 when the user is not."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def validate_admin(
     request: Request,
@@ -260,7 +343,15 @@ async def validate_admin(
     return SuccessReturn.success_instance()
 
 
-@router.get("/users", response_model=list[schemas.UserAdminReturn])
+@router.get(
+    "/users",
+    response_model=list[schemas.UserAdminReturn],
+    summary="List the users and invitations of the organization",
+    description=(
+        "Returns the organization's users who are not deleted or removed, followed by its pending invitations. The "
+        "field `source` is `user` for an account and `invite` for an invitation."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def see_users(
     request: Request,
@@ -292,7 +383,15 @@ async def see_users(
     return results
 
 
-@router.get("/apps", response_model=list[schemas.AppReturn])
+@router.get(
+    "/apps",
+    response_model=list[schemas.AppReturn],
+    summary="List the backends of the organization's users",
+    description=(
+        "Returns the data backends that users of the admin's organization have connected, ordered by owner, with the "
+        "name and URL of each backend and the email of its owner."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_apps(
     request: Request,
@@ -378,12 +477,21 @@ async def ensure_not_superuser_target(
         raise HTTPException(403, detail="Only superusers can manage superusers")
 
 
-@router.post("/usage/{user_uuid}/reset", response_model=SuccessReturn)
+@router.post(
+    "/usage/{user_uuid}/reset",
+    response_model=SuccessReturn,
+    summary="Reset a user's daily Copilot usage",
+    description=(
+        "Sets the user's counters of Copilot calls and Copilot tokens for the day to zero. Answers 404 when the user is "
+        "not found in the admin's organization and 403 when the user is a superuser, because only a superuser may "
+        "manage one."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def post_reset_usage(
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
-    user_uuid: UUID,
+    user_uuid: Annotated[UUID, Path(description="The UUID of the user.")],
     admin: Annotated[User, Depends(auth_helpers.get_current_admin)],
 ):
     await ensure_user_in_admin_entity(db, admin, user_uuid)
@@ -399,12 +507,21 @@ async def post_reset_usage(
     return SuccessReturn.success_instance()
 
 
-@router.post("/reset-password/{user_uuid}", response_model=schemas.PasswordResetLink)
+@router.post(
+    "/reset-password/{user_uuid}",
+    response_model=schemas.PasswordResetLink,
+    summary="Reset a user's password",
+    description=(
+        "Replaces the user's password with a random one that nobody knows, ends every session of the user, and returns "
+        "a single-use link, valid until `expires_at`, at which the user chooses a new password. Answers 404 when the "
+        "user is not found, and 403 when the user is outside the admin's organization or is a superuser."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def post_reset_password(
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
-    user_uuid: UUID,
+    user_uuid: Annotated[UUID, Path(description="The UUID of the user.")],
     admin: Annotated[User, Depends(auth_helpers.get_current_admin)],
 ):
     if not admin.is_superuser:
@@ -425,12 +542,20 @@ async def post_reset_password(
     return await administration.reset_password(db, user_uuid)
 
 
-@router.post("/reset-2fa/{user_uuid}", response_model=SuccessReturn)
+@router.post(
+    "/reset-2fa/{user_uuid}",
+    response_model=SuccessReturn,
+    summary="Reset a user's two-factor authentication",
+    description=(
+        "Removes the user's authenticator secret, deactivates two-factor authentication for the user, and ends every "
+        "session of the user. Answers 403 when the user is outside the admin's organization or is a superuser."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def post_reset_2fa(
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
-    user_uuid: UUID,
+    user_uuid: Annotated[UUID, Path(description="The UUID of the user.")],
     admin: Annotated[User, Depends(auth_helpers.get_current_admin)],
 ):
     if not admin.is_superuser:
@@ -463,7 +588,18 @@ async def post_reset_2fa(
     return SuccessReturn.success_instance()
 
 
-@router.post("/create-user", response_model=schemas.PasswordResetLink)
+@router.post(
+    "/create-user",
+    response_model=schemas.PasswordResetLink,
+    summary="Create a user",
+    description=(
+        "Creates a confirmed account for the email address in the organization of the given permissions map, with a "
+        "random password, gives the user the default roles and the optional `role`, and returns a single-use link, "
+        "valid until `expires_at`, at which the user chooses a password. Answers 404 when the role or the permissions "
+        "map does not exist, 409 when the address is already invited or a user with it exists, and 403 when the map "
+        "belongs to another organization."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def create_user(
     request: Request,
@@ -479,7 +615,16 @@ async def create_user(
     return await administration.create_user(db, user, entity_uuid)
 
 
-@router.post("/role", response_model=schemas.SuccessReturn)
+@router.post(
+    "/role",
+    response_model=schemas.SuccessReturn,
+    summary="Create a role",
+    description=(
+        "Creates a role in the admin's organization with the given name, description, sharing level and limits, and "
+        "adds the listed users, who must belong to the organization. A role grants the access that its permissions "
+        "describe, and the access of a user is the union of the roles that the user holds."
+    ),
+)
 async def post_role(
     role: schemas.PostRole,
     db: AsyncSession = Depends(aget_write_db),
@@ -502,7 +647,12 @@ async def post_role(
     return schemas.SuccessReturn.success_instance()
 
 
-@router.get("/role", response_model=list[schemas.GetRoleWithUsers])
+@router.get(
+    "/role",
+    response_model=list[schemas.GetRoleWithUsers],
+    summary="List the roles of the organization",
+    description="Returns the roles of the admin's organization that are not deleted, each with the emails of its users.",
+)
 async def get_roles(
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_admin),
@@ -520,9 +670,17 @@ async def get_roles(
     return result
 
 
-@router.get("/role/{role_uuid}", response_model=schemas.GetRoleWithUsers)
+@router.get(
+    "/role/{role_uuid}",
+    response_model=schemas.GetRoleWithUsers,
+    summary="Get a role",
+    description=(
+        "Returns one role of the admin's organization with the emails of its users. Answers 404 when the role does not "
+        "exist in the organization."
+    ),
+)
 async def get_role(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
@@ -542,9 +700,18 @@ async def get_role(
     return schemas.GetRoleWithUsers.from_role(role, role_users)
 
 
-@router.patch("/role/{role_uuid}", response_model=schemas.SuccessReturn)
+@router.patch(
+    "/role/{role_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Change a role",
+    description=(
+        "Changes the fields of the role that the request names. When `users` is present, the listed users become the "
+        "members of the role: the missing ones are added and the others are removed. Answers 404 when the role does not "
+        "exist in the organization."
+    ),
+)
 async def patch_role(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     role: schemas.PatchRole,
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_admin),
@@ -572,9 +739,17 @@ async def patch_role(
     return schemas.SuccessReturn.success_instance()
 
 
-@router.delete("/role/{role_uuid}", response_model=schemas.SuccessReturn)
+@router.delete(
+    "/role/{role_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Delete a role",
+    description=(
+        "Deletes a role of the admin's organization, so that its users lose the access that only the role gave them. "
+        "Answers 404 when the role does not exist in the organization."
+    ),
+)
 async def delete_role(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
@@ -659,9 +834,18 @@ async def check_role_items_in_entity(
             )
 
 
-@router.put("/role-permissions/{role_uuid}", response_model=schemas.SuccessReturn)
+@router.put(
+    "/role-permissions/{role_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Set the access of a role to backends, files and prompts",
+    description=(
+        "Sets the access level that the role grants to each backend, file and prompt in the request, and leaves the "
+        "items that the request does not name as they are. Answers 404 when the role does not exist and 403 when the "
+        "request grants an item from outside the admin's organization."
+    ),
+)
 async def put_role_permissions(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     role_permissions: list[schemas.RolePermissions],
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_admin),
@@ -697,10 +881,16 @@ async def put_role_permissions(
 
 
 @router.get(
-    "/role/{role_uuid}/copilot-access", response_model=schemas.RoleCopilotAccess
+    "/role/{role_uuid}/copilot-access",
+    response_model=schemas.RoleCopilotAccess,
+    summary="Get the Copilot access of a role",
+    description=(
+        "Returns the Copilot models and the MCP tools that the role grants. Answers 404 when the role does not exist in "
+        "the organization."
+    ),
 )
 async def get_role_copilot_access(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
@@ -711,9 +901,17 @@ async def get_role_copilot_access(
     return await app_helpers.get_role_copilot_access(db, [role_uuid])
 
 
-@router.put("/role/{role_uuid}/copilot-access", response_model=schemas.SuccessReturn)
+@router.put(
+    "/role/{role_uuid}/copilot-access",
+    response_model=schemas.SuccessReturn,
+    summary="Set the Copilot access of a role",
+    description=(
+        "Replaces the Copilot models and the MCP tools that the role grants with the lists in the request. Answers 404 "
+        "when the role does not exist in the organization."
+    ),
+)
 async def put_role_copilot_access(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     access: schemas.RoleCopilotAccess,
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_admin),
@@ -727,10 +925,16 @@ async def put_role_copilot_access(
 
 
 @router.get(
-    "/role-permissions/{role_uuid}", response_model=list[schemas.RolePermissions]
+    "/role-permissions/{role_uuid}",
+    response_model=list[schemas.RolePermissions],
+    summary="List the access that a role grants",
+    description=(
+        "Returns the backends, files and prompts that the role grants access to, each with its access level. Answers "
+        "404 when the role does not exist in the organization."
+    ),
 )
 async def get_role_permissions(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
@@ -807,18 +1011,27 @@ async def get_role_permissions(
 
 
 @router.get(
-    "/role-permissions-audit-logs", response_model=list[schemas.RoleAuditLogReturn]
+    "/role-permissions-audit-logs",
+    response_model=list[schemas.RoleAuditLogReturn],
+    summary="List the audit log of role changes",
+    description=(
+        "Returns the entries of the audit log for the roles of the admin's organization, newest first. Each entry says "
+        "who changed which role, what kind of change it was, and the resource that it concerned. The query parameters "
+        "narrow the list by date range, action, resource type and role."
+    ),
 )
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_audit_logs(  # noqa: PLR0913, PLR0917
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
-    start_date: datetime | None = Query(None),
-    end_date: datetime | None = Query(None),
-    action: schemas.RoleAuditAction | None = Query(None),
-    resource_type: schemas.RoleResourceType | None = Query(None),
-    role_uuid: UUID | None = Query(None),
+    start_date: datetime | None = Query(None, description="Return only entries created at or after this time."),
+    end_date: datetime | None = Query(None, description="Return only entries created at or before this time."),
+    action: schemas.RoleAuditAction | None = Query(None, description="Return only entries of this action."),
+    resource_type: schemas.RoleResourceType | None = Query(
+        None, description="Return only entries about this kind of resource."
+    ),
+    role_uuid: UUID | None = Query(None, description="Return only entries about this role."),
 ):
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
 
@@ -891,10 +1104,17 @@ async def get_audit_logs(  # noqa: PLR0913, PLR0917
 
 
 @router.get(
-    "/user-permissions/{user_uuid}", response_model=list[schemas.UserPermissions]
+    "/user-permissions/{user_uuid}",
+    response_model=list[schemas.UserPermissions],
+    summary="Get the access of a user",
+    description=(
+        "Returns the data connectors, templates and prompts that the user can reach through all of the user's roles, "
+        "with the user's final access to each. Answers 404 when the user is not found in the admin's organization and "
+        "403 when the user is a superuser."
+    ),
 )
 async def get_user_permissions(
-    user_uuid: UUID,
+    user_uuid: Annotated[UUID, Path(description="The UUID of the user.")],
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
@@ -952,32 +1172,135 @@ async def get_user_permissions(
     ]
 
 
-@router.patch("/theme-settings", response_model=schemas.SuccessReturn)
+@router.patch(
+    "/theme-settings",
+    response_model=schemas.SuccessReturn,
+    summary="Change the organization's theme settings",
+    description=(
+        "Merges the light and dark theme settings in the request into the organization's stored settings, and the "
+        "fields that the request omits keep their values."
+    ),
+)
 async def patch_theme_settings(
     settings: schemas.EntityThemeSettings,
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
-    existing = (
-        await db.execute(
-            select(models.EntityThemeSettings).where(
-                models.EntityThemeSettings.entity_uuid == entity_uuid
-            )
-        )
-    ).scalar_one_or_none()
-
-    adjusted_settings = settings.model_dump(exclude_unset=True)
-    if existing:
-        setattr(existing, "settings", adjusted_settings)
-    else:
-        new_settings = models.EntityThemeSettings(
-            entity_uuid=entity_uuid, settings=adjusted_settings
-        )
-        db.add(new_settings)
-
-    await db.commit()
+    existing = await app_helpers.get_stored_theme_settings(db, entity_uuid)
+    adjusted_settings = settings.model_dump(exclude_unset=True, exclude={"properties"})
+    merged = {**(existing.settings if existing else {}), **adjusted_settings}
+    await app_helpers.save_stored_theme_settings(db, entity_uuid, existing, merged)
     return schemas.SuccessReturn.success_instance()
+
+
+async def load_theme_presets(
+    db: AsyncSession, admin: Row
+) -> tuple[UUID, models.EntityThemeSettings | None, dict]:
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
+    stored = await app_helpers.get_stored_theme_settings(db, entity_uuid)
+    return entity_uuid, stored, dict(stored.settings) if stored else {}
+
+
+@router.get(
+    "/theme-presets",
+    response_model=schemas.ThemePresets,
+    summary="List the theme presets",
+    description="Returns the organization's theme presets and the UUID of the active one.",
+)
+async def get_theme_presets(
+    db: AsyncSession = Depends(aget_read_db),
+    admin: User = Depends(auth_helpers.get_current_admin),
+):
+    _, _, settings = await load_theme_presets(db, admin)
+    return schemas.ThemePresets.model_validate(settings)
+
+
+@router.put(
+    "/theme-presets/active",
+    response_model=schemas.ThemePresets,
+    summary="Select the active theme preset",
+    description=(
+        "Makes the preset with the given UUID the active one, or clears the selection when `uuid` is null. Answers 404 "
+        "when the preset does not exist."
+    ),
+)
+async def put_active_theme_preset(
+    body: schemas.ThemeActivePreset,
+    db: AsyncSession = Depends(aget_write_db),
+    admin: User = Depends(auth_helpers.get_current_admin),
+):
+    entity_uuid, stored, settings = await load_theme_presets(db, admin)
+    presets = schemas.ThemePresets.model_validate(settings)
+    if body.uuid is not None and all(p.uuid != body.uuid for p in presets.presets):
+        raise HTTPException(404, detail="Theme preset not found")
+    settings["active_preset"] = str(body.uuid) if body.uuid else None
+    await app_helpers.save_stored_theme_settings(db, entity_uuid, stored, settings)
+    return schemas.ThemePresets.model_validate(settings)
+
+
+@router.put(
+    "/theme-presets/{preset_uuid}",
+    response_model=schemas.ThemePreset,
+    summary="Create or replace a theme preset",
+    description=(
+        f"Saves the preset under the UUID in the path: it replaces the preset with that UUID, or adds a new one. "
+        f"Answers 409 when another preset has the same name, ignoring case, and 422 when the organization already has "
+        f"{schemas.THEME_MAX_PRESETS} presets."
+    ),
+)
+async def put_theme_preset(
+    preset_uuid: Annotated[UUID, Path(description="The UUID of the theme preset.")],
+    body: schemas.ThemePresetBody,
+    db: AsyncSession = Depends(aget_write_db),
+    admin: User = Depends(auth_helpers.get_current_admin),
+):
+    entity_uuid, stored, settings = await load_theme_presets(db, admin)
+    presets = schemas.ThemePresets.model_validate(settings).presets
+    if any(
+        p.uuid != preset_uuid and p.name.casefold() == body.name.casefold()
+        for p in presets
+    ):
+        raise HTTPException(409, detail="A theme preset with this name already exists")
+    preset = schemas.ThemePreset(uuid=preset_uuid, **body.model_dump())
+    if any(p.uuid == preset_uuid for p in presets):
+        presets = [preset if p.uuid == preset_uuid else p for p in presets]
+    elif len(presets) >= schemas.THEME_MAX_PRESETS:
+        raise HTTPException(
+            422, detail=f"At most {schemas.THEME_MAX_PRESETS} theme presets are allowed"
+        )
+    else:
+        presets = [*presets, preset]
+    settings["presets"] = [p.model_dump(mode="json") for p in presets]
+    await app_helpers.save_stored_theme_settings(db, entity_uuid, stored, settings)
+    return preset
+
+
+@router.delete(
+    "/theme-presets/{preset_uuid}",
+    response_model=schemas.ThemePresets,
+    summary="Delete a theme preset",
+    description=(
+        "Deletes the preset, and clears the active selection when it was the active preset. Answers 404 when the preset "
+        "does not exist."
+    ),
+)
+async def delete_theme_preset(
+    preset_uuid: Annotated[UUID, Path(description="The UUID of the theme preset.")],
+    db: AsyncSession = Depends(aget_write_db),
+    admin: User = Depends(auth_helpers.get_current_admin),
+):
+    entity_uuid, stored, settings = await load_theme_presets(db, admin)
+    presets = schemas.ThemePresets.model_validate(settings)
+    if all(p.uuid != preset_uuid for p in presets.presets):
+        raise HTTPException(404, detail="Theme preset not found")
+    settings["presets"] = [
+        p.model_dump(mode="json") for p in presets.presets if p.uuid != preset_uuid
+    ]
+    if presets.active_preset == preset_uuid:
+        settings["active_preset"] = None
+    await app_helpers.save_stored_theme_settings(db, entity_uuid, stored, settings)
+    return schemas.ThemePresets.model_validate(settings)
 
 
 async def get_admin_share_request(
@@ -1044,7 +1367,16 @@ async def share_request_item_names(
     return names
 
 
-@router.get("/share-requests", response_model=list[schemas.ShareRequestReturn])
+@router.get(
+    "/share-requests",
+    response_model=list[schemas.ShareRequestReturn],
+    summary="List the share requests of the organization",
+    description=(
+        "Returns the requests of the organization's users to share a dashboard or an app, oldest first, each with the "
+        "requester, the item, the recipient and the requested permissions. A request without a recipient asks to share "
+        "a dashboard with the whole organization."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_share_requests(
     request: Request,
@@ -1078,11 +1410,20 @@ async def get_share_requests(
     ]
 
 
-@router.post("/share-requests/{request_uuid}/approve", response_model=SuccessReturn)
+@router.post(
+    "/share-requests/{request_uuid}/approve",
+    response_model=SuccessReturn,
+    summary="Approve a share request",
+    description=(
+        "Carries out the share that the request asks for. Answers 404 when the request does not belong to the "
+        "organization, and 409 when the requester's roles no longer allow sharing, the requester no longer owns the "
+        "item, or the recipient left the organization or cannot receive shares."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def approve_share_request(
     request: Request,
-    request_uuid: UUID,
+    request_uuid: Annotated[UUID, Path(description="The UUID of the share request.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
@@ -1091,11 +1432,19 @@ async def approve_share_request(
     return SuccessReturn.success_instance()
 
 
-@router.post("/share-requests/{request_uuid}/decline", response_model=SuccessReturn)
+@router.post(
+    "/share-requests/{request_uuid}/decline",
+    response_model=SuccessReturn,
+    summary="Decline a share request",
+    description=(
+        "Deletes the request without sharing anything. Answers 404 when the request does not belong to the "
+        "organization."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def decline_share_request(
     request: Request,
-    request_uuid: UUID,
+    request_uuid: Annotated[UUID, Path(description="The UUID of the share request.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):

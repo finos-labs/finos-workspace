@@ -2,10 +2,8 @@ import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { apiClient } from "~/api/api";
 import {
   completeMcpOAuth,
-  createLocalMcpFetch,
   createMcpProxyFetch,
   deleteMcpOAuthGrant,
-  getLocalMcpServerHeaders,
   McpAuthRequiredError,
   sameMcpServerUrl,
   startMcpOAuth,
@@ -118,34 +116,6 @@ describe("the API's OAuth flow", () => {
       server_url: SERVER,
     });
     expect(apiClient.delete).not.toHaveBeenCalled();
-  });
-});
-
-describe("local servers", () => {
-  it("reads the saved headers from the API, naming the server in the body", async () => {
-    (apiClient.post as Mock).mockResolvedValue({ data: { headers: { "X-Key": "k" } } });
-
-    await expect(
-      getLocalMcpServerHeaders("http://localhost:8000/mcp"),
-    ).resolves.toEqual({ "X-Key": "k" });
-    expect(apiClient.post).toHaveBeenCalledWith("/app/mcp-servers/local-headers", {
-      url: "http://localhost:8000/mcp",
-    });
-    expect(apiClient.get).not.toHaveBeenCalled();
-  });
-
-  it("adds them to the requests it sends straight to the server", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response("{}"));
-    vi.stubGlobal("fetch", fetchMock);
-
-    await createLocalMcpFetch({ "X-Key": "k" })("http://localhost:8000/mcp", {
-      headers: { accept: "application/json" },
-    });
-
-    const headers = fetchMock.mock.calls[0][1].headers as Headers;
-    expect(headers.get("X-Key")).toBe("k");
-    expect(headers.get("accept")).toBe("application/json");
-    vi.unstubAllGlobals();
   });
 });
 

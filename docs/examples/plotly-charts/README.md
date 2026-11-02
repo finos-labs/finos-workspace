@@ -5,7 +5,7 @@ backend whose `widgets.json` declares a widget of type `plotly`, and whose endpo
 a Plotly figure as JSON, is drawn by this plugin once a FINOS Workspace deployment has approved
 and enabled it. It is an example in the repository's `docs/examples/`, a package of its own
 that nothing in FINOS Workspace imports, built and deployed the way any plugin is
-([AUTHORING.md](../../widget-plugins/AUTHORING.md)).
+([Plugin package and manifest](../../reference/plugins/package-and-manifest.mdx)).
 
 ## The contract
 
@@ -48,7 +48,7 @@ figure plotly.js cannot draw shows why on the card.
 
 ### The rows: `raw`
 
-A widget can give the rows its chart is made from ([WIDGETS-JSON.md 4.11](../../widget-plugins/WIDGETS-JSON.md)).
+A widget can give the rows its chart is made from ([Widget rows](../../reference/protocols/raw-rows.md)).
 With `"raw": true`, FINOS Workspace asks the endpoint again with the widget's params and
 `raw=true`, and reads the rows at `data.rawDataKey`, else the answer's `results`, else the
 whole answer. The AI agent and MCP clients get those rows instead of the figure, and the
@@ -102,13 +102,25 @@ An endpoint that answers both in one shape, `{"results": {"chart": <figure>, "re
   time it needs them. Tile maps (`scattermap`, `densitymap`, `choroplethmap`) are drawn
   with the figure's own base map when the frame can reach it: the hosts its style names
   (by default `basemaps.cartocdn.com`), which a superuser allows in the plugin's CSP
-  override ([SECURITY.md](../../widget-plugins/SECURITY.md)); the plugin's Blocked
+  override ([Plugin frame policy](../../reference/plugins/frame-policy.mdx)); the plugin's Blocked
   requests list names them. Otherwise they are drawn over a base map made from the same
   outlines, at 1:50m: water, land, lakes, country borders and coastlines, in the site's
   light or dark mode. Labels on it are drawn with the browser's own fonts, so nothing is
   fetched; `"white-bg"` is drawn the same way.
 - **LaTeX.** Text plotly.js reads as LaTeX, `$...$`, is typeset with MathJax 4, read
   from the package the first time a figure has some.
+
+- **Chat.** The widget declares an `artifact` (`src/plugin.json`): the AI agent can show a
+  chart under its answer, from a bounded subset of a Plotly figure (up to eight traces of
+  `bar`, `scatter` or `pie`, with names, x/y or labels/values, and a title, axis titles and
+  `barmode`). The user adds the card to a dashboard as a full-width widget that keeps the
+  figure. A figure with no `template`, `paper_bgcolor` or `plot_bgcolor`, as an agent writes
+  it, is drawn in the site's light or dark mode, and again when the mode changes; a figure
+  that sets any of them is drawn as its author made it.
+
+- **Skill.** `plotly-charts` (`src/skills/plotly-charts.md`) tells the AI agent which trace fits
+  which question, the shape of the data, and the limits above, so that it shows a chart
+  instead of drawing one as HTML.
 
 It asks for `core:data:read`, `core:export:provide` and `core:copilot:context`. It
 declares no network access, proxies or backend: everything it draws comes from the
@@ -173,32 +185,11 @@ On a FINOS Workspace deployment (`local/LOCAL_SETUP.md`, "Widget plugins", for y
 Every change is a new version: raise `version` in `package.json` and build again.
 FINOS Workspace blocks an approved version whose files change. On your own stack, the
 plugin's Deployment page starts the next version for you and serves it from its files
-as you rebuild them (`docs/widget-plugins/AUTHORING.md`, section 11).
+as you rebuild them (see the documentation site, How to build and try a widget plugin).
 
 ## Try it
 
-`examples/backend.py` is a backend with four `plotly` widgets made with plotly.py:
-stacked bars, lines, a sampled signal from numpy arrays, and a heatmap. It answers
-`theme=dark` with plotly.py's `plotly_dark` template and `theme=light` with
-`plotly_white`.
-
-```bash
-python3 -m venv examples/.venv
-```
-
-```bash
-examples/.venv/bin/pip install -r examples/requirements.txt
-```
-
-```bash
-npm run demo-backend
-```
-
-It listens on `http://localhost:7798` and allows the FINOS Workspace web app at
-`http://localhost:3000`; `examples/.venv/bin/python examples/backend.py <port> <web app
-origin>` changes either. Connect it as a backend under Connections, then add *Sales by
-region*, *Sales trend*, *Signal and noise* and *Correlation* to a dashboard. *Sales by
-region* has `raw`: its database button shows its rows, and the AI agent reads them.
+The [examples backend](../backend/README.md) has five `plotly` widgets made with plotly.py: stacked bars, lines, a sampled signal from numpy arrays, a heatmap, and the bars of any SQL query. It answers `theme=dark` with plotly.py's `plotly_dark` template and `theme=light` with `plotly_white`. Connect it as a backend under Connections, then add *Sales by region*, *Sales trend*, *Signal and noise*, *Correlation* and *SQL chart* to a dashboard. *Sales by region* has `raw`: its database button shows its rows, drawn by the AgGrid plugin, and the AI agent reads them.
 
 ## Notes
 

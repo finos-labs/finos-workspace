@@ -21,12 +21,16 @@ vi.mock("~/lib/providers/MobileProvider", () => ({
   useMobile: () => false,
 }));
 
+const lockedDashboards = vi.hoisted(() => new Set<string>());
+
 vi.mock("~/lib/state/app", () => ({
   useAppStore: {
     getState: () => ({
       updateTabParams: vi.fn(),
     }),
   },
+  useIsDashboardLocked: (id: string | undefined) =>
+    id !== undefined && lockedDashboards.has(id),
   useShallowAppStore: vi.fn((selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       getWidgetById: vi.fn(() => undefined),
@@ -186,6 +190,26 @@ describe("TabProvider", () => {
     );
 
     expect(screen.getByTestId("is-shared")).toHaveTextContent("yes");
+  });
+
+  it.each([
+    ["123", "no"],
+    ["locked-123", "yes"],
+  ])("provides locked for dashboard %s: %s", (tabId, expected) => {
+    lockedDashboards.add("locked-123");
+    const TestComponent = () => {
+      const { locked } = useTabContext();
+      return <div data-testid="locked">{locked ? "yes" : "no"}</div>;
+    };
+
+    render(
+      <TabProvider currentTab="tab" tabId={tabId} layouts={[]}>
+        <TestComponent />
+      </TabProvider>,
+    );
+
+    expect(screen.getByTestId("locked")).toHaveTextContent(expected);
+    lockedDashboards.clear();
   });
 
   it("provides getWidget function", () => {

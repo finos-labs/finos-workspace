@@ -5,7 +5,7 @@ import type { ArtifactT, Citation } from "~/lib/state/copilot";
 import { HTML_SANITIZE_CONFIG } from "~/lib/utils/sanitize";
 import { removeCitationsFromText } from "./createWidgetUtils";
 
-export const GENERATIVE_WIDGET_DEFAULT_GRID = { x: 0, y: 0, w: 40, h: 12 };
+const GENERATIVE_WIDGET_DEFAULT_GRID = { x: 0, y: 0, w: 40, h: 12 };
 
 interface BaseWidgetMetadata {
   uuid?: string;

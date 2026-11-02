@@ -6,7 +6,7 @@ const logger = getLogger(["app", "agent", "url-prefetch"]);
 
 const MAX_URLS = 4;
 
-export interface UrlPrefetchResult {
+interface UrlPrefetchResult {
   url: string;
   title: string;
   overview: string;

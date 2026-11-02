@@ -13,7 +13,7 @@ export interface ExtractedPage {
   text: string;
 }
 
-export interface ExtractResult {
+interface ExtractResult {
   pages: ExtractedPage[];
   totalChars: number;
 }

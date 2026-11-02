@@ -1,7 +1,6 @@
 import sys
 import traceback
 from collections.abc import Iterable
-from datetime import timedelta
 from logging.config import fileConfig
 from uuid import uuid4
 
@@ -11,7 +10,7 @@ import api.models  # noqa: F401, PLC0415
 from alembic import context  # type: ignore
 from api.models.model_helpers import Base
 from utilities.config import settings
-from utilities.migration_lock import DONE, LOCK_KEY, wait_for_migration_lock
+from utilities.migration_lock import DONE, DONE_EXPIRY, LOCK_KEY, wait_for_migration_lock
 
 POD_NODE = uuid4()
 config = context.config
@@ -78,7 +77,7 @@ def run_migrations_online():
             context.run_migrations()
 
     if use_redis_lock:
-        settings.redis_cache(redis_key, DONE, update=True, expire=timedelta(seconds=30))
+        settings.redis_cache(redis_key, DONE, update=True, expire=DONE_EXPIRY)
 
 
 def get_revision_directives_func():

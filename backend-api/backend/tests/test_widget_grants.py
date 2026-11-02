@@ -1,0 +1,440 @@
+import json
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
+from uuid import uuid4
+
+import pytest
+from sqlalchemy import update
+
+from api import auth_helpers, frame_proxy, models, source_proxy, widget_access, ws_relay
+from routers.app import data_connectors
+from tests.fixtures.plugin_backends import SOURCE_SECRET
+from tests.fixtures.upstream import Answer
+from tests.fixtures.widget_plugins import ADMIN, MEMBER
+
+CATALOG = {
+    "sales": {"name": "Sales", "endpoint": "/sales"},
+    "hr": {"name": "HR", "endpoint": "/hr/{team}", "params": [{"paramName": "team", "type": "text"}]},
+    "fx": {"name": "FX", "endpoint": "/fx/{pair}"},
+    "framed": {"name": "Framed", "type": "iframe", "endpoint": "/dash/index.html", "requires_auth": True},
+    "other_frame": {"name": "Other", "type": "iframe", "endpoint": "/other/index.html", "requires_auth": True},
+    "live": {"name": "Live", "endpoint": "/live", "data": {"streamEndpoint": "/ws/ticks"}},
+    "secret_live": {"name": "Secret live", "endpoint": "/secret", "data": {"streamEndpoint": "/ws/secret"}},
+}
+APPS = [{"name": "App", "img": "/static/app.png"}]
+
+
+def serve(received):
+    path = received.target.split("?", 1)[0]
+    if path == "/api/widgets.json":
+        return Answer(body=json.dumps(CATALOG).encode())
+    if path == "/api/apps.json":
+        return Answer(body=json.dumps(APPS).encode())
+    if path == "/api/templates.json":
+        return Answer(status=404)
+    return Answer(body=b'{"rows": [{"region": "emea"}]}')
+
+
+@pytest.fixture
+def source(data_source):
+    data_source.server.answer = serve
+    return data_source
+
+
+@pytest.fixture(autouse=True)
+def fresh_state():
+    for state in (
+        source_proxy._json_cache,
+        source_proxy._json_pending,
+        source_proxy._decisions,
+        source_proxy._breakers,
+        source_proxy._awaiting,
+        source_proxy._host_machine,
+        frame_proxy._access,
+        widget_access._tables,
+    ):
+        state.clear()
+    source_proxy._limiter_down_until = 0.0
+    yield
+
+
+@pytest.fixture(autouse=True)
+async def fresh_rates():
+    async with auth_helpers.app_redis() as redis:
+        keys = [key async for key in redis.scan_iter(match="*proxy-rate:*")]
+        if keys:
+            await redis.delete(*keys)
+    yield
+
+
+def route(source) -> str:
+    return f"/app/data-connectors/api-source/{source.uuid}/request"
+
+
+def call(client, source, path: str, method: str = "GET", **fields):
+    return client.post(
+        route(source), json={"url": f"http://127.0.0.1:{source.server.port}{path}", "method": method, **fields}
+    )
+
+
+def data_requests(source) -> list[str]:
+    return [r.target.split("?", 1)[0] for r in source.server.received if not r.target.split("?", 1)[0].endswith(".json")]
+
+
+async def grant(
+    member, db_session, source, widgets: dict[str, str] | None, name: str = "Readers", access: str = "access"
+):
+    role = await member.role(name)
+    listed = None if widgets is None else [{"widgetId": key, "access": value} for key, value in widgets.items()]
+    db_session.add(models.RoleBackend(role_uuid=role, backend_uuid=source.uuid, access=access, widgets=listed))
+    await db_session.commit()
+    return role
+
+
+class TestTheRoutesOfTheWidgetsARoleGrants:
+    @pytest.mark.asyncio
+    async def test_a_granted_widgets_route_is_called_with_the_credentials(self, member, source, db_session):
+        await grant(member, db_session, source, {"sales": "access"})
+
+        response = await call(member, source, "/api/sales?region=emea")
+
+        assert response.status_code == 200, response.text
+        assert response.json() == {"rows": [{"region": "emea"}]}
+        assert data_requests(source) == ["/api/sales"]
+        assert source.server.received[-1].headers["x-api-key"] == SOURCE_SECRET
+
+    @pytest.mark.asyncio
+    async def test_the_route_of_a_widget_no_role_grants_is_not_called(self, member, source, db_session):
+        await grant(member, db_session, source, {"sales": "access"})
+
+        response = await call(member, source, "/api/hr/emea")
+
+        assert response.status_code == 403, response.text
+        assert response.headers["x-workspace-proxy-error"] == "1"
+        assert "none of your roles" in response.json()["detail"]
+        assert data_requests(source) == []
+
+    @pytest.mark.asyncio
+    async def test_a_widget_a_role_marks_no_access_is_not_granted(self, member, source, db_session):
+        await grant(member, db_session, source, {"sales": "no-access", "hr": "access"})
+
+        assert (await call(member, source, "/api/sales")).status_code == 403
+        assert (await call(member, source, "/api/hr/emea")).status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_the_widgets_of_all_the_users_roles_add_up(self, member, source, db_session):
+        await grant(member, db_session, source, {"sales": "access"}, "Sales readers")
+        await grant(member, db_session, source, {"hr": "access"}, "HR readers")
+
+        assert (await call(member, source, "/api/sales")).status_code == 200
+        assert (await call(member, source, "/api/hr/emea")).status_code == 200
+        assert (await call(member, source, "/api/secret")).status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_a_role_for_the_connection_as_a_whole_grants_no_widget(self, member, source, db_session):
+        await grant(member, db_session, source, None)
+
+        assert (await call(member, source, "/api/sales")).status_code == 403
+        assert (await call(member, source, "/api/sales/anything")).status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_a_route_that_no_widget_declares_is_not_called(self, member, source, db_session):
+        await grant(member, db_session, source, {"sales": "access", "hr": "access"})
+
+        for path in ("/api/admin/users", "/api/sales/extra", "/other/sales", "/api"):
+            assert (await call(member, source, path)).status_code == 403, path
+        assert data_requests(source) == []
+
+    @pytest.mark.asyncio
+    async def test_a_method_the_widget_does_not_declare_is_not_called(self, member, source, db_session):
+        await grant(member, db_session, source, {"sales": "access"})
+
+        for method in ("POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"):
+            assert (await call(member, source, "/api/sales", method)).status_code == 403, method
+        assert data_requests(source) == []
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "path",
+        ["/api/sales/../secret", "/api/sales/%2e%2e/secret", "/api/./sales", "/api//sales", "/api/sales%5C..%5Csecret"],
+    )
+    async def test_a_path_that_climbs_to_another_route_is_not_called(self, member, source, db_session, path):
+        await grant(member, db_session, source, {"sales": "access"})
+
+        assert (await call(member, source, path)).status_code in {400, 403, 422}
+        assert data_requests(source) == []
+
+    @pytest.mark.asyncio
+    async def test_a_value_with_a_slash_reaches_the_backend_as_one_encoded_segment(self, member, source, db_session):
+        await grant(member, db_session, source, {"fx": "access"})
+
+        response = await call(member, source, "/api/fx/EUR%2FUSD?period=week")
+
+        assert response.status_code == 200, response.text
+        assert data_requests(source) == ["/api/fx/EUR%2FUSD"]
+
+    @pytest.mark.asyncio
+    async def test_a_value_with_a_backslash_reaches_the_backend(self, member, source, db_session):
+        await grant(member, db_session, source, {"fx": "access"})
+
+        response = await call(member, source, "/api/fx/CORP%5Calice")
+
+        assert response.status_code == 200, response.text
+        assert data_requests(source) == ["/api/fx/CORP%5Calice"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("path", ["/api/fx/a%2F..%2F..%2Fsecret", "/api/fx/..%2Fsecret"])
+    async def test_a_value_that_climbs_through_encoded_slashes_is_not_called(self, member, source, db_session, path):
+        await grant(member, db_session, source, {"fx": "access"})
+
+        assert (await call(member, source, path)).status_code == 403
+        assert data_requests(source) == []
+
+    @pytest.mark.asyncio
+    async def test_the_catalog_of_the_connection_needs_no_widget(self, member, source, db_session):
+        await grant(member, db_session, source, None)
+
+        for name in ("widgets.json", "apps.json", "templates.json"):
+            response = await call(member, source, f"/api/{name}")
+            assert response.status_code in {200, 404}, (name, response.text)
+        assert (await call(member, source, "/api/widgets.json")).json() == CATALOG
+        assert (await call(member, source, "/api/static/app.png")).status_code == 200
+        assert (await call(member, source, "/api/static/other.png")).status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_the_connection_that_cannot_say_what_it_declares_calls_nothing(self, member, source, db_session):
+        await grant(member, db_session, source, {"sales": "access"})
+        source.server.answer = lambda _r: Answer(status=500, body=b"broken")
+
+        response = await call(member, source, "/api/sales")
+
+        assert response.status_code == 502, response.text
+        assert response.headers["x-workspace-proxy-error"] == "1"
+        assert data_requests(source) == []
+
+    @pytest.mark.asyncio
+    async def test_the_users_own_connection_is_not_limited_by_roles(self, superuser, source):
+        for path in ("/api/sales", "/api/hr/emea", "/api/undeclared/route"):
+            assert (await call(superuser, source, path)).status_code == 200, path
+
+    @pytest.mark.asyncio
+    async def test_a_connection_the_user_cannot_read_stays_unfound(self, member, source, db_session):
+        await db_session.execute(
+            update(models.ApiSource).where(models.ApiSource.uuid == source.uuid).values(entity_uuid=None)
+        )
+        await db_session.commit()
+
+        assert (await call(member, source, "/api/sales")).status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_a_widget_taken_away_is_noticed_when_the_decision_expires(
+        self, member, source, db_session, monkeypatch
+    ):
+        monkeypatch.setattr(source_proxy, "DECISION_SECONDS", 0.0)
+        role = await grant(member, db_session, source, {"sales": "access"})
+        assert (await call(member, source, "/api/sales")).status_code == 200
+
+        await db_session.execute(
+            update(models.RoleBackend)
+            .where(models.RoleBackend.role_uuid == role)
+            .values(widgets=[{"widgetId": "sales", "access": "no-access"}])
+        )
+        await db_session.commit()
+
+        assert (await call(member, source, "/api/sales")).status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_who_may_use_which_widget_is_worked_out_once_for_many_calls(
+        self, member, source, db_session, monkeypatch
+    ):
+        asked = []
+        original = widget_access.granted_widgets
+
+        async def counting(*args):
+            asked.append(1)
+            return await original(*args)
+
+        monkeypatch.setattr(widget_access, "granted_widgets", counting)
+        await grant(member, db_session, source, {"sales": "access"})
+        for _ in range(4):
+            assert (await call(member, source, "/api/sales")).status_code == 200
+        assert len(asked) == 1
+
+    @pytest.mark.asyncio
+    async def test_what_a_connection_declares_is_read_once_for_many_calls(self, member, source, db_session):
+        await grant(member, db_session, source, {"sales": "access"})
+        for _ in range(4):
+            assert (await call(member, source, "/api/sales")).status_code == 200
+        reads = [r for r in source.server.received if r.target.split("?", 1)[0] == "/api/widgets.json"]
+        assert len(reads) == 1
+
+
+class TestAFramedPageOfAWidgetARoleGrants:
+    @pytest.mark.asyncio
+    async def test_only_a_granted_widget_gets_a_token(self, member, source, db_session):
+        await grant(member, db_session, source, {"framed": "access"})
+        url = f"/app/data-connectors/api-source/{source.uuid}/frame"
+
+        assert (await member.post(url, json={"widgetId": "framed"})).status_code == 200
+        refused = await member.post(url, json={"widgetId": "other_frame"})
+        assert refused.status_code == 403
+        assert "none of your roles" in refused.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_a_token_stops_working_when_its_widget_is_taken_away(self, member, source, db_session, monkeypatch):
+        role = await grant(member, db_session, source, {"framed": "access"})
+        url = f"/app/data-connectors/api-source/{source.uuid}/frame"
+        token = (await member.post(url, json={"widgetId": "framed"})).json()["token"]
+        page = f"/app/data-connectors/frame/{token}/api/dash/index.html"
+        assert (await member.get(page)).status_code == 200
+
+        monkeypatch.setattr(frame_proxy, "ACCESS_SECONDS", 0.0)
+        await db_session.execute(
+            update(models.RoleBackend)
+            .where(models.RoleBackend.role_uuid == role)
+            .values(widgets=[{"widgetId": "framed", "access": "no-access"}])
+        )
+        await db_session.commit()
+
+        assert (await member.get(page)).status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_the_owner_may_open_any_page(self, superuser, source):
+        url = f"/app/data-connectors/api-source/{source.uuid}/frame"
+        assert (await superuser.post(url, json={"widgetId": "other_frame"})).status_code == 200
+
+
+class FakeSocket:
+    def __init__(self):
+        self.closed: int | None = None
+        self.accepted = False
+        self.scope: dict = {"subprotocols": []}
+
+    async def accept(self, subprotocol=None):
+        self.accepted = True
+
+    async def close(self, code: int = 1000):
+        self.closed = code
+
+
+@pytest.fixture
+def sockets(monkeypatch):
+    opened = []
+
+    async def session(_socket):
+        return auth_helpers.WebSocketSession(MEMBER, uuid4(), datetime.now(UTC) + timedelta(days=1))
+
+    async def alive(_session_uuid):
+        return True
+
+    async def relay(socket, url, headers, origin, trusted, user_uuid, expires_at, authorized):
+        opened.append(SimpleNamespace(url=url, headers=headers, origin=origin, trusted=trusted, authorized=authorized))
+
+    monkeypatch.setattr(auth_helpers, "websocket_session", session)
+    monkeypatch.setattr(auth_helpers, "web_session_alive", alive)
+    monkeypatch.setattr(ws_relay, "relay", relay)
+    return opened
+
+
+async def stream(db_session, source, path: str, query: str = "") -> FakeSocket:
+    socket = FakeSocket()
+    address = f"http://127.0.0.1:{source.server.port}{path}{query}"
+    await data_connectors.stream_through_api_source(socket, source.uuid, address, db_session)
+    return socket
+
+
+class TestTheStreamOfAWidget:
+    @pytest.mark.asyncio
+    async def test_a_granted_widgets_stream_opens_with_the_credentials(self, member, source, db_session, sockets):
+        await grant(member, db_session, source, {"live": "access"})
+
+        socket = await stream(db_session, source, "/api/ws/ticks", "?symbol=ABC")
+
+        assert socket.closed is None
+        [opened] = sockets
+        assert opened.url.startswith(f"http://127.0.0.1:{source.server.port}/api/ws/ticks?")
+        assert "symbol=ABC" in opened.url and f"token={SOURCE_SECRET}" in opened.url
+        assert opened.headers["X-Api-Key"] == SOURCE_SECRET
+        assert opened.headers["X-Workspace-User"]
+        assert opened.origin == f"http://127.0.0.1:{source.server.port}"
+        assert opened.trusted is True
+        assert await opened.authorized() is True
+
+    @pytest.mark.asyncio
+    async def test_the_stream_of_a_widget_no_role_grants_does_not_open(self, member, source, db_session, sockets):
+        await grant(member, db_session, source, {"live": "access"})
+
+        socket = await stream(db_session, source, "/api/ws/secret")
+
+        assert socket.closed == ws_relay.POLICY_CLOSE_CODE
+        assert sockets == []
+
+    @pytest.mark.asyncio
+    async def test_a_socket_to_a_route_no_widget_declares_does_not_open(self, member, source, db_session, sockets):
+        await grant(member, db_session, source, {"live": "access"})
+
+        for path in ("/api/ws/other", "/api/ws/ticks/../secret", "/api/sales"):
+            assert (await stream(db_session, source, path)).closed == ws_relay.POLICY_CLOSE_CODE, path
+        assert sockets == []
+
+    @pytest.mark.asyncio
+    async def test_an_address_on_another_origin_does_not_open(self, member, source, db_session, sockets):
+        await grant(member, db_session, source, {"live": "access"})
+        socket = FakeSocket()
+
+        await data_connectors.stream_through_api_source(
+            socket, source.uuid, "wss://elsewhere.example/api/ws/ticks", db_session
+        )
+
+        assert socket.closed == ws_relay.POLICY_CLOSE_CODE
+        assert sockets == []
+
+    @pytest.mark.asyncio
+    async def test_a_connection_the_user_cannot_read_does_not_open(self, member, source, db_session, sockets):
+        assert (await stream(db_session, source, "/api/ws/ticks")).closed == ws_relay.POLICY_CLOSE_CODE
+        assert sockets == []
+
+    @pytest.mark.asyncio
+    async def test_a_socket_without_a_session_does_not_open(self, member, source, db_session, sockets, monkeypatch):
+        async def none(_socket):
+            return None
+
+        monkeypatch.setattr(auth_helpers, "websocket_session", none)
+        await grant(member, db_session, source, {"live": "access"})
+
+        assert (await stream(db_session, source, "/api/ws/ticks")).closed == ws_relay.POLICY_CLOSE_CODE
+        assert sockets == []
+
+    @pytest.mark.asyncio
+    async def test_the_owner_may_open_any_route_of_the_connection(
+        self, superuser, source, db_session, sockets, monkeypatch
+    ):
+        async def session(_socket):
+            return auth_helpers.WebSocketSession(ADMIN, uuid4(), datetime.now(UTC) + timedelta(days=1))
+
+        monkeypatch.setattr(auth_helpers, "websocket_session", session)
+
+        socket = await stream(db_session, source, "/api/anything/at/all")
+
+        assert socket.closed is None
+        assert len(sockets) == 1
+
+    @pytest.mark.asyncio
+    async def test_the_access_is_checked_again_while_the_socket_is_open(
+        self, member, source, db_session, sockets, monkeypatch
+    ):
+        monkeypatch.setattr(source_proxy, "DECISION_SECONDS", 0.0)
+        role = await grant(member, db_session, source, {"live": "access"})
+        await stream(db_session, source, "/api/ws/ticks")
+        [opened] = sockets
+        assert await opened.authorized() is True
+
+        await db_session.execute(
+            update(models.RoleBackend)
+            .where(models.RoleBackend.role_uuid == role)
+            .values(widgets=[{"widgetId": "live", "access": "no-access"}])
+        )
+        await db_session.commit()
+        widget_access._tables.clear()
+
+        assert await opened.authorized() is False

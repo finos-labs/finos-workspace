@@ -5,7 +5,7 @@ import Tooltip from "../../Tooltip";
 import { CollapsibleSection } from "../atoms/CollapsibleSection";
 import { cn } from "../utils";
 
-export type SettingsMenuProps = {
+type SettingsMenuProps = {
   title: string | ReactNode;
   children: ReactNode;
   canCollapse?: boolean;

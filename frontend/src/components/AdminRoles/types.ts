@@ -19,13 +19,6 @@ export interface RoleT extends RoleSettings {
   createdAt: number;
 }
 
-export type RolesContextType = {
-  roles: RoleT[];
-  setRoles: (roles: RoleT[]) => void;
-  selectedRoles: Set<string>;
-  setSelectedRoles: (selected: Set<string>) => void;
-};
-
 export type ActivityLogEntry = {
   uuid: string;
   role: string;
@@ -36,7 +29,7 @@ export type ActivityLogEntry = {
   details: Record<string, unknown>;
 };
 
-export type RoleAuditAction =
+type RoleAuditAction =
   | "create"
   | "update"
   | "delete"
@@ -45,7 +38,7 @@ export type RoleAuditAction =
   | "remove"
   | "add";
 
-export type RoleResourceType =
+type RoleResourceType =
   | "role"
   | "backend"
   | "file"

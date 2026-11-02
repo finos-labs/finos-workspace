@@ -2,7 +2,7 @@ import type React from "react";
 import type { ReactNode } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "./Dialog";
 
-export type PointerDownOutsideEvent = CustomEvent<{ originalEvent: PointerEvent }>;
+type PointerDownOutsideEvent = CustomEvent<{ originalEvent: PointerEvent }>;
 
 export interface BaseDialogProps extends React.ComponentProps<typeof Dialog> {
   open?: boolean;
@@ -19,7 +19,7 @@ export interface ClosableDialogProps extends BaseDialogProps {
   onClose: () => void;
 }
 
-export interface BaseDialogElementProps extends BaseDialogProps {
+interface BaseDialogElementProps extends BaseDialogProps {
   children?: ReactNode;
 }
 

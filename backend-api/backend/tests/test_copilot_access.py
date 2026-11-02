@@ -651,7 +651,7 @@ class TestBackendsGrantTheServersTheyDeclare:
         assert _servers(access) == {(TUNNEL_URL, "*")}
 
     @pytest.mark.asyncio
-    async def test_an_entity_backend_grants_its_servers_to_the_entity(self, organization, auth_client):
+    async def test_an_entity_backend_grants_its_servers_only_through_a_role(self, organization, auth_client):
         source = uuid4()
         organization.db.add(
             models.ApiSource(
@@ -664,9 +664,14 @@ class TestBackendsGrantTheServersTheyDeclare:
         )
         await organization.db.commit()
         try:
+            assert (await auth_client.get("/app/copilot/access")).json()["mcp"] == []
+            role = await organization.role(MEMBER_UUID)
+            organization.db.add(models.RoleBackend(role_uuid=role, backend_uuid=source, access="access"))
+            await organization.db.commit()
             access = (await auth_client.get("/app/copilot/access")).json()
             assert _servers(access) == {(TUNNEL_URL, "*")}
         finally:
+            await organization.db.execute(delete(models.RoleBackend).where(models.RoleBackend.backend_uuid == source))
             await organization.db.execute(delete(models.ApiSource).where(models.ApiSource.uuid == source))
             await organization.db.commit()
 

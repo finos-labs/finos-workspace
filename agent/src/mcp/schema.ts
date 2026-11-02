@@ -1,4 +1,7 @@
+import { createHash } from "node:crypto";
+import { tool, zodSchema, type Tool } from "ai";
 import { z } from "zod";
+import { createBoundedCache } from "../lib/bounded-cache.ts";
 import type { AgentTool } from "../protocol/types.ts";
 
 export function sanitizeMcpToolName(name: string): string {
@@ -19,7 +22,7 @@ type JsonSchemaProp = Record<string, unknown> & {
   required?: string[];
 };
 
-function jsonSchemaToZod(prop: JsonSchemaProp): z.ZodTypeAny {
+export function jsonSchemaToZod(prop: JsonSchemaProp): z.ZodTypeAny {
   if (prop.const !== undefined) {
     const literal = z.literal(prop.const as string | number | boolean);
     return prop.description ? literal.describe(prop.description) : literal;
@@ -126,4 +129,34 @@ export function buildToolInputSchema(
   }
 
   return z.object(shape);
+}
+
+const TOOL_CACHE_TTL_MS = 60 * 60 * 1000;
+const TOOL_CACHE_ENTRIES = 2_000;
+const TOOL_CACHE_BYTES = 16 * 1024 * 1024;
+
+interface CachedTool {
+  tool: Tool;
+  bytes: number;
+}
+
+const toolCache = createBoundedCache<string, CachedTool>({
+  ttlMs: TOOL_CACHE_TTL_MS,
+  maxEntries: TOOL_CACHE_ENTRIES,
+  weigh: (cached) => cached.bytes,
+  maxWeight: TOOL_CACHE_BYTES,
+});
+
+export function mcpTool(description: string, inputSchema?: AgentTool["input_schema"]): Tool {
+  const definition = JSON.stringify([description, inputSchema ?? null]);
+  const key = createHash("sha256").update(definition).digest("base64url");
+  const cached = toolCache.get(key);
+  if (cached) return cached.tool;
+  const built = tool({ description, inputSchema: zodSchema(buildToolInputSchema(inputSchema)) });
+  toolCache.set(key, { tool: built, bytes: definition.length });
+  return built;
+}
+
+export function clearMcpToolCache(): void {
+  toolCache.clear();
 }

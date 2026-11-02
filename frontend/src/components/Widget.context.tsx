@@ -1,24 +1,7 @@
 import { createContext, type PropsWithChildren, useContext, useMemo } from "react";
 import { useCreateRef } from "~/hooks/useRefHooks";
-import type { NewWidgetT, WidgetContextType, WidgetProps, WidgetT } from "./types";
+import type { WidgetContextType, WidgetProps } from "./types";
 import { useWidgetSync } from "./Widget.hooks";
-
-export interface WidgetStoreProps {
-  widget: WidgetT;
-  widgetFromJSON: WidgetT | null;
-  activeDashboardId: string;
-  isShared: boolean;
-  uuid: string;
-}
-
-export interface WidgetState extends WidgetStoreProps {
-  storageParams: NonNullable<WidgetT["storage"]>["params"];
-  storage: WidgetT["storage"];
-  needsUpdate: boolean;
-  endpointParams: Record<string, string>;
-  getParamName: (groupById: string) => string;
-  updateWidget: (newWidget: NewWidgetT, forceStoreUpdate?: boolean) => void;
-}
 
 export const WidgetContext = createContext<Partial<WidgetContextType>>({
   widgetFromJSON: null,

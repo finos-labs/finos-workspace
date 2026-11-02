@@ -128,6 +128,139 @@ class TestAdminTheme:
         assert "detail" in data or "message" in data or "error" in data
 
 
+class TestAdminThemePresets:
+    PRESET = {
+        "name": "Violet",
+        "light": {"--color-main-100": "#7b2d8e", "--font-family": '"Inter"'},
+        "dark": {"--color-main-100": "#a64bbd"},
+    }
+
+    @pytest.mark.asyncio
+    async def test_presets_require_an_admin(self, client, auth_client):
+        preset_uuid = uuid4()
+        for caller, expected in ((client, {401, 403}), (auth_client, {403})):
+            for response in (
+                await caller.get("/admin/theme-presets"),
+                await caller.put(f"/admin/theme-presets/{preset_uuid}", json=self.PRESET),
+                await caller.put("/admin/theme-presets/active", json={"uuid": None}),
+                await caller.delete(f"/admin/theme-presets/{preset_uuid}"),
+            ):
+                assert response.status_code in expected
+
+    @pytest.mark.asyncio
+    async def test_preset_lifecycle(self, admin_client):
+        preset_uuid = str(uuid4())
+        try:
+            response = await admin_client.get("/admin/theme-presets")
+            assert response.status_code == 200
+            assert response.json() == {"presets": [], "active_preset": None}
+
+            response = await admin_client.put(
+                f"/admin/theme-presets/{preset_uuid}", json=self.PRESET
+            )
+            assert response.status_code == 200
+            assert response.json() == {"uuid": preset_uuid, **self.PRESET}
+
+            response = await admin_client.get("/admin/theme-presets")
+            assert [p["uuid"] for p in response.json()["presets"]] == [preset_uuid]
+            assert response.json()["active_preset"] is None
+
+            response = await admin_client.get("/app/theme-settings")
+            assert response.json()["properties"] is None
+
+            renamed = {**self.PRESET, "name": "Purple", "dark": {}}
+            response = await admin_client.put(
+                f"/admin/theme-presets/{preset_uuid}", json=renamed
+            )
+            assert response.json()["name"] == "Purple"
+            response = await admin_client.get("/admin/theme-presets")
+            assert len(response.json()["presets"]) == 1
+
+            response = await admin_client.put(
+                "/admin/theme-presets/active", json={"uuid": preset_uuid}
+            )
+            assert response.status_code == 200
+            assert response.json()["active_preset"] == preset_uuid
+
+            response = await admin_client.get("/app/theme-settings")
+            assert response.json()["properties"] == {
+                "light": renamed["light"],
+                "dark": {},
+            }
+
+            response = await admin_client.delete(f"/admin/theme-presets/{preset_uuid}")
+            assert response.status_code == 200
+            assert response.json() == {"presets": [], "active_preset": None}
+
+            response = await admin_client.get("/app/theme-settings")
+            assert response.json()["properties"] is None
+        finally:
+            await admin_client.delete(f"/admin/theme-presets/{preset_uuid}")
+
+    @pytest.mark.asyncio
+    async def test_preset_names_are_unique_per_entity(self, admin_client):
+        first, second = str(uuid4()), str(uuid4())
+        try:
+            await admin_client.put(f"/admin/theme-presets/{first}", json=self.PRESET)
+            response = await admin_client.put(
+                f"/admin/theme-presets/{second}", json={**self.PRESET, "name": " violet "}
+            )
+            assert response.status_code == 409
+        finally:
+            await admin_client.delete(f"/admin/theme-presets/{first}")
+
+    @pytest.mark.asyncio
+    async def test_unknown_presets_are_not_found(self, admin_client):
+        missing = uuid4()
+        response = await admin_client.delete(f"/admin/theme-presets/{missing}")
+        assert response.status_code == 404
+        response = await admin_client.put(
+            "/admin/theme-presets/active", json={"uuid": str(missing)}
+        )
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "light",
+        [
+            {"color": "red"},
+            {"--Bad": "red"},
+            {"--x": "red; } body { display: none"},
+            {"--x": "url(https://example.com/a.png)"},
+            {"--x": "expression(alert(1))\\"},
+            {"--x": ""},
+            {"--x": "a" * 201},
+        ],
+    )
+    async def test_unsafe_declarations_are_rejected(self, admin_client, light):
+        response = await admin_client.put(
+            f"/admin/theme-presets/{uuid4()}", json={**self.PRESET, "light": light}
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_grouping_settings_keep_the_presets(self, admin_client):
+        preset_uuid = str(uuid4())
+        try:
+            await admin_client.put(f"/admin/theme-presets/{preset_uuid}", json=self.PRESET)
+            await admin_client.put(
+                "/admin/theme-presets/active", json={"uuid": preset_uuid}
+            )
+            grouping = {"light": {"appTheme": {"grouping": {"palette": ["#000000"]}}}}
+            response = await admin_client.patch("/admin/theme-settings", json=grouping)
+            assert response.status_code == 200
+
+            response = await admin_client.get("/app/theme-settings")
+            body = response.json()
+            assert body["light"]["appTheme"] == grouping["light"]["appTheme"]
+            assert body["properties"]["light"] == self.PRESET["light"]
+            response = await admin_client.get("/admin/theme-presets")
+            assert response.json()["active_preset"] == preset_uuid
+        finally:
+            await admin_client.delete(f"/admin/theme-presets/{preset_uuid}")
+            await admin_client.patch("/admin/theme-settings", json={"light": None})
+
+
 class TestAdminAccessControl:
     @pytest.mark.asyncio
     async def test_regular_user_blocked_from_admin_users(self, auth_client):

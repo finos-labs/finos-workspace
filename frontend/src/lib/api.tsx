@@ -2,6 +2,7 @@ import { type UseQueryOptions, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useWidgetContext } from "~/components/Widget.context";
 import {
+  fetchRequest,
   isApiFileUrl,
   isApiUrl,
   WORKSPACE_CLIENT,
@@ -10,10 +11,8 @@ import {
 import {
   type BuiltRequest,
   RequestProblemsError,
-  requestInit,
   requestKey,
 } from "~/lib/utils/widgetRequest";
-import { REFRESH_WIDGET_INTERVAL } from "./constants";
 import {
   canFetchFromSource,
   SOURCE_UNAVAILABLE_MESSAGE,
@@ -22,8 +21,7 @@ import {
 } from "./state/backendConnector";
 import { useShallowPermissionsStore } from "./state/permissions";
 import { resolveCronRefetchInterval } from "./utils/cronSchedule";
-
-export { convertHeadersToRecord } from "~/lib/utils/widgetParams";
+import { jitteredRefreshInterval } from "./utils/refreshInterval";
 
 type ApiErrorBody = {
   warnings?: string[];
@@ -142,14 +140,11 @@ export function useJsonData<
         if (!request) return reject(new Error("Nothing to request"));
         if (!request.ok) return reject(new RequestProblemsError(request.problems));
 
-        fetch(
-          request.request.url,
-          requestInit(request.request, {
-            signal,
-            credentials: withAuth ? "include" : "omit",
-            headers: withAuth ? { [WORKSPACE_CLIENT_HEADER]: WORKSPACE_CLIENT } : {},
-          }),
-        )
+        fetchRequest(request.request, {
+          signal,
+          credentials: withAuth ? "include" : "omit",
+          headers: withAuth ? { [WORKSPACE_CLIENT_HEADER]: WORKSPACE_CLIENT } : {},
+        })
           .then(async (r) => {
             const noContent = r.status === 204;
             if (!r.ok || noContent) {
@@ -177,6 +172,11 @@ export function useJsonData<
               const errorObj = new Error(errorMessage, {
                 cause: error?.error_kind || error?.status || "unknown",
               });
+              const retryAfter = Number(r.headers.get("retry-after"));
+              if (Number.isFinite(retryAfter) && retryAfter > 0)
+                Object.assign(errorObj, {
+                  retryAfterMs: Math.min(retryAfter, MAX_RETRY_AFTER_SECONDS) * 1000,
+                });
 
               return reject(errorObj);
             }
@@ -187,8 +187,9 @@ export function useJsonData<
       }),
     staleTime: staleTime ?? 1000 * 60 * 5,
     retry: (failures, error) =>
-      !(error instanceof RequestProblemsError) && failures < 1,
-    retryDelay: 1000,
+      !(error instanceof RequestProblemsError) &&
+      failures < (retryAfterOf(error) ? MAX_RETRIES_WHEN_TOLD : 1),
+    retryDelay: (_failures, error) => retryAfterOf(error) ?? 1000,
     ...(options ?? {}),
     enabled: (query) =>
       !!request &&
@@ -199,9 +200,16 @@ export function useJsonData<
         : (optionEnabled ?? true)),
     refetchInterval: resolveCronRefetchInterval(
       refetchInterval,
-      options?.refetchInterval ?? REFRESH_WIDGET_INTERVAL,
+      options?.refetchInterval ?? jitteredRefreshInterval,
     ),
   });
+}
+
+const MAX_RETRY_AFTER_SECONDS = 60;
+const MAX_RETRIES_WHEN_TOLD = 3;
+
+function retryAfterOf(error: unknown): number | undefined {
+  return (error as { retryAfterMs?: number } | null)?.retryAfterMs;
 }
 
 export function fetchBackend(

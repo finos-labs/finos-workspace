@@ -1,11 +1,11 @@
 import { getConfig } from "./runtimeConfig";
+import { IDENTITY_PROVIDERS } from "./runtimeConfigSchema";
 
-export type IdentityProvidersAvailable = "google" | "microsoft" | "okta";
+type IdentityProvidersAvailable = (typeof IDENTITY_PROVIDERS)[number];
 
 export function getEnabledIdentityProviders(): IdentityProvidersAvailable[] {
   const providers = new Set(getConfig().authentication.identityProviders);
-  return Array.from(providers).filter(
-    (p): p is IdentityProvidersAvailable =>
-      p === "google" || p === "microsoft" || p === "okta",
+  return Array.from(providers).filter((p): p is IdentityProvidersAvailable =>
+    (IDENTITY_PROVIDERS as readonly string[]).includes(p),
   );
 }

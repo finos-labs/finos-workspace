@@ -11,7 +11,7 @@ import type {
 } from "../src/protocol/types.ts";
 import type { LanguageModel } from "ai";
 
-export interface CapturedToolCall {
+interface CapturedToolCall {
   name: string;
   args: Record<string, unknown>;
   parameters: Record<string, unknown>;
@@ -31,7 +31,7 @@ export interface Trace {
   errorMessage?: string;
 }
 
-export interface RunCaseInput {
+interface RunCaseInput {
   caseId: string;
   trial: number;
   model: LanguageModel;

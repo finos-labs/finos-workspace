@@ -178,8 +178,8 @@ describe("getSkillContent", () => {
     const empty = getSkillContent("s", undefined, {});
     expect("extra_state" in (empty.data as Record<string, unknown>)).toBe(false);
 
-    const filled = getSkillContent("s", undefined, { intermediate_context: "x" });
-    expect((filled.data as Record<string, unknown>).extra_state).toEqual({ intermediate_context: "x" });
+    const filled = getSkillContent("s", undefined, { timezone: "UTC" });
+    expect((filled.data as Record<string, unknown>).extra_state).toEqual({ timezone: "UTC" });
   });
 });
 

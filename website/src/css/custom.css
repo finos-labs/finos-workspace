@@ -1,0 +1,250 @@
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/montserrat-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/montserrat-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/montserrat-latin-ext-wght-italic.woff2") format("woff2-variations");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/montserrat-latin-wght-italic.woff2") format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --ifm-font-family-base: "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ifm-heading-font-family: var(--ifm-font-family-base);
+  --ifm-heading-font-weight: 600;
+  --ifm-line-height-base: 1.65;
+
+  --ifm-color-primary: #005e8a;
+  --ifm-color-primary-dark: #00547b;
+  --ifm-color-primary-darker: #00496b;
+  --ifm-color-primary-darkest: #00344d;
+  --ifm-color-primary-light: #006c9e;
+  --ifm-color-primary-lighter: #007ab3;
+  --ifm-color-primary-lightest: #0096dc;
+
+  --ifm-background-color: #f4f9fc;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-font-color-base: #3e5c74;
+  --ifm-heading-color: #1a3248;
+  --ifm-code-background: #e7f2f8;
+
+  --ifm-color-emphasis-100: #e7f2f8;
+  --ifm-color-emphasis-200: #d6e6f0;
+  --ifm-color-emphasis-300: #c5d9e6;
+  --ifm-color-emphasis-400: #b7cdd8;
+  --ifm-color-emphasis-500: #8aa6b8;
+  --ifm-color-emphasis-600: #56748c;
+  --ifm-color-emphasis-700: #3e5c74;
+  --ifm-color-emphasis-800: #2a4460;
+  --ifm-color-emphasis-900: #1a3248;
+  --ifm-color-emphasis-1000: #102230;
+
+  --ifm-color-info: #065592;
+  --ifm-color-success: #15803d;
+  --ifm-color-warning: #ba6509;
+  --ifm-color-danger: #b91c1c;
+
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-navbar-shadow: none;
+  --ifm-footer-background-color: #071820;
+  --ifm-footer-color: #e7f2f8;
+  --ifm-footer-link-color: #c5d9e6;
+  --ifm-footer-title-color: #ffffff;
+
+  --docusaurus-highlighted-code-line-bg: rgb(0 94 138 / 12%);
+}
+
+:root[data-theme="dark"] {
+  --ifm-color-primary: #00b5e2;
+  --ifm-color-primary-dark: #00a9d3;
+  --ifm-color-primary-darker: #009cc3;
+  --ifm-color-primary-darkest: #0084a5;
+  --ifm-color-primary-light: #00c5f6;
+  --ifm-color-primary-lighter: #0ccfff;
+  --ifm-color-primary-lightest: #35d7ff;
+
+  --ifm-background-color: #071820;
+  --ifm-background-surface-color: #0b2432;
+  --ifm-font-color-base: #e7f2f8;
+  --ifm-heading-color: #ffffff;
+  --ifm-code-background: #123244;
+
+  --ifm-color-emphasis-100: #0e2b3a;
+  --ifm-color-emphasis-200: #123244;
+  --ifm-color-emphasis-300: #16394a;
+  --ifm-color-emphasis-400: #1a4154;
+  --ifm-color-emphasis-500: #547280;
+  --ifm-color-emphasis-600: #7699a8;
+  --ifm-color-emphasis-700: #b7cdd8;
+  --ifm-color-emphasis-800: #c5d9e6;
+  --ifm-color-emphasis-900: #e7f2f8;
+  --ifm-color-emphasis-1000: #ffffff;
+
+  --ifm-color-info: #3892d9;
+  --ifm-color-success: #59cf6d;
+  --ifm-color-warning: #f18a1a;
+  --ifm-color-danger: #f25454;
+
+  --ifm-navbar-background-color: #0b2432;
+  --ifm-footer-background-color: #0b2432;
+
+  --docusaurus-highlighted-code-line-bg: rgb(0 181 226 / 16%);
+}
+
+.navbar {
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+}
+
+.theme-code-block {
+  --prism-background-color: #e7f2f8 !important;
+}
+
+[data-theme="dark"] .theme-code-block {
+  --prism-background-color: #123244 !important;
+}
+
+:root {
+  --ifm-container-width: 100%;
+  --ifm-container-width-xl: 100%;
+  --doc-sidebar-width: 16rem;
+}
+
+[class*="docMainContainer"] > .container {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+@media (min-width: 997px) {
+  .row > [class*="docItemCol"] {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none !important;
+  }
+
+  .row:has(> [class*="docItemCol"]) {
+    flex-wrap: nowrap;
+  }
+
+  .row:has(> [class*="docItemCol"]) > .col--3 {
+    flex: 0 0 15rem;
+    max-width: 15rem;
+  }
+}
+
+.theme-doc-sidebar-container *,
+[class*="tableOfContents"] {
+  scrollbar-width: none;
+}
+
+.theme-doc-sidebar-container *::-webkit-scrollbar,
+[class*="tableOfContents"]::-webkit-scrollbar {
+  display: none;
+}
+
+.footer {
+  padding: 0.75rem 0;
+}
+
+.footer .container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 2rem;
+  padding: 0 1.5rem;
+}
+
+.footer .footer__links {
+  margin: 0;
+}
+
+.footer .footer__bottom {
+  order: -1;
+  text-align: left;
+}
+
+.table-of-contents {
+  padding: 0.25rem 0.5rem 0.25rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.table-of-contents li {
+  margin: 0.3rem 0;
+}
+
+.table-of-contents ul {
+  padding-left: 0.75rem;
+}
+
+.table-of-contents__link {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown table {
+  display: table;
+  width: 100%;
+  overflow: visible;
+}
+
+.markdown {
+  overflow-wrap: anywhere;
+}
+
+.markdown td,
+.markdown th,
+.markdown td *,
+.markdown th * {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.theme-code-block pre,
+.theme-code-block pre code,
+.markdown pre,
+.markdown pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.navbar__link {
+  white-space: nowrap;
+}

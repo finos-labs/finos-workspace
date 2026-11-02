@@ -1,18 +1,18 @@
 import { apiClient } from "~/api/api";
 import type { McpInputSchema } from "~/lib/state/mcpTools";
 
-export interface WorkspaceToolDefinition {
+interface WorkspaceToolDefinition {
   name: string;
   description?: string | null;
   inputSchema: McpInputSchema;
 }
 
-export interface WorkspaceToolsResponse {
+interface WorkspaceToolsResponse {
   url: string;
   tools: WorkspaceToolDefinition[];
 }
 
-export interface PreparedWorkspaceToolCall {
+interface PreparedWorkspaceToolCall {
   command: Record<string, unknown> | null;
   result: Record<string, unknown> | null;
 }

@@ -1,5 +1,5 @@
 import type { MutableRefObject } from "react";
-import type { Layout } from "react-grid-layout";
+import type { LayoutItem } from "react-grid-layout";
 import type { InnerTab } from "~/lib/state/app";
 import type { ArtifactT, Citation, QuoteBoundingBox } from "~/lib/state/copilot";
 import type { EditorLanguage, WidgetVizType } from "~/lib/types/app";
@@ -12,7 +12,7 @@ import type { DateModifierValue } from "~/lib/utils/widgetParams";
 import type { ConnectionType } from "../lib/state/backendConnector";
 import type { WidgetId } from "./Widgets";
 
-export type GridData = Partial<Layout> & {
+export type GridData = Partial<LayoutItem> & {
   i?: string;
   x?: number;
   y?: number;
@@ -44,12 +44,6 @@ interface GroupBase<T> {
   color: string;
   groupById: unknown;
 }
-
-export type EndpointParam = {
-  label: string;
-  paramName: string;
-  value: string;
-};
 
 interface LinkedParamGroup extends GroupBase<"param"> {
   type: "param";
@@ -104,6 +98,7 @@ export type Widget = {
   // biome-ignore format: off
   widgetType?: "backend" | "file" | "html";
   raw?: boolean;
+  requires_auth?: boolean;
   mcp_tool?: McpToolContractT;
   imgUrl?: string;
   innerTab?: string;
@@ -118,6 +113,7 @@ export type Widget = {
     dataKey?: string;
     rawDataKey?: string;
     rawType?: string;
+    streamEndpoint?: string;
     [vizType: string]: unknown;
   };
 
@@ -191,7 +187,7 @@ export interface WidgetProps {
   activeDashboardId?: string;
   contextOverride?: Partial<WidgetContextType>;
 }
-type ParamValueT<T extends ParamType> = Extract<ParamDef, { type: T }>["value"];
+
 type ParamType =
   | "date"
   | "text"

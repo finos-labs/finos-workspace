@@ -58,5 +58,3 @@ export const TabsParam = memo<TabsParamProps>(
     }, [id, toggleGroupMemo, toolTipMessage]);
   },
 );
-
-export default TabsParam;

@@ -871,6 +871,26 @@ describe("ConnectionsPage", () => {
       }
     });
 
+    it("lists a backend once when the user's own list and a role's grant both name it", () => {
+      mockUseShallowPermissionsStore.mockImplementation(
+        (selector: (state: Record<string, unknown>) => unknown) =>
+          selector({
+            permissions: {
+              backends: [
+                { ...mockSharedBackends[0], uuid: "uuid-1", name: "My Backend" },
+                ...mockSharedBackends,
+              ],
+              files: [],
+              prompts: [],
+            },
+          }),
+      );
+      renderConnections();
+
+      expect(screen.getAllByText("My Backend")).toHaveLength(1);
+      expect(screen.getByText("Shared Backend")).toBeInTheDocument();
+    });
+
     it("disables checkbox for shared connections", () => {
       renderConnections();
 

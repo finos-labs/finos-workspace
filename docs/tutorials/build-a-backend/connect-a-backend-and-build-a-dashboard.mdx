@@ -1,0 +1,244 @@
+---
+title: Connect a backend and build a dashboard
+sidebar_label: "Tutorial: your first backend"
+sidebar_position: 1
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# Connect a backend and build a dashboard
+
+In this tutorial, you write a small backend and connect it to FINOS Workspace. You write the backend yourself, so you see what FINOS Workspace needs from a backend.
+
+You do these steps:
+
+1. Write a backend with two widgets.
+2. Connect the backend.
+3. Put the two widgets on a dashboard.
+4. Change a parameter of a widget.
+5. Save the dashboard as an app.
+
+At the end, you have a dashboard with two widgets. You also have an app that all users in your organization can open again.
+
+## What you need
+
+- A FINOS Workspace that runs. [Run FINOS Workspace](../../quick-start/index.mdx) shows how to start it.
+- An account that can add connections: an Admin or a Developer.
+- Python 3.10 or later, or Node.js 22.18 or later, on the same computer.
+
+## Write the backend
+
+A backend is a web server. It describes its widgets in `widgets.json`, and it answers a request for the data of each widget. The FINOS Workspace API calls the backend for the browser, so the backend needs no CORS settings; it answers its routes, and a plain `OPTIONS` on each of them for the route check.
+
+Create an empty directory, and put this program in it:
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+Create a virtual environment, and install the two packages that the program uses in it:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install fastapi uvicorn
+```
+
+On Windows, activate the environment with `.venv\Scripts\activate` instead.
+
+Save the program as `main.py`:
+
+```python title="main.py"
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse, PlainTextResponse
+
+WIDGETS = {
+    "revenue_by_region": {
+        "name": "Revenue by region",
+        "description": "Revenue in millions of dollars for each sales region in one year",
+        "category": "Sales",
+        "type": "markdown",
+        "endpoint": "/revenue",
+        "params": [{"paramName": "year", "type": "number", "label": "Year", "value": 2025}],
+    },
+    "sales_notes": {
+        "name": "Sales notes",
+        "description": "Notes from the sales team",
+        "category": "Sales",
+        "type": "markdown",
+        "endpoint": "/notes",
+    },
+}
+
+REVENUE = {
+    "2024": {"East": 110, "West": 90, "North": 70},
+    "2025": {"East": 120, "West": 95, "North": 82},
+}
+
+ROUTES = {"/widgets.json", "/apps.json", "/revenue", "/notes"}
+
+app = FastAPI()
+
+
+@app.middleware("http")
+async def check_routes(request: Request, call_next) -> Response:
+    if request.method == "OPTIONS":
+        return Response(status_code=204 if request.url.path in ROUTES else 404)
+    return await call_next(request)
+
+
+def table(rows: dict) -> str:
+    lines = ["| Region | Revenue ($M) |", "|---|---|"]
+    lines += [f"| {region} | {value} |" for region, value in rows.items()]
+    return "\n".join(lines)
+
+
+@app.get("/widgets.json")
+def widgets() -> dict:
+    return WIDGETS
+
+
+@app.get("/apps.json")
+def apps() -> list:
+    return []
+
+
+@app.get("/revenue")
+def revenue(year: str = "2025") -> PlainTextResponse:
+    text = table(REVENUE[year]) if year in REVENUE else f"No data for {year}."
+    return PlainTextResponse(text, media_type="text/markdown")
+
+
+@app.get("/notes")
+def notes() -> PlainTextResponse:
+    text = "## Notes\n\n- The East region leads in both years.\n- The North region grew fastest."
+    return PlainTextResponse(text, media_type="text/markdown")
+
+
+@app.exception_handler(404)
+def not_found(request: Request, exc: Exception) -> JSONResponse:
+    return JSONResponse({"detail": "not found"}, status_code=404)
+```
+
+Start the backend:
+
+```bash
+uvicorn main:app --port 9100
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+The program uses only the modules of Node.js. You install nothing. Save the program as `backend.ts`:
+
+```ts title="backend.ts"
+import { createServer } from "node:http";
+
+const WIDGETS = {
+  revenue_by_region: {
+    name: "Revenue by region",
+    description: "Revenue in millions of dollars for each sales region in one year",
+    category: "Sales",
+    type: "markdown",
+    endpoint: "/revenue",
+    params: [{ paramName: "year", type: "number", label: "Year", value: 2025 }],
+  },
+  sales_notes: {
+    name: "Sales notes",
+    description: "Notes from the sales team",
+    category: "Sales",
+    type: "markdown",
+    endpoint: "/notes",
+  },
+};
+
+const REVENUE: Record<string, Record<string, number>> = {
+  2024: { East: 110, West: 90, North: 70 },
+  2025: { East: 120, West: 95, North: 82 },
+};
+
+const ROUTES = new Set(["/widgets.json", "/apps.json", "/revenue", "/notes"]);
+
+function table(rows: Record<string, number>): string {
+  return [
+    "| Region | Revenue ($M) |",
+    "|---|---|",
+    ...Object.entries(rows).map(([region, value]) => `| ${region} | ${value} |`),
+  ].join("\n");
+}
+
+createServer((request, response) => {
+  const url = new URL(request.url ?? "/", "http://localhost:9100");
+
+  if (request.method === "OPTIONS") {
+    return response.writeHead(ROUTES.has(url.pathname) ? 204 : 404).end();
+  }
+
+  const send = (type: string, body: string) => response.writeHead(200, { "Content-Type": type }).end(body);
+
+  if (url.pathname === "/widgets.json") return send("application/json", JSON.stringify(WIDGETS));
+  if (url.pathname === "/apps.json") return send("application/json", "[]");
+  if (url.pathname === "/revenue") {
+    const year = url.searchParams.get("year") ?? "2025";
+    return send("text/markdown", REVENUE[year] ? table(REVENUE[year]) : `No data for ${year}.`);
+  }
+  if (url.pathname === "/notes") {
+    return send("text/markdown", "## Notes\n\n- The East region leads in both years.\n- The North region grew fastest.");
+  }
+  response.writeHead(404, { "Content-Type": "application/json" }).end(JSON.stringify({ detail: "not found" }));
+}).listen(9100, () => console.log("Backend on http://localhost:9100"));
+```
+
+Start the backend:
+
+```bash
+node backend.ts
+```
+
+</TabItem>
+</Tabs>
+
+The program has three parts:
+
+- **The widgets.** `WIDGETS` is the content of `widgets.json`. Each key is the id of a widget. Each value gives the widget a name, a description, a category for the catalog, a type and the endpoint that serves its data. The widget `revenue_by_region` also has one parameter, `year`, with the start value 2025.
+- **The routes.** The backend answers `/widgets.json` with `WIDGETS`, and [`/apps.json`](../../reference/schemas/apps-json.mdx) with an empty list, because this backend has no apps. It answers the two widget endpoints with Markdown text.
+- **The route check.** For every path, the backend answers a plain `OPTIONS` request with 204 when the route exists and 404 when it does not. FINOS Workspace sends these requests when you connect a backend with **Validate widgets** turned on, to check the routes without calling them. The API makes the data requests themselves, so the backend needs no CORS settings.
+
+The backend uses port 9100. Keep it running. [widgets.json](../../reference/schemas/widgets-json.mdx) lists all the fields of a widget. [Widget requests](../../reference/protocols/widget-requests.mdx) describes the requests that the web app sends.
+
+## Connect the backend
+
+Sign in to FINOS Workspace and select Connections in the sidebar. The page says that no connections have been added. Select Connect Backend and fill in the dialog:
+
+1. In Name, type `Sales demo`.
+2. In Endpoint URL, type `http://localhost:9100`.
+3. Leave Validate widgets at No. Setting it to Yes makes the test also send an `OPTIONS` request to every route that the widgets use, to check each route without calling it.
+4. Select Test.
+
+The dialog reports "Test successful" and says that it found 2 widgets, 0 apps and 0 prompts. If the test fails, check that the backend still runs and that the API can reach it: on this stack, an address on `localhost` reaches your machine through `host.docker.internal`, and on Linux the backend has to listen on `0.0.0.0`. Select Add. The Connections page now lists Sales demo as an active connection with two widgets.
+
+## Create a dashboard
+
+Select Create Dashboard under My Dashboards in the sidebar, or the plus sign next to the heading. FINOS Workspace creates a dashboard with a generated name, such as "Sapphire Hairstreak", and opens it. The dashboard is empty, and it offers three ways to start: add widgets, browse apps, or add your own files.
+
+Select Add widgets. The Widget Menu opens on the Widgets Library tab. The catalog lists the built-in Iframe and Navigation Bar widgets under Others, and your two widgets under the category Sales that you named in `widgets.json`. Select the checkbox of the Sales group to choose both widgets, and then select Add widgets.
+
+The dashboard now shows two widgets. Revenue by region is a table of the regions with their revenue for 2025, and it has a box in its header that holds the year. Sales notes shows the notes as formatted text.
+
+## Change a parameter
+
+The box in the header of Revenue by region is the parameter that you declared, and FINOS Workspace labels it Year when it is empty. Change it to `2024` and press Enter. The widget asks for its data again, this time with `year=2024`, and the table shows 110, 90 and 70. The request goes to the FINOS Workspace API, which calls the backend; you can follow it in the network tab of your browser.
+
+## Name the dashboard
+
+Right-click the dashboard in the sidebar, or select the three dots that appear next to it, and choose Rename. Type `Sales overview` and press Enter. A message confirms that the dashboard was renamed, and the sidebar shows the new name.
+
+## Save the dashboard as an app
+
+An app is a dashboard that you can reuse: it remembers which widgets are on it, how they are arranged and the values of their parameters. Open the dashboard's menu again and choose Save App. The dialog proposes the dashboard's name. Type a description, such as `Revenue by region and the sales team's notes.`, and select Save. A message says that the app was created, and the Apps page now shows a card for it with the number of widgets that it holds.
+
+Select the card. FINOS Workspace creates a new dashboard from the app, with the widgets in the same places and the year at 2024, and opens it.
+
+## Where to go next
+
+You connected a backend, built a dashboard from its widgets and saved it as an app. To let other people see the dashboard, read [Share a dashboard](../../features/sharing/share-a-dashboard.md). To control who may use the backend's widgets, read [Give a role access to data](../../features/administration/give-a-role-access-to-data.md). To ask the AI agent about your dashboard, continue with [Ask the Agent about a dashboard](../../features/agent/ask-the-agent-about-a-dashboard.md).

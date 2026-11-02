@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 import Icon from "~/components/Icon";
 import { cn } from "../utils";
 
-export const buttonVariants = cva(
+const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 ring-offset-general-bg-primary",
     "focus-visible:outline-hidden focus-visible:ring-2",

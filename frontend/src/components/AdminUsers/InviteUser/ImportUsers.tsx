@@ -13,6 +13,9 @@ import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import type { CreateUserDTO } from "~/types/user.type";
 
+export const MAX_USER_IMPORT_MEGABYTES = 5;
+export const MAX_USER_IMPORT_BYTES = MAX_USER_IMPORT_MEGABYTES * 1024 * 1024;
+
 type FileUser = Pick<TUserForm, "first_name" | "last_name" | "email">;
 
 export default function ImportUsers({
@@ -34,7 +37,7 @@ export default function ImportUsers({
     accept: {
       "text/csv": [".csv"],
     },
-    maxSize: 5 * 1024 * 1024,
+    maxSize: MAX_USER_IMPORT_BYTES,
     multiple: false,
     onDrop: async (acceptedFiles, rejectedFiles) => {
       setError(null);
@@ -47,7 +50,7 @@ export default function ImportUsers({
         );
 
         if (sizeError) {
-          setError("File size must be less than 5MB");
+          setError(`File size must be less than ${MAX_USER_IMPORT_MEGABYTES}MB`);
         } else {
           setError("Only CSV files are supported");
         }
@@ -317,7 +320,7 @@ export default function ImportUsers({
                 Browse for file
               </Button>
               <p className="mt-2.5 text-ds-text-caption text-2xs">
-                File size limit: 5MB
+                File size limit: {MAX_USER_IMPORT_MEGABYTES}MB
               </p>
             </div>
           )}

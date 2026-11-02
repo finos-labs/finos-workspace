@@ -65,14 +65,20 @@ describe("a query that never ends", () => {
   });
 
   it("does not hold up another user's query that runs at the same time", async () => {
+    process.env.AGENT_SQL_TIMEOUT_MS = "6000";
     const stuck = tools();
     const other = tools();
-    const runaway = stuck.call("execute_sql", { sql: "WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM r) SELECT count(*) FROM r" });
-    const started = Date.now();
+    let runawayEnded = false;
+    const runaway = stuck
+      .call("execute_sql", { sql: "WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM r) SELECT count(*) FROM r" })
+      .then((text) => {
+        runawayEnded = true;
+        return text;
+      });
     const answer = await other.call("execute_sql", { sql: "SELECT sum(a) AS total FROM t" });
     expect(answer).toContain('"total": 6');
-    expect(Date.now() - started).toBeLessThan(1_200);
-    await runaway;
+    expect(runawayEnded).toBe(false);
+    expect(await runaway).toContain("was stopped");
   });
 });
 

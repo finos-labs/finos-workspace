@@ -15,13 +15,14 @@ import { useWidgetContext } from "../Widget.context";
 import type { InnerTabsMenuProps, MoveTarget } from "./types";
 import { AddWidgetOnSelect } from "./utils";
 
-export const TabDropdownMenu = (props: Omit<InnerTabsMenuProps, "gridLayout">) => {
+const TabDropdownMenu = (props: Omit<InnerTabsMenuProps, "gridLayout">) => {
   const { uniqueKey, tab } = props;
   const { widget, activeDashboardId, isShared } = useWidgetContext();
   const navigate = useNavigate();
 
   const gridLayout = getInnerTabsGridLayout(tab?.data?.gridLayout);
   const isCurrentDashboard = tab?.index === activeDashboardId;
+  const cannotCopyHere = isShared || tab?.data?.locked === true;
 
   if (Object.keys(gridLayout).length > 1) {
     return <InnerTabsMenu {...{ uniqueKey, tab }} gridLayout={gridLayout} />;
@@ -31,7 +32,7 @@ export const TabDropdownMenu = (props: Omit<InnerTabsMenuProps, "gridLayout">) =
     <DropdownMenu.Item
       key={uniqueKey}
       className={cn("ws-dropdown-item", {
-        "opacity-30": isShared,
+        "opacity-30": cannotCopyHere,
         "bg-light-50 dark:bg-dark-600": isCurrentDashboard,
       })}
       onSelect={async () => {
@@ -41,7 +42,7 @@ export const TabDropdownMenu = (props: Omit<InnerTabsMenuProps, "gridLayout">) =
 
         await AddWidgetOnSelect({ widget: w, tab, activeDashboardId, navigate });
       }}
-      disabled={isShared}
+      disabled={cannotCopyHere}
     >
       <span className="truncate grow">{tab?.data.name}</span>
     </DropdownMenu.Item>
@@ -55,6 +56,7 @@ const InnerTabsMenu = (props: InnerTabsMenuProps) => {
   const { widget, activeDashboardId, isShared } = useWidgetContext();
   const key = `${uniqueKey}-inner-tab`;
   const isCurrentDashboard = tab?.index === activeDashboardId;
+  const cannotCopyHere = isShared || tab?.data?.locked === true;
 
   const navigate = useNavigate();
   const tabsInStorage = useShallowAppStore((s) => {
@@ -92,7 +94,7 @@ const InnerTabsMenu = (props: InnerTabsMenuProps) => {
           <DropdownMenu.Item
             key={`${key}-${innerTab}-item`}
             className={cn("ws-dropdown-item truncate", {
-              "opacity-30": isShared,
+              "opacity-30": cannotCopyHere,
               "bg-light-50 dark:bg-dark-600":
                 isCurrentDashboard && innerTab === widget.innerTab,
             })}
@@ -102,7 +104,7 @@ const InnerTabsMenu = (props: InnerTabsMenuProps) => {
               const w = { ...widget, innerTab };
               await AddWidgetOnSelect({ widget: w, tab, activeDashboardId, navigate });
             }}
-            disabled={isShared}
+            disabled={cannotCopyHere}
           >
             {tabsInStorage?.[innerTab]?.name || beautifySlug(innerTab)}
           </DropdownMenu.Item>

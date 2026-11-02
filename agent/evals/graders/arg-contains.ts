@@ -25,38 +25,3 @@ export function argContains(name: string, terms: string[]): GraderSpec {
     },
   };
 }
-
-export function argEquals(
-  name: string,
-  path: string,
-  expected: unknown,
-): GraderSpec {
-  return {
-    name: `argEquals(${name}, ${path})`,
-    grader: (trace: Trace) => {
-      const matches = trace.toolCalls.filter(
-        (c) => c.name === name || c.serverToolName === name,
-      );
-      if (matches.length === 0) return { pass: false, message: `${name} not called` };
-      const expectedStr = JSON.stringify(expected);
-      for (const match of matches) {
-        const value = path
-          .split(".")
-          .reduce<unknown>(
-            (acc, key) =>
-              acc != null && typeof acc === "object"
-                ? (acc as Record<string, unknown>)[key]
-                : undefined,
-            match.parameters,
-          );
-        if (JSON.stringify(value) === expectedStr) {
-          return { pass: true, message: `${name}.${path} matches expected` };
-        }
-      }
-      return {
-        pass: false,
-        message: `${name}.${path} did not match expected ${expectedStr}`,
-      };
-    },
-  };
-}

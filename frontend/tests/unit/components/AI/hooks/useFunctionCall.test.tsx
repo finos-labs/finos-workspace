@@ -31,11 +31,13 @@ let mockItems: Record<
         widgetId: string;
         storage: Record<string, unknown>;
       }>[];
+      locked?: boolean;
     };
   }
 > = {};
 
 vi.mock("~/lib/state/app", () => ({
+  DASHBOARD_LOCKED_MESSAGE: "Locked.",
   useAppStore: {
     getState: () => ({
       addWidget: mockAddWidget,
@@ -236,15 +238,15 @@ describe("useFunctionCall", () => {
       });
     });
 
-    it("sends the data backend's credentials, headers and query, to its own origin only", async () => {
+    it("asks the API to call its own data backend, and sends others no credentials", async () => {
       useBackendConnectorStore.setState({
         apiSources: [
           partial<Source>({
             id: "src-1",
             url: "https://reference-backend.test",
             endpointHeaders: [
-              { key: "X-API-KEY", value: "backend-key" },
-              { key: "token", value: "backend-token", location: "query" },
+              { key: "X-API-KEY", value: "" },
+              { key: "token", value: "", location: "query" },
             ],
           }),
         ],
@@ -272,18 +274,23 @@ describe("useFunctionCall", () => {
             },
           ]);
         });
-        return vi.mocked(fetch).mock.calls.at(-1)?.[0] as Request;
+        return vi.mocked(fetch).mock.calls.at(-1) as [string, RequestInit];
       };
 
-      const own = await requestFor("https://reference-backend.test/prices");
-      expect(own.headers.get("X-API-KEY")).toBe("backend-key");
-      expect(new URL(own.url).searchParams.get("token")).toBe("backend-token");
-      expect(new URL(own.url).searchParams.get("limit")).toBe("5");
+      const [ownRoute, ownInit] = await requestFor(
+        "https://reference-backend.test/prices",
+      );
+      expect(ownRoute).toMatch(/\/app\/data-connectors\/api-source\/src-1\/request$/);
+      const sent = JSON.parse(String(ownInit.body));
+      expect(new URL(sent.url).origin).toBe("https://reference-backend.test");
+      expect(new URL(sent.url).searchParams.get("limit")).toBe("5");
+      expect(new URL(sent.url).searchParams.has("token")).toBe(false);
+      expect(JSON.stringify(ownInit)).not.toContain("backend-key");
 
-      const other = await requestFor("https://elsewhere.test/prices");
-      expect(other.headers.get("X-API-KEY")).toBeNull();
-      expect(new URL(other.url).searchParams.has("token")).toBe(false);
-      expect(new URL(other.url).searchParams.get("limit")).toBe("5");
+      const [otherUrl, otherInit] = await requestFor("https://elsewhere.test/prices");
+      expect(new URL(otherUrl).origin).toBe("https://elsewhere.test");
+      expect(new URL(otherUrl).searchParams.get("limit")).toBe("5");
+      expect(new Headers(otherInit.headers).has("X-API-KEY")).toBe(false);
 
       useBackendConnectorStore.setState({ apiSources: [] });
     });
@@ -408,8 +415,8 @@ describe("useFunctionCall", () => {
           items: [{ content: JSON.stringify(records) }],
         });
       });
-      const request = vi.mocked(fetch).mock.calls.at(-1)?.[0] as Request;
-      expect(new URL(request.url).searchParams.get("raw")).toBe("true");
+      const [url] = vi.mocked(fetch).mock.calls.at(-1) as [string, RequestInit];
+      expect(new URL(url).searchParams.get("raw")).toBe("true");
     });
 
     it("reads an html widget's rows as JSON, not as its page", async () => {
@@ -543,6 +550,28 @@ describe("useFunctionCall", () => {
   describe("addGenerativeWidget", () => {
     beforeEach(() => {
       setupDashboard();
+    });
+
+    it("refuses to add a widget to a locked dashboard and says why", async () => {
+      mockItems["test-dashboard-id"].data = { widgets: [], locked: true };
+      const { result } = renderUseFunctionCall();
+
+      let response: CopilotCommandResultT[] | undefined;
+      await act(async () => {
+        response = await result.current.addGenerativeWidget({
+          widget_type: "note",
+          data: "<p>Hello</p>",
+          name: "Note",
+        });
+      });
+
+      expect(response).toEqual([
+        {
+          status: "error",
+          message: "Dashboard 'test-dashboard-id' is locked. Locked.",
+        },
+      ]);
+      expect(mockAddWidget).not.toHaveBeenCalled();
     });
 
     describe("note widget creation", () => {

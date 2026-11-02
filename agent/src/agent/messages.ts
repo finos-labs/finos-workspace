@@ -20,7 +20,7 @@ function capped(text: string): string {
     : text;
 }
 
-export interface BuildMessagesOptions extends PromptOptions {
+interface BuildMessagesOptions extends PromptOptions {
   workspaceState?: WorkspaceState | null;
 }
 

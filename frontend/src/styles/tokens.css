@@ -5,6 +5,7 @@
   --color-main-50: #00b5e2;
   --color-main-100: #0086bf;
   --color-main-200: #005e8a;
+  --color-main-contrast: var(--color-light-100);
 
   --color-dark-50: #7699a8;
   --color-dark-100: #547280;
@@ -109,7 +110,7 @@
   --btn-primary-bg: var(--color-main-100);
   --btn-primary-bg-hover: var(--color-main-200);
   --btn-primary-bg-disabled: var(--color-main-200);
-  --btn-primary-label: var(--color-main-contrast, var(--color-light-100));
+  --btn-primary-label: var(--color-main-contrast);
   --btn-primary-label-disabled: var(--color-dark-50);
 
   --btn-secondary-bg: var(--color-light-100);
@@ -148,7 +149,7 @@
   --tab-action-active: var(--color-main-200);
 
   --tab-filled-primary-bg-active: var(--color-main-100);
-  --tab-filled-primary-text-active: var(--color-main-contrast, var(--color-light-100));
+  --tab-filled-primary-text-active: var(--color-main-contrast);
 
   --tab-filled-secondary-text: var(--color-light-600);
   --tab-filled-secondary-text-active: var(--color-main-200);
@@ -222,7 +223,7 @@
   --text-support: var(--color-light-500);
 
   --copilot-mention-bg: var(--color-main-200);
-  --copilot-mention-label: var(--color-main-contrast, var(--color-light-100));
+  --copilot-mention-label: var(--color-main-contrast);
   --copilot-mention-web-bg: var(--color-light-500);
   --copilot-mention-web-label: var(--color-base-0);
 
@@ -258,7 +259,7 @@
   --btn-primary-bg: var(--color-main-100);
   --btn-primary-bg-hover: var(--color-main-200);
   --btn-primary-bg-disabled: var(--color-main-200);
-  --btn-primary-label: var(--color-main-contrast, var(--color-light-100));
+  --btn-primary-label: var(--color-main-contrast);
   --btn-primary-label-disabled: var(--color-dark-50);
 
   --btn-secondary-bg: var(--color-dark-800);
@@ -297,7 +298,7 @@
   --tab-action-active: var(--color-main-50);
 
   --tab-filled-primary-bg-active: var(--color-main-100);
-  --tab-filled-primary-text-active: var(--color-main-contrast, var(--color-light-100));
+  --tab-filled-primary-text-active: var(--color-main-contrast);
 
   --tab-filled-secondary-text: var(--color-dark-50);
   --tab-filled-secondary-text-active: var(--color-main-50);
@@ -371,7 +372,7 @@
   --text-support: var(--color-dark-100);
 
   --copilot-mention-bg: var(--color-main-200);
-  --copilot-mention-label: var(--color-main-contrast, var(--color-light-100));
+  --copilot-mention-label: var(--color-main-contrast);
   --copilot-mention-web-bg: var(--color-dark-300);
   --copilot-mention-web-label: var(--color-base-0);
 

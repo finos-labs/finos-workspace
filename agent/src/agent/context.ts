@@ -9,18 +9,18 @@ function capText(text: string): string {
   return `${text.slice(0, CONTEXT_TEXT_BLOCK_MAX_CHARS)}\n[…truncated, original ${text.length} chars]`;
 }
 
-export interface ContextTable {
+interface ContextTable {
   name: string;
   rows: Record<string, unknown>[];
 }
 
-export interface ContextTextBlock {
+interface ContextTextBlock {
   name: string;
   description?: string;
   text: string;
 }
 
-export interface SplitContext {
+interface SplitContext {
   tables: ContextTable[];
   textBlocks: ContextTextBlock[];
 }

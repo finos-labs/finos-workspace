@@ -35,13 +35,15 @@ const key = {
   invalid: (userId: string) => `invalid:${userId}`,
 };
 
+export const TURN_SECONDS = 600;
+
 export function createLimits(options: LimitsOptions): Limits {
   const {
     store,
     maxConcurrent,
     maxTotal = Infinity,
     maxRequestsPerTurn = 60,
-    turnSeconds = 600,
+    turnSeconds = TURN_SECONDS,
     maxHelperCallsPerMinute = 60,
     maxInvalidPerMinute = 20,
   } = options;

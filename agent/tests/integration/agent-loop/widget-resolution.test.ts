@@ -794,7 +794,7 @@ describe("the widget data cache keeps one chat's data for that chat", () => {
       role: "tool",
       function: "get_widget_data",
       input_arguments: { data_sources: [{ widget_uuid: "stock_price" }] },
-      data: [{ items: [{ content: JSON.stringify([{ symbol: "AAPL", price: value }]), data_format: { data_type: "object", parse_as: "table" } }] }],
+      data: [{ items: [{ content: JSON.stringify([{ symbol: "AAPL", price: value }]), data_format: { data_type: "object" } }] }],
     }) as unknown as ToolMessage;
 
   async function fetchedBy(conversationId: string): Promise<unknown> {

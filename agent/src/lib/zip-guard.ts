@@ -1,11 +1,11 @@
-export interface ZipLimits {
+interface ZipLimits {
   maxEntries: number;
   maxEntryBytes: number;
   maxTotalBytes: number;
   maxRatio: number;
 }
 
-export const OFFICE_ZIP_LIMITS: ZipLimits = {
+const OFFICE_ZIP_LIMITS: ZipLimits = {
   maxEntries: 5_000,
   maxEntryBytes: 100 * 1024 * 1024,
   maxTotalBytes: 250 * 1024 * 1024,

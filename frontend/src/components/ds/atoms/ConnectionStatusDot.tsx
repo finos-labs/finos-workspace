@@ -26,7 +26,7 @@ const LABEL_COLORS: Record<Exclude<ConnectionStatus, "pending">, string> = {
   disconnected: "text-ds-text-caption",
 };
 
-export interface ConnectionStatusDotProps {
+interface ConnectionStatusDotProps {
   status: ConnectionStatus;
   label?: string;
   coloredLabel?: boolean;

@@ -4,7 +4,7 @@ import { viewPage, type FetchedPage } from "../../../../src/lib/html-page.ts";
 import { findInText, readText } from "../../../../src/lib/page-text.ts";
 import { getLogger } from "../../lib/logger.ts";
 import { getPage, type HeldPage } from "../../lib/page-store.ts";
-import { scopeSigSchema } from "../../lib/scope-check.ts";
+import { conversationIdSchema, scopeSigSchema } from "../../lib/scope-check.ts";
 
 const logger = getLogger(["mcp", "inspect-webpage"]);
 
@@ -43,10 +43,7 @@ export const inspectWebpageSchema = {
     .min(1)
     .optional()
     .describe(`How much: characters for text, raw and data (default ${DEFAULT_CHARS}, at most ${MAX_CHARS}), items for the other views.`),
-  "x-agent-conversation-id": z
-    .string()
-    .optional()
-    .describe("INTERNAL — populated by agent decoration. Do not set."),
+  "x-agent-conversation-id": conversationIdSchema,
   "x-agent-scope-sig": scopeSigSchema,
 };
 

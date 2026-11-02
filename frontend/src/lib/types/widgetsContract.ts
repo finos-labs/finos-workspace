@@ -50,6 +50,7 @@ export const RESERVED_HEADER_NAMES = [
   "accept",
   "x-microsoft-id-token",
   "x-okta-id-token",
+  "x-workspace-identity",
   "x-workspace-user",
 ] as const;
 
@@ -350,18 +351,26 @@ export const ParamDefContract = z.discriminatedUnion("type", [
   EndpointParam,
   FormParam,
 ]);
-export type ParamDefContractT = z.infer<typeof ParamDefContract>;
 
 export const McpToolContract = z
   .strictObject({
-    mcp_server: z.string().min(1).max(128),
-    tool_id: z.string().min(1).max(128),
+    mcp_server: z.string().min(1).max(128).meta({
+      description: "The name of a server in this backend's apps.json mcpServers",
+    }),
+    tool_id: z
+      .string()
+      .min(1)
+      .max(128)
+      .meta({ description: "The name of the tool on that server" }),
     args: z
       .record(
         z.string().max(LIMITS.paramName),
         z.union([z.string().max(LIMITS.mcpArgValue), z.number(), z.boolean()]),
       )
-      .meta({ maxProperties: LIMITS.mcpArgs })
+      .meta({
+        maxProperties: LIMITS.mcpArgs,
+        description: "The arguments that the AI Agent passes to the tool, by name",
+      })
       .optional(),
   })
   .meta({
@@ -435,11 +444,11 @@ export const WidgetBaseContract = z.strictObject({
     .optional(),
   refetchInterval: z
     .union([z.number().min(1000).max(1e10), z.literal(false), Cron])
+    .nullish()
     .meta({
       description:
         "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never",
-    })
-    .nullish(),
+    }),
   dataUpdateDisplay: Cron.meta({
     description:
       "When the data changes, as a 5-field cron expression shown to the user",
@@ -506,6 +515,13 @@ const RAW_DATA_PROPERTIES = {
     .optional(),
 };
 
+const STREAM_DATA_PROPERTIES = {
+  streamEndpoint: Endpoint.meta({
+    description:
+      "The WebSocket the widget's plugin is fed from, as a path or an absolute URL with no `?` and no `#`: `http` and `https` become `ws` and `wss`. The widget's params are query values. The browser opens the socket through the FINOS Workspace API, which adds the backend connection's credentials, and passes the JSON messages it receives to the plugin",
+  }).optional(),
+};
+
 export interface BuiltInTypeContract {
   summary: string;
   returns: string;
@@ -558,6 +574,13 @@ export const BUILT_IN_TYPES = {
     summary: "An existing web page",
     returns: "Nothing: the endpoint is the page's URL, which the browser opens",
     properties: {
+      requires_auth: z
+        .boolean()
+        .meta({
+          description:
+            "The page needs the backend connection's credentials. The browser then opens it through the FINOS Workspace API, which adds them, in a sandbox without storage. For trusted pages only: the API checks this declaration itself",
+        })
+        .optional(),
       storage: z
         .strictObject({
           mcpUrl: z
@@ -582,7 +605,7 @@ export const BUILT_IN_TYPES = {
 
 export const PLUGIN_TYPE_RULES = {
   properties: { raw: Raw },
-  dataProperties: RAW_DATA_PROPERTIES,
+  dataProperties: { ...RAW_DATA_PROPERTIES, ...STREAM_DATA_PROPERTIES },
   methods: HTTP_METHODS,
   locations: PARAM_LOCATIONS,
   reservedQueryNames: ["theme", "raw"] as readonly string[],

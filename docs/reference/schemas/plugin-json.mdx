@@ -1,0 +1,16 @@
+---
+title: plugin.json
+sidebar_position: 3
+---
+
+import { SchemaDocs } from "@site/src/components/Reference/schemas";
+
+# plugin.json
+
+Every widget plugin carries a manifest named `plugin.json`, which describes the plugin, the permissions that it asks for and the widgets that it contributes. This page lists the JSON Schema of the manifest. [Plugin package and manifest](../plugins/package-and-manifest.mdx) explains what each part means and how a package is laid out.
+
+The `Manifest` model in `backend-api/backend/api/widget_plugins/manifest.py` defines the manifest. The schema below is the one that the model produces, followed by the models that it refers to. The page is generated from `backend-api/backend/reference-data/plugin_manifest_schema.json`, which the backend's exporter writes from the model.
+
+## Schema
+
+<SchemaDocs set="manifest" />

@@ -1,0 +1,51 @@
+---
+title: apps.json
+sidebar_position: 2
+---
+
+import { SchemaDocs } from "@site/src/components/Reference/schemas";
+
+# apps.json
+
+An app is a template that a backend offers: a set of tabs of widgets, with their layout and their starting values, which a user can open as a dashboard. A backend lists its apps in a file named `apps.json`, at the same address as its `widgets.json`. The file is an array, and each element describes one app. The widgets that an app places are the ones that [widgets.json](widgets-json.mdx) defines. [App behavior](../../features/apps/app-behavior.md) explains what FINOS Workspace does with an app.
+
+## Schema
+
+The web app's Zod schema `templateSpecificationSchema` in `frontend/src/lib/types/app.ts` defines the file, and the description of every field is part of that schema. The page below is generated from the JSON Schema (draft-07) that the web app's reference test writes to `frontend/reference-data/apps-schema.json`, as [Regenerate the reference data](../../tutorials/contribute/regenerate-reference-data.md) describes. A test fails when a field has no description.
+
+<SchemaDocs
+  set="apps"
+  root={false}
+  show={[
+    { name: "AppsJson", title: "App", description: "One element of the file." },
+    { name: "Group", title: "Group" },
+    { name: "Layout", title: "Layout" },
+    { name: "Tabs", title: "Tabs" },
+    { name: "WidgetState", title: "Widget state" },
+  ]}
+/>
+
+## Example
+
+This file offers one app. It places two widgets of the backend side by side, starts the first one with the year 2024, and suggests one question to the Agent.
+
+```json
+[
+  {
+    "name": "Sales overview",
+    "description": "Revenue by region next to the notes of the sales team.",
+    "templateId": "sales-overview",
+    "prompts": ["Which region has the highest revenue?"],
+    "tabs": {
+      "overview": {
+        "id": "overview",
+        "name": "Overview",
+        "layout": [
+          { "i": "revenue_by_region", "x": 0, "y": 0, "w": 20, "h": 12, "state": { "params": { "year": 2024 } } },
+          { "i": "sales_notes", "x": 20, "y": 0, "w": 20, "h": 12 }
+        ]
+      }
+    }
+  }
+]
+```

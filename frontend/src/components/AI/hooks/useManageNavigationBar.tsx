@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useParams } from "react-router-dom";
 import type { WidgetT } from "~/components/types";
 import type { InnerTab, InnerTabsT } from "~/lib/state/app";
-import { useAppStore } from "~/lib/state/app";
+import { DASHBOARD_LOCKED_MESSAGE, useAppStore } from "~/lib/state/app";
 import type { CopilotCommandResultT } from "~/lib/state/copilot";
 import { getJsonWidget, slugify, triggerCustomEvent } from "~/lib/utils";
 import type { ManageNavigationBarInputArgumentsT } from "~/lib/utils/ai";
@@ -157,6 +157,15 @@ export function useManageNavigationBar() {
       const tab = appState.items?.[dashboardId];
       if (!tab) {
         return [{ status: "error", message: "Dashboard not found" }];
+      }
+
+      if (tab.data?.locked) {
+        return [
+          {
+            status: "error",
+            message: `Dashboard '${dashboardId}' is locked. ${DASHBOARD_LOCKED_MESSAGE}`,
+          },
+        ];
       }
 
       const widgets = tab.data?.widgets || [];

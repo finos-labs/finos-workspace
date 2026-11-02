@@ -13,12 +13,7 @@ from routers import app_helpers
 from routers.app import file_storage
 from routers.app.index import process_create_user
 from routers.routers_helpers import register_app_user
-from tests.fixtures.base import (
-    _AUTH_USER,
-    _DEFAULT_USER_MAP_UUID,
-    _create_session_record,
-    bearer_client,
-)
+from tests.fixtures.base import _AUTH_USER, _DEFAULT_USER_MAP_UUID
 
 USER_UUID = UUID(_AUTH_USER["user_uuid"])
 
@@ -191,58 +186,13 @@ class TestMcpServerHeaders:
             assert secret not in server_list
         assert await app_helpers.get_mcp_server_headers(db_session, USER_UUID, path_url) == {}
 
-    async def test_local_server_headers_are_served_for_localhost_only(self, auth_client):
-        local = "http://localhost:8123/mcp"
-        await _save(
-            auth_client,
-            _server(customHeaders={"Authorization": "Bearer remote"}),
-            {**_server(url=local, customHeaders={"X-Local": "local-value"}), "id": "s2"},
-        )
+    @pytest.mark.parametrize("url", ["http://localhost:8123/mcp", "http://[::1]:8123/mcp", MCP_URL])
+    async def test_no_route_hands_the_headers_of_a_server_to_the_browser(self, auth_client, url):
+        await _save(auth_client, _server(url=url, customHeaders={"X-Local": "local-value"}))
 
-        response = await auth_client.post("/app/mcp-servers/local-headers", json={"url": local})
-        assert response.status_code == 200
-        assert response.json() == {"headers": {"X-Local": "local-value"}}
+        response = await auth_client.post("/app/mcp-servers/local-headers", json={"url": url})
 
-        response = await auth_client.post("/app/mcp-servers/local-headers", json={"url": MCP_URL})
-        assert response.status_code == 400
-        assert "remote" not in response.text
-
-        response = await auth_client.post(
-            "/app/mcp-servers/local-headers", json={"url": "http://127.0.0.1:9999/mcp"}
-        )
-        assert response.status_code == 404
-
-        response = await auth_client.get("/app/mcp-servers/local-headers", params={"url": local})
         assert response.status_code in {404, 405}
-        assert "local-value" not in response.text
-
-    async def test_local_server_headers_are_served_for_the_ipv6_loopback(self, auth_client):
-        local = "http://[::1]:8123/mcp"
-        await _save(auth_client, _server(url=local, customHeaders={"X-Local": "local-value"}))
-
-        response = await auth_client.post("/app/mcp-servers/local-headers", json={"url": local})
-        assert response.status_code == 200
-        assert response.json() == {"headers": {"X-Local": "local-value"}}
-
-    async def test_local_server_headers_are_never_served_to_a_bearer_session(
-        self, auth_client, db_session
-    ):
-        local = "http://localhost:8123/mcp"
-        await _save(auth_client, _server(url=local, customHeaders={"X-Local": "local-value"}))
-        session_uuid = uuid4()
-        token = await _create_session_record(
-            db_session, _AUTH_USER["user_uuid"], str(session_uuid), "app"
-        )
-        try:
-            async with bearer_client(token) as bearer:
-                response = await bearer.post(
-                    "/app/mcp-servers/local-headers", json={"url": local}
-                )
-        finally:
-            await db_session.execute(delete(models.Session).where(models.Session.uuid == session_uuid))
-            await db_session.commit()
-
-        assert response.status_code == 401
         assert "local-value" not in response.text
 
 

@@ -2,15 +2,14 @@ import logging
 import resource
 import sys
 from pathlib import Path
-from threading import Thread
 
 from gunicorn.app.base import BaseApplication
 from gunicorn.glogging import Logger
 from loguru import logger
 
 from api.rate_limit import TRUSTED_PROXIES
-from main import app, start_prometheus
-from utilities.config import settings
+from utilities.config import PROMETHEUS_LISTENER_PORT, settings
+from utilities.prometheus_server import mark_worker_dead, serve_all_workers, use_multiprocess_values
 
 sys.tracebacklimit = 3
 
@@ -74,11 +73,18 @@ class PaymentsBackend(BaseApplication):
                 (WORKER_ADDRESS_SPACE_LIMIT_BYTES, WORKER_ADDRESS_SPACE_LIMIT_BYTES),
             )
 
+    @classmethod
+    def on_starting(cls, server):
+        del server
         if settings.PROMETHEUS:
-            prometheus_server = Thread(
-                target=start_prometheus, args=(cls.forks,), daemon=True
-            )
-            prometheus_server.start()
+            logger.info("Starting prometheus server")
+            serve_all_workers(PROMETHEUS_LISTENER_PORT)
+
+    @classmethod
+    def child_exit(cls, server, worker):
+        del server
+        if settings.PROMETHEUS:
+            mark_worker_dead(worker.pid)
 
     @classmethod
     def post_worker_init(cls, worker):
@@ -94,8 +100,11 @@ class PaymentsBackend(BaseApplication):
         for key, value in config.items():
             self.cfg.set(key.lower(), value)
 
+        self.cfg.set("on_starting", self.on_starting)
         self.cfg.set("pre_fork", self.pre_fork)
         self.cfg.set("post_fork", self.post_fork)
+        self.cfg.set("post_worker_init", self.post_worker_init)
+        self.cfg.set("child_exit", self.child_exit)
 
     def load(self):
         return self.application
@@ -103,6 +112,10 @@ class PaymentsBackend(BaseApplication):
 
 if __name__ == "__main__":
     settings.setup_logging()
+
+    if settings.PROMETHEUS:
+        use_multiprocess_values()
+    from main import app  # noqa: PLC0415
 
     if WORKER_ADDRESS_SPACE_LIMIT_BYTES:
         logger.info(
@@ -120,8 +133,9 @@ if __name__ == "__main__":
         "worker_class": "uvicorn_worker.UvicornWorker",
         "logger_class": StubbedGunicornLogger,
         "timeout": 120,
-        "max_requests": 2048,
-        "max_requests_jitter": 512,
+        "graceful_timeout": 120,
+        "max_requests": 1_000_000,
+        "max_requests_jitter": 100_000,
         "keepalive": 75,
         "forwarded_allow_ips": TRUSTED_PROXIES,
         "secure_scheme_headers": {

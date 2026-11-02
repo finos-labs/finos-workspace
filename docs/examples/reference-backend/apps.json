@@ -1,0 +1,150 @@
+[
+  {
+    "name": "Reference backend tour",
+    "description": "Every widget type, parameter and setting of the reference backend, with invented data",
+    "img": "",
+    "img_dark": "",
+    "img_light": "",
+    "allowCustomization": true,
+    "tabs": {
+      "widget-types": {
+        "id": "widget-types",
+        "name": "Widget types",
+        "layout": [
+          {
+            "i": "html_widget",
+            "x": 0,
+            "y": 0,
+            "w": 20,
+            "h": 12
+          },
+          {
+            "i": "html_table_widget",
+            "x": 20,
+            "y": 0,
+            "w": 20,
+            "h": 12
+          },
+          {
+            "i": "markdown_widget",
+            "x": 0,
+            "y": 12,
+            "w": 20,
+            "h": 10
+          },
+          {
+            "i": "newsfeed_widget",
+            "x": 20,
+            "y": 12,
+            "w": 20,
+            "h": 16
+          },
+          {
+            "i": "pdf_widget",
+            "x": 0,
+            "y": 22,
+            "w": 20,
+            "h": 20
+          },
+          {
+            "i": "iframe_widget",
+            "x": 20,
+            "y": 28,
+            "w": 20,
+            "h": 10
+          }
+        ]
+      },
+      "parameters": {
+        "id": "parameters",
+        "name": "Parameters",
+        "layout": [
+          {
+            "i": "param_text",
+            "x": 0,
+            "y": 0,
+            "w": 20,
+            "h": 8
+          },
+          {
+            "i": "param_number",
+            "x": 20,
+            "y": 0,
+            "w": 20,
+            "h": 10
+          },
+          {
+            "i": "param_date",
+            "x": 0,
+            "y": 8,
+            "w": 20,
+            "h": 8
+          },
+          {
+            "i": "param_dropdown",
+            "x": 20,
+            "y": 10,
+            "w": 20,
+            "h": 8
+          },
+          {
+            "i": "param_endpoint_dropdown",
+            "x": 0,
+            "y": 16,
+            "w": 20,
+            "h": 10
+          },
+          {
+            "i": "param_dependent_dropdown",
+            "x": 20,
+            "y": 18,
+            "w": 20,
+            "h": 8
+          }
+        ]
+      },
+      "linked": {
+        "id": "linked",
+        "name": "Linked widgets",
+        "layout": [
+          {
+            "i": "company_profile",
+            "x": 0,
+            "y": 0,
+            "w": 20,
+            "h": 12,
+            "groups": [
+              "Group 1"
+            ]
+          },
+          {
+            "i": "company_performance",
+            "x": 20,
+            "y": 0,
+            "w": 20,
+            "h": 12,
+            "groups": [
+              "Group 1"
+            ]
+          }
+        ]
+      }
+    },
+    "groups": [
+      {
+        "name": "Group 1",
+        "type": "endpointParam",
+        "paramName": "company",
+        "widgetIds": [
+          "company_profile",
+          "company_performance"
+        ],
+        "defaultValue": "alder"
+      }
+    ],
+    "prompts": [
+      "Which company in the holdings has the largest weight?",
+      "Summarize the performance of the chosen company."
+    ]
+  }
+]

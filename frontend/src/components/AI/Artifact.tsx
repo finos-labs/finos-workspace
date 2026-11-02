@@ -34,12 +34,14 @@ import {
 } from "~/lib/state/copilot";
 import { createCustomTemplateTab } from "~/lib/utils/createTemplates";
 import { HTML_SANITIZE_CONFIG } from "~/lib/utils/sanitize";
+import { PluginArtifactFrame } from "~/plugins/PluginArtifactFrame";
 import { ConfirmDialog } from "../ds/dialogs/ConfirmDialog";
 import { cn } from "../ds/utils";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import { buildAppArtifactSource, buildWidgetSourceResolver } from "./appArtifactUtils";
 import {
+  ARTIFACT_BASE_STYLE,
   artifactContentSecurityPolicy,
   artifactNonce,
   withArtifactPolicy,
@@ -139,8 +141,7 @@ const HTMLArtifact = memo<ArtifactProps<"html">>(({ artifact, inAiMessage }) => 
       WHOLE_DOCUMENT: true,
     });
 
-    const injectedStyle =
-      "<style>body{margin:0;padding:0}table{display:block;overflow-x:auto;max-width:100%}</style>";
+    const injectedStyle = ARTIFACT_BASE_STYLE;
 
     const nonce = allowJsExecution ? artifactNonce() : undefined;
     const injectedScript = nonce
@@ -561,13 +562,57 @@ const AppArtifact = memo<ArtifactProps<"app">>(({ artifact, inAiMessage }) => {
   );
 });
 
+const PluginArtifact = memo<ArtifactProps<"plugin">>(({ artifact, inAiMessage }) => (
+  <div
+    id={artifact.name}
+    className={cn("relative mx-1 rounded p-2", {
+      "dark:bg-dark-400 bg-light-100": inAiMessage,
+      "dark:bg-dark-800 bg-light-50": !inAiMessage,
+    })}
+  >
+    <PluginArtifactFrame artifact={artifact} />
+    <ArtifactActions
+      copyTooltip="Copy data to clipboard"
+      createTooltip="Add to a dashboard as a widget"
+      copyTestId="copy-plugin-artifact-button"
+      createTestId="create-widget-from-plugin-artifact-button"
+      onCopy={() => {
+        navigator.clipboard
+          .writeText(JSON.stringify(artifact.data, null, 2))
+          .then(() => toast.success("Data copied to clipboard"))
+          .catch((err) =>
+            toast.error("Failed to copy data to clipboard", {
+              description: err.message,
+            }),
+          );
+      }}
+      createWidgetParams={{
+        widgetType: "plugin",
+        content: "",
+        pluginArtifact: {
+          plugin: artifact.plugin,
+          data: artifact.data,
+          config: artifact.config,
+        },
+        metadata: {
+          uuid: artifact.uuid,
+          name: artifact.name,
+          description: artifact.description,
+        },
+      }}
+    />
+  </div>
+));
+
 TextArtifact.displayName = "TextArtifact";
+PluginArtifact.displayName = "PluginArtifact";
 AppArtifact.displayName = "AppArtifact";
 type ComponentMapT = { [K in ArtifactT["type"]]: FC<ArtifactProps<K>> };
 const ComponentMap: ComponentMapT = {
   html: HTMLArtifact,
   text: TextArtifact,
   app: AppArtifact,
+  plugin: PluginArtifact,
 };
 
 function getArtifactComponent<T extends ArtifactT["type"]>(props: ArtifactProps<T>) {

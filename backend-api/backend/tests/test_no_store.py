@@ -25,20 +25,6 @@ class TestTheApi:
         assert response.headers["cache-control"] == "no-store"
 
     @pytest.mark.asyncio
-    async def test_a_local_mcp_servers_headers_are_never_stored(self, auth_client):
-        local = "http://localhost:8123/mcp"
-        server = {"id": "local", "name": "Local", "url": local, "enabled": True}
-        response = await auth_client.post(
-            "/app/mcp-servers",
-            json={"servers": [{**server, "customHeaders": {"X-Local": "local-value"}}]},
-        )
-        assert response.status_code == 200, response.text
-
-        response = await auth_client.post("/app/mcp-servers/local-headers", json={"url": local})
-        assert response.json() == {"headers": {"X-Local": "local-value"}}
-        assert response.headers["cache-control"] == "no-store"
-
-    @pytest.mark.asyncio
     async def test_refusals_are_never_stored_either(self, client):
         response = await client.get("/app/user", headers={"Cookie": "__Host-ws_session=x"})
         assert response.status_code == 401

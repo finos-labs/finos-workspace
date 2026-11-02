@@ -67,7 +67,7 @@ export function parseJsonList(
   return parsed as Array<Record<string, unknown>>;
 }
 
-export function parseJsonValue(
+function parseJsonValue(
   command: string,
   field: string,
   raw: string | null | undefined,

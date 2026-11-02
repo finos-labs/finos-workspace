@@ -1,9 +1,10 @@
 import { z } from "zod";
 import type { ParamDef } from "~/components/types";
+import { LINK_PROTOCOLS, MAX_EXPORT_OPTIONS } from "./limits";
 import { CommandError, type CommandErrorName, MAX_EXPORT_BYTES } from "./protocol";
 import { MAX_STATE_BYTES, type Permission, type PluginWidgetDef } from "./types";
 
-export type BindingSource =
+type BindingSource =
   | "data"
   | "params"
   | "param"
@@ -22,7 +23,7 @@ export interface TraitBinding {
   writable: boolean;
 }
 
-const DEFAULT_SOURCES: BindingSource[] = [
+export const DEFAULT_SOURCES = [
   "data",
   "definition",
   "params",
@@ -32,7 +33,22 @@ const DEFAULT_SOURCES: BindingSource[] = [
   "theme",
   "capabilities",
   "meta",
-];
+] as const satisfies readonly BindingSource[];
+
+export const TRAIT_DESCRIPTIONS: Record<(typeof DEFAULT_SOURCES)[number], string> = {
+  data: "The JSON that the widget's backend endpoint returned, taken after `dataKey`, or the widget's rows while the user shows them",
+  definition:
+    "The `data.<type>` object of the backend widget, which has been checked against the `definition` schema",
+  params: "The widget's parameters as an object of `{ name: value }`",
+  config: "The settings of this widget instance",
+  adminSettings: "The settings that the organization's admin made",
+  state: `The module's own instance state, which is saved with the dashboard and may hold at most ${MAX_STATE_BYTES} bytes of JSON`,
+  theme:
+    "An object of the form `{ mode, tokens, locale, decimals }`. The module should follow it and react to `change:theme`. It is meant for the plugin's own interface, whereas the content that a backend returns is drawn as its author made it",
+  capabilities:
+    "The module's effective permissions. The module should check them before it calls a command",
+  meta: "An object of the form `{ pluginId, version, widgetId, instanceId }`",
+};
 
 function parseBinding(bind: string): { source: BindingSource; key?: string } | null {
   const [head, ...rest] = bind.split(":");
@@ -40,7 +56,7 @@ function parseBinding(bind: string): { source: BindingSource; key?: string } | n
   if (head === "param" && key) return { source: "param", key };
   if ((head === "config" || head === "adminSettings") && key !== undefined)
     return { source: head, key };
-  if (key === undefined && (DEFAULT_SOURCES as string[]).includes(head))
+  if (key === undefined && (DEFAULT_SOURCES as readonly string[]).includes(head))
     return { source: head as BindingSource };
   return null;
 }
@@ -266,25 +282,32 @@ export function safeLink(url: unknown): string {
   } catch {
     throw new CommandError("invalid_args", "not a valid link");
   }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "mailto:")
+  if (!(LINK_PROTOCOLS as readonly string[]).includes(parsed.protocol))
     throw new CommandError("out_of_scope", "only https: and mailto: links open");
   return parsed.toString();
 }
 
 export const ExportOptionSchema = z
   .object({
-    id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/),
-    label: z.string().min(1).max(60),
-    extension: z.string().regex(/^[A-Za-z0-9]{1,10}$/),
+    id: z
+      .string()
+      .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/)
+      .describe(
+        "The id that the host passes to exportData. It is unique among the options.",
+      ),
+    label: z.string().min(1).max(60).describe("The text that the Export entry shows."),
+    extension: z
+      .string()
+      .regex(/^[A-Za-z0-9]{1,10}$/)
+      .describe("The extension of the file, without a dot."),
     mime: z
       .string()
       .max(192)
-      .regex(/^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}\/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$/),
+      .regex(/^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}\/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$/)
+      .describe("The MIME type of the file, in the form type/subtype."),
   })
   .strict();
-export type ExportOption = z.infer<typeof ExportOptionSchema>;
-
-const MAX_EXPORT_OPTIONS = 16;
+type ExportOption = z.infer<typeof ExportOptionSchema>;
 
 export function readExportOptions(value: unknown): ExportOption[] {
   const parsed = z

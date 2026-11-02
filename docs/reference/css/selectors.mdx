@@ -1,0 +1,24 @@
+---
+title: Selectors
+sidebar_position: 8
+---
+
+import { AtRules, SelectorTable } from "@site/src/components/Reference/css";
+
+# Selectors
+
+This page lists the rules of the web app's global stylesheets, other than the custom properties, which [Semantic properties](semantic-properties.mdx) lists, and the utility classes, which [Component classes](component-classes.mdx) lists. It is the page to consult when you need to know which element a global rule reaches and which declarations it applies.
+
+Many of these rules reach elements that a library creates, such as the grid layout, the tooltips and the dialogs, and they are the only way to restyle those elements. The table below lists each rule with the at-rule that contains it, if there is one, and its declarations. A rule inside an at-rule shows that at-rule under "Inside". The `@apply` lines are Tailwind's: they name the utility classes that the rule applies.
+
+The tables are generated from the stylesheets that the headings name.
+
+## Rules
+
+<SelectorTable files={["index.css", "admin.css", "tritanopia-dark.css"]} />
+
+## At-rules
+
+The at-rules include the `@font-face` declarations, which show the font that the app ships and where each font file comes from.
+
+<AtRules />

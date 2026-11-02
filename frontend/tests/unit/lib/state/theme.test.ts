@@ -69,7 +69,7 @@ describe("useThemeStore", () => {
     });
 
     document.documentElement.classList.remove("dark");
-    document.documentElement.style.removeProperty("--text-scale");
+    delete document.documentElement.dataset.fontSize;
   });
 
   afterEach(() => {
@@ -182,18 +182,16 @@ describe("useThemeStore", () => {
       expect(useThemeStore.getState().fontSize).toBe("large");
     });
 
-    it("should update CSS variable for medium font size", () => {
+    it("should set the font size attribute for medium font size", () => {
       useThemeStore.getState().setFontSize("medium");
 
-      expect(document.documentElement.style.getPropertyValue("--text-scale")).toBe("1");
+      expect(document.documentElement.dataset.fontSize).toBe("medium");
     });
 
-    it("should update CSS variable for large font size", () => {
+    it("should set the font size attribute for large font size", () => {
       useThemeStore.getState().setFontSize("large");
 
-      expect(document.documentElement.style.getPropertyValue("--text-scale")).toBe(
-        "1.25",
-      );
+      expect(document.documentElement.dataset.fontSize).toBe("large");
     });
   });
 
@@ -622,12 +620,10 @@ describe("useThemeStore", () => {
       expect(document.documentElement.classList.contains("dark")).toBe(false);
     });
 
-    it("should apply font size CSS variable when fontSize is provided", () => {
+    it("should apply the font size attribute when fontSize is provided", () => {
       useThemeStore.getState().updateThemeState({ fontSize: "large" });
 
-      expect(document.documentElement.style.getPropertyValue("--text-scale")).toBe(
-        "1.25",
-      );
+      expect(document.documentElement.dataset.fontSize).toBe("large");
     });
 
     it("should default aiEnhancements to true if undefined", () => {
@@ -735,14 +731,12 @@ describe("useThemeStore", () => {
       expect(document.documentElement.classList.contains("dark")).toBe(false);
     });
 
-    it("should update --text-scale CSS variable on font size change", () => {
+    it("should update the font size attribute on font size change", () => {
       useThemeStore.getState().setFontSize("large");
-      expect(document.documentElement.style.getPropertyValue("--text-scale")).toBe(
-        "1.25",
-      );
+      expect(document.documentElement.dataset.fontSize).toBe("large");
 
       useThemeStore.getState().setFontSize("medium");
-      expect(document.documentElement.style.getPropertyValue("--text-scale")).toBe("1");
+      expect(document.documentElement.dataset.fontSize).toBe("medium");
     });
 
     it("should update color-scheme meta tag content on theme change", () => {
@@ -763,9 +757,7 @@ describe("useThemeStore", () => {
       });
 
       expect(document.documentElement.classList.contains("dark")).toBe(false);
-      expect(document.documentElement.style.getPropertyValue("--text-scale")).toBe(
-        "1.25",
-      );
+      expect(document.documentElement.dataset.fontSize).toBe("large");
     });
   });
 });

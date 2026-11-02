@@ -18,7 +18,8 @@
     "evals:sql": "node --env-file-if-exists=.env evals/runner.ts --group=sql-analysis",
     "evals:locale": "node --env-file-if-exists=.env evals/runner.ts --group=locale",
     "evals:skills": "node --env-file-if-exists=.env evals/runner.ts --group=skills",
-    "smoke:rag": "node --env-file-if-exists=.env scripts/smoke-doc-rag.ts"
+    "smoke:rag": "node --env-file-if-exists=.env scripts/smoke-doc-rag.ts",
+    "reference": "node --import ./tests/setup.ts scripts/export-reference.ts"
   },
   "dependencies": {
     "@ai-sdk/groq": "^3.0.72",
@@ -63,6 +64,11 @@
     "shell-quote": "^1.12.0",
     "unzipper": "^0.12.5",
     "buffers": "npm:node-buffers@^0.1.1",
-    "uuid": "^14.0.3"
+    "uuid": "^14.0.3",
+    "@ai-sdk/provider-utils": "^4.0.63",
+    "archiver": "^8.0.0",
+    "readdir-glob": {
+      "minimatch": "^11.0.3"
+    }
   }
 }

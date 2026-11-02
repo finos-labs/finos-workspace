@@ -25,7 +25,7 @@ What you should see: a JSON **object** keyed by widget id. Common failures:
 - Returns a JSON array → FINOS Workspace will reject it. Convert to `{ "widget_id": { ... } }`.
 - 404 → route isn't registered. Check the route exists and is `GET`.
 - 500 / parse error → likely a JSON file read with the wrong encoding. On Windows, defaulting to `cp1252` mangles non-ASCII. Read JSON files as UTF-8 explicitly.
-- CORS error in the browser console → backend isn't allowing the origin the FINOS Workspace is served from (or `http://localhost:1420`). Add the origin.
+- The widget shows an error with no data → the FINOS Workspace API could not reach the backend: its refusals carry the header `X-Workspace-Proxy-Error` (`403`: a connection that is not a superuser's must be a public `https` address; `502`: nothing answered). A status the backend itself returned is shown as it came.
 
 ## 2. Fetch `/apps.json` directly (if the app ships templates)
 
@@ -74,13 +74,13 @@ Common failures:
 - 200 but wrong shape (e.g. a `markdown` endpoint returns a JSON object without `data.dataKey`) → fix the endpoint to match the widget type.
 - 500 → backend exception. Check the server log.
 
-## 5. Check CORS and auth
+## 5. Check the route check, auth and reachability
 
 If the backend works from `curl` but fails in FINOS Workspace:
 
-- CORS: open the browser devtools network tab while loading the dashboard. CORS failures show as red entries with no response body. Add the missing origin.
-- Auth: if the backend requires a header or query string, confirm FINOS Workspace's backend connection has it configured (Settings → Data Connectors → edit the connection).
-- Mixed content: a backend served over HTTP can't be reached from an HTTPS FINOS Workspace. Use HTTPS in production.
+- Route check: with Validate Widgets on, the API sends a plain `OPTIONS` request to every route, and a route that answers `404` fails. Answer `OPTIONS` on every route with `204`. The backend needs no CORS settings, because the API calls it and the browser does not.
+- Auth: if the backend requires a header or query string, confirm FINOS Workspace's backend connection has it configured (Connections in the sidebar → edit the connection).
+- Reachability: the API must reach the backend. A connection that is not a superuser's must be a public `https` address, unless the stack runs with `MODE=local`; a superuser's may be a private one anywhere. From a container, `localhost` is the container itself: use `host.docker.internal` for a backend on your machine.
 
 ## 6. Parameter sync isn't working
 
@@ -98,7 +98,7 @@ Walk through:
 The browser/MCP path exposes the *actual* validator the running FINOS Workspace uses. When the doc and the validator disagree, **trust the validator** — adjust the files to match what FINOS Workspace accepts and then update docs/comments.
 
 - **`workspace_mcp` (preferred)**: `manage_backends(operation="add", ...)` returns schema errors directly. `list_available_widgets(backend_id=...)` and `manage_apps(operation="list", backend_id=...)` confirm what loaded.
-- **Browser**: Settings → Data Connectors → Connect Backend → Test surfaces the same errors.
+- **Browser**: Connections in the sidebar → Connect Backend → Test surfaces the same errors.
 
 ## 8. Refresh, don't restart, for metadata changes
 

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -247,7 +247,6 @@ class StoredFile(Base, UUIDMixin, DateMixin):
     original_file_name: Mapped[None | str] = mapped_column(Text)
     size: Mapped[int] = mapped_column(Integer, default=0)
     is_global: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    is_entity_shared: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
 
 class StoredFileShare(Base, UUIDMixin, DateMixin):
@@ -272,8 +271,8 @@ class StoredFileShare(Base, UUIDMixin, DateMixin):
 
 
 class PostStoredFile(BaseModel):
-    filename: str | None = None
-    file_uuid: UUID | None = None
+    filename: str | None = Field(None, description="The name of the file as the user uploaded it.")
+    file_uuid: UUID | None = Field(None, description="The UUID of the stored file.")
 
     def filter_element(self) -> ColumnElement[bool]:
         if self.filename:

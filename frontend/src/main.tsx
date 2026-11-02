@@ -1,4 +1,4 @@
-import "@jose-donato/react-grid-layout/css/styles.css";
+import "react-grid-layout/css/styles.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
   Fragment,
@@ -24,14 +24,9 @@ import { getEnabledIdentityProviders } from "./lib/identityProviders";
 import { removeRetiredBrowserSecrets } from "./lib/retiredBrowserSecrets";
 import { getConfig } from "./lib/runtimeConfig";
 import { useShallowThemeStore } from "./lib/state/theme";
-import {
-  applyBrandColors,
-  applyFontFamily,
-  applyWhiteLabelMeta,
-} from "./utils/colorUtils";
+import { applyWhiteLabelMeta } from "./utils/colorUtils";
+import { loadStylesheet } from "./utils/stylesheet";
 
-const LazyMsalProvider = lazy(() => import("./providers/MsalProviderWrapper"));
-const LazyOktaProvider = lazy(() => import("./providers/OktaProviderWrapper"));
 const LazyGoogleProvider = lazy(() => import("./providers/GoogleProviderWrapper"));
 
 const Setup2FA = lazy(() => import("./routes/2fa"));
@@ -63,9 +58,6 @@ const RootLayout = lazy(() => import("./components/RootLayout"));
 const TooltipProvider = lazy(() =>
   import("./components/Tooltip").then((mod) => ({ default: mod.TooltipProvider })),
 );
-
-const MsalTokenRefresh = lazy(() => import("./components/MsalTokenRefresh"));
-const OktaTokenRestore = lazy(() => import("./components/OktaTokenRestore"));
 
 if (
   typeof window !== "undefined" &&
@@ -122,19 +114,11 @@ function RouterErrorElement() {
 
 const AuthGuard = memo(({ children }: { children?: ReactNode }) => {
   return useMemo(() => {
-    const providers = getEnabledIdentityProviders();
-    const Wrapper = providers.includes("microsoft") ? MsalTokenRefresh : Fragment;
-    const OktaWrapper = providers.includes("okta") ? OktaTokenRestore : Fragment;
-
     return (
       <Fragment key="auth-guard">
         <AuthRedirect key="auth-redirect" />
         <Suspense fallback={null}>
-          <Wrapper key="auth-wrapper">
-            <OktaWrapper key="okta-wrapper">
-              <S children={<App key="app">{children}</App>} />
-            </OktaWrapper>
-          </Wrapper>
+          <S children={<App key="app">{children}</App>} />
         </Suspense>
       </Fragment>
     );
@@ -278,12 +262,6 @@ const router = createBrowserRouter([
   },
 ]);
 
-const AUTH_WRAPPERS = {
-  microsoft: LazyMsalProvider,
-  okta: LazyOktaProvider,
-  google: LazyGoogleProvider,
-} as const;
-
 function Root() {
   const setTheme = useShallowThemeStore((state) => state.setTheme);
 
@@ -302,10 +280,11 @@ function Root() {
         </Suspense>
       </QueryClientProvider>
     );
-    return enabledProviders.reduce((content, provider) => {
-      const Comp = AUTH_WRAPPERS[provider];
-      return <Comp key={`${provider}-wrapper`}>{content}</Comp>;
-    }, content);
+    return enabledProviders.includes("google") ? (
+      <LazyGoogleProvider key="google-wrapper">{content}</LazyGoogleProvider>
+    ) : (
+      content
+    );
   }, [enabledProviders]);
 
   useEffect(() => {
@@ -318,18 +297,12 @@ function Root() {
   return <Suspense fallback={null}>{RootContent}</Suspense>;
 }
 
-function bootstrap() {
+async function bootstrap() {
   removeRetiredBrowserSecrets();
   const config = getConfig();
 
-  if (config.whiteLabel.mainColor) {
-    applyBrandColors(config.whiteLabel.mainColor);
-  }
-  if (config.whiteLabel.fontFamily) {
-    applyFontFamily(config.whiteLabel.fontFamily);
-  }
-
   applyWhiteLabelMeta(config.whiteLabel);
+  if (config.whiteLabel.stylesheet) await loadStylesheet(config.whiteLabel.stylesheet);
 
   const root = createRoot(document.getElementById("root") as HTMLElement);
   root.render(

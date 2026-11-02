@@ -28,7 +28,7 @@ const metadataSchema = z.object({
   source: z.string().optional(),
 });
 
-export type MetadataForm = z.infer<typeof metadataSchema>;
+type MetadataForm = z.infer<typeof metadataSchema>;
 
 export function CreateWidgetMetadataDialog() {
   const [isLoading, setIsLoading] = useState(false);

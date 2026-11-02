@@ -27,8 +27,8 @@ BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:1420"]
 (here: the compose stack's web app and its dev server); it is required. Only these origins
 pass CORS, and the session cookie is accepted only from them. An MCP server on a
 private network (a compose service, a host on your LAN) must be listed by host name in
-`ALLOWED_MCP_HOSTNAMES`, because the API reaches users' MCP servers only at public
-addresses.
+`ALLOWED_MCP_HOSTNAMES`, unless a superuser keeps it, because the API reaches users' MCP
+servers only at public addresses.
 
 The web app keeps its session in an HttpOnly cookie (`__Host-ws_session`), which browsers
 send to the API only when it is on the same site as the page. In a deployment, serve the API under the web app's

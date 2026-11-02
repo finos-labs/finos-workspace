@@ -1,6 +1,6 @@
 import type { ArtifactT, CopilotWidget, Message } from "~/lib/state/copilot";
 
-export interface ConversationContext {
+interface ConversationContext {
   user_prompt: string;
   recent_messages: Message[];
   selected_widgets: (Omit<CopilotWidget, "metadata"> & {
@@ -16,6 +16,7 @@ export function getFallbackName(widgetType: string): string {
   const typeNames: Record<string, string> = {
     text: "Text Artifact",
     html: "HTML Artifact",
+    plugin: "Plugin Artifact",
   };
   return typeNames[widgetType] || "Artifact";
 }

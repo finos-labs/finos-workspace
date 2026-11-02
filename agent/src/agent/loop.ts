@@ -316,7 +316,7 @@ function buildLoadedSkillsInventory(loadedSkillSlugs: Set<string>): string | nul
   ].join("\n");
 }
 
-export interface AgentRunOptions {
+interface AgentRunOptions {
   request: QueryRequest;
   rawModelId: string;
   model: LanguageModel;
@@ -358,9 +358,9 @@ function isPageTool(toolName: string): boolean {
   );
 }
 
-export const MAX_LOOPS = 3;
+const MAX_LOOPS = 3;
 
-export const LLM_STREAM_TIMEOUT_MS = Number(process.env.LLM_STREAM_TIMEOUT_MS) || 240_000;
+const LLM_STREAM_TIMEOUT_MS = Number(process.env.LLM_STREAM_TIMEOUT_MS) || 240_000;
 const MAX_VISIBLE_MODEL_ERROR_CHARS = 1_000;
 const LIVE_DEBUG_TRACES_LEVEL = liveDebugLevel();
 
@@ -749,6 +749,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         artifactQueue,
         tables,
         conversationId,
+        pluginArtifacts: request.plugin_artifacts ?? [],
       });
       const widgetDataToolEnabled =
         hasWidgets &&
@@ -790,7 +791,11 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         ...(workspaceToolSet ?? {}),
       };
 
-      const catalog: ToolCatalog = buildToolCatalog(Object.keys(allTools), mcpToolsResult?.entries ?? []);
+      const catalog: ToolCatalog = buildToolCatalog(
+        Object.keys(allTools),
+        mcpToolsResult?.entries ?? [],
+        request.plugin_artifacts ?? [],
+      );
       const tools: ToolSet =
         catalog.groups.some((g) => !g.always)
           ? { ...allTools, load_tools: makeLoadToolsTool({ catalog, loaded: loadedGroups }) }

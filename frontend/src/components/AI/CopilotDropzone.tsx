@@ -161,7 +161,7 @@ interface CopilotScrollYState {
   getScrollY: (key: number) => number;
 }
 
-export const useCopilotScrollYStore = createWithEqualityFn<CopilotScrollYState>()(
+const useCopilotScrollYStore = createWithEqualityFn<CopilotScrollYState>()(
   persist(
     subscribeWithSelector((set, get) => ({
       copilotScrollY: {},
@@ -175,7 +175,7 @@ export const useCopilotScrollYStore = createWithEqualityFn<CopilotScrollYState>(
   ),
 );
 
-export function useShallowCopilotScrollYStore<T>(
+function useShallowCopilotScrollYStore<T>(
   selector: Selector<CopilotScrollYState, T>,
 ): T {
   return useCopilotScrollYStore(useShallow(selector), (prev, next) =>

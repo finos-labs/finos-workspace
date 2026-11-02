@@ -34,26 +34,17 @@ beforeEach(() => {
 });
 
 describe("persisted stores", () => {
-  it("copilot: custom agents' headers stay in memory", () => {
+  it("copilot: a custom agent's headers are never persisted, even if they were held in memory", () => {
     const holder = partial<ExternalCopilotHolder>({
       uuid: "h1",
       url: "https://agent.example.com",
       headers: { Authorization: SECRET },
-      copilots: [
-        partial<Copilot>({
-          id: "a1",
-          name: "Agent",
-          headers: { "X-Key": "secret-agent-789" },
-        }),
-      ],
+      copilots: [partial<Copilot>({ id: "a1", name: "Agent" })],
     });
 
     useCopilotStore.setState({
       externalCopilotHolders: [holder],
-      selectedCopilot: partial<Copilot>({
-        id: "a1",
-        headers: { "X-Key": "secret-agent-789" },
-      }),
+      selectedCopilot: partial<Copilot>({ id: "a1" }),
     });
 
     const persisted = localStorage.getItem("copilot") ?? "";

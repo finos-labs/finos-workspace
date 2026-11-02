@@ -10,7 +10,7 @@ import { useGetCopilotWidgets } from "~/components/AI/hooks/useGetCopilotWidgets
 import { useInitMentions } from "~/components/AI/hooks/useMentions";
 import type { HandleSubmitParams } from "~/components/AI/hooks/useStreaming";
 
-export type CopilotContextType = {
+type CopilotContextType = {
   handleSubmitRef: MutableRefObject<
     ((params?: HandleSubmitParams) => void) | undefined
   >;
@@ -18,7 +18,7 @@ export type CopilotContextType = {
   commandRef: MutableRefObject<string>;
 };
 
-export const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
+const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
 export const useCopilotContext = () => {
   const context = useContext(CopilotContext);

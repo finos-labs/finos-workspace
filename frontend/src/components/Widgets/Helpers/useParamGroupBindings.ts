@@ -5,7 +5,7 @@ import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 import { getEndpointParamName } from "~/lib/utils";
 
-export type ParamGroupBinding = [string, GroupTypeT<"endpointParam" | "param">];
+type ParamGroupBinding = [string, GroupTypeT<"endpointParam" | "param">];
 
 const EMPTY_GROUPS: Group[] = [];
 

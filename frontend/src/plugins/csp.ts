@@ -8,7 +8,7 @@ export const POLICY_DIRECTIVES = [
   "worker-src",
   "frame-src",
 ] as const;
-export type Policy = Partial<Record<string, string[]>>;
+type Policy = Partial<Record<string, string[]>>;
 
 export const CONFIRMATIONS = [
   "insecure-scheme",
@@ -17,8 +17,8 @@ export const CONFIRMATIONS = [
 ] as const;
 export type Confirmation = (typeof CONFIRMATIONS)[number];
 
-const MAX_SOURCES = 32;
-const MAX_SOURCE_LENGTH = 255;
+export const MAX_SOURCES = 32;
+export const MAX_SOURCE_LENGTH = 255;
 
 export const FLOOR: Record<string, string[]> = {
   "default-src": ["'none'"],
@@ -41,9 +41,15 @@ const URL_SOURCE =
   /^(?<scheme>https|wss|http|ws):\/\/(?<host>[^/:?#@]+)(?<port>:\d{1,5})?(?<path>\/[^?#]*)?$/;
 const HASH = /^'sha(256|384|512)-[A-Za-z0-9+/]+={0,2}'$/;
 const BAD_CHARACTERS = /[\s,;"<>&\\`]/;
-const PRIVATE_SUFFIXES = [".local", ".internal", ".localhost", ".home.arpa", ".lan"];
+export const PRIVATE_SUFFIXES = [
+  ".local",
+  ".internal",
+  ".localhost",
+  ".home.arpa",
+  ".lan",
+];
 
-export interface PolicyCheck {
+interface PolicyCheck {
   errors: string[];
   needs: Set<Confirmation>;
 }
@@ -95,7 +101,7 @@ function checkUrl(directive: string, source: string, check: PolicyCheck) {
   if (directive === "script-src") check.needs.add("remote-script");
 }
 
-export function checkSource(directive: string, source: unknown, check: PolicyCheck) {
+function checkSource(directive: string, source: unknown, check: PolicyCheck) {
   if (typeof source !== "string" || !source) {
     check.errors.push(`${directive}: sources are non-empty strings`);
     return;
@@ -254,7 +260,7 @@ export function hosts(policy: Policy): string[] {
   return found;
 }
 
-export type Risk = "none" | "low" | "medium" | "high" | "critical";
+type Risk = "none" | "low" | "medium" | "high" | "critical";
 
 export function directiveRisk(directive: string, sources: string[]): Risk {
   const remote = sources.filter((source) => URL_SOURCE.test(source));

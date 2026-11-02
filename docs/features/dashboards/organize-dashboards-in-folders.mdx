@@ -1,0 +1,43 @@
+---
+title: Organize dashboards in folders
+sidebar_position: 4
+---
+
+import { WebAppValue } from "@site/src/components/Reference/config";
+
+# Organize dashboards in folders
+
+This guide groups your dashboards into folders in the sidebar, moves them between folders, and removes a folder again. Folders exist only for your own dashboards: the dashboards that other people share with you stay together under Shared with me.
+
+## Create a folder
+
+1. Select the plus sign next to My Dashboards in the sidebar, and choose New Folder. The shortcut for this is Ctrl+Alt+F, or Cmd+Alt+F on a Mac.
+2. Type a name in the dialog Create Folder. A name has to have at least one character and at most <WebAppValue of="folderNameMaxLength" /> characters, and it cannot be <WebAppValue of="reservedFolderNames" or />.
+3. Select Create, or press Enter.
+
+A message says "Folder created", and the folder appears in the sidebar. A name that breaks the rules gives the message "Invalid folder name" and closes the dialog without creating a folder.
+
+To create a folder inside another folder, open the other folder's menu, which opens when you right-click the folder or select the three dots that appear next to it, and choose Create folder. The same menu has Create dashboard, which adds an empty dashboard directly to that folder and opens it, and Rename.
+
+## Move a dashboard into a folder
+
+You can move a dashboard in either of two ways:
+
+- Drag the dashboard in the sidebar onto a folder and drop it there. The folder opens and shows the dashboard. Dropping a dashboard between two items puts it at that position instead, so you can also put the dashboards of a folder in your own order.
+- Open the dashboard's menu and choose Move to. The submenu lists your folders, and the item A new folder asks for a name and creates the folder with the dashboard in it. When the dashboard is already inside a folder, the submenu starts with The sidebar, which takes the dashboard out of the folder again.
+
+Dragging works with folders too: drop a folder onto another folder to nest it. Dragging needs the My Dashboards section to be open, so expand it first when it is collapsed.
+
+## Rename, export or delete a folder
+
+The menu of a folder offers three more actions:
+
+- **Rename** opens a dialog with the folder's name.
+- **Export PDF** opens the dialog Export Folder, which saves every dashboard of the folder in one ZIP file. In the dialog you choose to export PDF or PNG files and whether each dashboard contributes its current tab only or all of its tabs, and a message says "Folder exported successfully" when the ZIP file is in your downloads folder. A folder without dashboards gives "No dashboards to export".
+- **Delete** removes the folder together with everything in it. An empty folder disappears at once. A folder that still holds dashboards first asks "Delete folder?" and warns that the folder and all its contents will be deleted and that this cannot be undone, and it deletes them only when you select Yes, delete.
+
+Deleting a folder deletes its dashboards for good, so move out the dashboards that you want to keep before you delete the folder.
+
+## Where to go next
+
+[Share a dashboard](../sharing/share-a-dashboard.md) gives other people access to a dashboard in a folder, and [Save a dashboard as an app](../apps/save-a-dashboard-as-an-app.mdx) turns one into a template that you can reuse.

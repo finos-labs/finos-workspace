@@ -71,7 +71,7 @@ type EditPermissionsState = {
   hasChanges: boolean;
 };
 
-export type ElementTypeT = Omit<ElementType, "type"> & {
+type ElementTypeT = Omit<ElementType, "type"> & {
   type: PermissionItem["category"];
 };
 
@@ -103,10 +103,7 @@ function MenuTab({
 
 const buildItemUuid = (...parts: (string | undefined)[]) => parts.join(":::");
 
-export const formatElements = (
-  elemsDc: ElementType[],
-  prompts: Prompt[],
-): PermissionsData => {
+const formatElements = (elemsDc: ElementType[], prompts: Prompt[]): PermissionsData => {
   const result: PermissionsData = {
     "data-connectors": [],
     templates: [],
@@ -393,6 +390,7 @@ export function EditPermissionsDialog({
         storedFiles,
         apiSources,
         withOthers: false,
+        includeOrganizationBackends: true,
       }),
     [storedFiles, apiSources, rolePermissionsData],
   );

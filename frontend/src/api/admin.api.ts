@@ -1,4 +1,5 @@
 import type { EntityThemeSettings } from "~/lib/state/entityTheme";
+import type { ThemeVariants } from "~/lib/theme/sheet";
 import type { EntityMapItem, EntitySettings } from "~/types/entity.type";
 import type { CreateUserDTO, User, UserSources } from "~/types/user.type";
 import { apiClient } from "./api";
@@ -147,5 +148,41 @@ export async function updateEntityThemeSettings(
     .catch(() => ({
       data: { success: false, message: "Failed to update theme settings" },
     }));
+  return data;
+}
+
+export interface ThemePreset extends ThemeVariants {
+  uuid: string;
+  name: string;
+}
+
+export interface ThemePresets {
+  presets: ThemePreset[];
+  active_preset: string | null;
+}
+
+export async function getThemePresets() {
+  const { data } = await apiClient.get<ThemePresets>("/admin/theme-presets");
+  return data;
+}
+
+export async function putThemePreset(preset: ThemePreset) {
+  const { uuid, ...body } = preset;
+  const { data } = await apiClient.put<ThemePreset>(
+    `/admin/theme-presets/${uuid}`,
+    body,
+  );
+  return data;
+}
+
+export async function deleteThemePreset(uuid: string) {
+  const { data } = await apiClient.delete<ThemePresets>(`/admin/theme-presets/${uuid}`);
+  return data;
+}
+
+export async function putActiveThemePreset(uuid: string | null) {
+  const { data } = await apiClient.put<ThemePresets>("/admin/theme-presets/active", {
+    uuid,
+  });
   return data;
 }

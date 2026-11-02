@@ -77,13 +77,22 @@ wait_ready() {
     (( SECONDS < deadline )) || fail "not ready after ${WAIT_SECONDS}s. See: make logs"
     sleep 5
   done
+  local admin_email
+  admin_email="$(python3 - "$BACKEND_DIR/scripts/cfgs/config.toml" <<'PY' 2>/dev/null || true
+import sys, tomllib
+with open(sys.argv[1], "rb") as handle:
+    print(tomllib.load(handle)["admins"][0]["email"])
+PY
+)"
   cat <<READY
 
 Ready.
   App:      $APP_URL
   Backend:  http://localhost:8000
-  Sign in:  as the administrator in backend-api/backend/scripts/cfgs/config.toml; the init
-            step printed their password once when it created the account (make logs s=init)
+  Sign in:  as the administrator in backend-api/backend/scripts/cfgs/config.toml. The account
+            has no password until you set it, once, typed twice and not shown. In this folder:
+
+              docker compose run --rm init python -m scripts.init_users --new-password ${admin_email:-<your-email>}
 READY
 }
 

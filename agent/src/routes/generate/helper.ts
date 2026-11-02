@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { z } from "zod";
 import { ANONYMOUS, type AppEnv } from "../../auth/middleware.ts";
 import { singleShotLlm } from "../../lib/llm.ts";
 import { getLogger } from "../../lib/logger.ts";
@@ -8,6 +9,14 @@ import { AGENT_ID } from "../agents.ts";
 const audit = getLogger(["audit"]);
 
 export const MAX_HELPER_TEXT_CHARS = 4_000;
+
+export const modelField = z
+  .string()
+  .max(200)
+  .optional()
+  .describe(
+    "A model to use instead of DEFAULT_MODEL, written <provider>:<model>. The agent uses it only when this deployment offers it and the user's roles allow it.",
+  );
 
 export async function readJson(c: Context<AppEnv>): Promise<unknown | null> {
   try {

@@ -17,7 +17,7 @@ export const WidgetComponentMap = {
   navigation_bar: "NavigationBar",
 } as const;
 
-export const Widgets = {
+const Widgets = {
   Markdown: MarkdownFC,
   Iframe: IframeFC,
   News: NewsFC,
@@ -28,8 +28,8 @@ export const Widgets = {
 
 export default Widgets;
 
-export type WidgetComponentName = keyof typeof Widgets;
-export type WidgetComponent<T extends WidgetComponentName> = (typeof Widgets)[T];
+type WidgetComponentName = keyof typeof Widgets;
+type WidgetComponent<T extends WidgetComponentName> = (typeof Widgets)[T];
 
 export type WidgetId = keyof typeof WidgetComponentMap | WidgetsIds | (string & {});
 

@@ -10,13 +10,13 @@ import {
   type HttpMethod,
   isAllowedHeaderName,
 } from "~/lib/types/widgetsContract";
-import { addExtraHeaders, currentDateModifier, dateModRegex } from "./widgetParams";
+import { currentDateModifier, dateModRegex } from "./widgetParams";
 import { PLACEHOLDER, placeholders } from "./widgetsContractChecks";
 
 export interface BackendRequest {
   url: string;
-  method: HttpMethod | "PUT";
-  credentials: Record<string, string>;
+  method: HttpMethod | "PUT" | "OPTIONS";
+  sourceId?: string;
   paramHeaders: Record<string, string>;
   body?: string;
 }
@@ -31,12 +31,7 @@ export type BuiltRequest =
   | { ok: true; request: BackendRequest }
   | { ok: false; problems: RequestProblem[] };
 
-export type Credentials = {
-  headers: Record<string, string>;
-  query: Record<string, string>;
-};
-
-type WidgetValues = Pick<WidgetT, "endpoint" | "params"> & {
+type WidgetValues = Pick<WidgetT, "endpoint" | "params" | "sourceId"> & {
   storage?: { params?: Record<string, StoredParamValue> };
 };
 
@@ -167,11 +162,7 @@ function fillPath(
   });
 }
 
-function startUrl(
-  href: string,
-  credentials: Credentials | undefined,
-  problems: RequestProblem[],
-): URL {
+function startUrl(href: string, problems: RequestProblem[]): URL {
   let url: URL;
   try {
     url = new URL(href, globalThis.location?.href);
@@ -183,13 +174,7 @@ function startUrl(
     });
     return new URL("about:blank");
   }
-  for (const [key, value] of Object.entries(credentials?.query ?? {}))
-    url.searchParams.set(key, value);
   return url;
-}
-
-function lowerKeys(record: Record<string, string> | undefined): Set<string> {
-  return new Set(Object.keys(record ?? {}).map((key) => key.toLowerCase()));
 }
 
 function place(
@@ -200,7 +185,7 @@ function place(
   target: {
     url: URL;
     method: BackendRequest["method"];
-    credentials: Credentials | undefined;
+    sourceId: string | undefined;
     paramHeaders: Record<string, string>;
     body: Record<string, unknown>;
   },
@@ -210,14 +195,8 @@ function place(
   const invalid = (message: string) =>
     problems.push({ paramName: name, kind: "invalid", message });
 
-  if (at === "query" && lowerKeys(target.credentials?.query).has(name.toLowerCase()))
-    return invalid(`\`${name}\` is a query value the backend connection sets`);
-  if (at === "header") {
-    if (!isAllowedHeaderName(name))
-      return invalid(`\`${name}\` cannot be sent as a header`);
-    if (lowerKeys(target.credentials?.headers).has(name.toLowerCase()))
-      return invalid(`\`${name}\` is a header the backend connection sets`);
-  }
+  if (at === "header" && !isAllowedHeaderName(name))
+    return invalid(`\`${name}\` cannot be sent as a header`);
   if (at === "body" && target.method === "GET")
     return invalid(`\`${name}\` goes in the body, which needs the method POST`);
 
@@ -243,7 +222,7 @@ function finish(
   target: {
     url: URL;
     method: BackendRequest["method"];
-    credentials: Credentials | undefined;
+    sourceId: string | undefined;
     paramHeaders: Record<string, string>;
     body: Record<string, unknown>;
   },
@@ -257,7 +236,7 @@ function finish(
     request: {
       url: target.url.toString(),
       method: target.method,
-      credentials: { ...(target.credentials?.headers ?? {}) },
+      ...(target.sourceId ? { sourceId: target.sourceId } : {}),
       paramHeaders: target.paramHeaders,
       ...(hasBody ? { body: JSON.stringify(target.body) } : {}),
     },
@@ -279,7 +258,6 @@ function currentValue(
 
 export function buildWidgetRequest(
   widget: WidgetValues,
-  credentials: Credentials | undefined,
   hostQuery: Record<string, string> = {},
 ): BuiltRequest | null {
   const endpoint = widget.endpoint;
@@ -288,7 +266,7 @@ export function buildWidgetRequest(
   if (endpoint.url.startsWith("data:"))
     return {
       ok: true,
-      request: { url: endpoint.url, method: "GET", credentials: {}, paramHeaders: {} },
+      request: { url: endpoint.url, method: "GET", paramHeaders: {} },
     };
 
   const params = requestParams(widget.params);
@@ -306,9 +284,9 @@ export function buildWidgetRequest(
     problems,
   );
   const target = {
-    url: startUrl(path, credentials, problems),
+    url: startUrl(path, problems),
     method,
-    credentials,
+    sourceId: widget.sourceId ?? undefined,
     paramHeaders: {},
     body: {},
   };
@@ -331,7 +309,7 @@ export function buildWidgetRequest(
 export function buildOptionsRequest(
   param: ParamDefT<"endpoint"> | Extract<FormInputParamDef, { type: "endpoint" }>,
   scope: { params: AnyParam[]; values?: Record<string, unknown> },
-  credentials: Credentials | undefined,
+  sourceId: string | null | undefined,
 ): BuiltRequest | null {
   if (!param.optionsEndpoint) return null;
   const method = param.optionsMethod ?? "GET";
@@ -352,9 +330,9 @@ export function buildOptionsRequest(
   const pathNames = new Set(placeholders(param.optionsEndpoint));
   const path = fillPath(param.optionsEndpoint, resolve, problems);
   const target = {
-    url: startUrl(path, credentials, problems),
+    url: startUrl(path, problems),
     method,
-    credentials,
+    sourceId: sourceId ?? undefined,
     paramHeaders: {},
     body: {},
   };
@@ -393,7 +371,6 @@ export function buildFormRequest(
   form: ParamDefT<"form">,
   inputValues: Record<string, unknown>,
   widget: WidgetValues,
-  credentials: Credentials | undefined,
 ): BuiltRequest {
   const scope = formScope(form, inputValues, widget);
   const byName = new Map(scope.params.map((param) => [param.paramName, param]));
@@ -407,28 +384,25 @@ export function buildFormRequest(
     problems,
   );
   const target = {
-    url: startUrl(path, credentials, problems),
+    url: startUrl(path, problems),
     method: form.method ?? "POST",
-    credentials,
+    sourceId: widget.sourceId ?? undefined,
     paramHeaders: {},
     body: inputValues,
   };
   return finish(target, problems, true);
 }
 
-export function plainRequest(
-  url: string,
-  credentials: Credentials | undefined,
-): BuiltRequest {
+export function plainRequest(url: string, sourceId?: string | null): BuiltRequest {
   const problems: RequestProblem[] = [];
-  const target = startUrl(url, credentials, problems);
+  const target = startUrl(url, problems);
   if (problems.length) return { ok: false, problems };
   return {
     ok: true,
     request: {
       url: target.toString(),
       method: "GET",
-      credentials: { ...(credentials?.headers ?? {}) },
+      ...(sourceId ? { sourceId } : {}),
       paramHeaders: {},
     },
   };
@@ -442,7 +416,6 @@ export function requestInit(
     ...init,
     method: request.method,
     headers: {
-      ...addExtraHeaders({ ...request.credentials }),
       ...request.paramHeaders,
       ...(request.body === undefined ? {} : { "Content-Type": "application/json" }),
       ...((init.headers as Record<string, string> | undefined) ?? {}),
@@ -453,12 +426,6 @@ export function requestInit(
 
 export function requestKey(built: BuiltRequest): string[] {
   if (!built.ok) return ["problems", JSON.stringify(built.problems)];
-  const { method, url, paramHeaders, body, credentials } = built.request;
-  return [
-    method,
-    url,
-    JSON.stringify(paramHeaders),
-    body ?? "",
-    JSON.stringify(Object.keys(credentials).sort()),
-  ];
+  const { method, url, paramHeaders, body, sourceId } = built.request;
+  return [method, url, JSON.stringify(paramHeaders), body ?? "", sourceId ?? ""];
 }

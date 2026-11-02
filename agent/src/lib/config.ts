@@ -1,3 +1,4 @@
+import { AUTH_MODES } from "./env-reference.ts";
 import { transcribeModelProblem } from "./transcribe.ts";
 
 export type AuthConfig =
@@ -56,8 +57,8 @@ export function loadConfig(env: Env = process.env): ServerConfig {
   const problems: string[] = [];
 
   const mode = env.AGENT_AUTH ?? "workspace";
-  if (mode !== "workspace" && mode !== "none") {
-    problems.push(`AGENT_AUTH must be workspace or none; got "${mode}".`);
+  if (!(AUTH_MODES as readonly string[]).includes(mode)) {
+    problems.push(`AGENT_AUTH must be ${AUTH_MODES.join(" or ")}; got "${mode}".`);
   }
 
   const origin = (env.WORKSPACE_ORIGIN ?? "").trim().replace(/\/+$/, "");

@@ -22,7 +22,7 @@ const isWhitelabel =
   (leftSidebarLogo && leftSidebarLogo !== "") ||
   (wlName && wlName !== "FINOS Workspace");
 
-export function Sidebar(props: Props) {
+function Sidebar(props: Props) {
   const { header, search, children } = props;
 
   const theme = useShallowThemeStore((state) => state.theme);

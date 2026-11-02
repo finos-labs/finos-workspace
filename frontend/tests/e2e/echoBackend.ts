@@ -1,5 +1,4 @@
-import { createServer, type Server } from "node:https";
-import { localhostTls } from "./tls";
+import { createServer, type Server } from "node:http";
 
 export interface ReceivedRequest {
   method: string;
@@ -9,7 +8,7 @@ export interface ReceivedRequest {
   body: string;
 }
 
-export const ECHO_WIDGETS = {
+const ECHO_WIDGETS = {
   e2e_team_report: {
     name: "E2E team report",
     description: "Report for one team and period",
@@ -52,11 +51,11 @@ const TEAMS = [
 
 export function startEchoBackend(
   port: number,
-  origin: string,
+  listen: string,
 ): Promise<{ server: Server; received: ReceivedRequest[] }> {
   const received: ReceivedRequest[] = [];
-  const server = createServer(localhostTls(), (request, response) => {
-    const url = new URL(request.url ?? "/", `https://localhost:${port}`);
+  const server = createServer((request, response) => {
+    const url = new URL(request.url ?? "/", `http://localhost:${port}`);
     let body = "";
     request.on("data", (chunk) => {
       body += chunk;
@@ -69,24 +68,16 @@ export function startEchoBackend(
         headers: {
           "x-region": request.headers["x-region"] as string | undefined,
           "content-type": request.headers["content-type"],
-          "access-control-request-method": request.headers[
-            "access-control-request-method"
-          ] as string | undefined,
-          "access-control-request-headers": request.headers[
-            "access-control-request-headers"
-          ] as string | undefined,
+          "x-api-key": request.headers["x-api-key"] as string | undefined,
+          "x-workspace-user": request.headers["x-workspace-user"] as string | undefined,
         },
         body,
       });
-      response.setHeader("Access-Control-Allow-Origin", origin);
-      response.setHeader("Access-Control-Allow-Methods", "GET, POST");
-      response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Region");
       const send = (status: number, payload: unknown) =>
         response
           .writeHead(status, { "Content-Type": "application/json" })
           .end(JSON.stringify(payload));
-      if (request.method === "OPTIONS") response.writeHead(204).end();
-      else if (url.pathname === "/widgets.json") send(200, ECHO_WIDGETS);
+      if (url.pathname === "/widgets.json") send(200, ECHO_WIDGETS);
       else if (url.pathname === "/apps.json") send(200, []);
       else if (url.pathname === "/teams/search" && request.method === "POST")
         send(200, TEAMS);
@@ -110,6 +101,6 @@ export function startEchoBackend(
     });
   });
   return new Promise((resolve) =>
-    server.listen(port, "127.0.0.1", () => resolve({ server, received })),
+    server.listen(port, listen, () => resolve({ server, received })),
   );
 }

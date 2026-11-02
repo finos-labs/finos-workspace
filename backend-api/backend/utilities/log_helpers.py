@@ -42,7 +42,7 @@ _BARE_PAIR = re.compile(
 _AUTH_SCHEME = re.compile(
     r"\b(?P<scheme>Bearer|Basic|Digest)\s++[A-Za-z0-9\-._~+/]++=*", re.IGNORECASE
 )
-_WORKSPACE_TOKEN = re.compile(r"\bws_mcp_[A-Za-z0-9_-]++")
+_WORKSPACE_TOKEN = re.compile(r"\bws_(?:mcp|frame)_[A-Za-z0-9_.-]++")
 _SESSION_COOKIE = re.compile(r"(?P<name>__Host-ws_\w++)=[^;\s'\",]++")
 
 
@@ -66,7 +66,6 @@ def get_secrets() -> dict[str, str]:
 
     base_dict = settings.model_dump()
     for key in [
-        "UNUSABLE_JSON_CHARACTERS",
         "MAX_DICT_LEN",
         "FRONTENDURL",
         "MODE",
@@ -169,17 +168,15 @@ def setup_logging(settings: "Settings") -> None:
 
     sys.tracebacklimit = 3
 
-    HANDLERS = [
-        {
+    if settings.JSON_LOGS:
+        handler = {"sink": jsonsink}
+    else:
+        handler = {
             "sink": sys.stdout,
-            "serialize": settings.JSON_LOGS,
             "colorize": settings.LOGURU_COLORIZE,
             "format": LOGURU_FORMAT,
-            "level": settings.LOG_LEVEL,
-            "diagnose": False,
-            "backtrace": False,
         }
-    ]
+    HANDLERS = [{**handler, "level": settings.LOG_LEVEL, "diagnose": False, "backtrace": False}]
 
     intercept_handler = InterceptHandler()
     logging.root.setLevel(settings.LOG_LEVEL)
@@ -199,4 +196,3 @@ def setup_logging(settings: "Settings") -> None:
         logging.getLogger(name).setLevel(logging.WARNING)
 
     logger.configure(handlers=HANDLERS)
-    logger.add(jsonsink, diagnose=False, backtrace=False)

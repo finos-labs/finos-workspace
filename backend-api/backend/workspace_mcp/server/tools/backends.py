@@ -34,7 +34,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
         )
     )
     async def manage_backends(  # noqa: PLR0913, PLR0917
-        operation: BackendsOperation,
+        operation: Annotated[BackendsOperation, Field(description="What to do with the backends.")],
         backend_id: Annotated[
             str | None,
             Field(
@@ -131,7 +131,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
         )
     )
     async def manage_apps(
-        operation: AppsOperation,
+        operation: Annotated[AppsOperation, Field(description="What to do with the apps.")],
         backend_id: Annotated[
             str | None,
             Field(

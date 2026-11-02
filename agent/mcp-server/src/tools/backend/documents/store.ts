@@ -8,14 +8,14 @@ import { MAX_CHUNKS_PER_DOC } from "./limits.ts";
 
 const logger = getLogger(["mcp", "documents", "store"]);
 
-export const TTL_MS = 30 * 60 * 1000;
+const TTL_MS = 30 * 60 * 1000;
 export const MAX_DOCS_PER_CHAT = 50;
-export const MAX_CHUNKS_PER_CHAT = 5000;
+const MAX_CHUNKS_PER_CHAT = 5000;
 export const MAX_STORES = 300;
 export const MAX_TOTAL_CHUNKS = 120_000;
 const REDIS_TTL_S = 48 * 3600;
 
-export function ingestChunksPerHour(): number {
+function ingestChunksPerHour(): number {
   const configured = Number(process.env.AGENT_INGEST_CHUNKS_PER_HOUR);
   return Number.isFinite(configured) && configured > 0 ? configured : 20_000;
 }
@@ -104,7 +104,7 @@ function evictExpired(): void {
   }
 }
 
-export function getStore(conversationId: string): DocStore {
+function getStore(conversationId: string): DocStore {
   evictExpired();
   let s = stores.get(conversationId);
   if (!s) {

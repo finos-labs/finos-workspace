@@ -223,7 +223,7 @@ describe("signing in callers the cache does not know", () => {
     const { workspace } = workspaceStub({});
     const slow: WorkspaceClient = {
       ...workspace,
-      async getUser(token) {
+      async getUser() {
         calls++;
         mostInFlight = Math.max(mostInFlight, ++inFlight);
         await new Promise((r) => setTimeout(r, 20));

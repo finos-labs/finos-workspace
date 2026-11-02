@@ -41,7 +41,7 @@ function* variants(token: string): Generator<string> {
   }
 }
 
-export interface ScanBudget {
+interface ScanBudget {
   left: number;
 }
 
@@ -125,4 +125,3 @@ export function isGivenAddress(url: string, given: ReadonlySet<string>): boolean
   const key = urlKey(url);
   return key !== null && given.has(key);
 }
-

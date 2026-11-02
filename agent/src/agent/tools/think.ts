@@ -6,7 +6,7 @@ import { getLogger } from "../../lib/logger.ts";
 
 const logger = getLogger(["app", "tools", "llm_think"]);
 
-export const llmThinkSchema = z.object({
+const llmThinkSchema = z.object({
   plan: z
     .string()
     .min(1)
@@ -23,16 +23,16 @@ export const llmThinkSchema = z.object({
     ),
 });
 
-export const llmThinkDescription =
+const llmThinkDescription =
   "Surface a short plan before taking complex actions. " +
   "Use BEFORE multi-step workflows (search widgets → load → query → chart) so the user sees what you intend to do. " +
   "Use at most once per user request; do not call it again between routine follow-up searches, citations, or data retrieval steps. " +
   "Keep the wording user-facing: say things like getting widget data or running SQL, not raw tool/function names or IDs. " +
   "Returns the plan text back to you verbatim for reference in the next turn.";
 
-export type LlmThinkArgs = z.infer<typeof llmThinkSchema>;
+type LlmThinkArgs = z.infer<typeof llmThinkSchema>;
 
-export interface LlmThinkContext {
+interface LlmThinkContext {
   artifactQueue: SSEEvent[];
 }
 

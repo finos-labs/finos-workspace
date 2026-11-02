@@ -45,7 +45,7 @@ export const groupVariants = cva(
   },
 );
 
-export const inputVariants = cva(
+const inputVariants = cva(
   [
     "flex w-full border-none bg-transparent [&[type=date]::-webkit-inner-spin-button]:cursor-pointer [&[type=date]::-webkit-inner-spin-button]:opacity-0 [&[type=date]::-webkit-calendar-picker-indicator]:cursor-pointer [&[type=date]::-webkit-calendar-picker-indicator]:opacity-0",
     "file:border-0 file:bg-transparent file:font-medium file:text-sm",

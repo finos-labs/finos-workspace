@@ -20,7 +20,7 @@ export type AppsOptions = {
   selectedBackends: SelectedBackends;
 };
 
-export type DeleteConfirm = {
+type DeleteConfirm = {
   template: UnifiedTemplate;
   type: "app" | "backend";
 };

@@ -1,16 +1,16 @@
 import { type Dispatch, useReducer, useRef } from "react";
 
-export type FunctionAction<S> = (prevState: S) => S;
+type FunctionAction<S> = (prevState: S) => S;
 type SelectiveAction<S> = {
   [K in keyof S]?: S[K] | FunctionAction<S[K]>;
 };
 
 export type DispatchAction<S extends object> = SelectiveAction<S> | FunctionAction<S>;
 
-export type StateReducer<S extends object> = (state: S, action: DispatchAction<S>) => S;
+type StateReducer<S extends object> = (state: S, action: DispatchAction<S>) => S;
 export type StateDispatch<S extends object> = Dispatch<DispatchAction<S>>;
 
-export type UseStateReducer<S extends object> = [S, StateDispatch<S>];
+type UseStateReducer<S extends object> = [S, StateDispatch<S>];
 
 export const reducerAction = <S extends object>(
   state: S,
