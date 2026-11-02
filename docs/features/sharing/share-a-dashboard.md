@@ -27,7 +27,7 @@ The dialog lists the people who already have access first. A tooltip on a person
 
 The recipient finds the dashboard in the sidebar under Shared with me. Its widgets show the data that they load, and the button that removes a widget is disabled. The menu of the dashboard offers Duplicate, Delete, Export PDF and Refresh data. Duplicate creates a copy that is named like the original with `(Duplicate)` added, puts it under My Dashboards and opens it, and the recipient can change the copy freely.
 
-A widget's request carries the credentials of the viewer's own connection to its backend, or those of a backend that one of the viewer's roles shares, and nothing else. The credentials of your connections are not shared with a dashboard. A widget whose backend needs a credential can therefore fail for a recipient who has no access to that backend. Widgets of a backend that needs no credential load as they do for you.
+A widget finds its backend by the backend's id, and a recipient reaches that backend only when one of their roles grants it, because a connection that you made is yours alone and its credentials stay on the server. A widget whose backend the recipient cannot use shows "This data connection is not available to you", whether or not the backend needs a credential.
 
 ## When a Developer shares
 

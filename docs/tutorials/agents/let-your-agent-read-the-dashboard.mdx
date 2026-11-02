@@ -425,7 +425,7 @@ The widgets that the user selected are in `primary`, and the other widgets of th
 
 ## 4. Ask the browser for the data
 
-Your agent cannot reach the backend of a widget. The browser can, with the credentials of the connection. So an agent asks the browser for the data with a function call, and ends its answer there. The function that reads the data of widgets is `get_widget_data`. [Widget data for the agent](../../reference/protocols/agent-widget-data.mdx) follows one read from the call to the answer. This section shows what the agent writes and what it reads.
+Your agent cannot reach the backend of a widget. The browser can, through the FINOS Workspace API, which adds the credentials of the connection. So an agent asks the browser for the data with a function call, and ends its answer there. The function that reads the data of widgets is `get_widget_data`. [Widget data for the agent](../../reference/protocols/agent-widget-data.mdx) follows one read from the call to the answer. This section shows what the agent writes and what it reads.
 
 When the question names a widget, the agent sends two events:
 
@@ -446,7 +446,7 @@ The status update is a line in the steps that the panel shows. The function call
 | `id` | The `widget_id` of the widget. |
 | `input_args` | The value of every parameter of the widget, by name. The function `input_args`, or `inputArgs`, takes the value that the dashboard shows, and the default of the parameter when there is none. |
 
-The browser reads each data source in turn. When the widget is on the open dashboard and has loaded its data with the same parameters, the browser returns that data and makes no request. Otherwise it sends the request that the widget itself would send, with the credentials of the connection. A failed source does not fail the call. [What the browser does](../../reference/protocols/agent-widget-data.mdx#what-the-browser-does) lists the cases. The browser then sends the conversation again, with two messages added: an `ai` message that records the call, and a `tool` message that holds the result. The agent finds the result in the last message:
+The browser reads each data source in turn. When the widget is on the open dashboard and has loaded its data with the same parameters, the browser returns that data and makes no request. Otherwise it sends the request that the widget itself would send, through the API, which adds the credentials of the connection. A failed source does not fail the call. [What the browser does](../../reference/protocols/agent-widget-data.mdx#what-the-browser-does) lists the cases. The browser then sends the conversation again, with two messages added: an `ai` message that records the call, and a `tool` message that holds the result. The agent finds the result in the last message:
 
 ```json
 {

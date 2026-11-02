@@ -30,7 +30,7 @@ The widget menu also has the built-in widget Iframe, under Others and Utils. It 
 
 ## What the widget allows the page to do
 
-The page runs in a frame that permits scripts, forms, downloads and pop-up windows, and the page keeps its own origin, so it keeps its own cookies. A page that needs more of your FINOS Workspace, such as the values of the dashboard's parameters or the credentials of a backend, can ask for them through the protocol that [Iframe widget protocol](../../reference/protocols/iframe-widget.mdx) describes.
+The page runs in a frame that permits scripts, forms, downloads and pop-up windows, and the page keeps its own origin, so it keeps its own cookies. A page that needs more of your FINOS Workspace, such as the values of the dashboard's parameters or your email address, can receive them through the protocol that [Iframe widget protocol](../../reference/protocols/iframe-widget.mdx) describes.
 
 ## Change how the widget looks
 

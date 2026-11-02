@@ -55,9 +55,11 @@ The AI tool identifies you with a personal access token. You can create a token 
 3. Select **Generate Token**. The dialog shows the token. The token starts with `ws_mcp_`.
 4. Copy the token now. FINOS Workspace keeps only a hash of the token, so nobody can show the token to you again.
 5. Below the token, find the four tabs with settings for the AI tool. The settings already contain your token and your addresses:
-   - A prompt. Paste it into an AI tool that adds MCP servers itself.
-   - A `.mcp.json` file.
-6. Copy the settings for your AI tool.
+   - **Prompt**: text to paste into an AI tool that adds MCP servers itself.
+   - **.mcp.json**: a file for an AI tool that reads one.
+   - **Claude Code**: the command `claude mcp add`, which you run in a terminal.
+   - **Codex**: a line that sets the environment variable `WORKSPACE_MCP_TOKEN`, and the section `mcp_servers.workspace` for `~/.codex/config.toml`.
+6. Copy the settings of the tab that fits your AI tool.
 7. Select **Done**.
 
 :::warning
