@@ -20,7 +20,7 @@ This page builds all four from a clone of the repository and pushes them to your
 
 - Docker with BuildKit. Docker Engine and Docker Desktop use it by default.
 - A clone of the repository. Run the commands on this page from its root folder.
-- A GitHub account that can read the packages of `openbq-org`, logged in to `ghcr.io` as [Log in to the container registry](run-the-stack-from-source.md#log-in-to-the-container-registry) shows. The Node base below is in GitHub's container registry, which serves it to logged-in readers only.
+- A GitHub account that can read the packages of `finos-labs`, logged in to `ghcr.io` as [Log in to the container registry](run-the-stack-from-source.md#log-in-to-the-container-registry) shows. The Node base below is in GitHub's container registry, which serves it to logged-in readers only.
 - A registry that your servers can pull from. Below, `<registry>` stands for it and `<version>` for the version you give the images.
 
 ## The Node base

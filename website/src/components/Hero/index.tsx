@@ -33,7 +33,7 @@ export default function Hero() {
           <Link className="button button--secondary button--lg" to="/features">
             Features
           </Link>
-          <Link className="button button--secondary button--lg" href="https://github.com/openbq-org/workspace">
+          <Link className="button button--secondary button--lg" href="https://github.com/finos-labs/workspace">
             GitHub
           </Link>
         </div>

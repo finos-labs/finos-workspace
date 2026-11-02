@@ -16,7 +16,7 @@ You need a clone of the repository, three tools on your computer and an account 
 - Docker with Docker Compose, to build and run the containers.
 - Python 3, to run the script that writes the configuration.
 - About 10 minutes for the first build, because the images are built from source.
-- A GitHub account that can read the packages of `openbq-org`, and a personal access token (classic) of that account with the `read:packages` scope. The images build on the `finos-node` base image, which GitHub's container registry serves to logged-in readers only.
+- A GitHub account that can read the packages of `finos-labs`, and a personal access token (classic) of that account with the `read:packages` scope. The images build on the `finos-node` base image, which GitHub's container registry serves to logged-in readers only.
 
 ## Log in to the container registry
 
