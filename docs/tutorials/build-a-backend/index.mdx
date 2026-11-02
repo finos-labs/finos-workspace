@@ -121,13 +121,3 @@ Install the Python packages first. Then run this command in `docs/examples/refer
 ```bash
 PYTHON=python/.venv/bin/python node --test test/parity.test.mjs
 ```
-
-### Differences from the OpenBB reference backend
-
-The reference backend comes from the reference backend of OpenBB Workspace in [`backends-for-openbb`](https://github.com/openbq-org/backends-for-openbb/tree/main/getting-started/reference-backend). It keeps what FINOS Workspace supports and removes the rest:
-
-- **Only the built-in widget types.** FINOS Workspace draws `markdown`, `html`, `newsfeed`, `pdf` and `iframe`. The OpenBB types `table`, `chart`, `metric`, `chart-highcharts`, `chart-vegalite`, `live_grid`, `omni`, `multi_file_viewer`, `youtube` and the sparkline types are not part of FINOS Workspace. This version does not have their widgets. The tables are HTML widgets with [`raw`](../../reference/protocols/raw-rows.md) rows. [Plugins](../../features/plugins/index.md) can add types, for example charts.
-- **No outside data.** The OpenBB version reads a public crypto API, an image service and PDFs that OpenBB hosts, and it links videos. This version uses only its own invented data and files.
-- **No OpenBB-only features.** Grouping by cell click, column definitions and render functions are features of the OpenBB table. This version does not have them.
-- **New parameters.** Header, body and path parameters are new. FINOS Workspace adds them.
-- **Python and TypeScript.** The OpenBB version is only in Python.
