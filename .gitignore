@@ -6,6 +6,7 @@ kb/
 **/node_modules
 website/build
 website/.docusaurus
+website/.docusaurus-dev
 website/src/generated
 
 **/reference-data
