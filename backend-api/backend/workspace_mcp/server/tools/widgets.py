@@ -393,7 +393,8 @@ def register(
             "Identify the widget by widget_uuid (preferred) or widget_id.",
             (
                 "Use read_widget first to inspect current params, and verify "
-                "effective_params in the response matches your intent."
+                "effective_params in the response matches your intent; a "
+                "plugin widget's settings come back as effective_ui_args.config."
             ),
             (
                 "Config changes only: for placement (x, y, w, h, tab_id) use "

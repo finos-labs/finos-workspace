@@ -11,6 +11,7 @@ export const PERMISSIONS = [
   "core:data:stream",
   "core:params:write",
   "core:state:write",
+  "core:config:write",
   "core:copilot:context",
   "core:export:provide",
   "core:ui:notify",

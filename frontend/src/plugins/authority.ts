@@ -2,7 +2,13 @@ import { z } from "zod";
 import type { ParamDef } from "~/components/types";
 import { LINK_PROTOCOLS, MAX_EXPORT_OPTIONS } from "./limits";
 import { CommandError, type CommandErrorName, MAX_EXPORT_BYTES } from "./protocol";
-import { MAX_STATE_BYTES, type Permission, type PluginWidgetDef } from "./types";
+import {
+  MAX_CONFIG_BYTES,
+  MAX_STATE_BYTES,
+  type Permission,
+  type PluginWidgetDef,
+  type SettingsSchema,
+} from "./types";
 
 type BindingSource =
   | "data"
@@ -68,7 +74,8 @@ export function traitBindings(
   const canWrite = (source: BindingSource) =>
     ((source === "params" || source === "param") &&
       permissions.has("core:params:write")) ||
-    (source === "state" && permissions.has("core:state:write"));
+    (source === "state" && permissions.has("core:state:write")) ||
+    (source === "config" && permissions.has("core:config:write"));
   const declared = widget.model?.traits;
 
   const bindings: TraitBinding[] = [];
@@ -156,6 +163,57 @@ export function checkStateWrite(value: unknown) {
       `state is limited to ${MAX_STATE_BYTES / 1024} KiB`,
     );
   return value;
+}
+
+function settingProblem(
+  prop: SettingsSchema["properties"][string],
+  value: unknown,
+): string | null {
+  if (Array.isArray(prop.enum))
+    return prop.enum.includes(value as never) ? null : "is not one of its values";
+  if (prop.type === "boolean")
+    return typeof value === "boolean" ? null : "is a boolean";
+  if (prop.type === "string") {
+    if (typeof value !== "string") return "is a string";
+    return value.length > (prop.maxLength ?? 0) ? "is too long" : null;
+  }
+  if (prop.type === "number" || prop.type === "integer") {
+    if (typeof value !== "number" || !Number.isFinite(value)) return "is a number";
+    if (prop.type === "integer" && !Number.isInteger(value)) return "is an integer";
+    if (prop.minimum !== undefined && value < prop.minimum)
+      return `is at least ${prop.minimum}`;
+    if (prop.maximum !== undefined && value > prop.maximum)
+      return `is at most ${prop.maximum}`;
+    return null;
+  }
+  return "is not a setting the module can write";
+}
+
+export function checkConfigWrite(
+  schema: SettingsSchema | undefined,
+  current: Record<string, unknown>,
+  key: string | undefined,
+  value: unknown,
+): Record<string, unknown> {
+  const changes = key === undefined ? value : { [key]: value };
+  if (typeof changes !== "object" || changes === null || Array.isArray(changes))
+    throw new CommandError("invalid_args", "config is an object");
+  const properties = schema?.properties ?? {};
+  const next = key === undefined ? {} : { ...current };
+  for (const [name, written] of Object.entries(changes)) {
+    const prop = properties[name];
+    if (!prop)
+      throw new CommandError("out_of_scope", `${name} is not a declared setting`);
+    const problem = settingProblem(prop, written);
+    if (problem) throw new CommandError("invalid_args", `${name} ${problem}`);
+    (next as Record<string, unknown>)[name] = written;
+  }
+  if (jsonSize(next) > MAX_CONFIG_BYTES)
+    throw new CommandError(
+      "too_large",
+      `config is limited to ${MAX_CONFIG_BYTES / 1024} KiB`,
+    );
+  return next;
 }
 
 export const COMMAND_PERMISSIONS: Record<string, Permission> = {

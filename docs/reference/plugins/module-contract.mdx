@@ -61,7 +61,9 @@ A module that already uses other trait names can keep them by binding them in th
 "model": { "traits": { "rows": { "bind": "data" }, "filter": { "bind": "param:filter", "access": "readwrite" } } }
 ```
 
-A binding names one of the traits above, or it has the form `param:<name>`, `config:<key>` or `adminSettings:<key>`. Only `params`, `param:<name>` and `state` can be `readwrite`. A trait without a binding exists only inside the frame.
+A binding names one of the traits above, or it has the form `param:<name>`, `config:<key>` or `adminSettings:<key>`. Only `params`, `param:<name>`, `state`, `config` and `config:<key>` can be `readwrite`. A trait without a binding exists only inside the frame.
+
+A write to `config` or `config:<key>` needs the permission `core:config:write`. The host takes only settings that the widget declares, with values that satisfy the setting, and it saves them with the dashboard. The AI agent reads the same settings with `read_widget`, as `ui_args.config`, and sets them with `update_widget`, so a setting that the module writes is one value that the user, the module and the agent share.
 
 ### Rows
 
