@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 import stat
 
@@ -122,6 +123,23 @@ class TestStartingAVersion:
         assert response.json()["detail"].startswith("1.0.1 is in development")
 
     @pytest.mark.asyncio
+    async def test_a_plugins_directory_that_refuses_the_write_is_reported(
+        self, superuser, plugins_dir, local, monkeypatch
+    ):
+        from api.widget_plugins import service
+
+        def refuse(*args, **kwargs):
+            raise PermissionError(13, "Permission denied")
+
+        await _approved(superuser, plugins_dir)
+        monkeypatch.setattr(service, "_copy_version", refuse)
+        response = await _develop(superuser)
+        assert response.status_code == 409
+        assert response.json()["detail"] == "The plugins directory cannot be written: Permission denied"
+        assert not (plugins_dir / PLUGIN / "1.0.1").exists()
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(os.geteuid() == 0, reason="the root user writes to a directory whose mode forbids it")
     async def test_a_read_only_plugins_directory_is_reported(self, superuser, plugins_dir, local):
         await _approved(superuser, plugins_dir)
         plugin_dir = plugins_dir / PLUGIN

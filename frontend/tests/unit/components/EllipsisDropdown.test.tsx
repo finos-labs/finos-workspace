@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import EllipsisDropdownMenu from "~/components/EllipsisDropdown";
 import type { EllipsisDropdownMenuProps } from "~/components/MoveToDropDown/types";
 
@@ -21,6 +21,8 @@ vi.mock("~/components/Widget.context", () => ({
   useWidgetContext: vi.fn(() => widgetContext),
 }));
 
+const dashboard = vi.hoisted(() => ({ locked: false }));
+
 vi.mock("~/lib/state/app", () => ({
   useAppStore: {
     getState: () => ({
@@ -28,6 +30,7 @@ vi.mock("~/lib/state/app", () => ({
       duplicateWidget: vi.fn(),
     }),
   },
+  useIsDashboardLocked: () => dashboard.locked,
 }));
 
 vi.mock("~/lib/state/theme", () => ({
@@ -44,11 +47,41 @@ describe("EllipsisDropdownMenu", () => {
     settings: {},
   };
 
+  afterEach(() => {
+    dashboard.locked = false;
+  });
+
   it("renders the ellipsis trigger button", () => {
     render(<EllipsisDropdownMenu {...defaultProps} />);
 
     const trigger = screen.getByRole("button");
     expect(trigger).toBeInTheDocument();
+  });
+
+  describe("Duplicate menu item", () => {
+    const openMenu = async () => {
+      render(
+        <EllipsisDropdownMenu {...defaultProps} settings={{ showDuplicate: true }} />,
+      );
+      await userEvent.setup().click(screen.getByRole("button"));
+    };
+
+    it("is available on an unlocked dashboard", async () => {
+      await openMenu();
+
+      expect(screen.getByRole("menuitem", { name: "Duplicate" })).not.toHaveAttribute(
+        "data-disabled",
+      );
+    });
+
+    it("is disabled on a locked dashboard", async () => {
+      dashboard.locked = true;
+      await openMenu();
+
+      expect(screen.getByRole("menuitem", { name: "Duplicate" })).toHaveAttribute(
+        "data-disabled",
+      );
+    });
   });
 
   describe("Minimize menu item", () => {

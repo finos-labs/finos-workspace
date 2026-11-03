@@ -75,7 +75,7 @@ interface ArtifactSpec {
   description: string;
 }
 
-export interface CreateArtifactContext {
+interface CreateArtifactContext {
   pendingTables: Map<string, Record<string, unknown>[]>;
   artifactQueue: SSEEvent[];
 }
@@ -85,6 +85,35 @@ export interface CreateArtifactArgs {
   data?: Record<string, unknown>[] | null;
   from_table_id?: string;
   artifact: ArtifactSpec;
+}
+
+export function readSourceRows(
+  source: { sql?: string; fromTableId?: string },
+  pendingTables: Map<string, Record<string, unknown>[]>,
+): { rows: Record<string, unknown>[] } | { error: string } {
+  const denyMsg = source.fromTableId
+    ? rejectUnsafeTableName(source.fromTableId)
+    : rejectUnsafeSql(source.sql ?? "");
+  if (denyMsg) return { error: denyMsg };
+  const { db, loaded } = buildDb(pendingTables);
+  try {
+    if (source.fromTableId) {
+      if (!loaded.some((t) => t.tableName === source.fromTableId)) {
+        return { error: `Error: ${tableNotFoundMessage(source.fromTableId, loaded)}` };
+      }
+      return {
+        rows: db.prepare(`SELECT * FROM "${source.fromTableId}"`).all() as Record<string, unknown>[],
+      };
+    }
+    try {
+      return { rows: db.prepare(source.sql ?? "").all() as Record<string, unknown>[] };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { error: `SQL error: ${msg}.${availableTablesHint(loaded)}` };
+    }
+  } finally {
+    db.close();
+  }
 }
 
 export function runCreateArtifact(
@@ -114,34 +143,10 @@ export function runCreateArtifact(
   }
 
   let rows: Record<string, unknown>[];
-  if (fromTableId) {
-    const denyMsg = rejectUnsafeTableName(fromTableId);
-    if (denyMsg) return denyMsg;
-    const { db, loaded } = buildDb(ctx.pendingTables);
-    try {
-      const tInfo = loaded.find((t) => t.tableName === fromTableId);
-      if (!tInfo) {
-        return `Error: ${tableNotFoundMessage(fromTableId, loaded)}`;
-      }
-      rows = db.prepare(`SELECT * FROM "${fromTableId}"`).all() as Record<
-        string,
-        unknown
-      >[];
-    } finally {
-      db.close();
-    }
-  } else if (sql) {
-    const denyMsg = rejectUnsafeSql(sql);
-    if (denyMsg) return denyMsg;
-    const { db, loaded } = buildDb(ctx.pendingTables);
-    try {
-      rows = db.prepare(sql).all() as Record<string, unknown>[];
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      db.close();
-      return `SQL error: ${msg}.${availableTablesHint(loaded)}`;
-    }
-    db.close();
+  if (fromTableId || sql) {
+    const read = readSourceRows({ sql, fromTableId }, ctx.pendingTables);
+    if ("error" in read) return read.error;
+    rows = read.rows;
   } else {
     rows = data!;
   }

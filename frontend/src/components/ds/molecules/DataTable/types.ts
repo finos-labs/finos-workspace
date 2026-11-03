@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type SortDir = "asc" | "desc";
+type SortDir = "asc" | "desc";
 
 export type SortState = { id: string; dir: SortDir };
 

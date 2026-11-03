@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type CreateWidgetMetadataDialogState,
+  copilotSchema,
   getReachableArtifacts,
   useCopilotStore,
 } from "~/lib/state/copilot";
@@ -236,6 +237,74 @@ describe("createWidgetMetadataDialog state", () => {
       category: "Stocks",
       subCategory: "US Markets",
       source: "Workspace",
+    });
+  });
+});
+
+describe("copilotSchema", () => {
+  it("has no headers of its own for an agent: they belong to the holder that the user fills in", () => {
+    const parsed = copilotSchema.parse({
+      id: "agent",
+      name: "Agent",
+      description: "An agent",
+      endpoints: { query: "https://agent.example.test/query" },
+      headers: { Authorization: "Bearer secret" },
+    });
+
+    expect(parsed).not.toHaveProperty("headers");
+  });
+
+  describe("the flags hasStreaming, hasFunctionCalling and hasDocuments", () => {
+    const parseAgent = (extra: Record<string, unknown>) =>
+      copilotSchema.parse({
+        id: "agent",
+        name: "Agent",
+        description: "An agent",
+        endpoints: { query: "https://agent.example.test/query" },
+        ...extra,
+      });
+
+    it.each([
+      true,
+      false,
+    ])("sets the feature file-upload from hasDocuments: %s", (flag) => {
+      expect(parseAgent({ hasDocuments: flag }).features).toEqual({
+        "file-upload": flag,
+      });
+    });
+
+    it.each([
+      true,
+      false,
+    ])("sets the feature streaming from hasStreaming: %s", (flag) => {
+      expect(parseAgent({ hasStreaming: flag }).features).toEqual({ streaming: flag });
+    });
+
+    it.each([
+      true,
+      false,
+    ])("sets the three widget features from hasFunctionCalling: %s", (flag) => {
+      expect(parseAgent({ hasFunctionCalling: flag }).features).toEqual({
+        "widget-dashboard-select": flag,
+        "widget-dashboard-search": flag,
+        "widget-global-search": flag,
+      });
+    });
+
+    it("replaces the entry of the same feature and keeps the other features", () => {
+      const parsed = parseAgent({
+        hasDocuments: true,
+        features: { "file-upload": false, "mcp-tools": true },
+      });
+
+      expect(parsed.features).toEqual({ "file-upload": true, "mcp-tools": true });
+    });
+
+    it("leaves the features alone when no flag is set", () => {
+      expect(parseAgent({}).features).toBeUndefined();
+      expect(parseAgent({ features: { "file-upload": true } }).features).toEqual({
+        "file-upload": true,
+      });
     });
   });
 });

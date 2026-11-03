@@ -439,7 +439,7 @@ const getOptionsParams = (
     .filter(Boolean) as Record<string, string>[];
 };
 
-export function groupedParamValues(
+function groupedParamValues(
   groups: readonly Group[],
   paramDefs: ParamDef[],
 ): Record<string, StoredParamValue> {
@@ -551,7 +551,7 @@ export function createCopilotWidget(
       uuid: uuid,
       name: widgetName,
       description: widget.description ?? "",
-      widget_type: widget.type,
+      widget_type: widget.plugin ? "plugin" : widget.type,
       source: source,
       category: widgetInfo.category,
       sub_category: widgetInfo.subCategory,

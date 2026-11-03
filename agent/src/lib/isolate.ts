@@ -6,7 +6,7 @@ import { metrics } from "./metrics.ts";
 
 const defaultLogger = getLogger(["app", "isolate"]);
 
-export type IsolationFailure = "timeout" | "crash" | "busy" | "output" | "protocol";
+type IsolationFailure = "timeout" | "crash" | "busy" | "output" | "protocol";
 
 export class IsolationError extends Error {
   readonly kind: IsolationFailure;
@@ -21,7 +21,7 @@ export class IsolationError extends Error {
 const DEFAULT_MAX_OUTPUT_BYTES = 64 * 1024 * 1024;
 let maxWaiting = 64;
 
-let concurrency = Math.max(1, Number(process.env.INES_ISOLATED_CONCURRENCY) || 4);
+let concurrency = Math.max(1, Number(process.env.AGENT_ISOLATED_CONCURRENCY) || 4);
 let running = 0;
 const waiting: Array<() => void> = [];
 
@@ -48,7 +48,7 @@ async function takeSlot(): Promise<() => void> {
   return give;
 }
 
-export interface RunInChildOptions {
+interface RunInChildOptions {
   timeoutMs: number;
   maxOutputBytes?: number;
   label: string;

@@ -1,4 +1,4 @@
-export interface IncomingCommand {
+interface IncomingCommand {
   command: string;
   request_id: string;
   payload: Record<string, unknown>;

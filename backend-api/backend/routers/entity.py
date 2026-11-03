@@ -1,6 +1,7 @@
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query, Request
 from fastapi_pagination import Page
 from fastapi_pagination.customization import CustomizedPage, UseParamsFields
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -8,7 +9,7 @@ from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api import auth_helpers, crud, models, schemas
+from api import auth_helpers, models, schemas
 from api.database import aget_read_db, aget_write_db
 from api.models import (
     Entity,
@@ -20,17 +21,34 @@ from routers import administration, app_helpers, routers_helpers
 
 router = APIRouter(prefix="/entity", tags=["entity"])
 
-CustomPage = CustomizedPage[Page, UseParamsFields(size=Query(100, ge=1, le=1000))]
+CustomPage = CustomizedPage[
+    Page, UseParamsFields(size=Query(100, ge=1, le=1000, description="How many items a page holds"))
+]
 
 
-@router.get("/validate", response_model=schemas.SuccessReturn)
+@router.get(
+    "/validate",
+    response_model=schemas.SuccessReturn,
+    summary="Check that the caller is a superuser",
+    description="Answers success when the signed-in user is a superuser, and the status 403 when the user is not.",
+)
 async def validate_entity_admin(
     _=Depends(auth_helpers.get_current_superuser),
 ):
     return schemas.SuccessReturn.success_instance()
 
 
-@router.post("/entity", response_model=schemas.AddEntityReturn)
+@router.post(
+    "/entity",
+    response_model=schemas.AddEntityReturn,
+    summary="Create an organization",
+    description=(
+        "Creates an organization with the given name and sharing setting, together with its three permission maps, "
+        "Admin, Developer and User, and its default roles, and returns the UUIDs of the organization and of its Admin "
+        "map. The API notifies its administrators in the background that the organization was created. Answers 409 when "
+        "an organization with that name exists. POST /entity/register-admin invites the organization's first admin."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def add_entity(
     request: Request,
@@ -44,10 +62,19 @@ async def add_entity(
     return answer
 
 
-@router.put("/entity/{entity_uuid}", response_model=schemas.SuccessReturn)
+@router.put(
+    "/entity/{entity_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Change an organization's name and sharing",
+    description=(
+        "Changes the name and the sharing setting of an organization. When sharing is switched off, the shares that the "
+        "change no longer allows are revoked. Answers 404 when the organization does not exist and 409 when another "
+        "organization has the name."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def put_entity(
-    entity_uuid: UUID,
+    entity_uuid: Annotated[UUID, Path(description="The UUID of the organization.")],
     request: Request,
     entity: schemas.EntityBase,
     db: AsyncSession = Depends(aget_write_db),
@@ -57,7 +84,14 @@ async def put_entity(
     return {"success": True}
 
 
-@router.get("/entity", response_model=CustomPage[schemas.EntityReturn])
+@router.get(
+    "/entity",
+    response_model=CustomPage[schemas.EntityReturn],
+    summary="List the organizations",
+    description=(
+        "Returns a page of the organizations, ordered by name. The query parameters `page` and `size` select the page."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_entities(
     request: Request,
@@ -68,59 +102,6 @@ async def get_entities(
         return [administration.entity_return(item) for item in items]
 
     return await paginate(db, administration.entities_query(), transformer=transformer)
-
-
-@router.post("/entity-relationship", response_model=schemas.EntityRelationshipReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
-async def add_entity_relationship(
-    request: Request,
-    entity: schemas.EntityRelationshipGet,
-    db: AsyncSession = Depends(aget_write_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    schema = schemas.EntityRelationshipCreate(
-        parent_uuid=entity.parent_uuid, child_uuid=entity.child_uuid
-    )
-    return await crud.create_entity_relationship(db, schema)
-
-
-@router.put("/entity-relationship/{er_uuid}", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
-async def put_entity_relationship(
-    er_uuid: UUID,
-    request: Request,
-    entity: schemas.EntityRelationshipGet,
-    db: AsyncSession = Depends(aget_write_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    try:
-        query = (
-            update(models.EntityRelationship)
-            .where(models.EntityRelationship.uuid == er_uuid)
-            .values(parent_uuid=entity.parent_uuid, child_uuid=entity.child_uuid)
-        )
-        response = await db.execute(query)
-        await db.commit()
-        if response.rowcount == 0:  # type: ignore
-            raise HTTPException(404, detail="Entity relationship not found")
-    except IntegrityError as exc:
-        raise HTTPException(
-            404, detail="Parent or child relatiosnhip not found"
-        ) from exc
-    return schemas.SuccessReturn.success_instance()
-
-
-@router.get(
-    "/entity-relationship", response_model=CustomPage[schemas.EntityRelationshipReturn]
-)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
-async def get_entity_relationships(
-    request: Request,
-    db: AsyncSession = Depends(aget_read_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    query = select(models.EntityRelationship)
-    return await paginate(db, query)
 
 
 async def check_entity_map_free(
@@ -138,7 +119,15 @@ async def check_entity_map_free(
         )
 
 
-@router.post("/entity-map", response_model=schemas.UUIDReturn)
+@router.post(
+    "/entity-map",
+    response_model=schemas.UUIDReturn,
+    summary="Add a permission map to an organization",
+    description=(
+        "Adds a permission map of the given type, Admin, Developer or User, to an organization and returns its UUID. "
+        "Answers 409 when the organization already has a map of that type and 404 when the map cannot be created."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def add_entity_map(
     request: Request,
@@ -158,10 +147,18 @@ async def add_entity_map(
     return {"uuid": response.inserted_primary_key[0]}
 
 
-@router.put("/entity-map/{map_uuid}", response_model=schemas.SuccessReturn)
+@router.put(
+    "/entity-map/{map_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Change a permission map",
+    description=(
+        "Changes the organization and the type of a permission map. Answers 409 when the organization already has a map "
+        "of that type, 404 when the map does not exist, and 400 when the data is rejected."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def put_entity_map(
-    map_uuid: UUID,
+    map_uuid: Annotated[UUID, Path(description="The UUID of the permission map.")],
     request: Request,
     entity_map: schemas.EntityMapCreate,
     db: AsyncSession = Depends(aget_write_db),
@@ -188,7 +185,15 @@ async def put_entity_map(
     return {"success": True}
 
 
-@router.get("/entity-map", response_model=CustomPage[schemas.EntityMapReturn])
+@router.get(
+    "/entity-map",
+    response_model=CustomPage[schemas.EntityMapReturn],
+    summary="List the permission maps of all organizations",
+    description=(
+        "Returns a page of the permission maps of every organization, each with its organization. The query parameters "
+        "`page` and `size` select the page."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_entity_maps(
     request: Request,
@@ -199,7 +204,17 @@ async def get_entity_maps(
     return await paginate(db, query)
 
 
-@router.post("/register-admin", response_model=schemas.SuccessReturn)
+@router.post(
+    "/register-admin",
+    response_model=schemas.SuccessReturn,
+    summary="Invite a user into any organization",
+    description=(
+        "Records an invitation for the email address, so that the person can register with the user type of the given "
+        "permissions map, which may belong to any organization. Use the Admin map of an organization to invite its "
+        "admin. Answers 409 when a user with that email exists or the address is already invited, and 403 when "
+        "registration is disabled."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def register_admin(
     request: Request,
@@ -212,10 +227,20 @@ async def register_admin(
     return schemas.SuccessReturn.from_bool(result)
 
 
-@router.put("/user/{user_uuid}", response_model=schemas.SuccessReturn)
+@router.put(
+    "/user/{user_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Move a user to a permissions map",
+    description=(
+        "Gives the user the permissions map, which may belong to another organization, and ends the user's web app "
+        "sessions. When the organization changes, the shares between the user and the old organization's users are "
+        "removed and the user receives the default roles of the new organization. Answers 404 when the map or the user "
+        "does not exist."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def put_user(
-    user_uuid: UUID,
+    user_uuid: Annotated[UUID, Path(description="The UUID of the user.")],
     request: Request,
     user: schemas.UserUpdateAdmin,
     db: AsyncSession = Depends(aget_write_db),
@@ -225,11 +250,19 @@ async def put_user(
     return {"success": True}
 
 
-@router.get("/user", response_model=CustomPage[schemas.EntityUserReturn])
+@router.get(
+    "/user",
+    response_model=CustomPage[schemas.EntityUserReturn],
+    summary="List the users",
+    description=(
+        "Returns a page of the users who are not deleted, ordered by email, each with their permissions map. The query "
+        "parameter `email` keeps only the users whose email contains it, and `page` and `size` select the page."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_users(
     request: Request,
-    email: str = "",
+    email: Annotated[str, Query(description="Keep only the users whose email contains this text.")] = "",
     db: AsyncSession = Depends(aget_read_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
@@ -239,10 +272,18 @@ async def get_users(
     return await paginate(db, administration.users_query(email), transformer=transformer)
 
 
-@router.delete("/entity/{entity_uuid}", response_model=schemas.SuccessReturn)
+@router.delete(
+    "/entity/{entity_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Delete an organization",
+    description=(
+        "Deletes an organization that has no users. Answers 400 when the organization still has users and 404 when it "
+        "does not exist."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def delete_entity(
-    entity_uuid: UUID,
+    entity_uuid: Annotated[UUID, Path(description="The UUID of the organization.")],
     request: Request,
     db: AsyncSession = Depends(aget_write_db),
     _=Depends(auth_helpers.get_current_superuser),
@@ -251,7 +292,15 @@ async def delete_entity(
     return schemas.SuccessReturn.success_instance()
 
 
-@router.post("/role", response_model=schemas.SuccessReturn)
+@router.post(
+    "/role",
+    response_model=schemas.SuccessReturn,
+    summary="Create a role in the superuser's organization",
+    description=(
+        "Creates a role in the organization of the signed-in superuser and adds the listed users, who must belong to "
+        "that organization."
+    ),
+)
 async def post_role(
     role: schemas.PostRole,
     db: AsyncSession = Depends(aget_write_db),
@@ -274,7 +323,12 @@ async def post_role(
     return schemas.SuccessReturn.success_instance()
 
 
-@router.get("/role", response_model=list[schemas.GetRoleWithUsers])
+@router.get(
+    "/role",
+    response_model=list[schemas.GetRoleWithUsers],
+    summary="List the roles of the superuser's organization",
+    description="Returns the roles of the organization of the signed-in superuser, each with the emails of its users.",
+)
 async def get_roles(
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
@@ -290,9 +344,17 @@ async def get_roles(
     return result
 
 
-@router.get("/role/{role_uuid}", response_model=schemas.GetRoleWithUsers)
+@router.get(
+    "/role/{role_uuid}",
+    response_model=schemas.GetRoleWithUsers,
+    summary="Get a role of the superuser's organization",
+    description=(
+        "Returns one role of the organization of the signed-in superuser with the emails of its users. Answers 404 when "
+        "the role does not exist in that organization."
+    ),
+)
 async def get_role(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
 ):
@@ -311,9 +373,18 @@ async def get_role(
     return schemas.GetRoleWithUsers.from_role(role, role_users)
 
 
-@router.patch("/role/{role_uuid}", response_model=schemas.SuccessReturn)
+@router.patch(
+    "/role/{role_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Change a role of the superuser's organization",
+    description=(
+        "Changes the fields of the role that the request names. When `users` is present, the listed users become the "
+        "members of the role: the missing ones are added and the others are removed. Answers 404 when the role does not "
+        "exist in the superuser's organization."
+    ),
+)
 async def patch_role(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     role: schemas.PatchRole,
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
@@ -344,9 +415,17 @@ async def patch_role(
     return schemas.SuccessReturn.success_instance()
 
 
-@router.delete("/role/{role_uuid}", response_model=schemas.SuccessReturn)
+@router.delete(
+    "/role/{role_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Delete a role of the superuser's organization",
+    description=(
+        "Deletes the role, so that its users lose the access that only the role gave them. Answers 404 when the role "
+        "does not exist in the superuser's organization."
+    ),
+)
 async def delete_role(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
 ):
@@ -365,9 +444,18 @@ async def delete_role(
     return schemas.SuccessReturn.success_instance()
 
 
-@router.put("/role-permissions/{role_uuid}", response_model=schemas.SuccessReturn)
+@router.put(
+    "/role-permissions/{role_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Set the access of a role to backends and files",
+    description=(
+        "Sets the access level that the role grants to each backend and file in the request, and leaves the items that "
+        "the request does not name as they are. Items of any other type are ignored. Answers 404 when the role does not "
+        "exist in the superuser's organization."
+    ),
+)
 async def put_role_permissions(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     role_permissions: list[schemas.RolePermissions],
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
@@ -392,10 +480,16 @@ async def put_role_permissions(
 
 
 @router.get(
-    "/role-permissions/{role_uuid}", response_model=list[schemas.RolePermissions]
+    "/role-permissions/{role_uuid}",
+    response_model=list[schemas.RolePermissions],
+    summary="List the backends and files that a role grants",
+    description=(
+        "Returns the backends and files that the role grants access to, each with its access level. Answers 404 when "
+        "the role does not exist in the superuser's organization."
+    ),
 )
 async def get_role_permissions(
-    role_uuid: UUID,
+    role_uuid: Annotated[UUID, Path(description="The UUID of the role.")],
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
 ):
@@ -445,9 +539,16 @@ async def get_role_permissions(
     return permissions
 
 
-@router.post("/data-backends/{entity_uuid}")
+@router.post(
+    "/data-backends/{entity_uuid}",
+    summary="Add a data backend to an organization",
+    description=(
+        "Adds a data backend with the name and URL in the request to the organization. Users see it only when one of "
+        "their roles grants access to it."
+    ),
+)
 async def add_data_backend(
-    entity_uuid: UUID,
+    entity_uuid: Annotated[UUID, Path(description="The UUID of the organization.")],
     data_backend: schemas.CreateApiSource,
     db: AsyncSession = Depends(aget_write_db),
     _: User = Depends(auth_helpers.get_current_superuser),
@@ -456,10 +557,17 @@ async def add_data_backend(
     return schemas.SuccessReturn.success_instance()
 
 
-@router.delete("/data-backends/{entity_uuid}/{backend_name}")
+@router.delete(
+    "/data-backends/{entity_uuid}/{backend_name}",
+    summary="Delete a data backend of an organization",
+    description=(
+        "Deletes the organization's data backend with the given name. Answers 404 when the organization has no backend "
+        "with that name."
+    ),
+)
 async def delete_data_backend(
-    entity_uuid: UUID,
-    backend_name: str,
+    entity_uuid: Annotated[UUID, Path(description="The UUID of the organization.")],
+    backend_name: Annotated[str, Path(description="The name of the data backend.")],
     db: AsyncSession = Depends(aget_write_db),
     _: User = Depends(auth_helpers.get_current_superuser),
 ):
@@ -468,10 +576,13 @@ async def delete_data_backend(
 
 
 @router.get(
-    "/data-backends/{entity_uuid}", response_model=list[schemas.ReturnApiSource]
+    "/data-backends/{entity_uuid}",
+    response_model=list[schemas.ReturnApiSource],
+    summary="List the data backends of an organization",
+    description="Returns the data backends that belong to the organization.",
 )
 async def get_data_backends(
-    entity_uuid: UUID,
+    entity_uuid: Annotated[UUID, Path(description="The UUID of the organization.")],
     db: AsyncSession = Depends(aget_read_db),
     _: User = Depends(auth_helpers.get_current_superuser),
 ):

@@ -8,6 +8,7 @@ const SHA256_HEX = /^[a-f0-9]{64}$/;
 export const PERMISSIONS = [
   "core:default",
   "core:data:read",
+  "core:data:stream",
   "core:params:write",
   "core:state:write",
   "core:copilot:context",
@@ -58,7 +59,7 @@ const HandleSchema = z.object({
     .default({ accepts: "json", description: "" }),
 });
 
-export const PluginWidgetSchema = z.object({
+const PluginWidgetSchema = z.object({
   id: z.string().regex(/^[a-z][a-z0-9_-]{0,47}$/),
   name: z.string(),
   description: z.string().default(""),
@@ -66,6 +67,12 @@ export const PluginWidgetSchema = z.object({
   subCategory: z.string().nullish(),
   handles: z.array(HandleSchema).default([]),
   standalone: z.boolean().default(false),
+  artifact: z
+    .object({
+      description: z.string(),
+      data: z.record(z.string(), z.unknown()),
+    })
+    .nullish(),
   permissions: z.array(z.enum(PERMISSIONS)),
   proxies: z.array(z.string()).default([]),
   routes: z.array(z.string()).default([]),
@@ -95,7 +102,7 @@ const FileInfoSchema = z.object({
   sha256: z.string().regex(SHA256_HEX),
 });
 
-export const AvailablePluginSchema = z.object({
+const AvailablePluginSchema = z.object({
   id: z.string().regex(PLUGIN_ID_PATTERN),
   version: z.string(),
   name: z.string(),
@@ -130,6 +137,7 @@ export interface ResolvedPluginWidget {
 }
 
 export interface PluginInstanceStorage {
+  data?: unknown;
   state?: unknown;
   config?: Record<string, unknown>;
 }

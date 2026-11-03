@@ -2,4 +2,4 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path[:0] = [str(ROOT.parent / "sql-explorer" / "backend"), str(ROOT)]
+sys.path[:0] = [str(ROOT.parent / "sql-explorer" / "backend"), str(ROOT.parent / "ag-grid" / "backend"), str(ROOT)]

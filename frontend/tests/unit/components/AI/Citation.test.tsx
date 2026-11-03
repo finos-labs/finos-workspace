@@ -28,10 +28,6 @@ vi.mock("sonner", () => ({
   },
 }));
 
-vi.mock("~/lib/runtimeConfig", () => ({
-  getConfig: () => ({ whiteLabel: { mainColor: "#0088CC" } }),
-}));
-
 vi.mock("~/lib/utils", () => ({
   cn: (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" "),

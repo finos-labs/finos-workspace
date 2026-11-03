@@ -20,7 +20,7 @@ import {
 import { type SharedUser, useShallowUserAppsStore } from "../lib/state/userApps";
 import { useSharedTemplates } from "./useSharedTemplates";
 
-export type TemplateType = "user" | "shared" | "generated";
+type TemplateType = "user" | "shared" | "generated";
 
 export interface UnifiedTemplate {
   id: string;

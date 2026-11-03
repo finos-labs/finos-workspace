@@ -4,8 +4,8 @@ import { type QueryOptions, type TResponseCb, useJsonData } from "~/lib/api";
 import {
   type Source,
   useShallowBackendConnectorStore,
-  useSourceCredentials,
 } from "~/lib/state/backendConnector";
+import { isOnSourceOrigin } from "~/lib/utils/fetch";
 import { createURLString } from "~/lib/utils/widgetParams";
 import { plainRequest } from "~/lib/utils/widgetRequest";
 import { cn } from "../ds/utils";
@@ -31,7 +31,7 @@ const avatarVariants = cva(
   },
 );
 
-export interface AvatarProps extends VariantProps<typeof avatarVariants> {
+interface AvatarProps extends VariantProps<typeof avatarVariants> {
   src?: string;
   alt: string;
   fallback?: ReactNode;
@@ -41,8 +41,7 @@ export interface AvatarProps extends VariantProps<typeof avatarVariants> {
   withVariantCva?: boolean;
   imageClassName?: string;
   onError?: () => void;
-  headers?: Record<string, string>;
-  params?: Record<string, string>;
+  sourceId?: string;
   cacheKey?: string;
 }
 
@@ -99,7 +98,7 @@ const responseCb: TResponseCb<string> = async (response, resolve, reject) => {
   }
 };
 
-export const Avatar = memo((props: AvatarProps) => {
+const Avatar = memo((props: AvatarProps) => {
   const {
     src,
     alt,
@@ -110,25 +109,21 @@ export const Avatar = memo((props: AvatarProps) => {
     extraClassName = "",
     imageClassName = "",
     fallback,
-    headers,
-    params,
+    sourceId,
     cacheKey = src ?? "",
   } = props;
 
   const isInline = !!src && (src.startsWith("data:") || src.startsWith("/"));
-  const needsCredentials =
-    Object.keys(headers ?? {}).length + Object.keys(params ?? {}).length > 0;
+  const needsCredentials = !!sourceId;
   const [failedSrc, setFailedSrc] = useState<string>();
 
   const queryOptions = useMemo<QueryOptions<string>>(
     () => ({
-      request: src
-        ? plainRequest(src, { headers: headers ?? {}, query: params ?? {} })
-        : null,
-      queryKey: [cacheKey, Object.keys(headers ?? {}), Object.keys(params ?? {})],
+      request: src ? plainRequest(src, sourceId) : null,
+      queryKey: [cacheKey, sourceId ?? ""],
       responseCb,
     }),
-    [src, headers, params, cacheKey],
+    [src, sourceId, cacheKey],
   );
 
   const { data, isError } = useJsonData<string>(queryOptions, {
@@ -197,7 +192,6 @@ export const AuthenticatedAvatar = memo<AuthenticatedAvatar>((props) => {
     return source?.url ? createURLString(value, source.url) : value;
   }, [src, source?.url]);
 
-  const credentials = useSourceCredentials(source?.id, url);
   const sourcesLoaded = useShallowBackendConnectorStore((state) => state.sourcesLoaded);
   const waiting = !!source?.url && !sourcesLoaded;
 
@@ -207,8 +201,7 @@ export const AuthenticatedAvatar = memo<AuthenticatedAvatar>((props) => {
       className="w-full h-full rounded-none!"
       imageClassName={className}
       src={waiting ? undefined : url}
-      headers={credentials.headers}
-      params={credentials.query}
+      sourceId={isOnSourceOrigin(url, source?.url) ? source?.id : undefined}
       withVariantCva={false}
       cacheKey={url?.startsWith("data:") ? `${source?.uuid}-${rest.alt}` : url}
     />

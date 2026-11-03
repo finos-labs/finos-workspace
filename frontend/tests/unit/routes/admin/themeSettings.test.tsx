@@ -52,6 +52,10 @@ vi.mock("@radix-ui/react-tabs", () => ({
   ),
 }));
 
+vi.mock("~/components/ThemeSettings/PresetsSettings", () => ({
+  PresetsSettings: () => <div data-testid="presets-settings">Presets Component</div>,
+}));
+
 vi.mock("~/components/ThemeSettings/GroupingSettings", () => ({
   GroupingSettings: () => (
     <div data-testid="grouping-settings">Grouping Settings Component</div>
@@ -71,6 +75,29 @@ describe("AdminThemeSettings", () => {
     );
 
     expect(screen.getByText("Theme Settings")).toBeInTheDocument();
+  });
+
+  it("renders the Presets and Grouping tabs, presets first", () => {
+    render(
+      <BrowserRouter>
+        <AdminThemeSettings />
+      </BrowserRouter>,
+    );
+
+    const ids = Array.from(screen.getByTestId("tabs").children).map((tab) =>
+      tab.getAttribute("data-tab-id"),
+    );
+    expect(ids).toEqual(["presets", "grouping"]);
+  });
+
+  it("renders the PresetsSettings component", () => {
+    render(
+      <BrowserRouter>
+        <AdminThemeSettings />
+      </BrowserRouter>,
+    );
+
+    expect(screen.getByTestId("presets-settings")).toBeInTheDocument();
   });
 
   it("renders the Grouping tab", () => {

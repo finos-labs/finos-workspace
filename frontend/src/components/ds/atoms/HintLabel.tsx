@@ -2,7 +2,7 @@ import React, { type ReactNode } from "react";
 import Tooltip from "~/components/Tooltip";
 import { cn } from "../utils";
 
-export interface HintLabelProps {
+interface HintLabelProps {
   children: ReactNode;
   tooltip: string | ReactNode;
   disabled?: boolean;

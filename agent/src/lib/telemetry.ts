@@ -14,7 +14,7 @@ import { getLogger } from "./logger.ts";
 
 const logger = getLogger(["app", "telemetry"]);
 
-export const TRACER_NAME = "ines";
+const TRACER_NAME = "agent";
 
 export function resolveTracesUrl(
   base: string | undefined,
@@ -36,7 +36,7 @@ function consoleTraces(): boolean {
   return process.env.OTEL_TRACES_CONSOLE === "true";
 }
 
-export function telemetryEnabled(): boolean {
+function telemetryEnabled(): boolean {
   return otlpEndpoint() !== undefined || consoleTraces();
 }
 
@@ -62,7 +62,7 @@ export function initTelemetry(): void {
 
   provider = new NodeTracerProvider({
     resource: resourceFromAttributes({
-      [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || "ines",
+      [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || "agent",
       [ATTR_SERVICE_VERSION]: process.env.OTEL_SERVICE_VERSION || "dev",
     }),
     spanProcessors,

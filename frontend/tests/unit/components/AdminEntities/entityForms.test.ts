@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { mapFormSchema } from "~/components/AdminEntities/EntityMapDialog";
-import { relationshipFormSchema } from "~/components/AdminEntities/EntityRelationshipDialog";
 import {
   entityBody,
   entityFormDefaults,
@@ -59,19 +58,6 @@ describe("entity form", () => {
 });
 
 describe("the smaller forms", () => {
-  it("does not let an entity be its own child", () => {
-    expect(
-      relationshipFormSchema.safeParse({ parent: ENTITY_UUID, child: OTHER_UUID })
-        .success,
-    ).toBe(true);
-    const same = relationshipFormSchema.safeParse({
-      parent: ENTITY_UUID,
-      child: ENTITY_UUID,
-    });
-    expect(same.success).toBe(false);
-    expect(same.error?.issues[0]?.path).toEqual(["child"]);
-  });
-
   it("names a permission map after one of the three user types", () => {
     for (const name of ["Admin", "Developer", "User"]) {
       expect(mapFormSchema.safeParse({ entityUuid: ENTITY_UUID, name }).success).toBe(

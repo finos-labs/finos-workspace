@@ -1,0 +1,99 @@
+---
+title: Ship logs and metrics
+sidebar_position: 10
+---
+
+import { EnvDefault, SettingConstant, SettingDefault } from "@site/src/components/Reference/config";
+import { MetricName } from "@site/src/components/Reference/api";
+
+# Ship logs and metrics
+
+Three processes of a deployment write logs and serve metrics: the FINOS Workspace API, the agent and the agent MCP server. This guide says what each of them writes, which settings change it, and where to point a log collector and a Prometheus server. [Backend settings](../../reference/configuration/backend.mdx) and [Agent and MCP server](../../reference/configuration/agent.mdx) describe every setting, and the metrics themselves are listed in the [FINOS Workspace API](../../reference/http-api/workspace-api.mdx#metrics) and [Agent HTTP API](../../reference/http-api/agent-api.mdx#metrics) references.
+
+## Collect the logs
+
+All three processes write their logs to standard output and write no log files, so the log collector of your platform reads the output of the containers.
+
+### The FINOS Workspace API
+
+Three settings change the log of the API.
+
+- `LOG_LEVEL` is the least severe level that is logged: `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL`. The default is `INFO`, and the value has to be written in capitals.
+- `JSON_LOGS` chooses the format. The API writes every record once, as text when `JSON_LOGS` is false, which is the default, and as JSON when it is true.
+- `LOGURU_COLORIZE` is true by default and colors the text lines with escape codes. Set it to `false` when the collector would store those codes. JSON records have no colors.
+
+**The text line** has the time, the level, the module, the function, the line number and the message, separated by vertical bars, for example `2026-10-27 14:17:31.725|INFO|main|log_requests|180 - "GET path=/health completed_in=0.49ms" 200`.
+
+**The JSON record** is one object per line. It has the keys `asctime`, `levelname`, `name`, `message`, `function` and `line`, and it adds the fields of the event. A record for a request adds `method`, `path`, `status_code` and `response_time`, which is in milliseconds. A record for an error adds `exc_info` with the type, the value and the traceback of the exception. The application marks a few records as not for the JSON log, such as the list of routers at the start and the timing of dashboard tasks, and the JSON format leaves those out. It also leaves out the lines that the web server writes about itself, such as the start of a worker and its access line for each request, which only the text format carries. Before the API starts, its entrypoint prints a few plain lines about the database migrations in either format.
+
+The API logs every request except `OPTIONS`, at level `INFO`, so the health checks of the platform appear in the log too. Filter them on the field `path` when they are too many.
+
+The API hides secrets before it writes a line. It replaces the value of each of its settings that is longer than five characters with `********`, except for the settings that hold no secret, which are `FRONTENDURL`, `MODE`, `DB_PORT`, `REDIS_PORT`, `REDIS_DB_BOT`, `REDIS_DB_APP`, `REDIS_SSL_CERT_REQ`, `WORKERS`, `LOG_LEVEL`, `JSON_LOGS`, `LOGURU_COLORIZE` and `MAX_DICT_LEN`. It does the same with the credentials of a Bearer, Basic or Digest authorization, with the tokens of the FINOS Workspace MCP server, with the session cookie and with the value of a field whose name contains `authorization`, `cookie`, `token`, `secret`, `password`, `key` or `signature`. A setting whose value is an ordinary word hides that word everywhere in the log. When a setting has the value `workspace`, for example, the router tag `workspace-mcp` appears as `********-mcp` in the log.
+
+### The agent and the MCP server
+
+Two settings change the log of the agent and of its MCP server.
+
+- `LOG_LEVEL` is the least severe level: `trace`, `debug`, `info`, `warning`, `error` or `fatal`, in any case. The value `warn` is accepted as `warning`.
+- `LOG_FORMAT` is `json`, which writes one JSON object per line, or `pretty`, which writes text for a person to read.
+
+The default depends on `NODE_ENV`. With the value `production`, which the images of the repository set, the level is `info` and the format is `json`. With any other value or none, the level is `debug` and the format is `pretty`. A value that is not one of the choices stops the process at the start with an error that names the choices.
+
+A JSON line has the keys `@timestamp`, `level`, `message`, `logger` and `properties`. The logger `hono` writes a line for each request, with the properties `requestId`, `method`, `url`, `path`, `status`, `responseTime` and `userAgent`. The `requestId` is the `X-Trace-Id` of the request, which every response repeats in its headers, so a person can give you the value from the network tool of their browser and you can find the lines of that request. The logger `audit` records what the agent refused and how each question ended, with the outcome, the tokens and the duration. It writes at level `info` even when `LOG_LEVEL` is more severe.
+
+Before it writes a line, the agent removes secrets, session tokens, the bytes of files, signed file addresses and email addresses from it.
+
+The agent writes whole conversations to its log only when you set `LIVE_DEBUG_TRACES`, and in production it ignores that setting unless you also set `AGENT_ALLOW_DEBUG_TRACES` to `true`. Leave both unset in a deployment.
+
+## Scrape the metrics
+
+Prometheus can scrape three endpoints. The API and the two agent processes each serve their own, on a port that is separate from the one that users reach.
+
+| Process | Controlled by | Port | Path |
+|---|---|---|---|
+| FINOS Workspace API | `PROMETHEUS` turns the metrics on and off. | <SettingConstant name="prometheusListenerPort" unit="raw" />, which is fixed | `/metrics` |
+| The agent | `AGENT_METRICS_PORT` chooses the port. | <EnvDefault name="AGENT_METRICS_PORT" /> by default | `/metrics` |
+| Agent MCP server | `MCP_METRICS_PORT` chooses the port. | <EnvDefault name="MCP_METRICS_PORT" /> by default | `/metrics` |
+
+The API serves no metrics until you set `PROMETHEUS` to `true`, and then it also samples its event loop, its thread pool and its database pools every `RUNTIME_METRICS_INTERVAL` seconds, which is <SettingDefault name="RUNTIME_METRICS_INTERVAL" unit="s" /> by default. A metrics port of the agent or of its MCP server with the value 0 serves nothing.
+
+A scrape configuration looks like this, with the addresses of your services and the ports from the table in place of the placeholders:
+
+```yaml
+scrape_configs:
+  - job_name: workspace-api
+    static_configs:
+      - targets: ["<api-address>:<api-metrics-port>"]
+  - job_name: agent
+    static_configs:
+      - targets: ["<agent-address>:<agent-metrics-port>"]
+  - job_name: agent-mcp
+    static_configs:
+      - targets: ["<mcp-address>:<mcp-metrics-port>"]
+```
+
+Three things about these endpoints matter to an operator.
+
+- **None of them asks for a credential.** Keep the metrics ports inside your network and do not publish them. The local stack of the repository does not publish them either.
+- **The API's metrics port shows all the workers.** The API runs several workers, and each keeps its own counters. The web server's main process serves the port and adds the counters of every worker together, so the totals of the requests are those of the whole API, and a worker that the web server replaces leaves its counts in the totals. The gauges of the event loop, the thread pool and the database pools have one series for each live worker, which the label `pid` tells apart. [FINOS Workspace API](../../reference/http-api/workspace-api.mdx#metrics) describes both addresses of the API. The route `/metrics` on the API's own port shows the same metrics, but it refuses a request that carries no allowed `Origin` header, so a scraper uses the metrics port.
+- **Each replica needs its own target.** The counters of the agent and of the MCP server live in their process. Scrape every replica and add the series together in your queries.
+
+## What to watch
+
+The tables in the references list every metric, with its labels. These are the ones that tell you that something is wrong.
+
+- **Errors of the API.** The labels of <MetricName name="payment_backend_fastapi_http_requests_total" /> include the exact `status` of each answer, so the series with a status of 500 or more are the failures. A request that the origin check refuses with the status 403 never reaches the counters, so only the log shows those.
+- **A busy API.** A rising <MetricName name="event_loop_lag_seconds" /> means that the event loop of a worker is blocked or overloaded. <MetricName name="threadpool_tokens" /> compares the threads that are borrowed with the total, and <MetricName name="db_pool_connections" /> shows, for each database pool, how many connections are checked in, how many are checked out, the size of the pool and how many connections are in overflow beyond that size. A pool that keeps connections in overflow is short of connections.
+- **The Agent.** <MetricName name="agent_queries_total" /> counts the questions by their outcome, and <MetricName name="agent_query_duration_seconds" /> shows how long they took. <MetricName name="agent_model_errors_total" /> counts the calls that a provider refused or failed, by provider. <MetricName name="agent_workspace_api_requests_total" /> counts the calls that the agent made to the API, and an outcome other than `ok` means that the agent could not sign someone in or count their usage.
+- **Shared state.** <MetricName name="agent_store_errors_total" /> counts the moments in which the shared store did not answer and a replica used its own memory instead. A value that keeps rising means that the quotas are being counted for each replica, as [Run the agent on several replicas](run-the-agent-on-several-replicas.mdx) describes.
+- **Work in child processes.** <MetricName name="agent_isolated_runs_total" /> counts the runs that ended in a failure, a timeout or a crash, and <MetricName name="agent_unhandled_errors_total" /> counts the errors that nothing handled.
+- **The version.** <MetricName name="agent_build_info" /> carries the value of `OTEL_SERVICE_VERSION` in its label `version`, so you can see which replicas run which release.
+
+The widget plugins add metrics to the API. [Plugin lifecycle and administration](../../reference/plugins/lifecycle.mdx) lists them.
+
+## Check it
+
+1. Start the three processes and read their logs. With `JSON_LOGS` set to `true`, the API prints lines that begin with `{"asctime"` once it handles a request, and the agent prints JSON lines in a deployment with `NODE_ENV` set to `production`.
+2. From a machine inside the network, request each metrics address with `curl`. The answer is text that begins with lines such as `# HELP` and `# TYPE`. For the API, request a page of the web app first, so that the request counters have a series to show.
+3. Open the targets page of your Prometheus server and check that all three jobs are up.
+4. Ask the Agent a question and scrape the agent again. The count <MetricName name="agent_queries_total" /> for the outcome `completed` has risen by one.

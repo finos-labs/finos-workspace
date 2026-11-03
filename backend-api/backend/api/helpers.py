@@ -2,14 +2,12 @@ import asyncio
 import contextlib
 import hmac
 import warnings
-from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
 import pyotp
-from fastapi import HTTPException
-from httpx import AsyncClient
+from fastapi import APIRouter, HTTPException
 from loguru import logger
 from rq.timeouts import JobTimeoutException
 from sqlalchemy import case, func, insert, or_, select, update
@@ -21,8 +19,6 @@ from api.database import AsyncWriteSessionLocal
 from api.models import DashboardItem, Entity, PermissionsEntityMap, User
 from utilities import rq_results
 from utilities.config import settings
-
-HTTPX_CLIENT: AsyncClient | None = None
 
 
 async def add_log_task(request: str, error: str, status_code: int, method: str):
@@ -39,6 +35,17 @@ async def add_log_task(request: str, error: str, status_code: int, method: str):
 def add_log(request: str, error: str, status_code: int, method: str):
     with contextlib.suppress(Exception):
         asyncio.ensure_future(add_log_task(request, error, status_code, method))
+
+
+def api_route_per_method(router: APIRouter, path: str, methods: list[str], **options):
+    def register(endpoint):
+        for method in methods:
+            router.add_api_route(
+                path, endpoint, methods=[method], name=f"{endpoint.__name__}_{method.lower()}", **options
+            )
+        return endpoint
+
+    return register
 
 
 def handle_duplicate_pk(exc: IntegrityError):
@@ -250,30 +257,3 @@ async def get_invite_users(db: AsyncSession, admin_result: UUID):
 
 def get_app_session_expiration(remember: bool) -> timedelta:
     return timedelta(30 if remember else 7)
-
-
-def get_httpx_client() -> AsyncClient:
-    global HTTPX_CLIENT  # noqa: PLW0603
-    if not HTTPX_CLIENT:
-        HTTPX_CLIENT = AsyncClient()
-    return HTTPX_CLIENT
-
-
-async def stream_response_httpx(url: str) -> AsyncGenerator[bytes, None]:
-    async with get_httpx_client().stream("GET", url) as response:
-        if response.is_error:
-            raise HTTPException(response.status_code, detail=response.text)
-        async for chunk in response.aiter_raw():
-            yield chunk
-
-
-async def get_file_response(url: str) -> bytes:
-    async with get_httpx_client().stream("GET", url) as response:
-        if response.is_error:
-            raise HTTPException(response.status_code, detail=response.text)
-        return await response.aread()
-
-
-async def test_url(url: str) -> bool:
-    async with get_httpx_client().stream("HEAD", url) as response:
-        return response.is_success

@@ -100,6 +100,7 @@
         "category": "Data",
         "standalone": true,
         "permissions": [
+          "core:data:read",
           "core:backend:call",
           "core:state:write",
           "core:export:provide",
@@ -127,34 +128,36 @@
             "label": "SQL",
             "value": "SELECT region, sum(units) AS units FROM sales GROUP BY region ORDER BY region"
           }
-        ]
-      },
-      {
-        "id": "grid",
-        "name": "SQL grid",
-        "description": "Read-only SQL against the deployment's Postgres or its data files, with the result in AgGrid",
-        "category": "Data",
-        "standalone": true,
-        "permissions": [
-          "core:backend:call",
-          "core:state:write",
-          "core:export:provide",
-          "core:copilot:context"
         ],
-        "server": {
-          "routes": [
-            "postgres_schema",
-            "postgres_query",
-            "files_schema",
-            "files_query"
-          ]
-        },
-        "grid": {
-          "w": 24,
-          "h": 18,
-          "minW": 12,
-          "minH": 8
+        "artifact": {
+          "description": "Runs a read-only SQL query against the deployment's Postgres or data files, in the user's own session, and shows the result in a table. Use it to answer a question about the deployment's data: write the query and set its source. The user can edit and rerun it.",
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sql"
+            ],
+            "properties": {
+              "source": {
+                "enum": [
+                  "postgres",
+                  "files"
+                ]
+              },
+              "sql": {
+                "type": "string",
+                "maxLength": 8000
+              }
+            }
+          }
         }
+      }
+    ],
+    "skills": [
+      {
+        "slug": "sql-explorer-queries",
+        "description": "Use when the user asks a question about the deployment's data (Postgres demo schema, mounted files): the exact steps to show the SQL explorer with a query, plus the tables the example deployment holds.",
+        "file": "skills/sql-explorer-queries.md"
       }
     ]
   }

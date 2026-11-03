@@ -10,7 +10,7 @@ import {
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
 
-export type ChatPick = Omit<Chat<HumanMessage | AIMessage>, "artifacts" | "messages">;
+type ChatPick = Omit<Chat<HumanMessage | AIMessage>, "artifacts" | "messages">;
 
 export type ChatMatch = ChatPick & { matchedMessage?: string };
 export type SearchableChat = ChatPick & { recentMessages: string[] };
@@ -63,7 +63,7 @@ function findMatchedMessageSnippet(
   return undefined;
 }
 
-export type GroupedChats = {
+type GroupedChats = {
   today: ChatMatch[];
   yesterday: ChatMatch[];
   previous7Days: ChatMatch[];

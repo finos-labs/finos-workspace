@@ -168,7 +168,7 @@ const SelectionDropdown = memo(
 
 SelectionDropdown.displayName = "SelectionDropdown";
 
-export const TabItem = forwardRef<
+const TabItem = forwardRef<
   HTMLLIElement,
   {
     item: TreeItem<SideBarItem["data"]>;

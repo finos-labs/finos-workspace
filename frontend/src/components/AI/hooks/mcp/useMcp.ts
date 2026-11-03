@@ -31,12 +31,9 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { mcpServersSaved, useMcpToolsStore } from "~/lib/state/mcpTools";
 import { useThemeStore } from "~/lib/state/theme";
-import { isLoopbackUrl } from "~/lib/utils/mcp";
 import {
-  createLocalMcpFetch,
   createMcpProxyFetch,
   deleteMcpOAuthGrant,
-  getLocalMcpServerHeaders,
   MCP_AUTH_CHANNEL,
   type McpAuthCallbackMessage,
   McpAuthRequiredError,
@@ -44,7 +41,7 @@ import {
   startMcpOAuth,
 } from "./mcpServerAuth";
 
-export function assert(condition: unknown, message: string): asserts condition {
+function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
   }
@@ -52,13 +49,13 @@ export function assert(condition: unknown, message: string): asserts condition {
 
 const DEFAULT_RECONNECT_DELAY = 3000;
 const DEFAULT_RETRY_DELAY = 5000;
-const AUTH_TIMEOUT = 2 * 60 * 1000;
+export const MCP_AUTH_TIMEOUT_MS = 2 * 60 * 1000;
 const TOOL_CALL_TIMEOUT = 5 * 60 * 1000;
 const POPUP_FEATURES = "width=600,height=700,resizable=yes,scrollbars=yes,status=yes";
 
 type TransportType = "http" | "sse";
 
-export type McpConnectionState =
+type McpConnectionState =
   | "discovering"
   | "authenticating"
   | "connecting"
@@ -110,7 +107,6 @@ export type UseMcpOptionsT = {
   autoReconnect?: boolean | number;
   transportType?: "auto" | "http" | "sse";
   handleDisconnect?: () => void;
-  isLocal?: boolean;
   authType?: "oauth" | "token";
 };
 
@@ -148,12 +144,10 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
     autoRetry,
     autoReconnect,
     transportType,
-    isLocal: isLocalOption,
     authType,
     handleDisconnect,
   } = useMemo(() => getOptions(options), [options]);
 
-  const isLocal = isLocalOption || isLoopbackUrl(url);
   const usesTokenAuth = authType === "token";
 
   const [data, dispatch] = useStateReducer<MCPDataType>({
@@ -265,18 +259,11 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
         );
         return false;
       }
-      if (isLocal) {
-        failConnection(
-          `Couldn't authenticate with ${serverName || "the MCP server"}. Check the headers saved for this local server.`,
-          error,
-        );
-        return false;
-      }
       if (stateRef.current === "authenticating") return true;
 
       dispatch({ state: "authenticating" });
       if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
-      authTimeoutRef.current = setTimeout(handleAuthTimeout, AUTH_TIMEOUT);
+      authTimeoutRef.current = setTimeout(handleAuthTimeout, MCP_AUTH_TIMEOUT_MS);
       try {
         const authUrl = await startMcpOAuth(url);
         if (!isMountedRef.current) return false;
@@ -299,25 +286,8 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
         return false;
       }
     },
-    [
-      url,
-      usesTokenAuth,
-      isLocal,
-      serverName,
-      addLog,
-      failConnection,
-      handleAuthTimeout,
-    ],
+    [url, usesTokenAuth, serverName, addLog, failConnection, handleAuthTimeout],
   );
-
-  const createFetch = useCallback(async (): Promise<FetchLike> => {
-    if (!isLocal) return createMcpProxyFetch(url);
-    const server = useMcpToolsStore.getState().servers.find((s) => s.id === serverId);
-    const headers = server?.customHeaderNames?.length
-      ? await getLocalMcpServerHeaders(url)
-      : {};
-    return createLocalMcpFetch(headers);
-  }, [url, isLocal, serverId]);
 
   const connect = useCallback(async () => {
     if (connectingRef.current) {
@@ -338,7 +308,7 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
     let fetchFn: FetchLike;
     try {
       await mcpServersSaved();
-      fetchFn = await createFetch();
+      fetchFn = createMcpProxyFetch(url);
     } catch (err) {
       failConnection(
         `Failed to prepare the connection: ${err instanceof Error ? err.message : String(err)}`,
@@ -601,7 +571,6 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
     failConnection,
     handleAuthRequired,
     handleDisconnect,
-    createFetch,
     url,
     clientName,
     transportType,

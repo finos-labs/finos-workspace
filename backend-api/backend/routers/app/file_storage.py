@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from uuid import UUID, uuid4
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Path, Query, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
 from loguru import logger
@@ -59,9 +59,18 @@ async def check_upload_limit(
         )
 
 
-@router.post("/files", response_model=list[schemas.PendingFileReturn])
+@router.post(
+    "/files",
+    response_model=list[schemas.PendingFileReturn],
+    summary="Upload files",
+    description=(
+        "Uploads the files of a multipart request to the storage and returns a description of each one, including "
+        "whether its upload failed. An uploaded file stays pending until a file widget claims it. Answers 403 when the "
+        "user's type may not add connections and 413 when the upload would exceed the user's upload size limit."
+    ),
+)
 async def post_files(
-    files: list[UploadFile],
+    files: Annotated[list[UploadFile], File(description="The files to upload.")],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_write_db),
 ):
@@ -158,9 +167,17 @@ async def get_user_stored_file(
     return stored_file
 
 
-@router.get("/files/{file_name}", response_class=StreamingResponse)
+@router.get(
+    "/files/{file_name}",
+    response_class=StreamingResponse,
+    summary="Download a file",
+    description=(
+        "Streams the file with the given name or UUID. The user can read the files that they uploaded, the global "
+        "files, and the files that others shared with them. Answers 404 when no such file is available to the user."
+    ),
+)
 async def get_file(
-    file_name: str,
+    file_name: Annotated[str, Path(description="The name of the file in the storage, or its UUID.")],
     user=Depends(auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
 ):
@@ -169,11 +186,21 @@ async def get_file(
     return FileStorage.get_stream(stored_file)
 
 
-@signed_router.get("/files/presigned/{file_name}", response_class=StreamingResponse)
+@signed_router.get(
+    "/files/presigned/{file_name}",
+    response_class=StreamingResponse,
+    summary="Download a file through a signed link",
+    description=(
+        "Streams a file when `Expires` and `Signature` form a valid signed link, and needs no session. Answers 403 when "
+        "the link is invalid or has expired and 404 when the file does not exist."
+    ),
+)
 async def get_signed_file(
-    file_name: str,
-    Expires: int,
-    Signature: str,
+    file_name: Annotated[str, Path(description="The name of the file in the storage, as the signed link carries it.")],
+    Expires: Annotated[
+        int, Query(description="The time at which the link expires, in seconds since 1970, as the link carries it.")
+    ],
+    Signature: Annotated[str, Query(description="The signature of the link, as the link carries it.")],
     db: AsyncSession = Depends(aget_read_db),
 ):
     if (
@@ -191,11 +218,21 @@ PRESIGNED_URL_MAX_SECONDS = 900
 
 
 @router.get(
-    "/files/{file_name}/presigned-url", response_model=schemas.PreSignedUrlReturn
+    "/files/{file_name}/presigned-url",
+    response_model=schemas.PreSignedUrlReturn,
+    summary="Create a signed download link",
+    description=(
+        f"Returns a signed link to the file, together with the file's details. The link works without a session until "
+        f"`expiration` seconds have passed, and the API caps the lifetime at {PRESIGNED_URL_MAX_SECONDS} seconds. "
+        f"Answers 404 when no such file is available to the user."
+    ),
 )
 async def get_presigned_url(
-    file_name: str,
-    expiration: Annotated[int, Query(ge=1)] = PRESIGNED_URL_MAX_SECONDS,
+    file_name: Annotated[str, Path(description="The name of the file in the storage, or its UUID.")],
+    expiration: Annotated[
+        int,
+        Query(ge=1, description="How many seconds the link stays valid. The API lowers a larger value to its maximum."),
+    ] = PRESIGNED_URL_MAX_SECONDS,
     user=Depends(auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
 ):
@@ -211,9 +248,17 @@ async def get_presigned_url(
     )
 
 
-@router.delete("/files/{file_uuid}", response_model=SuccessReturn)
+@router.delete(
+    "/files/{file_uuid}",
+    response_model=SuccessReturn,
+    summary="Delete a file",
+    description=(
+        "Deletes one of the user's own stored files. Answers 404 when the user has no file with that UUID and 400 when "
+        "the storage cannot delete it."
+    ),
+)
 async def delete_file(
-    file_uuid: UUID,
+    file_uuid: Annotated[UUID, Path(description="The UUID of the stored file.")],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_write_db),
 ):
@@ -234,7 +279,15 @@ async def delete_file(
     return SuccessReturn.success_instance()
 
 
-@router.delete("/files", response_model=SuccessReturn)
+@router.delete(
+    "/files",
+    response_model=SuccessReturn,
+    summary="Delete several files",
+    description=(
+        "Deletes the user's own stored files whose UUIDs are in the request. A file that the storage cannot delete is "
+        "kept and detached from its widget. Answers 404 when none of the files belongs to the user."
+    ),
+)
 async def delete_files(
     data: Annotated[
         schemas.DeleteStoredFiles, Body(..., description="The files to delete")
@@ -278,7 +331,16 @@ async def delete_files(
     return SuccessReturn.success_instance()
 
 
-@router.post("/files/download", response_class=StreamingResponse)
+@router.post(
+    "/files/download",
+    response_class=StreamingResponse,
+    summary="Download files as a ZIP archive",
+    description=(
+        "Returns a ZIP archive that holds the requested files and a `file_manifest.json` that lists them. The user can "
+        "request the files that they uploaded, the global files, and the files that others shared with them. Answers "
+        "404 when no file is found."
+    ),
+)
 async def get_files(
     files: Annotated[
         list[PostStoredFile], Body(..., description="The files to download")

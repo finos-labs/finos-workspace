@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-export interface InteropModule {
+interface InteropModule {
   id: string;
   name: string;
   wheel: string;

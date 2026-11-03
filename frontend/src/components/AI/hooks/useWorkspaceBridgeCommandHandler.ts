@@ -635,7 +635,7 @@ function buildSkillPayload(skill: WorkspaceSkill): SkillPayload {
   };
 }
 
-export function normalizeWidgetDataForBridge(data: unknown): unknown {
+function normalizeWidgetDataForBridge(data: unknown): unknown {
   if (!Array.isArray(data)) return data;
   return data.map((entry) => {
     const items = (entry as { items?: unknown })?.items;
@@ -1576,7 +1576,7 @@ function summarizeApp(template: BackendTemplate) {
     tab_count: Object.keys(template.tabs ?? {}).length,
     group_count: template.groups?.length ?? 0,
     prompt_count: template.prompts?.length ?? 0,
-    allow_customization: template.allowCustomization ?? false,
+    allow_customization: template.allowCustomization ?? true,
   };
 }
 

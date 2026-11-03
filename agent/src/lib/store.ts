@@ -174,7 +174,7 @@ const FULL = `
   redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now - window)
   return redis.call('ZCARD', KEYS[1])`;
 
-const PREFIX = "ines:";
+const PREFIX = "agent:";
 
 export function createRedisStore(url: string, now: () => number = Date.now): Store {
   const client = new Redis(url, {

@@ -24,19 +24,19 @@ const AGENT_TOOLS = [
   "update_widget_in_dashboard", "manage_navigation_bar", "create_app",
   "create_html_artifact", "create_table_from_text", "_llm_think", "enhance_prompt",
 ];
-const MCP = [entry("Ines_Tools_web_search"), entry("Ines_Tools_query_documents")];
+const MCP = [entry("Agent_Tools_web_search"), entry("Agent_Tools_query_documents")];
 const ALL = [...AGENT_TOOLS, ...MCP.map((e) => e.sanitizedName)];
 
 describe("the web group of a user who has only one of the web tools", () => {
-  const SEARCH = entry("Ines_Tools_web_search");
-  const FETCH = entry("Ines_Tools_fetch_webpage");
-  const INSPECT = entry("Ines_Tools_inspect_webpage");
+  const SEARCH = entry("Agent_Tools_web_search");
+  const FETCH = entry("Agent_Tools_fetch_webpage");
+  const INSPECT = entry("Agent_Tools_inspect_webpage");
   const webGroup = (mcp: McpToolEntry[]) =>
     buildToolCatalog([...AGENT_TOOLS, ...mcp.map((e) => e.sanitizedName)], mcp).groups.find((g) => g.id === "web");
 
   it("is described as both when the user has both", () => {
     const web = webGroup([SEARCH, FETCH, INSPECT]);
-    expect(web?.tools).toEqual(["Ines_Tools_web_search", "Ines_Tools_fetch_webpage", "Ines_Tools_inspect_webpage"]);
+    expect(web?.tools).toEqual(["Agent_Tools_web_search", "Agent_Tools_fetch_webpage", "Agent_Tools_inspect_webpage"]);
     expect(web?.summary).toBe("search the web, or read a web page");
     expect(web?.notes).toContain("web_search");
     expect(web?.notes).toContain("fetch_webpage");
@@ -45,7 +45,7 @@ describe("the web group of a user who has only one of the web tools", () => {
 
   it("is only search when reading pages is switched off, and says nothing of the tool it has not", () => {
     const web = webGroup([SEARCH]);
-    expect(web?.tools).toEqual(["Ines_Tools_web_search"]);
+    expect(web?.tools).toEqual(["Agent_Tools_web_search"]);
     expect(web?.summary).toBe("search the web");
     expect(web?.notes).toContain("web_search");
     expect(web?.notes).not.toContain("fetch_webpage");
@@ -53,7 +53,7 @@ describe("the web group of a user who has only one of the web tools", () => {
 
   it("is only reading when searching is switched off, and says nothing of the tool it has not", () => {
     const web = webGroup([FETCH, INSPECT]);
-    expect(web?.tools).toEqual(["Ines_Tools_fetch_webpage", "Ines_Tools_inspect_webpage"]);
+    expect(web?.tools).toEqual(["Agent_Tools_fetch_webpage", "Agent_Tools_inspect_webpage"]);
     expect(web?.summary).toBe("read a web page");
     expect(web?.notes).toContain("fetch_webpage");
     expect(web?.notes).not.toContain("web_search");
@@ -140,8 +140,8 @@ describe("buildToolCatalog", () => {
   });
 
   it("groups MCP tools by their canonical name, however the FINOS Workspace prefixed it", () => {
-    expect(group("web")?.tools).toEqual(["Ines_Tools_web_search"]);
-    expect(group("documents")?.tools).toEqual(["Ines_Tools_query_documents"]);
+    expect(group("web")?.tools).toEqual(["Agent_Tools_web_search"]);
+    expect(group("documents")?.tools).toEqual(["Agent_Tools_query_documents"]);
   });
 
   it("does not take an MCP tool for an agent tool of the same name, nor the other way round", () => {
@@ -169,6 +169,35 @@ describe("buildToolCatalog", () => {
   });
 });
 
+describe("the components group", () => {
+  const component = (name: string, description: string) => ({
+    plugin: "kit",
+    widget: name.toLowerCase(),
+    name,
+    description,
+    data_schema: { type: "object" },
+  });
+
+  it("names each component the user has, so the model can match one to the question", () => {
+    const c = buildToolCatalog(["show_plugin_artifact"], [], [
+      component("Plotly chart", "A chart of a few series over categories or time."),
+      component("Funnel", "Pipeline stages with a count for each."),
+    ]);
+    const group = c.groups.find((g) => g.id === "components");
+    expect(group?.summary).toContain("Plotly chart: A chart of a few series");
+    expect(group?.summary).toContain("Funnel: Pipeline stages with a count for each.");
+    expect(renderToolCatalog(c, new Set())).toContain("Funnel: Pipeline stages");
+  });
+
+  it("lists at most twelve, each cut short", () => {
+    const many = Array.from({ length: 20 }, (_, i) => component(`C${i}`, "x".repeat(500)));
+    const group = buildToolCatalog(["show_plugin_artifact"], [], many).groups[0];
+    expect(group.summary).toContain("C11:");
+    expect(group.summary).not.toContain("C12:");
+    expect(group.summary.length).toBeLessThan(2_500);
+  });
+});
+
 describe("activeToolNames", () => {
   const catalog = buildToolCatalog(ALL, MCP);
 
@@ -191,7 +220,7 @@ describe("groupsOfCalledTools", () => {
   const catalog = buildToolCatalog(ALL, MCP);
 
   it("names the groups of the tools that were used, once each", () => {
-    expect(groupsOfCalledTools(catalog, ["execute_sql", "peek_table", "search_widgets", "Ines_Tools_web_search"]).sort()).toEqual(["sql", "web"]);
+    expect(groupsOfCalledTools(catalog, ["execute_sql", "peek_table", "search_widgets", "Agent_Tools_web_search"]).sort()).toEqual(["sql", "web"]);
   });
 
   it("names none for core tools, or tools it does not know", () => {

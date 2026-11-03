@@ -1,4 +1,4 @@
-export interface BoundedCacheOptions<V> {
+interface BoundedCacheOptions<V> {
   ttlMs: number;
   maxEntries: number;
   weigh?: (value: V) => number;
@@ -7,7 +7,7 @@ export interface BoundedCacheOptions<V> {
   now?: () => number;
 }
 
-export interface BoundedCache<K, V> {
+interface BoundedCache<K, V> {
   get(key: K): V | undefined;
   set(key: K, value: V): boolean;
   delete(key: K): boolean;

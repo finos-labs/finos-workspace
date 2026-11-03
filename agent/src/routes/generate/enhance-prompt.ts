@@ -3,20 +3,38 @@ import { z } from "zod";
 import type { AppEnv } from "../../auth/middleware.ts";
 import { truncate } from "../../lib/llm.ts";
 import { getLogger } from "../../lib/logger.ts";
-import { helperLlm, invalidJson, MAX_HELPER_TEXT_CHARS, readJson } from "./helper.ts";
+import {
+  bodyTooLarge,
+  defineRoute,
+  invalidRequest,
+  named,
+  tooManyRequests,
+  unauthorized,
+} from "../../lib/openapi.ts";
+import { helperLlm, invalidJson, MAX_HELPER_TEXT_CHARS, modelField, readJson } from "./helper.ts";
 
 const logger = getLogger(["app", "generate", "enhance-prompt"]);
 
-const EnhancePromptSchema = z.object({
-  messages: z.array(z.unknown()).min(1).max(1000),
-  widgets: z.unknown().optional(),
-  context: z.unknown().optional(),
-  urls: z.array(z.string()).optional(),
-  workspace_state: z.unknown().optional(),
-  workspace_options: z.record(z.string(), z.union([z.boolean(), z.string()])).optional(),
-  timezone: z.string().optional(),
-  tools: z.array(z.unknown()).optional(),
-  model: z.string().max(200).optional(),
+export const ENHANCE_WIDGET_NAMES = 30;
+export const ENHANCE_WIDGET_NAME_CHARS = 100;
+
+export const EnhancePromptSchema = z.object({
+  messages: z
+    .array(z.unknown())
+    .min(1)
+    .max(1000)
+    .describe("The conversation. The agent rewrites the last message that has the role human and a text as its content."),
+  widgets: z
+    .unknown()
+    .optional()
+    .describe("The widgets in the tiers primary, secondary and extra, as in a query. The agent uses their names as hints."),
+  context: z.unknown().optional().describe("Accepted and not used."),
+  urls: z.array(z.string()).optional().describe("Accepted and not used."),
+  workspace_state: z.unknown().optional().describe("Accepted and not used."),
+  workspace_options: z.record(z.string(), z.union([z.boolean(), z.string()])).optional().describe("Accepted and not used."),
+  timezone: z.string().optional().describe("Accepted and not used."),
+  tools: z.array(z.unknown()).optional().describe("Accepted and not used."),
+  model: modelField,
 });
 
 function extractWidgetNames(widgets: unknown): string[] {
@@ -28,17 +46,42 @@ function extractWidgetNames(widgets: unknown): string[] {
     if (Array.isArray(arr)) {
       for (const widget of arr) {
         if (widget && typeof widget === "object" && "name" in widget && typeof widget.name === "string") {
-          names.push(truncate(widget.name, 100));
+          names.push(truncate(widget.name, ENHANCE_WIDGET_NAME_CHARS));
         }
       }
     }
   }
-  return names.slice(0, 30);
+  return names.slice(0, ENHANCE_WIDGET_NAMES);
 }
+
+export const enhancePromptRoute = defineRoute({
+  method: "POST",
+  path: "/v1/enhance_prompt",
+  tag: "generate",
+  summary: "Rewrites a question to be more specific.",
+  description:
+    "Rewrites the last question of the user so that it names the data that it needs. The agent makes one call to the model and never runs tools.",
+  request: { contentType: "application/json", required: true, schema: named("EnhancePromptRequest", EnhancePromptSchema) },
+  responses: [
+    { code: "200", description: "The rewritten question, as plain text.", contentType: "text/plain" },
+    invalidRequest(),
+    unauthorized(),
+    bodyTooLarge(),
+    tooManyRequests(),
+  ],
+  secured: true,
+  helper: {
+    detail:
+      `The agent rewrites the last human message, cut to ${MAX_HELPER_TEXT_CHARS.toLocaleString("en-US")} characters, ` +
+      `and uses the names of up to ${ENHANCE_WIDGET_NAMES} widgets, each cut to ${ENHANCE_WIDGET_NAME_CHARS} characters, as hints.`,
+    answer: "Plain text, the rewritten question.",
+    fallback: "The original question, or an empty string when there is no human message.",
+  },
+});
 
 export const enhancePromptRouter = new Hono<AppEnv>();
 
-enhancePromptRouter.post("/v1/enhance_prompt", async (c) => {
+enhancePromptRouter.post(enhancePromptRoute.path, async (c) => {
   const raw = await readJson(c);
   if (raw === null) return invalidJson(c);
   const parsed = EnhancePromptSchema.safeParse(raw);

@@ -8,7 +8,7 @@ import { clipForModel, MAX_TOOL_RESULT_CHARS } from "../agent/clip.ts";
 
 const logger = getLogger(["app", "mcp", "results"]);
 
-export interface WebCitation {
+interface WebCitation {
   id: string;
   type: "web";
   url: string;
@@ -26,12 +26,21 @@ export interface DocumentCitation {
 
 export type McpCitation = WebCitation | DocumentCitation;
 
-type InesTypedItem =
-  | { $ines_kind: "artifact"; artifact: CopilotArtifact }
-  | { $ines_kind: "citation"; citation: WebCitationData | DocumentCitationData }
-  | { $ines_kind: "sqlite_table"; name: string; rows: Record<string, unknown>[] }
-  | { $ines_kind: "error"; error: { code: string; message: string; retryable?: boolean } }
-  | { $ines_kind: "model_context"; summary: string };
+type AgentTypedItem =
+  | { $agent_kind: "artifact"; artifact: CopilotArtifact }
+  | { $agent_kind: "citation"; citation: WebCitationData | DocumentCitationData }
+  | { $agent_kind: "sqlite_table"; name: string; rows: Record<string, unknown>[] }
+  | { $agent_kind: "error"; error: { code: string; message: string; retryable?: boolean } }
+  | { $agent_kind: "model_context"; summary: string };
+
+const KIND_NAMES: Record<AgentTypedItem["$agent_kind"], true> = {
+  artifact: true,
+  citation: true,
+  sqlite_table: true,
+  error: true,
+  model_context: true,
+};
+export const TYPED_ITEM_KINDS = Object.keys(KIND_NAMES) as AgentTypedItem["$agent_kind"][];
 
 interface WebCitationData {
   type: "web";
@@ -66,14 +75,14 @@ function tryParseJson(text: string): unknown {
   }
 }
 
-function asTypedItem(value: unknown): InesTypedItem | null {
+function asTypedItem(value: unknown): AgentTypedItem | null {
   if (
     value &&
     typeof value === "object" &&
     !Array.isArray(value) &&
-    typeof (value as { $ines_kind?: unknown }).$ines_kind === "string"
+    typeof (value as { $agent_kind?: unknown }).$agent_kind === "string"
   ) {
-    return value as InesTypedItem;
+    return value as AgentTypedItem;
   }
   return null;
 }
@@ -186,8 +195,8 @@ function artifactAckText(artifact: CopilotArtifact): string {
   return `[Artifact "${artifact.name}" (${artifact.type}) delivered to the user — already rendered in the chat, do not regenerate it]`;
 }
 
-function dispatchTyped(typed: InesTypedItem, ctx: McpResultContext, c: Counters): void {
-  switch (typed.$ines_kind) {
+function dispatchTyped(typed: AgentTypedItem, ctx: McpResultContext, c: Counters): void {
+  switch (typed.$agent_kind) {
     case "artifact": {
       if (isEmptyArtifactContent(typed.artifact)) return;
       ctx.artifactQueue.push(messageArtifact(typed.artifact));
@@ -331,14 +340,14 @@ export function processMcpResult(
   return summary;
 }
 
-const HISTORY_RENDER_MAX_CHARS = 2_000;
+export const HISTORY_RENDER_MAX_CHARS = 2_000;
 
 export function renderToolResultForHistory(toolMsg: ToolMessage): string | null {
   const parts: string[] = [];
   let modelContext: string | null = null;
 
-  function visitTyped(typed: InesTypedItem): void {
-    switch (typed.$ines_kind) {
+  function visitTyped(typed: AgentTypedItem): void {
+    switch (typed.$agent_kind) {
       case "artifact":
         if (!isEmptyArtifactContent(typed.artifact)) parts.push(artifactAckText(typed.artifact));
         return;

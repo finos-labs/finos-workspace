@@ -1,17 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { removeRetiredBrowserSecrets } from "~/lib/retiredBrowserSecrets";
-import { mockConfig } from "../../mocks/runtimeConfig";
 
 const CLIENT_ID = "11111111-2222-3333-4444-555555555555";
 
 describe("removeRetiredBrowserSecrets", () => {
   afterEach(() => {
     localStorage.clear();
-    mockConfig.authProviders.azureClientId = "";
   });
 
   it("removes the auth store, MCP OAuth tokens and MSAL cache earlier versions left", () => {
-    mockConfig.authProviders.azureClientId = CLIENT_ID;
     const idTokenKey = `uid.utid-login.windows.net-idtoken-${CLIENT_ID}-tenant---`;
     const refreshKey = "uid.utid-login.windows.net-refreshtoken-other-client----";
     localStorage.setItem(

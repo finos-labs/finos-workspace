@@ -129,10 +129,10 @@ describe("bridge integration — 5 PoC workspace commands", () => {
     );
     expect(result).toBeNull();
     const parsed = JSON.parse(content[0].text) as {
-      $ines_kind: string;
+      $agent_kind: string;
       error: { code: string };
     };
-    expect(parsed.$ines_kind).toBe("error");
+    expect(parsed.$agent_kind).toBe("error");
     expect(parsed.error.code).toBe("unavailable");
   });
 

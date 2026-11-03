@@ -2,7 +2,6 @@ import platform
 from contextlib import asynccontextmanager
 from time import time
 
-import prometheus_client
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
@@ -10,12 +9,12 @@ from fastapi.responses import JSONResponse
 from fastapi_pagination import add_pagination
 from fastmcp.utilities.lifespan import combine_lifespans
 from loguru import logger
-from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from slowapi import _rate_limit_exceeded_handler  # noqa: PLC2701
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.cors import CORSMiddleware
 
 from api import auth_helpers, helpers
+from api.body_limit import BodyLimitMiddleware
 from api.events.role_permission_events import init_audit_listeners
 from api.rate_limit import limiter
 from api.worker_tasks import start_background_tasks
@@ -23,6 +22,7 @@ from routers import (
     admin,
     auth,
     entity,
+    identity,
     widget_plugins,
 )
 from routers.app import (
@@ -37,14 +37,13 @@ from routers.app import (
 )
 from routers.app.workspace_mcp.asgi import create_workspace_mcp_asgi_app
 from utilities import config
+from utilities.request_metrics import instrument
 from utilities.runtime_metrics import start_runtime_metrics
 
 config.settings.setup_logging()
 logger.info("START")
 logger.info(f"Python: {platform.python_version()}")
 logger.info(f"OS: {platform.system()}")
-
-FASTAPI_KWARGS = {}
 
 
 @asynccontextmanager
@@ -64,7 +63,6 @@ app = FastAPI(
     docs_url=None,
     openapi_url=None,
     lifespan=combine_lifespans(lifespan, workspace_mcp_asgi_app.lifespan),
-    generate_unique_id_function=lambda route: route.name,
 )
 
 app.add_middleware(
@@ -73,18 +71,12 @@ app.add_middleware(
     allow_origin_regex=config.settings.BACKEND_CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type", auth_helpers.CLIENT_HEADER],
+    allow_headers=["Authorization", "Content-Type", "X-Trace-Id", auth_helpers.CLIENT_HEADER],
 )
 
 
-ns = {"metric_namespace": "payment_backend", "metric_subsystem": "fastapi"}
-
 if config.settings.PROMETHEUS:
-    instrumentator = Instrumentator(should_group_status_codes=False)
-    instrumentator.add(metrics.requests(**ns))  # type: ignore
-    instrumentator.add(metrics.response_size(**ns))  # type: ignore
-    instrumentator.add(metrics.latency(buckets=(1, 2, 3, 4), **ns))  # type: ignore
-    instrumentator.instrument(app)
+    instrumentator = instrument(app)
 
 
 app.state.limiter = limiter
@@ -92,6 +84,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # ty
 
 routers = [
     auth.router,
+    identity.router,
     index.router,
     mcp_oauth.router,
     data_connectors.router,
@@ -123,13 +116,16 @@ async def api_exception_handler(request: Request, exc: Exception):
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    helpers.add_log(request.url.path, exc.detail, exc.status_code, request.method)
     extras = dict(
         method=request.method,
         path=request.url.path,
         status_code=exc.status_code,
     )
-    logger.bind(**extras).exception(exc)
+    if exc.headers and "X-Workspace-Proxy-Error" in exc.headers:
+        logger.bind(**extras).debug(f"data connection refused: {exc.detail}")
+    else:
+        helpers.add_log(request.url.path, exc.detail, exc.status_code, request.method)
+        logger.bind(**extras).exception(exc)
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail, "status": exc.status_code},
@@ -188,9 +184,30 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-@app.get("/health")
-@app.get("/healthz")
-@app.get("/")
+@app.get(
+    "/health",
+    summary="Check that the API is running",
+    description=(
+        "Answers `success` with the status 200 while the API runs. A request to `/health` or `/healthz` needs no "
+        "`Origin` header, and every other path, including `/`, needs one."
+    ),
+)
+@app.get(
+    "/healthz",
+    summary="Check that the API is running",
+    description=(
+        "Answers `success` with the status 200 while the API runs. A request to `/health` or `/healthz` needs no "
+        "`Origin` header, and every other path, including `/`, needs one."
+    ),
+)
+@app.get(
+    "/",
+    summary="Check that the API is running",
+    description=(
+        "Answers `success` with the status 200 while the API runs. A request to `/health` or `/healthz` needs no "
+        "`Origin` header, and every other path, including `/`, needs one."
+    ),
+)
 def nginx():
     return JSONResponse(content={"success": True}, status_code=200)
 
@@ -216,12 +233,6 @@ def include_routers():
         app.routes.remove(route)
 
 
-def start_prometheus(fork_id: int):
-    if fork_id == 1:
-        logger.info("Starting prometheus server")
-        prometheus_client.start_http_server(6970)
-
-
 include_routers()
 if config.settings.PROMETHEUS:
     instrumentator.expose(app, endpoint="/metrics", should_gzip=True)
@@ -229,8 +240,22 @@ app.mount("", workspace_mcp_asgi_app, name="FINOS Workspace MCP App")
 add_pagination(app)
 
 
-app.add_middleware(GZipMiddleware)
+class SelectiveGZipMiddleware(GZipMiddleware):
+    async def __call__(self, scope, receive, send):
+        path = scope.get("path", "")
+        if scope["type"] == "http" and (
+            path.startswith(auth_helpers.FRAME_ROUTE)
+            or (path.startswith("/app/data-connectors/api-source") and path.endswith("/request"))
+        ):
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
+
+app.add_middleware(SelectiveGZipMiddleware)
 
 app.add_middleware(auth_helpers.NoStoreMiddleware)
+
+app.add_middleware(BodyLimitMiddleware)
 
 app.add_middleware(auth_helpers.AllowedOriginMiddleware)

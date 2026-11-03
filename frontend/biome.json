@@ -91,6 +91,7 @@
       "!src/lib/utils/index.ts",
       "!src/components/ds/utils/index.ts",
       "!src/vite-env.d.ts",
+      "!tests/mocks/widgets-schema.json",
       "!dist"
     ],
     "ignoreUnknown": true

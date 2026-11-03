@@ -8,7 +8,7 @@ import {
 
 const FETCH_WEBPAGE_TOOL = {
   name: "fetch_webpage",
-  server_id: "ines",
+  server_id: "agent",
   url: "http://localhost:8787/mcp",
   description:
     "Fetch a webpage and return its content as markdown. Use this when a URL is provided and you need to read its contents.",
@@ -20,7 +20,7 @@ const FETCH_WEBPAGE_TOOL = {
 
 const WEB_SEARCH_TOOL = {
   name: "web_search",
-  server_id: "ines",
+  server_id: "agent",
   url: "http://localhost:8787/mcp",
   description:
     "Search the web for recent or general information. Returns links and snippets.",

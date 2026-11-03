@@ -10,8 +10,8 @@ import { embedChunks } from "./retrieve.ts";
 import { retrieve } from "./retrieve.ts";
 import { assertRoom, chargeIngest, ensureHydrated, hasDocument, listDocuments, upsertDocument } from "./store.ts";
 import { getLogger } from "../../../lib/logger.ts";
-import { scopeSigSchema } from "../../../lib/scope-check.ts";
-import { documentBytes, shippedDocumentSchema, type ShippedDocument } from "./payload.ts";
+import { conversationIdSchema, scopeSigSchema } from "../../../lib/scope-check.ts";
+import { documentBytes, shippedDocumentsSchema, type ShippedDocument } from "./payload.ts";
 
 const logger = getLogger(["mcp", "documents", "query"]);
 
@@ -39,15 +39,9 @@ export const queryDocumentsSchema = {
     .max(MAX_TOP_K)
     .optional()
     .describe(`How many chunks to return (default ${DEFAULT_TOP_K}, max ${MAX_TOP_K}).`),
-  "x-ines-conversation-id": z
-    .string()
-    .optional()
-    .describe("INTERNAL — populated by agent decoration. Do not set."),
-  "x-ines-scope-sig": scopeSigSchema,
-  "x-ines-documents": z
-    .array(shippedDocumentSchema)
-    .optional()
-    .describe("INTERNAL — populated by agent decoration. Do not set."),
+  "x-agent-conversation-id": conversationIdSchema,
+  "x-agent-scope-sig": scopeSigSchema,
+  "x-agent-documents": shippedDocumentsSchema,
 };
 
 export const queryDocumentsDescription =
@@ -135,11 +129,11 @@ export async function queryDocumentsHandler(args: {
   query: string;
   doc_ids?: string[];
   top_k?: number;
-  "x-ines-conversation-id"?: string;
-  "x-ines-documents"?: NewDocPayload[];
+  "x-agent-conversation-id"?: string;
+  "x-agent-documents"?: NewDocPayload[];
 }): Promise<{ content: ContentItem[] }> {
-  const conversationId = args["x-ines-conversation-id"];
-  const newDocs = args["x-ines-documents"] ?? [];
+  const conversationId = args["x-agent-conversation-id"];
+  const newDocs = args["x-agent-documents"] ?? [];
   const topK = args.top_k ?? DEFAULT_TOP_K;
   const startedAt = Date.now();
 
@@ -204,7 +198,7 @@ export async function queryDocumentsHandler(args: {
     items.push(
       documentCitationItem({
         id: h.doc.id,
-        uri: `ines-doc://${conversationId}/${h.doc.id}`,
+        uri: `agent-doc://${conversationId}/${h.doc.id}`,
         title: h.doc.name,
         ...(h.chunk.page != null ? { page: h.chunk.page } : {}),
         score: h.score,

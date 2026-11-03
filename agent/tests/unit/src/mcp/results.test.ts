@@ -22,7 +22,7 @@ function toolMsg(items: Array<{ text?: string; content?: string }>, fn = "tool-1
   return {
     role: "tool",
     function: "execute_agent_tool",
-    input_arguments: { tool_name: fn, server_id: "ines-tools" },
+    input_arguments: { tool_name: fn, server_id: "agent-tools" },
     data: [{ items }],
   };
 }
@@ -39,7 +39,7 @@ describe("processMcpResult — plain text", () => {
     expect(ctx.messages[0].role).toBe("user");
     expect(ctx.messages[0].content).toContain("hello world");
     expect(summary.toolName).toBe("tool-1");
-    expect(summary.serverId).toBe("ines-tools");
+    expect(summary.serverId).toBe("agent-tools");
   });
 
   it("falls back to `content` field when `text` is absent", () => {
@@ -67,7 +67,7 @@ describe("processMcpResult — plain text", () => {
   });
 });
 
-describe("processMcpResult — $ines_kind: artifact", () => {
+describe("processMcpResult — $agent_kind: artifact", () => {
   it("pushes a copilotMessageArtifact event onto the queue", () => {
     const ctx = freshCtx();
     const artifact = {
@@ -78,7 +78,7 @@ describe("processMcpResult — $ines_kind: artifact", () => {
       content: [{ a: 1 }],
     };
     processMcpResult(
-      toolMsg([{ text: JSON.stringify({ $ines_kind: "artifact", artifact }) }]),
+      toolMsg([{ text: JSON.stringify({ $agent_kind: "artifact", artifact }) }]),
       ctx,
     );
     expect(ctx.artifactQueue).toHaveLength(1);
@@ -95,7 +95,7 @@ describe("processMcpResult — $ines_kind: artifact", () => {
       content: "<img/>",
     };
     const summary = processMcpResult(
-      toolMsg([{ text: JSON.stringify({ $ines_kind: "artifact", artifact }) }]),
+      toolMsg([{ text: JSON.stringify({ $agent_kind: "artifact", artifact }) }]),
       ctx,
     );
     expect(summary.artifactCount).toBe(1);
@@ -104,12 +104,12 @@ describe("processMcpResult — $ines_kind: artifact", () => {
   });
 });
 
-describe("processMcpResult — $ines_kind: artifact — empty content guard", () => {
+describe("processMcpResult — $agent_kind: artifact — empty content guard", () => {
   it("skips artifact with empty HTML content string", () => {
     const ctx = freshCtx();
     const artifact = { type: "html", uuid: "u1", name: "Empty", description: "d", content: "" };
     processMcpResult(
-      toolMsg([{ text: JSON.stringify({ $ines_kind: "artifact", artifact }) }]),
+      toolMsg([{ text: JSON.stringify({ $agent_kind: "artifact", artifact }) }]),
       ctx,
     );
     expect(ctx.artifactQueue).toHaveLength(0);
@@ -119,7 +119,7 @@ describe("processMcpResult — $ines_kind: artifact — empty content guard", ()
     const ctx = freshCtx();
     const artifact = { type: "table", uuid: "u2", name: "Empty", description: "d", content: [] };
     processMcpResult(
-      toolMsg([{ text: JSON.stringify({ $ines_kind: "artifact", artifact }) }]),
+      toolMsg([{ text: JSON.stringify({ $agent_kind: "artifact", artifact }) }]),
       ctx,
     );
     expect(ctx.artifactQueue).toHaveLength(0);
@@ -129,7 +129,7 @@ describe("processMcpResult — $ines_kind: artifact — empty content guard", ()
     const ctx = freshCtx();
     const artifact = { type: "html", uuid: "u3", name: "Chart", description: "d", content: "<div>ok</div>" };
     processMcpResult(
-      toolMsg([{ text: JSON.stringify({ $ines_kind: "artifact", artifact }) }]),
+      toolMsg([{ text: JSON.stringify({ $agent_kind: "artifact", artifact }) }]),
       ctx,
     );
     expect(ctx.artifactQueue).toHaveLength(1);
@@ -139,21 +139,21 @@ describe("processMcpResult — $ines_kind: artifact — empty content guard", ()
     const ctx = freshCtx();
     const artifact = { type: "table", uuid: "u4", name: "T", description: "d", content: [{ a: 1 }] };
     processMcpResult(
-      toolMsg([{ text: JSON.stringify({ $ines_kind: "artifact", artifact }) }]),
+      toolMsg([{ text: JSON.stringify({ $agent_kind: "artifact", artifact }) }]),
       ctx,
     );
     expect(ctx.artifactQueue).toHaveLength(1);
   });
 });
 
-describe("processMcpResult — $ines_kind: citation", () => {
+describe("processMcpResult — $agent_kind: citation", () => {
   it("web citation with explicit id", () => {
     const ctx = freshCtx();
     processMcpResult(
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "citation",
+            $agent_kind: "citation",
             citation: { type: "web", url: "https://x", title: "X", id: "fixed-1" },
           }),
         },
@@ -170,7 +170,7 @@ describe("processMcpResult — $ines_kind: citation", () => {
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "citation",
+            $agent_kind: "citation",
             citation: { type: "web", url: "https://x", title: "X" },
           }),
         },
@@ -186,7 +186,7 @@ describe("processMcpResult — $ines_kind: citation", () => {
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "citation",
+            $agent_kind: "citation",
             citation: { type: "document", uri: "doc://a", title: "A", page: 7, id: "d-1" },
           }),
         },
@@ -207,7 +207,7 @@ describe("processMcpResult — $ines_kind: citation", () => {
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "citation",
+            $agent_kind: "citation",
             citation: { type: "document", uri: "doc://b", title: "B" },
           }),
         },
@@ -221,14 +221,14 @@ describe("processMcpResult — $ines_kind: citation", () => {
   });
 });
 
-describe("processMcpResult — $ines_kind: sqlite_table", () => {
+describe("processMcpResult — $agent_kind: sqlite_table", () => {
   it("loads non-empty rows into tables + pendingTables and emits preview text", () => {
     const ctx = freshCtx();
     processMcpResult(
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "sqlite_table",
+            $agent_kind: "sqlite_table",
             name: "Prices",
             rows: [{ symbol: "NVDA", close: 100 }, { symbol: "AAPL", close: 200 }],
           }),
@@ -250,7 +250,7 @@ describe("processMcpResult — $ines_kind: sqlite_table", () => {
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "sqlite_table",
+            $agent_kind: "sqlite_table",
             name: "Empty",
             rows: [],
           }),
@@ -269,7 +269,7 @@ describe("processMcpResult — $ines_kind: sqlite_table", () => {
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "sqlite_table",
+            $agent_kind: "sqlite_table",
             name: "Prices",
             rows: [{ symbol: "AAPL", close: 100 }],
           }),
@@ -282,7 +282,7 @@ describe("processMcpResult — $ines_kind: sqlite_table", () => {
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "sqlite_table",
+            $agent_kind: "sqlite_table",
             name: "Prices",
             rows: [{ symbol: "MSFT", close: 500 }],
           }),
@@ -294,14 +294,14 @@ describe("processMcpResult — $ines_kind: sqlite_table", () => {
   });
 });
 
-describe("processMcpResult — $ines_kind: error", () => {
+describe("processMcpResult — $agent_kind: error", () => {
   it("emits an error preview text", () => {
     const ctx = freshCtx();
     const summary = processMcpResult(
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "error",
+            $agent_kind: "error",
             error: { code: "TIMEOUT", message: "took too long", retryable: true },
           }),
         },
@@ -319,7 +319,7 @@ describe("processMcpResult — $ines_kind: error", () => {
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "error",
+            $agent_kind: "error",
             error: { code: "FATAL", message: "boom" },
           }),
         },
@@ -336,7 +336,7 @@ describe("processMcpResult — $ines_kind: error", () => {
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "error",
+            $agent_kind: "error",
             error: { code: "BAD_INPUT", message: "missing field 'symbol'" },
           }),
         },
@@ -354,7 +354,7 @@ describe("processMcpResult — $ines_kind: error", () => {
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "error",
+            $agent_kind: "error",
             error: { code: "OPAQUE", message: "" },
           }),
         },
@@ -367,13 +367,13 @@ describe("processMcpResult — $ines_kind: error", () => {
   });
 });
 
-describe("processMcpResult — $ines_kind: model_context", () => {
+describe("processMcpResult — $agent_kind: model_context", () => {
   it("replaces all plain text in the LLM message", () => {
     const ctx = freshCtx();
     processMcpResult(
       toolMsg([
         { text: "ignored prose" },
-        { text: JSON.stringify({ $ines_kind: "model_context", summary: "use this only" }) },
+        { text: JSON.stringify({ $agent_kind: "model_context", summary: "use this only" }) },
       ]),
       ctx,
     );
@@ -386,8 +386,8 @@ describe("processMcpResult — $ines_kind: model_context", () => {
     const ctx = freshCtx();
     processMcpResult(
       toolMsg([
-        { text: JSON.stringify({ $ines_kind: "model_context", summary: "first" }) },
-        { text: JSON.stringify({ $ines_kind: "model_context", summary: "second" }) },
+        { text: JSON.stringify({ $agent_kind: "model_context", summary: "first" }) },
+        { text: JSON.stringify({ $agent_kind: "model_context", summary: "second" }) },
       ]),
       ctx,
     );
@@ -432,15 +432,15 @@ describe("processMcpResult — payload normalization regressions (ada normalize_
       },
     },
     {
-      name: "JSON with $ines_kind dispatches typed",
-      text: JSON.stringify({ $ines_kind: "citation", citation: { type: "web", url: "https://r", title: "R", id: "r-1" } }),
+      name: "JSON with $agent_kind dispatches typed",
+      text: JSON.stringify({ $agent_kind: "citation", citation: { type: "web", url: "https://r", title: "R", id: "r-1" } }),
       assert: (ctx) => {
         expect(ctx.citations).toHaveLength(1);
         expect(ctx.messages).toHaveLength(0);
       },
     },
     {
-      name: "JSON without $ines_kind falls through to text (raw JSON)",
+      name: "JSON without $agent_kind falls through to text (raw JSON)",
       text: JSON.stringify({ foo: "bar" }),
       assert: (ctx) => {
         expect(ctx.messages.at(0)?.content).toContain('"foo"');
@@ -451,7 +451,7 @@ describe("processMcpResult — payload normalization regressions (ada normalize_
       name: "double-stringified array recurses element-by-element",
       text: JSON.stringify([
         "first prose",
-        JSON.stringify({ $ines_kind: "citation", citation: { type: "web", url: "https://d", title: "D" } }),
+        JSON.stringify({ $agent_kind: "citation", citation: { type: "web", url: "https://d", title: "D" } }),
         "third prose",
       ]),
       assert: (ctx) => {
@@ -470,8 +470,8 @@ describe("processMcpResult — payload normalization regressions (ada normalize_
     {
       name: "array of typed objects dispatches each",
       text: JSON.stringify([
-        { $ines_kind: "citation", citation: { type: "web", url: "https://a", title: "A" } },
-        { $ines_kind: "citation", citation: { type: "web", url: "https://b", title: "B" } },
+        { $agent_kind: "citation", citation: { type: "web", url: "https://a", title: "A" } },
+        { $agent_kind: "citation", citation: { type: "web", url: "https://b", title: "B" } },
       ]),
       assert: (ctx) => {
         expect(ctx.citations).toHaveLength(2);
@@ -493,14 +493,14 @@ describe("processMcpResult — payload normalization regressions (ada normalize_
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "citation",
+            $agent_kind: "citation",
             citation: { type: "web", url: "https://1", title: "1" },
           }),
         },
         { text: "plain prose" },
         {
           text: JSON.stringify({
-            $ines_kind: "citation",
+            $agent_kind: "citation",
             citation: { type: "web", url: "https://2", title: "2" },
           }),
         },
@@ -518,7 +518,7 @@ describe("processMcpResult — flattened content[] (workspace JSON-stringifies t
     const flattened = JSON.stringify([
       "plain prose",
       JSON.stringify({
-        $ines_kind: "citation",
+        $agent_kind: "citation",
         citation: { type: "web", url: "https://flat", title: "Flat" },
       }),
     ]);
@@ -527,10 +527,10 @@ describe("processMcpResult — flattened content[] (workspace JSON-stringifies t
     expect(ctx.messages[0].content).toContain("plain prose");
   });
 
-  it("non-string array element with $ines_kind dispatches directly", () => {
+  it("non-string array element with $agent_kind dispatches directly", () => {
     const ctx = freshCtx();
     const flattened = JSON.stringify([
-      { $ines_kind: "citation", citation: { type: "web", url: "https://obj", title: "Obj" } },
+      { $agent_kind: "citation", citation: { type: "web", url: "https://obj", title: "Obj" } },
     ]);
     processMcpResult(toolMsg([{ text: flattened }]), ctx);
     expect(ctx.citations).toHaveLength(1);
@@ -544,26 +544,26 @@ describe("processMcpResult — summary", () => {
       toolMsg([
         {
           text: JSON.stringify({
-            $ines_kind: "artifact",
+            $agent_kind: "artifact",
             artifact: { type: "table", uuid: "a", name: "n", description: "d", content: [{ x: 1 }] },
           }),
         },
         {
           text: JSON.stringify({
-            $ines_kind: "citation",
+            $agent_kind: "citation",
             citation: { type: "web", url: "https://x", title: "X" },
           }),
         },
         {
           text: JSON.stringify({
-            $ines_kind: "sqlite_table",
+            $agent_kind: "sqlite_table",
             name: "T",
             rows: [{ a: 1 }],
           }),
         },
         {
           text: JSON.stringify({
-            $ines_kind: "error",
+            $agent_kind: "error",
             error: { code: "E", message: "m" },
           }),
         },
@@ -581,7 +581,7 @@ describe("processMcpResult — summary", () => {
     const ctx = freshCtx();
     const summary = processMcpResult(
       toolMsg([
-        { text: JSON.stringify({ $ines_kind: "model_context", summary: "ctx" }) },
+        { text: JSON.stringify({ $agent_kind: "model_context", summary: "ctx" }) },
       ]),
       ctx,
     );

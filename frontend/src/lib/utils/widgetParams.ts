@@ -8,7 +8,7 @@ import type {
   WidgetT,
 } from "~/components/types";
 import { getConfig } from "~/lib/runtimeConfig";
-import { getIdpTokens } from "~/lib/state/idpTokens";
+import { getUserEmail } from "~/lib/state/userEmail";
 import { newParamDef, ParamsSchema } from "~/lib/types/app";
 import { isDate } from "~/lib/utils/format";
 import type { WidgetType } from "~/utils/zodForms";
@@ -16,54 +16,17 @@ import type { WidgetType } from "~/utils/zodForms";
 function getAuthFlags() {
   const cfg = getConfig();
   return {
-    sendMicrosoftIdToken: cfg.authentication.sendMicrosoftIdToken,
-    sendOktaIdToken: cfg.authentication.sendOktaIdToken,
     sendUserEmailAsHeader: cfg.authentication.sendUserEmailAsHeader,
   };
-}
-
-export function convertHeadersToRecord<PT extends object = Record<string, unknown>>(
-  headers: Record<string, string> | WidgetT["endpointHeaders"] | null,
-  params: PT = {} as PT,
-) {
-  headers = headers || {};
-
-  if (Array.isArray(headers)) {
-    const rows = headers.map(({ key, value, location = "headers" }) => ({
-      key,
-      value,
-      location,
-    }));
-    const entries = (located: (location: string) => boolean) =>
-      rows.filter((row) => located(row.location)).map(({ key, value }) => [key, value]);
-    const newHeaders: Record<string, string> = Object.fromEntries(
-      entries((location) => location === "headers"),
-    );
-    const newParams = {
-      ...params,
-      ...Object.fromEntries(entries((location) => location !== "headers")),
-    } as PT;
-
-    headers = addExtraHeaders(newHeaders);
-    return { headers, newParams };
-  }
-
-  headers = addExtraHeaders(headers);
-  return { headers, newParams: params };
 }
 
 export function addExtraHeaders(
   headers: Record<string, string> = {},
 ): Record<string, string> {
-  const flags = getAuthFlags();
-  const { microsoftIdToken, oktaIdToken, email } = getIdpTokens();
-  const withExtras = { ...headers };
-  if (flags.sendMicrosoftIdToken && microsoftIdToken) {
-    withExtras["X-Microsoft-Id-Token"] = microsoftIdToken;
-  }
-  if (flags.sendOktaIdToken && oktaIdToken) withExtras["X-Okta-Id-Token"] = oktaIdToken;
-  if (flags.sendUserEmailAsHeader && email) withExtras["X-Workspace-User"] = email;
-  return withExtras;
+  const email = getUserEmail();
+  return getAuthFlags().sendUserEmailAsHeader && email
+    ? { ...headers, "X-Workspace-User": email }
+    : { ...headers };
 }
 
 export function cleanURL(url: string) {
@@ -77,6 +40,15 @@ export function createURLString(endpoint: string, base?: string | URL) {
 
   const baseURL = base?.toString() || "";
   return cleanURL(`${baseURL}/${endpoint}`);
+}
+
+export function streamEndpointOf(
+  data: { streamEndpoint?: string } | undefined,
+  base: string | undefined,
+): string | undefined {
+  return typeof data?.streamEndpoint === "string"
+    ? createURLString(data.streamEndpoint, base)
+    : undefined;
 }
 
 export function createURL(
@@ -112,10 +84,6 @@ function modFunction(date: dayjs.Dayjs, dateModifier: DateModifier<string>) {
     return mod === "+" ? date.businessDaysAdd(num) : date.businessDaysSubtract(num);
   }
   return mod === "+" ? date.add(num, unit) : date.subtract(num, unit);
-}
-
-export function getDate(date: DateModifierValue | string) {
-  return date && dayjs(currentDateModifier(date));
 }
 
 export function currentDateModifier(value: DateModifierValue | string) {

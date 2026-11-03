@@ -35,7 +35,7 @@ import OuterComponents from "./OuterComponents";
 import useSyncChats from "./useSyncChats";
 import useSyncItems from "./useSyncItems";
 
-export function App({ children }: { children?: ReactNode }) {
+function App({ children }: { children?: ReactNode }) {
   return useMemo(
     () => (
       <DataConnectorProvider>
@@ -200,6 +200,6 @@ const LayoutAuthRoot = (props: { children?: ReactNode }) => {
   }, [childrenMemo, hasItems, isMobile]);
 };
 
-export const LayoutAuth = memo(LayoutAuthRoot);
+const LayoutAuth = memo(LayoutAuthRoot);
 
 export default memo(App);

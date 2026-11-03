@@ -15,11 +15,11 @@ const BUTTON_VISIBILITY_THRESHOLD = 100;
 
 const AUTO_SCROLL_THRESHOLD = 10;
 
-export type ScrollButtonProps = {
+type ScrollButtonProps = {
   messagesRef: MutableRefObject<HTMLDivElement | null>;
 };
 
-export function ScrollButton(props: ScrollButtonProps) {
+function ScrollButton(props: ScrollButtonProps) {
   const { messagesRef } = props;
 
   const { limitReached, loading } = useShallowStreamingStore((s) => ({

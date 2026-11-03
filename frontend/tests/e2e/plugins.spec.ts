@@ -1,8 +1,14 @@
 import { readFileSync } from "node:fs";
-import type { Server } from "node:https";
+import type { Server } from "node:http";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { authFile, deleteDashboard, userInfo } from "./helpers";
-import { type ApiResponse, grantPlugins, type PageApi, pageApi } from "./plugins/api";
+import {
+  type ApiResponse,
+  grantBackend,
+  grantPlugins,
+  type PageApi,
+  pageApi,
+} from "./plugins/api";
 import {
   HOSTILE_ENTRY,
   hostileManifest,
@@ -17,6 +23,8 @@ import {
 const PLUGINS_DIR = process.env.E2E_PLUGINS_DIR;
 const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const BACKEND_PORT = Number(process.env.E2E_PLUGINS_BACKEND_PORT ?? 7790);
+const BACKEND_HOST = process.env.E2E_PLUGINS_BACKEND_HOST ?? "host.docker.internal";
+const BACKEND_LISTEN = process.env.E2E_PLUGINS_BACKEND_LISTEN ?? "0.0.0.0";
 const BACKEND_NAME = "E2E plugin widgets";
 
 test.describe.configure({ mode: "serial" });
@@ -27,7 +35,8 @@ let page: Page;
 let api: PageApi;
 let roleUuid: string | undefined;
 let backend: Server;
-let sourceUuid: string;
+let backendReceived: { path: string; query: string }[];
+let entityUuid: string;
 let dashboardId: string;
 let versions: Record<string, string>;
 let started: number;
@@ -115,7 +124,10 @@ test.beforeAll(async ({ browser }, testInfo) => {
       "entry.js": WANDERER_ENTRY,
     }),
   };
-  backend = await startBackend(BACKEND_PORT, new URL(baseURL).origin);
+  ({ server: backend, received: backendReceived } = await startBackend(
+    BACKEND_PORT,
+    BACKEND_LISTEN,
+  ));
 
   context = await browser.newContext({ storageState: authFile, baseURL });
   await context.addInitScript(() => {
@@ -148,12 +160,16 @@ test.beforeAll(async ({ browser }, testInfo) => {
   api = await pageApi(context, API_URL);
 
   await approveAndEnable();
-  sourceUuid = crypto.randomUUID();
+  entityUuid = (await json(await api.get("/entity/entity"))).items[0].uuid;
   await json(
-    await api.post(`/app/data-connectors/api-source/${sourceUuid}`, {
-      data: { name: BACKEND_NAME, url: `https://localhost:${BACKEND_PORT}` },
+    await api.post(`/entity/data-backends/${entityUuid}`, {
+      data: { name: BACKEND_NAME, url: `http://${BACKEND_HOST}:${BACKEND_PORT}` },
     }),
   );
+  await grantBackend(api, roleUuid as string, entityUuid, BACKEND_NAME, [
+    "e2e_rows",
+    "e2e_probe",
+  ]);
 
   await page.goto("/app");
   await page.waitForLoadState("networkidle");
@@ -166,8 +182,10 @@ test.beforeAll(async ({ browser }, testInfo) => {
 
 test.afterAll(async () => {
   if (page && dashboardId) await deleteDashboard(page, dashboardId);
-  if (api && sourceUuid)
-    await api.delete(`/app/data-connectors/api-source/${sourceUuid}`);
+  if (api && entityUuid)
+    await api.delete(
+      `/entity/data-backends/${entityUuid}/${encodeURIComponent(BACKEND_NAME)}`,
+    );
   if (api && roleUuid) await api.delete(`/admin/role/${roleUuid}`);
   await api?.dispose();
   await context?.close();
@@ -206,10 +224,12 @@ test("plugin-cannot-leave-its-frame", async () => {
     expect.soft(outcome, attempt).toBe("blocked");
   expect(await page.evaluate(() => "e2ePolluted" in {})).toBe(false);
   await expect(card("E2E probe").getByText("forged")).toHaveCount(0);
-  const toasts = (await seen()).toasts.filter((t) => t.includes("e2e-markup"));
-  expect(toasts).toHaveLength(1);
-  expect(toasts[0]).toContain("<img src=x onerror=alert(1)>");
-  expect(toasts[0]).toContain("|img:false");
+  const markup = async () =>
+    (await seen()).toasts.filter((t) => t.includes("e2e-markup"));
+  await expect.poll(markup, { timeout: 10000 }).toHaveLength(1);
+  const [toast] = await markup();
+  expect(toast).toContain("<img src=x onerror=alert(1)>");
+  expect(toast).toContain("|img:false");
 });
 
 test("plugin-policy-violations-reach-the-administrator", async ({ browserName }) => {
@@ -280,16 +300,16 @@ test("plugin-follows-the-theme-without-restarting", async () => {
   const before = (await theme.textContent())?.replace("theme ", "");
   const after = before === "dark" ? "light" : "dark";
   const boots = await tableBoots();
-  const asked = page.waitForRequest((request) => {
-    const url = new URL(request.url());
-    return (
-      url.port === String(BACKEND_PORT) &&
-      url.pathname === "/rows" &&
-      url.searchParams.get("theme") === after
-    );
-  });
   await page.locator("body").press("ControlOrMeta+m");
-  await asked;
+  await expect
+    .poll(() =>
+      backendReceived.some(
+        (request) =>
+          request.path === "/rows" &&
+          new URLSearchParams(request.query).get("theme") === after,
+      ),
+    )
+    .toBe(true);
   await expect(theme).toHaveText(`theme ${after}`);
   await expect
     .poll(() =>

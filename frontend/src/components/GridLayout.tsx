@@ -1,6 +1,4 @@
-import { Responsive, WidthProvider } from "@jose-donato/react-grid-layout";
 import {
-  type ComponentClass,
   forwardRef,
   memo,
   type PropsWithChildren,
@@ -8,7 +6,14 @@ import {
   useCallback,
   useMemo,
 } from "react";
-import type { Layout, ResponsiveProps, WidthProviderProps } from "react-grid-layout";
+import {
+  type Layout,
+  noCompactor,
+  ResponsiveGridLayout,
+  type ResponsiveGridLayoutProps,
+  useContainerWidth,
+  verticalCompactor,
+} from "react-grid-layout";
 import { useDebouncedCallback } from "use-debounce";
 import useIsMobile from "~/hooks/useIsMobile";
 import { type GridItem, useTabContext } from "~/lib/contexts/TabContext";
@@ -32,13 +37,11 @@ function setPointerEvents(removeClass = true) {
 interface GridLayoutProps extends PropsWithChildren {
   saveToLocalStorage?: boolean;
   localStorageKey?: string;
-  transformScale?: number;
   isDroppable?: boolean;
   isBounded?: boolean;
   draggableHandle?: string;
   rowHeight?: number;
   saveTab?: boolean;
-  locked?: boolean;
   extraClassName?: string;
 }
 
@@ -62,24 +65,17 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
       children,
       saveToLocalStorage = false,
       localStorageKey,
-      transformScale = 1,
       isDroppable = false,
       isBounded = false,
       draggableHandle = ".draggable-handle",
       rowHeight = 25,
       saveTab = false,
-      locked = false,
       extraClassName = "",
     } = props;
 
-    const ReactGridLayout = useMemo(
-      () =>
-        WidthProvider(Responsive) as ComponentClass<
-          ResponsiveProps & WidthProviderProps
-        >,
-      [],
-    );
-    const { currentTab, tabId, layouts, setLayouts, isShared } = useTabContext();
+    const { width, containerRef } = useContainerWidth();
+    const { currentTab, tabId, layouts, setLayouts, isShared, locked } =
+      useTabContext();
 
     const isMobile = useIsMobile();
 
@@ -93,10 +89,10 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
       (state) => state.updateTabWidgetsLayout,
     );
 
-    const { getRootProps, getInputProps, isDragActive } = useDragAndDropFiles(locked);
+    const { getRootProps, getInputProps, isDragActive } = useDragAndDropFiles();
 
     const onLayoutChange = useCallback(
-      (layout: Layout[]) => {
+      (layout: Layout) => {
         setPointerEvents(true);
         if (layout.length === 0) return;
         if (layout[0].i === "empty") return;
@@ -119,7 +115,7 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
           if (saveToLocalStorage && localStorageKey) {
             saveToLS(localStorageKey, "layout", layout);
           }
-          setLayouts?.(layout);
+          setLayouts?.([...layout]);
         }
       },
       [currentTab, saveTab, tabId, saveToLocalStorage, localStorageKey, isMobile],
@@ -134,18 +130,18 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
       const gridProps = {
         breakpoints: { xl: 1600, lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 },
         cols: { xl: 40, lg: 40, md: 40, sm: 40, xs: 40, xxs: 40 },
-        resizeHandle,
-        onDragStart: (_layout, _oldItem, newItem, _placeholder, _e, _element) => {
-          if (newItem.i === "empty") return;
+        onDragStart: (_layout, _oldItem, newItem) => {
+          if (newItem?.i === "empty") return;
           const workarea = document.getElementById("workarea");
           if (!workarea) return;
           setPointerEvents(false);
         },
-        onDrag: (_layout, oldItem, newItem, _placeholder, e, element) => {
+        onDrag: (_layout, _oldItem, _newItem, _placeholder, e, element) => {
           const workarea = document.getElementById("workarea");
 
-          if (!workarea) return;
+          if (!workarea || !element) return;
           setPointerEvents(false);
+          const { clientY } = e as MouseEvent;
           const elementRect = element.getBoundingClientRect();
           const workareaRect = workarea.getBoundingClientRect();
           const scrollSpeed = 40;
@@ -156,96 +152,25 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
             elementRect.bottom + scrollMargin >= workareaRect.bottom;
           const topNeedsScroll = elementRect.top - scrollMargin <= workareaRect.top;
 
-          if (bottomNeedsScroll && e.clientY > workareaRect.bottom - scrollThreshold) {
+          if (bottomNeedsScroll && clientY > workareaRect.bottom - scrollThreshold) {
             workarea.scrollTop += scrollSpeed;
           }
 
-          if (topNeedsScroll && e.clientY < scrollThreshold) {
+          if (topNeedsScroll && clientY < scrollThreshold) {
             workarea.scrollTop -= scrollSpeed;
-          }
-
-          if (
-            elementRect.left <= workareaRect.left ||
-            elementRect.right >= workareaRect.right
-          ) {
-            if (
-              elementRect.top <= workareaRect.top ||
-              elementRect.bottom >= workareaRect.bottom
-            ) {
-              newItem = {
-                ...newItem,
-                x: oldItem.x,
-                y: oldItem.y,
-              };
-            }
           }
         },
         onDragStop: () => setPointerEvents(true),
         onDrop: () => setPointerEvents(true),
-        onResizeStart: (_layout, oldItem, newItem, _placeholder, e, element) => {
-          setIsResizingGridElement(newItem.i);
-          const workarea = document.getElementById("workarea");
-
-          if (!workarea) return;
-
-          const workareaRect = workarea.getBoundingClientRect();
-          const elementRect = element.getBoundingClientRect();
-          const isRight =
-            e.clientX >= workareaRect.right || e.clientX <= elementRect.left;
-          const isBottom =
-            e.clientY >= workareaRect.bottom || e.clientY <= elementRect.top;
-
-          if (isRight) {
-            newItem = {
-              ...newItem,
-              w: oldItem.w - e.clientX + workareaRect.left,
-              x: oldItem.x + e.clientX - workareaRect.left,
-            };
-          }
-          if (isBottom) {
-            newItem = {
-              ...newItem,
-              h: oldItem.h - e.clientY + workareaRect.top,
-              y: oldItem.y + e.clientY - workareaRect.top,
-            };
-          }
+        onResizeStart: (_layout, _oldItem, newItem) => {
+          setIsResizingGridElement(newItem?.i ?? "");
         },
-        onResize: (_layout, oldItem, newItem, _placeholder, e, element) => {
-          const workarea = document.getElementById("workarea");
-
-          if (!workarea) return;
-          setPointerEvents(false);
-
-          const workareaRect = workarea.getBoundingClientRect();
-          const elementRect = element.getBoundingClientRect();
-          const _isLeft =
-            e.clientX <= workareaRect.left || e.clientX >= elementRect.right;
-          const isRight =
-            e.clientX >= workareaRect.right || e.clientX <= elementRect.left;
-          const _isTop =
-            e.clientY <= workareaRect.top || e.clientY >= elementRect.bottom;
-          const isBottom =
-            e.clientY >= workareaRect.bottom || e.clientY <= elementRect.top;
-
-          if (isRight) {
-            newItem = {
-              ...newItem,
-              w: oldItem.w + e.clientX - workareaRect.left,
-              x: oldItem.x - e.clientX + workareaRect.left,
-            };
-          } else if (isBottom) {
-            newItem = {
-              ...newItem,
-              h: oldItem.h - e.clientY + workareaRect.top,
-              y: oldItem.y + e.clientY - workareaRect.top,
-            };
-          }
-        },
+        onResize: () => setPointerEvents(false),
         onResizeStop: () => {
           setIsResizingGridElement("");
           setPointerEvents(true);
         },
-      } as const satisfies ResponsiveProps;
+      } as const satisfies Partial<ResponsiveGridLayoutProps>;
 
       return gridProps;
     }, []);
@@ -275,10 +200,7 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
     }, [layouts]);
 
     const childrenMemo = useMemo(() => children, [children]);
-    const enableResizing = useMemo(
-      () => !(locked || isShared) && saveTab,
-      [locked, isShared, saveTab],
-    );
+    const enableResizing = useMemo(() => !isShared && saveTab, [isShared, saveTab]);
     const enableDragging = useMemo(
       () => !(locked || isShared || isMobile) && saveTab,
       [locked, isShared, isMobile, saveTab],
@@ -286,25 +208,26 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
 
     const gridMemo = useMemo(() => {
       return (
-        <ReactGridLayout
-          resizeHandles={gridCorners}
+        <ResponsiveGridLayout
+          width={width}
           autoSize={true}
-          draggableHandle={draggableHandle}
           rowHeight={rowHeight}
           onLayoutChange={debouncedOnLayoutChange}
-          compactType={gridSnapping === "off" ? null : gridSnapping}
-          isBounded={isBounded}
+          compactor={gridSnapping === "off" ? noCompactor : verticalCompactor}
           layouts={layoutsMemo}
-          transformScale={transformScale}
-          useCSSTransforms={true}
-          isDroppable={isDroppable}
-          preventCollision={false}
-          allowOverlap={false}
-          isDraggable={enableDragging}
-          isResizable={enableResizing}
+          dragConfig={{
+            enabled: enableDragging,
+            bounded: isBounded,
+            handle: draggableHandle,
+          }}
+          resizeConfig={{
+            enabled: enableResizing,
+            handles: gridCorners,
+            handleComponent: resizeHandle,
+          }}
+          dropConfig={{ enabled: isDroppable }}
           breakpoints={memoizedGridProps.breakpoints}
           cols={memoizedGridProps.cols}
-          resizeHandle={memoizedGridProps.resizeHandle}
           onDragStart={memoizedGridProps.onDragStart}
           onDrag={memoizedGridProps.onDrag}
           onDragStop={memoizedGridProps.onDragStop}
@@ -312,12 +235,12 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
           onResizeStart={memoizedGridProps.onResizeStart}
           onResize={memoizedGridProps.onResize}
           onResizeStop={memoizedGridProps.onResizeStop}
-          measureBeforeMount={false}
         >
           {childrenMemo}
-        </ReactGridLayout>
+        </ResponsiveGridLayout>
       );
     }, [
+      width,
       childrenMemo,
       gridCorners,
       gridSnapping,
@@ -342,7 +265,7 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
             <DragFileHere />
           </div>
         )}
-        {gridMemo}
+        <div ref={containerRef}>{gridMemo}</div>
       </div>
     );
   },

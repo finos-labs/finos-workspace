@@ -29,28 +29,22 @@ my-backend/
 ## `main.py` shape
 
 ```python
-from fastapi import FastAPI, Query
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Query, Request, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pathlib import Path
 import json
 
 app = FastAPI()
 
-# CORS: allow the origin your FINOS Workspace is served from, and the local development server
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://<your-workspace-host>",
-        "http://localhost:1420",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 WIDGETS_FILE = Path(__file__).parent / "widgets.json"
 APPS_FILE    = Path(__file__).parent / "apps.json"
+ROUTES = {"/widgets.json", "/apps.json", "/summary", "/teams"}
+
+@app.middleware("http")
+async def check_routes(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return Response(status_code=204 if request.url.path in ROUTES else 404)
+    return await call_next(request)
 
 @app.get("/widgets.json")
 def get_widgets():
@@ -132,11 +126,12 @@ def teams():
 uvicorn main:app --reload --port 7779
 ```
 
-Then in FINOS Workspace: Settings → Data Connectors → Connect Backend → `http://localhost:7779`.
+Then in FINOS Workspace: Connections in the sidebar → Connect Backend → `http://localhost:7779`.
 
 ## Notes specific to Python
 
 - **Always pass `encoding="utf-8"` to `open()`.** Defaults to OS locale. cp1252 on Windows will mangle non-ASCII characters silently.
+- **Answer `OPTIONS` on the routes.** The route check of Validate Widgets sends a plain `OPTIONS` request to each route and fails a route that answers `404`. The middleware answers `204` for the routes and `404` for any other path. The API calls the backend, so no CORS settings are needed.
 - **No title inside the content.** The widget header already shows `name`; a heading that repeats it doubles up.
 - **Support `raw=True` on `html` endpoints.** When the widget sets `"raw": true`, return the underlying rows as JSON when `raw=true` is passed, so AI agents can consume the data.
 - **Reasonable runButton.** Default to `runButton: false` (or omit). Only set `true` for endpoints that take >5 s.

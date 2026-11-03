@@ -31,7 +31,7 @@ describe("buildMessages", () => {
     expect(c).toContain("beta body");
   });
 
-  it("gives a picked skill of Ines's its instructions, which the FINOS Workspace does not send", () => {
+  it("gives a picked skill of the agent's its instructions, which the FINOS Workspace does not send", () => {
     const out = buildMessages(
       req({
         selected_skills: [
@@ -208,7 +208,7 @@ describe("buildMessages — earlier tool results rendered into history", () => {
     return {
       role: "tool",
       function: "execute_agent_tool",
-      input_arguments: { tool_name: toolName, server_id: "ines" },
+      input_arguments: { tool_name: toolName, server_id: "agent" },
       data: [{ items }],
     };
   }
@@ -217,7 +217,7 @@ describe("buildMessages — earlier tool results rendered into history", () => {
     const earlier = mcpToolMsg("mermaid_diagram", [
       {
         text: JSON.stringify({
-          $ines_kind: "artifact",
+          $agent_kind: "artifact",
           artifact: { type: "html", uuid: "u1", name: "Diagram", description: "", content: "<svg/>" },
         }),
       },

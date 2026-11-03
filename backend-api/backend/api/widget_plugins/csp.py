@@ -41,7 +41,7 @@ _URL = re.compile(r"^(?P<scheme>https|wss|http|ws)://(?P<host>[^/:?#@]+)(?P<port
 _HASH = re.compile(r"^'sha(256|384|512)-[A-Za-z0-9+/]+={0,2}'$")
 _SCHEME = re.compile(r"[a-z][a-z0-9+.-]*")
 _BAD_CHARACTERS = set(' \t\r\n\f\v,;"<>&\\`')
-_PRIVATE_SUFFIXES = (".local", ".internal", ".localhost", ".home.arpa", ".lan")
+PRIVATE_SUFFIXES = (".local", ".internal", ".localhost", ".home.arpa", ".lan")
 
 
 @dataclass
@@ -84,7 +84,7 @@ def _check_url(directive: str, source: str, check: PolicyCheck) -> None:
         if host.startswith("*.") and "." not in bare:
             check.errors.append(f"{directive}: a wildcard needs at least two labels")
             return
-        if bare == "localhost" or "." not in bare or bare.endswith(_PRIVATE_SUFFIXES):
+        if bare == "localhost" or "." not in bare or bare.endswith(PRIVATE_SUFFIXES):
             check.needs.add(PRIVATE_HOST)
     if match["port"] and not 0 < int(match["port"][1:]) <= MAX_PORT:
         check.errors.append(f"{directive}: {source!r} has an invalid port")

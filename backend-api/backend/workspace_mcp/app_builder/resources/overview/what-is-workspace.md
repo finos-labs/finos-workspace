@@ -53,7 +53,7 @@ That's the whole contract. See `workspace://contract/backend`.
 
 - **Build a toolbar.** Widgets already have one (title, settings, full screen, refresh).
 - **Reimplement parameter sync inside one widget.** Use `apps.json` parameter Groups.
-- **Embed PDFs / images inside a widget response.** Users drop these directly onto the Dashboard.
+- **Embed images inside a widget response.** Users drop images directly onto the Dashboard. A PDF that your backend serves goes in a `pdf` widget (`workspace://specs/widget-types`).
 - **Build authentication UI.** FINOS Workspace's connection setup handles auth (header / query / none).
 - **Hide data inside rendered output if you want the AI Agent to use it.** See `workspace://overview/ai-agent-contract`.
 
@@ -70,6 +70,6 @@ If you find yourself designing one big monolithic widget with a custom UI inside
 
 ## Out of scope here
 
-- **Building AI Agent backends.** Agents are a separate backend surface (`/agents.json` + `/query` SSE), not the widget-backend surface this skill covers.
+- **Building AI Agent backends.** Agents are a separate backend surface (`/agents.json` + `/query` SSE), not the widget-backend surface these resources cover.
 - **PWA / enterprise deployment.** End-user / deployment surfaces, not authoring.
 - **Specific UI affordances (per-widget chat buttons, fullscreen, etc.).** Runtime features; check FINOS Workspace directly if you need to confirm one.

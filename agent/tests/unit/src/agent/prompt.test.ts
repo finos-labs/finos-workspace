@@ -59,7 +59,7 @@ describe("buildSystemPrompt — what an administrator switched off for the user"
 describe("buildSystemPrompt — base content", () => {
   it("always includes the base rules", () => {
     const out = buildSystemPrompt(req());
-    expect(out).toContain("You are Ines");
+    expect(out).toContain("You are an open-source, model-agnostic financial agent");
     expect(out).toContain("financial agent for the FINOS Workspace");
     expect(out).toContain("Never fabricate data");
     expect(out).toContain("HOW YOU WORK");
@@ -137,6 +137,14 @@ describe("buildSystemPrompt — base content", () => {
     expect(buildSystemPrompt(req({ widgets: { primary: [linked], secondary: [], extra: [] } }))).toContain(
       "- Team report (team_report) [origin: example] [uuid: w-1]: Sample description",
     );
+  });
+
+  it("tells a plugin's component from the others, and that it has no data to read", () => {
+    const component = w({ uuid: "w-3", name: "SQL grid", widget_id: "plugin:sql-explorer:grid", widget_type: "plugin" });
+    const out = buildSystemPrompt(req({ widgets: { primary: [], secondary: [component], extra: [] } }));
+    expect(out).toContain("- SQL grid (plugin:sql-explorer:grid) [origin: example] [uuid: w-3]: [plugin] Sample description");
+    expect(out).toContain("A widget tagged [plugin] is a component of a widget plugin, with no endpoint");
+    expect(out).toContain("get_widget_data returns nothing for it");
   });
 
   it("tells an iframe widget from the others, and what to do with it", () => {
@@ -335,7 +343,7 @@ describe("buildSystemPrompt — skills + MCP tools + timezone", () => {
     expect(skillsIdx).toBeLessThan(widgetsIdx);
   });
 
-  it("lists Ines's own skills when the FINOS Workspace lists none", () => {
+  it("lists the agent's own skills when the FINOS Workspace lists none", () => {
     const out = buildSystemPrompt(req());
     expect(out).toContain("## Skills");
     for (const slug of ["html-report", "html-table", "html-chart"]) expect(out).toContain(`slug="${slug}"`);
@@ -343,7 +351,7 @@ describe("buildSystemPrompt — skills + MCP tools + timezone", () => {
 
   it("lists MCP tools under their sanitized names, in a group", () => {
     const tools: AgentTool[] = [
-      { name: "fetch-webpage", server_id: "ines", url: "u", description: "Fetch a page" },
+      { name: "fetch-webpage", server_id: "agent", url: "u", description: "Fetch a page" },
     ];
     const out = buildSystemPrompt(req({ tools }), withTools([], tools));
     expect(out).toMatch(/- web — .*fetch_webpage/);
@@ -449,7 +457,7 @@ describe("buildSystemPrompt — tool groups", () => {
 
   it("gives the other groups' instructions only while they are loaded", () => {
     const tools: AgentTool[] = [
-      { name: "ines_query_documents", server_id: "s", url: "u", description: "Search files" },
+      { name: "agent_query_documents", server_id: "s", url: "u", description: "Search files" },
     ];
     const off = buildSystemPrompt(req(), withTools([], tools));
     for (const heading of ["DOCUMENTS TOOLS:", "RENDER TOOLS:", "PLANNING TOOLS:"]) expect(off).not.toContain(heading);
@@ -481,9 +489,9 @@ describe("buildSystemPrompt — tool groups", () => {
 
 describe("buildSystemPrompt — catalog matches registration", () => {
   const agentTools: AgentTool[] = [
-    { name: "inesmcp_web_search", server_id: "ws", url: "u", description: "Search the web" },
+    { name: "agentmcp_web_search", server_id: "ws", url: "u", description: "Search the web" },
     {
-      name: "inesmcp_update_widget",
+      name: "agentmcp_update_widget",
       server_id: "ws",
       url: "u",
       description: "Update one widget's config",
@@ -492,13 +500,13 @@ describe("buildSystemPrompt — catalog matches registration", () => {
 
   it("lists only tools that survived the registration filter", () => {
     const out = buildSystemPrompt(req({ tools: agentTools }), withTools([], agentTools));
-    expect(out).toContain("inesmcp_web_search");
-    expect(out).not.toContain("inesmcp_update_widget");
+    expect(out).toContain("agentmcp_web_search");
+    expect(out).not.toContain("agentmcp_update_widget");
   });
 
   it("has no group of MCP tools when none is registered", () => {
     const out = buildSystemPrompt(req({ tools: agentTools }), withTools([], []));
-    expect(out).not.toContain("inesmcp_web_search");
+    expect(out).not.toContain("agentmcp_web_search");
     expect(out).not.toMatch(/- web — /);
   });
 });

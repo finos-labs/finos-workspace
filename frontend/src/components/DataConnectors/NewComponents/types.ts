@@ -2,7 +2,7 @@ import type { IconId } from "~/components/Icon.types";
 import type { BackendTemplate } from "~/lib/state/backendConnector";
 import type { WidgetsType } from "~/utils/zodForms";
 
-export type EndpointHeader = {
+type EndpointHeader = {
   key?: string;
   value?: string;
   location?: "headers" | "query";
@@ -16,7 +16,7 @@ export type POSSIBLE_SOURCES =
   | "ai_artifacts"
   | "html";
 
-export type BaseItem = {
+type BaseItem = {
   uuid?: string;
   id?: string;
   name: string;
@@ -28,7 +28,7 @@ export type BaseItem = {
   type: POSSIBLE_SOURCES;
 };
 
-export type FileItem = BaseItem & {
+type FileItem = BaseItem & {
   id: string;
   widgets: {
     id: string;

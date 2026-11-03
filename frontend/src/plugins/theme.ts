@@ -1,4 +1,6 @@
-export interface ThemeTrait {
+import { toHex } from "~/utils/colorUtils";
+
+interface ThemeTrait {
   mode: "dark" | "light";
   tokens: Record<string, string>;
   locale: string;
@@ -28,7 +30,7 @@ export function readThemeTrait(mode: string | undefined): ThemeTrait {
     const style = getComputedStyle(document.body ?? document.documentElement);
     for (const token of TOKENS) {
       const value = style.getPropertyValue(`--${token}`).trim();
-      if (value) tokens[token] = value;
+      if (value) tokens[token] = toHex(value);
     }
     const font = style.fontFamily;
     if (font) tokens["font-family"] = font;

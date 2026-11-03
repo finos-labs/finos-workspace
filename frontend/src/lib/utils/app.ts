@@ -14,6 +14,7 @@ import type {
   WidgetJsonT,
   WidgetT,
 } from "~/components/types";
+import { fetchRequest } from "~/lib/utils/fetch";
 import { convertToReadableLabel } from "~/lib/utils/format";
 import { formatZodIssues } from "~/lib/utils/validateBackend";
 import { isTruthy } from "~/lib/utils/values";
@@ -21,7 +22,6 @@ import { formatZodErrorMessage } from "~/utils/zodErrors";
 import type { AppState, Group, InnerTab, Item, Items } from "../state/app";
 import {
   type ConnectionType,
-  getSourceCredentials,
   useBackendConnectorStore,
 } from "../state/backendConnector";
 import { useCopilotDataStore } from "../state/copilotData";
@@ -42,12 +42,7 @@ import {
   createWidgetEndpoint,
   createWidgetInitParams,
 } from "./widgetParams";
-import {
-  type BuiltRequest,
-  buildOptionsRequest,
-  requestInit,
-  requestKey,
-} from "./widgetRequest";
+import { type BuiltRequest, buildOptionsRequest, requestKey } from "./widgetRequest";
 
 export function createTab(addTab: AppState["addTab"]) {
   const id = uuidv4();
@@ -559,7 +554,7 @@ export function endpointOptionsRequest(
   return buildOptionsRequest(
     param,
     { params: widget.params ?? [], values: currentParams },
-    getSourceCredentials(widget.sourceId, param.optionsEndpoint),
+    widget.sourceId,
   );
 }
 
@@ -707,7 +702,7 @@ async function _fetchEndpointParamOptions(
   if (cachedRequest) return cachedRequest;
 
   const request = (async () => {
-    const response = await fetch(built.request.url, requestInit(built.request));
+    const response = await fetchRequest(built.request);
     if (!response.ok) return [];
 
     const data = await response.json();
@@ -922,7 +917,7 @@ export async function getDependentEndpointParamValues(
   return updates;
 }
 
-export function isValidParamOption(
+function isValidParamOption(
   widget: Widget,
   group: Group,
 ): group is GroupTypeT<"param"> {
@@ -1246,6 +1241,7 @@ export function getWidgetData(params: { widget: NewWidget | WidgetJsonT }): Widg
       "category",
       "subCategory",
       "raw",
+      "requires_auth",
     ] as const;
     for (const key of optionalSourceKeys) {
       if (widget[key]) {

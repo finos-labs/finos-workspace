@@ -66,7 +66,7 @@ const tabSchema = z.object({
     .describe("Widgets placed on this tab. Walk y downward; do not overlap items."),
 });
 
-export const createAppSchema = z.object({
+const createAppSchema = z.object({
   display_summary: displaySummarySchema,
   name: z.string().min(1).max(80).describe("App display name."),
   description: z.string().min(1).max(500).describe("Short description of what the app shows."),
@@ -82,9 +82,9 @@ export const createAppSchema = z.object({
     .describe("Optional 3-5 natural-language seed prompts users can click to query the app."),
 });
 
-export type CreateAppArgs = z.infer<typeof createAppSchema>;
+type CreateAppArgs = z.infer<typeof createAppSchema>;
 
-export const createAppDescription =
+const createAppDescription =
   "Assemble the user's connected widgets into a multi-tab dashboard app that the user can " +
   "open as a live dashboard or save to their apps page. " +
   "Call search_widgets first to get valid (origin, widget_id) pairs — every widget is " +
@@ -94,7 +94,7 @@ export const createAppDescription =
   "Walk y downward and avoid overlaps. " +
   "Tabs: 1 for small apps, 2-4 typical, max 6; tab ids are lowercase kebab-case and unique.";
 
-export interface CreateAppToolContext {
+interface CreateAppToolContext {
   allWidgets: Widget[];
   artifactQueue: SSEEvent[];
 }

@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getCopilotChat } from "~/api/auth.api";
 import {
@@ -5,6 +6,7 @@ import {
   type ArtifactT,
   type Chat,
   type Copilot,
+  copilotSchema,
   type ExternalCopilotHolder,
   type HumanMessage,
   type Message,
@@ -20,11 +22,27 @@ vi.mock("~/api/auth.api", () => ({
   getCopilotChat: vi.fn(),
 }));
 
-vi.mock("~/components/AI/hooks/utils", () => ({
-  showDeprecatedFlagsToast: vi.fn(),
-}));
-
 describe("useCopilotStore - Actions", () => {
+  describe("setSelectedCopilot", () => {
+    it("selects an agent that uses the flags hasStreaming, hasFunctionCalling and hasDocuments, and warns about nothing", () => {
+      const warning = vi.spyOn(toast, "warning");
+      const agent = copilotSchema.parse({
+        id: "agent",
+        name: "Agent",
+        description: "An agent",
+        endpoints: { query: "https://agent.example.test/query" },
+        hasStreaming: true,
+        hasFunctionCalling: true,
+        hasDocuments: true,
+      });
+
+      useCopilotStore.getState().setSelectedCopilot(agent);
+
+      expect(useCopilotStore.getState().selectedCopilot).toEqual(agent);
+      expect(warning).not.toHaveBeenCalled();
+    });
+  });
+
   const mockChat: Chat = {
     uuid: "chat-1",
     createdAt: 1000,

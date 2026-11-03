@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BrowserRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { apiClient } from "~/api/api";
+import { toast } from "sonner";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as authApi from "~/api/auth.api";
 import LoginPage from "~/routes/login";
 import type { LoginResponse, SessionResponse } from "~/types/auth.type";
@@ -12,13 +12,14 @@ const mockNavigate = vi.fn();
 const mockRestoreSession = vi.fn<() => Promise<boolean>>();
 const mockStartSession = vi.fn();
 const mockProviders = vi.fn(() => ["google"]);
+let mockSearchParams = new URLSearchParams();
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return {
     ...actual,
     useNavigate: () => mockNavigate,
-    useSearchParams: () => [new URLSearchParams(), vi.fn()],
+    useSearchParams: () => [mockSearchParams, vi.fn()],
   };
 });
 
@@ -30,22 +31,19 @@ vi.mock("~/components/LayoutUnauth/GoogleLogin", () => ({
   GoogleLogin: () => <div>Google Login</div>,
 }));
 vi.mock("~/components/LayoutUnauth/MicrosoftLogin", () => ({
-  default: ({ handleLogin }: { handleLogin: (instance: unknown) => Promise<void> }) => (
-    <button type="button" onClick={() => handleLogin(mockMsalInstance)}>
+  default: ({ handleLogin }: { handleLogin: () => Promise<void> }) => (
+    <button type="button" onClick={() => handleLogin()}>
       Sign in with Microsoft
     </button>
   ),
 }));
 vi.mock("~/components/LayoutUnauth/OktaLogin", () => ({
-  default: ({ handleLogin }: { handleLogin: (oktaAuth: unknown) => Promise<void> }) => (
-    <button type="button" onClick={() => handleLogin(mockOktaAuth)}>
+  default: ({ handleLogin }: { handleLogin: () => Promise<void> }) => (
+    <button type="button" onClick={() => handleLogin()}>
       Sign in with Okta
     </button>
   ),
 }));
-
-const mockMsalInstance = { loginPopup: vi.fn(), setActiveAccount: vi.fn() };
-const mockOktaAuth = { token: { getWithPopup: vi.fn() } };
 
 vi.mock("~/components/Auth/TOTPEnterForm", () => ({
   default: ({
@@ -71,21 +69,15 @@ vi.mock("~/components/Auth/TOTPEnterDialog", () => ({
     open ? <div>Enter your authenticator code</div> : null,
 }));
 
-vi.mock("~/api/auth.api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("~/api/auth.api")>();
-  return {
-    login: vi.fn(),
-    isValidMainTicker: vi.fn(() => true),
-    activateTotp: vi.fn(),
-    generateQRCode: vi.fn(),
-    getSession: vi.fn(),
-    microsoftLogin: vi.fn(),
-    oktaLogin: vi.fn(),
-    googleLogin: vi.fn(),
-    SIGN_IN_EXPIRED: actual.SIGN_IN_EXPIRED,
-    withSignInNonce: actual.withSignInNonce,
-  };
-});
+vi.mock("~/api/auth.api", () => ({
+  login: vi.fn(),
+  isValidMainTicker: vi.fn(() => true),
+  activateTotp: vi.fn(),
+  generateQRCode: vi.fn(),
+  getSession: vi.fn(),
+  startSignIn: vi.fn(),
+  googleLogin: vi.fn(),
+}));
 
 vi.mock("~/api/api", () => ({
   apiClient: {
@@ -94,12 +86,6 @@ vi.mock("~/api/api", () => ({
     interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
   },
 }));
-
-function nonces(...values: string[]) {
-  for (const nonce of values) {
-    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { nonce } });
-  }
-}
 
 vi.mock("~/lib/identityProviders", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -165,7 +151,6 @@ describe("LoginPage", () => {
     vi.clearAllMocks();
     mockRestoreSession.mockResolvedValue(false);
     mockProviders.mockReturnValue(["google"]);
-    vi.mocked(apiClient.post).mockReset();
   });
 
   it("sends a visitor whose session cookie still holds a session straight on", async () => {
@@ -259,74 +244,54 @@ describe("LoginPage", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  describe("signing in with Microsoft", () => {
-    const popupResult = (idToken: string) => ({
-      accessToken: "graph-token",
-      idToken,
-      account: { homeAccountId: "acc" },
-    });
+  describe("signing in with Microsoft or Okta", () => {
+    const originalLocation = window.location;
+    const assign = vi.fn();
 
     beforeEach(() => {
-      mockProviders.mockReturnValue(["microsoft"]);
+      assign.mockReset();
+      Object.defineProperty(window, "location", {
+        value: { ...originalLocation, assign },
+        configurable: true,
+        writable: true,
+      });
     });
 
-    it("asks the API for a nonce first and has Microsoft put it in the ID token", async () => {
-      nonces("nonce-1");
-      mockMsalInstance.loginPopup.mockResolvedValue(popupResult("id-1"));
-      vi.mocked(authApi.microsoftLogin).mockResolvedValue(
-        partial<LoginResponse>({
-          status: 200,
-          uuid: "u-1",
-          user: partial({ display_settings: {} }),
-          dash_sync: { owned: {}, shared: {}, entity_shared: {} },
-        }),
+    afterEach(() => {
+      Object.defineProperty(window, "location", {
+        value: originalLocation,
+        configurable: true,
+        writable: true,
+      });
+    });
+
+    it.each([
+      ["microsoft", "Sign in with Microsoft"],
+      ["okta", "Sign in with Okta"],
+    ])("sends the browser to the address the API gives for %s", async (provider, name) => {
+      mockProviders.mockReturnValue([provider]);
+      vi.mocked(authApi.startSignIn).mockResolvedValue(
+        "https://idp.example.com/authorize?state=s",
       );
       renderLoginPage();
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole("button", { name: "Sign in with Microsoft" }));
+      await userEvent.setup().click(screen.getByRole("button", { name }));
 
       await waitFor(() =>
-        expect(authApi.microsoftLogin).toHaveBeenCalledWith("graph-token", "id-1"),
+        expect(assign).toHaveBeenCalledWith(
+          "https://idp.example.com/authorize?state=s",
+        ),
       );
-      expect(apiClient.post).toHaveBeenCalledWith("/app/sign-in/nonce");
-      expect(mockMsalInstance.loginPopup).toHaveBeenCalledWith(
-        expect.objectContaining({ nonce: "nonce-1" }),
-      );
+      expect(authApi.startSignIn).toHaveBeenCalledWith(provider);
     });
 
-    it("starts again with a new nonce when the API says the sign-in expired", async () => {
-      nonces("nonce-old", "nonce-new");
-      mockMsalInstance.loginPopup
-        .mockResolvedValueOnce(popupResult("id-old"))
-        .mockResolvedValueOnce(popupResult("id-new"));
-      vi.mocked(authApi.microsoftLogin)
-        .mockResolvedValueOnce({ status: 400, detail: authApi.SIGN_IN_EXPIRED })
-        .mockResolvedValueOnce({ status: 202, detail: "", two_factor_required: true });
-      renderLoginPage();
-
-      await userEvent
-        .setup()
-        .click(screen.getByRole("button", { name: "Sign in with Microsoft" }));
-
-      expect(
-        await screen.findByText(/Your company requires two factor authentication/),
-      ).toBeInTheDocument();
-      expect(mockMsalInstance.loginPopup).toHaveBeenNthCalledWith(
-        2,
-        expect.objectContaining({ nonce: "nonce-new" }),
-      );
-      expect(authApi.microsoftLogin).toHaveBeenLastCalledWith("graph-token", "id-new");
-      expect(apiClient.post).toHaveBeenCalledTimes(2);
-    });
-
-    it("tries once more only: a second expiry is shown", async () => {
-      nonces("nonce-1", "nonce-2");
-      mockMsalInstance.loginPopup.mockResolvedValue(popupResult("id"));
-      vi.mocked(authApi.microsoftLogin).mockResolvedValue({
-        status: 400,
-        detail: authApi.SIGN_IN_EXPIRED,
+    it("shows why the API would not start the sign-in and goes nowhere", async () => {
+      mockProviders.mockReturnValue(["microsoft"]);
+      vi.mocked(authApi.startSignIn).mockRejectedValue({
+        response: {
+          status: 400,
+          data: { detail: "Microsoft sign-in is not configured" },
+        },
       });
       renderLoginPage();
 
@@ -334,50 +299,37 @@ describe("LoginPage", () => {
         .setup()
         .click(screen.getByRole("button", { name: "Sign in with Microsoft" }));
 
-      expect(await screen.findByText("Invalid login credentials.")).toBeInTheDocument();
-      expect(authApi.microsoftLogin).toHaveBeenCalledTimes(2);
-    });
-
-    it("shows why the API refused an account whose email Microsoft has not verified", async () => {
-      const detail =
-        "Microsoft has not verified the email address of this account, so it cannot sign in";
-      nonces("nonce-1", "nonce-2");
-      mockMsalInstance.loginPopup.mockResolvedValue(popupResult("id"));
-      vi.mocked(authApi.microsoftLogin).mockResolvedValue({ status: 403, detail });
-      renderLoginPage();
-
-      await userEvent
-        .setup()
-        .click(screen.getByRole("button", { name: "Sign in with Microsoft" }));
-
-      expect(await screen.findByText(detail)).toBeInTheDocument();
-      expect(screen.queryByText(/Please confirm your account/)).not.toBeInTheDocument();
+      expect(
+        await screen.findByText("Microsoft sign-in is not configured"),
+      ).toBeInTheDocument();
+      expect(assign).not.toHaveBeenCalled();
     });
   });
 
-  it("asks Okta for an ID token with the API's nonce, and starts again when it expired", async () => {
-    mockProviders.mockReturnValue(["okta"]);
-    nonces("nonce-old", "nonce-new");
-    mockOktaAuth.token.getWithPopup.mockImplementation(async ({ nonce }) => ({
-      tokens: {
-        accessToken: { accessToken: "okta-access" },
-        idToken: { idToken: `id-${nonce}` },
-      },
-    }));
-    vi.mocked(authApi.oktaLogin)
-      .mockResolvedValueOnce({ status: 400, detail: authApi.SIGN_IN_EXPIRED })
-      .mockResolvedValueOnce({ status: 202, detail: "" });
-    renderLoginPage();
+  describe("coming back from a provider", () => {
+    afterEach(() => {
+      mockSearchParams = new URLSearchParams();
+    });
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole("button", { name: "Sign in with Okta" }));
+    it("shows the reason the API gives in the address", async () => {
+      mockSearchParams = new URLSearchParams({ error: "Invalid Microsoft token" });
+      renderLoginPage();
 
-    expect(
-      await screen.findByText("Enter your authenticator code"),
-    ).toBeInTheDocument();
-    expect(authApi.oktaLogin).toHaveBeenNthCalledWith(1, "okta-access", "id-nonce-old");
-    expect(authApi.oktaLogin).toHaveBeenNthCalledWith(2, "okta-access", "id-nonce-new");
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledWith("Error", {
+          description: "Invalid Microsoft token",
+        }),
+      );
+    });
+
+    it("opens the authenticator setup when the account must set one up", async () => {
+      mockSearchParams = new URLSearchParams({ step: "totp-enroll" });
+      renderLoginPage();
+
+      expect(
+        await screen.findByText(/Your company requires two factor authentication/),
+      ).toBeInTheDocument();
+    });
   });
 
   it("asks for the authenticator code when one is set up", async () => {

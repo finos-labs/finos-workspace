@@ -499,6 +499,18 @@ describe("lib/utils/app - Additional Tests", () => {
       expect(result.data?.widgets?.[0].id).toBe("test-uuid-1234");
     });
 
+    it("keeps a locked dashboard locked in its copy", () => {
+      const item: Item = {
+        index: "tab-1",
+        name: "Tab 1",
+        isFolder: false,
+        children: [],
+        data: { name: "My Tab", widgets: [], gridLayout: {}, groups: [], locked: true },
+      };
+
+      expect(duplicateTabItem(item, "root-id").data?.locked).toBe(true);
+    });
+
     it("handles widgets with missing innerTab in gridLayout gracefully", () => {
       const item: Item = {
         index: "tab-1",

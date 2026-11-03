@@ -27,8 +27,7 @@ export interface DisplaySettings {
   autoHideWidgetNavbar?: boolean;
 }
 
-export type SyncType = "owned" | "shared" | "entity_shared";
-export type SharedType = "shared" | "entity_shared";
+type SyncType = "owned" | "shared" | "entity_shared";
 
 export interface DashSyncT {
   owned?: Record<string, SharedItem>;
@@ -98,7 +97,7 @@ export interface SuccessReturn {
   message?: string;
 }
 
-export interface UserResponse {
+interface UserResponse {
   expiration_date: string;
   first_name: null | string;
   last_name: null | string;
@@ -129,14 +128,6 @@ export type WidgetMetadataResponse = {
   widgetConfig?: Partial<WidgetT>;
 };
 
-export interface HTTPValidationError {
-  detail: {
-    loc: (string | number)[];
-    msg: string;
-    type: string;
-  }[];
-}
-
 export interface Prompt {
   id: string;
   prompt: string;
@@ -155,6 +146,7 @@ export interface Skill extends SkillCreate {
   id: string;
   createdDate: string;
   updatedDate: string;
+  pluginName?: string | null;
 }
 
 export interface SkillCatalogEntry {

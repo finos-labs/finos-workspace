@@ -17,6 +17,10 @@ vi.mock("~/api/auth.api", () => ({
   }),
 }));
 
+vi.mock("~/lib/theme/sheet", () => ({
+  applySavedTheme: vi.fn(),
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -27,6 +31,7 @@ vi.mock("sonner", () => ({
 import { toast } from "sonner";
 import { updateEntityThemeSettings } from "~/api/admin.api";
 import { getEntityThemeSettings } from "~/api/auth.api";
+import { applySavedTheme } from "~/lib/theme/sheet";
 import { partial } from "../../mocks";
 
 const createMockAppTheme = () => ({
@@ -64,6 +69,43 @@ describe("useEntityThemeStore", () => {
   });
 
   describe("updateThemeSettings", () => {
+    it("applies the properties of the applied preset", async () => {
+      const properties = { light: { "--color-main-100": "#7b2d8e" }, dark: {} };
+
+      await act(async () => {
+        await useEntityThemeStore
+          .getState()
+          .updateThemeSettings({ light: null, dark: null, properties });
+      });
+
+      expect(applySavedTheme).toHaveBeenCalledWith(properties);
+    });
+
+    it("clears the applied theme when no preset applies", async () => {
+      await act(async () => {
+        await useEntityThemeStore
+          .getState()
+          .updateThemeSettings({ light: null, dark: null });
+      });
+
+      expect(applySavedTheme).toHaveBeenCalledWith(null);
+    });
+
+    it("applies the properties it fetches", async () => {
+      const properties = { light: {}, dark: { "--link-color": "#00ff00" } };
+      vi.mocked(getEntityThemeSettings).mockResolvedValueOnce({
+        light: null,
+        dark: null,
+        properties,
+      });
+
+      await act(async () => {
+        await useEntityThemeStore.getState().updateThemeSettings();
+      });
+
+      expect(applySavedTheme).toHaveBeenCalledWith(properties);
+    });
+
     it("should update with provided settings", async () => {
       const settings: EntityThemeSettings = {
         light: createMockThemeSettings({ appTheme: createMockAppTheme() }),

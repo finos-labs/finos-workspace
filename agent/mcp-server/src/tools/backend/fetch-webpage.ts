@@ -1,24 +1,19 @@
 import { z } from "zod";
 import { textItem, webCitationItem, type ContentItem } from "../../lib/typed.ts";
-import { describePage, fetchPage, MAX_PAGE_BYTES } from "../../../../src/lib/html-page.ts";
+import { describePage, fetchPage } from "../../../../src/lib/html-page.ts";
 import { renderOverview } from "../../../../src/lib/page-text.ts";
 import { getLogger } from "../../lib/logger.ts";
 import { holdPage, pageIdFor } from "../../lib/page-store.ts";
-import { scopeProblem, scopeSigSchema } from "../../lib/scope-check.ts";
+import { conversationIdSchema, scopeProblem, scopeSigSchema } from "../../lib/scope-check.ts";
 import { urlProblem, urlSigSchema } from "../../lib/url-check.ts";
 
 const logger = getLogger(["mcp", "fetch-webpage"]);
 
-export { MAX_PAGE_BYTES };
-
 export const fetchWebpageSchema = {
   url: z.string().url().describe("The URL to fetch"),
-  "x-ines-url-sig": urlSigSchema,
-  "x-ines-conversation-id": z
-    .string()
-    .optional()
-    .describe("INTERNAL — populated by agent decoration. Do not set."),
-  "x-ines-scope-sig": scopeSigSchema,
+  "x-agent-url-sig": urlSigSchema,
+  "x-agent-conversation-id": conversationIdSchema,
+  "x-agent-scope-sig": scopeSigSchema,
 };
 
 function hostOf(url: string): string {
@@ -29,18 +24,18 @@ function hostOf(url: string): string {
   }
 }
 
-function chatToHold(args: { "x-ines-conversation-id"?: string; "x-ines-scope-sig"?: string }): string | null {
+function chatToHold(args: { "x-agent-conversation-id"?: string; "x-agent-scope-sig"?: string }): string | null {
   if (scopeProblem(args) !== null) return null;
-  return args["x-ines-conversation-id"] || null;
+  return args["x-agent-conversation-id"] || null;
 }
 
 export async function fetchWebpageHandler(args: {
   url: string;
-  "x-ines-url-sig"?: string;
-  "x-ines-conversation-id"?: string;
-  "x-ines-scope-sig"?: string;
+  "x-agent-url-sig"?: string;
+  "x-agent-conversation-id"?: string;
+  "x-agent-scope-sig"?: string;
 }): Promise<{ content: ContentItem[] }> {
-  const { url, "x-ines-url-sig": signature } = args;
+  const { url, "x-agent-url-sig": signature } = args;
   const problem = urlProblem(url, signature);
   if (problem) return { content: [textItem(problem)] };
   try {

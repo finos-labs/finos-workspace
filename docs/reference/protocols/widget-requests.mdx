@@ -1,0 +1,42 @@
+---
+title: Widget requests
+sidebar_position: 2
+---
+
+import { WebAppValue } from "@site/src/components/Reference/config";
+import { WidgetRules } from "@site/src/components/Reference/schemas";
+import { OmittedValues, RequestExamples, RequestProblems, ValueEncodings } from "@site/src/components/Reference/requests";
+
+# Widget requests
+
+The web app builds every request in one place, the file `frontend/src/lib/utils/widgetRequest.ts`, and the FINOS Workspace API sends it to the backend from the routes under `/app/data-connectors`. The same builder serves widgets, the option lookups of the parameter bar, forms, the Agent's data and option requests, and the URL of an `iframe` widget's page. This page lists what a backend receives for the definition of a widget, as [widgets.json](../schemas/widgets-json.mdx) describes it. Each table below comes from running that code on the cases that it names. [Requests that a widget sends](../../tutorials/build-a-backend/requests-from-a-widget.md) explains how the app builds a request.
+
+## How values are written
+
+<ValueEncodings />
+
+## Values that are not sent
+
+<OmittedValues />
+
+## Problems
+
+When the app cannot build a request, the widget shows these messages in place of its content. An `iframe` widget shows them in place of the page, a form shows them in a toast, and the Agent receives them as the error of its call.
+
+<RequestProblems />
+
+## Rules for definitions
+
+The contract enforces these rules, and the schema states each of them.
+
+<WidgetRules />
+
+## Header parameters
+
+A header parameter's `paramName` has 1 to <WebAppValue of="headerNameMaxLength" /> characters from the HTTP token set. Three groups of names are not allowed, and names are compared without regard to case. The first group contains the names that a browser forbids page script to set: <WebAppValue of="forbiddenHeaderNames" /> and every name that starts with <WebAppValue of="forbiddenHeaderPrefixes" or />. The second group contains the names that FINOS Workspace sets itself: <WebAppValue of="reservedHeaderNames" />. The third group contains every header that the backend connection's credentials use. A header value consists of printable ASCII and has at most <WebAppValue of="headerValueMaxLength" /> characters.
+
+Credentials belong to the backend connection and never to parameters, because the dashboard saves a parameter's value and the UI shows it. The contract refuses a parameter whose name matches one of the connection's query credentials.
+
+## Example
+
+<RequestExamples />

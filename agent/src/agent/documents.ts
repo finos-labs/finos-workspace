@@ -15,7 +15,7 @@ export interface PendingDocument {
   url?: string;
 }
 
-export type ShippedDocument = { id: string; name: string; format: UploadedDocument["format"] } & (
+type ShippedDocument = { id: string; name: string; format: UploadedDocument["format"] } & (
   | { content_b64: string; url?: undefined }
   | { url: string; content_b64?: undefined }
 );

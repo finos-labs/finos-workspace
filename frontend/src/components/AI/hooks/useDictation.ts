@@ -8,7 +8,7 @@ import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
 export const MAX_RECORDING_MS = 120_000;
 const SAMPLE_RATE = 16_000;
 
-export type DictationState = "idle" | "recording" | "transcribing";
+type DictationState = "idle" | "recording" | "transcribing";
 
 export function transcribeUrl(agent: Copilot | null | undefined): string | null {
   const query = agent?.endpoints?.query;
@@ -51,9 +51,7 @@ export function useDictation(
       const url = transcribeUrl(agent);
       if (!url) throw new Error("The agent has no address for speech to text.");
       const wav = encodeWav(await toMono16k(recording), SAMPLE_RATE);
-      const headers = new Headers(
-        getCopilotRequestHeaders(undefined, agent ?? undefined),
-      );
+      const headers = new Headers(getCopilotRequestHeaders());
       headers.delete("Content-Type");
       const form = new FormData();
       form.set("audio", new Blob([wav], { type: "audio/wav" }), "dictation.wav");

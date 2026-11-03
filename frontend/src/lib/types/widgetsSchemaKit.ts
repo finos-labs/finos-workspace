@@ -15,7 +15,7 @@ import {
   WidgetBaseContract,
 } from "./widgetsContract.ts";
 
-export const KIT_VERSION = 2;
+const KIT_VERSION = 2;
 
 type JsonSchema = Record<string, unknown>;
 
@@ -122,7 +122,7 @@ export function buildWidgetsSchemaKit() {
   };
 }
 
-export type WidgetsSchemaKit = ReturnType<typeof buildWidgetsSchemaKit>;
+type WidgetsSchemaKit = ReturnType<typeof buildWidgetsSchemaKit>;
 
 export const KIT_PATH =
   "../backend-api/backend/api/widget_plugins/widgets_schema_kit.json";

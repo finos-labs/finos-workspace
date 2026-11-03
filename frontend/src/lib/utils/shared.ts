@@ -12,6 +12,7 @@ export function duplicateDashboard(item: Item) {
       widgets: item.data.widgets,
       groups: item.data.groups,
       gridLayout: item.data.gridLayout,
+      ...(item.data.locked && { locked: true }),
     },
   });
   toast.success("Duplicated dashboard", {

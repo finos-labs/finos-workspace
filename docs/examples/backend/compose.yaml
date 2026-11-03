@@ -13,8 +13,9 @@ services:
       context: ..
       dockerfile: backend/Dockerfile
       args:
-        VERSION: ${VERSION:?set VERSION to the SQL explorer package version}
-    image: widget-examples-backend:${VERSION}
+        SQL_EXPLORER_VERSION: ${SQL_EXPLORER_VERSION:?set SQL_EXPLORER_VERSION to the SQL explorer package version}
+        AG_GRID_VERSION: ${AG_GRID_VERSION:?set AG_GRID_VERSION to the AgGrid package version}
+    image: widget-examples-backend:${SQL_EXPLORER_VERSION}-${AG_GRID_VERSION}
     tmpfs: ["/tmp:size=64m,noexec,nosuid"]
     mem_limit: 512m
     pids_limit: 128

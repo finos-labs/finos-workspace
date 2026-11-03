@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ParamDef, ParamDefT, WidgetT } from "~/components/types";
-import { currentDateModifier } from "~/lib/utils/widgetParams";
+import { createParamDefs, currentDateModifier } from "~/lib/utils/widgetParams";
 import {
   type BuiltRequest,
   buildFormRequest,
@@ -58,7 +58,7 @@ describe("the widget request (WIDGETS-JSON 4.1)", () => {
   );
 
   it("builds the request of the design's example", () => {
-    const request = sent(buildWidgetRequest(teamReport, undefined, { theme: "dark" }));
+    const request = sent(buildWidgetRequest(teamReport, { theme: "dark" }));
     expect(request.method).toBe("POST");
     expect(request.url).toBe(
       `${BACKEND}/teams/platform/report?period=month&theme=dark`,
@@ -288,22 +288,6 @@ describe("rules (4.4)", () => {
       ).toBe(`\`${name}\` cannot be sent as a header`);
   });
 
-  it("refuses a header or query param that stands in for the connection's credentials", () => {
-    const credentials = { headers: { "X-API-Key": "secret" }, query: { token: "t" } };
-    const params: Partial<ParamDef>[] = [
-      { paramName: "x-api-key", type: "text", in: "header" },
-      { paramName: "TOKEN", type: "text" },
-    ];
-    expect(
-      problems(
-        buildWidgetRequest(
-          widget("/x", params, { "x-api-key": "a", TOKEN: "b" }),
-          credentials,
-        ),
-      ).map((p) => p.paramName),
-    ).toEqual(["x-api-key", "TOKEN"]);
-  });
-
   it("does not send a header value that is not printable ASCII", () => {
     const params: Partial<ParamDef>[] = [
       { paramName: "X-Name", type: "text", in: "header" },
@@ -316,27 +300,35 @@ describe("rules (4.4)", () => {
       ).toBe("invalid");
   });
 
-  it("adds the connection's query credentials and sends its headers apart", () => {
+  it("names the data backend and carries no credentials", () => {
     const request = sent(
-      buildWidgetRequest(widget("/x", [{ paramName: "a", type: "text" }], { a: "1" }), {
-        headers: { "X-API-Key": "secret" },
-        query: { token: "t" },
-      }),
+      buildWidgetRequest(
+        {
+          ...widget("/x", [{ paramName: "a", type: "text" }], { a: "1" }),
+          sourceId: "src-1",
+        },
+        {},
+      ),
     );
-    expect(request.url).toBe(`${BACKEND}/x?token=t&a=1`);
-    expect(request.credentials).toEqual({ "X-API-Key": "secret" });
-    expect(requestInit(request).headers).toMatchObject({ "X-API-Key": "secret" });
+    expect(request.url).toBe(`${BACKEND}/x?a=1`);
+    expect(request.sourceId).toBe("src-1");
+    expect(Object.keys(request).sort()).toEqual([
+      "method",
+      "paramHeaders",
+      "sourceId",
+      "url",
+    ]);
   });
 });
 
 describe("the cache key (4.6)", () => {
-  const key = (value: string, secret: string) => {
-    const built = buildWidgetRequest(
-      widget("/x", [{ paramName: "X-Region", type: "text", in: "header" }], {
+  const key = (value: string, sourceId?: string) => {
+    const built = buildWidgetRequest({
+      ...widget("/x", [{ paramName: "X-Region", type: "text", in: "header" }], {
         "X-Region": value,
       }),
-      { headers: { "X-API-Key": secret }, query: {} },
-    );
+      sourceId,
+    });
     sent(built);
     return requestKey(built as BuiltRequest);
   };
@@ -345,9 +337,8 @@ describe("the cache key (4.6)", () => {
     expect(key("eu", "s")).not.toEqual(key("us", "s"));
   });
 
-  it("leaves credential values out", () => {
-    expect(key("eu", "one")).toEqual(key("eu", "two"));
-    expect(JSON.stringify(key("eu", "one"))).not.toContain("one");
+  it("changes with the data backend", () => {
+    expect(key("eu", "one")).not.toEqual(key("eu", "two"));
   });
 
   it("changes with the body", () => {
@@ -362,7 +353,6 @@ describe("the cache key (4.6)", () => {
               method: "POST",
             },
           ),
-          undefined,
         ) as BuiltRequest,
       );
     expect(body("1")).not.toEqual(body("2"));
@@ -427,6 +417,17 @@ describe("option lookups (4.7)", () => {
     ]);
   });
 
+  it("names the data backend and carries no credentials", () => {
+    const request = sent(buildOptionsRequest(lookup({}), { params }, "src-1"));
+    expect(request.sourceId).toBe("src-1");
+    expect(Object.keys(request).sort()).toEqual([
+      "method",
+      "paramHeaders",
+      "sourceId",
+      "url",
+    ]);
+  });
+
   it("is nothing without an optionsEndpoint", () => {
     expect(
       buildOptionsRequest(
@@ -454,20 +455,38 @@ describe("a form's submission", () => {
   });
 
   it("fills the endpoint from the inputs and the widget's params, and posts every input", () => {
-    const request = sent(
-      buildFormRequest(form, { note: "n1", body: "hi" }, owner, undefined),
-    );
+    const request = sent(buildFormRequest(form, { note: "n1", body: "hi" }, owner));
     expect(request.method).toBe("PUT");
     expect(request.url).toBe(`${BACKEND}/accounts/a%201/notes/n1`);
     expect(JSON.parse(request.body ?? "")).toEqual({ note: "n1", body: "hi" });
   });
 
   it("is not sent while a placeholder has no value", () => {
-    expect(
-      problems(buildFormRequest(form, { body: "hi" }, owner, undefined))[0],
-    ).toMatchObject({
+    expect(problems(buildFormRequest(form, { body: "hi" }, owner))[0]).toMatchObject({
       paramName: "note",
       kind: "missing",
     });
+  });
+});
+
+describe("a default of false or 0", () => {
+  const params = createParamDefs({
+    params: [
+      { paramName: "active", type: "boolean", value: false },
+      { paramName: "offset", type: "number", value: 0 },
+    ],
+  } as Parameters<typeof createParamDefs>[0]);
+
+  it("is sent until the user changes it", () => {
+    const request = sent(buildWidgetRequest(widget("/rows", params), undefined));
+    expect(request.url).toBe(`${BACKEND}/rows?active=false&offset=0`);
+  });
+
+  it("is sent in the body of a POST", () => {
+    const inBody = params.map((param) => ({ ...param, in: "body" as const }));
+    const request = sent(
+      buildWidgetRequest(widget("/rows", inBody, {}, { method: "POST" }), undefined),
+    );
+    expect(JSON.parse(request.body ?? "")).toEqual({ active: false, offset: 0 });
   });
 });

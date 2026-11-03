@@ -1,3 +1,6 @@
+export const ARTIFACT_BASE_STYLE =
+  "<style>body{margin:0;padding:0}table{display:block;overflow-x:auto;max-width:100%}</style>";
+
 export function artifactContentSecurityPolicy(scriptNonce?: string): string {
   return [
     "default-src 'none'",

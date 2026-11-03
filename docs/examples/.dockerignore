@@ -1,7 +1,8 @@
 **/node_modules
 **/.cache
 **/.venv
-ag-grid
+ag-grid/*
+!ag-grid/dist
 plotly-charts
 sql-explorer/*
 !sql-explorer/dist

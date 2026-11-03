@@ -1,4 +1,4 @@
-export const allIcons = [
+const allIcons = [
   "add-to-dashboard",
   "airplane",
   "align-horizontal-centre-01",

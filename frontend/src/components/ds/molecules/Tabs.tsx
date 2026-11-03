@@ -3,7 +3,7 @@ import { cva } from "class-variance-authority";
 import React from "react";
 import { cn } from "../utils";
 
-export interface TabsContextValue {
+interface TabsContextValue {
   variant?: "default" | "filled" | "filled_secondary";
 }
 
@@ -11,7 +11,7 @@ const TabsContext = React.createContext<TabsContextValue>({
   variant: "default",
 });
 
-export interface TabsProps
+interface TabsProps
   extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Root>,
     TabsContextValue {}
 
@@ -25,7 +25,7 @@ export const Tabs = React.forwardRef<
 ));
 Tabs.displayName = TabsPrimitive.Root.displayName;
 
-export const TabListVariants = cva(["flex"], {
+const TabListVariants = cva(["flex"], {
   variants: {
     variant: {
       default: "body-sm-medium gap-6",
@@ -38,7 +38,7 @@ export const TabListVariants = cva(["flex"], {
   },
 });
 
-export interface TabsListProps
+interface TabsListProps
   extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> {}
 export const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
@@ -55,7 +55,7 @@ export const TabsList = React.forwardRef<
 });
 TabsList.displayName = TabsPrimitive.List.displayName;
 
-export const TabTriggerVariants = cva(["transition"], {
+const TabTriggerVariants = cva(["transition"], {
   variants: {
     variant: {
       default: [
@@ -90,7 +90,7 @@ export const TabTriggerVariants = cva(["transition"], {
   },
 });
 
-export interface TabsTriggerProps
+interface TabsTriggerProps
   extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> {}
 export const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
@@ -107,7 +107,7 @@ export const TabsTrigger = React.forwardRef<
 });
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
 
-export interface TabsContentProps
+interface TabsContentProps
   extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content> {}
 export const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,

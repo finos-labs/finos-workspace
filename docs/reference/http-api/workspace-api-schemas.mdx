@@ -1,0 +1,14 @@
+---
+title: FINOS Workspace API schemas
+sidebar_position: 2
+---
+
+import { SchemaDocs } from "@site/src/components/Reference/schemas";
+
+# FINOS Workspace API schemas
+
+The routes of the [FINOS Workspace API](workspace-api.mdx) exchange JSON documents. This page lists the request and response models that those routes refer to, under the names that the OpenAPI document gives them in `components.schemas`. For each model it lists the properties with their type, whether they are required and what they mean. When a property holds another model, its type names that model. The list leaves out FastAPI's own error models, which describe the status 422 that [FINOS Workspace API](workspace-api.mdx) explains once.
+
+## Models
+
+<SchemaDocs set="api" />

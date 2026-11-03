@@ -14,13 +14,6 @@ export const zodPassword = z
 
 export const zodEmail = z.email("Invalid email").min(1, "This field is required");
 
-export const MetadataSchema = z.object({
-  category: z.string().optional(),
-  sub_category: z.string().optional(),
-  subCategory: z.string().optional(),
-  description: z.string().optional(),
-});
-
 export const totpSchema = z.object({
   totp: z
     .string()
@@ -86,10 +79,12 @@ export type resetForm = z.infer<typeof resetSchema>;
 export type WidgetType = Omit<WidgetBaseContractT, "params"> & {
   type: WidgetVizType;
   params?: ParamDef[];
-  data?: { dataKey?: string; rawDataKey?: string; rawType?: string } & Record<
-    string,
-    unknown
-  >;
+  data?: {
+    dataKey?: string;
+    rawDataKey?: string;
+    rawType?: string;
+    streamEndpoint?: string;
+  } & Record<string, unknown>;
   raw?: boolean;
   storage?: { mcpUrl?: string };
 };

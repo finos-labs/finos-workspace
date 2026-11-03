@@ -1,0 +1,221 @@
+name: Docs
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "website/**"
+      - "netlify.toml"
+      - "backend-api/backend/**"
+      - "frontend/**"
+      - "agent/**"
+      - ".github/workflows/docs.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "website/**"
+      - "netlify.toml"
+      - "backend-api/backend/**"
+      - "frontend/**"
+      - "agent/**"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  node:
+    uses: ./.github/workflows/agent-node.yml
+
+  backend:
+    name: Backend reference data
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-api/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: |
+          pip install poetry==2.3.2
+          poetry config virtualenvs.create false
+          poetry install --only main
+      - name: Write the data, which fails when the code cannot produce it
+        run: |
+          while IFS= read -r setting; do declare -x "$setting"; done < <(sed -n 's/^    \([A-Z_]*=.*\)$/\1/p' pytest.ini)
+          python -m scripts.export_reference_data
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-reference-data
+          path: backend-api/backend/reference-data
+          if-no-files-found: error
+
+  agent:
+    name: Agent reference data
+    needs: node
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26.12.1
+      - run: npm ci
+        working-directory: agent
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Write the data on the images' Node
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: |
+          docker run --rm -v "$PWD/agent:/app" -w /app "$NODE_IMAGE" /usr/local/bin/node \
+            --import ./tests/setup.ts scripts/export-reference.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-reference-data
+          path: agent/reference-data
+          if-no-files-found: error
+
+  frontend:
+    name: Web app reference data
+    needs: node
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26.12.1
+      - run: npm ci --ignore-scripts --os=linux --cpu=x64 --libc=musl
+        working-directory: frontend
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Write the data on the images' Node
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: |
+          files=$(jq --raw-output '.scripts.reference' frontend/package.json | grep --only-matching 'tests/[^ ]*')
+          docker run --rm -e REFERENCE_OUT=reference-data -v "$PWD:/repo" -w /repo/frontend "$NODE_IMAGE" /usr/local/bin/node \
+            node_modules/vitest/vitest.mjs run $files
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-reference-data
+          path: frontend/reference-data
+          if-no-files-found: error
+
+  build:
+    name: Generate, types and build
+    needs: [node, backend, agent, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-reference-data
+          path: backend-api/backend/reference-data
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-reference-data
+          path: agent/reference-data
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-reference-data
+          path: frontend/reference-data
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26.12.1
+      - run: npm ci --ignore-scripts --os=linux --cpu=x64 --libc=musl
+        working-directory: website
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Look up the address that Netlify serves the site at
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+        run: |
+          site=$(curl --fail --silent --show-error --header "Authorization: Bearer $NETLIFY_AUTH_TOKEN" "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID")
+          address=$(jq --raw-output 'if .custom_domain then "https://" + .custom_domain else .ssl_url end' <<< "$site")
+          echo "URL=$address" >> "$GITHUB_ENV"
+      - name: Generate the reference data, which fails when a page is out of step with the code
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo/website "$NODE_IMAGE" /usr/local/bin/node \
+            --disable-warning=ExperimentalWarning scripts/generate.mts
+      - name: Check the types
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo/website --entrypoint /repo/website/node_modules/@typescript/typescript-linux-x64/lib/tsc \
+            "$NODE_IMAGE" --noEmit
+      - name: Test the code of the site
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo/website "$NODE_IMAGE" /usr/local/bin/node \
+            --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test "tests/**/*.test.ts"
+      - name: Build the site, which fails on a broken link or anchor
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+          # The container writes the files that the bundler reads and the cache
+          # that it keeps outside the mounted folder, so the paths in them stay
+          # the paths of the container and never reach the checkout.
+          DOCUSAURUS_GENERATED_FILES_DIR_NAME: /tmp/docusaurus
+          DOCUSAURUS_NO_PERSISTENT_CACHE: "1"
+        run: |
+          docker run --rm -e URL -e DOCUSAURUS_GENERATED_FILES_DIR_NAME -e DOCUSAURUS_NO_PERSISTENT_CACHE \
+            -v "$PWD:/repo" -w /repo/website "$NODE_IMAGE" /usr/local/bin/node \
+            node_modules/@docusaurus/core/bin/docusaurus.mjs build
+      - name: Check that the build wrote llms.txt
+        run: test -s website/build/llms.txt
+      - name: Check that every page with headings has a table of contents
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo/website "$NODE_IMAGE" /usr/local/bin/node \
+            --disable-warning=ExperimentalWarning scripts/check-toc.mts
+      - name: Keep the built site for the deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: website/build
+          if-no-files-found: error
+
+  deploy:
+    name: Deploy to Netlify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: site
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26.12.1
+      - name: Publish the site that the build checked
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+        run: npx --yes netlify-cli@27.15.0 deploy --prod --no-build --dir site --message "$GITHUB_SHA"

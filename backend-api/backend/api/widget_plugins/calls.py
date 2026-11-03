@@ -224,7 +224,7 @@ async def _send_route(  # noqa: PLR0913
             status, content_type, raw = await backends.request(
                 url,
                 "POST",
-                f"/.workspace/routes/{route.id}",
+                f"{backends.ROUTE_PATH_PREFIX}{route.id}",
                 json_body={"args": checked, "widget": {"id": widget_id, "instanceId": instance_id}, "caller": caller},
                 headers=headers,
                 timeout=min(route.response.timeoutMs, settings.WIDGET_PLUGIN_BACKEND_TIMEOUT_MS) / 1000,

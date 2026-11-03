@@ -13,7 +13,7 @@ type Props = {
   children: ReactNode;
 };
 
-export const InitialVisibleWidgetIds = ["navigation_bar", "market_indices"];
+const InitialVisibleWidgetIds = ["navigation_bar", "market_indices"];
 
 const RenderIfVisible = forwardRef<HTMLDivElement, Props>(
   (

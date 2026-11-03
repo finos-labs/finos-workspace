@@ -15,7 +15,7 @@ function tools(): AgentTool[] {
   return [
     {
       name: "mermaid_diagram",
-      server_id: "ines",
+      server_id: "agent",
       url: "http://localhost:8787/mcp",
       description: "Render a Mermaid diagram",
       input_schema: {
@@ -25,14 +25,14 @@ function tools(): AgentTool[] {
     },
     {
       name: "query_documents",
-      server_id: "ines",
+      server_id: "agent",
       url: "http://localhost:8787/mcp",
       description: "Search the loaded documents",
       input_schema: {
         properties: {
           query: { type: "string" },
-          "x-ines-conversation-id": { type: "string" },
-          "x-ines-documents": { type: "array" },
+          "x-agent-conversation-id": { type: "string" },
+          "x-agent-documents": { type: "array" },
         },
         required: ["query"],
       },
@@ -44,7 +44,7 @@ function mermaidResult(items: Array<{ text: string }>, extraState?: Record<strin
   return {
     role: "tool",
     function: "execute_agent_tool",
-    input_arguments: { tool_name: "mermaid_diagram", server_id: "ines" },
+    input_arguments: { tool_name: "mermaid_diagram", server_id: "agent" },
     data: [{ items }],
     ...(extraState ? { extra_state: extraState } : {}),
   };
@@ -151,7 +151,7 @@ describe("history — earlier MCP results from the turn stay visible to the mode
     const earlier = mermaidResult([
       {
         text: JSON.stringify({
-          $ines_kind: "artifact",
+          $agent_kind: "artifact",
           artifact: { type: "html", uuid: "u1", name: "First Diagram", description: "", content: "<svg/>" },
         }),
       },
@@ -188,7 +188,7 @@ describe("MCP artifacts — land in the message stream, not the status timeline"
     return mermaidResult([
       {
         text: JSON.stringify({
-          $ines_kind: "artifact",
+          $agent_kind: "artifact",
           artifact: { type: "html", uuid: "u1", name, description: "", content: "<svg/>" },
         }),
       },
@@ -222,7 +222,7 @@ describe("MCP artifacts — land in the message stream, not the status timeline"
     const status = events.find(
       (e) =>
         e.event === "copilotStatusUpdate" &&
-        (e.data as { message?: string }).message === "Output from ines - mermaid_diagram",
+        (e.data as { message?: string }).message === "Output from agent - mermaid_diagram",
     );
     expect(status).toBeDefined();
     expect((status!.data as { details?: unknown }).details).toBeUndefined();
@@ -296,8 +296,8 @@ describe("MCP artifacts — land in the message stream, not the status timeline"
   });
 });
 
-describe("decoration — x-ines-* never reaches the model", () => {
-  it("the tools surfaced to doGenerate have no x-ines-* keys in their input schema", async () => {
+describe("decoration — x-agent-* never reaches the model", () => {
+  it("the tools surfaced to doGenerate have no x-agent-* keys in their input schema", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("ok"));
     const widget: Widget = {
       uuid: "w-1",
@@ -323,7 +323,7 @@ describe("decoration — x-ines-* never reaches the model", () => {
       const schema = (t as unknown as { inputSchema?: { jsonSchema?: { properties?: Record<string, unknown> } } } | undefined)?.inputSchema?.jsonSchema?.properties;
       if (schema) {
         for (const k of Object.keys(schema)) {
-          expect(k.startsWith("x-ines-")).toBe(false);
+          expect(k.startsWith("x-agent-")).toBe(false);
         }
       }
     }

@@ -4,6 +4,7 @@ import { metrics } from "../lib/metrics.ts";
 const logger = getLogger(["app", "auth", "workspace"]);
 
 const METERING_HEADER = "X-Metering-Authorization";
+export const READY_TIMEOUT_MS = 3_000;
 
 export type Failure =
   | { ok: false; reason: "rejected" }
@@ -34,7 +35,7 @@ export interface WorkspaceClient {
   ready(): Promise<boolean>;
 }
 
-export interface WorkspaceClientOptions {
+interface WorkspaceClientOptions {
   apiUrl: string;
   origin: string;
   meteringToken: string;
@@ -91,7 +92,7 @@ export function createWorkspaceClient(options: WorkspaceClientOptions): Workspac
     logger.error(
       "The FINOS Workspace API refused this agent's metering token on {endpoint}: {detail}. " +
         "Until it is replaced no question can be answered. Mint a new one with " +
-        "`python -m scripts.create_metering_token` in backend-api/backend and set INES_METERING_TOKEN to it.",
+        "`python -m scripts.create_metering_token` in backend-api/backend and set AGENT_METERING_TOKEN to it.",
       { endpoint, detail: typeof detail === "string" ? detail : "no reason given" },
     );
   }
@@ -202,7 +203,7 @@ export function createWorkspaceClient(options: WorkspaceClientOptions): Workspac
       try {
         const response = await doFetch(`${apiUrl}/health`, {
           headers: { Origin: origin },
-          signal: AbortSignal.timeout(3_000),
+          signal: AbortSignal.timeout(READY_TIMEOUT_MS),
         });
         return response.ok;
       } catch {

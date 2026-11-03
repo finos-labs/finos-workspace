@@ -76,17 +76,17 @@ export interface AgentTool {
   };
 }
 
-export interface DashboardWidgetInfo {
+interface DashboardWidgetInfo {
   widget_uuid: string;
   name?: string;
 }
 
-export interface DashboardTab {
+interface DashboardTab {
   tab_id: string;
   widgets?: DashboardWidgetInfo[];
 }
 
-export interface DashboardInfo {
+interface DashboardInfo {
   id: string;
   name?: string;
   current_tab_id: string;
@@ -110,6 +110,15 @@ export interface UploadedDocument {
   url?: string;
 }
 
+export interface PluginArtifactEntry {
+  plugin: string;
+  widget: string;
+  name: string;
+  description: string;
+  data_schema: Record<string, unknown>;
+  config_schema?: Record<string, unknown>;
+}
+
 export interface QueryRequest {
   messages: Message[];
   context?: unknown[];
@@ -123,6 +132,7 @@ export interface QueryRequest {
   workspace_state?: unknown;
   workspace_options?: Record<string, boolean | string>;
   skills_catalog?: SkillCatalogEntry[];
+  plugin_artifacts?: PluginArtifactEntry[];
   selected_skills?: SkillPayload[];
   model?: string;
   tools?: AgentTool[];
@@ -137,7 +147,7 @@ export interface HtmlArtifact {
   content: string;
 }
 
-export interface AppsJsonLayoutItem {
+interface AppsJsonLayoutItem {
   i: string;
   x: number;
   y: number;
@@ -192,9 +202,19 @@ export interface AppArtifact {
   widget_refs: AppArtifactWidgetRef[];
 }
 
-export type CopilotArtifact = HtmlArtifact | AppArtifact;
+export interface PluginArtifact {
+  type: "plugin";
+  uuid: string;
+  name: string;
+  description: string;
+  plugin: { id: string; widget: string };
+  data: Record<string, unknown>;
+  config?: Record<string, unknown>;
+}
 
-export interface WidgetCitationSourceInfo {
+export type CopilotArtifact = HtmlArtifact | AppArtifact | PluginArtifact;
+
+interface WidgetCitationSourceInfo {
   type: "widget";
   uuid: string;
   origin: string;
@@ -208,19 +228,19 @@ export interface WidgetCitationSourceInfo {
   citable: true;
 }
 
-export interface WebCitationSourceInfo {
+interface WebCitationSourceInfo {
   type: "web";
   name: string;
   citable: true;
 }
 
-export interface FileCitationSourceInfo {
+interface FileCitationSourceInfo {
   type: "file";
   name: string;
   citable: true;
 }
 
-export type CitationSourceInfo =
+type CitationSourceInfo =
   | WidgetCitationSourceInfo
   | WebCitationSourceInfo
   | FileCitationSourceInfo;
@@ -237,20 +257,18 @@ export interface CitationCollection {
   citations: Citation[];
 }
 
-export type SSEEventType =
-  | "copilotMessageChunk"
-  | "copilotStatusUpdate"
-  | "copilotFunctionCall"
-  | "copilotMessageArtifact"
-  | "copilotCitationCollection"
-  | "copilotPromptSuggestions";
+export const SSE_EVENT_TYPES = [
+  "copilotStatusUpdate",
+  "copilotMessageChunk",
+  "copilotMessageArtifact",
+  "copilotCitationCollection",
+  "copilotPromptSuggestions",
+  "copilotFunctionCall",
+] as const;
+
+export type SSEEventType = (typeof SSE_EVENT_TYPES)[number];
 
 export interface SSEEvent {
   event: SSEEventType;
   data: Record<string, unknown>;
-}
-
-export interface ReasoningArtifact {
-  message: string;
-  artifacts: CopilotArtifact[];
 }

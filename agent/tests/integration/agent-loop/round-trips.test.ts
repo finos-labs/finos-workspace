@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
-import type { Citation, QueryRequest, ToolMessage, Widget } from "../../../src/protocol/types.ts";
+import type { Citation, QueryRequest, ToolMessage } from "../../../src/protocol/types.ts";
 import {
   llmCallsTool,
   llmEmitsText,
@@ -60,7 +60,7 @@ describe("citations — forwarded across round-trips via extra_state.intermediat
     const priorTool: ToolMessage = {
       role: "tool",
       function: "execute_agent_tool",
-      input_arguments: { tool_name: "fetch_webpage", server_id: "ines" },
+      input_arguments: { tool_name: "fetch_webpage", server_id: "agent" },
       data: [{ items: [{ text: "page body" }] }],
       extra_state: { intermediate_citations: [stashed] },
     };

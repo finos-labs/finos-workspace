@@ -152,7 +152,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN ["node", "/opt/npm/package/bin/npm-cli.js", "ci", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund"]
 
-FROM scratch AS ines-mcp
+FROM scratch AS agent-mcp
 
 COPY --from=node / /
 
@@ -165,7 +165,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY mcp-server ./mcp-server
-COPY src/lib/logging.ts src/lib/redact.ts src/lib/metrics.ts src/lib/scope.ts src/lib/safe-fetch.ts src/lib/isolate.ts src/lib/isolate-protocol.ts src/lib/isolate-child.ts src/lib/zip-guard.ts src/lib/bounded-cache.ts src/lib/html-page.ts src/lib/html-child.ts src/lib/page-text.ts src/lib/page-view.ts ./src/lib/
+COPY src/lib/logging.ts src/lib/env-reference.ts src/lib/redact.ts src/lib/metrics.ts src/lib/scope.ts src/lib/safe-fetch.ts src/lib/isolate.ts src/lib/isolate-protocol.ts src/lib/isolate-child.ts src/lib/zip-guard.ts src/lib/bounded-cache.ts src/lib/html-page.ts src/lib/html-child.ts src/lib/page-text.ts src/lib/page-view.ts ./src/lib/
 
 EXPOSE 8787
 
@@ -176,7 +176,7 @@ USER 1000:1000
 
 CMD ["node", "mcp-server/src/server.ts"]
 
-FROM scratch AS ines
+FROM scratch AS agent
 
 COPY --from=node / /
 

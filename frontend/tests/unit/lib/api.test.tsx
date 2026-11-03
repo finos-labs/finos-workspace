@@ -124,7 +124,7 @@ describe("useJsonData and the FINOS Workspace session", () => {
 
     const request: BuiltRequest = {
       ok: true,
-      request: { url, method, credentials: {}, paramHeaders: {} },
+      request: { url, method, paramHeaders: {} },
     };
     const { result } = renderHook(() => useJsonData({ request }, { retry: false }), {
       wrapper: createWrapper(),

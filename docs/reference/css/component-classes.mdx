@@ -1,0 +1,14 @@
+---
+title: Component classes
+sidebar_position: 7
+---
+
+import { UtilityTable } from "@site/src/components/Reference/css";
+
+# Component classes
+
+Besides the Tailwind utilities that it uses everywhere, the web app defines a number of utility classes of its own. This page lists the classes that `frontend/src/index.css` declares with Tailwind's `@utility`, so that you can see what a class stands for before you override it. Each class is a name for a set of declarations or `@apply` lines. A nested selector applies to the class's own element, with `&` standing for the class. The app's own classes begin with `ws-`.
+
+The table shows each class with its declarations, its nested selectors and where it is used. For the `ws-` classes, the used column counts the places in the frontend source that name the class, and a class that nothing names is declared and unused. Utility names that do not begin with `ws-` are generic words, so the table does not count their uses. The table is generated from the stylesheet and from the frontend source.
+
+<UtilityTable />

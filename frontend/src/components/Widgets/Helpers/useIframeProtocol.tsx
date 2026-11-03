@@ -1,9 +1,7 @@
 import isEqual from "lodash.isequal";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useWidgetContext } from "~/components/Widget.context";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { useSourceCredentials } from "~/lib/state/backendConnector";
-import { convertHeadersToRecord } from "~/lib/utils/widgetParams";
+import { addExtraHeaders } from "~/lib/utils/widgetParams";
 import {
   isWidgetParamMessageType,
   parseIframeParamsMessage,
@@ -19,7 +17,7 @@ import {
   type WorkspaceWidgetManifest,
 } from "~/types/iframeProtocol";
 
-const REQUEST_TIMEOUT_MS = 10_000;
+export const REQUEST_TIMEOUT_MS = 10_000;
 
 interface UseIframeProtocolOptions {
   iframeRef: React.RefObject<HTMLIFrameElement | null>;
@@ -35,7 +33,7 @@ const getIframeOrigin = (iframeRef: React.RefObject<HTMLIFrameElement | null>) =
   }
 };
 
-const MAX_FRAME_DEPTH = 8;
+export const MAX_FRAME_DEPTH = 8;
 
 function isWindowWithin(
   source: MessageEventSource | null,
@@ -68,26 +66,14 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
     manifest: null as WorkspaceWidgetManifest[] | null,
     paramDefs: null as WorkspaceParamDef[] | null,
   });
-  const widget = useWidgetContext()?.widget;
-  const authHeaders = useSourceCredentials(
-    widget?.sourceId,
-    widget?.endpoint?.url,
-  ).headers;
-  const authHeadersRef = useRef(authHeaders);
-  authHeadersRef.current = authHeaders;
-
   const pendingRequestsRef = useRef<Map<string, PendingRequest>>(new Map());
 
   const bridgeSourceRef = useRef<MessageEventSource | null>(null);
   const bridgeOriginRef = useRef<string>("*");
 
   const postAuth = useCallback(
-    (
-      target: MessageEventSource | null,
-      origin: string,
-      sourceHeaders: Record<string, string>,
-    ) => {
-      const { headers } = convertHeadersToRecord(sourceHeaders);
+    (target: MessageEventSource | null, origin: string) => {
+      const headers = addExtraHeaders();
       if (!target || Object.keys(headers).length === 0) return;
       if (origin !== getIframeOrigin(iframeRef)) return;
       const message: WorkspaceAuthMessage = { type: "workspace-auth", headers };
@@ -142,7 +128,8 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
         }
         const msg = parsed.data;
         bridgeSourceRef.current = event.source;
-        bridgeOriginRef.current = event.origin || "*";
+        bridgeOriginRef.current =
+          event.origin && event.origin !== "null" ? event.origin : "*";
         console.debug(
           "[iframe-protocol] handshake received, widgets:",
           msg.widgets,
@@ -159,7 +146,7 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
           return prev;
         });
 
-        postAuth(event.source, event.origin, authHeadersRef.current);
+        postAuth(event.source, event.origin);
         return;
       }
 
@@ -234,10 +221,6 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
       postAuth,
     ],
   );
-
-  useEffect(() => {
-    postAuth(bridgeSourceRef.current, bridgeOriginRef.current, authHeaders);
-  }, [authHeaders, postAuth]);
 
   useEffect(() => {
     const ctrl = new AbortController();

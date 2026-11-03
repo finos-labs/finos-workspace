@@ -5,10 +5,11 @@ import { startBridgeSession } from "~/api/workspaceBridge.api";
 import { useActiveWorkspaceDashboardId } from "~/components/AI/hooks/useActiveWorkspaceDashboardId";
 import { useSyncWidgetsInCurrentDashboard } from "~/components/AI/hooks/useWidgetsInCurrentDashboard";
 import { useWorkspaceBridgeCommandHandler } from "~/components/AI/hooks/useWorkspaceBridgeCommandHandler";
-import type {
-  BrowserSessionContext,
-  ClientEvent,
-  ServerEvent,
+import {
+  BRIDGE_LIMITS,
+  type BrowserSessionContext,
+  type ClientEvent,
+  type ServerEvent,
 } from "~/components/AI/workspaceBridgeProtocol";
 import { useShallowAppStore } from "~/lib/state/app";
 import {
@@ -16,11 +17,13 @@ import {
   useWorkspaceBridgeStore,
 } from "~/lib/state/workspaceBridge";
 
-const RECONNECT_BASE_DELAY_MS = 1000;
-const MAX_RECONNECT_ATTEMPTS = 3;
-const SESSION_START_TIMEOUT_MS = 10_000;
-const HEARTBEAT_INTERVAL_MS = 15_000;
-const HEARTBEAT_TIMEOUT_MS = 32_000;
+const {
+  reconnectBaseDelayMs: RECONNECT_BASE_DELAY_MS,
+  maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS,
+  sessionStartTimeoutMs: SESSION_START_TIMEOUT_MS,
+  heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
+  heartbeatTimeoutMs: HEARTBEAT_TIMEOUT_MS,
+} = BRIDGE_LIMITS;
 const RECONNECT_TOAST_ID = "workspace-bridge-reconnecting";
 
 function getReconnectDelayMs(attempt: number) {
@@ -173,7 +176,7 @@ export const WorkspaceBridgeConnectionManager = memo(() => {
 });
 WorkspaceBridgeConnectionManager.displayName = "WorkspaceBridgeConnectionManager";
 
-export class WebSocketBridge {
+class WebSocketBridge {
   _ws: WebSocket | null = null;
   _connectionString: string | URL | undefined;
 

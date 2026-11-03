@@ -249,7 +249,7 @@ export async function getEntityRoleActivityLog() {
 
 export type RoleAccessList = Record<string, string>[];
 
-export type UserPermissions = {
+type UserPermissions = {
   data_connectors: {
     uuid: string | null;
     type: "backend" | "file";
@@ -276,7 +276,7 @@ export async function getUserPermissions(userUuid: string) {
   return data;
 }
 
-export interface RoleCopilotAccess {
+interface RoleCopilotAccess {
   models: CopilotModelGrant[];
   mcp: McpGrant[];
 }

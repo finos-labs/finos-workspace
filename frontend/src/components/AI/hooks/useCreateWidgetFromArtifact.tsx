@@ -13,7 +13,8 @@ import { useShallowThemeStore } from "~/lib/state/theme";
 import { generateRandomName } from "~/lib/utils";
 import { HTML_SANITIZE_CONFIG } from "~/lib/utils/sanitize";
 import { scrollToAndHighlightWidget } from "~/lib/utils/widgetHighlight";
-import type { WidgetJsonT, WidgetT } from "../../types";
+import { pluginWidgetId, resolvePluginWidget } from "~/plugins/registry";
+import type { ParamDef, WidgetJsonT, WidgetT } from "../../types";
 import {
   createConversationContextPayload,
   getFallbackName,
@@ -24,8 +25,13 @@ const aiCopilotAiEnhancementsFF =
   getConfig().copilot.enabled && getConfig().copilot.aiEnhancements;
 
 export type CreateWidgetParams = {
-  widgetType: "text" | "html";
+  widgetType: "text" | "html" | "plugin";
   content: string;
+  pluginArtifact?: {
+    plugin: { id: string; widget: string };
+    data: unknown;
+    config?: Record<string, unknown>;
+  };
   metadata?: {
     uuid?: string;
     name?: string;
@@ -217,6 +223,26 @@ export function useCreateWidgetFromArtifact() {
 
         return await widgetCreation(widget);
       }
+      if (widgetType === "plugin" && params.pluginArtifact) {
+        const { plugin, data, config } = params.pluginArtifact;
+        const found = resolvePluginWidget(plugin);
+        if (!found) throw new Error("This plugin component is not available to you");
+        const { h, minW, minH } = found.widget.grid;
+        widget.widgetId = pluginWidgetId(plugin.id, plugin.widget);
+        widget.type = "custom";
+        widget.connectionType = "plugin";
+        widget.plugin = plugin;
+        widget.params = found.widget.params as unknown as ParamDef[];
+        widget.gridData = {
+          w: 40,
+          h: Math.max(h, 12),
+          ...(minW ? { minW } : {}),
+          ...(minH ? { minH } : {}),
+        };
+        widget.storage = { plugin: { data, ...(config ? { config } : {}) } };
+
+        return await widgetCreation(widget, { saveMetadata: false });
+      }
       throw new Error("Invalid widget type");
     },
     [id, innerTab, widgetCreation],
@@ -255,7 +281,7 @@ export function useCreateWidgetFromArtifact() {
         let widgetName: string = existingName || fallbackName;
         let widgetDescription: string = existingDescription || fallbackName;
 
-        if (aiEnhancementsEnabled) {
+        if (aiEnhancementsEnabled && widgetType !== "plugin") {
           try {
             const aiInfo = await fetchWidgetInfo(
               params,

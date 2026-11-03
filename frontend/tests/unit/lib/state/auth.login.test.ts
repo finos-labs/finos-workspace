@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "~/lib/state/auth";
-import { clearIdpTokens, getIdpTokens } from "~/lib/state/idpTokens";
+import { clearUserEmail, getUserEmail } from "~/lib/state/userEmail";
 import type { LoginResponse } from "~/types/auth.type";
 import { type DeepPartial, partial } from "../../mocks";
 
@@ -33,7 +33,7 @@ describe("useAuthStore - login", () => {
       name: { first: "", last: "" },
       lastVisitedPage: "/app",
     });
-    clearIdpTokens();
+    clearUserEmail();
   });
 
   it("keeps the profile only", () => {
@@ -50,7 +50,7 @@ describe("useAuthStore - login", () => {
   it("keeps the email in page memory for the identity headers", () => {
     useAuthStore.getState().login(createMockLoginResponse());
 
-    expect(getIdpTokens().email).toBe("test@example.com");
+    expect(getUserEmail()).toBe("test@example.com");
   });
 
   it("sets the name from the user data", () => {

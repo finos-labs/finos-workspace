@@ -12,7 +12,6 @@ import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGrou
 import { type QueryOptions, useJsonData } from "~/lib/api";
 import { IFRAME_SRCDOC_SANDBOX_ATTRIBUTES } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
-import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { triggerCustomEvent, useEventListener } from "~/lib/utils";
 import { buildWidgetRequest, requestKey } from "~/lib/utils/widgetRequest";
@@ -74,10 +73,8 @@ export default function HtmlViewer() {
   const staticHtml: string | undefined = widget?.storage?.html;
   const isStaticMode = !!staticHtml;
 
-  const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
-
   const options = useMemo<QueryOptions<string>>(() => {
-    const request = buildWidgetRequest(widget, credentials, { theme });
+    const request = buildWidgetRequest(widget, { theme });
     return {
       request,
       asText: true,
@@ -94,7 +91,7 @@ export default function HtmlViewer() {
     widget.params,
     widget.storage?.params,
     theme,
-    credentials,
+    widget.sourceId,
   ]);
 
   const allowedFilterParams = useMemo(() => {

@@ -1,3 +1,22 @@
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+const SENTINEL = "#010203";
+
+export function toHex(value: string): string {
+  if (HEX_COLOR.test(value)) return value;
+  const context = document.createElement("canvas").getContext("2d", {
+    willReadFrequently: true,
+  });
+  if (!context) return value;
+  context.fillStyle = SENTINEL;
+  context.fillStyle = value;
+  if (context.fillStyle === SENTINEL) return value;
+  context.clearRect(0, 0, 1, 1);
+  context.fillRect(0, 0, 1, 1);
+  const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data;
+  if (alpha !== 255) return value;
+  return `#${[red, green, blue].map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+}
+
 export function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
@@ -7,45 +26,6 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } | nul
         b: Number.parseInt(result[3], 16),
       }
     : null;
-}
-
-export function rgbToHex(r: number, g: number, b: number): string {
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-}
-
-export function adjustBrightness(hex: string, percentage: number): string {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return hex;
-
-  const factor = percentage / 100;
-  let { r, g, b } = rgb;
-
-  if (factor > 0) {
-    r = Math.round(r + (255 - r) * factor);
-    g = Math.round(g + (255 - g) * factor);
-    b = Math.round(b + (255 - b) * factor);
-  } else {
-    r = Math.round(r * (1 + factor));
-    g = Math.round(g * (1 + factor));
-    b = Math.round(b * (1 + factor));
-  }
-
-  r = Math.max(0, Math.min(255, r));
-  g = Math.max(0, Math.min(255, g));
-  b = Math.max(0, Math.min(255, b));
-
-  return rgbToHex(r, g, b);
-}
-
-export function createColorVariants(baseColor: string) {
-  const lighterColor = adjustBrightness(baseColor, 30);
-  const darkerColor = adjustBrightness(baseColor, -30);
-
-  return {
-    main: baseColor,
-    lighter: lighterColor,
-    darker: darkerColor,
-  };
 }
 
 export function getRelativeLuminance(hex: string): number {
@@ -62,27 +42,6 @@ export function getRelativeLuminance(hex: string): number {
 export function getContrastTextColor(bgHex: string): string {
   const luminance = getRelativeLuminance(bgHex);
   return luminance > 0.22 ? "var(--color-light-700)" : "var(--color-light-100)";
-}
-
-export function applyBrandColors(mainColor: string) {
-  const colors = createColorVariants(mainColor);
-  const root = document.documentElement;
-
-  root.style.setProperty("--color-main-100", colors.main);
-  root.style.setProperty("--color-main-50", colors.lighter);
-  root.style.setProperty("--color-main-200", colors.darker);
-
-  const contrastColor = getContrastTextColor(mainColor);
-  root.style.setProperty("--color-main-contrast", contrastColor);
-
-  root.style.setProperty("--brand-main", colors.main);
-  root.style.setProperty("--brand-lighter", colors.lighter);
-  root.style.setProperty("--brand-darker", colors.darker);
-}
-
-export function applyFontFamily(fontFamily: string) {
-  const root = document.documentElement;
-  root.style.setProperty("--font-family", fontFamily);
 }
 
 export function applyWhiteLabelMeta(whiteLabel: {

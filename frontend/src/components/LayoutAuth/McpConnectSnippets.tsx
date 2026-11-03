@@ -11,7 +11,7 @@ export const MCP_SERVER_NAME = "workspace";
 
 export const CODEX_TOKEN_ENV_VAR = "WORKSPACE_MCP_TOKEN";
 
-export interface McpConnectSnippet {
+interface McpConnectSnippet {
   value: string;
   label: string;
   text: string;
@@ -67,7 +67,7 @@ export function buildMcpConnectSnippets(
   ];
 }
 
-export interface McpConnectSnippetsProps {
+interface McpConnectSnippetsProps {
   endpoint: string;
   token: string;
   origin: string;

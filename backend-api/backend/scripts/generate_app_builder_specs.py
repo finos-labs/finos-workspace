@@ -11,7 +11,7 @@ from typing import Any
 from api.widget_plugins.widgets_schema import load_kit
 
 RESOURCES = Path(__file__).resolve().parents[1] / "workspace_mcp" / "app_builder" / "resources"
-INES_COPY = Path(__file__).resolve().parents[3] / "agent" / "mcp-server" / "src" / "resources" / "app-builder"
+AGENT_COPY = Path(__file__).resolve().parents[3] / "agent" / "mcp-server" / "src" / "resources" / "app-builder"
 MARKER = re.compile(
     r"(<!-- generated:(?P<name>[a-z-]+) -->\n)(?:.*?\n)?(<!-- /generated:(?P=name) -->)",
     re.DOTALL,
@@ -224,17 +224,17 @@ def main(argv: list[str] | None = None) -> int:
             stale.append(page)
             if not args.check:
                 path.write_text(current, encoding="utf-8")
-    if INES_COPY.parent.is_dir():
-        copies = {path.relative_to(INES_COPY).as_posix() for path in INES_COPY.rglob("*.md")}
+    if AGENT_COPY.parent.is_dir():
+        copies = {path.relative_to(AGENT_COPY).as_posix() for path in AGENT_COPY.rglob("*.md")}
         for page in sorted(copies - pages.keys()):
-            stale.append(f"ines:{page}")
+            stale.append(f"agent:{page}")
             if not args.check:
-                (INES_COPY / page).unlink()
+                (AGENT_COPY / page).unlink()
         for page, text in sorted(pages.items()):
-            copy = INES_COPY / page
+            copy = AGENT_COPY / page
             if page in copies and copy.read_text(encoding="utf-8") == text:
                 continue
-            stale.append(f"ines:{page}")
+            stale.append(f"agent:{page}")
             if not args.check:
                 copy.parent.mkdir(parents=True, exist_ok=True)
                 copy.write_text(text, encoding="utf-8")

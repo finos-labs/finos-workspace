@@ -114,13 +114,6 @@ export const macroWorkspace: { primary: Widget[]; secondary: Widget[] } = {
   secondary: [],
 };
 
-export const FIXTURES = {
-  tech: techWorkspace,
-  macro: macroWorkspace,
-} as const;
-
-export type FixtureKey = keyof typeof FIXTURES;
-
 import type { WorkspaceState } from "../../src/protocol/types.ts";
 
 export const aaplDashboardState: WorkspaceState = {
@@ -159,8 +152,4 @@ export const macroDashboardState: WorkspaceState = {
       },
     ],
   },
-};
-
-export const homeState: WorkspaceState = {
-  current_page_context: "home",
 };

@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import { expect } from "expect";
 import {
+  EXTRA_STATE_KEYS,
   readExtraState,
   makeExtraState,
 } from "../../../../src/protocol/extra-state.ts";
@@ -26,7 +27,7 @@ describe("readExtraState", () => {
   });
 
   it("returns the raw object when shape is correct", () => {
-    const e = { intermediate_context: "ctx", documents_shipped: ["d1"] };
+    const e = { traceparent: "00-trace", documents_shipped: ["d1"] };
     expect(readExtraState(tm(e))).toEqual(e);
   });
 });
@@ -39,10 +40,10 @@ describe("readExtraState — what a client sends back", () => {
         loaded_skill_slugs: "x",
         timezone: { not: "a string" },
         documents_shipped: ["d1"],
-        intermediate_context: "ctx",
+        traceparent: "00-trace",
       }),
     );
-    expect(out).toEqual({ documents_shipped: ["d1"], intermediate_context: "ctx" });
+    expect(out).toEqual({ documents_shipped: ["d1"], traceparent: "00-trace" });
     expect("loaded_tool_groups" in out).toBe(false);
   });
 
@@ -62,7 +63,7 @@ describe("readExtraState — what a client sends back", () => {
   });
 
   it("keeps the document hits the tool reported, and drops the ones that are not", () => {
-    const good = { id: "d1", type: "document", uri: "ines-doc://c/d1", title: "plan.pdf", page: 2, score: 0.58 };
+    const good = { id: "d1", type: "document", uri: "agent-doc://c/d1", title: "plan.pdf", page: 2, score: 0.58 };
     const out = readExtraState(
       tm({
         document_hits: [good, null, { id: "d1", type: "document" }, { ...good, page: 0 }, { ...good, page: "2" }, { ...good, type: "web" }, { ...good, score: 7 }, "x"],
@@ -127,11 +128,10 @@ describe("readExtraState — what a client sends back", () => {
 describe("makeExtraState", () => {
   it("drops null and undefined values", () => {
     const out = makeExtraState({
-      intermediate_context: "x",
-      continue_from: undefined,
+      timezone: "UTC",
       traceparent: null as unknown as string | undefined,
     });
-    expect(out).toEqual({ intermediate_context: "x" });
+    expect(out).toEqual({ timezone: "UTC" });
   });
 
   it("drops empty arrays", () => {
@@ -156,5 +156,28 @@ describe("makeExtraState", () => {
 
   it("returns {} when every field is empty", () => {
     expect(makeExtraState({})).toEqual({});
+  });
+});
+
+describe("EXTRA_STATE_KEYS", () => {
+  const SAMPLES: Record<(typeof EXTRA_STATE_KEYS)[number], unknown> = {
+    copilot_function_call_arguments: { widget_queries: [] },
+    intermediate_citations: [
+      { id: "c1", source_info: { type: "web", name: "n" }, details: [{ url: "https://example.test" }] },
+    ],
+    document_hits: [{ id: "h1", type: "document", uri: "u", title: "t" }],
+    documents_shipped: ["d1"],
+    loaded_skill_slugs: ["s1"],
+    loaded_tool_groups: ["sql"],
+    pending_bridge_calls: [{ function: "manage_dashboard", input_arguments: {} }],
+    pending_workspace_calls: [{ tool_name: "read_widget", input_arguments: {} }],
+    traceparent: "00-trace",
+    turn_usage: { inputTokens: 1 },
+    timezone: "UTC",
+  };
+
+  it("are exactly the keys that readExtraState reads", () => {
+    const out = readExtraState(tm(SAMPLES));
+    expect(Object.keys(out).sort()).toEqual([...EXTRA_STATE_KEYS].sort());
   });
 });

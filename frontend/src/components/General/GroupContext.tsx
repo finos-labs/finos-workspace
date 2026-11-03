@@ -24,10 +24,6 @@ import {
 import useFetchSharedResources from "../LayoutAuth/Search/hooks/useFetchSharedResources";
 import type { WidgetT } from "../types";
 
-export function containsAll<T>(arr1: T[], arr2: T[]) {
-  return arr1.every((item) => arr2.includes(item));
-}
-
 export default function GroupContext(props: { children: ReactNode }) {
   const { children } = props;
   const { pathname } = useLocation();

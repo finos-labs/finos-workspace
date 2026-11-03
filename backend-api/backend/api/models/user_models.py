@@ -17,7 +17,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy_utils import EmailType, UUIDType
 
-from api import base
 from api.models.entity_models import PermissionsEntityMap
 from api.models.model_helpers import (
     AwareDateTime,
@@ -57,16 +56,7 @@ class User(Base, UUIDMixin, DateMixin):
         EncryptedStringType("user.perplexity_api_key")
     )
 
-    logins = relationship("Login", back_populates="user")
-
     display_settings = Column(UserDisplaySettingsType)
-
-    referred_by = Column(String(100), default=None)
-    referred_by_sent = Column(Boolean, default=False)
-    referral_code = Column(
-        String(100), unique=True, nullable=False, default=base.random_string
-    )
-    total_referrals: Mapped[None | int] = mapped_column(Integer, default=0)
 
     deleted = Column(Boolean, default=False)
     confirmed = Column(Boolean, default=False)
@@ -98,6 +88,29 @@ class Session(Base, UUIDMixin, DateMixin):
     source = Column(String(20), default=None)
 
 
+class ProviderSession(Base, UUIDMixin, DateMixin):
+    __tablename__ = "provider_session"
+
+    session_uuid: Mapped[UUID] = mapped_column(UUIDType, nullable=False, unique=True)
+    provider: Mapped[str] = mapped_column(String(20), nullable=False)
+    id_token: Mapped[str] = mapped_column(
+        EncryptedStringType("provider_session.id_token"), nullable=False
+    )
+    id_token_expires_at: Mapped[datetime] = mapped_column(AwareDateTime(), nullable=False)
+    refresh_token: Mapped[str] = mapped_column(
+        EncryptedStringType("provider_session.refresh_token"), nullable=False
+    )
+
+
+class SigningKey(Base, UUIDMixin, DateMixin):
+    __tablename__ = "signing_key"
+
+    private_key: Mapped[str] = mapped_column(
+        EncryptedStringType("signing_key.private_key"), nullable=False
+    )
+    public_jwk: Mapped[dict] = mapped_column(JSONType, nullable=False)
+
+
 class PersonalAccessToken(Base, UUIDMixin, DateMixin):
     __tablename__ = "personal_access_token"
     __table_args__ = (
@@ -123,7 +136,6 @@ class Login(Base, UUIDMixin, DateMixin):
     user_uuid: Mapped[None | UUID] = mapped_column(
         UUIDType, ForeignKey("user.uuid"), index=True
     )
-    user = relationship("User", back_populates="logins")
     source = Column(String(20), default=None)
 
     def __str__(self) -> str:

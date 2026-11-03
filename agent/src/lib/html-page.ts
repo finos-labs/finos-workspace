@@ -3,9 +3,7 @@ import { runInChild } from "./isolate.ts";
 import { fetchClientUrl } from "./safe-fetch.ts";
 import type { ChildInput, PageOverview, PageRequest, PageViewResult } from "./page-view.ts";
 
-export type { PageOverview, PageRequest, PageViewResult };
-
-export const MAX_PAGE_BYTES = 5 * 1024 * 1024;
+const MAX_PAGE_BYTES = 5 * 1024 * 1024;
 const CHILD_TIMEOUT_MS = 10_000;
 const CHILD = new URL("./html-child.ts", import.meta.url).pathname;
 
@@ -30,7 +28,7 @@ const READABLE_TYPE = /^(text\/|application\/(xhtml\+xml|xml|json|ld\+json)$|[^/
 export async function fetchPage(url: string): Promise<{ page: FetchedPage; status: number }> {
   const res = await fetchClientUrl(url, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; InesAgent/1.0)",
+      "User-Agent": "Mozilla/5.0 (compatible; Agent/1.0)",
       Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,application/json;q=0.8,*/*;q=0.5",
     },
     signal: AbortSignal.timeout(10_000),

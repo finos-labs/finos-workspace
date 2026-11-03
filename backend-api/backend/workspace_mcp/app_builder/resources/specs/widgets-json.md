@@ -54,6 +54,7 @@ Each value is an object with these keys and no others:
 | `mcp_tool` | No | object | The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool |
 | `data` | No | object | `dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines |
 | `raw` | No | `true` or `false` | Only for `html` and plugin types. The endpoint also answers `raw=true` with the rows the widget shows, as JSON: the AI Agent and MCP get those rows, and the widget's rows button shows them |
+| `requires_auth` | No | `true` or `false` | Only for `iframe`. The page needs the backend connection's credentials. The browser then opens it through the FINOS Workspace API, which adds them, in a sandbox without storage. For trusted pages only: the API checks this declaration itself |
 | `storage` | No | object | Only for `iframe`. `mcpUrl`: an MCP server of the page's own, connected for the widget without the backend's credentials |
 <!-- /generated:widget-fields -->
 
@@ -75,13 +76,13 @@ Common mistakes:
 `endpoint` is a path on the backend, or an absolute URL, with no `?` and no `#`; it does not have to match the widget id. For the current param values FINOS Workspace builds one request:
 
 1. **URL.** A `{name}` placeholder in `endpoint` takes the value of the param `name`, encoded as one path segment; the request is not sent while it has no value. Each param with `in: "query"`, or no `in`, is appended to the query.
-2. **Headers.** The backend connection's credentials, the headers the deployment adds, then each param with `in: "header"`, named by its `paramName`.
+2. **Headers.** Each param with `in: "header"`, named by its `paramName`. The API adds the backend connection's credentials, `X-Workspace-User`, `X-Workspace-Identity` and, when the deployment turns it on, the identity provider's ID token.
 3. **Body.** With `"method": "POST"`, the params with `in: "body"` as one JSON object, `{ "<paramName>": <value> }`, sent as `Content-Type: application/json`.
 4. **FINOS Workspace's own query values.** `theme` (`dark` or `light`) for `markdown`, `html`, `iframe` and plugin types, and `raw=true` for the raw view of an `html` widget. They are reserved names for those types.
 
 An empty value is not sent, in any place; `0` and `false` are. How each kind of value is written is in `workspace://specs/widget-parameters`.
 
-A header param, a JSON body or `POST` makes the browser ask first: the backend must answer `OPTIONS` for the route with `Access-Control-Allow-Methods` including the method, and `Access-Control-Allow-Headers` including `Content-Type` (when there is a body) and every header param's name. See `workspace://contract/backend`.
+The FINOS Workspace API sends the request, whatever the method and the params are, so the backend needs no CORS settings. See `workspace://contract/backend`.
 
 ## The MCP tool link
 

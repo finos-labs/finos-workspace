@@ -42,7 +42,7 @@ describe("GET /agents.json", () => {
     const res = await app().request("/agents.json");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { default_agent: Record<string, unknown> };
-    expect(body.default_agent.name).toBe("Ines");
+    expect(body.default_agent.name).toBe("Agent");
     expect(body.default_agent).not.toHaveProperty("image");
     expect(body.default_agent).toHaveProperty("endpoints");
     expect(body.default_agent).toHaveProperty("features");
@@ -60,7 +60,7 @@ describe("GET /agents.json", () => {
     expect(features["model"]).toHaveProperty("type", "select");
   });
 
-  it("lists the skills that come with Ines", async () => {
+  it("lists the skills that come with the agent", async () => {
     const body = (await (await app().request("/agents.json")).json()) as {
       default_agent: { skills: { slug: string; description: string }[] };
     };

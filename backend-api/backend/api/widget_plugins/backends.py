@@ -28,7 +28,9 @@ TOKEN_PREFIX = "wpc1."  # noqa: S105
 TOKEN_SECONDS = 60
 SECRET_HEADER = "X-Workspace-Secret-"  # noqa: S105
 CALL_HEADER = "X-Workspace-Call"
-_IDENTITY_TIMEOUT = 5.0
+IDENTITY_TIMEOUT_SECONDS = 5.0
+IDENTITY_PATH = "/.workspace/identity"
+ROUTE_PATH_PREFIX = "/.workspace/routes/"
 _PLUGIN_ID = re.compile(r"[a-z][a-z0-9-]{1,47}")
 
 IDENTITY_OK = "ok"
@@ -154,7 +156,7 @@ async def check_identity(plugin_id: str, version: str, digest: str, *, force: bo
 async def _ask_identity(url: str, plugin_id: str, version: str, digest: str) -> Identity:
     try:
         status, content_type, raw = await request(
-            url, "GET", "/.workspace/identity", timeout=_IDENTITY_TIMEOUT, limit=16 * 1024
+            url, "GET", IDENTITY_PATH, timeout=IDENTITY_TIMEOUT_SECONDS, limit=16 * 1024
         )
         answer = json.loads(raw) if status == 200 and content_type == "application/json" else None  # noqa: PLR2004
     except (CallError, ValueError):

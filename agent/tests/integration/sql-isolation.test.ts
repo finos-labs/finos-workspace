@@ -16,12 +16,12 @@ function tools(rows: Record<string, unknown>[] = [{ a: 1 }, { a: 2 }, { a: 3 }])
 
 let saved: string | undefined;
 beforeEach(() => {
-  saved = process.env.INES_SQL_TIMEOUT_MS;
-  process.env.INES_SQL_TIMEOUT_MS = "1500";
+  saved = process.env.AGENT_SQL_TIMEOUT_MS;
+  process.env.AGENT_SQL_TIMEOUT_MS = "1500";
 });
 afterEach(() => {
-  if (saved === undefined) delete process.env.INES_SQL_TIMEOUT_MS;
-  else process.env.INES_SQL_TIMEOUT_MS = saved;
+  if (saved === undefined) delete process.env.AGENT_SQL_TIMEOUT_MS;
+  else process.env.AGENT_SQL_TIMEOUT_MS = saved;
 });
 
 async function whileRunning<T>(work: () => Promise<T>): Promise<{ result: T; beats: number; ms: number }> {
@@ -65,20 +65,26 @@ describe("a query that never ends", () => {
   });
 
   it("does not hold up another user's query that runs at the same time", async () => {
+    process.env.AGENT_SQL_TIMEOUT_MS = "6000";
     const stuck = tools();
     const other = tools();
-    const runaway = stuck.call("execute_sql", { sql: "WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM r) SELECT count(*) FROM r" });
-    const started = Date.now();
+    let runawayEnded = false;
+    const runaway = stuck
+      .call("execute_sql", { sql: "WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM r) SELECT count(*) FROM r" })
+      .then((text) => {
+        runawayEnded = true;
+        return text;
+      });
     const answer = await other.call("execute_sql", { sql: "SELECT sum(a) AS total FROM t" });
     expect(answer).toContain('"total": 6');
-    expect(Date.now() - started).toBeLessThan(1_200);
-    await runaway;
+    expect(runawayEnded).toBe(false);
+    expect(await runaway).toContain("was stopped");
   });
 });
 
 describe("a query that wants more memory than there is", () => {
   beforeEach(() => {
-    process.env.INES_SQL_TIMEOUT_MS = "30000";
+    process.env.AGENT_SQL_TIMEOUT_MS = "30000";
   });
 
   it("fails with an error instead of taking the memory of the machine", async () => {

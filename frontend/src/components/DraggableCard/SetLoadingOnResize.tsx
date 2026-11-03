@@ -117,7 +117,7 @@ interface SetLoadingOnResizeProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
 }
 
-export const SetLoadingOnResize = forwardRef<HTMLDivElement, SetLoadingOnResizeProps>(
+const SetLoadingOnResize = forwardRef<HTMLDivElement, SetLoadingOnResizeProps>(
   ({ children, ...rootProps }, ref) => {
     const isResizingGridElement = useShallowThemeStore(
       (state) => state.isResizingGridElement,
@@ -140,15 +140,6 @@ export const SetLoadingOnResize = forwardRef<HTMLDivElement, SetLoadingOnResizeP
 );
 
 SetLoadingOnResize.displayName = "LoadingOnResize";
-
-export function HideOnResize({ children }: { children: ReactNode }) {
-  const isResizingGridElement = useShallowThemeStore(
-    (state) => state.isResizingGridElement,
-  );
-  const widgetRef = useWidgetContext()?.widgetRef;
-
-  return isResizingGridElement === widgetRef?.current?.id ? null : children;
-}
 
 interface CopilotOnResizeProps extends ChildrenProps {
   as?: "div" | "main";

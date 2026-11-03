@@ -2,6 +2,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
+from api import source_proxy
 from routers.app import mcp_oauth
 from routers.app.index import (
     MCPProxyRequest,
@@ -30,6 +31,12 @@ def hosts(monkeypatch):
 @pytest.fixture
 async def mcp_client(hosts):
     async with mcp_oauth.create_mcp_http_client(FakeNetwork(hosts)) as client:
+        yield client
+
+
+@pytest.fixture
+async def trusted_client(hosts):
+    async with mcp_oauth.create_mcp_http_client(FakeNetwork(hosts), trusted=True) as client:
         yield client
 
 
@@ -241,17 +248,63 @@ class TestTheMcpClient:
         monkeypatch.setattr(
             settings,
             "DEFAULT_MCP_SERVERS",
-            [DefaultMCPServer(id="tools", name="Tools", url="http://Ines-MCP:8787/mcp")],
+            [DefaultMCPServer(id="tools", name="Tools", url="http://Agent-MCP:8787/mcp")],
         )
-        hosts.add("ines-mcp", "172.18.0.5", handler=_ok)
+        hosts.add("agent-mcp", "172.18.0.5", handler=_ok)
 
-        response = await mcp_client.post("http://ines-mcp:8787/mcp", json={})
+        response = await mcp_client.post("http://agent-mcp:8787/mcp", json={})
 
         assert response.status_code == 200
-        assert hosts.connections == [("ines-mcp", 8787)]
+        assert hosts.connections == [("agent-mcp", 8787)]
         with pytest.raises(mcp_oauth.BlockedAddressError):
-            await mcp_client.get("http://ines-mcp:9000/")
-        assert hosts.connections == [("ines-mcp", 8787)]
+            await mcp_client.get("http://agent-mcp:9000/")
+        assert hosts.connections == [("agent-mcp", 8787)]
+
+    @pytest.mark.asyncio
+    async def test_a_trusted_client_reaches_private_and_plain_addresses(self, hosts, trusted_client):
+        hosts.add("intranet.example.com", "10.0.0.7", handler=_ok)
+        hosts.add("localhost", "127.0.0.1", handler=_ok)
+
+        for url in ("http://intranet.example.com/mcp", "http://localhost:8080/mcp"):
+            assert (await trusted_client.post(url, json={})).status_code == 200
+
+        assert hosts.connections == [("intranet.example.com", 80), ("localhost", 8080)]
+
+    @pytest.mark.asyncio
+    async def test_on_a_local_machine_loopback_is_the_host_machine(
+        self, hosts, trusted_client, monkeypatch
+    ):
+        monkeypatch.setattr(settings, "MODE", "local")
+        monkeypatch.setitem(source_proxy._host_machine, source_proxy.HOST_MACHINE, True)
+        for host in ("localhost", "127.0.0.1", "::1"):
+            hosts.add(host, "127.0.0.1", handler=_ok)
+
+        for url in ("http://localhost:8080/mcp", "http://127.0.0.1:8081/mcp", "http://[::1]:8082/mcp"):
+            assert (await trusted_client.post(url, json={})).status_code == 200
+
+        assert hosts.connections == [
+            (source_proxy.HOST_MACHINE, 8080),
+            (source_proxy.HOST_MACHINE, 8081),
+            (source_proxy.HOST_MACHINE, 8082),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_a_server_that_is_not_on_loopback_is_not_the_host_machine(
+        self, hosts, trusted_client, monkeypatch
+    ):
+        monkeypatch.setattr(settings, "MODE", "local")
+        monkeypatch.setitem(source_proxy._host_machine, source_proxy.HOST_MACHINE, True)
+        hosts.add("intranet.example.com", "10.0.0.7", handler=_ok)
+
+        await trusted_client.post("http://intranet.example.com/mcp", json={})
+
+        assert hosts.connections == [("intranet.example.com", 80)]
+
+    def test_the_client_follows_the_trust_of_the_caller(self, monkeypatch):
+        assert mcp_oauth.mcp_client(False) is mcp_oauth.mcp_http
+        assert mcp_oauth.mcp_client(True) is mcp_oauth.trusted_mcp_http
+        monkeypatch.setattr(settings, "MODE", "local")
+        assert mcp_oauth.mcp_client(False) is mcp_oauth.trusted_mcp_http
 
     @pytest.mark.asyncio
     async def test_a_host_that_does_not_resolve_is_not_reached(self, hosts, mcp_client):

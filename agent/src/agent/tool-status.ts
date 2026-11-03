@@ -3,7 +3,7 @@ import type { CopilotArtifact, Widget } from "../protocol/types.ts";
 import { htmlTableArtifact } from "../protocol/html-table.ts";
 import type { WidgetItem } from "../widgets/parse.ts";
 
-export interface ToolProgressStatus {
+interface ToolProgressStatus {
   message: string;
   eventType?: "INFO" | "WARNING" | "ERROR";
   details?: Record<string, unknown> | Array<Record<string, unknown>> | string;
@@ -20,7 +20,7 @@ const MAX_SQL_PREVIEW = 180;
 const MAX_STRING_PREVIEW = 2_000;
 const MAX_ARRAY_ITEMS = 20;
 const MAX_OBJECT_KEYS = 40;
-const MAX_STATUS_TABLE_ROWS = 1_000;
+export const MAX_STATUS_TABLE_ROWS = 1_000;
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -355,6 +355,8 @@ function startSummary(toolName: string, input: unknown, options: ToolStatusOptio
       return "Extracting table from text";
     case "create_html_artifact":
       return "Rendering HTML artifact";
+    case "show_plugin_artifact":
+      return `Showing ${asString(record.name) ?? "a plugin component"}`;
     default:
       return `Calling ${displayName}`;
   }
@@ -632,15 +634,6 @@ function tableArtifact(
   return [htmlTableArtifact(name, renderedDescription, shownRows)];
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 function summarizeSearchWidgets(output: unknown, input: unknown): Partial<ToolProgressStatus> | null {
   const record = asRecord(output);
   const matches = Array.isArray(record.matches) ? record.matches : null;
@@ -658,29 +651,6 @@ function summarizeSearchWidgets(output: unknown, input: unknown): Partial<ToolPr
           : `Found ${total} widget match${total === 1 ? "" : "es"}.`,
     ...(artifacts ? { artifacts } : {}),
   };
-}
-
-function displayParams(params: unknown): Record<string, unknown> {
-  if (!params) return {};
-  if (Array.isArray(params)) {
-    return Object.fromEntries(
-      params
-        .map((param) => {
-          if (typeof param !== "string") return null;
-          const [left, ...valueParts] = param.split("=");
-          const name = left.split(":")[0]?.trim();
-          if (!name) return null;
-          return [name, widgetDetailValue(valueParts.join("="))] as const;
-        })
-        .filter((entry): entry is readonly [string, unknown] => entry != null),
-    );
-  }
-  if (typeof params === "object") {
-    return Object.fromEntries(
-      Object.entries(params as Record<string, unknown>).map(([key, value]) => [key, widgetDetailValue(value)]),
-    );
-  }
-  return {};
 }
 
 function widgetMatchRows(matches: unknown[]): Record<string, unknown>[] {
@@ -718,14 +688,6 @@ function widgetMatchArtifacts(matches: unknown[], total?: number): CopilotArtifa
   ];
 }
 
-function outputBaseMessage(
-  toolName: string,
-  input: unknown,
-  options: ToolStatusOptions,
-): string {
-  return toolDisplayName(toolName, options);
-}
-
 function artifactResultMessage(output: unknown): string | null {
   if (typeof output !== "string") return null;
   const match = output.match(/^Created (table) artifact "([^"]+)" from (\d+) rows?\./);
@@ -747,7 +709,7 @@ export function formatToolResultStatus(
   output: unknown,
   options: ToolStatusOptions = {},
 ): ToolProgressStatus {
-  const outputMessage = outputBaseMessage(toolName, input, options);
+  const outputMessage = toolDisplayName(toolName, options);
   const details = {
     ...baseDetails(toolName, input, "output", "tool_output", options),
     output_preview: previewOutput(output),

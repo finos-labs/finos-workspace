@@ -1,10 +1,12 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { useIframeProtocol as UseIframeProtocol } from "~/components/Widgets/Helpers/useIframeProtocol";
 import Iframe from "~/components/Widgets/Iframe";
 import type { Group } from "~/lib/state/app";
 import { useThemeStore } from "~/lib/state/theme";
+import "../../../mocks/runtimeConfig";
+import { postFrameGrant } from "~/api/auth.api";
 import { makeEndpointParamGroup } from "../../factories";
 import { partial } from "../../mocks";
 import { renderWidget, WidgetTestWrapper } from "./WidgetTestWrapper";
@@ -120,6 +122,8 @@ vi.mock("~/components/Widgets/Helpers/IframeParamControls", () => ({
   ),
 }));
 
+vi.mock("~/api/auth.api", () => ({ postFrameGrant: vi.fn() }));
+
 vi.mock("~/components/Widgets/Helpers/useIframeProtocol", () => ({
   useIframeProtocol: () => iframeProtocolMock.state,
 }));
@@ -140,6 +144,62 @@ describe("Iframe Widget", () => {
     sharedAppStoreMock.getWidgetGroups.mockReturnValue([]);
     queryParamsMock.renderRow0Params = null;
     queryParamsMock.renderBelowNavbarRows = null;
+  });
+
+  describe("a page that requires the connection's credentials", () => {
+    const framedWidget = {
+      sourceId: "src-1",
+      sourceName: "Backend",
+      widgetId: "Backend-dashboard",
+      requires_auth: true,
+      storage: { html: "https://backend.test/dash/index.html", scale: 1.0 },
+    };
+
+    beforeEach(() => {
+      vi.mocked(postFrameGrant).mockReset();
+    });
+
+    it("opens through the API with the token and a sandbox without storage", async () => {
+      vi.mocked(postFrameGrant).mockResolvedValue({
+        token: "ws_frame_tok",
+        prefix: "/dash/",
+        expiresIn: 3600,
+      });
+      renderWidget(<Iframe />, { widgetOverrides: framedWidget });
+
+      await waitFor(() =>
+        expect(document.querySelector("iframe")).toHaveAttribute(
+          "src",
+          "http://localhost:3000/app/data-connectors/frame/ws_frame_tok/dash/index.html?theme=dark",
+        ),
+      );
+      expect(postFrameGrant).toHaveBeenCalledWith("src-1", "dashboard");
+      const sandbox = document.querySelector("iframe")?.getAttribute("sandbox") ?? "";
+      expect(sandbox).toContain("allow-scripts");
+      expect(sandbox).not.toContain("allow-same-origin");
+    });
+
+    it("shows nothing of the page and says so when the connection refuses", async () => {
+      vi.mocked(postFrameGrant).mockRejectedValue(new Error("403"));
+      renderWidget(<Iframe />, { widgetOverrides: framedWidget });
+
+      expect(await screen.findByText("The page cannot be opened")).toBeInTheDocument();
+      expect(document.querySelector("iframe")).toBeNull();
+    });
+
+    it("is not asked for without requires_auth, and keeps the page's own storage", () => {
+      renderWidget(<Iframe />, {
+        widgetOverrides: { ...framedWidget, requires_auth: undefined },
+      });
+
+      expect(postFrameGrant).not.toHaveBeenCalled();
+      const iframe = document.querySelector("iframe");
+      expect(iframe).toHaveAttribute(
+        "src",
+        "https://backend.test/dash/index.html?theme=dark",
+      );
+      expect(iframe?.getAttribute("sandbox")).toContain("allow-same-origin");
+    });
   });
 
   it("renders empty state when no URL is provided", () => {

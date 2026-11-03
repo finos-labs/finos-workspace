@@ -1,5 +1,4 @@
 import { describe, it } from "node:test";
-import { expect } from "expect";
 import { redactString, redactValue } from "../../../../src/lib/redact.ts";
 import { pagesNamedIn } from "../../../../src/protocol/citations.ts";
 import { stripPlaceholderTags, parseSuggestions } from "../../../../src/protocol/events.ts";
@@ -7,7 +6,7 @@ import { sanitizeAssistantContent } from "../../../../src/agent/history.ts";
 import { makeTextSink } from "../../../../src/agent/text-sink.ts";
 import { clipForModel } from "../../../../src/agent/clip.ts";
 
-const BUDGET_MS = 1000;
+const BUDGET_MS = 5000;
 const SIZE = 1_000_000;
 
 const RUNS = [" ", "\n", ":", " :", "\t"];

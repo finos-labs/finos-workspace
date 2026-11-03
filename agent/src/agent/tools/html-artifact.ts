@@ -8,7 +8,7 @@ const logger = getLogger(["app", "tools", "html_artifact"]);
 
 const MAX_HTML_BYTES = 50 * 1024;
 
-export const htmlArtifactSchema = z.object({
+const htmlArtifactSchema = z.object({
   html: z
     .string()
     .min(1)
@@ -30,9 +30,9 @@ export const htmlArtifactDescription =
   "For flowcharts or other diagrams, use a diagram tool if one is listed; otherwise draw them here. " +
   "FINOS Workspace renders the HTML in a sandboxed iframe that may load nothing by address and runs no script.";
 
-export type HtmlArtifactArgs = z.infer<typeof htmlArtifactSchema>;
+type HtmlArtifactArgs = z.infer<typeof htmlArtifactSchema>;
 
-export interface HtmlArtifactContext {
+interface HtmlArtifactContext {
   artifactQueue: SSEEvent[];
 }
 

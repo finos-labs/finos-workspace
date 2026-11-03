@@ -5,7 +5,7 @@ import { invalidateMcpTokens } from "~/components/LayoutAuth/useMcpTokens";
 import { getConfig } from "~/lib/runtimeConfig";
 import { createURLString } from "~/lib/utils/widgetParams";
 
-export interface StartBridgeSessionBody {
+interface StartBridgeSessionBody {
   client_name: string;
   current_dashboard_id: string | null;
   current_tab_id: string | null;
@@ -21,7 +21,7 @@ export interface WorkspaceMcpTokenMetadata {
   last_used_at?: string | null;
 }
 
-export interface WorkspaceMcpTokenCreateResponse extends WorkspaceMcpTokenMetadata {
+interface WorkspaceMcpTokenCreateResponse extends WorkspaceMcpTokenMetadata {
   token: string;
 }
 

@@ -1,15 +1,12 @@
 import hashlib
 import secrets
-from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request, status
-from fastapi.security.utils import get_authorization_scheme_param
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import base, models
-from api.database import aget_write_db
 
 WORKSPACE_MCP_TOKEN_TYPE = "workspace_mcp"  # noqa: S105
 WORKSPACE_MCP_TOKEN_PREFIX = "ws_mcp_"  # noqa: S105
@@ -31,17 +28,6 @@ def hash_workspace_mcp_token(token: str) -> str:
 
 def display_token_prefix(token: str) -> str:
     return token[:DISPLAY_TOKEN_PREFIX_LENGTH]
-
-
-async def get_workspace_mcp_token_user_uuid(
-    request: Request,
-    db: Annotated[AsyncSession, Depends(aget_write_db)],
-) -> UUID:
-    scheme, token = get_authorization_scheme_param(request.headers.get("Authorization"))
-    if scheme.lower() != "bearer" or not token:
-        raise workspace_mcp_credentials_exception
-
-    return await validate_workspace_mcp_token(db, token)
 
 
 async def validate_workspace_mcp_token(db: AsyncSession, token: str) -> UUID:

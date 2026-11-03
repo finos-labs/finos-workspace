@@ -1,0 +1,107 @@
+---
+title: Production setup
+sidebar_position: 0
+---
+
+import { EnvDefault, SettingDefault, WebPort } from "@site/src/components/Reference/config";
+
+# Production setup
+
+This page is your starting point for running FINOS Workspace for real users. It covers what you are running, the order in which things start, the secrets you need to create and what your platform has to provide. When you are ready to set it up, follow [Deploy with Docker Compose](deploy-with-docker-compose.md) for one server, or [Deploy on Kubernetes](deploy-on-kubernetes.mdx) for a cluster. To see how the pieces talk to each other first, read [Transports](../../reference/transports.mdx).
+
+## What you are running
+
+A deployment has five services, plus a database and Valkey:
+
+| Service | Image | Port | Health check | How many to run |
+|---|---|---|---|---|
+| Web app | The web app image | <WebPort /> | `/health` or `/healthz` | As many as you like |
+| API | The backend image | <SettingDefault name="PORT" unit="raw" /> | `/health` or `/healthz` | As many as you like |
+| Worker | The backend image, with the command `python base_workers.py` | None | None | One |
+| Agent | The agent image | <EnvDefault name="PORT" /> | `/status` when it is running, `/ready` when it can take requests | One, or more if they share Valkey |
+| Agent MCP server | The agent MCP server image | <EnvDefault name="MCP_PORT" /> | `/` | One, or more if they share Valkey |
+
+A few things to know:
+
+- The API and the worker are the same image. With no command, it starts the API. With the command `python base_workers.py`, it starts the worker.
+- The web app image runs as the user 101, and the other images run as the user 1000. None of them runs as root, except in the init step of the Compose guide, which [Lock down the containers](#lock-down-the-containers) explains.
+- [Build the images](../build-from-source/build-the-images.md) shows how to build all four images from the repository.
+
+You also need:
+
+- A database: MySQL or PostgreSQL. SQLite is meant for one machine, such as a trial.
+- Valkey, or another server that speaks the Redis protocol.
+- A place for uploaded files: a folder that every API and worker container can reach, or a bucket on AWS, Azure or Google Cloud.
+
+[Connect FINOS Workspace to its database and cache](connect-the-database-and-cache.md) and [Choose where files are stored](choose-file-storage.md) walk you through the options.
+
+## The order in which things start
+
+1. The database and Valkey. Everything else needs them, and the API does not report healthy without them.
+2. The init step. This is a one-off container of the backend image. It updates the database tables with `python -m alembic upgrade head`, creates the first organization and administrator from `scripts/cfgs/config.toml` with `python -m scripts.init_users`, writes the file `user_create.json` and exits. It is safe to run on every release, because a run that finds everything in place changes nothing. It finds the organization by its name, so a different name in `config.toml` creates a second organization. [Run database migrations](run-database-migrations.mdx) and [Provision an organization from a file](provision-an-organization.mdx) explain both parts.
+3. The API and the worker, after the init step has finished without errors. They read `user_create.json` from their working directory, `/opt/code`, to learn which role new people get. Where they cannot see that file, as in separate pods, set `DEFAULT_USER_MAPPING` to the `permissions_uuid` in it. The API also runs the migrations every time it starts, so a new replica never runs against an old schema.
+4. The agent, after the API is healthy, because the agent asks the API who each token belongs to. The agent's MCP server needs Valkey.
+5. The web app. It serves the app and its settings, so it can start at any time, but there is little to do until the API and the agent answer.
+
+## The secrets you need to create
+
+The API does not start without these, and the agent needs two secrets of its own. Create them once, keep them in your secret store and give each service the ones it uses.
+
+| Setting | Used by | What it is for |
+|---|---|---|
+| `JWT_SECRET` | API, worker | Signs the service tokens, including the metering token of the agent. Use at least 32 random bytes. If you change it, every service token stops working, so create a new metering token right after. People who are signed in stay signed in. |
+| `WORKSPACE_AES_KEY` | API, worker | Encrypts the secrets that the database stores, such as provider keys, connection headers and the secrets of authenticator apps. It is a base64url string of at least 32 bytes. Nothing encrypted with it can be read with another key, so back it up together with the database. |
+| `LOCAL_STORAGE_SECRET_KEY` | API, worker | Signs the short-lived links to uploaded files. At least 32 bytes. You need it when files are kept in a folder, which is the default. |
+| `WRITE_DB_PASSWORD` and `READ_DB_PASSWORD` | API, worker, init step | The passwords of the database accounts that the API writes and reads with. The two accounts can be the same one. You need them with MySQL or PostgreSQL. |
+| `REDIS_PASS` | API, worker | The password of Valkey. Leave it empty when Valkey has no password, but the variable still has to be there. |
+| `MODE` | API, worker | Set it to `production`. |
+| `AGENT_SCOPE_SECRET` | Agent, agent MCP server | At least 16 characters. It keeps one user's chats apart from another's, and both services must have the same value. |
+| `AGENT_METERING_TOKEN` | Agent | Lets the agent report usage to the API and ask it whether a user may use a model and its tools. It is signed with `JWT_SECRET` and expires after a year. The agent does not start without it. |
+
+Every API and worker process must have the same `JWT_SECRET`, `WORKSPACE_AES_KEY` and `LOCAL_STORAGE_SECRET_KEY`, so give all replicas the same Secret or file.
+
+You also have to set the addresses `APPURL`, `SELFURL`, `FRONTENDURL` and `BACKEND_CORS_ORIGINS`. [Serve FINOS Workspace over HTTPS and set the addresses](serve-over-https-and-cors.mdx) explains each one, along with the addresses that the web app and the agent need.
+
+Generate the random values with the same commands that the local setup script uses:
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"  # JWT_SECRET
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"  # once each for WORKSPACE_AES_KEY, LOCAL_STORAGE_SECRET_KEY and AGENT_SCOPE_SECRET
+```
+
+To create `AGENT_METERING_TOKEN`, run this command in a container of the backend image that has the API's settings:
+
+```bash
+python -m scripts.create_metering_token
+```
+
+It prints the token, and on its error output the date on which the token expires. Make a new one before then. When the token has expired, the API refuses the agent's calls with status 403, and every question to the agent fails with status 503 and the message "The FINOS Workspace API is not available" until you set a new token and restart the agent. Use `--days` for a shorter lifetime.
+
+## What your platform needs to provide
+
+- TLS in front of the web app, the API and the agent, with all three on the same registrable domain, for example `workspace.example.com` and `api.workspace.example.com`. [Serve FINOS Workspace over HTTPS and set the addresses](serve-over-https-and-cors.mdx) explains why.
+- A proxy that passes on the address of each client in `X-Forwarded-For` and the scheme in `X-Forwarded-Proto`. The API counts its rate limits per client address, and it reads that address from `X-Forwarded-For` when the request comes from a private network or from loopback. Without the header, every user shares the address of the proxy, and its limits.
+- A private network for the database, Valkey and the agent's MCP server. Browsers never talk to them: the API reaches the MCP server at the address in `DEFAULT_MCP_SERVERS`.
+- Backups of the database, including one right before every upgrade, as [Upgrade a deployment](run-database-migrations.mdx#upgrade-a-deployment) describes.
+- A place for uploaded files that every API and worker container can reach, as [Choose where files are stored](choose-file-storage.md) describes.
+- A model for the agent: set `DEFAULT_MODEL` and your provider's key in the environment of the agent. [Choose the Agent's model and provider](../../features/agent/choose-the-agent-model.mdx) lists the providers.
+- A request size limit in the proxy that fits what the app sends. People can attach files of up to 25 MiB in the web app, and the agent accepts a request of up to `AGENT_MAX_BODY_MB` megabytes, 64 by default, and refuses a larger one with status 413. Set the limit of your proxy for the agent's name to the same size: nginx, for one, refuses anything over 1 MiB unless you raise it.
+- Connections that stay open while the agent streams an answer, and enough time at shutdown for the agent to finish the questions it is working on, as [What the load balancer and the platform allow](run-the-agent-on-several-replicas.mdx#what-the-load-balancer-and-the-platform-allow) describes.
+
+## Lock down the containers
+
+Run every container as its image's user, drop all Linux capabilities and turn off privilege escalation. The Compose guide does this for every container except the init step, which runs as root, with Docker's default capabilities, so that it can write `user_create.json` on the server. The repository's own Compose file goes further for the agent and its MCP server: a read-only root file system with a writable `/tmp`, an init process that cleans up their child processes, a memory limit of 4 GB and at most 1024 processes. Both work within those limits. Give the agent enough memory for the largest files your users attach.
+
+## Check that it works
+
+1. The API answers `/health`, the web app `/healthz` and the agent `/status`, each with status 200.
+2. Give the first administrator a password with `python -m scripts.init_users --new-password <email>` in a container of the backend image, as [Set the administrator's password](../build-from-source/run-the-stack-from-source.md#set-the-administrators-password) shows. The administrator has no password until you do. The password needs at least 8 characters, with an uppercase letter, a lowercase letter, a number and a special character, and no spaces. The underscore does not count as a special character.
+3. Sign in, and go through the checks in [Check it](serve-over-https-and-cors.mdx#check-it).
+4. Ask the agent a question. The answer "No model is configured" means that `DEFAULT_MODEL` is not set.
+
+## What to set up next
+
+- The settings of every service: [Configuration overview](../../reference/configuration/overview.md).
+- Single sign-on: [Set up single sign-on](set-up-single-sign-on.md).
+- Logs, metrics and traces: [Ship logs and metrics](ship-logs-and-metrics.mdx) and [Export traces of the Agent](export-traces.mdx).
+- The search of documents and dictation: [Switch on the search of documents](../../features/agent/enable-document-search.mdx) and [Switch on dictation](../../features/agent/enable-dictation.mdx).

@@ -113,7 +113,7 @@ export function nvidiaFunctionId(model: string, apiKey: string, fetchImpl: typeo
   return lookup;
 }
 
-export interface RecognizeOptions {
+interface RecognizeOptions {
   wav: Uint8Array;
   sampleRateHertz: number;
   channels: number;

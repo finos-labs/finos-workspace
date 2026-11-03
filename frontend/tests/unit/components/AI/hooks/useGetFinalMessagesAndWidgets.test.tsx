@@ -169,13 +169,13 @@ describe("useGetFinalMessagesAndWidgets", () => {
         {
           role: "human",
           content: "what is 9 plus 9?",
-          copilotId: "ines",
+          copilotId: "agent",
           timestamp: 1,
         },
         ...answers.map((content, i) => ({
           role: "ai",
           content,
-          copilotId: "ines",
+          copilotId: "agent",
           timestamp: 10 + i,
         })),
         {
@@ -184,7 +184,7 @@ describe("useGetFinalMessagesAndWidgets", () => {
             function: "no_such_function",
             input_arguments: {},
           }),
-          copilotId: "ines",
+          copilotId: "agent",
           timestamp: 99,
         },
       ],
@@ -195,7 +195,7 @@ describe("useGetFinalMessagesAndWidgets", () => {
 
     expect(finalMessages).toEqual([
       { role: "human", content: "what is 9 plus 9?" },
-      ...answers.map((content) => ({ role: "ai", content, agent_id: "ines" })),
+      ...answers.map((content) => ({ role: "ai", content, agent_id: "agent" })),
     ]);
     expect(mockRemoveMessages).toHaveBeenCalledWith([99]);
   });

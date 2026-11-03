@@ -1,9 +1,5 @@
 import { tool, type Tool, type ToolSet } from "ai";
-import {
-  WORKSPACE_BRIDGE_COMMANDS,
-  WORKSPACE_BRIDGE_COMMAND_NAMES,
-  type WorkspaceBridgeCommandSpec,
-} from "../../protocol/bridge-commands.ts";
+import { WORKSPACE_BRIDGE_COMMANDS, type WorkspaceBridgeCommandSpec } from "../../protocol/bridge-commands.ts";
 
 function buildTool(spec: WorkspaceBridgeCommandSpec): Tool {
   return tool({
@@ -20,5 +16,3 @@ export function makeWorkspaceTools(enabledNames?: ReadonlySet<string>): ToolSet 
   }
   return out;
 }
-
-export { WORKSPACE_BRIDGE_COMMAND_NAMES };

@@ -163,7 +163,7 @@ export const functionCallSchema = z
 
 export type DataSourceT = z.infer<typeof dataSource>;
 export type ParamOptionQueryT = z.infer<typeof paramOptionQuery>;
-export type ParamOptionSchemaT = z.infer<typeof paramOptionSchema>;
+
 export type ParamOptionQueryResultT = z.infer<typeof paramOptionQueryResult>;
 export type GetWidgetDataInputArgumentsT = z.infer<typeof getWidgetDataInputArguments>;
 export type GetParamOptionsInputArgumentsT = z.infer<
@@ -180,7 +180,7 @@ export type ManageNavigationBarInputArgumentsT = z.infer<
   typeof manageNavigationBarInputArguments
 >;
 
-export type FunctionCallSchemaT = z.infer<typeof functionCallSchema>;
+type FunctionCallSchemaT = z.infer<typeof functionCallSchema>;
 
 type WidgetQueryRequest = {
   widget_uuid: string;
@@ -195,7 +195,7 @@ type DataSourceSearchQuery = {
   user_context: string | null;
 };
 
-export type CopilotFunctionCallArgumentsT = {
+type CopilotFunctionCallArgumentsT = {
   summary?: string;
   widget_queries?: WidgetQueryRequest[];
   search_queries?: DataSourceSearchQuery[];

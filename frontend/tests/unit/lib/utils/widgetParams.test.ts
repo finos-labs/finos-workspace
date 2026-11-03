@@ -8,6 +8,7 @@ import {
   createWidgetEndpoint,
   createWidgetInitParams,
   currentDateModifier,
+  streamEndpointOf,
 } from "~/lib/utils/widgetParams";
 import { malformed, partial } from "../../mocks";
 
@@ -182,6 +183,37 @@ describe("Widget Params Utility Functions", () => {
     });
   });
 
+  describe("a default of false or 0", () => {
+    const widget = partial<CreateParamDefsInput>({
+      params: [
+        { paramName: "active", type: "boolean", value: false },
+        { paramName: "offset", type: "number", value: 0 },
+        { paramName: "limit", type: "number", value: "0" },
+        { paramName: "label", type: "text", value: 0 },
+        { paramName: "note", type: "text", value: "" },
+      ] as unknown as NonNullable<CreateParamDefsInput["params"]>,
+    });
+
+    it("is the value of the parameter", () => {
+      const [active, offset, limit, label, note] = createParamDefs(widget);
+      expect(active.value).toBe(false);
+      expect(offset.value).toBe(0);
+      expect(limit.value).toBe(0);
+      expect(label.value).toBe("0");
+      expect(note.value).toBeNull();
+    });
+
+    it("is what the widget starts with", () => {
+      expect(createWidgetInitParams(widget as WidgetT)).toEqual({
+        active: false,
+        offset: 0,
+        limit: 0,
+        label: "0",
+        note: null,
+      });
+    });
+  });
+
   describe("createWidgetEndpoint edge cases", () => {
     it("should handle URL with existing query string", () => {
       const result = createWidgetEndpoint("https://api.example.com?existing=param");
@@ -203,6 +235,28 @@ describe("Widget Params Utility Functions", () => {
     it("should handle undefined/null", () => {
       expect(cleanURL(malformed(undefined))).toBe(undefined);
       expect(cleanURL(malformed(null))).toBe(undefined);
+    });
+  });
+
+  describe("streamEndpointOf", () => {
+    it("resolves the path of a stream against the backend's address, as the endpoint is", () => {
+      expect(
+        streamEndpointOf({ streamEndpoint: "/ws/ticks" }, "http://localhost:7798"),
+      ).toBe("http://localhost:7798/ws/ticks");
+      expect(
+        streamEndpointOf({ streamEndpoint: "ws/ticks" }, "http://localhost:7798/"),
+      ).toBe("http://localhost:7798/ws/ticks");
+    });
+
+    it("keeps an absolute address, and says nothing when the widget has no stream", () => {
+      expect(
+        streamEndpointOf(
+          { streamEndpoint: "https://other.example/ws" },
+          "http://localhost:7798",
+        ),
+      ).toBe("https://other.example/ws");
+      expect(streamEndpointOf({}, "http://localhost:7798")).toBeUndefined();
+      expect(streamEndpointOf(undefined, "http://localhost:7798")).toBeUndefined();
     });
   });
 

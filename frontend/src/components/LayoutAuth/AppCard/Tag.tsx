@@ -1,6 +1,6 @@
 import { cn } from "~/components/ds/utils";
 
-export type TagColor =
+type TagColor =
   | "pink"
   | "blue"
   | "green"

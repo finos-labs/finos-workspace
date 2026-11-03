@@ -12,7 +12,6 @@ import {
 } from "~/components/AI/hooks/mcp/mcpServerAuth";
 import type { UseMcpResult } from "~/components/AI/hooks/mcp/useMcp";
 import { isRecord } from "~/components/AI/utils/mcpToolSchema";
-import { isLoopbackUrl } from "~/lib/utils/mcp";
 import type { Selector } from "./app";
 import { getCopilotAccess, isMcpToolAllowed } from "./copilotAccess";
 import { getWorkspaceAgentTools } from "./workspaceTools";
@@ -56,7 +55,6 @@ export interface McpServer {
   id: string;
   name: string;
   clientName?: string;
-  isLocal?: boolean;
   url: string;
   enabled: boolean;
   toolsEnabled?: boolean;
@@ -265,7 +263,6 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
       set((state) => ({
         servers: upsertServer(state.servers, {
           ...server,
-          isLocal: server.isLocal || isLoopbackUrl(server.url),
           toolsEnabled: server.iframeWidgetId ? true : undefined,
         }),
       }));

@@ -17,7 +17,7 @@ const copilotDocsHref = docsUrl("workspace/analysts/ai-features/copilot-basics")
 
 const aiCopilotDocumentationLinksFF = getConfig().copilot.documentationLinks;
 
-export function CopilotWelcome() {
+function CopilotWelcome() {
   const { id: currentDashboardId } = useParams();
   const handleSubmitRef = useCopilotContext()?.handleSubmitRef;
 

@@ -12,7 +12,7 @@ import {
 import type { Extension } from "~/lib/constants";
 import { useShallowPermissionsStore } from "~/lib/state/permissions";
 
-export type SharedFilePermissionsT = FilePermissionsT & { shared: true };
+type SharedFilePermissionsT = FilePermissionsT & { shared: true };
 
 export type UserResourcePermissionsT = {
   backends: ProcessedBackendT[];

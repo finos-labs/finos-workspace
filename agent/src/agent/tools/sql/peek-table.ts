@@ -12,7 +12,7 @@ const logger = getLogger(["app", "tools", "sql", "peek_table"]);
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 100;
 
-export const peekTableSchema = z.object({
+const peekTableSchema = z.object({
   display_summary: displaySummarySchema,
   table_name: z
     .string()
@@ -33,7 +33,7 @@ export const peekTableDescription =
   "The output lists the exact queryable table and column names to use in SQL and chart xKey/yKey values; original widget labels are reference only. " +
   "Only use table names that have already been loaded into the conversation; widget ids are not queryable tables until get_widget_data has fetched that widget.";
 
-export interface PeekTableContext {
+interface PeekTableContext {
   pendingTables: Map<string, Record<string, unknown>[]>;
 }
 
