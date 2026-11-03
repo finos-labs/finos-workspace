@@ -145,3 +145,4 @@ export interface PluginInstanceStorage {
 
 export const MAX_STATE_BYTES = 64 * 1024;
 export const MAX_CONFIG_BYTES = 32 * 1024;
+export const MAX_SETTING_LENGTH = 1000;

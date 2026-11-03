@@ -4,6 +4,7 @@ import { LINK_PROTOCOLS, MAX_EXPORT_OPTIONS } from "./limits";
 import { CommandError, type CommandErrorName, MAX_EXPORT_BYTES } from "./protocol";
 import {
   MAX_CONFIG_BYTES,
+  MAX_SETTING_LENGTH,
   MAX_STATE_BYTES,
   type Permission,
   type PluginWidgetDef,
@@ -175,7 +176,7 @@ function settingProblem(
     return typeof value === "boolean" ? null : "is a boolean";
   if (prop.type === "string") {
     if (typeof value !== "string") return "is a string";
-    return value.length > (prop.maxLength ?? 0) ? "is too long" : null;
+    return value.length > (prop.maxLength ?? MAX_SETTING_LENGTH) ? "is too long" : null;
   }
   if (prop.type === "number" || prop.type === "integer") {
     if (typeof value !== "number" || !Number.isFinite(value)) return "is a number";
