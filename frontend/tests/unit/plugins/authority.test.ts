@@ -119,8 +119,15 @@ describe("the runtime authority", () => {
           zoom: { type: "number" as const, minimum: 0, maximum: 19 },
           mode: { enum: ["a", "b"] },
           label: { type: "string" as const, maxLength: 4 },
+          note: { type: "string" as const },
         },
       };
+      expect(checkConfigWrite(schema, {}, "note", "x".repeat(1000))).toEqual({
+        note: "x".repeat(1000),
+      });
+      expect(() => checkConfigWrite(schema, {}, "note", "x".repeat(1001))).toThrow(
+        CommandError,
+      );
       expect(checkConfigWrite(schema, { mode: "a" }, "zoom", 12)).toEqual({
         mode: "a",
         zoom: 12,
