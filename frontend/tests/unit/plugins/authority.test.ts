@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ParamDef } from "~/components/types";
 import {
   assetPath,
+  checkConfigWrite,
   checkStateWrite,
   coerceParamValue,
   commandPermission,
@@ -100,6 +101,43 @@ describe("the runtime authority", () => {
       expect(() => coerceParamValue(text, { a: 1 })).toThrow(CommandError);
       expect(() => coerceParamValue(multi, "a")).toThrow(CommandError);
       expect(() => coerceParamValue(text, "x".repeat(5000))).toThrow(CommandError);
+    });
+
+    it("writes config only with core:config:write", () => {
+      const binding = (permissions: Set<string>) =>
+        traitBindings(
+          { model: { traits: { zoom: { bind: "config:zoom", access: "readwrite" } } } },
+          permissions,
+        )[0].writable;
+      expect(binding(perms())).toBe(false);
+      expect(binding(perms("core:config:write"))).toBe(true);
+    });
+
+    it("takes a config write only for a declared setting with a valid value", () => {
+      const schema = {
+        properties: {
+          zoom: { type: "number" as const, minimum: 0, maximum: 19 },
+          mode: { enum: ["a", "b"] },
+          label: { type: "string" as const, maxLength: 4 },
+        },
+      };
+      expect(checkConfigWrite(schema, { mode: "a" }, "zoom", 12)).toEqual({
+        mode: "a",
+        zoom: 12,
+      });
+      expect(checkConfigWrite(schema, { mode: "a" }, undefined, { zoom: 3 })).toEqual({
+        zoom: 3,
+      });
+      expect(() => checkConfigWrite(schema, {}, "zoom", 25)).toThrow(CommandError);
+      expect(() => checkConfigWrite(schema, {}, "zoom", "12")).toThrow(CommandError);
+      expect(() => checkConfigWrite(schema, {}, "mode", "c")).toThrow(CommandError);
+      expect(() => checkConfigWrite(schema, {}, "label", "longer")).toThrow(
+        CommandError,
+      );
+      expect(() => checkConfigWrite(schema, {}, "other", 1)).toThrow(
+        expect.objectContaining({ name: "out_of_scope" }),
+      );
+      expect(() => checkConfigWrite(schema, {}, undefined, [1])).toThrow(CommandError);
     });
 
     it("caps state at 64 KiB", () => {

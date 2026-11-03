@@ -22,6 +22,7 @@ import { sourceStreamHref } from "~/lib/utils/fetch";
 import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
 import {
   assetPath,
+  checkConfigWrite,
   checkStateWrite,
   coerceParamValue,
   commandPermission,
@@ -401,11 +402,42 @@ function PluginWidgetBody({
           }));
           return next;
         }
+        case "config": {
+          const schema = pluginWidget.settings?.schema;
+          const merged = (stored: Record<string, unknown> | undefined) =>
+            checkConfigWrite(schema, cleanSettings(schema, stored), binding.key, value);
+          const next = merged(storagePlugin.config);
+          if (isShared)
+            throw new CommandError("unavailable", "a shared dashboard is read-only");
+          updateWidget((prev) => {
+            const plugin = prev.storage?.plugin as PluginInstanceStorage | undefined;
+            try {
+              return {
+                ...prev,
+                storage: {
+                  ...prev.storage,
+                  plugin: { ...plugin, config: merged(plugin?.config) },
+                },
+              };
+            } catch {
+              return prev;
+            }
+          });
+          return binding.key === undefined ? next : next[binding.key];
+        }
         default:
           throw new CommandError("not_granted", `${binding.trait} is read-only`);
       }
     },
-    [writeParams, paramValues, traits, updateWidget, isShared],
+    [
+      writeParams,
+      paramValues,
+      traits,
+      updateWidget,
+      isShared,
+      pluginWidget.settings,
+      storagePlugin.config,
+    ],
   );
 
   const onCommand = useCallback(
