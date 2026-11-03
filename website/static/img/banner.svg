@@ -1,23 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="390" viewBox="0 0 1280 390" role="img" aria-labelledby="title description">
   <title id="title">FINOS Workspace</title>
   <desc id="description">An open, self-hosted analytics workspace for financial institutions to connect data, tools, and AI agents.</desc>
-  <defs>
-    <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#0b0b1c"/>
-      <stop offset="1" stop-color="#050509"/>
-    </linearGradient>
-    <radialGradient id="purple" cx="0.12" cy="0" r="0.75">
-      <stop offset="0" stop-color="#4a2a8a" stop-opacity="0.65"/>
-      <stop offset="1" stop-color="#4a2a8a" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="blue" cx="0.88" cy="0" r="0.8">
-      <stop offset="0" stop-color="#0f86c9" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#0f86c9" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect width="1280" height="390" fill="url(#base)"/>
-  <rect width="1280" height="390" fill="url(#purple)"/>
-  <rect width="1280" height="390" fill="url(#blue)"/>
+  <rect width="1280" height="390" fill="#ffffff"/>
   <!-- Original artwork from finos_ws_stacked_color.svg, scaled without alteration. -->
   <g transform="translate(515.0203 36) scale(0.6)">
     <path d="M216.939,17.667V0h-17.333v17.595H69.716v52h17.444v-.056h95.111v17.306h-95.667v52.278h113.111V17.667h17.222ZM182.272,121.623h-78.222v-17.278h78.222v17.278ZM182.272,52.04h-95.111v-16.444h95.111v16.444Z" fill="#00b5e3"/>
@@ -37,7 +21,7 @@
     <path d="M357.32,283.943c-6.181,0-10.128-4.84-10.128-11.021v-.149c0-5.957,4.022-10.872,9.68-10.872,4.096,0,6.479,1.713,9.086,4.394l6.926-7.447c-3.798-4.17-8.415-6.702-15.936-6.702-12.213,0-20.926,9.383-20.926,20.777v.149c0,11.32,8.788,20.628,20.777,20.628,7.968,0,12.436-3.053,16.308-7.298l-6.628-6.702c-2.755,2.606-5.362,4.245-9.159,4.245Z" fill="#00b5e3"/>
     <path d="M416.599,273.815c0-11.319-6.106-21.67-19.436-21.67-11.617,0-19.735,9.383-19.735,20.777v.149c0,12.213,8.862,20.628,20.851,20.628,7.224,0,12.511-2.755,16.309-7.446l-6.479-5.734c-3.202,2.904-5.882,4.096-9.68,4.096-5.064,0-8.638-2.681-9.755-7.819h27.776c.075-1.117.148-2.085.148-2.979ZM388.525,269.719c.894-5.138,3.873-8.489,8.639-8.489s7.744,3.426,8.415,8.489h-17.054Z" fill="#00b5e3"/>
   </g>
-  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="28" fill="#dbe7f3" text-anchor="middle">
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="28" fill="#242424" text-anchor="middle">
     <text x="640" y="275">An open, self-hosted analytics workspace for financial institutions</text>
     <text x="640" y="315">to connect data, tools, and AI agents.</text>
   </g>
