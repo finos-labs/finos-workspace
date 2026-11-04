@@ -36,6 +36,7 @@ PERMISSIONS = frozenset(
         "core:data:stream",
         "core:params:write",
         "core:state:write",
+        "core:config:write",
         "core:copilot:context",
         "core:export:provide",
         "core:ui:notify",
@@ -57,7 +58,7 @@ _TRAIT_BINDING = re.compile(
     r"|^param:[A-Za-z_][A-Za-z0-9_.-]{0,63}$"
     r"|^(config|adminSettings):[A-Za-z][A-Za-z0-9_]{0,63}$"
 )
-_WRITABLE = re.compile(r"^(params|param:.+|state)$")
+_WRITABLE = re.compile(r"^(params|param:.+|state|config|config:.+)$")
 
 ShortText = Annotated[str, StringConstraints(min_length=1, max_length=80)]
 Sentence = Annotated[str, StringConstraints(max_length=300)]
@@ -245,7 +246,10 @@ class TraitBinding(BaseModel):
     )
     access: Literal["read", "readwrite"] = Field(
         default="read",
-        description="Whether the module may write the trait. Only params, param:<name> and state can be readwrite.",
+        description=(
+            "Whether the module may write the trait. "
+            "Only params, param:<name>, state, config and config:<key> can be readwrite."
+        ),
     )
 
     @model_validator(mode="after")
@@ -323,9 +327,7 @@ class WidgetArtifact(BaseModel):
     description: Annotated[str, StringConstraints(min_length=1, max_length=300)] = Field(
         description="When the agent shows the widget in the chat."
     )
-    data: dict[str, Any] = Field(
-        description="The JSON Schema of the data the agent may fill in."
-    )
+    data: dict[str, Any] = Field(description="The JSON Schema of the data the agent may fill in.")
 
     @model_validator(mode="after")
     def valid(self):
