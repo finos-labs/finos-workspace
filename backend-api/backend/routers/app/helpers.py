@@ -441,6 +441,19 @@ async def get_backend_mcp_grants(db: AsyncSession, user_uuid: UUID) -> list[sche
     return [schemas.McpGrant.model_construct(server_url=url, tool_name=schemas.ALL_MCP_TOOLS) for url in sorted(urls)]
 
 
+async def get_own_mcp_grants(db: AsyncSession, user_uuid: UUID) -> list[schemas.McpGrant]:
+    if not await may_add_connections(db, user_uuid):
+        return []
+    servers = (
+        await db.execute(
+            select(models.MCPServers.servers).where(models.MCPServers.user_uuid == user_uuid).limit(1)
+        )
+    ).scalar_one_or_none()
+    defaults = {schemas.normalize_mcp_url(server.url) for server in settings.DEFAULT_MCP_SERVERS}
+    urls = {schemas.normalize_mcp_url(server["url"]) for server in servers or []} - defaults
+    return [schemas.McpGrant.model_construct(server_url=url, tool_name=schemas.ALL_MCP_TOOLS) for url in sorted(urls)]
+
+
 async def shares_need_approval(db: AsyncSession, user_uuid: UUID) -> bool:
     return await get_user_type(db, user_uuid) == models.DEVELOPER_TYPE
 
@@ -1105,7 +1118,11 @@ async def get_user_copilot_access(
     granted = await get_role_copilot_access(db, role_uuids)
     return schemas.CopilotAccess(
         models=granted.models,
-        mcp=[*granted.mcp, *await get_backend_mcp_grants(db, user_uuid)],
+        mcp=[
+            *granted.mcp,
+            *await get_backend_mcp_grants(db, user_uuid),
+            *await get_own_mcp_grants(db, user_uuid),
+        ],
         disabled_capabilities=await get_disabled_copilot_capabilities(db, role_uuids),
     )
 

@@ -1044,8 +1044,10 @@ async def put_usage(
     response_model=schemas.CopilotAccess,
     summary="Get the user's Copilot access",
     description=(
-        "Returns the Copilot models and the MCP tools that the user's roles grant, and the Copilot capabilities that "
-        "the roles disable."
+        "Returns the Copilot models and the MCP tools that the user's roles grant, every tool of the MCP servers that "
+        "the user's backends declare and that the user saved when the user's type may add connections (the "
+        "deployment's default servers excepted, which only roles grant), and the Copilot capabilities that the roles "
+        "disable."
     ),
 )
 async def get_copilot_access(
