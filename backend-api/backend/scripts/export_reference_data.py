@@ -353,9 +353,7 @@ VERSION_STATES = {
 
 def _states(prefix: str, descriptions: dict[str, str]) -> list[dict[str, str]]:
     values = [
-        value
-        for name, value in vars(widget_plugin_models).items()
-        if name.startswith(prefix) and isinstance(value, str)
+        value for name, value in vars(widget_plugin_models).items() if name.startswith(prefix) and isinstance(value, str)
     ]
     unknown = sorted(set(values) - set(descriptions))
     unused = sorted(set(descriptions) - set(values))

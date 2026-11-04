@@ -327,9 +327,7 @@ class WidgetArtifact(BaseModel):
     description: Annotated[str, StringConstraints(min_length=1, max_length=300)] = Field(
         description="When the agent shows the widget in the chat."
     )
-    data: dict[str, Any] = Field(
-        description="The JSON Schema of the data the agent may fill in."
-    )
+    data: dict[str, Any] = Field(description="The JSON Schema of the data the agent may fill in.")
 
     @model_validator(mode="after")
     def valid(self):
