@@ -15,7 +15,7 @@
 </div>
 
 <p align="center">
-  <img alt="A FINOS Workspace dashboard with tables of revenue by region, notes and key figures" src="frontend/public/assets/images/features/grouping.png" width="640">
+  <img alt="A FINOS Workspace dashboard with tabs of legal entity summaries, charts and tables, and the AI agent panel answering questions about the data" src="website/static/img/readme-dashboard.png" width="960">
 </p>
 
 ## What is FINOS Workspace?
