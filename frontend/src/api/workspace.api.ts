@@ -9,6 +9,7 @@ import { triggerCustomEvent } from "~/lib/utils";
 import {
   argsProblems,
   paramValueSchema,
+  pluginSettings,
   uiArgsSchema,
 } from "~/lib/utils/widgetArgsSchema";
 import { isStoredParamValue } from "~/lib/utils/widgetParams";
@@ -16,6 +17,8 @@ import {
   deserializeDashboardTabId,
   getDashboardInfo,
 } from "~/lib/utils/workspaceDashboard";
+import { cleanSettings } from "~/plugins/SettingsForm";
+import type { PluginInstanceStorage } from "~/plugins/types";
 
 type WidgetConfig = {
   dataArgs?: Record<string, unknown>;
@@ -310,6 +313,9 @@ function readWidget(
       : [],
   };
 
+  const config = pluginConfig(widget as WidgetT);
+  if (config) result.ui_args = { config };
+
   const widgetData = useCopilotDataStore.getState().getDashboardWidgetData(widgetUuid);
   if (widgetData?.data) {
     result.data = widgetData.data;
@@ -320,6 +326,16 @@ function readWidget(
   }
 
   return result;
+}
+
+function pluginConfig(widget: WidgetT): Record<string, unknown> | undefined {
+  const settings = pluginSettings(widget);
+  return settings
+    ? cleanSettings(
+        settings,
+        (widget.storage?.plugin as PluginInstanceStorage | undefined)?.config,
+      )
+    : undefined;
 }
 
 async function updateWidget(
@@ -371,6 +387,7 @@ export {
   createWidget,
   deleteWidget,
   getWidgetDefinitionOrThrow,
+  pluginConfig,
   readDashboard,
   readWidget,
   updateDashboard,

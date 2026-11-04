@@ -1281,7 +1281,7 @@
       },
       {
         "annotations": null,
-        "description": "Update one existing widget on a target dashboard. Identify the widget by widget_uuid (preferred) or widget_id. Use read_widget first to inspect current params, and verify effective_params in the response matches your intent. Config changes only: for placement (x, y, w, h, tab_id) use update_widget_layout. Pass dry_run=true to validate and preview effective_params without changing the workspace.",
+        "description": "Update one existing widget on a target dashboard. Identify the widget by widget_uuid (preferred) or widget_id. Use read_widget first to inspect current params, and verify effective_params in the response matches your intent; a plugin widget's settings come back as effective_ui_args.config. Config changes only: for placement (x, y, w, h, tab_id) use update_widget_layout. Pass dry_run=true to validate and preview effective_params without changing the workspace.",
         "meta": null,
         "name": "update_widget",
         "output_schema": {
