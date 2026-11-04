@@ -15,7 +15,7 @@
 </div>
 
 <p align="center">
-  <img alt="A FINOS Workspace dashboard with tabs of legal entity summaries, charts and tables, and the AI agent panel answering questions about the data" src="website/static/img/readme-dashboard.png" width="960">
+  <img alt="A FINOS Workspace dashboard with a live crypto portfolio table, and the Agent panel drawing a candlestick chart with MCP tools" src="website/static/img/readme-dashboard.png" width="960">
 </p>
 
 ## What is FINOS Workspace?
