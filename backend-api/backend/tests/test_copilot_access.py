@@ -764,6 +764,13 @@ class TestUsersOwnServersAreTheirs:
             "https://tools.example.com:443/mcp",
             "https://tools.example.com./mcp",
             "HTTPS://Tools.Example.com.:443/mcp/",
+            "https://x@tools.example.com/mcp",
+            "https://tools.example.com/mcp/.",
+            "https://tools.example.com/./mcp",
+            "https://tools.example.com/%6Dcp",
+            "https://tools.example.com//mcp",
+            "https://tools.example.com/MCP",
+            "https://tools.example.com/other",
         ],
     )
     async def test_a_default_server_saved_under_another_spelling_keeps_the_roles_limits(
@@ -776,6 +783,18 @@ class TestUsersOwnServersAreTheirs:
             access = (await auth_client.get("/app/copilot/access")).json()
 
         assert access["mcp"] == []
+
+    @pytest.mark.asyncio
+    async def test_a_server_on_another_port_of_a_default_servers_host_grants_all_its_tools(
+        self, organization, auth_client
+    ):
+        await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
+        default = DefaultMCPServer(id="tools", name="Tools", url=OTHER_MCP_URL)
+        with patch.object(settings, "DEFAULT_MCP_SERVERS", [default]):
+            await auth_client.post("/app/mcp-servers", json=_own_servers("https://tools.example.com:8443/mcp"))
+            access = (await auth_client.get("/app/copilot/access")).json()
+
+        assert _servers(access) == {("https://tools.example.com:8443/mcp", "*")}
 
     @pytest.mark.asyncio
     async def test_another_users_server_grants_nothing(self, organization, auth_client):

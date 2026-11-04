@@ -449,8 +449,12 @@ async def get_own_mcp_grants(db: AsyncSession, user_uuid: UUID) -> list[schemas.
             select(models.MCPServers.servers).where(models.MCPServers.user_uuid == user_uuid).limit(1)
         )
     ).scalar_one_or_none()
-    defaults = {schemas.normalize_mcp_url(server.url) for server in settings.DEFAULT_MCP_SERVERS}
-    urls = {schemas.normalize_mcp_url(server["url"]) for server in servers or []} - defaults
+    defaults = {schemas.mcp_host_and_port(server.url) for server in settings.DEFAULT_MCP_SERVERS}
+    urls = {
+        schemas.normalize_mcp_url(server["url"])
+        for server in servers or []
+        if schemas.mcp_host_and_port(server["url"]) not in defaults
+    }
     return [schemas.McpGrant.model_construct(server_url=url, tool_name=schemas.ALL_MCP_TOOLS) for url in sorted(urls)]
 
 

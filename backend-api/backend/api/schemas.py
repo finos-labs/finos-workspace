@@ -1040,6 +1040,15 @@ def normalize_mcp_url(url: str) -> str:
     return urlunsplit((scheme, f"{userinfo.lower()}{at}{host}", path, "", ""))
 
 
+def mcp_host_and_port(url: str) -> tuple[str, int | None]:
+    parsed = urlsplit(normalize_mcp_url(url))
+    try:
+        port = parsed.port
+    except ValueError:
+        port = None
+    return (parsed.hostname or "").rstrip("."), port or DEFAULT_PORTS.get(parsed.scheme)
+
+
 def mcp_server_url(url: str) -> str:
     normalized = normalize_mcp_url(url)
     parsed = urlsplit(normalized)
