@@ -3,9 +3,7 @@ import sys
 from unittest.mock import patch
 from uuid import UUID, uuid4
 
-BACKEND_DIR = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
@@ -734,9 +732,7 @@ class TestUsersOwnServersAreTheirs:
 
     @pytest.mark.asyncio
     async def test_a_user_who_may_not_add_connections_gets_no_grant(self, organization, auth_client):
-        organization.db.add(
-            models.MCPServers(user_uuid=MEMBER_UUID, servers=_own_servers(TUNNEL_URL)["servers"])
-        )
+        organization.db.add(models.MCPServers(user_uuid=MEMBER_UUID, servers=_own_servers(TUNNEL_URL)["servers"]))
         await organization.db.commit()
 
         access = (await auth_client.get("/app/copilot/access")).json()

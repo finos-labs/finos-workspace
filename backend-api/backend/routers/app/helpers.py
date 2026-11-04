@@ -445,9 +445,7 @@ async def get_own_mcp_grants(db: AsyncSession, user_uuid: UUID) -> list[schemas.
     if not await may_add_connections(db, user_uuid):
         return []
     servers = (
-        await db.execute(
-            select(models.MCPServers.servers).where(models.MCPServers.user_uuid == user_uuid).limit(1)
-        )
+        await db.execute(select(models.MCPServers.servers).where(models.MCPServers.user_uuid == user_uuid).limit(1))
     ).scalar_one_or_none()
     defaults = {schemas.mcp_host_and_port(server.url) for server in settings.DEFAULT_MCP_SERVERS}
     urls = {
