@@ -1,13 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import MessageTable from "~/components/AI/MessageTable";
 
 vi.mock("usehooks-ts", () => ({
   useLocalStorage: vi.fn().mockReturnValue(["", vi.fn()]),
 }));
 
-// Avoid toasts during tests
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -15,20 +14,13 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Capture the extracted table payload
-const mockCreateWidget = vi.fn();
-vi.mock("~/components/AI/hooks/utils", async () => {
-  return {
-    dispatchCreate: (...args: any[]) => mockCreateWidget(...args),
-  };
-});
+async function copyTable(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button"));
+  return (await navigator.clipboard.readText()).split("\n");
+}
 
 describe("MessageTable extraction", () => {
-  beforeEach(() => {
-    mockCreateWidget.mockClear();
-  });
-
-  it("extracts rows from the provided table children and dispatches create", async () => {
+  it("extracts rows from the provided table children and copies them", async () => {
     const user = userEvent.setup();
 
     render(
@@ -264,35 +256,12 @@ describe("MessageTable extraction", () => {
       </MessageTable>,
     );
 
-    // Click the second action button (Create widget from table)
-    const buttons = screen.getAllByRole("button");
-    await user.click(buttons[1]);
+    const lines = await copyTable(user);
 
-    expect(mockCreateWidget).toHaveBeenCalledTimes(1);
-    const payload = mockCreateWidget.mock.calls[0][0];
-    expect(payload.widgetType).toBe("table");
-    expect(Array.isArray(payload.content)).toBe(true);
-
-    // 31 rows: Aug 31 + Sep (30 days)
-    expect(payload.content.length).toBe(31);
-
-    // Validate first and last rows contain expected values (whitespace retained by implementation)
-    const firstRow = payload.content[0];
-    const lastRow = payload.content[payload.content.length - 1];
-
-    const firstRowValues = Object.values(firstRow).map((v) => v);
-    expect(firstRowValues).toContain("2025-08-31");
-    expect(firstRowValues).toContain(202.86);
-    expect(firstRowValues).toContain(206.51);
-    expect(firstRowValues).toContain(200.66);
-    expect(firstRowValues).toContain(200.86);
-
-    const lastRowValues = Object.values(lastRow).map((v) => v);
-    expect(lastRowValues).toContain("2025-09-30");
-    expect(lastRowValues).toContain(213.03);
-    expect(lastRowValues).toContain(213.46);
-    expect(lastRowValues).toContain(205.25);
-    expect(lastRowValues).toContain(205.67);
+    expect(lines).toHaveLength(32);
+    expect(lines[0]).toBe("Date\tOpen\tHigh\tLow\tClose");
+    expect(lines[1]).toBe("2025-08-31\t202.86\t206.51\t200.66\t200.86");
+    expect(lines.at(-1)).toBe("2025-09-30\t213.03\t213.46\t205.25\t205.67");
   });
 
   it("handles empty headers gracefully", async () => {
@@ -385,33 +354,13 @@ describe("MessageTable extraction", () => {
       </MessageTable>,
     );
 
-    // Click the second action button (Create widget from table)
-    const buttons = screen.getAllByRole("button");
-    await user.click(buttons[1]);
+    const lines = await copyTable(user);
 
-    expect(mockCreateWidget).toHaveBeenCalledTimes(1);
-    const payload = mockCreateWidget.mock.calls[0][0];
-    expect(payload.widgetType).toBe("table");
-    expect(Array.isArray(payload.content)).toBe(true);
-
-    expect(payload.content.length).toBe(12);
-
-    // Validate first and last rows contain expected values (whitespace retained by implementation)
-    const firstRow = payload.content[0];
-    const lastRow = payload.content[payload.content.length - 1];
-
-    const firstRowValues = Object.values(firstRow).map((v) => v);
-    expect(firstRowValues).toContain(
-      "Premiums, service revenue earned and other income",
+    expect(lines).toHaveLength(13);
+    expect(lines[0]).toBe("Column 1\t3Q 25\t2Q 25\t3Q 24");
+    expect(lines[1]).toBe(
+      "Premiums, service revenue earned and other income\t364\t1\t2",
     );
-    expect(firstRowValues).toContain(364);
-    expect(firstRowValues).toContain(1);
-    expect(firstRowValues).toContain(2);
-
-    const lastRowValues = Object.values(lastRow).map((v) => v);
-    expect(lastRowValues).toContain("Total assets (EOP)");
-    expect(lastRowValues).toContain(9848);
-    expect(lastRowValues).toContain(143);
-    expect(lastRowValues).toContain(393);
+    expect(lines.at(-1)).toBe("Total assets (EOP)\t9848\t143\t393");
   });
 });

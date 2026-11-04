@@ -11,7 +11,17 @@ import {
   postEntityRole,
   putEntityRolePermissions,
 } from "~/api/entity_roles.api";
-import type { RoleT } from "~/components/AdminRoles/types";
+import type { RoleSettings, RoleT } from "~/components/AdminRoles/types";
+import { required } from "../mocks";
+
+const SETTINGS: RoleSettings = {
+  sharing: "receive",
+  copilot_calls_day: 100,
+  copilot_tokens_day: null,
+  upload_size_gb: 5,
+  search_web: true,
+  fetch_from_web: false,
+};
 
 vi.mock("~/api/api", () => ({
   apiClient: {
@@ -40,6 +50,7 @@ describe("Entity Roles API", () => {
           name: "Admin Role",
           description: "Full access role",
           users: ["user1@example.com", "user2@example.com"],
+          ...SETTINGS,
           updated_date: "2024-01-15T10:30:00Z",
         },
         {
@@ -47,6 +58,8 @@ describe("Entity Roles API", () => {
           name: "Viewer Role",
           description: "Read-only access",
           users: [],
+          ...SETTINGS,
+          sharing: "share",
           updated_date: "2024-02-20T14:45:00Z",
         },
       ];
@@ -62,6 +75,7 @@ describe("Entity Roles API", () => {
         name: "Admin Role",
         description: "Full access role",
         users: ["user1@example.com", "user2@example.com"],
+        ...SETTINGS,
         createdAt: new Date("2024-01-15T10:30:00Z").getTime(),
       });
       expect(result[1]).toEqual({
@@ -69,6 +83,8 @@ describe("Entity Roles API", () => {
         name: "Viewer Role",
         description: "Read-only access",
         users: [],
+        ...SETTINGS,
+        sharing: "share",
         createdAt: new Date("2024-02-20T14:45:00Z").getTime(),
       });
     });
@@ -104,6 +120,7 @@ describe("Entity Roles API", () => {
   describe("postEntityRole", () => {
     it("should create a new role and return success response", async () => {
       const mockRole: RoleT = {
+        ...SETTINGS,
         uuid: "new-role-uuid",
         name: "New Role",
         description: "A newly created role",
@@ -121,12 +138,14 @@ describe("Entity Roles API", () => {
         name: "New Role",
         description: "A newly created role",
         users: ["user@example.com"],
+        ...SETTINGS,
       });
       expect(result).toEqual({ success: true });
     });
 
     it("should exclude createdAt from the request payload", async () => {
       const mockRole: RoleT = {
+        ...SETTINGS,
         uuid: "role-uuid",
         name: "Test Role",
         description: "Test",
@@ -144,6 +163,7 @@ describe("Entity Roles API", () => {
 
     it("should handle 401 unauthorized errors", async () => {
       const mockRole: RoleT = {
+        ...SETTINGS,
         uuid: "role-uuid",
         name: "Test",
         description: "",
@@ -161,6 +181,7 @@ describe("Entity Roles API", () => {
 
     it("should handle validation errors", async () => {
       const mockRole: RoleT = {
+        ...SETTINGS,
         uuid: "",
         name: "",
         description: "",
@@ -180,6 +201,7 @@ describe("Entity Roles API", () => {
   describe("patchEntityRole", () => {
     it("should update an existing role and return success response", async () => {
       const mockRole: RoleT = {
+        ...SETTINGS,
         uuid: "existing-role-uuid",
         name: "Updated Role Name",
         description: "Updated description",
@@ -196,12 +218,14 @@ describe("Entity Roles API", () => {
         name: "Updated Role Name",
         description: "Updated description",
         users: ["user1@example.com", "user2@example.com"],
+        ...SETTINGS,
       });
       expect(result).toEqual({ success: true });
     });
 
     it("should exclude uuid and createdAt from the request payload", async () => {
       const mockRole: RoleT = {
+        ...SETTINGS,
         uuid: "role-uuid",
         name: "Test",
         description: "Test",
@@ -220,6 +244,7 @@ describe("Entity Roles API", () => {
 
     it("should handle 404 not found errors", async () => {
       const mockRole: RoleT = {
+        ...SETTINGS,
         uuid: "non-existent-uuid",
         name: "Test",
         description: "",
@@ -237,6 +262,7 @@ describe("Entity Roles API", () => {
 
     it("should handle 500 server errors", async () => {
       const mockRole: RoleT = {
+        ...SETTINGS,
         uuid: "role-uuid",
         name: "Test",
         description: "",
@@ -553,7 +579,7 @@ describe("Entity Roles API", () => {
         .calls[0][1] as EntityRolePermissions[];
       expect(callArgs).toHaveLength(1);
       expect(callArgs[0].templates).toHaveLength(1);
-      expect(callArgs[0].templates![0].prompts).toHaveLength(2);
+      expect(required(callArgs[0].templates)[0].prompts).toHaveLength(2);
     });
 
     it("should add no-access as default when access property is missing", async () => {
@@ -686,6 +712,31 @@ describe("Entity Roles API", () => {
       const result = await getEntityRoleActivityLog();
 
       expect(result[0].activityType).toBe("Update backend");
+    });
+
+    it("names a plugin grant in words", async () => {
+      vi.spyOn(apiClient, "get").mockResolvedValue({
+        data: [
+          {
+            uuid: "log-1",
+            created_at: "2024-01-15T10:30:00Z",
+            entity_uuid: "entity-uuid",
+            role_uuid: "role-uuid",
+            action: "assign" as const,
+            resource_type: "widget_plugin" as const,
+            resource_uuid: "resource-uuid",
+            performed_by_email: "admin@example.com",
+            details: { name: "test-chart", widget_id: "*" },
+            role_name: "Test Role",
+            details_msg: "Granted every widget of plugin 'test-chart'.",
+          },
+        ],
+      });
+
+      const [entry] = await getEntityRoleActivityLog();
+
+      expect(entry.activityType).toBe("Assign widget plugin");
+      expect(entry.detailsMsg).toBe("Granted every widget of plugin 'test-chart'.");
     });
 
     it("should handle null details_msg by converting to empty string", async () => {

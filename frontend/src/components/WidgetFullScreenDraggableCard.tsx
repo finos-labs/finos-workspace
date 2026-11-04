@@ -1,13 +1,7 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import clsx from "clsx";
 import { toPng } from "html-to-image";
-import {
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-  useEffect,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import Icon from "./Icon";
 
 export default function WidgetFullscreen({
@@ -19,7 +13,7 @@ export default function WidgetFullscreen({
   widgetId: string;
   header: ReactNode;
   open: boolean;
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  setOpen: (open: boolean) => void;
 }) {
   const [image, setImage] = useState<string | null>(null);
 
@@ -30,31 +24,25 @@ export default function WidgetFullscreen({
       ".widgetContent",
     ) as HTMLElement;
     if (targetElement) {
-      // Save the original styles
       const originalParentOverflow = targetElement.style.overflow;
       const originalParentHeight = targetElement.style.height;
 
-      // Adjust the styles to fit the content
       targetElement.style.overflow = "hidden";
       targetElement.style.height = "100%";
 
       toPng(targetElement, {
         pixelRatio: 1.5,
         quality: 1,
-        /*width: targetElement.scrollWidth,
-                height: targetElement.scrollHeight,*/
       })
         .then((dataUrl) => {
           setImage(dataUrl);
 
-          // Reset the styles
           targetElement.style.overflow = originalParentOverflow;
           targetElement.style.height = originalParentHeight;
         })
         .catch((error) => {
           console.error("oops, something went wrong!", error);
 
-          // Reset the styles
           targetElement.style.overflow = originalParentOverflow;
           targetElement.style.height = originalParentHeight;
         });
@@ -70,7 +58,7 @@ export default function WidgetFullscreen({
             "DialogContent fixed z-20 flex flex-col gap-4 overflow-hidden rounded p-6",
             "max-h-[80vh] w-[95vw] md:w-[70vw]",
             "left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%]",
-            "bg-white text-black dark:bg-[#151518] dark:text-white",
+            "bg-white text-black dark:bg-dark-900 dark:text-white",
             "focus:outline-hidden focus-visible:ring-3 focus-visible:ring-brand-main focus-visible:ring-opacity-50",
           )}
         >
@@ -86,7 +74,7 @@ export default function WidgetFullscreen({
             />
           </DialogPrimitive.Close>
 
-          <div className="overflow-auto bg-white dark:bg-[#151518]" /*ref={ref}*/>
+          <div className="overflow-auto bg-white dark:bg-dark-900">
             {image ? (
               <img src={image} className="mx-auto" />
             ) : (
@@ -94,22 +82,6 @@ export default function WidgetFullscreen({
                 Loading...
               </div>
             )}
-            {/*Children.map(children, (child) => {
-                            if (isValidElement(child)) {
-                                if (child?.props?.className?.includes("min-h-[200px]")) {
-                                    // replace min-h-[200px] with min-h-[300px]
-                                    return cloneElement(child, {
-                                        // @ts-ignore
-                                        className: child.props.className.replace(
-                                            "min-h-[200px]",
-                                            "min-h-[600px]",
-                                        ),
-                                    });
-                                }
-                                return child;
-                            }
-                            return child;
-                        })*/}
           </div>
 
           <div className="flex mt-auto justify-between">
@@ -127,7 +99,7 @@ export default function WidgetFullscreen({
               <Icon id="download-icon" className="h-4 w-4" />
               Export
             </button>
-            <p className="text-light-400 dark:text-[#4c4c57] text-xs">
+            <p className="text-light-400 dark:text-dark-200 text-xs">
               ⚠️ This feature is still experimental.
             </p>
           </div>

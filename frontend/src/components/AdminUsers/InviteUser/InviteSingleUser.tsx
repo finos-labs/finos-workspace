@@ -1,25 +1,24 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type JSX, useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { createUser, inviteUser } from "~/api/admin.api";
+import { createUser, inviteUser, type PasswordLinkAnswer } from "~/api/admin.api";
 import { getEntityRoles } from "~/api/entity_roles.api";
+import { getErrorResponse } from "~/api/errors";
 import AdminDialogFooter from "~/components/AdminUsers/common/AdminDialogFooter";
+import PasswordLink from "~/components/AdminUsers/PasswordLink";
+import { Button } from "~/components/ds/atoms/Button";
 import { Checkbox } from "~/components/ds/atoms/Checkbox";
 import { FormInput } from "~/components/ds/atoms/Input";
 import { FormSelect } from "~/components/ds/atoms/Select";
+import { DialogFooter } from "~/components/ds/dialogs/Dialog";
 import { Form, FormField } from "~/components/ds/molecules/Form";
 import { TabsContent } from "~/components/ds/molecules/Tabs";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
-import { isLiteEnvironment } from "~/lib/onPremFeatureFlags";
-import { getConfig } from "~/lib/runtimeConfig";
 import type { CreateUserDTO } from "~/types/user.type";
-
-const servicesEmailFF = getConfig().services.email;
-const isLite = isLiteEnvironment();
 
 const userFormSchemaBase = z.object({
   first_name: z.string().min(1),
@@ -40,10 +39,13 @@ export default function InviteSingleUser({
 }) {
   const userFormRef = useRef<HTMLFormElement>(null);
   const [errorMessage, setErrorMessage] = useState<null | string>(null);
+  const [added, setAdded] = useState<{
+    name: string;
+    answer: PasswordLinkAnswer;
+  } | null>(null);
 
   const queryClient = useQueryClient();
 
-  // Fetch roles from the API
   const { data: roles = [], isLoading: rolesLoading } = useQuery({
     queryKey: ["roles"],
     enabled: true,
@@ -51,7 +53,6 @@ export default function InviteSingleUser({
     staleTime: 1000 * 60 * 5,
   });
 
-  // Transform roles data for the dropdown
   const roleOptions = useMemo(
     () => roles.map((role) => ({ label: role.name, value: role.uuid })),
     [roles],
@@ -64,7 +65,7 @@ export default function InviteSingleUser({
       last_name: "",
       email: "",
       role: "",
-      bypass_invitation: isLite || !servicesEmailFF,
+      bypass_invitation: true,
     },
   });
 
@@ -77,59 +78,55 @@ export default function InviteSingleUser({
         permissions_uuid: permissions,
         role: values.role || null,
       };
+      const name = `${values.first_name} ${values.last_name}`;
+      const refetch = () => {
+        queryClient.refetchQueries({ queryKey: ["admin", "users"] });
+        queryClient.refetchQueries({ queryKey: ["roles"] });
+      };
       try {
-        let toast_msg: string;
-        let toast_description: string | JSX.Element;
-        let res: any;
         if (values.bypass_invitation) {
-          const { success, temporary_password } = await createUser(dto);
-          res = { success, temporary_password };
-          if (import.meta.env.DEV) {
-            console.log("success: ", success);
+          const answer = await createUser(dto);
+          if (answer.success) {
+            refetch();
+            setAdded({ name, answer });
           }
-          toast_msg = "User added";
-          toast_description = (
-            <div className="flex flex-col gap-2">
-              <p>
-                User {values.first_name} {values.last_name} has been added to the
-                organization.
-              </p>
-              <div className="flex items-center gap-2">
-                <span>Temporary password: {temporary_password}</span>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(temporary_password);
-                    toast.success("Password copied to clipboard");
-                  }}
-                  className="hover:text-primary-500"
-                >
-                  <Icon id="clipboard-icon" className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          );
-        } else {
-          res = await inviteUser(dto);
-          toast_msg = "User invited";
-          toast_description = `User ${values.first_name} ${values.last_name} has been invited.`;
+          return;
         }
+        const res = await inviteUser(dto);
         if (res.success) {
-          toast.success(toast_msg, {
-            description: toast_description,
+          refetch();
+          toast.success("User invited", {
+            description: `User ${name} has been invited.`,
           });
-          queryClient.refetchQueries({ queryKey: ["admin", "users"] });
-          queryClient.refetchQueries({ queryKey: ["admin", "entityInfo"] });
-          queryClient.refetchQueries({ queryKey: ["roles"] });
           onClose();
         }
       } catch (error) {
-        const data = error.response.data;
-        setErrorMessage(data.detail || "Unable to register the user");
+        const data = getErrorResponse(error).data;
+        setErrorMessage(String(data.detail || "Unable to register the user"));
         return;
       }
     },
     [onClose, permissions, queryClient.refetchQueries],
   );
+
+  if (added) {
+    return (
+      <TabsContent value="single">
+        <div
+          data-testid="added-user"
+          className="flex flex-col gap-3 pb-6 body-xs-medium"
+        >
+          <p>{added.name} has been added to the organization.</p>
+          <PasswordLink link={added.answer.link} expiresAt={added.answer.expires_at} />
+        </div>
+        <DialogFooter className="pr-0">
+          <Button size="sm" variant="primary" onClick={onClose}>
+            Done
+          </Button>
+        </DialogFooter>
+      </TabsContent>
+    );
+  }
 
   return (
     <TabsContent value="single">
@@ -161,49 +158,38 @@ export default function InviteSingleUser({
                     placeholder="Select a role"
                     options={roleOptions}
                     {...field}
+                    value={field.value ?? undefined}
                   />
                 )}
               />
             )}
-            {!isLite && (
-              <FormField
-                name="bypass_invitation"
-                control={userForm.control}
-                render={({ field }) => (
-                  <div className="flex items-center gap-1.5 pb-6">
-                    <Checkbox
-                      label="Bypass invitation"
-                      className="text-ds-text-caption"
-                      labelClassName="max-w-none whitespace-nowrap ml-1"
-                      checked={!servicesEmailFF || field.value}
-                      onCheckedChange={servicesEmailFF ? field.onChange : undefined}
-                      disabled={!servicesEmailFF}
-                    />
-                    <Tooltip
-                      message={
-                        servicesEmailFF
-                          ? "By selecting this option, the user will be added to the organization without the need to accept an invitation."
-                          : "Email service is disabled. Users will be added directly without invitation emails."
-                      }
-                      position="top"
-                    >
-                      <button type="button" className="inline-flex">
-                        <Icon
-                          id="help-outline-circle"
-                          className="text-ds-text-caption"
-                        />
-                      </button>
-                    </Tooltip>
-                  </div>
-                )}
-              />
-            )}
+            <FormField
+              name="bypass_invitation"
+              control={userForm.control}
+              render={({ field }) => (
+                <div className="flex items-center gap-1.5 pb-6">
+                  <Checkbox
+                    label="Bypass invitation"
+                    className="text-ds-text-caption"
+                    labelClassName="max-w-none whitespace-nowrap ml-1"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                  <Tooltip
+                    message="By selecting this option, the user will be added to the organization without the need to accept an invitation."
+                    position="top"
+                  >
+                    <button type="button" className="inline-flex">
+                      <Icon id="help-outline-circle" className="text-ds-text-caption" />
+                    </button>
+                  </Tooltip>
+                </div>
+              )}
+            />
           </div>
           {errorMessage && <p className="text-alert-error pb-6">{errorMessage}</p>}
           <AdminDialogFooter
-            primaryButtonName={
-              userForm.watch("bypass_invitation") || !servicesEmailFF ? "Add" : "Invite"
-            }
+            primaryButtonName={userForm.watch("bypass_invitation") ? "Add" : "Invite"}
             className="pr-0"
             primaryButtonDisabled={!userForm.formState.isValid}
           />

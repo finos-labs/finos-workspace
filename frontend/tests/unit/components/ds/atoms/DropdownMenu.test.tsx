@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   DropdownMenu,
@@ -30,7 +31,7 @@ vi.mock("@radix-ui/react-dropdown-menu", () => {
   const DropdownContext = React.createContext({ open: false, setOpen: () => {} });
 
   return {
-    Root: ({ children }: any) => {
+    Root: ({ children }: { children?: ReactNode }) => {
       const [open, setOpen] = React.useState(false);
       return (
         <DropdownContext.Provider value={{ open, setOpen }}>
@@ -38,7 +39,7 @@ vi.mock("@radix-ui/react-dropdown-menu", () => {
         </DropdownContext.Provider>
       );
     },
-    Trigger: ({ children, asChild }: any) => {
+    Trigger: ({ children }: { children?: ReactNode }) => {
       const { setOpen } = React.useContext(DropdownContext);
       return (
         <div data-testid="trigger" onClick={() => setOpen(true)}>
@@ -46,40 +47,70 @@ vi.mock("@radix-ui/react-dropdown-menu", () => {
         </div>
       );
     },
-    Portal: ({ children }: any) => {
+    Portal: ({ children }: { children?: ReactNode }) => {
       const { open } = React.useContext(DropdownContext);
-      return open ? <>{children}</> : null;
+      return open ? children : null;
     },
-    Content: ({ children, className }: any) => (
+    Content: ({
+      children,
+      className,
+    }: {
+      children?: ReactNode;
+      className?: string;
+    }) => (
       <div data-testid="content" className={className}>
         {children}
       </div>
     ),
-    Item: ({ children, className, onClick }: any) => (
+    Item: ({
+      children,
+      className,
+      onClick,
+    }: {
+      children?: ReactNode;
+      className?: string;
+      onClick: () => void;
+    }) => (
       <div data-testid="item" className={className} onClick={onClick}>
         {children}
       </div>
     ),
-    Group: ({ children }: any) => <div>{children}</div>,
-    Sub: ({ children }: any) => <div>{children}</div>,
-    RadioGroup: ({ children }: any) => <div>{children}</div>,
-    SubTrigger: ({ children, className }: any) => (
+    Group: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Sub: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    RadioGroup: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    SubTrigger: ({
+      children,
+      className,
+    }: {
+      children?: ReactNode;
+      className?: string;
+    }) => <div className={className}>{children}</div>,
+    SubContent: ({
+      children,
+      className,
+    }: {
+      children?: ReactNode;
+      className?: string;
+    }) => <div className={className}>{children}</div>,
+    CheckboxItem: ({
+      children,
+      className,
+    }: {
+      children?: ReactNode;
+      className?: string;
+    }) => <div className={className}>{children}</div>,
+    RadioItem: ({
+      children,
+      className,
+    }: {
+      children?: ReactNode;
+      className?: string;
+    }) => <div className={className}>{children}</div>,
+    Label: ({ children, className }: { children?: ReactNode; className?: string }) => (
       <div className={className}>{children}</div>
     ),
-    SubContent: ({ children, className }: any) => (
-      <div className={className}>{children}</div>
-    ),
-    CheckboxItem: ({ children, className }: any) => (
-      <div className={className}>{children}</div>
-    ),
-    RadioItem: ({ children, className }: any) => (
-      <div className={className}>{children}</div>
-    ),
-    Label: ({ children, className }: any) => (
-      <div className={className}>{children}</div>
-    ),
-    Separator: ({ className }: any) => <div className={className} />,
-    ItemIndicator: ({ children }: any) => <div>{children}</div>,
+    Separator: ({ className }: { className?: string }) => <div className={className} />,
+    ItemIndicator: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   };
 });
 

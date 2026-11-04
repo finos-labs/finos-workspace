@@ -1,20 +1,23 @@
 import type { ReactNode } from "react";
 import type { EntityRolePermissions } from "~/api/entity_roles.api";
+import type { SharingLevel } from "~/lib/state/access";
 
-export interface RoleT {
+export interface RoleSettings {
+  sharing: SharingLevel;
+  copilot_calls_day: number | null;
+  copilot_tokens_day: number | null;
+  upload_size_gb: number | null;
+  search_web: boolean;
+  fetch_from_web: boolean;
+}
+
+export interface RoleT extends RoleSettings {
   uuid: string;
   name: string;
   description: string;
-  users: string[]; // email addresses of users in the group
+  users: string[];
   createdAt: number;
 }
-
-export type RolesContextType = {
-  roles: RoleT[];
-  setRoles: (roles: RoleT[]) => void;
-  selectedRoles: Set<string>;
-  setSelectedRoles: (selected: Set<string>) => void;
-};
 
 export type ActivityLogEntry = {
   uuid: string;
@@ -26,7 +29,7 @@ export type ActivityLogEntry = {
   details: Record<string, unknown>;
 };
 
-export type RoleAuditAction =
+type RoleAuditAction =
   | "create"
   | "update"
   | "delete"
@@ -35,7 +38,22 @@ export type RoleAuditAction =
   | "remove"
   | "add";
 
-export type RoleResourceType = "role" | "backend" | "file" | "prompt" | "user";
+type RoleResourceType =
+  | "role"
+  | "backend"
+  | "file"
+  | "prompt"
+  | "user"
+  | "widget_plugin";
+
+export const ROLE_RESOURCE_LABELS: Record<RoleResourceType, string> = {
+  role: "role",
+  backend: "backend",
+  file: "file",
+  prompt: "prompt",
+  user: "user",
+  widget_plugin: "widget plugin",
+};
 
 export type RoleAuditLogReturn = {
   uuid: string;
@@ -56,7 +74,7 @@ export interface PermissionItem {
   name: string;
   description?: string;
   category?: "backend" | "file" | "prompt" | "template";
-  access: "no-access" | "access";
+  access?: "no-access" | "access";
   isChecked?: boolean;
   status?: "success" | "error";
   widgets?: PermissionItem[];
@@ -74,7 +92,6 @@ export interface EditPermissionsDialogProps {
   setOpen: (value: boolean) => void;
   role: RoleT | null;
   permissions: EntityRolePermissions[];
-  /** Optional control rendered in the dialog header to switch the active role. When set, the title becomes "Setup Permissions". */
   roleSelector?: ReactNode;
 }
 

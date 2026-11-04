@@ -1,0 +1,51 @@
+---
+slug: /features/mcp-companion
+title: MCP Companion
+sidebar_label: MCP Companion
+sidebar_position: 1
+---
+
+import { BridgeValue } from "@site/src/components/Reference/bridge";
+
+# MCP Companion
+
+The MCP Companion lets an AI tool outside FINOS Workspace read and change your dashboards.
+
+The AI tool connects to the FINOS Workspace MCP server. The server does not change your dashboards itself. It sends each command to a FINOS Workspace tab that you have open, and that tab does the work.
+
+To connect an AI tool now, go to [Connect your AI tool](../../quick-start/connect-your-ai-tool.mdx).
+
+## How it works
+
+1. You open FINOS Workspace in your browser and turn on the MCP Companion. The tab connects to the FINOS Workspace API. This connection is the **bridge**.
+2. Your AI tool connects to the MCP server at `/mcp` on the API. It identifies you with a personal access token.
+3. The AI tool calls a tool. The API finds your connected tab and sends the command to it.
+4. The tab does the work. It sends the result to the API, and the API sends the result to the AI tool.
+
+## Why the tab does the work
+
+- **The live dashboard is in the browser.** The browser holds the widgets, their parameters, the layout and the data of the widgets. It saves a copy to the API from time to time. A server that changed the saved copy would lose the change: the open tab would overwrite it at its next save, or never show it.
+- **The web app already has the dashboard logic.** For example, it gets the data of a widget from a backend with the credentials of the connection. It also validates parameters and applies layouts. The tab uses this same code, so the result is the same as when you make the change yourself.
+- **The Agent works in the same way.** It uses the same tools. The Agent already talks to your browser. An AI tool outside the app needs the bridge to find your browser.
+
+## How the API finds your tab
+
+- The API keeps one bridge session for each user. When you connect a second tab, the second tab replaces the first.
+- The API identifies you from the token of the AI tool. Then it sends the command to your connected tab and waits for the result.
+- The API can run as more than one process. The process that gets a call does not always hold the connection to your tab. In that case, the processes send the call to each other through Valkey.
+- The tab answers each command with a result. The result tells if the command worked, and it contains a message and the data.
+- The API waits <BridgeValue of="constants.commandTimeoutSeconds" unit="s" /> for a result. If no result comes, the call fails with a timeout, and the AI tool can try the call again.
+- If no tab is connected, the call fails immediately with a message that tells you this.
+- The API keeps the recent results. If the AI tool sends a command again with the same identifier, the command does not run a second time.
+
+## What this design means for you
+
+- **A tab must be open.** When your browser is closed, the AI tool can do nothing. The AI tool works through the tab that connected last, and you see each change in that tab.
+- **Your permissions apply.** The tab runs each command with your session and your catalog of widgets. The AI tool can do only what you can do in the app. The token identifies you, and it never gives more access.
+- **The tools are the same everywhere.** The Agent and the MCP server send the same commands to the tab, so a command gives the same result through both.
+- **The AI tool holds only a token.** It never holds your session. You can revoke the token, and nothing else changes.
+
+## Reference
+
+- [FINOS Workspace MCP server](../../reference/mcp/workspace-mcp.mdx) lists the tools, resources and prompts.
+- [FINOS Workspace bridge protocol](../../reference/protocols/workspace-bridge.mdx) gives the messages and the limits of the bridge.

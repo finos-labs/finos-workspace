@@ -91,10 +91,6 @@ export function SaveAppDialog() {
     return dashboard?.data?.name || "";
   }, [isFromDashboard, dashboardId, getDashboardById]);
 
-  /**
-   * Stable identity for the data set we're editing. When this string changes
-   * we re-seed the form; when it stays the same we leave the user's edits alone.
-   */
   const formSignature = useMemo(() => {
     if (!isOpen) return null;
     if (isEdit) return `edit:${editAppId ?? "none"}`;
@@ -105,11 +101,6 @@ export function SaveAppDialog() {
     return null;
   }, [isOpen, isEdit, isFromDashboard, editAppId, subMode, selectedAppId, sourceAppId]);
 
-  /**
-   * One-shot auto-promote: when the dashboard was already saved as a user app,
-   * default the dialog to "update existing" with that app preselected.
-   * Reset on close so the next open re-evaluates.
-   */
   const autoPromotedRef = useRef(false);
   useEffect(() => {
     if (!isOpen) {
@@ -262,7 +253,10 @@ export function SaveAppDialog() {
     isFromDashboard && sourceAppId && userApps.some((app) => app.uuid === sourceAppId);
 
   const appOptions = useMemo(
-    () => userApps.map((app) => ({ value: app.uuid!, label: app.name })),
+    () =>
+      userApps.flatMap((app) =>
+        app.uuid ? [{ value: app.uuid, label: app.name }] : [],
+      ),
     [userApps],
   );
 

@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { createRef } from "react";
-import { useState } from "react";
+import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   TabPageEmptyState,
@@ -208,7 +207,6 @@ describe("TabPageSectionHeader", () => {
     const btn = screen.getByRole("button");
     fireEvent.click(btn);
     fireEvent.click(btn);
-    // Just verifying no crashes in controlled mode
     expect(btn).toBeInTheDocument();
   });
 });

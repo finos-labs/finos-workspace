@@ -3,8 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SkillsTab } from "~/components/AI/SkillsTab";
-
-// --- vi.hoisted mocks ---
+import { required } from "../../mocks";
 
 const {
   mockSetSkillDialogOpen,
@@ -22,8 +21,6 @@ const {
   mockDeleteUserSkills: vi.fn(),
 }));
 
-// --- External dependency mocks ---
-
 vi.mock("sonner", () => ({
   toast: { success: mockToastSuccess, error: mockToastError },
 }));
@@ -34,6 +31,18 @@ vi.mock("~/api/auth.api", () => ({
 
 vi.mock("~/lib/state/skillsLibrary", () => ({
   useShallowSkillsLibraryStore: mockUseShallowSkillsLibraryStore,
+}));
+
+const agentState = vi.hoisted(() => ({
+  agent: null as null | {
+    name: string;
+    skills: { slug: string; description: string }[];
+  },
+}));
+
+vi.mock("~/lib/state/copilot", () => ({
+  useShallowCopilotStore: (selector: (state: unknown) => unknown) =>
+    selector({ selectedCopilot: agentState.agent }),
 }));
 
 vi.mock("usehooks-ts", () => ({
@@ -58,8 +67,6 @@ vi.mock("framer-motion", () => ({
     ),
   },
 }));
-
-// --- Component mocks ---
 
 vi.mock("~/components/General/SearchResultsNotFound", () => ({
   default: () => <div data-testid="results-not-found">No results found</div>,
@@ -118,7 +125,7 @@ vi.mock("~/components/ds/atoms/Input", () => ({
 
 vi.mock("~/components/ds/atoms/Tag", () => ({
   Tag: ({ children, color }: { children: ReactNode; color?: string }) => (
-    <span className="BB-Tag" data-color={color}>
+    <span data-testid="tag" data-color={color}>
       {children}
     </span>
   ),
@@ -192,8 +199,6 @@ vi.mock("markdown-to-jsx", () => ({
   ),
 }));
 
-// --- Test data ---
-
 const createMockSkill = (
   overrides: Partial<{
     id: string;
@@ -233,8 +238,6 @@ const mockSkills = [
   }),
 ];
 
-// --- Test setup ---
-
 function setupMocks(skillsOverride: typeof mockSkills = mockSkills) {
   mockDeleteUserSkills.mockResolvedValue(skillsOverride);
   mockUseShallowSkillsLibraryStore.mockImplementation(
@@ -255,11 +258,10 @@ function getSkillHeader(slug: string) {
   return screen.getByRole("button", { name: new RegExp(slug, "i") });
 }
 
-// --- Tests ---
-
 describe("SkillsTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    agentState.agent = null;
     setupMocks();
   });
 
@@ -276,6 +278,35 @@ describe("SkillsTab", () => {
       expect(screen.getByText("Analyze financial data")).toBeInTheDocument();
       expect(screen.getByText("Create data visualizations")).toBeInTheDocument();
       expect(screen.getByText("Generate reports")).toBeInTheDocument();
+    });
+  });
+
+  describe("Skills that come with a plugin", () => {
+    const fromPlugin = {
+      ...createMockSkill({
+        id: "plugin-skill",
+        slug: "forecast-charts",
+        description: "How to draw a forecast",
+      }),
+      pluginName: "Forecast chart",
+    };
+
+    it("shows them with the plugin's name and without edit, delete or select", () => {
+      setupMocks([...mockSkills, fromPlugin]);
+      renderSkillsTab();
+
+      expect(screen.getByText("forecast-charts")).toBeInTheDocument();
+      expect(screen.getByText("How to draw a forecast")).toBeInTheDocument();
+      expect(screen.getByText("Forecast chart")).toBeInTheDocument();
+      expect(screen.getAllByRole("checkbox")).toHaveLength(mockSkills.length);
+    });
+
+    it("shows them when they are the only skills", () => {
+      setupMocks([fromPlugin]);
+      renderSkillsTab();
+
+      expect(screen.getByText("forecast-charts")).toBeInTheDocument();
+      expect(screen.queryByText("No Skills added")).not.toBeInTheDocument();
     });
   });
 
@@ -316,7 +347,7 @@ describe("SkillsTab", () => {
     it("renders skill slugs as plain text (not tags)", () => {
       renderSkillsTab();
       const slug = screen.getByText("financial-analysis");
-      expect(slug.classList.contains("BB-Tag")).toBe(false);
+      expect(slug.closest('[data-testid="tag"]')).toBeNull();
     });
 
     it("does not render skill creation dates", () => {
@@ -375,7 +406,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const trashIcons = screen.getAllByTestId("icon-trash-02");
-      await user.click(trashIcons[0].closest("button")!);
+      await user.click(required(trashIcons[0].closest("button")));
 
       expect(screen.getByTestId("confirm-dialog")).toBeInTheDocument();
       expect(screen.getByText("Delete Skill")).toBeInTheDocument();
@@ -391,7 +422,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const trashIcons = screen.getAllByTestId("icon-trash-02");
-      await user.click(trashIcons[0].closest("button")!);
+      await user.click(required(trashIcons[0].closest("button")));
 
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
@@ -407,7 +438,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const trashIcons = screen.getAllByTestId("icon-trash-02");
-      await user.click(trashIcons[0].closest("button")!);
+      await user.click(required(trashIcons[0].closest("button")));
 
       expect(screen.getByTestId("confirm-dialog")).toBeInTheDocument();
 
@@ -424,7 +455,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const trashIcons = screen.getAllByTestId("icon-trash-02");
-      await user.click(trashIcons[2].closest("button")!);
+      await user.click(required(trashIcons[2].closest("button")));
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
       await waitFor(() => {
@@ -624,7 +655,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const editIcons = screen.getAllByTestId("icon-edit");
-      await user.click(editIcons[0].closest("button")!);
+      await user.click(required(editIcons[0].closest("button")));
 
       expect(mockSetSkillDialogOpen).toHaveBeenCalledWith("skill-1");
     });
@@ -634,7 +665,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const editIcons = screen.getAllByTestId("icon-edit");
-      await user.click(editIcons[1].closest("button")!);
+      await user.click(required(editIcons[1].closest("button")));
 
       expect(mockSetSkillDialogOpen).toHaveBeenCalledWith("skill-2");
     });
@@ -644,7 +675,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const editIcons = screen.getAllByTestId("icon-edit");
-      await user.click(editIcons[0].closest("button")!);
+      await user.click(required(editIcons[0].closest("button")));
 
       expect(screen.queryAllByTestId("markdown-content")).toHaveLength(0);
     });
@@ -736,6 +767,46 @@ describe("SkillsTab", () => {
         expect(screen.getByText("data-viz")).toBeInTheDocument();
         expect(screen.getByText("report-gen")).toBeInTheDocument();
       });
+    });
+  });
+  describe("The agent's skills", () => {
+    const agent = {
+      name: "Agent",
+      skills: [
+        { slug: "html-report", description: "HTML reports" },
+        { slug: "html-chart", description: "Chart colors" },
+      ],
+    };
+
+    it("lists them with the agent's name, and nothing to edit or delete", () => {
+      agentState.agent = agent;
+      renderSkillsTab();
+
+      expect(screen.getByText("html-report")).toBeInTheDocument();
+      expect(screen.getByText("HTML reports")).toBeInTheDocument();
+      expect(screen.getAllByText("Agent")).toHaveLength(2);
+      expect(screen.getAllByTestId("icon-edit")).toHaveLength(mockSkills.length);
+      expect(screen.getAllByTestId("icon-trash-02")).toHaveLength(mockSkills.length);
+    });
+
+    it("shows them instead of the empty state when the user has no skills", () => {
+      agentState.agent = agent;
+      setupMocks([]);
+      renderSkillsTab();
+
+      expect(screen.queryByText("No Skills added")).not.toBeInTheDocument();
+      expect(screen.getByText("html-chart")).toBeInTheDocument();
+    });
+
+    it("give way to a user's skill with the same slug", () => {
+      agentState.agent = {
+        name: "Agent",
+        skills: [{ slug: "data-viz", description: "The agent's charts" }],
+      };
+      renderSkillsTab();
+
+      expect(screen.getAllByText("data-viz")).toHaveLength(1);
+      expect(screen.queryByText("The agent's charts")).not.toBeInTheDocument();
     });
   });
 });

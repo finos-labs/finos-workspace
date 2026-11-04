@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import CopilotAIMessage from "~/components/AI/CopilotAIMessage";
-import { useShallowStreamingStore } from "~/components/AI/hooks/useStreaming";
 import type { AIMessage, Citation } from "~/lib/state/copilot";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
+import { makeMessageGroup } from "../../factories";
 
 const markdownMockState = vi.hoisted(() => ({
   RuleType: {
@@ -24,17 +25,30 @@ vi.mock("~/lib/state/copilot", () => ({
   useShallowCopilotStore: vi.fn(),
 }));
 
-vi.mock("~/components/AI/hooks/useStreaming", () => ({
-  useShallowStreamingStore: vi.fn(),
-}));
-
+const HELD_TEXT = "PARTIAL TEXT THAT HAS NOT BEEN PUT IN THE CHAT";
 vi.mock("usehooks-ts", () => ({
-  useLocalStorage: vi.fn((_key: string, defaultValue: any) => [defaultValue, vi.fn()]),
+  useLocalStorage: vi.fn((key: string, defaultValue: unknown) => [
+    key === "streamedData" ? HELD_TEXT : defaultValue,
+    vi.fn(),
+  ]),
 }));
 
 vi.mock("markdown-to-jsx", () => ({
   RuleType: markdownMockState.RuleType,
-  default: ({ children, options }: { children: string; options?: any }) => {
+  default: ({
+    children,
+    options,
+  }: {
+    children: string;
+    options?: {
+      renderRule?: (
+        next: () => ReactNode,
+        node: { type: unknown; text: string },
+        renderChildren: () => ReactNode,
+        state: { key: number },
+      ) => ReactNode;
+    };
+  }) => {
     const renderedContent = options?.renderRule
       ? options.renderRule(
           () => children,
@@ -61,7 +75,6 @@ vi.mock("~/components/AI/CopilotFeedback", () => ({
 }));
 
 vi.mock("~/components/AI/MarkdownOverrides", () => ({
-  isSafeMarkdownImageSrc: vi.fn(() => true),
   MarkdownAIMessageOverrides: {},
   renderRule: vi.fn((next) => next()),
 }));
@@ -86,7 +99,7 @@ describe("CopilotAIMessage", () => {
   const baseMessage: AIMessage = {
     role: "ai",
     content: "This is a test AI response.",
-    copilotId: "openbb-copilot",
+    copilotId: "default-copilot",
     timestamp: 1705330200000,
     citations: [],
   };
@@ -102,12 +115,6 @@ describe("CopilotAIMessage", () => {
       });
     });
 
-    (useShallowStreamingStore as Mock).mockImplementation((selector) => {
-      return selector({
-        streamingStatus: "streaming-ready",
-      });
-    });
-
     Object.assign(navigator, {
       clipboard: {
         writeText: vi.fn().mockResolvedValue(undefined),
@@ -117,7 +124,7 @@ describe("CopilotAIMessage", () => {
 
   describe("message content rendering", () => {
     it("renders AI message content", () => {
-      render(<CopilotAIMessage message={baseMessage} isLastGroup={false} />);
+      render(<CopilotAIMessage message={baseMessage} />);
 
       expect(screen.getByTestId("markdown-content")).toBeInTheDocument();
       expect(screen.getByText("This is a test AI response.")).toBeInTheDocument();
@@ -129,17 +136,13 @@ describe("CopilotAIMessage", () => {
         content: "",
       };
 
-      const { container } = render(
-        <CopilotAIMessage message={emptyMessage} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={emptyMessage} />);
 
       expect(container.querySelector(".prose")).not.toBeInTheDocument();
     });
 
     it("applies correct prose styling", () => {
-      const { container } = render(
-        <CopilotAIMessage message={baseMessage} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={baseMessage} />);
 
       const proseContainer = container.querySelector(".prose");
       expect(proseContainer).toBeInTheDocument();
@@ -149,18 +152,14 @@ describe("CopilotAIMessage", () => {
 
   describe("action buttons", () => {
     it("renders copy button", () => {
-      const { container } = render(
-        <CopilotAIMessage message={baseMessage} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={baseMessage} />);
 
       const buttons = container.querySelectorAll("button");
       expect(buttons.length).toBeGreaterThanOrEqual(2);
     });
 
     it("copies message text to clipboard when copy button is clicked", async () => {
-      const { container } = render(
-        <CopilotAIMessage message={baseMessage} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={baseMessage} />);
 
       const buttons = container.querySelectorAll("button");
       const copyButton = buttons[0];
@@ -174,16 +173,14 @@ describe("CopilotAIMessage", () => {
     });
 
     it("renders create widget button", () => {
-      const { container } = render(
-        <CopilotAIMessage message={baseMessage} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={baseMessage} />);
 
       const buttons = container.querySelectorAll("button");
       expect(buttons.length).toBeGreaterThanOrEqual(2);
     });
 
     it("renders feedback component", () => {
-      render(<CopilotAIMessage message={baseMessage} isLastGroup={false} />);
+      render(<CopilotAIMessage message={baseMessage} />);
 
       expect(screen.getByTestId("feedback-component")).toBeInTheDocument();
     });
@@ -196,7 +193,7 @@ describe("CopilotAIMessage", () => {
         isCancelled: true,
       };
 
-      render(<CopilotAIMessage message={cancelledMessage} isLastGroup={false} />);
+      render(<CopilotAIMessage message={cancelledMessage} />);
 
       expect(
         screen.getByText("Request cancelled before completion"),
@@ -209,9 +206,7 @@ describe("CopilotAIMessage", () => {
         isCancelled: true,
       };
 
-      const { container } = render(
-        <CopilotAIMessage message={cancelledMessage} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={cancelledMessage} />);
 
       const warningContainer = container.querySelector(".bg-orange-50");
       expect(warningContainer).toBeInTheDocument();
@@ -224,9 +219,7 @@ describe("CopilotAIMessage", () => {
         isCancelled: true,
       };
 
-      const { container } = render(
-        <CopilotAIMessage message={cancelledWithContent} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={cancelledWithContent} />);
 
       expect(screen.getByTestId("feedback-component")).toBeInTheDocument();
     });
@@ -238,59 +231,27 @@ describe("CopilotAIMessage", () => {
         isCancelled: true,
       };
 
-      render(<CopilotAIMessage message={cancelledNoContent} isLastGroup={false} />);
+      render(<CopilotAIMessage message={cancelledNoContent} />);
 
       expect(screen.queryByTestId("feedback-component")).not.toBeInTheDocument();
     });
   });
 
-  describe("streaming state", () => {
-    it("uses streamed data when isLastGroup and streaming", () => {
-      (useShallowStreamingStore as Mock).mockImplementation((selector) => {
-        return selector({
-          streamingStatus: "streaming-started",
-          completion: "Streaming content...",
-        });
-      });
-
-      const { container } = render(
-        <CopilotAIMessage message={baseMessage} isLastGroup={true} />,
-      );
-
-      // Component should render without errors
-      expect(container.firstChild).toBeInTheDocument();
-    });
-
-    it("uses message content when not streaming", () => {
-      render(<CopilotAIMessage message={baseMessage} isLastGroup={true} />);
+  describe("text that is still arriving", () => {
+    it("shows the message in the chat, never the text held for it", () => {
+      render(<CopilotAIMessage message={baseMessage} />);
 
       expect(screen.getByText("This is a test AI response.")).toBeInTheDocument();
-    });
-
-    it("uses message content when not last group even if streaming", () => {
-      (useShallowStreamingStore as Mock).mockImplementation((selector) => {
-        return selector({
-          streamingStatus: "streaming-started",
-        });
-      });
-
-      render(<CopilotAIMessage message={baseMessage} isLastGroup={false} />);
-
-      expect(screen.getByText("This is a test AI response.")).toBeInTheDocument();
+      expect(screen.queryByText(HELD_TEXT)).not.toBeInTheDocument();
     });
   });
 
   describe("hover interactions", () => {
     it("triggers datetime display on mouse enter when groups available", () => {
-      const allGroups = [{ id: "group-1" }, { id: "group-2" }];
+      const allGroups = [makeMessageGroup(), makeMessageGroup()];
 
       const { container } = render(
-        <CopilotAIMessage
-          message={baseMessage}
-          isLastGroup={false}
-          allGroups={allGroups}
-          groupIndex={0}
-        />,
+        <CopilotAIMessage message={baseMessage} allGroups={allGroups} groupIndex={0} />,
       );
 
       const messageContainer = container.querySelector(".relative.group");
@@ -300,9 +261,7 @@ describe("CopilotAIMessage", () => {
     });
 
     it("hides datetime on mouse leave", () => {
-      const { container } = render(
-        <CopilotAIMessage message={baseMessage} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={baseMessage} />);
 
       const messageContainer = container.querySelector(".relative.group");
       if (messageContainer) {
@@ -313,27 +272,21 @@ describe("CopilotAIMessage", () => {
 
   describe("styling", () => {
     it("applies relative positioning to container", () => {
-      const { container } = render(
-        <CopilotAIMessage message={baseMessage} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={baseMessage} />);
 
       const relativeContainer = container.querySelector(".relative.group");
       expect(relativeContainer).toBeInTheDocument();
     });
 
     it("applies full width styling", () => {
-      const { container } = render(
-        <CopilotAIMessage message={baseMessage} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={baseMessage} />);
 
       const widthContainer = container.querySelector(".w-full");
       expect(widthContainer).toBeInTheDocument();
     });
 
     it("applies general primary background styling", () => {
-      const { container } = render(
-        <CopilotAIMessage message={baseMessage} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={baseMessage} />);
 
       const bgContainer = container.querySelector(".bg-general-bg-primary");
       expect(bgContainer).toBeInTheDocument();
@@ -357,7 +310,7 @@ describe("CopilotAIMessage", () => {
         ],
       };
 
-      render(<CopilotAIMessage message={messageWithCitations} isLastGroup={false} />);
+      render(<CopilotAIMessage message={messageWithCitations} />);
 
       expect(screen.getByTestId("markdown-content")).toBeInTheDocument();
     });
@@ -370,7 +323,7 @@ describe("CopilotAIMessage", () => {
         content: "```python\nprint('hello')\n```",
       };
 
-      render(<CopilotAIMessage message={messageWithCode} isLastGroup={false} />);
+      render(<CopilotAIMessage message={messageWithCode} />);
 
       expect(screen.getByTestId("markdown-content")).toBeInTheDocument();
     });
@@ -381,7 +334,7 @@ describe("CopilotAIMessage", () => {
         content: "**Bold** and *italic* text with [links](https://example.com)",
       };
 
-      render(<CopilotAIMessage message={markdownMessage} isLastGroup={false} />);
+      render(<CopilotAIMessage message={markdownMessage} />);
 
       expect(screen.getByTestId("markdown-content")).toBeInTheDocument();
     });
@@ -393,7 +346,7 @@ describe("CopilotAIMessage", () => {
           "More info: https://example.com/path_with_underscore?query=foo_bar and text_with_underscores",
       };
 
-      render(<CopilotAIMessage message={messageWithUrl} isLastGroup={false} />);
+      render(<CopilotAIMessage message={messageWithUrl} />);
 
       const markdown = screen.getByTestId("markdown-content");
       expect(markdown.textContent).toContain(
@@ -408,7 +361,7 @@ describe("CopilotAIMessage", () => {
         content: "| Header 1 | Header 2 |\n|---|---|\n| Cell 1 | Cell 2 |",
       };
 
-      render(<CopilotAIMessage message={tableMessage} isLastGroup={false} />);
+      render(<CopilotAIMessage message={tableMessage} />);
 
       expect(screen.getByTestId("markdown-content")).toBeInTheDocument();
     });
@@ -416,18 +369,14 @@ describe("CopilotAIMessage", () => {
 
   describe("divider and actions layout", () => {
     it("renders divider between content and actions", () => {
-      const { container } = render(
-        <CopilotAIMessage message={baseMessage} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={baseMessage} />);
 
-      const divider = container.querySelector(".obb-divider");
+      const divider = container.querySelector(".ws-divider");
       expect(divider).toBeInTheDocument();
     });
 
     it("renders actions in inline-block container", () => {
-      const { container } = render(
-        <CopilotAIMessage message={baseMessage} isLastGroup={false} />,
-      );
+      const { container } = render(<CopilotAIMessage message={baseMessage} />);
 
       const inlineBlock = container.querySelector(".inline-block");
       expect(inlineBlock).toBeInTheDocument();

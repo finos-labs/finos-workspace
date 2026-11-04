@@ -6,9 +6,13 @@ const queryResult = vi.hoisted(() => ({
   isLoading: false,
   isError: false,
 }));
+const queryOptions = vi.hoisted(() => ({ enabled: undefined as unknown }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => queryResult,
+  useQuery: (options: { enabled?: boolean }) => {
+    queryOptions.enabled = options.enabled;
+    return queryResult;
+  },
 }));
 
 import AdminUserPermissionsSection from "~/components/AdminUsers/AdminUserPermissionsSection";
@@ -50,15 +54,12 @@ describe("AdminUserPermissionsSection", () => {
     expect(screen.getByText("Risk Manager")).toBeInTheDocument();
     expect(screen.getByText("Analyst")).toBeInTheDocument();
 
-    // Risk Manager: Apps 1 + Widgets 1 (app2 is denied; no prompts/agents).
     const riskRow = screen.getByText("Risk Manager").closest("tr") as HTMLElement;
     expect(within(riskRow).getAllByText("1")).toHaveLength(2);
 
-    // Analyst: Widgets 2 (w1 + w2).
     const analystRow = screen.getByText("Analyst").closest("tr") as HTMLElement;
     expect(within(analystRow).getByText("2")).toBeInTheDocument();
 
-    // One Final Permission "Access" tag per role (popover tags only render on hover).
     expect(screen.getAllByText("Access")).toHaveLength(2);
   });
 
@@ -69,6 +70,21 @@ describe("AdminUserPermissionsSection", () => {
     expect(
       screen.getByText("No roles assigned to this user account"),
     ).toBeInTheDocument();
+  });
+
+  it("does not ask for the permissions of a pending invite", () => {
+    render(<AdminUserPermissionsSection userUuid="invite-uuid" invited />);
+
+    expect(queryOptions.enabled).toBe(false);
+    expect(
+      screen.getByText("No roles assigned to this user account"),
+    ).toBeInTheDocument();
+  });
+
+  it("asks for the permissions of a user", () => {
+    render(<AdminUserPermissionsSection userUuid="u1" />);
+
+    expect(queryOptions.enabled).toBe(true);
   });
 
   it("shows the loading state", () => {

@@ -89,8 +89,6 @@ export const useSidebarStore = createWithEqualityFn<SidebarState>()(
   shallow,
 );
 
-export function useShallowSidebarStore<S extends SidebarState, T>(
-  selector: Selector<S, T>,
-): T {
+export function useShallowSidebarStore<T>(selector: Selector<SidebarState, T>): T {
   return useSidebarStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }

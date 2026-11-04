@@ -38,8 +38,6 @@ export const usePermissionsStore = create<PermissionsState>()(
         }
       }
 
-      // If it's neither in backends nor files, we should always return true
-      // since it's user's own data
       return false;
     },
     isSharedWidget: (sourceId, widgetId) => {
@@ -54,13 +52,13 @@ export const usePermissionsStore = create<PermissionsState>()(
         return file.access === "access";
       }
 
-      return false; // if the backend is not found, it's not a shared widget
+      return false;
     },
   })),
 );
 
-export function useShallowPermissionsStore<S extends PermissionsState, T>(
-  selector: Selector<S, T>,
+export function useShallowPermissionsStore<T>(
+  selector: Selector<PermissionsState, T>,
 ): T {
   return usePermissionsStore(useShallow(selector));
 }

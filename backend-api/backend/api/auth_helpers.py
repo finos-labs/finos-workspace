@@ -1,33 +1,32 @@
-"""Functions that help with authentication"""
-
 import asyncio
-import random
+import json
 import re
-from contextlib import suppress
-from datetime import timedelta
-from pathlib import Path
-from typing import Annotated, Any, Literal, TypeAlias, override
+import secrets
+import weakref
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager, suppress
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Literal
 from uuid import UUID
 
 import jwt
-from fastapi import Cookie, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import HTTPException, Request, Response, WebSocket, status
+from fastapi.responses import JSONResponse
 from fastapi.security.utils import get_authorization_scheme_param
-from jwt import PyJWTError
-from loguru import logger
-from sqlalchemy import delete, insert, select, update
+from jwt import ExpiredSignatureError, PyJWTError
+from sqlalchemy import ColumnElement, delete, insert, select
 from sqlalchemy.engine.row import Row
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.datastructures import Headers, MutableHeaders
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from api.statics import butterfly_species
 from utilities.config import settings
 
-from . import base, crud, database, models, schemas
+from . import base, crypto, database, models
+from .context import session_uuid_ctx
 
 ALGORITHM = "HS256"
-SESSION_GRACE_PERIOD = timedelta(minutes=5)
-TOKEN_FILE = Path("/snowflake/session/token")
 
 
 credentials_exception = HTTPException(
@@ -36,232 +35,232 @@ credentials_exception = HTTPException(
     headers={"WWW-Authenticate": "Bearer"},
 )
 
-ProviderT: TypeAlias = Literal["microsoft", "google", "okta", "snowflake"]
+SESSION_COOKIE = "__Host-ws_session"
+TOTP_COOKIE = "__Host-ws_totp"
+CLIENT_HEADER = "X-Workspace-Client"
+WEB_CLIENT = "web"
 
-OAUTH_PROVIDERS: dict[ProviderT, str] = {
-    "microsoft": "https://graph.microsoft.com/v1.0/me",
-    "google": "https://www.googleapis.com/oauth2/v3/userinfo",
-    "okta": f"{settings.OKTA_DOMAIN}/oauth2/v1/userinfo",
-    "snowflake": "<HANDLED_SEPARATELY>",
-}
-OAUTH_PATHS = [f"/pro/{provider}-auth" for provider in OAUTH_PROVIDERS]
-ADMIN_CHECKS = {
-    "privilege": "USAGE",
-    "granted_on": "ROLE",
-    "granted_to": "USER",
-    "role": "ACCOUNTADMIN",
+WEB_SOURCES = ("app", "oauth-app")
+TOTP_ENROLL_SOURCES = {"app": "totp-enroll", "oauth-app": "totp-enroll-oauth"}
+
+CredentialKind = Literal["web", "totp"]
+CREDENTIAL_SOURCES: dict[CredentialKind, tuple[str, ...]] = {
+    "web": WEB_SOURCES,
+    "totp": tuple(TOTP_ENROLL_SOURCES.values()),
 }
 
+TOTP_ENROLL_LIFETIME = timedelta(minutes=5)
+AGENT_TOKEN_LIFETIME = timedelta(minutes=30)
+PASSWORD_RESET_LIFETIME = timedelta(hours=24)
 
-VALID_PATHS = [
-    "/pro/login",
-    "/pro/validate-and-sync",
-    "/pro/dash/validate-and-sync",
-    "/pro/create-user",
-    "/pro/create-account",
-    "/pro/confirm-account",
-    "/pro/transfer-user",
-    "/pro/register",
-    *OAUTH_PATHS,
-    "/pro/check-install",
-    "/pro/check-update",
-]
-
-LOCALHOST_ORIGINS = [
-    "http://localhost:1420",
-    "https://localhost:1420",
-    "http://localhost",
-]
-
-# Public, unauthenticated, read-only endpoints that anyone may call from any
-# origin (including localhost). The global CORSMiddleware only permits the
-# BACKEND_CORS_ORIGINS allowlist, so these paths are handled separately by
-# PublicCORSMiddleware. Matched exactly to avoid loosening sub-routes such as
-# /marketplace/apps/{app_id}/rate.
-PUBLIC_CORS_PATHS = frozenset({"/marketplace/apps"})
+CREDENTIAL_HEADERS = (
+    "cookie",
+    "authorization",
+    "x-workspace-authorization",
+    "x-metering-authorization",
+)
 
 
-class PublicCORSMiddleware(BaseHTTPMiddleware):
-    """Reflect `*` CORS for the whitelisted public paths in PUBLIC_CORS_PATHS.
+class NoStoreMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
 
-    Registered as the outermost middleware so it can answer the preflight
-    OPTIONS request before the restrictive global CORSMiddleware rejects an
-    unknown origin. All other paths fall through untouched.
-    """
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or not any(
+            header in Headers(scope=scope) for header in CREDENTIAL_HEADERS
+        ):
+            await self.app(scope, receive, send)
+            return
 
-    @override
-    async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
-        if request.url.path not in PUBLIC_CORS_PATHS:
-            return response
+        async def send_no_store(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                if "cache-control" not in headers:
+                    headers["Cache-Control"] = "no-store"
+            await send(message)
 
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "*"
-        response.headers["Access-Control-Max-Age"] = "86400"
-        return response
-
-
-def check_valid(origin: str, url_path: str) -> bool:
-    """Checks that the given origin or path is valid
-
-    Parameters
-    ----------
-    origin : str
-        The origin to be checked
-    url_path : str
-        The path to be checked
-    """
-
-    origin = origin or ""
-    valid_domain = origin.endswith("snowflakecomputing.app")
-
-    VALID_ORIGINS = settings.BACKEND_CORS_ORIGINS
-    if settings.DISABLE_CORS:
-        return True
-
-    if any(url_path.startswith(path) for path in VALID_PATHS):
-        return True
-
-    return valid_domain or origin in VALID_ORIGINS
+        await self.app(scope, receive, send_no_store)
 
 
-class OpenBBOriginOAuth2Token(OAuth2PasswordBearer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    async def __call__(self, request: Request) -> str | None:
-        origin = request.headers.get("Origin")
-        openbb_auth = request.headers.get("X-OpenBB-Authorization")
-        openbb_scheme, openbb_param = get_authorization_scheme_param(openbb_auth)
-
-        if request.url.path.startswith("/pro/user/") and origin is None:
-            auth = request.headers.get("Authorization")
-            _, auth_param = get_authorization_scheme_param(auth)
-            return openbb_param or auth_param
-
-        is_bearer = openbb_scheme.lower() == "bearer"
-        if not check_valid(origin, request.url.path) and not is_bearer:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not allowed to access this endpoint",
-            )
-
-        if is_bearer and not openbb_param:
-            raise credentials_exception
-
-        return openbb_param or settings.OPENBB_AUTH_TOKEN
+def is_allowed_origin(origin: str | None) -> bool:
+    if origin is None:
+        return False
+    pattern = settings.BACKEND_CORS_ORIGIN_REGEX
+    return origin in settings.BACKEND_CORS_ORIGINS or (
+        pattern is not None and re.fullmatch(pattern, origin) is not None
+    )
 
 
-openbb_oauth2_scheme = OpenBBOriginOAuth2Token(tokenUrl="token")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
+HEALTH_PATHS = frozenset({"/health", "/healthz"})
+FRAME_ROUTE = "/app/data-connectors/frame/"
+PUBLIC_GET_PATHS = re.compile(
+    r"/app/sign-in/(?:microsoft|okta)/callback|/\.well-known/jwks\.json"
+)
 
 
-async def create_login_token(  # noqa: PLR0913,PLR0917
+def _is_public_get(scope: Scope) -> bool:
+    return (
+        scope["type"] == "http"
+        and scope["method"] == "GET"
+        and PUBLIC_GET_PATHS.fullmatch(scope["path"]) is not None
+    )
+
+
+class AllowedOriginMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] in {"http", "websocket"} and scope["path"].startswith(FRAME_ROUTE):
+            if scope["type"] == "http" and scope["method"] == "OPTIONS":
+                requested = Headers(scope=scope).get("access-control-request-headers", "*")
+                await Response(
+                    status_code=status.HTTP_204_NO_CONTENT,
+                    headers={
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
+                        "Access-Control-Allow-Headers": requested,
+                        "Access-Control-Max-Age": "600",
+                    },
+                )(scope, receive, send)
+                return
+            await self.app(scope, receive, send)
+            return
+        if (
+            scope["type"] not in {"http", "websocket"}
+            or (scope["type"] == "http" and scope["path"] in HEALTH_PATHS)
+            or _is_public_get(scope)
+            or is_allowed_origin(Headers(scope=scope).get("origin"))
+        ):
+            await self.app(scope, receive, send)
+            return
+        if scope["type"] == "websocket":
+            await send({"type": "websocket.close", "code": status.WS_1008_POLICY_VIOLATION})
+            return
+        refusal = JSONResponse(
+            {"detail": "Requests must come from an allowed origin"},
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+        await refusal(scope, receive, send)
+
+
+async def create_login_token(
     db: AsyncSession,
     user_uuid: UUID,
-    expires_delta: None | timedelta = None,
-    api_token: None | str = None,
-    pro: bool = False,
+    expires_delta: timedelta,
+    app_session: bool = False,
     source: str = "",
 ) -> str:
-    """Creates a session for given user"""
-    expiration = base.get_now()
-    if expires_delta is None:
-        expiration += timedelta(minutes=15)
-    else:
-        expiration += expires_delta
+    token = secrets.token_urlsafe(32)
     query = insert(models.Session).values(
+        token_hash=crypto.hash_token(token),
         user_uuid=user_uuid,
-        expiration_date=expiration,
-        api_token=api_token,
-        pro=pro,
+        expiration_date=base.get_now() + expires_delta,
+        app_session=app_session,
         source=source,
     )
-    response = await db.execute(query)
+    await db.execute(query)
     await db.commit()
-    return str(response.inserted_primary_key[0])  # type: ignore
+    return token
 
 
-async def delete_user_pro_sessions(
+async def delete_user_app_sessions(
     db: AsyncSession,
     user_uuid: UUID,
-    sources: list[Literal["pro", "oauth-pro", "excel"]] | None = None,
+    sources: list[Literal["app", "oauth-app"]],
 ) -> None:
-    """Deletes all pro sessions for the given user
-
-    Parameters
-    ----------
-    db : AsyncSession
-        The database session
-    user_uuid : UUID
-        The user's UUID
-    sources : list[Literal["pro", "oauth-pro", "excel"]] | None
-        The sources to be deleted
-    """
-    filters = [models.Session.user_uuid == user_uuid, models.Session.pro.is_(True)]
-
-    if sources:
-        filters.append(models.Session.source.in_(sources))
+    filters = [
+        models.Session.user_uuid == user_uuid,
+        models.Session.app_session.is_(True),
+        models.Session.source.in_(sources),
+    ]
 
     query = await db.execute(select(models.Session).where(*filters))
 
     if session_results := query.scalars().all():
         for session in session_results:
             await db.delete(session)
-            base.remove_session_redis(session.uuid)
 
     await db.commit()
 
 
-def create_jwt(data: dict, expires_delta: None | timedelta = None) -> str:
-    """Creates a JWT token
-
-    Parameters
-    ----------
-    data : dict
-        The data to be encoded in the token
-    expires_delta : None | timedelta
-        The time until the token expires
-    """
-    to_encode = data.copy()
-    expire = (
-        base.get_now() + expires_delta
-        if expires_delta
-        else base.get_now() + timedelta(minutes=15)
+def set_session_cookie(
+    response: Response,
+    name: str,
+    token: str,
+    lifetime: timedelta,
+    samesite: Literal["strict", "lax"] = "strict",
+) -> None:
+    response.set_cookie(
+        name,
+        token,
+        max_age=int(lifetime.total_seconds()),
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite=samesite,
     )
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=ALGORITHM)
-    return encoded_jwt  # type: ignore
 
 
-def create_jwt_timeless(data: dict) -> str:
-    """Creates a JWT token that does not expire
-
-    Parameters
-    ----------
-    data : dict
-        The data to be encoded in the token
-    """
-    return jwt.encode(data, settings.JWT_SECRET, algorithm=ALGORITHM)  # type: ignore
+def clear_session_cookie(
+    response: Response, name: str, samesite: Literal["strict", "lax"] = "strict"
+) -> None:
+    response.delete_cookie(name, path="/", secure=True, httponly=True, samesite=samesite)
 
 
-def decode_jwt(token: str) -> dict[str, str]:
-    """Decodes the given JWT token
-
-    Parameters
-    ----------
-    token : str
-        The token to be decoded
-    """
-    return jwt.decode(token, settings.JWT_SECRET, algorithms=ALGORITHM)  # type: ignore
+def check_browser_sign_in(request: Request) -> None:
+    if request.headers.get(CLIENT_HEADER) != WEB_CLIENT:
+        raise HTTPException(
+            400, detail=f'Sign in with the {CLIENT_HEADER} header "{WEB_CLIENT}"'
+        )
 
 
-ON_PREM_TOKEN: dict | None = None
-if settings.is_onprem():
-    with suppress(Exception):
-        ON_PREM_TOKEN = decode_jwt(settings.OPENBB_AUTH_TOKEN)
+@dataclass(frozen=True, slots=True)
+class Credential:
+    kind: CredentialKind
+    token: str
+
+    @property
+    def sources(self) -> tuple[str, ...]:
+        return CREDENTIAL_SOURCES[self.kind]
+
+
+def read_credential(request: Request, *, enrollment: bool = False) -> Credential:
+    if request.headers.get(CLIENT_HEADER) != WEB_CLIENT:
+        raise credentials_exception
+    if enrollment and (token := request.cookies.get(TOTP_COOKIE)):
+        return Credential("totp", token)
+    if not (token := request.cookies.get(SESSION_COOKIE)):
+        raise credentials_exception
+    return Credential("web", token)
+
+
+def session_filters(
+    credential: Credential, app_session: bool = False
+) -> list[ColumnElement[bool]]:
+    filters = [
+        models.Session.token_hash == crypto.hash_token(credential.token),
+        models.Session.source.in_(credential.sources),
+        models.User.deleted.is_(False),
+    ]
+    if app_session:
+        filters.append(models.Session.app_session.is_(True))
+    return filters
+
+
+async def refuse_expired(session_uuid: UUID, expiration_date: datetime | None) -> None:
+    if expiration_date is not None and expiration_date > base.get_now():
+        return
+    async with database.AsyncWriteSessionLocal.session() as db:
+        await db.execute(delete(models.Session).where(models.Session.uuid == session_uuid))
+        await db.commit()
+    raise credentials_exception
+
+
+async def end_session(db: AsyncSession, session_uuid: UUID) -> None:
+    await db.execute(delete(models.Session).where(models.Session.uuid == session_uuid))
+    await db.commit()
+    await revoke_agent_tokens(session_uuid)
 
 
 class CustomRow:
@@ -269,184 +268,70 @@ class CustomRow:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    @classmethod
-    def logout(cls):
-        return cls(uuid=None, expiration_date=base.get_now() - timedelta(days=1))
-
-
-async def check_session_expiration(
-    result: CustomRow,
-    token: UUID | str,
-    db: AsyncSession | None = None,
-    from_logout: bool = False,
-) -> CustomRow:
-    """Checks the session expiration for the given user.
-
-    If the session is expired, it will either extend the expiration date
-    by 5 minutes (if within the grace period) or delete the session.
-
-    This avoids force logging out users who are currently active but whose
-    sessions have technically expired.
-
-    Parameters
-    ----------
-    result : CustomRow
-        The result from the user query
-    token : UUID | str
-        The session token
-    db : AsyncSession | None
-        The database session
-    from_logout : bool
-        Whether the query is being generated from a logout request
-    """
-    if not result.expiration_date:
-        return result
-
-    is_expired = result.expiration_date < base.get_now()
-
-    if not is_expired:
-        return result
-
-    newly_expired = result.expiration_date + SESSION_GRACE_PERIOD > base.get_now()
-
-    token = UUID(token) if isinstance(token, str) else token
-
-    async def update_session(db: AsyncSession):
-        if newly_expired:
-            new_exp = base.get_now() + SESSION_GRACE_PERIOD
-            query = (
-                update(models.Session)
-                .where(models.Session.uuid == token)
-                .values(expiration_date=new_exp)
-            )
-            setattr(result, "expiration_date", new_exp)
-        else:
-            query = delete(models.Session).where(models.Session.uuid == token)
-            base.remove_session_redis(token)
-
-        await db.execute(query)
-        await db.commit()
-
-    if db:
-        await update_session(db)
-    else:
-        async with database.AsyncWriteSessionLocal.session() as db_session:
-            await update_session(db_session)
-
-    if not newly_expired and not from_logout:
-        raise credentials_exception
-
-    return result
-
 
 class GetCurrentUser:
-    """Gets the current user and specified columns"""
-
     def __init__(
         self,
         columns: list[str],
         tables: None | list[str] = None,
-        pro: bool = False,
-        from_logout: bool = False,
+        app_session: bool = False,
+        agent: bool = False,
+        enrollment: bool = False,
     ):
-        """Initializes the class
-
-        Parameters
-        ----------
-        columns : list[str]
-            The columns to be returned
-        tables : None | list[str]
-            The tables to be joined
-        pro : bool
-            Whether to require the session to be a pro session
-        from_logout : bool
-            Whether the query is being generated from a logout request
-        """
-
         self.columns = columns
         self.tables = tables if tables else []
-        self.pro = pro
-        self.from_logout = from_logout
+        self.app_session = app_session
+        self.agent = agent
+        self.enrollment = enrollment
 
-    async def __call__(self, token: Annotated[str, Depends(oauth2_scheme)]):
-        return await self.call_logic(
-            token, self.columns, self.tables, self.pro, self.from_logout
+    async def __call__(self, request: Request):
+        if self.agent and (user := await self._agent_user(request)) is not None:
+            return user
+        credential = read_credential(request, enrollment=self.enrollment)
+        return await current_user(
+            session_filters(credential, self.app_session), self.columns, self.tables
         )
 
-    @staticmethod
-    async def call_logic(
-        token: str, columns, tables, pro: bool = False, from_logout: bool = False
-    ):
-        try:
-            clean_token = UUID(token)
-        except:  # noqa: E722
-            if from_logout:
-                return CustomRow.logout()
-            raise credentials_exception
-
-        cleaned = await generate_user_query(
-            clean_token, columns, tables, pro, from_logout
-        )
-        setattr(cleaned, "token", clean_token)
-        if from_logout and getattr(cleaned, "uuid", None) is None:
-            base.remove_session_redis(token)
-            return cleaned
-
-        return await check_session_expiration(cleaned, token, from_logout=from_logout)
-
-
-class GetCurrentUserOptional:
-    """Like GetCurrentUser but returns None when no token is provided."""
-
-    def __init__(self, columns: list[str], tables: None | list[str] = None):
-        self.columns = columns
-        self.tables = tables if tables else []
-
-    async def __call__(
-        self, token: Annotated[str | None, Depends(oauth2_scheme_optional)] = None
-    ):
-        if token is None:
+    async def _agent_user(self, request: Request) -> CustomRow | None:
+        if CLIENT_HEADER in request.headers:
             return None
-        try:
-            return await GetCurrentUser.call_logic(token, self.columns, self.tables)
-        except HTTPException:
+        scheme, token = get_authorization_scheme_param(request.headers.get("Authorization"))
+        if scheme.lower() != "bearer" or not token:
             return None
+        if (grant := await find_agent_token(token)) is None:
+            return None
+        user_uuid, session_uuid = grant
+        filters = [
+            models.Session.uuid == session_uuid,
+            models.Session.user_uuid == user_uuid,
+            models.Session.source.in_(WEB_SOURCES),
+            models.Session.app_session.is_(True),
+            models.User.deleted.is_(False),
+        ]
+        user = await current_user(filters, self.columns, self.tables)
+        user.via_agent = True
+        return user
 
 
-class GetCurrentUserCookie(GetCurrentUser):
-    """This is currently unused and only here in case Jose wants to switch from
-    header to cookie authentication.
-    """
+async def current_user(
+    filters: list[ColumnElement[bool]], columns: list[str], tables: list[str]
+) -> CustomRow:
+    user = await generate_user_query(filters, columns, tables)
+    await refuse_expired(user.session_uuid, user.expiration_date)
+    user.via_agent = False
+    session_uuid_ctx.set(user.session_uuid)
+    return user
 
-    async def __call__(self, access_token: Annotated[str, Cookie()]):  # type: ignore
-        return await GetCurrentUser.call_logic(access_token, self.columns, self.tables)
 
-
-async def get_table_task(token: UUID, table: str, pro: bool = False):
-    """Gets the table for the given user
-
-    Parameters
-    ----------
-    token : UUID
-        The current session token
-    table : str
-        The table to be returned
-    pro : bool
-        Whether to require the session to be a pro session
-    """
+async def get_table_task(filters: list[ColumnElement[bool]], table: str):
     async with database.AsyncReadSessionLocal.session() as db:
         real_table = getattr(models, table)
         to_return = (
             select(models.Session.expiration_date, real_table)
-            .where(
-                models.Session.uuid == token,
-                models.User.deleted.is_(False),
-            )
+            .where(*filters)
             .join(models.User, models.User.uuid == models.Session.user_uuid)
             .join(real_table, real_table.user_uuid == models.User.uuid, isouter=True)
         )
-        if pro:
-            to_return = to_return.where(models.Session.pro.is_(True))
 
         return [
             result.get(table)
@@ -455,60 +340,30 @@ async def get_table_task(token: UUID, table: str, pro: bool = False):
         ]
 
 
-async def get_columns_task(token: UUID, columns: list[str], pro: bool = False):
-    """Gets the columns for the given user
-
-    Parameters
-    ----------
-    token : UUID
-        The current session token
-    columns : list[str]
-        The columns to be returned
-    pro : bool
-        Whether to require the session to be a pro session
-    """
+async def get_columns_task(filters: list[ColumnElement[bool]], columns: list[str]):
     async with database.AsyncReadSessionLocal.session() as db:
         real_cols = [getattr(models.User, col) for col in columns]
         to_return = (
-            select(models.Session.expiration_date, *real_cols)
-            .where(
-                models.Session.uuid == token,
-                models.User.deleted.is_(False),
+            select(
+                models.Session.uuid.label("session_uuid"),
+                models.Session.source.label("session_source"),
+                models.Session.expiration_date,
+                *real_cols,
             )
+            .where(*filters)
             .join(models.User, models.User.uuid == models.Session.user_uuid)
         )
-        if pro:
-            to_return = to_return.where(models.Session.pro.is_(True))
 
         return (await db.execute(to_return)).all()
 
 
 async def generate_user_query(
-    token: UUID,
+    filters: list[ColumnElement[bool]],
     columns: list[str],
     tables: list[str],
-    pro: bool = False,
-    from_logout: bool = False,
 ) -> CustomRow:
-    """Generates a query for the given user
-
-    Parameters
-    ----------
-    db : Session
-    token : UUID
-        The current session token
-    columns : list[str]
-        The user columns to be returned
-    tables : list[str]
-        The tables that will be joined to the User table
-    pro : bool
-        Whether to require the session to be a pro session
-    from_logout : bool
-        Whether the query is being generated from a logout request
-    """
-
-    tasks = [asyncio.create_task(get_columns_task(token, columns, pro))] + [
-        asyncio.create_task(get_table_task(token, table, pro)) for table in tables
+    tasks = [asyncio.create_task(get_columns_task(filters, columns))] + [
+        asyncio.create_task(get_table_task(filters, table)) for table in tables
     ]
 
     gathered = await asyncio.gather(*tasks)
@@ -516,8 +371,6 @@ async def generate_user_query(
     table_results = gathered[1:] if tables else []
 
     if not cols_results:
-        if from_logout:
-            return CustomRow.logout()
         raise credentials_exception
 
     tables_dict: dict[str, list[Row]] = {}
@@ -529,15 +382,6 @@ async def generate_user_query(
 
 
 def flatten_results(col_results: list[Row], table_results: dict[str, list[Row]]):
-    """Flattens the results of the columns and tables
-
-    Parameters
-    ----------
-    col_results : list[Row]
-        The results of the columns
-    table_results : dict[str, list[Row]
-        The results of the tables
-    """
     to_set = col_results[0]._asdict()
     for table, value in table_results.items():
         to_set[table] = value
@@ -545,131 +389,193 @@ def flatten_results(col_results: list[Row], table_results: dict[str, list[Row]])
     return CustomRow(**to_set)
 
 
-async def get_current_superuser(
-    token: str = Depends(oauth2_scheme),
-) -> models.User:
-    """
-    Gets the current superuser from the database
-
-    Parameters
-    ----------
-    token : str
-        The token to be decoded
-    db : Session
-        The database session
-    """
-    try:
-        UUID(token)
-    except:  # noqa: E722
-        raise credentials_exception
-    query2 = (
-        select(models.Session.expiration_date, models.User)
-        .select_from(models.Session)
-        .join(models.User, models.User.uuid == models.Session.user_uuid)
-        .where(models.Session.uuid == token, models.User.deleted.is_(False))
-    )
-    async with database.AsyncWriteSessionLocal.session() as db:
-        session = (await db.execute(query2)).first()
-        if session is None:
-            raise credentials_exception
-
-        await check_session_expiration(session, token, db)
-
-        if not session.User.is_superuser:
-            raise credentials_exception
-        return session.User
-
-
-async def get_current_admin(
-    token: str = Depends(oauth2_scheme),
-):
-    """
-    Gets the current admin from the database
-
-    Parameters
-    ----------
-    token : str
-        The token to be decoded
-    db : Session
-        The database session
-    """
-    try:
-        token_uuid = UUID(token)
-    except:  # noqa: E722
-        raise credentials_exception
-    query2 = (
+async def _current_session_row(request: Request, *columns, permissions: bool = False):
+    credential = read_credential(request)
+    query = (
         select(
+            models.Session.uuid.label("session_uuid"),
             models.Session.expiration_date,
-            models.User.permissions_uuid,
-            models.User.is_superuser,
-            models.User.uuid,
-            models.User.email,
-            models.PermissionsEntityMap.name,
+            *columns,
         )
         .select_from(models.Session)
         .join(models.User, models.User.uuid == models.Session.user_uuid)
-        .join(
+        .where(*session_filters(credential))
+    )
+    if permissions:
+        query = query.join(
             models.PermissionsEntityMap,
             models.User.permissions_uuid == models.PermissionsEntityMap.uuid,
         )
-        .where(
-            models.Session.uuid == token_uuid,
-            models.User.deleted.is_(False),
-        )
+    async with database.AsyncReadSessionLocal.session() as db:
+        session = (await db.execute(query)).first()
+    if session is None:
+        raise credentials_exception
+    await refuse_expired(session.session_uuid, session.expiration_date)
+    session_uuid_ctx.set(session.session_uuid)
+    return session
+
+
+async def get_current_superuser(request: Request) -> models.User:
+    session = await _current_session_row(request, models.User)
+    if not session.User.is_superuser:
+        raise HTTPException(403, detail="User is not a superuser")
+    return session.User
+
+
+async def get_current_admin(request: Request):
+    session = await _current_session_row(
+        request,
+        models.User.permissions_uuid,
+        models.User.is_superuser,
+        models.User.uuid,
+        models.User.email,
+        models.PermissionsEntityMap.name,
+        permissions=True,
     )
-
-    async with database.AsyncWriteSessionLocal.session() as db:
-        session = (await db.execute(query2)).first()
-        if session is None:
-            raise credentials_exception
-        if session.name != "Admin":
-            raise HTTPException(403, detail="User is not an admin")
-
-        await check_session_expiration(session, token, db)
-        return session
+    if session.name != models.ADMIN_TYPE:
+        raise HTTPException(403, detail="User is not an admin")
+    return session
 
 
-def is_valid_uuid(val):
-    try:
-        UUID(str(val))
-        return True
-    except ValueError:
-        return False
+def app_redis_key(name: str) -> str:
+    return f"app:{{cluster}}:{name}" if settings.REDIS_CLUSTER_MODE else name
 
 
-def get_current_token(token: str = Depends(oauth2_scheme)) -> str:
-    """
-    Gets the current token from the header
+def _agent_token_key(token_hash: str) -> str:
+    return app_redis_key(f"agent_token:{token_hash}")
 
-    Parameters
-    ----------
-    token : str
-        The token to be decoded
-    """
-    if not is_valid_uuid(token):
-        raise HTTPException(422, detail="Token is not a valid UUID")
+
+def _session_agent_tokens_key(session_uuid: UUID) -> str:
+    return app_redis_key(f"agent_tokens:{session_uuid}")
+
+
+_app_redis_clients: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, Any] = weakref.WeakKeyDictionary()
+
+
+@asynccontextmanager
+async def app_redis() -> AsyncIterator[Any]:
+    loop = asyncio.get_running_loop()
+    if (client := _app_redis_clients.get(loop)) is None:
+        client = _app_redis_clients[loop] = settings.get_async_redis_session("app")
+    yield client
+
+
+async def close_app_redis() -> None:
+    if (client := _app_redis_clients.pop(asyncio.get_running_loop(), None)) is not None:
+        await client.aclose()
+
+
+async def mint_agent_token(user: CustomRow) -> tuple[str, int]:
+    remaining = int((user.expiration_date - base.get_now()).total_seconds())
+    lifetime = max(1, min(int(AGENT_TOKEN_LIFETIME.total_seconds()), remaining))
+    token = secrets.token_urlsafe(32)
+    token_hash = crypto.hash_token(token)
+    record = json.dumps(
+        {"user_uuid": str(user.uuid), "session_uuid": str(user.session_uuid)}
+    )
+    tokens_key = _session_agent_tokens_key(user.session_uuid)
+    async with app_redis() as redis:
+        await redis.set(_agent_token_key(token_hash), record, ex=lifetime)
+        await redis.sadd(tokens_key, token_hash)
+        await redis.expire(tokens_key, lifetime)
+    return token, lifetime
+
+
+async def find_agent_token(token: str) -> tuple[UUID, UUID] | None:
+    async with app_redis() as redis:
+        record = await redis.get(_agent_token_key(crypto.hash_token(token)))
+    if record is None:
+        return None
+    grant = json.loads(record)
+    return UUID(grant["user_uuid"]), UUID(grant["session_uuid"])
+
+
+async def revoke_agent_tokens(session_uuid: UUID) -> None:
+    tokens_key = _session_agent_tokens_key(session_uuid)
+    async with app_redis() as redis:
+        for member in await redis.smembers(tokens_key):
+            token_hash = member.decode() if isinstance(member, bytes) else member
+            await redis.delete(_agent_token_key(token_hash))
+        await redis.delete(tokens_key)
+
+
+def _password_reset_key(token_hash: str) -> str:
+    return app_redis_key(f"password_reset:{token_hash}")
+
+
+def _user_password_reset_key(user_uuid: UUID) -> str:
+    return app_redis_key(f"password_reset_user:{user_uuid}")
+
+
+def _text(value: bytes | str) -> str:
+    return value.decode() if isinstance(value, bytes) else value
+
+
+async def issue_password_reset(user_uuid: UUID) -> str:
+    token = secrets.token_urlsafe(32)
+    token_hash = crypto.hash_token(token)
+    lifetime = int(PASSWORD_RESET_LIFETIME.total_seconds())
+    async with app_redis() as redis:
+        earlier = await redis.set(
+            _user_password_reset_key(user_uuid), token_hash, ex=lifetime, get=True
+        )
+        if earlier is not None:
+            await redis.delete(_password_reset_key(_text(earlier)))
+        await redis.set(_password_reset_key(token_hash), str(user_uuid), ex=lifetime)
     return token
 
 
-def token_checker(token: str, requirement: dict[str, str]) -> None:
-    """Checks that the given token matches the given requirements
+async def take_password_reset(token: str) -> UUID | None:
+    async with app_redis() as redis:
+        user_uuid = await redis.getdel(_password_reset_key(crypto.hash_token(token)))
+        if user_uuid is None:
+            return None
+        await redis.delete(_user_password_reset_key(UUID(_text(user_uuid))))
+    return UUID(_text(user_uuid))
 
-    Parameters
-    ----------
-    token : str
-        The token to be checked
-    requirement : dict[str, str]
-        The requirements to be checked against
-    """
+
+@dataclass(frozen=True, slots=True)
+class WebSocketSession:
+    user_uuid: UUID
+    session_uuid: UUID
+    expiration_date: datetime
+
+
+async def websocket_session(websocket: WebSocket) -> WebSocketSession | None:
+    if not (token := websocket.cookies.get(SESSION_COOKIE)):
+        return None
+    filters = session_filters(Credential(WEB_CLIENT, token), app_session=True)
+    try:
+        user = await generate_user_query(filters, ["uuid"], [])
+        await refuse_expired(user.session_uuid, user.expiration_date)
+    except HTTPException:
+        return None
+    return WebSocketSession(user.uuid, user.session_uuid, user.expiration_date)
+
+
+async def web_session_alive(session_uuid: UUID) -> bool:
+    query = (
+        select(models.Session.expiration_date)
+        .join(models.User, models.User.uuid == models.Session.user_uuid)
+        .where(
+            models.Session.uuid == session_uuid,
+            models.Session.source.in_(WEB_SOURCES),
+            models.Session.app_session.is_(True),
+            models.User.deleted.is_(False),
+        )
+    )
+    async with database.AsyncReadSessionLocal.session() as db:
+        expiration_date = (await db.execute(query)).scalar_one_or_none()
+    return expiration_date is not None and expiration_date > base.get_now()
+
+
+def decode_jwt(token: str) -> dict[str, str]:
+    return jwt.decode(token, settings.JWT_SECRET, algorithms=ALGORITHM)  # type: ignore
+
+
+def token_checker(token: str, requirement: dict[str, str]) -> None:
     try:
         payload = decode_jwt(token)
-
-        if ON_PREM_TOKEN:
-            token_value: None | str = payload.get("auth", None)
-            if token_value != ON_PREM_TOKEN.get("auth"):
-                raise credentials_exception
-            # token matches, so we can return
-            return
 
         for key, value in requirement.items():
             token_value: None | str = payload.get(key, None)
@@ -679,209 +585,54 @@ def token_checker(token: str, requirement: dict[str, str]) -> None:
         raise credentials_exception from e
 
 
-def check_openbb(token: str = Depends(openbb_oauth2_scheme)) -> None:
-    """Checks that the given token is an openbb service token
-
-    Parameters
-    ----------
-    token : str
-        The token to be checked
-    """
-    for sub in ["bot", "openbb", "copilot", "excel", "findb", "pro"]:
+def check_service_token(token: str) -> None:
+    for sub in ["workspace", "copilot", "app"]:
         with suppress(Exception):
             return token_checker(token, {"sub": sub})
 
     raise credentials_exception
 
 
-def check_pro(token: str = Depends(oauth2_scheme)) -> None:
-    """Checks that the given token is a pro token
-
-    Parameters
-    ----------
-    token : str
-        The token to be checked
-    """
-    token_checker(token, {"sub": "pro"})
+METERING_HEADER = "X-Metering-Authorization"
+METERING_SUBJECT = "metering"
 
 
-def check_bot(token: str = Depends(oauth2_scheme)) -> None:
-    """Checks that the given token is a bot token
-
-    Parameters
-    ----------
-    token : str
-        The token to be checked
-    """
-    token_checker(token, {"sub": "bot"})
-
-
-def check_lambda(token: str = Depends(oauth2_scheme)) -> None:
-    """Checks that the given token is a lambda token
-
-    Parameters
-    ----------
-    token : str
-        The token to be checked
-    """
-    token_checker(token, {"sub": "lambda"})
-
-
-async def reset_user_password(
-    db: AsyncSession, new_password: str, token: str = Depends(oauth2_scheme)
-) -> None | models.User:
-    try:
-        payload = decode_jwt(token)
-        token_type = payload.get("token_type")
-        if token_type != "forgot_password":  # noqa: S105
-            raise credentials_exception
-        user_email: None | str = payload.get("sub")
-        if not user_email:
-            raise credentials_exception
-        token_data = schemas.TokenData(email=user_email)
-    except PyJWTError:
-        raise credentials_exception
-    if not token_data.email:
-        raise credentials_exception
-    user = await crud.get_user(db, {"email": token_data.email})
-    if user is None:
-        raise credentials_exception
-    u_query = (
-        update(models.User)
-        .where(models.User.email == token_data.email)
-        .values(password=new_password, temporary_password=False)
+def check_metering(request: Request) -> None:
+    scheme, token = get_authorization_scheme_param(
+        request.headers.get(METERING_HEADER, "")
     )
-    await db.execute(u_query)
-    d_query = delete(models.Session).where(models.Session.user_uuid == user.uuid)
-    await db.execute(d_query)
-    await db.commit()
-    return user
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(403, detail="Usage can only be reported by the Copilot service")
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[ALGORITHM],
+            options={"require": ["exp"]},
+        )
+    except ExpiredSignatureError as e:
+        raise HTTPException(
+            403,
+            detail=(
+                "The metering token has expired. Mint a new one with "
+                "`python -m scripts.create_metering_token` and set AGENT_METERING_TOKEN to it."
+            ),
+        ) from e
+    except PyJWTError as e:
+        raise HTTPException(403, detail="Invalid metering token") from e
+    if payload.get("sub") != METERING_SUBJECT:
+        raise HTTPException(403, detail="Invalid metering token")
 
 
-def create_username() -> str:
-    "Generate a random username which includes a butterfly name"
-    butterfly = random.choice(butterfly_species)  # noqa: S311
-    after = base.random_string(4)
-    return f"{butterfly}_{after}"
-
-
-def check_username_part(username: str) -> bool:
-    """Checks that a string is a valid part of a username"""
-    pattern = r"^\w{0,50}$"
-    return bool(re.match(pattern, username, re.IGNORECASE))
-
-
-def check_description(desc: str) -> bool:
-    pattern = r"^[\w\s]+$"
-    return bool(re.match(pattern, desc, re.IGNORECASE))
-
-
-def check_info_fields(
-    user: models.User | Row,
-) -> Literal["bot", "complete", "incomplete"]:
-    """Tells us whether the user has completed their pro fields. Bot users are legacy and not froced
-    to fill in new fields"""
-    if check_terminal_pro_fields(user):
-        return "complete"
-    if user.created_date is None:
-        return "incomplete"
-    if user.created_date.replace(tzinfo=None) < settings.HUB_RELEASE_DATE:
-        return "bot"
-    return "incomplete"
-
-
-def check_terminal_pro_fields(user: models.User | Row) -> bool:
-    "Whether or not a user has filled in all terminal pro information fields"
-    return user.primary_usage is not None
-
-
-CURRENT_PRO_USER = {
+CURRENT_APP_USER = {
     "columns": [
         "username",
         "email",
         "uuid",
-        "pro_entitlements",
-        "accepted_pro_tos",
         "first_name",
         "last_name",
-        "pro_display_settings",
-        "pro_zero_to_hero",
-        "primary_usage",
+        "display_settings",
     ],
-    "tables": ["SingleWidget", "ApiSource", "FileWidget"],
-    "pro": True,
+    "tables": ["ApiSource", "FileWidget"],
+    "app_session": True,
 }
-
-
-async def update_admin_user_permissions(
-    db: AsyncSession, user_email: str, is_admin: bool
-):
-    if is_admin and settings.ON_PREM_ADMIN_MAPPING is not None:
-        await db.execute(
-            update(models.User)
-            .where(models.User.email == user_email)
-            .values(permissions_uuid=settings.ON_PREM_ADMIN_MAPPING, is_superuser=1)
-        )
-        await db.commit()
-        logger.info(
-            f"Set Snowflake user {user_email} as On-Prem Admin based on Snowflake role",
-            exclude=True,
-        )
-
-
-async def process_snowflake_oauth(request: Request):
-    """Initiate the Snowflake OAuth flow for the user."""
-    from snowflake.snowpark.exceptions import SnowparkClientException  # noqa
-    from snowflake.snowpark.session import Session  # noqa
-
-    host_domain = request.headers.get("Host", "")
-    ingress_user_token = request.headers.get("Sf-Context-Current-User-Token")
-    subdomain = host_domain.replace(".snowflakecomputing.app", "")
-    sf_user = request.headers.get("Sf-Context-Current-User")
-
-    if not TOKEN_FILE.exists() or not ingress_user_token or not sf_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not allowed to access this endpoint",
-        )
-
-    token = TOKEN_FILE.read_text().strip()
-
-    cfg = {
-        "account": settings.SNOWFLAKE_ACCOUNT,
-        "host": settings.SNOWFLAKE_HOST,
-        "authenticator": "oauth",
-        "token": token + "." + ingress_user_token,
-    }
-    is_admin = None
-    try:
-        with Session.builder.configs(cfg).create() as session:
-            session.sql("SELECT CURRENT_ACCOUNT() AS ACCOUNT").collect()
-
-        is_admin = False
-        admin_checks = {**ADMIN_CHECKS, "grantee_name": sf_user}
-
-        with Session.builder.configs({**cfg, "token": token}).create() as session:
-            grants = session.sql(f"SHOW GRANTS TO USER {sf_user}").collect()
-            for r in grants:
-                row = r.as_dict()
-                if all(row.get(k) == v for k, v in admin_checks.items()):
-                    is_admin = True
-                    break
-
-    except SnowparkClientException as e:
-        if is_admin is None:
-            logger.error(f"Snowflake OAuth authentication failed: {e}")
-            raise HTTPException(
-                status_code=401,
-                detail="Snowflake OAuth authentication failed",
-            ) from e
-
-    user_email = settings.get_snowflake_email(sf_user, subdomain)
-
-    return {
-        "email": user_email,
-        "is_admin": is_admin,
-        "given_name": sf_user,
-        "host_domain": host_domain,
-    }

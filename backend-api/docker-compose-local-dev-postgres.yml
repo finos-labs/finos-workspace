@@ -12,11 +12,11 @@ services:
           - postgres
     environment:
       TZ: America/New_York
-      POSTGRES_USER: openbb_user
-      POSTGRES_PASSWORD: openbb_password_123
-      POSTGRES_DB: openbb_db
+      POSTGRES_USER: workspace_user
+      POSTGRES_PASSWORD: workspace_password_123
+      POSTGRES_DB: workspace_db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U openbb_user -d openbb_db"]
+      test: ["CMD-SHELL", "pg_isready -U workspace_user -d workspace_db"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -24,29 +24,30 @@ services:
     volumes:
       - pg_db:/var/lib/postgresql/data
 
-  redis:
-    image: redis:alpine
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
     restart: always
-    container_name: redis
+    container_name: valkey
     ports:
       - 6379:6379
     networks:
       - local-net
     env_file:
       - ./backend/envs/.env
-    command: redis-server --save 20 1 --loglevel warning
+    command: valkey-server --save 20 1 --loglevel warning
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
     volumes:
-      - data:/redis
+      - valkey:/data
 
   fastapi:
     build:
       context: backend
       dockerfile: fastapi.Dockerfile
+    platform: ${PLATFORM:-linux/amd64}
     container_name: fastapi
     env_file:
       - ./backend/envs/.env
@@ -54,7 +55,7 @@ services:
       DB_HOST: postgres
       DB_PORT: "5432"
       DATABASE_TYPE: postgresql
-      REDIS_HOST: redis
+      REDIS_HOST: valkey
     command:
       [
         "sh",
@@ -72,13 +73,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
 
   rq_worker:
     build:
       context: backend
-      dockerfile: rqworker.Dockerfile
+      dockerfile: fastapi.Dockerfile
+    command: ["python", "base_workers.py"]
+    platform: ${PLATFORM:-linux/amd64}
     container_name: rq_worker
     env_file:
       - ./backend/envs/.env
@@ -86,7 +89,7 @@ services:
       DB_HOST: postgres
       DB_PORT: "5432"
       DATABASE_TYPE: postgresql
-      REDIS_HOST: redis
+      REDIS_HOST: valkey
     networks:
       - local-net
     volumes:
@@ -105,7 +108,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
 
 networks:
@@ -113,7 +116,7 @@ networks:
     driver: bridge
 
 volumes:
-  data:
+  valkey:
     driver: local
   pg_db:
     driver: local

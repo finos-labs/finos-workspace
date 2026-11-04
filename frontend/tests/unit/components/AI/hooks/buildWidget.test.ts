@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("~/lib/utils/sanitize", () => ({
-  sanitizeHtml: (html: string) => html,
   HTML_SANITIZE_CONFIG: {},
 }));
 
@@ -15,144 +14,14 @@ vi.mock("uuid", () => ({
   v4: vi.fn(() => "test-uuid"),
 }));
 
-vi.mock("~/components/General/Table/AgGridUtils", () => ({
+vi.mock("~/lib/utils/format", () => ({
   convertToReadableLabel: (label: string) =>
     label.charAt(0).toUpperCase() + label.slice(1).replace(/_/g, " "),
-  isDate: (_value: any) => false,
+  isDate: (_value: unknown) => false,
 }));
 
-import {
-  buildChartWidget,
-  buildHtmlWidget,
-  buildNoteWidget,
-  buildTableWidget,
-  sanitizeContent,
-} from "~/components/AI/hooks/buildWidget";
-
-describe("sanitizeContent", () => {
-  it("removes dots from keys", () => {
-    const input = [{ "price.close": 100, "price.open": 95 }];
-    const result = sanitizeContent(input);
-    expect(result).toEqual([{ priceclose: 100, priceopen: 95 }]);
-  });
-
-  it("handles empty array", () => {
-    expect(sanitizeContent([])).toEqual([]);
-  });
-
-  it("leaves keys without dots unchanged", () => {
-    const input = [{ price: 100, volume: 500 }];
-    const result = sanitizeContent(input);
-    expect(result).toEqual([{ price: 100, volume: 500 }]);
-  });
-});
-
-describe("buildChartWidget", () => {
-  it("builds a line chart widget", () => {
-    const data = [{ date: "2024-01-01", value: 100 }];
-    const widget = buildChartWidget(data, {
-      uuid: "chart-uuid",
-      name: "Line Chart",
-      description: "A line chart",
-      chartType: "line",
-      xKey: "date",
-      yKey: ["value"],
-    });
-
-    expect(widget.id).toBe("chart-uuid");
-    expect(widget.name).toBe("Line Chart");
-    expect(widget.widgetId).toBe("copilot_table-chart-uuid");
-    expect(widget.storage?.chartView?.chartType).toBe("line");
-    expect(widget.data?.table?.chartView?.enabled).toBe(true);
-    expect(widget.storage?.columnDefs).toEqual([
-      expect.objectContaining({ field: "date", chartDataType: "category" }),
-      expect.objectContaining({ field: "value", chartDataType: "series" }),
-    ]);
-  });
-
-  it("remaps bar to column chart type", () => {
-    const data = [{ x: 1, y: 2 }];
-    const widget = buildChartWidget(data, {
-      uuid: "bar-uuid",
-      name: "Bar Chart",
-      chartType: "bar",
-      xKey: "x",
-      yKey: ["y"],
-    });
-
-    expect(widget.storage?.chartView?.chartType).toBe("column");
-    expect(widget.data?.table?.chartView?.chartType).toBe("column");
-  });
-
-  it("builds pie chart with angleKey and calloutLabelKey columnDefs", () => {
-    const data = [{ category: "A", amount: 10 }];
-    const widget = buildChartWidget(data, {
-      uuid: "pie-uuid",
-      name: "Pie Chart",
-      chartType: "pie",
-      xKey: "category",
-      yKey: [],
-      angleKey: "amount",
-      calloutLabelKey: "category",
-    });
-
-    expect(widget.storage?.columnDefs).toEqual([
-      expect.objectContaining({
-        field: "category",
-        chartDataType: "category",
-      }),
-      expect.objectContaining({
-        field: "amount",
-        chartDataType: "series",
-      }),
-    ]);
-  });
-
-  it("builds donut chart with angleKey and calloutLabelKey columnDefs", () => {
-    const data = [{ label: "X", val: 5 }];
-    const widget = buildChartWidget(data, {
-      uuid: "donut-uuid",
-      name: "Donut Chart",
-      chartType: "donut",
-      xKey: "label",
-      yKey: [],
-      angleKey: "val",
-      calloutLabelKey: "label",
-    });
-
-    expect(widget.storage?.columnDefs).toHaveLength(2);
-    expect(widget.storage?.columnDefs?.[0]).toEqual(
-      expect.objectContaining({ field: "label", chartDataType: "category" }),
-    );
-    expect(widget.storage?.columnDefs?.[1]).toEqual(
-      expect.objectContaining({ field: "val", chartDataType: "series" }),
-    );
-  });
-});
-
-describe("buildTableWidget", () => {
-  it("auto-generates columns from data keys", () => {
-    const data = [{ name: "Alice", age: 30 }];
-    const widget = buildTableWidget(data, {
-      uuid: "table-uuid",
-      name: "Table",
-    });
-
-    expect(widget.widgetId).toBe("copilot_table-table-uuid");
-    expect(widget.storage?.columns).toEqual(["name", "age"]);
-    expect(widget.storage?.rowsData).toEqual(data);
-  });
-
-  it("handles empty data", () => {
-    const widget = buildTableWidget([], {
-      uuid: "empty-uuid",
-      name: "Empty Table",
-    });
-
-    expect(widget.storage?.columns).toEqual([]);
-    expect(widget.storage?.rowsData).toEqual([]);
-  });
-});
+import { buildHtmlWidget, buildNoteWidget } from "~/components/AI/hooks/buildWidget";
+import { malformed } from "../../../mocks";
 
 describe("buildHtmlWidget", () => {
   it("sets widgetId prefix to html-", () => {
@@ -179,34 +48,33 @@ describe("buildHtmlWidget", () => {
 });
 
 describe("buildNoteWidget", () => {
-  it("converts markdown to HTML", () => {
-    const widget = buildNoteWidget("Hello World", {
+  it("builds a markdown widget that holds the text", () => {
+    const widget = buildNoteWidget("# Title\n\nHello World", {
       uuid: "note-uuid",
       name: "Note",
     });
 
-    expect(widget.widgetId).toBe("rich_note-note-uuid");
-    expect(widget.storage?.html).toBe("Hello World");
+    expect(widget.widgetId).toBe("markdown");
+    expect(widget.id).toBe("note-uuid");
+    expect(widget.storage?.text).toBe("# Title\n\nHello World");
+    expect(widget.storage?.citations).toEqual([]);
+    expect(widget.storage?.artifacts).toEqual([]);
   });
 
-  it("strips citation tags before conversion", () => {
+  it("strips citation tags when there are no citations to show", () => {
     const content = "Some text. <citation>ref1</citation>";
     const widget = buildNoteWidget(content, {
       uuid: "cite-uuid",
       name: "Citation Note",
     });
 
-    expect(widget.storage?.html).not.toContain("<citation>");
+    expect(widget.storage?.text).not.toContain("<citation>");
   });
 
-  it("uses sanitizeHtml on converted content", () => {
-    const widget = buildNoteWidget("# Title", {
-      uuid: "sanitize-uuid",
-      name: "Sanitized Note",
-    });
+  it("names the widget Note when it has no name", () => {
+    const widget = buildNoteWidget("text", { uuid: "n", name: malformed(undefined) });
 
-    expect(widget.storage?.html).toBeDefined();
-    expect(typeof widget.storage?.html).toBe("string");
+    expect(widget.name).toBe("Note");
   });
 
   it("builds a markdown widget when note citations are provided", () => {
@@ -233,13 +101,13 @@ describe("buildNoteWidget", () => {
 
   it("builds a markdown widget when note artifacts are provided", () => {
     const content =
-      "See table <|start_artifact_id|>table_artifact_6725b<|end_artifact_id|>";
+      "See report <|start_artifact_id|>html_artifact_6725b<|end_artifact_id|>";
     const artifacts = [
       {
-        uuid: "table_artifact_6725b",
-        name: "table_artifact_6725b",
-        type: "table" as const,
-        content: [{ country: "United States", weight: 67.61 }],
+        uuid: "html_artifact_6725b",
+        name: "html_artifact_6725b",
+        type: "html" as const,
+        content: "<p>United States: 67.61</p>",
       },
     ];
 

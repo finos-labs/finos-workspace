@@ -1,16 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { WidgetItem } from "~/components/LayoutAuth/Search/WidgetMenu";
 import { useThemeStore } from "~/lib/state/theme";
-
-// Mock external dependencies
-vi.mock("~/api/auth.api", () => ({
-  migrateDefaultTicker: vi.fn().mockResolvedValue({
-    symbol: "AAPL",
-    id: "AAPL",
-    type: "stock",
-    name: "Apple Inc.",
-    category: "equity",
-  }),
-}));
+import { malformed, partial } from "../../mocks";
 
 vi.mock("~/api/user.api", () => ({
   updateUserDisplaySettings: vi.fn().mockResolvedValue({}),
@@ -18,43 +9,23 @@ vi.mock("~/api/user.api", () => ({
 
 vi.mock("~/lib/state/auth", () => ({
   useAuthStore: {
-    getState: () => ({
-      lastVisitedPage: "/app",
-      openaiApiKey: "test-openai-key",
-      perplexityApiKey: "test-perplexity-key",
-    }),
+    getState: () => ({ lastVisitedPage: "/app" }),
   },
 }));
 
-vi.mock("~/lib/types", () => ({
-  DEFAULT_TICKERS: {
-    AAPL: {
-      id: "AAPL",
-      symbol: "AAPL",
-      type: "stock",
-      name: "Apple Inc.",
-      category: "equity",
-    },
-  },
-}));
-
-// Store original document state
 const originalDocumentElement = document.documentElement;
 
 describe("useThemeStore", () => {
   let colorSchemeMeta: HTMLMetaElement;
 
   beforeEach(() => {
-    // Create color-scheme meta element
     colorSchemeMeta = document.createElement("meta");
     colorSchemeMeta.name = "color-scheme";
     colorSchemeMeta.content = "dark";
     document.head.appendChild(colorSchemeMeta);
 
-    // Clear localStorage
     localStorage.clear();
 
-    // Reset store to default state
     useThemeStore.setState({
       mcpAuthPopup: null,
       promptsSuggestionsMenuOpen: false,
@@ -66,26 +37,15 @@ describe("useThemeStore", () => {
       exportTemplatePopup: false,
       recentlyAddedWidgets: [],
       apiKeyDialogOpen: false,
-      bookingOpen: false,
       shareDashboardPopupId: null,
-      defaultTicker: {
-        id: "AAPL",
-        symbol: "AAPL",
-        type: "stock",
-        name: "Apple Inc.",
-        category: "equity",
-      },
       userAcknowledgedMobile: false,
       userAcknowledgedNonChromium: false,
-      decimalDigits: 2,
       gridCorners: ["se"],
       showWidgetControlsEllipsis: false,
       aiEnhancements: true,
       quickAddButtonVisible: true,
       showMinimizeButton: false,
-      showChartGeneration: false,
       fontSize: "medium",
-      tablePagination: true,
       isEditingTab: true,
       gridSnapping: "vertical",
       editingType: "tab",
@@ -102,19 +62,14 @@ describe("useThemeStore", () => {
       theme: "dark",
       collapsedPanelExpandOnHover: false,
       shortcutSidebarOpen: false,
-      openDataPlatformModalOpen: false,
-      feedbackOpen: false,
       presenterMode: false,
       initialSelectedSearchTab: "widgets",
       pulseAnimationButtonsAlreadyClicked: false,
       isResizingGridElement: "",
-      excelExportPopup: false,
-      excelExportItem: null,
     });
 
-    // Reset document state
     document.documentElement.classList.remove("dark");
-    document.documentElement.style.removeProperty("--text-scale");
+    delete document.documentElement.dataset.fontSize;
   });
 
   afterEach(() => {
@@ -140,18 +95,14 @@ describe("useThemeStore", () => {
       expect(state.exportTemplatePopup).toBe(false);
       expect(state.recentlyAddedWidgets).toEqual([]);
       expect(state.apiKeyDialogOpen).toBe(false);
-      expect(state.bookingOpen).toBe(false);
       expect(state.shareDashboardPopupId).toBeNull();
-      expect(state.defaultTicker).toBeDefined();
       expect(state.userAcknowledgedMobile).toBe(false);
       expect(state.userAcknowledgedNonChromium).toBe(false);
-      expect(state.decimalDigits).toBe(2);
       expect(state.gridCorners).toEqual(["se"]);
       expect(state.showWidgetControlsEllipsis).toBe(false);
       expect(state.aiEnhancements).toBe(true);
       expect(state.quickAddButtonVisible).toBe(true);
       expect(state.fontSize).toBe("medium");
-      expect(state.tablePagination).toBe(true);
       expect(state.isEditingTab).toBe(true);
       expect(state.gridSnapping).toBe("vertical");
       expect(state.editingType).toBe("tab");
@@ -168,14 +119,10 @@ describe("useThemeStore", () => {
       expect(state.theme).toBe("dark");
       expect(state.collapsedPanelExpandOnHover).toBe(false);
       expect(state.shortcutSidebarOpen).toBe(false);
-      expect(state.openDataPlatformModalOpen).toBe(false);
-      expect(state.feedbackOpen).toBe(false);
       expect(state.presenterMode).toBe(false);
       expect(state.initialSelectedSearchTab).toBe("widgets");
       expect(state.pulseAnimationButtonsAlreadyClicked).toBe(false);
       expect(state.isResizingGridElement).toBe("");
-      expect(state.excelExportPopup).toBe(false);
-      expect(state.excelExportItem).toBeNull();
     });
   });
 
@@ -235,18 +182,16 @@ describe("useThemeStore", () => {
       expect(useThemeStore.getState().fontSize).toBe("large");
     });
 
-    it("should update CSS variable for medium font size", () => {
+    it("should set the font size attribute for medium font size", () => {
       useThemeStore.getState().setFontSize("medium");
 
-      expect(document.documentElement.style.getPropertyValue("--text-scale")).toBe("1");
+      expect(document.documentElement.dataset.fontSize).toBe("medium");
     });
 
-    it("should update CSS variable for large font size", () => {
+    it("should set the font size attribute for large font size", () => {
       useThemeStore.getState().setFontSize("large");
 
-      expect(document.documentElement.style.getPropertyValue("--text-scale")).toBe(
-        "1.25",
-      );
+      expect(document.documentElement.dataset.fontSize).toBe("large");
     });
   });
 
@@ -254,22 +199,23 @@ describe("useThemeStore", () => {
     it("should return display settings with all required properties", () => {
       const settings = useThemeStore.getState().getDisplaySettings();
 
-      expect(settings).toHaveProperty("decimalDigits");
       expect(settings).toHaveProperty("theme");
       expect(settings).toHaveProperty("showWidgetControlsEllipsis");
       expect(settings).toHaveProperty("aiEnhancements");
-      expect(settings).toHaveProperty("tablePagination");
       expect(settings).toHaveProperty("fontSize");
-      expect(settings).toHaveProperty("defaultTicker");
       expect(settings).toHaveProperty("gridCorners");
       expect(settings).toHaveProperty("gridSnapping");
       expect(settings).toHaveProperty("quickAddButtonVisible");
       expect(settings).toHaveProperty("showMinimizeButton");
-      expect(settings).toHaveProperty("showChartGeneration");
       expect(settings).toHaveProperty("lastVisitedPage");
-      expect(settings).toHaveProperty("openaiApiKey");
-      expect(settings).toHaveProperty("perplexityApiKey");
       expect(settings).toHaveProperty("collapsedPanelExpandOnHover");
+    });
+
+    it("never carries the user's provider keys", () => {
+      const settings = useThemeStore.getState().getDisplaySettings();
+
+      expect(settings).not.toHaveProperty("openaiApiKey");
+      expect(settings).not.toHaveProperty("perplexityApiKey");
     });
 
     it("should update display settings with theme change", () => {
@@ -286,14 +232,12 @@ describe("useThemeStore", () => {
 
     it("should update multiple display settings at once", () => {
       useThemeStore.getState().updateDisplaySettings({
-        decimalDigits: 4,
-        tablePagination: false,
+        fontSize: "large",
         aiEnhancements: false,
       });
 
       const state = useThemeStore.getState();
-      expect(state.decimalDigits).toBe(4);
-      expect(state.tablePagination).toBe(false);
+      expect(state.fontSize).toBe("large");
       expect(state.aiEnhancements).toBe(false);
     });
   });
@@ -302,7 +246,7 @@ describe("useThemeStore", () => {
     it("should set MCP auth popup", () => {
       const popup = {
         serverName: "test-server",
-        serverUrlHash: "hash123",
+        url: "https://mcp.example.com",
         authUrl: "https://auth.example.com",
         popupFeatures: "width=500,height=600",
       };
@@ -316,7 +260,7 @@ describe("useThemeStore", () => {
       useThemeStore.setState({
         mcpAuthPopup: {
           serverName: "test",
-          serverUrlHash: "hash",
+          url: "https://mcp.example.com",
           authUrl: "url",
           popupFeatures: "features",
         },
@@ -355,11 +299,6 @@ describe("useThemeStore", () => {
       expect(useThemeStore.getState().apiKeyDialogOpen).toBe(true);
     });
 
-    it("should toggle booking dialog", () => {
-      useThemeStore.getState().setBookingOpen(true);
-      expect(useThemeStore.getState().bookingOpen).toBe(true);
-    });
-
     it("should set share dashboard popup id", () => {
       useThemeStore.getState().setShareDashboardPopupId("dashboard-123");
       expect(useThemeStore.getState().shareDashboardPopupId).toBe("dashboard-123");
@@ -378,27 +317,6 @@ describe("useThemeStore", () => {
     it("should toggle export template popup", () => {
       useThemeStore.getState().setExportTemplatePopup(true);
       expect(useThemeStore.getState().exportTemplatePopup).toBe(true);
-    });
-
-    it("should toggle feedback dialog", () => {
-      useThemeStore.getState().setFeedbackOpen(true);
-      expect(useThemeStore.getState().feedbackOpen).toBe(true);
-    });
-
-    it("should toggle open data platform modal", () => {
-      useThemeStore.getState().setOpenDataPlatformModalOpen(true);
-      expect(useThemeStore.getState().openDataPlatformModalOpen).toBe(true);
-    });
-
-    it("should toggle excel export popup", () => {
-      useThemeStore.getState().setExcelExportPopup(true);
-      expect(useThemeStore.getState().excelExportPopup).toBe(true);
-    });
-
-    it("should set excel export item", () => {
-      const item = { index: "test-item", data: { name: "Test" } } as any;
-      useThemeStore.getState().setExcelExportItem(item);
-      expect(useThemeStore.getState().excelExportItem).toEqual(item);
     });
   });
 
@@ -563,7 +481,6 @@ describe("useThemeStore", () => {
       const resizeHandler = vi.fn();
       window.addEventListener("resize", resizeHandler);
 
-      // Mock fullscreen APIs
       const requestFullscreen = vi.fn().mockResolvedValue(undefined);
       const exitFullscreen = vi.fn().mockResolvedValue(undefined);
 
@@ -572,7 +489,6 @@ describe("useThemeStore", () => {
 
       useThemeStore.getState().togglePresenterMode();
 
-      // Wait for the setTimeout
       await vi.waitFor(() => {
         expect(resizeHandler).toHaveBeenCalled();
       });
@@ -590,27 +506,12 @@ describe("useThemeStore", () => {
     });
   });
 
-  describe("Default Ticker", () => {
-    it("should set default ticker", () => {
-      const ticker = {
-        id: "MSFT",
-        symbol: "MSFT",
-        name: "Microsoft Corporation",
-        category: "equity",
-      };
-
-      useThemeStore.getState().setDefaultTicker(ticker as any);
-
-      expect(useThemeStore.getState().defaultTicker).toEqual(ticker);
-    });
-  });
-
   describe("Recently Added Widgets", () => {
     it("should set recently added widgets", () => {
-      const widgets = [
+      const widgets = partial<WidgetItem[]>([
         { widgetId: "widget-1", name: "Widget 1" },
         { widgetId: "widget-2", name: "Widget 2" },
-      ] as any[];
+      ]);
 
       useThemeStore.getState().setRecentlyAddedWidgets(widgets);
 
@@ -627,13 +528,6 @@ describe("useThemeStore", () => {
     it("should set user acknowledged non-chromium", () => {
       useThemeStore.getState().setUserAcknowledgedNonChromium(true);
       expect(useThemeStore.getState().userAcknowledgedNonChromium).toBe(true);
-    });
-  });
-
-  describe("Decimal Digits", () => {
-    it("should set decimal digits", () => {
-      useThemeStore.getState().setDecimalDigits(4);
-      expect(useThemeStore.getState().decimalDigits).toBe(4);
     });
   });
 
@@ -664,11 +558,6 @@ describe("useThemeStore", () => {
       expect(useThemeStore.getState().showMinimizeButton).toBe(true);
     });
 
-    it("should set show chart generation", () => {
-      useThemeStore.getState().setShowChartGeneration(true);
-      expect(useThemeStore.getState().showChartGeneration).toBe(true);
-    });
-
     it("should set quick add button visible", () => {
       useThemeStore.getState().setQuickAddButtonVisible(false);
       expect(useThemeStore.getState().quickAddButtonVisible).toBe(false);
@@ -682,13 +571,6 @@ describe("useThemeStore", () => {
 
       useThemeStore.getState().setAiEnhancements(true);
       expect(useThemeStore.getState().aiEnhancements).toBe(true);
-    });
-  });
-
-  describe("Table Pagination", () => {
-    it("should set table pagination", () => {
-      useThemeStore.getState().setTablePagination(false);
-      expect(useThemeStore.getState().tablePagination).toBe(false);
     });
   });
 
@@ -724,13 +606,11 @@ describe("useThemeStore", () => {
       useThemeStore.getState().updateThemeState({
         fontSize: "large",
         aiEnhancements: false,
-        tablePagination: false,
       });
 
       const state = useThemeStore.getState();
       expect(state.fontSize).toBe("large");
       expect(state.aiEnhancements).toBe(false);
-      expect(state.tablePagination).toBe(false);
     });
 
     it("should apply theme from state when provided", () => {
@@ -740,16 +620,14 @@ describe("useThemeStore", () => {
       expect(document.documentElement.classList.contains("dark")).toBe(false);
     });
 
-    it("should apply font size CSS variable when fontSize is provided", () => {
+    it("should apply the font size attribute when fontSize is provided", () => {
       useThemeStore.getState().updateThemeState({ fontSize: "large" });
 
-      expect(document.documentElement.style.getPropertyValue("--text-scale")).toBe(
-        "1.25",
-      );
+      expect(document.documentElement.dataset.fontSize).toBe("large");
     });
 
     it("should default aiEnhancements to true if undefined", () => {
-      useThemeStore.setState({ aiEnhancements: undefined as any });
+      useThemeStore.setState({ aiEnhancements: malformed(undefined) });
       useThemeStore.getState().updateThemeState({});
 
       expect(useThemeStore.getState().aiEnhancements).toBe(true);
@@ -762,7 +640,6 @@ describe("useThemeStore", () => {
     });
 
     it("should call debouncedUpdateSettings without throwing", async () => {
-      // The debounced function should be callable without errors
       expect(() => {
         useThemeStore.getState().debouncedUpdateSettings();
       }).not.toThrow();
@@ -770,8 +647,6 @@ describe("useThemeStore", () => {
 
     it("should return a promise from debouncedUpdateSettings", () => {
       const result = useThemeStore.getState().debouncedUpdateSettings();
-      // Debounced functions from lodash.debounce return the result of the debounced function
-      // or undefined if not yet called
       expect(result === undefined || result instanceof Promise).toBe(true);
     });
   });
@@ -792,25 +667,47 @@ describe("useThemeStore", () => {
   });
 
   describe("Rehydration", () => {
-    it("should clear mcpAuthPopup after rehydrating from persisted storage", async () => {
-      const persistedPopup = {
-        serverName: "persisted-server",
-        serverUrlHash: "persisted-hash",
-        authUrl: "https://auth.example.com",
-        popupFeatures: "width=500,height=600",
-      };
+    it("never persists a pending MCP sign-in", () => {
+      useThemeStore.getState().setMcpAuthPopup({
+        serverName: "test-server",
+        url: "https://mcp.example.com",
+        authUrl: "https://auth.example.com/authorize?state=abc",
+      });
 
+      const persisted = JSON.parse(localStorage.getItem("theme-storage") ?? "{}");
+      expect(persisted.state).toBeDefined();
+      expect(persisted.state).not.toHaveProperty("mcpAuthPopup");
+      expect(localStorage.getItem("theme-storage")).not.toContain("authorize");
+    });
+
+    it("reads back and writes only its preferences, dropping keys like old provider keys", async () => {
       localStorage.setItem(
         "theme-storage",
         JSON.stringify({
-          state: { mcpAuthPopup: persistedPopup, theme: "dark" },
-          version: 2,
+          state: {
+            theme: "light",
+            fontSize: "large",
+            openaiApiKey: "sk-left-by-an-earlier-version",
+            perplexityApiKey: "pplx-left-by-an-earlier-version",
+          },
+          version: 0,
         }),
       );
 
       await useThemeStore.persist.rehydrate();
+      const state = useThemeStore.getState() as unknown as Record<string, unknown>;
+      expect(state.theme).toBe("light");
+      expect(state.fontSize).toBe("large");
+      expect(state).not.toHaveProperty("openaiApiKey");
+      expect(state).not.toHaveProperty("perplexityApiKey");
 
-      expect(useThemeStore.getState().mcpAuthPopup).toBeNull();
+      useThemeStore.getState().setRenamePopup(true, "Tab", "tab-1", "tab");
+      const stored = localStorage.getItem("theme-storage") ?? "";
+      expect(stored).not.toContain("left-by-an-earlier-version");
+      const persisted = JSON.parse(stored).state;
+      expect(persisted.theme).toBe("light");
+      expect(persisted.fontSize).toBe("large");
+      expect(persisted).not.toHaveProperty("renamePopup");
     });
 
     it("should not throw when rehydrating with no persisted storage", async () => {
@@ -834,14 +731,12 @@ describe("useThemeStore", () => {
       expect(document.documentElement.classList.contains("dark")).toBe(false);
     });
 
-    it("should update --text-scale CSS variable on font size change", () => {
+    it("should update the font size attribute on font size change", () => {
       useThemeStore.getState().setFontSize("large");
-      expect(document.documentElement.style.getPropertyValue("--text-scale")).toBe(
-        "1.25",
-      );
+      expect(document.documentElement.dataset.fontSize).toBe("large");
 
       useThemeStore.getState().setFontSize("medium");
-      expect(document.documentElement.style.getPropertyValue("--text-scale")).toBe("1");
+      expect(document.documentElement.dataset.fontSize).toBe("medium");
     });
 
     it("should update color-scheme meta tag content on theme change", () => {
@@ -862,9 +757,7 @@ describe("useThemeStore", () => {
       });
 
       expect(document.documentElement.classList.contains("dark")).toBe(false);
-      expect(document.documentElement.style.getPropertyValue("--text-scale")).toBe(
-        "1.25",
-      );
+      expect(document.documentElement.dataset.fontSize).toBe("large");
     });
   });
 });

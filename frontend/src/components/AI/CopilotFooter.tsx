@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useRef } from "react";
-import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
+import { type MouseEvent, useMemo, useRef } from "react";
 import { FooterLink, UploadedFile } from "~/components/General/UploadedFile";
 import { useCallbackRef } from "~/hooks/useRefHooks";
-import { COPILOT_ACCEPTED_EXTENSIONS, getDefaultCopilot } from "~/lib/constants";
+import { COPILOT_ACCEPTED_EXTENSIONS } from "~/lib/constants";
 import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
-import { useMobile } from "~/lib/providers/MobileProvider";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { cn, extractUrlsFromText } from "~/lib/utils";
 import { Button } from "../ds/atoms/Button";
-import SnowflakeHide from "../General/SnowflakeHide";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import CopilotSwitcher from "./CopilotSwitcher";
+import { useDictation } from "./hooks/useDictation";
 import { useEnhancePrompt } from "./hooks/useEnhancePrompt";
 import {
   StreamingStatus,
@@ -24,12 +23,11 @@ import PromptSuggestions from "./PromptSuggestions";
 import TextArea from "./TextArea";
 
 export default function CopilotFooter() {
-  const isMobile = useMobile((state) => state.isMobile);
-  const { transcript, listening, browserSupportsSpeechRecognition } =
-    useSpeechRecognition();
-
-  const fileUploadFF = useShallowCopilotStore((s) =>
-    Boolean(s.selectedCopilot?.features?.["file-upload"]),
+  const mayUpload = useShallowAccessStore((s) => canAddConnections(s.access));
+  const fileUploadFF = useShallowCopilotStore(
+    (s) =>
+      Boolean(s.selectedCopilot?.features?.["file-upload"]) &&
+      (mayUpload || s.selectedCopilot?.id !== "default-copilot"),
   );
 
   const handleSubmitRef = useCopilotContext().handleSubmitRef;
@@ -50,11 +48,16 @@ export default function CopilotFooter() {
     [files],
   );
 
-  useEffect(() => {
-    if (transcript && listening && browserSupportsSpeechRecognition) {
-      dispatchCopilotCommand(transcript);
-    }
-  }, [transcript, listening, browserSupportsSpeechRecognition]);
+  const selectedCopilot = useShallowCopilotStore((s) => s.selectedCopilot);
+  const speechToTextFF = Boolean(selectedCopilot?.features?.["speech-to-text"]);
+  const onDictated = useCallbackRef((text: string) =>
+    dispatchCopilotCommand((prev) =>
+      prev.trim() ? `${prev.trimEnd()} ${text}` : text,
+    ),
+  );
+  const dictation = useDictation(selectedCopilot, onDictated);
+  const recording = dictation.state === "recording";
+  const transcribing = dictation.state === "transcribing";
   const inputRef = useRef<HTMLDivElement | null>(null);
 
   const uniqueLinks = useMemo(() => {
@@ -102,7 +105,7 @@ export default function CopilotFooter() {
     [dispatch],
   );
 
-  const onSendClick = useCallbackRef((e) => {
+  const onSendClick = useCallbackRef((e: MouseEvent) => {
     e.preventDefault();
     if (isPromptEmpty && !loading) return;
     if (hasPendingFiles && !loading) return;
@@ -111,7 +114,7 @@ export default function CopilotFooter() {
     handleSubmitRef.current?.({ question: prompt });
   });
 
-  const onEnhanceClick = useCallbackRef(async (e) => {
+  const onEnhanceClick = useCallbackRef(async (e: MouseEvent) => {
     e.preventDefault();
     if (loading || limitReached || isEnhancing) return;
 
@@ -128,77 +131,82 @@ export default function CopilotFooter() {
       <>
         <div className="flex p-1 items-center justify-end">
           <div className="flex gap-2 items-center w-full">
-            <SnowflakeHide render={<SnowflakeSwitcher />}>
-              <CopilotSwitcher />
-            </SnowflakeHide>
+            <CopilotSwitcher />
             <ModelPicker />
             <div className="flex shrink-0 gap-1 items-center">
-              {isMobile && browserSupportsSpeechRecognition ? (
-                <button
-                  type="button"
-                  aria-label={listening ? "Stop voice input" : "Start voice input"}
-                  aria-pressed={listening}
-                  onClick={() =>
-                    listening
-                      ? SpeechRecognition.stopListening()
-                      : SpeechRecognition.startListening()
-                  }
-                  disabled={loading || limitReached}
-                  className={cn(
-                    "flex items-center justify-center w-8 h-8 rounded transition-colors duration-200 min-w-8",
-                    {
-                      "opacity-25 cursor-default": loading || limitReached,
-                      "text-ds-text-body hover:bg-btn-ghost-bg-hover":
-                        !loading && !limitReached,
-                      "bg-brand-main/10": listening,
-                    },
-                  )}
-                >
-                  <Icon
-                    id={listening ? "ph-microphone-slash-fill" : "ph-microphone-fill"}
-                    className={cn("h-4 w-4 stroke-1", {
-                      "animate-pulse text-brand-main dark:text-brand-lighter":
-                        listening,
-                    })}
-                  />
-                </button>
-              ) : (
-                promptSuggestionsMemo
-              )}
-
-              <SnowflakeHide>
-                <Tooltip
-                  message={
-                    fileUploadFF
-                      ? `Attach files (${COPILOT_ACCEPTED_EXTENSIONS.filter(
-                          (e) => e !== ".markdown",
-                        )
-                          .map((e) => e.slice(1).toUpperCase())
-                          .join(", ")} supported)`
-                      : "File upload is not enabled for this copilot."
-                  }
-                >
+              {promptSuggestionsMemo}
+              {speechToTextFF && (
+                <Tooltip message={recording ? "Stop voice input" : "Start voice input"}>
                   <div className="tooltip-wrapper">
                     <button
                       type="button"
-                      aria-label="Attach files"
-                      onClick={() => document.getElementById("file-upload")?.click()}
-                      disabled={!fileUploadFF || loading || limitReached}
+                      aria-label={recording ? "Stop voice input" : "Start voice input"}
+                      aria-pressed={recording}
+                      onClick={() =>
+                        recording ? dictation.stop() : void dictation.start()
+                      }
+                      disabled={loading || limitReached || transcribing}
                       className={cn(
                         "flex items-center justify-center w-8 h-8 rounded transition-colors duration-200 min-w-8",
                         {
                           "opacity-25 cursor-default":
-                            !fileUploadFF || loading || limitReached,
+                            loading || limitReached || transcribing,
                           "text-ds-text-body hover:bg-btn-ghost-bg-hover":
-                            fileUploadFF && !loading && !limitReached,
+                            !loading && !limitReached && !transcribing,
+                          "bg-brand-main/10": recording,
                         },
                       )}
                     >
-                      <Icon id="attachment-icon" className="h-4 w-4 stroke-1" />
+                      <Icon
+                        id={
+                          transcribing
+                            ? "mdi-loading"
+                            : recording
+                              ? "ph-microphone-slash-fill"
+                              : "ph-microphone-fill"
+                        }
+                        className={cn("h-4 w-4 stroke-1", {
+                          "animate-spin": transcribing,
+                          "animate-pulse text-brand-main dark:text-brand-lighter":
+                            recording,
+                        })}
+                      />
                     </button>
                   </div>
                 </Tooltip>
-              </SnowflakeHide>
+              )}
+
+              <Tooltip
+                message={
+                  fileUploadFF
+                    ? `Attach files (${COPILOT_ACCEPTED_EXTENSIONS.filter(
+                        (e) => e !== ".markdown",
+                      )
+                        .map((e) => e.slice(1).toUpperCase())
+                        .join(", ")} supported)`
+                    : "File upload is not enabled for this agent."
+                }
+              >
+                <div className="tooltip-wrapper">
+                  <button
+                    type="button"
+                    aria-label="Attach files"
+                    onClick={() => document.getElementById("file-upload")?.click()}
+                    disabled={!fileUploadFF || loading || limitReached}
+                    className={cn(
+                      "flex items-center justify-center w-8 h-8 rounded transition-colors duration-200 min-w-8",
+                      {
+                        "opacity-25 cursor-default":
+                          !fileUploadFF || loading || limitReached,
+                        "text-ds-text-body hover:bg-btn-ghost-bg-hover":
+                          fileUploadFF && !loading && !limitReached,
+                      },
+                    )}
+                  >
+                    <Icon id="attachment-icon" className="h-4 w-4 stroke-1" />
+                  </button>
+                </div>
+              </Tooltip>
               <Tooltip
                 message={isPromptEmpty ? "Generate prompt" : "Prompt enhancement"}
               >
@@ -254,15 +262,16 @@ export default function CopilotFooter() {
     [
       onSendClick,
       onEnhanceClick,
+      dictation,
       limitReached,
       loading,
       fileUploadFF,
-      isMobile,
       isPromptEmpty,
       hasPendingFiles,
       isEnhancing,
-      browserSupportsSpeechRecognition,
-      listening,
+      speechToTextFF,
+      recording,
+      transcribing,
       promptSuggestionsMemo,
     ],
   );
@@ -295,26 +304,5 @@ export default function CopilotFooter() {
       </>
     ),
     [limitReached, textAreaMemo, buttonsMemo, fileLinksFooterMemo],
-  );
-}
-
-function SnowflakeSwitcher() {
-  return (
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center text-xs gap-1 w-full min-w-0">
-        <span
-          className="flex items-center gap-1 rounded-full px-2 py-1 dark:bg-dark-750 bg-light-50
-          dark:text-light-200 text-light-750 min-w-0 max-w-full truncate"
-        >
-          <Icon
-            id="sparkles-icon"
-            className="h-4 w-4 dark:text-light-400 flex-shrink-0"
-          />
-          <span className="select-none truncate min-w-0">
-            {getDefaultCopilot().name}
-          </span>
-        </span>
-      </div>
-    </div>
   );
 }

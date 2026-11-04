@@ -1,23 +1,12 @@
-/**
- * Tests for promptLibrary Zustand store
- *
- * Tests the prompt library state management including:
- * - Prompt CRUD operations
- * - Dialog state management
- * - Prompt reordering
- */
-
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { usePromptLibraryStore, type Prompt } from "~/lib/state/promptLibrary";
+import { type Prompt, usePromptLibraryStore } from "~/lib/state/promptLibrary";
 
-// Mock API calls
 vi.mock("~/api/auth.api", () => ({
   getUserPrompts: vi.fn().mockResolvedValue([]),
   postUserPrompts: vi.fn().mockResolvedValue({}),
 }));
 
-// Mock uuidv4
 vi.mock("~/lib/utils", () => ({
   uuidv4: vi.fn(() => `uuid-${Math.random().toString(36).substr(2, 9)}`),
 }));
@@ -25,7 +14,6 @@ vi.mock("~/lib/utils", () => ({
 describe("usePromptLibraryStore", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset store to initial state
     act(() => {
       usePromptLibraryStore.setState({
         prompts: [],
@@ -346,7 +334,6 @@ describe("usePromptLibraryStore", () => {
         usePromptLibraryStore.setState({ prompts });
       });
 
-      // Reorder: C, A, B
       const newOrder = [prompts[2], prompts[0], prompts[1]];
 
       act(() => {
@@ -362,7 +349,6 @@ describe("usePromptLibraryStore", () => {
 
   describe("complex interactions", () => {
     it("should handle full prompt lifecycle", () => {
-      // Add prompt
       act(() => {
         usePromptLibraryStore.getState().addPrompt({
           prompt: "Initial content",
@@ -373,22 +359,21 @@ describe("usePromptLibraryStore", () => {
       const addedPrompt = usePromptLibraryStore.getState().prompts[0];
       expect(addedPrompt.prompt).toBe("Initial content");
 
-      // Update prompt
       act(() => {
         usePromptLibraryStore
           .getState()
           .updatePrompt(addedPrompt.id, { prompt: "Updated content" });
       });
 
-      expect(usePromptLibraryStore.getState().prompts[0].prompt).toBe("Updated content");
+      expect(usePromptLibraryStore.getState().prompts[0].prompt).toBe(
+        "Updated content",
+      );
 
-      // Get prompt by id
       const retrievedPrompt = usePromptLibraryStore
         .getState()
         .getPromptById(addedPrompt.id);
       expect(retrievedPrompt?.prompt).toBe("Updated content");
 
-      // Remove prompt
       act(() => {
         usePromptLibraryStore.getState().removePrompt(addedPrompt.id);
       });
@@ -408,7 +393,6 @@ describe("usePromptLibraryStore", () => {
         usePromptLibraryStore.setState({ prompts: [mockPrompt] });
       });
 
-      // Start editing
       act(() => {
         usePromptLibraryStore.getState().setEditingPromptId("prompt-1");
         usePromptLibraryStore.getState().setAddPromptDialogOpen(true);
@@ -417,11 +401,8 @@ describe("usePromptLibraryStore", () => {
       expect(usePromptLibraryStore.getState().editingPromptId).toBe("prompt-1");
       expect(usePromptLibraryStore.getState().addPromptDialogOpen).toBe(true);
 
-      // Save edit
       act(() => {
-        usePromptLibraryStore
-          .getState()
-          .updatePrompt("prompt-1", { prompt: "Edited" });
+        usePromptLibraryStore.getState().updatePrompt("prompt-1", { prompt: "Edited" });
         usePromptLibraryStore.getState().setEditingPromptId(null);
         usePromptLibraryStore.getState().setAddPromptDialogOpen(false);
       });

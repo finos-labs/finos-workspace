@@ -1,28 +1,13 @@
-"""Load/regression test for the Workspace MCP bridge under concurrency.
-
-Proves the async-redis bridge does NOT consume the thread pool or block the event loop
-under load — the property the sync `asyncio.to_thread` version violated. Drives many
-concurrent cross-process commands through the real BridgeSessionManager (fake async-redis
-broker, no DB/redis needed) and asserts:
-
-  * thread growth stays near zero          (old to_thread path spiked ~+20)
-  * a canary thread-pool task stays fast    (i.e. MCP load doesn't starve sync DB calls)
-  * event-loop scheduling lag stays low
-
-Runnable two ways:
-  * pytest  tests/test_bridge_load.py            (once the suite's autouse fixtures are unblocked)
-  * python  tests/test_bridge_load.py            (standalone now; bypasses conftest)
-"""
-
 import os
 import sys
 
 sys.path.insert(
     0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)  # backend
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # tests
+)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import asyncio
+import gc
 import json
 import statistics
 import threading
@@ -30,16 +15,15 @@ import time
 from uuid import uuid4
 
 import pytest
-from routers.pro.workspace_mcp.bridge import BridgeSessionManager
+from routers.app.workspace_mcp.bridge import BridgeSessionManager
 from test_workspace_mcp_bridge import FakeAsyncRedis
 
 HOLDER_WORKER = "holder"
 COMMANDS_CHANNEL = f"workspace_mcp:worker:{HOLDER_WORKER}:commands"
-DB_WORK_SECONDS = 0.005  # a canary "DB call" run on the thread pool
+DB_WORK_SECONDS = 0.005
 
 
 async def run_bridge_load(*, commands: int, think_seconds: float) -> dict:
-    """Fire `commands` concurrent cross-process commands and return load metrics."""
     broker: dict = {"channels": {}, "store": {}}
     user = uuid4()
     broker["store"][f"workspace_mcp:presence:{user}"] = json.dumps(
@@ -53,7 +37,6 @@ async def run_bridge_load(*, commands: int, think_seconds: float) -> dict:
 
     running = True
 
-    # Stand-in for the worker holding the browser socket: reply to each command after think time.
     async def reply_after(env: dict) -> None:
         await asyncio.sleep(think_seconds)
         result = {
@@ -87,7 +70,6 @@ async def run_bridge_load(*, commands: int, think_seconds: float) -> dict:
                     drained = True
             await asyncio.sleep(0 if drained else 0.005)
 
-    # Canary: a sync "DB call" issued on the thread pool while MCP commands are in flight.
     canary_overheads: list[float] = []
 
     async def canaries() -> None:
@@ -99,7 +81,6 @@ async def run_bridge_load(*, commands: int, think_seconds: float) -> dict:
             )
             await asyncio.sleep(0.002)
 
-    # Event-loop lag probe (no extra thread; runs on the loop).
     loop_lags: list[float] = []
 
     async def lag_probe() -> None:
@@ -121,7 +102,7 @@ async def run_bridge_load(*, commands: int, think_seconds: float) -> dict:
     canary_task = asyncio.create_task(canaries())
     lag_task = asyncio.create_task(lag_probe())
     thread_task = asyncio.create_task(thread_probe())
-    await asyncio.sleep(0.05)  # let the responder subscribe
+    await asyncio.sleep(0.05)
 
     async def one() -> bool:
         result = await caller.execute_command(
@@ -151,14 +132,15 @@ async def run_bridge_load(*, commands: int, think_seconds: float) -> dict:
 @pytest.mark.asyncio
 async def test_bridge_load_stays_thread_light_and_responsive():
     commands = 150
-    metrics = await run_bridge_load(commands=commands, think_seconds=0.05)
+    gc.freeze()
+    try:
+        metrics = await run_bridge_load(commands=commands, think_seconds=0.05)
+    finally:
+        gc.unfreeze()
 
     assert metrics["completed"] == commands
-    # The async path holds no pool threads; the old to_thread path spiked to the ~20-thread cap.
     assert metrics["thread_delta"] <= 8, metrics
-    # A concurrent thread-pool "DB call" must not get starved by MCP load.
     assert metrics["canary_max_ms"] < 75, metrics
-    # And the event loop must keep scheduling promptly.
     assert metrics["loop_lag_max_ms"] < 150, metrics
 
 

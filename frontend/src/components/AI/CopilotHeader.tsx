@@ -1,16 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  isValidElement,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
 import { useMobile } from "~/lib/providers/MobileProvider";
-import { getConfig } from "~/lib/runtimeConfig";
 import { type InnerTab, useShallowAppStore } from "~/lib/state/app";
 import type { CopilotWidget } from "~/lib/state/copilot";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 import { isTabPath } from "~/lib/utils/utils";
-import widgetsMetadata from "~/lib/widgets.json";
+import { getCatalogWidget } from "~/lib/utils/widget";
 import { Popover, PopoverTrigger } from "../ds/atoms/Popover";
 import { cn } from "../ds/utils";
 import Icon from "../Icon";
@@ -24,10 +31,16 @@ import { useMentions } from "./hooks/useMentions";
 import { useShallowStreamingStore } from "./hooks/useStreaming";
 import { dispatchCollapseCopilotPanel, dispatchCopilotCommand } from "./hooks/utils";
 
+function getTooltipMessage(tooltip: ReactNode, name: string): ReactNode {
+  return isValidElement<{ message?: ReactNode }>(tooltip)
+    ? (tooltip.props.message ?? name)
+    : name;
+}
+
 interface WidgetInfo {
   uuid: string;
   name: string;
-  widget: CopilotWidget;
+  widget: CopilotWidget | null;
 }
 
 interface TabInfo {
@@ -60,7 +73,6 @@ function DashboardButton() {
     setIsDropdownOpen: () => {},
   });
 
-  // Only show dashboard button on actual dashboard pages
   const isDashboardPage = useMemo(() => isTabPath(pathname), [isTabPath(pathname)]);
 
   const appStore = useShallowAppStore((state) => ({
@@ -72,7 +84,6 @@ function DashboardButton() {
   const { getTabById, lastUpdated, finalDashboardName } = useShallowSharedAppStore(
     (state) => {
       const sharedItem = state?.sharedItems?.[currentDashboardId];
-      // If no shared item, fallback to app store
       if (!sharedItem) return appStore;
       return {
         getTabById: state.getDashboardById,
@@ -89,7 +100,6 @@ function DashboardButton() {
       addDataOnDashboardWidget: state.addDataOnDashboardWidget,
     }));
 
-  // Extract widget info with names and UUIDs, grouped by tabs
   const getWidgetsByTabs = useCallback((): WidgetData => {
     const dashboard = getTabById(currentDashboardId);
     if (!dashboard?.data?.widgets) return { hasTabs: false, widgets: [] };
@@ -105,7 +115,7 @@ function DashboardButton() {
     const createWidgetData = (widget: WidgetT) => {
       const customName = widget.name;
       const widgetId = widget.widgetId;
-      const metadataName = widgetsMetadata[widgetId]?.name;
+      const metadataName = getCatalogWidget(widgetId)?.name;
       const name = customName || metadataName || widgetId || "Unnamed Widget";
       const copilotWidget = createCopilotWidget(widget.id, widget);
 
@@ -132,7 +142,7 @@ function DashboardButton() {
     }
 
     return { hasTabs: true, widgetsByTab };
-  }, [getTabById, isWidgetSelected, widgetsMetadata, currentDashboardId]);
+  }, [getTabById, isWidgetSelected, currentDashboardId]);
 
   const { widgetData, totalWidgetCount, tabIds } = useMemo(() => {
     const widgetData = getWidgetsByTabs();
@@ -154,14 +164,11 @@ function DashboardButton() {
     };
   }, [getWidgetsByTabs, lastUpdated]);
 
-  // Initialize all tabs as expanded when widget data changes
-
   useEffect(() => {
     if (widgetData.hasTabs) {
       setExpandedTabs((prev) => {
         const newState = { ...prev };
         tabIds.forEach((tabId) => {
-          // Only set to true if not already defined (preserve user's collapse/expand state)
           if (!(tabId in newState)) {
             newState[tabId] = true;
           }
@@ -187,14 +194,16 @@ function DashboardButton() {
 
       if (!wasSelected) {
         const dashboard = getTabById(currentDashboardId);
-        const finalWidgets = dashboard.data?.widgets || [];
+        const finalWidgets = dashboard?.data?.widgets || [];
         const widget = finalWidgets.find((w) => w.id === widgetUuid);
         if (widget) {
           const widgetDataForContext = {
             title:
-              widget.name || widgetsMetadata[widget.widgetId]?.name || "Unnamed Widget",
-            description: widgetsMetadata[widget.widgetId]?.description || "",
-            endpointUrl: widgetsMetadata[widget.widgetId]?.endpoint_url || "",
+              widget.name ||
+              getCatalogWidget(widget.widgetId)?.name ||
+              "Unnamed Widget",
+            description: getCatalogWidget(widget.widgetId)?.description || "",
+            endpointUrl: "",
             data: widget.data || null,
             lastUpdate: Date.now(),
             source: "header-button",
@@ -216,12 +225,11 @@ function DashboardButton() {
       addDataOnDashboardWidget,
       getTabById,
       currentDashboardId,
-      widgetsMetadata,
     ],
   );
 
   if (!isDashboardPage) {
-    return <div className="min-h-[32px]" />; // Maintain height when not on dashboard
+    return <div className="min-h-[32px]" />;
   }
 
   return (
@@ -230,9 +238,9 @@ function DashboardButton() {
       onOpenChange={setIsExpanded}
       side="top"
       align="start"
-      id="obb-copilot-dashboard-button"
+      id="ws-copilot-dashboard-button"
       className="p-0! bg-general-bg-primary border border-general-border-secondary rounded-lg shadow-lg z-50 max-h-90 overflow-y-auto"
-      style={{ minWidth: "16rem", maxWidth: "32rem" }} // min-w-64, max-w-[512px]
+      style={{ minWidth: "16rem", maxWidth: "32rem" }}
       onOpenAutoFocus={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -261,11 +269,10 @@ function DashboardButton() {
                     </div>
                   ) : (
                     tabData.widgets.map((widget, index) => {
-                      const widgetTooltipElement = getRichWidgetTooltip(
-                        widget.widget,
-                      ) as any;
-                      const tooltipMessage =
-                        widgetTooltipElement?.props?.message ?? widget.name;
+                      const tooltipMessage = getTooltipMessage(
+                        widget.widget && getRichWidgetTooltip(widget.widget),
+                        widget.name,
+                      );
                       return (
                         <Tooltip
                           id={`widget-badge-tooltip-${widget.uuid}`}
@@ -305,9 +312,10 @@ function DashboardButton() {
         ) : totalWidgetCount > 0 ? (
           <div className="p-2 space-y-1">
             {widgetData.widgets.map((widget, index) => {
-              const widgetTooltipElement = getRichWidgetTooltip(widget.widget) as any;
-              const tooltipMessage =
-                widgetTooltipElement?.props?.message ?? widget.name;
+              const tooltipMessage = getTooltipMessage(
+                widget.widget && getRichWidgetTooltip(widget.widget),
+                widget.name,
+              );
               return (
                 <Tooltip
                   id={`widget-badge-tooltip-${widget.uuid}`}
@@ -366,7 +374,7 @@ function DashboardButton() {
   );
 }
 
-export function CopilotHeader() {
+function CopilotHeader({ showChatActions = true }: { showChatActions?: boolean } = {}) {
   const isMobile = useMobile((state) => state.isMobile);
   const expandedHeader = usePanelsState("right");
   const stopSubmitRef = useCopilotContext()?.stopSubmitRef;
@@ -406,25 +414,19 @@ export function CopilotHeader() {
   const clearChatContext = useCallback(() => {
     dispatch({ files: [] });
 
-    // Get current widgets before clearing them to handle text cleanup
     const currentWidgets = copilotData.getCopilotWidgets().selectedWidgets || [];
 
-    // Clear all widgets and data
     copilotData.clearSelectedWidgets();
 
-    // Clear the UI state of selected widgets
     copilotData.setCopilotWidgets({ selectedWidgets: [] });
 
-    // Remove each widget's data and its mention from the text
     for (const widget of currentWidgets) {
       if (widget?.uuid) {
         copilotData.removeDataFromDashboardWidget(widget.uuid, true);
 
-        // If this widget was added via @ mention, we need to remove the mention from the text
         if (copilotData.isMentionTrackedWidget?.(widget.uuid)) {
-          // Update the command using the global dispatch
           dispatchCopilotCommand((prev) => {
-            const updatedText = removeMentionFromText(prev, widget.uuid);
+            const updatedText = removeMentionFromText(prev, widget.uuid ?? "");
             if (updatedText !== prev) return updatedText;
             return prev;
           });
@@ -437,89 +439,91 @@ export function CopilotHeader() {
 
   const buttons = useMemo(
     () => (
-      <div className="flex gap-0.5 items-center" id="obb-copilot-header-buttons">
-        <Tooltip
-          message={
-            loading
-              ? "A new chat cannot be started while the agent is in use. To create a new chat, either stop Ada's messages or wait for Ada to finish responding."
-              : "Create a new chat"
-          }
-          hide={isMobile}
-        >
-          <button
-            disabled={loading}
-            onClick={() => {
-              const date = Date.now();
-              clearChatContext();
-
-              copilot.addChat({
-                uuid: uuidv4(),
-                label: (() => {
-                  const baseLabel = "New Chat";
-                  let label = baseLabel;
-                  let counter = 1;
-                  const existingLabels = copilot
-                    .getChatsData()
-                    .map((chat) => chat.label);
-                  while (existingLabels.includes(label)) {
-                    label = `${baseLabel} (${counter})`;
-                    counter++;
-                  }
-                  return label;
-                })(),
-                createdAt: date,
-                messages: [],
-                titleManuallyUpdated: false,
-                titleNeedsUpdate: true,
-                lastOpened: date,
-              });
-              copilot.setCurrentChat(date);
-            }}
-            className="obb-small-navbar-btn flex items-center justify-center"
-          >
-            <Icon id="plus" className="h-3.5 w-3.5" />
-          </button>
-        </Tooltip>
-        <Tooltip message="Clear messages from this chat" hide={isMobile}>
-          <button
-            onClick={() => {
-              stopSubmitRef.current?.();
-              copilot.resetContent();
-              copilot.setTitleNeedsUpdate(copilot.currentChat, true);
-              copilot.removeUnreachableArtifacts();
-
-              const currentChatData = copilot.getCurrentChat();
-              // only update the title if it hasn't been manually updated by the user
-              // and if it's not a new chat already
-              if (
-                !(
-                  currentChatData.titleManuallyUpdated ||
-                  currentChatData.label.includes("New Chat")
-                )
-              ) {
-                copilot.updateCopilotLabel(
-                  copilot.currentChat,
-                  (() => {
-                    const baseLabel = "New Chat";
-                    let label = baseLabel;
-                    let counter = 1;
-                    const existingLabels = copilot
-                      .getChatsData()
-                      .map((chat) => chat.label);
-                    while (existingLabels.includes(label)) {
-                      label = `${baseLabel} (${counter})`;
-                      counter++;
-                    }
-                    return label;
-                  })(),
-                );
+      <div className="flex gap-0.5 items-center" id="ws-copilot-header-buttons">
+        {showChatActions && (
+          <>
+            <Tooltip
+              message={
+                loading
+                  ? "A new chat cannot be started while the agent is in use. To create a new chat, either stop Ada's messages or wait for Ada to finish responding."
+                  : "Create a new chat"
               }
-            }}
-            className="obb-small-navbar-btn flex items-center justify-center"
-          >
-            <Icon id="trash-02" className="h-3.5 w-3.5" />
-          </button>
-        </Tooltip>
+              hide={isMobile}
+            >
+              <button
+                disabled={loading}
+                onClick={() => {
+                  const date = Date.now();
+                  clearChatContext();
+
+                  copilot.addChat({
+                    uuid: uuidv4(),
+                    label: (() => {
+                      const baseLabel = "New Chat";
+                      let label = baseLabel;
+                      let counter = 1;
+                      const existingLabels = copilot
+                        .getChatsData()
+                        .map((chat) => chat.label);
+                      while (existingLabels.includes(label)) {
+                        label = `${baseLabel} (${counter})`;
+                        counter++;
+                      }
+                      return label;
+                    })(),
+                    createdAt: date,
+                    messages: [],
+                    titleManuallyUpdated: false,
+                    titleNeedsUpdate: true,
+                    lastOpened: date,
+                  });
+                  copilot.setCurrentChat(date);
+                }}
+                className="ws-small-navbar-btn flex items-center justify-center"
+              >
+                <Icon id="plus" className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+            <Tooltip message="Clear messages from this chat" hide={isMobile}>
+              <button
+                onClick={() => {
+                  stopSubmitRef.current?.();
+                  copilot.resetContent();
+                  copilot.setTitleNeedsUpdate(copilot.currentChat, true);
+                  copilot.removeUnreachableArtifacts();
+
+                  const currentChatData = copilot.getCurrentChat();
+                  if (
+                    !(
+                      currentChatData.titleManuallyUpdated ||
+                      currentChatData.label.includes("New Chat")
+                    )
+                  ) {
+                    copilot.updateCopilotLabel(
+                      copilot.currentChat,
+                      (() => {
+                        const baseLabel = "New Chat";
+                        let label = baseLabel;
+                        let counter = 1;
+                        const existingLabels = copilot
+                          .getChatsData()
+                          .map((chat) => chat.label);
+                        while (existingLabels.includes(label)) {
+                          label = `${baseLabel} (${counter})`;
+                          counter++;
+                        }
+                        return label;
+                      })(),
+                    );
+                  }
+                }}
+                className="ws-small-navbar-btn flex items-center justify-center"
+              >
+                <Icon id="trash-02" className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+          </>
+        )}
         {!isMobile && (
           <Tooltip
             message={
@@ -528,8 +532,6 @@ export function CopilotHeader() {
           >
             <button
               onClick={() => {
-                // Signal that this is a button-triggered change
-                // Had to do this to avoid a race condition with the onResize event
                 copilot.setIsButtonTriggered(true);
                 setTimeout(() => {
                   copilot.setIsButtonTriggered(false);
@@ -539,11 +541,10 @@ export function CopilotHeader() {
                   copilot.setIsIntentionallyCollapsed(false);
                 }
 
-                // Store last panel state
                 copilot.setLastPanelState(copilot.isFullscreen ? "fullscreen" : "open");
                 copilot.toggleFullscreen();
               }}
-              className="obb-small-navbar-btn flex items-center justify-center"
+              className="ws-small-navbar-btn flex items-center justify-center"
             >
               <Icon
                 id={copilot.isFullscreen ? "minimize-01" : "maximize-01"}
@@ -557,15 +558,17 @@ export function CopilotHeader() {
           hide={isMobile}
         >
           <button
+            type="button"
+            aria-label="Close Agent"
             onClick={() => dispatchCollapseCopilotPanel()}
-            className="obb-small-navbar-btn flex items-center justify-center"
+            className="ws-small-navbar-btn flex items-center justify-center"
           >
             <Icon id="x-close" className="w-3.5 h-3.5" />
           </button>
         </Tooltip>
       </div>
     ),
-    [clearChatContext, stopSubmitRef, copilot, loading, isMobile],
+    [clearChatContext, stopSubmitRef, copilot, loading, isMobile, showChatActions],
   );
 
   const effectiveFullscreen = copilot.isFullscreen || isMobile;
@@ -588,42 +591,36 @@ export function CopilotHeader() {
             {effectiveFullscreen ? (
               <div
                 className="w-full flex items-center justify-between gap-2"
-                id="obb-copilot-header"
+                id="ws-copilot-header"
               >
-                {/* Left: Dashboard Button */}
-                <div className="flex items-center gap-2 min-h-[32px] flex-shrink-0 min-w-0">
-                  <DashboardButton />
-                </div>
+                {showChatActions && (
+                  <div className="flex items-center gap-2 min-h-[32px] flex-shrink-0 min-w-0">
+                    <DashboardButton />
+                  </div>
+                )}
 
-                {/* Center: Copilot and Chat */}
-                <div className="flex items-center justify-center min-w-0 flex-1">
-                  <ChatSelection />
-                </div>
+                {showChatActions && (
+                  <div className="flex items-center justify-center min-w-0 flex-1">
+                    <ChatSelection />
+                  </div>
+                )}
 
-                {/* Right: Action Buttons */}
-                <div className="flex items-center gap-0.5 flex-shrink-0">{buttons}</div>
+                <div className="ml-auto flex items-center gap-0.5 flex-shrink-0">
+                  {buttons}
+                </div>
               </div>
             ) : (
               <div
-                className={cn(
-                  expandedHeader ? "flex gap-2 w-full" : "",
-                  "justify-between",
-                )}
-                id="obb-copilot-header"
+                className="flex w-full min-w-0 items-center gap-2"
+                id="ws-copilot-header"
               >
-                <div className="flex justify-between items-center gap-2">
-                  <div className="flex items-center gap-1">
+                {showChatActions && (
+                  <div className="flex min-w-0 flex-1 items-center">
                     <ChatSelection />
                   </div>
-                  {!expandedHeader && buttons}
-                </div>
-                <div
-                  className={cn(
-                    !expandedHeader && "mt-2",
-                    "flex gap-1 items-center overflow-x-auto flex-shrink-0",
-                  )}
-                >
-                  {expandedHeader && buttons}
+                )}
+                <div className="ml-auto flex shrink-0 items-center gap-0.5">
+                  {buttons}
                 </div>
               </div>
             )}
@@ -631,69 +628,8 @@ export function CopilotHeader() {
         </div>
       </div>
     ),
-    [buttons, expandedHeader, effectiveFullscreen],
+    [buttons, expandedHeader, effectiveFullscreen, showChatActions],
   );
-}
-const aiCopilotSecFilingsFF = getConfig().copilot.secFilings;
-
-export function CopilotWidgetContext() {
-  const copilot = useShallowCopilotDataStore((state) => ({
-    selectedWidgets: state.getSelectedWidgetsData(),
-    toggleSelectedWidget: state.toggleSelectedWidget,
-  }));
-
-  const removeSelectedWidget = useCallback(
-    (widgetId: string) => {
-      copilot.toggleSelectedWidget(widgetId);
-    },
-    [copilot.toggleSelectedWidget],
-  );
-
-  const elementMemo = useMemo(
-    () => (
-      <>
-        {copilot.selectedWidgets && Object.keys(copilot.selectedWidgets).length > 0 ? (
-          <div className="flex gap-2 items-center text-xs">
-            <span className="text-ds-text-caption">Context</span>
-            <div className="flex gap-1">
-              {Object.keys(copilot.selectedWidgets).map((widgetId) => {
-                const widget = copilot.selectedWidgets[widgetId];
-                if (!widget) return null;
-                return (
-                  <div
-                    key={widgetId}
-                    className="p-1.5 rounded bg-general-bg-secondary flex items-center justify-center gap-1 min-w-fit"
-                  >
-                    {widget.title}
-                    <Tooltip message="Remove widget from context">
-                      <button onClick={async () => removeSelectedWidget(widgetId)}>
-                        <Icon id="circled-cross-icon" className="h-4 w-4 -mb-0.5" />
-                      </button>
-                    </Tooltip>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="flex gap-2 h-full w-full">
-            <Icon
-              id="info-circled-icon"
-              className="mt-0.5 w-3 h-3 text-extra-purple-100 flex-none"
-            />
-            <span className="text-ds-text-caption overflow-auto">
-              Enable the <Icon id={"message-plus"} className="h-3 w-3 inline" /> icon to
-              query specific widgets
-              {aiCopilotSecFilingsFF && ", or use @sec to query SEC filings"}.
-            </span>
-          </div>
-        )}
-      </>
-    ),
-    [copilot.selectedWidgets, removeSelectedWidget],
-  );
-
-  return elementMemo;
 }
 
 export default CopilotHeader;

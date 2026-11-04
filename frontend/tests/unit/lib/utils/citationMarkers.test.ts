@@ -105,8 +105,7 @@ describe("protectAiMarkers", () => {
       "x <|start_citation_id|>cite-1<|end_citation_id|> y",
     );
 
-    // Simulate a sanitizer pass that strips tags but keeps plain text
-    const transformed = protectedText.replace(/<[^>]*>/g, "");
+    const transformed = protectedText.replace(/[<>]/g, "");
     expect(restoreAiMarkers(transformed)).toBe('x <citation className="cite-1"/> y');
   });
 });

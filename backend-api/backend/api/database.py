@@ -1,5 +1,3 @@
-"""Configurate read and write access and create a session"""
-
 import json
 from contextlib import suppress
 from time import time
@@ -10,7 +8,7 @@ from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
 from utilities.config import settings
 
-QUERY_THRESHOLD_MS = 5000  # 5 seconds
+QUERY_THRESHOLD_MS = 5000
 
 AsyncReadSessionLocal = settings.get_read_session()
 AsyncWriteSessionLocal = settings.get_write_session()
@@ -24,28 +22,23 @@ Base: DeclarativeMeta = declarative_base(
     )
 )
 
-# SQLite: enable WAL mode for better concurrency and enforce foreign keys
 if settings.DATABASE_TYPE == "sqlite":
 
     @event.listens_for(Engine, "connect")
     def _set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
-        # Wait (and retry) up to 5s for the single write lock instead of failing immediately
-        # with "database is locked" when connections/processes contend for a write.
         cursor.execute("PRAGMA busy_timeout=5000")
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
 
 
 async def aget_read_db():
-    "Creates an async session with read only access"
     async with AsyncReadSessionLocal.session() as session:
         yield session
 
 
 async def aget_write_db():
-    "Creates an async session with read and write access"
     async with AsyncWriteSessionLocal.session() as session:
         yield session
 
@@ -65,13 +58,12 @@ def after_cursor_execute(  # noqa
 ):
     total = round((time() - conn.info["start_time"].pop(-1)) * 1000, 2)
 
-    if total < QUERY_THRESHOLD_MS:  # 5 seconds
+    if total < QUERY_THRESHOLD_MS:
         return
 
     with suppress(Exception):
         from api.helpers import add_log  # noqa
 
-        # make sure parameters are not too large
         if isinstance(parameters, list | tuple):
             parameters = [str(param)[:100] for param in parameters]
         elif isinstance(parameters, dict):

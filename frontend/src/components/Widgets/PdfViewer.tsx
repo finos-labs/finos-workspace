@@ -1,10 +1,11 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import DraggableCard, { SetLoadingOnResize } from "~/components/DraggableCard";
+import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useJsonData } from "~/lib/api";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { type FileResponse, handleFileResponse } from "~/lib/utils";
-import { useWidgetParamsPositions } from "../General/Table/NavBar/QueryParams";
+import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
 import { useWidgetContext } from "../Widget.context";
 import {
   type Highlight,
@@ -21,7 +22,6 @@ type PdfViewerState = {
 export default function PdfViewer() {
   const { widget, updateWidget } = useWidgetContext();
 
-  // Get values from widget storage with defaults
   const currentPage = (widget.storage?.page ?? 1) as number;
   const currentScale = (widget.storage?.scale ?? 1) as number;
   const currentQuoteBoundingBoxes = (widget.storage?.quoteBoundingBoxes ?? null) as
@@ -36,6 +36,10 @@ export default function PdfViewer() {
     pageScale: { x: 1, y: 1 },
   });
 
+  const request = useMemo(
+    () => buildWidgetRequest(widget),
+    [widget.endpoint, widget.params, widget.storage?.params, widget.sourceId],
+  );
   const {
     data: widgetData,
     isLoading,
@@ -43,10 +47,7 @@ export default function PdfViewer() {
     dataUpdatedAt,
   } = useJsonData<FileResponse>(
     {
-      url: widget.endpoint?.url ?? "",
-      method: widget.endpoint?.method ?? "GET",
-      params: widget.storage?.params,
-      addBearerToken: widget.connectionType === "file",
+      request,
       responseCb: (response, resolve) =>
         handleFileResponse(response, {
           filename: widget.name,
@@ -82,12 +83,11 @@ export default function PdfViewer() {
     [clearQuoteBoundingBoxes],
   );
 
-  // Clear highlights when selected chat changes
   useEffect(clearQuoteBoundingBoxes, [currentChat]);
   const { renderRow0Params, renderBelowNavbarRows } = useWidgetParamsPositions();
 
   useEffect(() => {
-    const { pageScale } = state;
+    const { pageScale = { x: 1, y: 1 } } = state;
     const quoteBoundingBoxes = (currentQuoteBoundingBoxes ??
       []) as QuoteBoundingBox[][];
     const newHighlights = quoteBoundingBoxes

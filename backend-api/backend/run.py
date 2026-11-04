@@ -2,52 +2,30 @@ import logging
 import resource
 import sys
 from pathlib import Path
-from threading import Thread
 
 from gunicorn.app.base import BaseApplication
 from gunicorn.glogging import Logger
 from loguru import logger
 
-from main import app, start_prometheus
-from utilities.config import settings
+from api.rate_limit import TRUSTED_PROXIES
+from utilities.config import PROMETHEUS_LISTENER_PORT, settings
+from utilities.prometheus_server import mark_worker_dead, serve_all_workers, use_multiprocess_values
 
 sys.tracebacklimit = 3
 
 
 def worker_address_space_limit_bytes() -> int | None:
-    """Per-worker virtual address space cap (RLIMIT_AS), applied in post_fork.
-
-    A runaway request (large JSON payloads amplify 3-5x in heap) then gets a
-    MemoryError in its own request instead of the kernel OOM-killing the whole
-    container at the pod's cgroup limit, which drops every in-flight request
-    on all workers.
-
-    Resolution order:
-      1. WORKER_ADDRESS_SPACE_LIMIT_GB setting (0 disables the cap).
-      2. Auto: 75% of the container's cgroup memory limit (v2, then v1).
-         Address space runs ~1.5-2x resident memory for these workers, so a
-         worker tripping this cap is resident at roughly 40-50% of the
-         container limit — contained before the cgroup kill, with room for
-         its siblings. The cap is deliberately NOT divided by worker count:
-         it is a per-process fuse for a single runaway, not a summed budget —
-         address space includes copy-on-write pages shared across the forked
-         workers, so per-process caps cannot meaningfully sum against the
-         container's resident limit, and dividing would put the cap below a
-         healthy worker's normal ~1.5GB address space.
-      3. No cgroup limit found (e.g. bare local runs): no cap.
-    """
     configured = settings.WORKER_ADDRESS_SPACE_LIMIT_GB
     if configured is not None:
         return int(configured * 1024**3) if configured > 0 else None
     for cgroup_path in (
-        "/sys/fs/cgroup/memory.max",  # cgroup v2
-        "/sys/fs/cgroup/memory/memory.limit_in_bytes",  # cgroup v1
+        "/sys/fs/cgroup/memory.max",
+        "/sys/fs/cgroup/memory/memory.limit_in_bytes",
     ):
         try:
             raw = Path(cgroup_path).read_text().strip()
         except OSError:
             continue
-        # v2 reports "max" when unlimited; v1 reports a ~2^63 sentinel
         if raw.isdigit() and int(raw) < 1 << 60:
             return int(int(raw) * 0.75)
     return None
@@ -72,8 +50,6 @@ class StubbedGunicornLogger(Logger):
 
 
 class PaymentsBackend(BaseApplication):
-    """PaymentsBackend Gunicorn application."""
-
     forks: int = 0
 
     def __init__(self, application, options=None):
@@ -97,12 +73,18 @@ class PaymentsBackend(BaseApplication):
                 (WORKER_ADDRESS_SPACE_LIMIT_BYTES, WORKER_ADDRESS_SPACE_LIMIT_BYTES),
             )
 
-        # Start prometheus metrics server
+    @classmethod
+    def on_starting(cls, server):
+        del server
         if settings.PROMETHEUS:
-            prometheus_server = Thread(
-                target=start_prometheus, args=(cls.forks,), daemon=True
-            )
-            prometheus_server.start()
+            logger.info("Starting prometheus server")
+            serve_all_workers(PROMETHEUS_LISTENER_PORT)
+
+    @classmethod
+    def child_exit(cls, server, worker):
+        del server
+        if settings.PROMETHEUS:
+            mark_worker_dead(worker.pid)
 
     @classmethod
     def post_worker_init(cls, worker):
@@ -118,11 +100,11 @@ class PaymentsBackend(BaseApplication):
         for key, value in config.items():
             self.cfg.set(key.lower(), value)
 
+        self.cfg.set("on_starting", self.on_starting)
         self.cfg.set("pre_fork", self.pre_fork)
-        # post_fork was never registered with gunicorn, so this hook (and the
-        # prometheus thread it guards) never ran. It now applies the per-worker
-        # address space limit above.
         self.cfg.set("post_fork", self.post_fork)
+        self.cfg.set("post_worker_init", self.post_worker_init)
+        self.cfg.set("child_exit", self.child_exit)
 
     def load(self):
         return self.application
@@ -130,6 +112,10 @@ class PaymentsBackend(BaseApplication):
 
 if __name__ == "__main__":
     settings.setup_logging()
+
+    if settings.PROMETHEUS:
+        use_multiprocess_values()
+    from main import app  # noqa: PLC0415
 
     if WORKER_ADDRESS_SPACE_LIMIT_BYTES:
         logger.info(
@@ -147,10 +133,11 @@ if __name__ == "__main__":
         "worker_class": "uvicorn_worker.UvicornWorker",
         "logger_class": StubbedGunicornLogger,
         "timeout": 120,
-        "max_requests": 2048,
-        "max_requests_jitter": 512,
+        "graceful_timeout": 120,
+        "max_requests": 1_000_000,
+        "max_requests_jitter": 100_000,
         "keepalive": 75,
-        "forwarded_allow_ips": "*",
+        "forwarded_allow_ips": TRUSTED_PROXIES,
         "secure_scheme_headers": {
             "X-FORWARDED-PROTOCOL": "ssl",
             "X-FORWARDED-PROTO": "https",

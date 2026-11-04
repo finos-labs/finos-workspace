@@ -60,19 +60,18 @@ export function useGetFinalMessagesAndWidgets() {
         );
         const widget_queries = data?.copilot_function_call_arguments?.widget_queries;
 
-        return (widget_uuids ?? widget_queries ?? []).map(
-          (uuidOrQuery: any) => uuidOrQuery?.widget_uuid ?? uuidOrQuery,
-        ) as string[];
+        const uuids = widget_uuids ?? widget_queries?.map((q) => q.widget_uuid) ?? [];
+        return uuids.filter((uuid): uuid is string => !!uuid);
       };
 
       const renewExpiredDataSources = async (message: ToolMessage) => {
         const dataSources =
           (message.input_arguments as GetWidgetDataInputArgumentsT)?.data_sources ?? [];
         if (dataSources.length > 0) {
-          const BUFFER = 5 * 60 * 1000; // 5 minutes
+          const BUFFER = 5 * 60 * 1000;
           await Promise.all(
             dataSources.map(async (dataSource, i) => {
-              if (dataSource.origin === "OpenBB Hub") {
+              if (dataSource.origin === "the backend") {
                 const data = message.data?.[i] as CopilotDataT | undefined;
                 if (!Array.isArray(data?.items)) return;
                 const renewalPromises = data.items.map(async (item) => {
@@ -116,15 +115,11 @@ export function useGetFinalMessagesAndWidgets() {
         return result;
       };
 
-      const checkToolMessage = (message: Message) => {
-        // For the built-in copilot, widget data tool messages are redundant (data is
-        // read from the store), so we drop them unless extra_state carries metadata.
-        // Iframe sub-widget data is fetched on-demand via the bridge and is NOT stored
-        // in the dashboard widget store, so those tool messages must be preserved.
+      const checkToolMessage = (message: Message | undefined) => {
         if (message?.role !== "tool") return !message;
-        const hasIframeSubWidgets = (
-          message.input_arguments as any
-        )?.data_sources?.some((ds: any) => ds?.id?.includes("::iframe::"));
+        const hasIframeSubWidgets = message.input_arguments?.data_sources?.some(
+          (ds: { id?: string }) => ds.id?.includes("::iframe::"),
+        );
         return (
           !targetAgent &&
           !hasIframeSubWidgets &&
@@ -133,35 +128,33 @@ export function useGetFinalMessagesAndWidgets() {
       };
 
       const processAiMessage = (message: AIMessage, nextMessage?: Message) => {
+        const basicAiMessage = () => ({
+          role: "ai",
+          content: restoreAiTags(message.content),
+          agent_id: message.copilotId,
+        });
+        let content: FunctionCallT | null;
         try {
-          // Function Call
-          const content = JSON.parse(message.content) as FunctionCallT;
-          if (!AVAILABLE_FUNCTIONS.includes(content.function)) {
+          content = JSON.parse(message.content) as FunctionCallT | null;
+        } catch (_) {
+          return basicAiMessage();
+        }
+        if (typeof content?.function !== "string") return basicAiMessage();
+        if (!AVAILABLE_FUNCTIONS.includes(content.function)) {
+          messagesToRemove.add(message.timestamp);
+          return null;
+        }
+        if (isWidgetDataFunctionCall(content)) {
+          if (content.function === "get_widget_data" && checkToolMessage(nextMessage)) {
             messagesToRemove.add(message.timestamp);
             return null;
           }
-          if (isWidgetDataFunctionCall(content)) {
-            if (
-              content.function === "get_widget_data" &&
-              checkToolMessage(nextMessage)
-            ) {
-              messagesToRemove.add(message.timestamp);
-              return null;
-            }
-            return {
-              role: "ai",
-              content: restoreAiTags(message.content),
-            };
-          }
-          return message;
-        } catch (_) {
-          // Basic AI message
           return {
             role: "ai",
             content: restoreAiTags(message.content),
-            agent_id: message.copilotId,
           };
         }
+        return message;
       };
       const processToolMessage = async (message: ToolMessage) => {
         if (!AVAILABLE_FUNCTIONS.includes(message.function)) {
@@ -175,8 +168,6 @@ export function useGetFinalMessagesAndWidgets() {
           }
           const widgetUuids = extractWidgetUuids(message);
           for (const uuid of widgetUuids) {
-            // Unreachable widgets are not in the dashboard,
-            // but are referenced in tool messages
             if (!allDashboardWidgets?.some((dW) => dW?.uuid === uuid))
               unreachableUuids.add(uuid);
           }
@@ -193,8 +184,6 @@ export function useGetFinalMessagesAndWidgets() {
       };
 
       const processHumanMessage = (message: HumanMessage) => {
-        // TODO: This is not very efficient, should just get the mentions
-        // for the last Human message
         const { result: prompt, mentions } = processMentions(message.content);
         if (mentions) {
           mentionWidgets = mentions

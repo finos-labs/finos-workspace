@@ -1,8 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { apiClient } from "~/api/api";
 import { useCreateSkillFromConversation } from "~/components/AI/hooks/useCreateSkillFromConversation";
-import { isDefaultSkill } from "~/components/AI/skills";
 import {
   type Chat,
   type CopilotCommandResultT,
@@ -12,7 +12,6 @@ import { useSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 import type { Skill, SkillCreate } from "~/types/auth.type";
 import { mockConfig } from "../../../../mocks/runtimeConfig";
 
-// Mock sonner toast
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -22,44 +21,16 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock API
 const mockCreateUserSkill = vi.fn();
 vi.mock("~/api/auth.api", () => ({
   createUserSkill: (...args: unknown[]) => mockCreateUserSkill(...args),
 }));
 
-// Mock auth store
-vi.mock("~/lib/state/auth", () => ({
-  useShallowAuthStore: (selector: (state: { user: { token: string } }) => unknown) =>
-    selector({ user: { token: "test-token" } }),
-}));
-
-// Stub the theme store so the skills store does not pull in real persisted state.
-vi.mock("~/lib/state/theme", () => ({
-  useThemeStore: {
-    getState: () => ({
-      removedSkillSlugs: ["openbb-html-report", "snowflake-html-report"],
-      removeDefaultSkill: vi.fn(),
-    }),
-  },
-}));
-
-/**
- * Saving a skill runs it through `updateSkills`, which always appends the built-in
- * default skills. Filter them out so slug assertions stay exact as defaults change.
- */
 const savedSkillSlugs = () =>
-  useSkillsLibraryStore
-    .getState()
-    .skills.filter((skill) => !isDefaultSkill(skill.id))
-    .map((skill) => skill.slug);
+  useSkillsLibraryStore.getState().skills.map((skill) => skill.slug);
 
-// Mock fetch for the skill generation endpoint
 global.fetch = vi.fn();
 
-// In browsers DOMException inherits from Error, but jsdom's DOMException comes
-// from another realm so `instanceof Error` fails. Shim it to match browsers so
-// the hook's AbortError handling behaves as it does in production.
 class TestDOMException extends Error {
   constructor(message?: string, name?: string) {
     super(message);
@@ -87,7 +58,7 @@ const makeSkill = (overrides: Partial<Skill> = {}): Skill => ({
 });
 
 const mockChat: Chat = {
-  id: "chat-1",
+  uuid: "chat-1",
   createdAt: CHAT_CREATED_AT,
   label: "Test chat",
   lastOpened: CHAT_CREATED_AT,
@@ -96,26 +67,26 @@ const mockChat: Chat = {
       role: "human",
       content: "How do I analyze earnings?",
       timestamp: 1,
-      copilotId: "openbb-copilot",
+      copilotId: "default-copilot",
     },
     {
       role: "ai",
       content: "Start with the income statement.",
       timestamp: 2,
-      copilotId: "openbb-copilot",
+      copilotId: "default-copilot",
     },
     {
       role: "ai",
       content: "hidden reasoning",
       timestamp: 3,
-      copilotId: "openbb-copilot",
+      copilotId: "default-copilot",
       isHidden: true,
     },
     {
       role: "tool",
       data: [],
       timestamp: 4,
-      copilotId: "openbb-copilot",
+      copilotId: "default-copilot",
       function: "get_widget_data",
       input_arguments: { data_sources: [] },
       extra_state: {},
@@ -140,6 +111,9 @@ async function runHook(
 describe("useCreateSkillFromConversation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { token: "agent-token", expires_in: 1800 },
+    });
     toastLoadingMock.mockReturnValue("toast-id");
     fetchMock.mockResolvedValue({
       ok: true,
@@ -168,9 +142,7 @@ describe("useCreateSkillFromConversation", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
       expect(url).toBe("http://localhost:3000/ai/v1/generate/skill_info");
-      expect((init.headers as Record<string, string>).Authorization).toBe(
-        "Bearer test-token",
-      );
+      expect(new Headers(init.headers).get("Authorization")).toBe("Bearer agent-token");
       const body = JSON.parse(init.body as string);
       expect(body.skill_generation_request).toEqual({
         conversation: [
@@ -285,7 +257,7 @@ describe("useCreateSkillFromConversation", () => {
 
       expect(mockCreateUserSkill).toHaveBeenCalledWith({
         slug: "saved-skill",
-        description: "Workflow saved from a copilot conversation.",
+        description: "Workflow saved from an agent conversation.",
         content: "c",
       });
     });
@@ -301,9 +273,9 @@ describe("useCreateSkillFromConversation", () => {
       fetchMock.mockImplementation(
         (_url: string, init: RequestInit) =>
           new Promise((_, reject) => {
-            init.signal?.addEventListener("abort", () =>
-              reject(new DOMException("Aborted", "AbortError")),
-            );
+            const abort = () => reject(new DOMException("Aborted", "AbortError"));
+            if (init.signal?.aborted) abort();
+            init.signal?.addEventListener("abort", abort);
           }),
       );
 
@@ -342,7 +314,6 @@ describe("useCreateSkillFromConversation", () => {
       fetchMock.mockResolvedValue({
         ok: true,
         json: async () => {
-          // Simulate the user clicking Edit Skill just as generation resolves
           capturedCancel?.();
           return generatedResponse;
         },

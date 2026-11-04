@@ -2,6 +2,10 @@ import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
+import { throughSourceProxy } from "../../../mocks/sourceProxy";
+import { installWidgetsSchemaFixture } from "../../../mocks/widgetsSchema";
+
+installWidgetsSchemaFixture();
 
 vi.mock("sonner", () => ({
   toast: {
@@ -12,7 +16,7 @@ vi.mock("sonner", () => ({
 }));
 
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+global.fetch = throughSourceProxy(mockFetch);
 
 const mockSource: Source = {
   id: "source-1",
@@ -22,7 +26,7 @@ const mockSource: Source = {
   endpointHeaders: [],
 };
 
-function mockBackendResponsesWithUnrecognizedWidgetKey() {
+function mockBackendResponsesWithUnrecognizedAppKey() {
   mockFetch
     .mockResolvedValueOnce({
       ok: true,
@@ -32,15 +36,23 @@ function mockBackendResponsesWithUnrecognizedWidgetKey() {
             name: "Test Widget",
             description: "Widget for testing warning propagation",
             endpoint: "/test-widget",
+            type: "html",
             params: [],
-            unsupported_widget_option: true,
           },
         }),
       headers: new Headers(),
     })
     .mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve([]),
+      url: "https://test-backend.com/apps.json",
+      json: () =>
+        Promise.resolve([
+          {
+            name: "Test App",
+            tabs: { main: { id: "main", name: "Main", layout: [] } },
+            unsupported_app_option: true,
+          },
+        ]),
       headers: new Headers(),
     })
     .mockResolvedValueOnce({
@@ -58,7 +70,6 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
       apiSources: [],
       isLoadingBackends: false,
       widgetMetadata: [],
-      singleWidgets: [],
       storedFiles: [],
       queuedRefreshIds: [],
     });
@@ -69,7 +80,7 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
   });
 
   it("shows warning toast during updateApiSource when unrecognized keys are detected", async () => {
-    mockBackendResponsesWithUnrecognizedWidgetKey();
+    mockBackendResponsesWithUnrecognizedAppKey();
 
     const result = await useBackendConnectorStore
       .getState()
@@ -77,13 +88,8 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
 
     expect(result.unrecognizedKeysMessage).toEqual([
       {
-        label: "[widgets.json]",
-        entries: [
-          {
-            name: "Test Widget",
-            keys: ["unsupported_widget_option"],
-          },
-        ],
+        label: "[apps.json]",
+        entries: [{ name: "Test App", keys: ["unsupported_app_option"] }],
       },
     ]);
     expect(toast.warning).toHaveBeenCalledWith(
@@ -95,7 +101,7 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
   });
 
   it("shows warning toast during updateApiSources when showToastOnWarning is true", async () => {
-    mockBackendResponsesWithUnrecognizedWidgetKey();
+    mockBackendResponsesWithUnrecognizedAppKey();
 
     const result = await useBackendConnectorStore
       .getState()
@@ -163,7 +169,6 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
       url: "https://mcp.example.com/sse",
       sourceId: mockSource.id,
     });
-    expect(servers[0].vendorAppUuid).toBeUndefined();
   });
 
   it("does not re-register MCP on refresh after user removed it manually", async () => {
@@ -188,9 +193,7 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
                 name: "Custom App",
                 description: "App with MCP",
                 tabs: { main: { id: "main", name: "Main", layout: [] } },
-                mcpServers: [
-                  { name: "MCP1", url: "https://mcp.example.com/sse" },
-                ],
+                mcpServers: [{ name: "MCP1", url: "https://mcp.example.com/sse" }],
               },
             ]),
           headers: new Headers(),
@@ -207,45 +210,14 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
     };
     mockFetch.mockImplementation(handler);
 
-    // Initial connect — MCP gets registered
     await useBackendConnectorStore.getState().updateApiSource(mockSource);
     expect(useMcpToolsStore.getState().servers).toHaveLength(1);
 
-    // User removes the MCP from the AI tab
     const [registered] = useMcpToolsStore.getState().servers;
     useMcpToolsStore.getState().removeServer(registered.id);
     expect(useMcpToolsStore.getState().servers).toHaveLength(0);
 
-    // Manual backend refresh must NOT bring it back
     await useBackendConnectorStore.getState().updateApiSource(mockSource);
     expect(useMcpToolsStore.getState().servers).toHaveLength(0);
-  });
-
-  it("finds and removes marketplace sources by vendorAppUuid", () => {
-    useBackendConnectorStore.setState({
-      apiSources: [
-        {
-          id: "source-1",
-          uuid: "source-1",
-          name: "Marketplace Backend",
-          url: "https://test-backend.com",
-          endpointHeaders: [],
-          // @ts-expect-error
-          vendorApp: {
-            uuid: "listed-app-1",
-            name: "Listed App 1",
-          },
-          hasApiKey: true,
-        },
-      ],
-    });
-
-    const store = useBackendConnectorStore.getState();
-
-    expect(store.getApiSourceById("listed-app-1")?.id).toBe("source-1");
-
-    store.removeApiSource("listed-app-1");
-
-    expect(useBackendConnectorStore.getState().apiSources).toEqual([]);
   });
 });

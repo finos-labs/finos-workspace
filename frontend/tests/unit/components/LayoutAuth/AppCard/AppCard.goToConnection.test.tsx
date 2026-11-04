@@ -1,12 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { UnifiedTemplate } from "~/hooks/useAllTemplates";
+import type { SharingLevel } from "~/lib/state/access";
 import type { Source } from "~/lib/state/backendConnector";
 
 const mockNavigate = vi.fn();
+const mockSetShareUserAppsPopupId = vi.fn();
 
 vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router-dom")>();
@@ -16,21 +18,18 @@ vi.mock("react-router-dom", async (importOriginal) => {
 let mockSource: Source | null = null;
 
 vi.mock("~/lib/state/theme", () => ({
-  useShallowThemeStore: (selector: (s: any) => any) =>
+  useShallowThemeStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       theme: "light",
       setEditAppDialog: vi.fn(),
-      setShareUserAppsPopupId: vi.fn(),
+      setShareUserAppsPopupId: mockSetShareUserAppsPopupId,
     }),
 }));
 
-vi.mock("~/lib/state/featureFlags", () => ({
-  useShallowFeatureFlagsStore: (selector: (s: any) => any) =>
-    selector({ featureFlags: { tier: "pro" } }),
-}));
-
 vi.mock("~/lib/state/backendConnector", () => ({
-  useShallowBackendConnectorStore: (selector: (s: any) => any) =>
+  useShallowBackendConnectorStore: (
+    selector: (state: Record<string, unknown>) => unknown,
+  ) =>
     selector({
       getApiSourceById: () => mockSource,
       refreshApiSourceById: vi.fn(),
@@ -38,50 +37,19 @@ vi.mock("~/lib/state/backendConnector", () => ({
 }));
 
 vi.mock("~/lib/state/mcpTools", () => ({
-  useShallowMcpToolsStore: (selector: (s: any) => any) =>
+  useShallowMcpToolsStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ servers: [], getMCPConnection: () => undefined }),
 }));
-
-vi.mock("~/lib/runtimeConfig", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("~/lib/runtimeConfig")>();
-  return {
-    ...actual,
-    getConfig: () => {
-      const config = actual.getConfig();
-      return {
-        ...config,
-        whiteLabel: {
-          ...config.whiteLabel,
-          leftSidebarLogo: "",
-          name: "OpenBB Workspace",
-        },
-        ui: {
-          ...config.ui,
-          odpDownloadInstaller: false,
-        },
-      };
-    },
-  };
-});
 
 vi.mock("~/lib/constants", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,
-    inSnowflakeNativeApp: false,
   };
 });
 
-const { mockCanSubmitApp } = vi.hoisted(() => ({
-  mockCanSubmitApp: vi.fn(() => false),
-}));
-
-vi.mock("~/lib/appSubmissionFlag", () => ({
-  useCanSubmitApp: () => mockCanSubmitApp(),
-}));
-
 vi.mock("~/components/ds/utils", () => ({
-  cn: (...args: unknown[]) => (args as any[]).filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
 vi.mock("~/components/Icon", () => ({
@@ -100,16 +68,14 @@ vi.mock("~/components/General/Avatar", () => ({
   AuthenticatedAvatar: () => <div data-testid="avatar" />,
 }));
 
-vi.mock("~/components/General/FeatureLock", () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
-}));
-
 vi.mock("~/components/ds/dialogs/ConfirmDialog", () => ({
   ConfirmDialog: () => null,
 }));
 
 vi.mock("~/components/ds/atoms/Button", () => ({
-  Button: ({ children, ...rest }: any) => <button {...rest}>{children}</button>,
+  Button: ({ children, ...rest }: ComponentProps<"button">) => (
+    <button {...rest}>{children}</button>
+  ),
 }));
 
 vi.mock("~/components/AI/WidgetTooltipItem", () => ({
@@ -124,9 +90,6 @@ vi.mock("~/components/Apps/McpAppPopover", () => ({
   McpAppPopover: () => null,
 }));
 
-// Render the dropdown items as plain buttons so we can assert on the items
-// array (the unit under test) without driving Radix portal/pointer internals.
-// Paths use the ~ alias so they resolve to the same module AppCard.tsx imports.
 vi.mock("~/components/LayoutAuth/AppCard/AppCardDropdown", () => ({
   AppCardDropdown: ({ items }: { items: { label: string; onClick: () => void }[] }) => (
     <div data-testid="dropdown">
@@ -148,6 +111,8 @@ vi.mock("~/components/LayoutAuth/AppCard/SharedWithPopover", () => ({
 vi.mock("~/components/LayoutAuth/AppCard/Tag", () => ({ Tag: () => null }));
 
 import AppCard from "~/components/LayoutAuth/AppCard/AppCard";
+import { setAccess } from "../../../factories";
+import { partial } from "../../../mocks";
 
 function makeTemplate(
   type: UnifiedTemplate["type"],
@@ -164,7 +129,13 @@ function makeTemplate(
     creator: true,
     onDelete: vi.fn(),
     source: sourceId
-      ? ({ id: sourceId, uuid: sourceId, name: "src", url: "", endpointHeaders: [] } as any)
+      ? partial({
+          id: sourceId,
+          uuid: sourceId,
+          name: "src",
+          url: "",
+          endpointHeaders: [],
+        })
       : undefined,
   };
 }
@@ -180,6 +151,7 @@ describe("AppCard - Go to connection menu item", () => {
   beforeEach(() => {
     mockSource = null;
     mockNavigate.mockClear();
+    setAccess({ user_type: "Developer" });
   });
 
   it("shows 'Go to connection' for a user backend card", () => {
@@ -200,15 +172,16 @@ describe("AppCard - Go to connection menu item", () => {
     );
   });
 
-  it("does NOT show 'Go to connection' for shared cards", () => {
-    renderCard(makeTemplate("shared"));
+  it("does NOT show 'Go to connection' to a User, whose page Connections is not", () => {
+    setAccess({ user_type: "User" });
+    renderCard(makeTemplate("user"));
     expect(
       screen.queryByRole("button", { name: "Go to connection" }),
     ).not.toBeInTheDocument();
   });
 
-  it("does NOT show 'Go to connection' for listed (marketplace) cards", () => {
-    renderCard(makeTemplate("listed"));
+  it("does NOT show 'Go to connection' for shared cards", () => {
+    renderCard(makeTemplate("shared"));
     expect(
       screen.queryByRole("button", { name: "Go to connection" }),
     ).not.toBeInTheDocument();
@@ -221,35 +194,31 @@ describe("AppCard - Go to connection menu item", () => {
     ).not.toBeInTheDocument();
   });
 });
+describe("AppCard - Share app button", () => {
+  const shareButton = () => screen.queryByTestId("icon-share-07")?.closest("button");
 
-describe("AppCard - List app to marketplace menu item", () => {
   beforeEach(() => {
     mockSource = null;
-    mockNavigate.mockClear();
-    mockCanSubmitApp.mockReturnValue(false);
+    mockSetShareUserAppsPopupId.mockClear();
   });
 
-  it("shows the item on a user backend card when submission is allowed", () => {
-    mockCanSubmitApp.mockReturnValue(true);
-    renderCard(makeTemplate("user"));
-    expect(
-      screen.getByRole("button", { name: "List app to marketplace" }),
-    ).toBeInTheDocument();
-  });
-
-  it("hides the item when submission is not allowed", () => {
-    mockCanSubmitApp.mockReturnValue(false);
-    renderCard(makeTemplate("user"));
-    expect(
-      screen.queryByRole("button", { name: "List app to marketplace" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("hides the item on non-backend cards even when submission is allowed", () => {
-    mockCanSubmitApp.mockReturnValue(true);
+  it("lets a user whose roles allow sharing share their saved app", async () => {
+    setAccess({ sharing: "share" });
     renderCard(makeTemplate("generated"));
-    expect(
-      screen.queryByRole("button", { name: "List app to marketplace" }),
-    ).not.toBeInTheDocument();
+
+    const button = shareButton();
+    expect(button).toBeInTheDocument();
+    await userEvent.setup().click(button as HTMLButtonElement);
+    expect(mockSetShareUserAppsPopupId).toHaveBeenCalledWith("tpl");
+  });
+
+  it.each<SharingLevel>([
+    "none",
+    "receive",
+  ])("does not offer sharing to a user whose sharing is %s", (sharing) => {
+    setAccess({ sharing });
+    renderCard(makeTemplate("generated"));
+
+    expect(shareButton()).toBeUndefined();
   });
 });

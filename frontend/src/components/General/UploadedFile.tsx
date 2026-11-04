@@ -15,7 +15,7 @@ export function FooterLink({ link }: { link: string }) {
   const formattedUrl = url.startsWith("http") ? url : `https://${url}`;
 
   return (
-    <div className="px-[6px] py-1 text-xs rounded dark:bg-[#303038] flex items-center justify-center gap-1 min-w-0 max-w-[10rem]">
+    <div className="px-[6px] py-1 text-xs rounded dark:bg-dark-600 flex items-center justify-center gap-1 min-w-0 max-w-[10rem]">
       <Icon id="link-03" className="h-3 w-3 text-brand-lighter shrink-0" />
       <a
         href={formattedUrl}
@@ -28,9 +28,11 @@ export function FooterLink({ link }: { link: string }) {
       <Tooltip message="Create iframe widget">
         <button
           onClick={() => {
+            if (!id) return;
             addWidget(id, {
               id: uuidv4(),
               widgetId: "iframe",
+              type: "custom",
               name: link,
               description: `${link} iframe`,
               storage: { html: formattedUrl },
@@ -38,7 +40,7 @@ export function FooterLink({ link }: { link: string }) {
                 w: 20,
                 h: 25,
               },
-            } as any);
+            });
           }}
           type="button"
           className="shrink-0"

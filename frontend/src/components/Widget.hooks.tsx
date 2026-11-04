@@ -1,54 +1,43 @@
 import isEqual from "lodash.isequal";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useIsFirstRender } from "~/hooks/useIsFirstRender";
 import { useCallbackRef, useCreateRef } from "~/hooks/useRefHooks";
 import { useTabContext } from "~/lib/contexts/TabContext";
 import {
   type AppState,
   type Group,
-  type Ticker,
   useAppStore,
   useShallowAppStore,
 } from "~/lib/state/app";
 import { type SharedAppState, useSharedAppStore } from "~/lib/state/sharedApp";
 import {
   addToWidgetParamGroups,
-  getCellOnClickParams,
   getEndpointParamGroupByIds,
-  getEndpointParamName,
   getJsonWidget,
   getWidgetInfo,
-  isOmniType,
-  isSSRMType,
   needsGroupValueUpdate,
   triggerCustomEvent,
   updateWidgetGroupValues,
   useEventListener,
 } from "~/lib/utils";
-import { useIsFirstRender } from "./General/Table/hooks/utils";
-import type { NewWidgetT, WidgetProps, WidgetT } from "./types";
+import type { NewWidgetT, StoredParamValue, WidgetProps, WidgetT } from "./types";
 
-type SubType = [Group[], Ticker[], string | null];
+type SubType = [Group[], string | null | undefined];
 
-/**
- * Decides whether an in-memory widget update must also be persisted to the
- * app store. Param-group, group, and ticker changes are the historical
- * triggers; everything else stays in provider state until an explicit save.
- * Extracted from updateWidgetCallback so the gate is testable in isolation.
- */
+type SubscribeToWidgetState = <U>(
+  selector: (state: SharedAppState | AppState) => U,
+  listener: (current: U, previous: U) => void,
+  options: { fireImmediately: boolean },
+) => () => void;
+
 export function shouldPersistWidgetUpdate(
   currentWidget: WidgetT,
   newWidget: WidgetT,
   getParamName: (groupById: string) => string,
 ): boolean {
-  const prevMainTicker = currentWidget.data?.mainTicker?.symbol;
   const prevParams = currentWidget.storage?.params;
-  const prevGroupById = currentWidget.groupById;
-  const newMainTicker = newWidget.data?.mainTicker?.symbol;
   const newParams = newWidget.storage?.params;
 
-  // Identity fields set by update_widget (MCP/copilot) arrive without any
-  // param/group change — they must persist or the rename is a silent no-op.
-  // The `in` guard keeps partial update objects from forcing store churn.
   if (
     ("name" in newWidget && currentWidget.name !== newWidget.name) ||
     ("description" in newWidget &&
@@ -72,27 +61,13 @@ export function shouldPersistWidgetUpdate(
     }
   }
 
-  if (prevGroupById || newWidget.groupId) {
-    const params = (newWidget.params ?? []).concat(
-      newWidget.storage?.sqlParamDefs ?? [],
-    );
-    const paramName = getEndpointParamName(params, newWidget.groupById);
-    if (
-      prevGroupById !== newWidget.groupId ||
-      prevMainTicker !== newMainTicker ||
-      (paramName && prevParams?.[paramName] !== newParams?.[paramName])
-    ) {
-      return true;
-    }
-  }
-
-  return false;
+  return !!currentWidget.groupById;
 }
 
 export function useWidgetSync(props: Omit<WidgetProps, "children">) {
   const { getWidget, isShared } = useTabContext();
   const [providerWidget, setProviderWidget] = useState(
-    props.contextOverride?.widget || (getWidget?.(props.uuid) as WidgetT),
+    props.contextOverride?.widget || (getWidget?.(props.uuid ?? "") as WidgetT),
   );
 
   const isFirstRender = useIsFirstRender();
@@ -113,27 +88,20 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
 
   const endpointParams = useMemo(() => {
     return getEndpointParamGroupByIds(providerWidget);
-  }, [providerWidget?.params, providerWidget?.storage?.sqlParamDefs]);
-
-  const cellOnClickParams = useMemo(() => {
-    return getCellOnClickParams(providerWidget, false);
-  }, [providerWidget?.data?.table?.columnsDefs]);
-
-  const ignoreParamsRef = useCreateRef(cellOnClickParams);
+  }, [providerWidget?.params]);
 
   const getParamName = useCallbackRef(
-    (groupById) => endpointParams?.[groupById] ?? groupById,
+    (groupById: string) => endpointParams?.[groupById] ?? groupById,
   );
 
   const needsUpdateRef = useRef(false);
 
-  // Use a ref to keep track of the current providerWidget
   const providerWidgetRef = useCreateRef(providerWidget);
 
-  // Use a ref to keep track of the saveToStore callback
   const saveToStoreCb = useCallbackRef(() => {
     if (needsUpdateRef.current && !props.contextOverride) {
-      storeUpdateWidget(props.activeDashboardId, providerWidget);
+      if (props.activeDashboardId)
+        storeUpdateWidget(props.activeDashboardId, providerWidget);
       needsUpdateRef.current = false;
     }
   });
@@ -147,7 +115,7 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
 
   useEffect(() => {
     const { activeDashboardId, uuid, contextOverride } = props;
-    let unsubscribe = null;
+    let unsubscribe: (() => void) | null = null;
     const ctrl = new AbortController();
 
     if (providerWidget?.external && providerWidget?.staleTime === undefined) {
@@ -156,65 +124,48 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
       });
     }
 
-    if (!contextOverride) {
-      const store = isShared ? useSharedAppStore : useAppStore;
-      // @ts-expect-error
-      unsubscribe = store.subscribe(
-        (s: SharedAppState | AppState) => {
-          {
-            const storeWidget = s.getWidgetById(uuid);
-            return [
-              s.getWidgetGroups(activeDashboardId, uuid),
-              storeWidget?.data?.secondaryTickers,
-              storeWidget?.innerTab,
-            ];
-          }
+    if (!contextOverride && activeDashboardId && uuid) {
+      const subscribe: SubscribeToWidgetState = isShared
+        ? (selector, listener, options) =>
+            useSharedAppStore.subscribe(selector, listener, options)
+        : (selector, listener, options) =>
+            useAppStore.subscribe(selector, listener, options);
+      unsubscribe = subscribe(
+        (s: SharedAppState | AppState): SubType => {
+          const storeWidget = s.getWidgetById(uuid);
+          return [s.getWidgetGroups(activeDashboardId, uuid), storeWidget?.innerTab];
         },
-        (current: SubType, prev: SubType) => {
+        (current, prev) => {
           const lastWidget = providerWidgetRef.current;
 
-          const [groups, secondaryTickers, innerTab] = current;
-          const [prevGroups, prevSecondaryTickers, _] = prev;
-          const group = groups?.find((g) => g.type === "ticker");
+          const [groups, innerTab] = current;
+          const [prevGroups] = prev;
 
-          const newGroup =
-            !isEqual(groups, prevGroups) || lastWidget?.groupId !== group?.id;
-          const newSecondaryTickers = !isEqual(secondaryTickers, prevSecondaryTickers);
+          const newGroup = !isEqual(groups, prevGroups);
 
           const linkedGroups = groups?.filter((g) =>
             needsGroupValueUpdate(lastWidget, g),
           );
           const groupValuesUpdated = linkedGroups?.length > 0;
 
-          if (newGroup || newSecondaryTickers || groupValuesUpdated) {
+          if (newGroup || groupValuesUpdated) {
             return setProviderWidget((currentWidget) => {
               const updatedWidget = updateWidgetGroupValues(
                 currentWidget,
                 linkedGroups,
               );
-              updatedWidget.groupId = group?.id ?? null;
-              updatedWidget.paramGroups = (groups || []).reduce((acc, g) => {
-                if (g.type === "ticker") return acc;
-                acc = addToWidgetParamGroups(acc, g);
-                return acc;
-              }, {});
-
-              if (newSecondaryTickers) {
-                updatedWidget.data.secondaryTickers = secondaryTickers;
-              }
+              updatedWidget.paramGroups = (groups || []).reduce<Record<string, string>>(
+                (acc, g) => addToWidgetParamGroups(acc, g),
+                {},
+              );
 
               const groupParams = Object.keys(updatedWidget.paramGroups);
-              const updatedParams = groupParams.reduce((acc, groupById) => {
+              const updatedParams = groupParams.reduce<
+                Record<string, StoredParamValue>
+              >((acc, groupById) => {
                 const paramName = getParamName(groupById);
                 const value = updatedWidget.storage?.params?.[paramName];
-                if (
-                  value !== undefined &&
-                  ignoreParamsRef.current?.includes(paramName)
-                ) {
-                  updatedWidget.storage.params[paramName] = undefined;
-                }
-
-                acc[paramName] = value;
+                if (value !== undefined) acc[paramName] = value;
                 return acc;
               }, {});
 
@@ -227,13 +178,15 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
           }
 
           if (lastWidget?.innerTab !== innerTab)
-            setProviderWidget((currentWidget) => ({ ...currentWidget, innerTab }));
+            setProviderWidget((currentWidget) => ({
+              ...currentWidget,
+              innerTab: innerTab ?? undefined,
+            }));
         },
         { fireImmediately: true },
       );
     }
 
-    // Add event listeners for beforeunload and save shortcut
     window.addEventListener("beforeunload", onBeforeUnload, { signal: ctrl.signal });
 
     return () => {
@@ -246,7 +199,6 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
   }, [
     providerWidgetRef,
     needsUpdateRef,
-    ignoreParamsRef,
     getParamName,
     saveToStoreCb,
     setProviderWidget,
@@ -272,9 +224,10 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
             );
 
           if (updateStore) {
-            queueMicrotask(() =>
-              storeUpdateWidget(props.activeDashboardId, newWidget as WidgetT),
-            );
+            queueMicrotask(() => {
+              if (props.activeDashboardId)
+                storeUpdateWidget(props.activeDashboardId, newWidget as WidgetT);
+            });
           }
         }
         props.contextOverride?.updateWidget?.(newWidget);
@@ -293,13 +246,10 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
 
   useEventListener("saveWidgets", saveToStoreCb);
   useEventListener("refreshQuery", () =>
-    setProviderWidget((currentWidget) => {
-      const widgetType = currentWidget?.type;
-      if (isOmniType(widgetType) || isSSRMType(widgetType)) {
-        queueMicrotask(() => triggerCustomEvent(`runParams-${currentWidget?.id}`));
-      }
-      return { ...currentWidget, refreshQuery: Date.now() };
-    }),
+    setProviderWidget((currentWidget) => ({
+      ...currentWidget,
+      refreshQuery: Date.now(),
+    })),
   );
   useEventListener(`updateWidget-${props?.uuid}`, updateWidgetCallback);
 

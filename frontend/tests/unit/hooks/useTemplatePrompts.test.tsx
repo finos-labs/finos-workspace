@@ -12,20 +12,18 @@ vi.mock("~/lib/state/userApps", () => ({
 import { useTemplatePrompts } from "~/hooks/useTemplatePrompts";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowUserAppsStore } from "~/lib/state/userApps";
+import { stubStoreState } from "../mocks";
 
 type UserAppsRecord = Record<string, { content: { prompts?: string[] } }>;
 
 const mockBackend = (prompts: string[]) => {
-  (useShallowBackendConnectorStore as any).mockImplementation(
-    (selector: (state: any) => any) =>
-      selector({ getTemplatePrompts: () => prompts }),
-  );
+  stubStoreState(useShallowBackendConnectorStore, {
+    getTemplatePrompts: () => prompts,
+  });
 };
 
 const mockUserApps = (userApps: UserAppsRecord, sharedUserApps: UserAppsRecord) => {
-  (useShallowUserAppsStore as any).mockImplementation(
-    (selector: (state: any) => any) => selector({ userApps, sharedUserApps }),
-  );
+  stubStoreState(useShallowUserAppsStore, { userApps, sharedUserApps });
 };
 
 describe("useTemplatePrompts", () => {
@@ -44,10 +42,7 @@ describe("useTemplatePrompts", () => {
 
   it("returns backend prompts when templateId does not start with 'custom-'", () => {
     mockBackend(["b1", "b2"]);
-    mockUserApps(
-      { "abc-123": { content: { prompts: ["u1"] } } },
-      {},
-    );
+    mockUserApps({ "abc-123": { content: { prompts: ["u1"] } } }, {});
 
     const { result } = renderHook(() => useTemplatePrompts("equity"));
 
@@ -65,10 +60,7 @@ describe("useTemplatePrompts", () => {
 
   it("returns backend prompts when matched user app has no prompts", () => {
     mockBackend(["b1"]);
-    mockUserApps(
-      { "abc-123": { content: { prompts: [] } } },
-      {},
-    );
+    mockUserApps({ "abc-123": { content: { prompts: [] } } }, {});
 
     const { result } = renderHook(() => useTemplatePrompts("custom-abc-123"));
 
@@ -77,10 +69,7 @@ describe("useTemplatePrompts", () => {
 
   it("returns user-app prompts only when there are no backend prompts", () => {
     mockBackend([]);
-    mockUserApps(
-      { "abc-123": { content: { prompts: ["u1", "u2"] } } },
-      {},
-    );
+    mockUserApps({ "abc-123": { content: { prompts: ["u1", "u2"] } } }, {});
 
     const { result } = renderHook(() => useTemplatePrompts("custom-abc-123"));
 
@@ -89,10 +78,7 @@ describe("useTemplatePrompts", () => {
 
   it("merges backend and user-app prompts when both exist", () => {
     mockBackend(["b1", "b2"]);
-    mockUserApps(
-      { "abc-123": { content: { prompts: ["u1", "u2"] } } },
-      {},
-    );
+    mockUserApps({ "abc-123": { content: { prompts: ["u1", "u2"] } } }, {});
 
     const { result } = renderHook(() => useTemplatePrompts("custom-abc-123"));
 
@@ -101,10 +87,7 @@ describe("useTemplatePrompts", () => {
 
   it("falls back to sharedUserApps when uuid is not in userApps", () => {
     mockBackend([]);
-    mockUserApps(
-      {},
-      { "shared-uuid": { content: { prompts: ["s1"] } } },
-    );
+    mockUserApps({}, { "shared-uuid": { content: { prompts: ["s1"] } } });
 
     const { result } = renderHook(() => useTemplatePrompts("custom-shared-uuid"));
 
@@ -125,14 +108,9 @@ describe("useTemplatePrompts", () => {
 
   it("memoizes the result across re-renders when inputs are stable", () => {
     mockBackend(["b1"]);
-    mockUserApps(
-      { "abc-123": { content: { prompts: ["u1"] } } },
-      {},
-    );
+    mockUserApps({ "abc-123": { content: { prompts: ["u1"] } } }, {});
 
-    const { result, rerender } = renderHook(() =>
-      useTemplatePrompts("custom-abc-123"),
-    );
+    const { result, rerender } = renderHook(() => useTemplatePrompts("custom-abc-123"));
 
     const first = result.current;
     rerender();

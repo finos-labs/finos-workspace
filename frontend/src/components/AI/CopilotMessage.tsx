@@ -1,13 +1,12 @@
 import { useMemo } from "react";
-import type { Message } from "~/lib/state/copilot";
+import type { Message, MessageGroup } from "~/lib/state/copilot";
 import { CopilotAIMessage, CopilotHumanMessage, CopilotSystemMessage } from ".";
 
 type CopilotMessageProps = {
   message: Message;
-  isLastGroup: boolean;
   showIcon: boolean;
   currentGroupId?: string;
-  allGroups?: any[];
+  allGroups?: MessageGroup[];
   groupIndex?: number;
   isPartOfStepByStepGroup?: boolean;
 };
@@ -15,7 +14,6 @@ type CopilotMessageProps = {
 export default function CopilotMessage(props: CopilotMessageProps) {
   const {
     message,
-    isLastGroup,
     showIcon,
     currentGroupId,
     allGroups,
@@ -41,17 +39,14 @@ export default function CopilotMessage(props: CopilotMessageProps) {
       return (
         <CopilotAIMessage
           message={message}
-          isLastGroup={isLastGroup}
           allGroups={allGroups}
           groupIndex={groupIndex}
         />
       );
     }
-    // If message type is not recognized, do not render anything
     return null;
   }, [
     message,
-    isLastGroup,
     showIcon,
     currentGroupId,
     allGroups,

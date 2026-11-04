@@ -1,6 +1,6 @@
 import Markdown from "markdown-to-jsx";
 import type React from "react";
-import { Children, Fragment } from "react";
+import { Fragment } from "react";
 import { slugify } from "~/lib/utils/utils";
 import { Tag } from "../ds/atoms/Tag";
 import Icon from "../Icon";
@@ -40,7 +40,7 @@ interface ChangelogVersionProps {
   chunk: ChangelogVersionChunk;
 }
 
-export function ChangelogVersion(props: ChangelogVersionProps) {
+function ChangelogVersion(props: ChangelogVersionProps) {
   const { chunk } = props;
   return (
     <div id={chunk.slug} className="space-y-2.5 pt-2.5">
@@ -60,12 +60,12 @@ export function ChangelogVersion(props: ChangelogVersionProps) {
   );
 }
 
-export function H1(props: { children: React.ReactNode }) {
+function H1(props: { children: React.ReactNode }) {
   const { children } = props;
   return <h1 className="body-sm-bold">{children}</h1>;
 }
 
-export function H2(props: { children: React.ReactNode; slug?: string }) {
+function H2(props: { children: React.ReactNode; slug?: string }) {
   const { children, slug } = props;
   return (
     <a
@@ -81,83 +81,36 @@ export function H2(props: { children: React.ReactNode; slug?: string }) {
   );
 }
 
-export function H3(props: { children: React.ReactNode }) {
+function H3(props: { children: React.ReactNode }) {
   const { children } = props;
   const headingColor =
-    tagColors[children.toString().replace("[PRO]", "").toLowerCase().trim()];
-  return (
-    <>
-      <Tag color={headingColor}>
-        {Children.map(children, (child) =>
-          typeof child === "string" ? child.replace("[PRO]", "") : child,
-        )}
-      </Tag>
-      {Children.toArray(children).some(
-        (child) => typeof child === "string" && child.includes("[PRO]"),
-      ) && <span className="ml-2 obb-tag font-normal">Enterprise</span>}
-    </>
-  );
+    tagColors[
+      (children?.toString() ?? "").toLowerCase().trim() as keyof typeof tagColors
+    ];
+  return <Tag color={headingColor}>{children}</Tag>;
 }
 
-export function H4(props: { children: React.ReactNode }) {
+function H4(props: { children: React.ReactNode }) {
   const { children } = props;
-  return (
-    <h4 className="body-xs-bold">
-      {Children.map(children, (child, index) => (
-        <Fragment key={index}>
-          {typeof child === "string" ? (
-            child.includes("[PRO]") ? (
-              <span>
-                {child.replace("[PRO]", "")}
-                <span className="ml-2 obb-tag font-normal">Enterprise</span>
-              </span>
-            ) : (
-              child
-            )
-          ) : (
-            child
-          )}
-        </Fragment>
-      ))}
-    </h4>
-  );
+  return <h4 className="body-xs-bold">{children}</h4>;
 }
 
-export function UL(props: { children: React.ReactNode }) {
+function UL(props: { children: React.ReactNode }) {
   const { children } = props;
   return <ul className="space-y-1 list-disc ml-6">{children}</ul>;
 }
 
-export function OL(props: { children: React.ReactNode }) {
+function OL(props: { children: React.ReactNode }) {
   const { children } = props;
   return <ol className="space-y-1 list-decimal ml-6">{children}</ol>;
 }
 
-export function LI(props: { children: React.ReactNode }) {
+function LI(props: { children: React.ReactNode }) {
   const { children } = props;
-  return (
-    <li className="space-y-1">
-      {Children.map(children, (child, index) => (
-        <Fragment key={index}>
-          {typeof child === "string" ? (
-            child.includes("[PRO]") ? (
-              <span>
-                {child.replace("[PRO]", "")}
-                <span className="ml-2 obb-tag">Enterprise</span>
-              </span>
-            ) : (
-              child
-            )
-          ) : (
-            child
-          )}
-        </Fragment>
-      ))}
-    </li>
-  );
+  return <li className="space-y-1">{children}</li>;
 }
 
-export function Article(props: { children: React.ReactNode }) {
+function Article(props: { children: React.ReactNode }) {
   const { children } = props;
   return (
     <>
@@ -167,16 +120,13 @@ export function Article(props: { children: React.ReactNode }) {
   );
 }
 
-/* Utils */
-
-export interface ChangelogTextChunk {
+interface ChangelogTextChunk {
   content: string;
 }
 
 export interface ChangelogVersionChunk {
   version: string;
   slug: string;
-  /** Markdown formatted string of heading */
   heading: string;
   changes: ChangelogChanges[];
 }
@@ -189,13 +139,11 @@ const tagColors = {
   "breaking changes": "warning",
 } as const;
 
-export type ChangelogChangeType = keyof typeof tagColors;
+type ChangelogChangeType = keyof typeof tagColors;
 
-export interface ChangelogChanges {
+interface ChangelogChanges {
   type: ChangelogChangeType;
-  /** Markdown formatted string of heading */
   heading: string;
-  /** Markdown formatted string of content */
   content: string;
 }
 

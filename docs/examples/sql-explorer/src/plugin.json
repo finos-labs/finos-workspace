@@ -1,0 +1,164 @@
+{
+  "manifestVersion": 1,
+  "id": "sql-explorer",
+  "name": "SQL explorer",
+  "description": "Read-only SQL through the plugin's own backend: against a Postgres the deployment runs, and with DuckDB over data files the deployment mounts.",
+  "publisher": {
+    "name": "dlee-bq"
+  },
+  "icon": "assets/icon.svg",
+  "host": {
+    "api": 1,
+    "afm": "0.11"
+  },
+  "entry": {
+    "module": "entry.js",
+    "styles": [
+      "entry.css"
+    ]
+  },
+  "csp": {
+    "script-src": [
+      "'wasm-unsafe-eval'"
+    ],
+    "connect-src": [
+      "blob:"
+    ]
+  },
+  "cspNotes": {
+    "script-src": "Compiles DuckDB-WASM, the package's own assets/duckdb-eh.wasm, which completes the editor's SQL inside the frame.",
+    "connect-src": "DuckDB-WASM reads its binary from a blob: URL the frame makes of that asset. No host is reachable."
+  },
+  "secrets": [
+    {
+      "name": "postgres_url",
+      "purpose": "The Postgres the explorer reads, as postgresql://<role>:<password>@<host>:<port>/<database>, for a role that may only read. Its host and port are the deployment's, added to the server network by a superuser as tcp://<host>:<port>."
+    }
+  ],
+  "identity": "pseudonymous",
+  "server": {
+    "backend": {
+      "protocol": 1,
+      "routes": [
+        {
+          "id": "postgres_schema",
+          "secrets": [
+            "postgres_url"
+          ],
+          "response": {
+            "maxBytes": 1048576,
+            "timeoutMs": 15000
+          }
+        },
+        {
+          "id": "postgres_query",
+          "args": {
+            "sql": {
+              "type": "string",
+              "maxLength": 32768,
+              "required": true
+            }
+          },
+          "secrets": [
+            "postgres_url"
+          ],
+          "response": {
+            "maxBytes": 5242880,
+            "timeoutMs": 30000
+          }
+        },
+        {
+          "id": "files_schema",
+          "response": {
+            "maxBytes": 1048576,
+            "timeoutMs": 15000
+          }
+        },
+        {
+          "id": "files_query",
+          "args": {
+            "sql": {
+              "type": "string",
+              "maxLength": 32768,
+              "required": true
+            }
+          },
+          "response": {
+            "maxBytes": 5242880,
+            "timeoutMs": 30000
+          }
+        }
+      ]
+    }
+  },
+  "contributes": {
+    "widgets": [
+      {
+        "id": "explorer",
+        "name": "SQL explorer",
+        "description": "Read-only SQL against the deployment's Postgres or its data files",
+        "category": "Data",
+        "standalone": true,
+        "permissions": [
+          "core:data:read",
+          "core:backend:call",
+          "core:state:write",
+          "core:export:provide",
+          "core:copilot:context",
+          "core:params:write"
+        ],
+        "server": {
+          "routes": [
+            "postgres_schema",
+            "postgres_query",
+            "files_schema",
+            "files_query"
+          ]
+        },
+        "grid": {
+          "w": 24,
+          "h": 16,
+          "minW": 12,
+          "minH": 8
+        },
+        "params": [
+          {
+            "paramName": "sql",
+            "type": "text",
+            "label": "SQL",
+            "value": "SELECT region, sum(units) AS units FROM sales GROUP BY region ORDER BY region"
+          }
+        ],
+        "artifact": {
+          "description": "Runs a read-only SQL query against the deployment's Postgres or data files, in the user's own session, and shows the result in a table. Use it to answer a question about the deployment's data: write the query and set its source. The user can edit and rerun it.",
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sql"
+            ],
+            "properties": {
+              "source": {
+                "enum": [
+                  "postgres",
+                  "files"
+                ]
+              },
+              "sql": {
+                "type": "string",
+                "maxLength": 8000
+              }
+            }
+          }
+        }
+      }
+    ],
+    "skills": [
+      {
+        "slug": "sql-explorer-queries",
+        "description": "Use when the user asks a question about the deployment's data (Postgres demo schema, mounted files): the exact steps to show the SQL explorer with a query, plus the tables the example deployment holds.",
+        "file": "skills/sql-explorer-queries.md"
+      }
+    ]
+  }
+}

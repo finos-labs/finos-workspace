@@ -1,21 +1,10 @@
-/**
- * Tests for sidebar Zustand store
- *
- * Tests the sidebar state management including:
- * - Hamburger menu toggling
- * - Section expansion (shared, my dashboards, library)
- * - Tree navigation (focus, selection, expansion)
- * - Scroll position tracking
- * - Width management
- */
-
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useSidebarStore } from "~/lib/state/sidebar";
+import { malformed } from "../../mocks";
 
 describe("useSidebarStore", () => {
   beforeEach(() => {
-    // Reset store to initial state
     act(() => {
       useSidebarStore.setState({
         scrollY: 0,
@@ -115,8 +104,9 @@ describe("useSidebarStore", () => {
     });
 
     it("should return false for unknown section", () => {
-      // @ts-expect-error - testing invalid input
-      expect(useSidebarStore.getState().sectionIsExpanded("unknown")).toBe(false);
+      expect(useSidebarStore.getState().sectionIsExpanded(malformed("unknown"))).toBe(
+        false,
+      );
     });
 
     it("should toggle shared section", () => {
@@ -158,8 +148,7 @@ describe("useSidebarStore", () => {
     it("should not throw for unknown section toggle", () => {
       expect(() => {
         act(() => {
-          // @ts-expect-error - testing invalid input
-          useSidebarStore.getState().toggleExpanded("unknown");
+          useSidebarStore.getState().toggleExpanded(malformed("unknown"));
         });
       }).not.toThrow();
     });
@@ -301,7 +290,10 @@ describe("useSidebarStore", () => {
         useSidebarStore.getState().setExpandedItems(() => ["folder-1", "folder-2"]);
       });
 
-      expect(useSidebarStore.getState().expandedItems).toEqual(["folder-1", "folder-2"]);
+      expect(useSidebarStore.getState().expandedItems).toEqual([
+        "folder-1",
+        "folder-2",
+      ]);
     });
 
     it("should update expanded items based on previous state", () => {
@@ -313,7 +305,10 @@ describe("useSidebarStore", () => {
         useSidebarStore.getState().setExpandedItems((prev) => [...prev, "folder-2"]);
       });
 
-      expect(useSidebarStore.getState().expandedItems).toEqual(["folder-1", "folder-2"]);
+      expect(useSidebarStore.getState().expandedItems).toEqual([
+        "folder-1",
+        "folder-2",
+      ]);
     });
 
     it("should remove expanded item", () => {

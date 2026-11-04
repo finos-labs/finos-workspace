@@ -5,6 +5,7 @@ import { Popover } from "./Popover";
 const meta = {
   title: "Atoms/Popover",
   component: Popover,
+  args: { content: "Popover content" },
   tags: ["autodocs"],
   parameters: {
     semanticTokens: [

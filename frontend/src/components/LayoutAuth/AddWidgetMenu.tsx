@@ -1,6 +1,10 @@
 import { useParams } from "react-router-dom";
 import Icon from "~/components/Icon";
-import { useShallowAppStore } from "~/lib/state/app";
+import {
+  DASHBOARD_LOCKED_MESSAGE,
+  useIsDashboardLocked,
+  useShallowAppStore,
+} from "~/lib/state/app";
 import { useSharedAppStore } from "~/lib/state/sharedApp";
 import { useThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
@@ -23,9 +27,10 @@ export default function AddWidgetMenu() {
 
   const { sharedItems } = useSharedAppStore();
 
-  const isShared = useShallowAppStore((state) => state.isDashboardShared(id));
+  const isShared = useShallowAppStore((state) => !!id && state.isDashboardShared(id));
 
-  const notOwner = !!sharedItems?.[id];
+  const notOwner = !!(id && sharedItems?.[id]);
+  const isLocked = useIsDashboardLocked(id);
 
   const handleClickWidget = () => {
     setInitialSelectedSearchTab("widgets");
@@ -36,16 +41,24 @@ export default function AddWidgetMenu() {
     setOpen(true);
   };
 
-  if (isShared && notOwner) {
+  if (isLocked || (isShared && notOwner)) {
     return (
       <Tooltip
         message={
-          <p className="body-xs-regular max-w-md break-words whitespace-normal">
-            <strong>{"This dashboard is shared — "}</strong>
-            You're allowed to change tickers and switch tabs. You don’t have permission
-            to add, remove or resize widgets. Duplicate the template first before
-            applying any modifications.
-          </p>
+          isLocked ? (
+            <p className="body-xs-regular max-w-md break-words whitespace-normal">
+              <strong>{"This dashboard is locked — "}</strong>
+              {DASHBOARD_LOCKED_MESSAGE} You're still allowed to change parameters and
+              resize widgets.
+            </p>
+          ) : (
+            <p className="body-xs-regular max-w-md break-words whitespace-normal">
+              <strong>{"This dashboard is shared — "}</strong>
+              You're allowed to change parameters and switch tabs. You don’t have
+              permission to add, remove or resize widgets. Duplicate the template first
+              before applying any modifications.
+            </p>
+          )
         }
       >
         <button
@@ -83,7 +96,6 @@ export default function AddWidgetMenu() {
                 "transition-opacity",
                 "focus:outline-hidden",
               )}
-              //onClick={handleClick}
             >
               <Icon id="plus-icon" className="h-[17px] w-[17px] text-white" />
             </button>
@@ -96,13 +108,10 @@ export default function AddWidgetMenu() {
             onCloseAutoFocus={(e) => e.preventDefault()}
             className="space-y-2"
           >
-            <DropdownMenuItem
-              className="obb-dropdown-item"
-              onSelect={handleClickWidget}
-            >
+            <DropdownMenuItem className="ws-dropdown-item" onSelect={handleClickWidget}>
               Add widget
             </DropdownMenuItem>
-            <DropdownMenuItem className="obb-dropdown-item" onSelect={handleClickData}>
+            <DropdownMenuItem className="ws-dropdown-item" onSelect={handleClickData}>
               Add data
             </DropdownMenuItem>
           </DropdownMenuContent>

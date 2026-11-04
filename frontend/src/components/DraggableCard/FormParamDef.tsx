@@ -1,34 +1,40 @@
 import { useCallback, useMemo, useState } from "react";
-import { FormProvider, useForm, useFormContext } from "react-hook-form";
+import { FormProvider, useForm, useFormContext, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { ToggleSelect } from "~/components/ToggleSelect";
-import { cleanSearchParams, convertHeadersToRecord, useJsonData } from "~/lib/api";
+import { useJsonData } from "~/lib/api";
 import { beautifySlug, cn, currentDateModifier } from "~/lib/utils";
+import { fetchRequest } from "~/lib/utils/fetch";
+import {
+  buildFormRequest,
+  buildOptionsRequest,
+  formScope,
+} from "~/lib/utils/widgetRequest";
 import { Button } from "../ds/atoms/Button";
 import { FormInput } from "../ds/atoms/Input";
 import { FormField } from "../ds/molecules/Form";
 import { AdvancedSelect, type TSelectValues } from "../NewAdvancedSelect";
 import Tooltip from "../Tooltip";
-import type { FormInputParamDef, FormInputParamDefT } from "../types";
+import type { FormInputParamDef, FormInputParamDefT, ParamDefT } from "../types";
 import { SingleDatePicker } from "../ui/SingleDatePicker";
 import { useWidgetContext } from "../Widget.context";
 
 type ParamsForm = {
-  [key: string]: string;
+  [key: string]: string | number | boolean | undefined;
 };
 
-export function FormParamElement() {
+export function FormParamElement({
+  formParamDef,
+}: {
+  formParamDef: ParamDefT<"form">;
+}) {
   const { widget, updateWidget } = useWidgetContext();
   const [isLoading, setIsLoading] = useState(false);
-
-  const formParamDef = useMemo(() => {
-    return widget?.params?.find((param) => param.type === "form");
-  }, [widget?.params]);
 
   const initialFormValues = useMemo(() => {
     if (!formParamDef?.inputParams) return {};
 
-    return formParamDef?.inputParams?.reduce((acc, inputParam) => {
+    return formParamDef.inputParams.reduce<ParamsForm>((acc, inputParam) => {
       if (inputParam.type === "endpoint") {
         acc[inputParam.paramName] = undefined;
         return acc;
@@ -56,17 +62,18 @@ export function FormParamElement() {
   const submitForm = useCallback(
     async (data: ParamsForm) => {
       try {
+        if (!formParamDef) return;
+        const built = buildFormRequest(formParamDef, data, widget);
+        if (!built.ok) {
+          toast.error("Error", {
+            description: built.problems.map((p) => p.message).join(". "),
+            id: "form-param",
+          });
+          return;
+        }
         setIsLoading(true);
-        const { headers, newParams } = convertHeadersToRecord(widget.endpoint?.headers);
 
-        const response = await fetch(formParamDef.endpoint, {
-          method: formParamDef.method ?? "POST",
-          headers: {
-            ...headers,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        });
+        const response = await fetchRequest(built.request, { credentials: "omit" });
 
         const json = await response.json();
 
@@ -97,13 +104,7 @@ export function FormParamElement() {
 
       setIsLoading(false);
     },
-    [
-      formParamDef.endpoint,
-      formParamDef.method,
-      widget.endpoint?.headers,
-      widget.endpoint?.url,
-      updateWidget,
-    ],
+    [formParamDef, widget, updateWidget],
   );
 
   return (
@@ -120,10 +121,14 @@ export function FormParamElement() {
         <form onSubmit={form.handleSubmit(submitForm)}>
           <div className="mb-4">
             <div className="flex flex-col gap-4">
-              {formParamDef.inputParams?.map((inputParam) => {
+              {formParamDef?.inputParams?.map((inputParam) => {
                 if (inputParam.type === "endpoint") {
                   return (
-                    <EndpointType key={inputParam.paramName} inputParam={inputParam} />
+                    <EndpointType
+                      key={inputParam.paramName}
+                      form={formParamDef}
+                      inputParam={inputParam}
+                    />
                   );
                 }
                 return (
@@ -142,33 +147,36 @@ export function FormParamElement() {
   );
 }
 
-function EndpointType(props: { inputParam: FormInputParamDefT<"endpoint"> }) {
+function EndpointType(props: {
+  form: ParamDefT<"form">;
+  inputParam: FormInputParamDefT<"endpoint">;
+}) {
   const { inputParam } = props;
   const form = useFormContext<ParamsForm>();
+  const inputValues = useWatch({ control: form.control });
 
-  const endpoint = useWidgetContext()?.widget?.endpoint;
-
+  const { widget } = useWidgetContext();
   const { paramName, label, description = [], multiSelect = false } = inputParam;
 
   const title = beautifySlug(label ?? paramName);
 
-  const options = useMemo(() => {
-    const { headers, newParams } = convertHeadersToRecord(endpoint?.headers ?? {});
-    const url = cleanSearchParams(inputParam.optionsEndpoint, newParams);
+  const request = useMemo(
+    () =>
+      buildOptionsRequest(
+        inputParam,
+        formScope(props.form, inputValues, widget),
+        widget?.sourceId,
+      ),
+    [inputParam, props.form, inputValues, widget],
+  );
 
-    return {
-      url: url,
-      endpointHeaders: headers,
-      params: newParams,
-      addBearerToken: true,
-    };
-  }, [endpoint]);
-
-  const { data, isLoading, error, dataUpdatedAt } = useJsonData(options, {
-    enabled: true,
-    staleTime: 1000 * 60 * 15,
-    refetchInterval: 1000 * 60 * 15,
-  });
+  const { data, isLoading, error, dataUpdatedAt } = useJsonData(
+    { request },
+    {
+      staleTime: 1000 * 60 * 15,
+      refetchInterval: 1000 * 60 * 15,
+    },
+  );
 
   const { selectOptions, forceExtraInfo } = useMemo(() => {
     const paramOptions = data ?? ["Loading..."];
@@ -191,21 +199,23 @@ function EndpointType(props: { inputParam: FormInputParamDefT<"endpoint"> }) {
           </>
         ),
       });
-      return null;
+      return { selectOptions: [] as TSelectValues[], forceExtraInfo: false };
     }
     const selectOptions = paramOptions
-      .map((option: TSelectValues) => {
-        if (!Array.isArray(option) && typeof option !== "object") {
-          return { label: option, value: option };
+      .map((option: TSelectValues | string): TSelectValues | null => {
+        if (typeof option !== "object") {
+          return { label: String(option), value: option };
         }
 
         if (option?.label && option?.value) return option;
 
         return null;
       })
-      .filter(Boolean);
+      .filter((option): option is TSelectValues => Boolean(option));
 
-    const forceExtraInfo = paramOptions.some((o: TSelectValues) => o?.extraInfo);
+    const forceExtraInfo = paramOptions.some(
+      (o: TSelectValues | string) => typeof o === "object" && o?.extraInfo,
+    );
 
     return { selectOptions, forceExtraInfo };
   }, [inputParam.optionsEndpoint, data]);
@@ -224,8 +234,7 @@ function EndpointType(props: { inputParam: FormInputParamDefT<"endpoint"> }) {
       {typeof description === "string" && (
         <div className="body-xs-regular pt-2 break-words max-h-[296px] overflow-y-auto">
           {description.split(/\n|\\\n/).map((line, idx) => {
-            // Count leading spaces for indentation
-            const spaces = line.match(/^ */)[0].length;
+            const spaces = line.match(/^ */)?.[0].length ?? 0;
             return (
               <div
                 key={`${paramName}-desc-${idx}`}
@@ -242,7 +251,7 @@ function EndpointType(props: { inputParam: FormInputParamDefT<"endpoint"> }) {
 
   return (
     <div className="flex flex-col">
-      <label className="obb-label" htmlFor={inputParam.paramName}>
+      <label className="ws-label" htmlFor={inputParam.paramName}>
         {title}
       </label>
       <FormField
@@ -251,7 +260,7 @@ function EndpointType(props: { inputParam: FormInputParamDefT<"endpoint"> }) {
         render={({ field }) => (
           <AdvancedSelect
             key={`${paramName}-${dataUpdatedAt}`}
-            className="h-[34px]! obb-minimal-input"
+            className="h-[34px]! ws-minimal-input"
             label={beautifySlug(
               multiSelect
                 ? (Array.isArray(selected) ? selected.length > 0 : !!selected)
@@ -303,6 +312,7 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
             <Tooltip message={inputParam.description ?? inputParam.label}>
               <Button
                 {...field}
+                value={field.value?.toString()}
                 variant="outlined"
                 size="sm"
                 loading={
@@ -330,7 +340,7 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
   if (inputParam.type === "number") {
     return (
       <div className="flex flex-col">
-        <label className="obb-label" htmlFor={inputParam.paramName}>
+        <label className="ws-label" htmlFor={inputParam.paramName}>
           {title}
         </label>
         <FormField
@@ -341,6 +351,7 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
               type="number"
               className="h-[34px]"
               {...field}
+              value={field.value?.toString()}
               placeholder={inputParam.placeholder}
             />
           )}
@@ -352,7 +363,7 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
   if (inputParam.type === "date") {
     return (
       <div className="flex flex-col">
-        <label className="obb-label" htmlFor={inputParam.paramName}>
+        <label className="ws-label" htmlFor={inputParam.paramName}>
           {title}
         </label>
         <FormField
@@ -362,7 +373,7 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
             <SingleDatePicker
               triggerClassName="h-[34px]"
               onSave={(date) => field.onChange(date)}
-              defaultDate={currentDateModifier(field.value)}
+              defaultDate={currentDateModifier(String(field.value ?? ""))}
             />
           )}
         />
@@ -373,7 +384,7 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
   if (inputParam.type === "boolean" && inputParam.options?.length === 2) {
     return (
       <div className="flex flex-col">
-        <label className="obb-label" htmlFor={inputParam.paramName}>
+        <label className="ws-label" htmlFor={inputParam.paramName}>
           {title}
         </label>
         <FormField
@@ -396,13 +407,14 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
     );
   }
 
-  if (inputParam.options?.length > 0) {
+  const inputOptions = inputParam.options ?? [];
+  if (inputOptions.length > 0) {
     const { paramName, description = [], multiSelect = false } = inputParam;
     const selected = form.watch(paramName);
 
     const defaultTitle = selected?.toString() ?? title;
     const selectedLabel =
-      inputParam.options.find((o) => o.value === selected)?.label ?? defaultTitle;
+      inputOptions.find((o) => o.value === selected)?.label ?? defaultTitle;
 
     const toolTipMessage = (
       <div className="max-w-[296px]">
@@ -414,7 +426,7 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
         {typeof description === "string" && (
           <div className="body-xs-regular pt-2 break-words max-h-[296px] overflow-y-auto">
             {description.split(/\n|\\\n/).map((line, idx) => {
-              const spaces = line.match(/^ */)[0].length;
+              const spaces = line.match(/^ */)?.[0].length ?? 0;
               return (
                 <div
                   key={`${paramName}-desc-${idx}`}
@@ -431,7 +443,7 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
 
     return (
       <div className="flex flex-col">
-        <label className="obb-label" htmlFor={inputParam.paramName}>
+        <label className="ws-label" htmlFor={inputParam.paramName}>
           {title}
         </label>
         <FormField
@@ -439,7 +451,7 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
           control={form.control}
           render={({ field }) => (
             <AdvancedSelect
-              className="h-[34px]! obb-minimal-input"
+              className="h-[34px]! ws-minimal-input"
               label={beautifySlug(
                 multiSelect
                   ? (
@@ -469,9 +481,9 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
                   field.onChange(option);
                 }
               }}
-              values={inputParam.options}
+              values={inputOptions}
               toolTipMessage={toolTipMessage}
-              forceSearch={inputParam.options.length > 10}
+              forceSearch={inputOptions.length > 10}
             />
           )}
         />
@@ -481,7 +493,7 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
 
   return (
     <div className="flex flex-col">
-      <label className="obb-label" htmlFor={inputParam.paramName}>
+      <label className="ws-label" htmlFor={inputParam.paramName}>
         {title}
       </label>
       <FormField
@@ -490,6 +502,7 @@ function FormType(props: { inputParam: FormInputParamDef; isLoading: boolean }) 
         render={({ field }) => (
           <FormInput
             {...field}
+            value={field.value?.toString()}
             placeholder={inputParam.placeholder}
             className="h-[34px]"
           />

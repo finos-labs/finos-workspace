@@ -1,24 +1,25 @@
-import type { Layout } from "react-grid-layout";
-import {
-  applyChartViewToWidget,
-  type ChartViewIntent,
-} from "~/components/AI/hooks/createWidgetUtils";
+import type { LayoutItem } from "react-grid-layout";
 import { useGetWidgetsStore } from "~/components/AI/hooks/useGetAppWidgets";
 import { getWidgetOrigin } from "~/components/AI/hooks/utils";
-import type { Ticker, WidgetT } from "~/components/types";
+import type { ParamDef, StoredParamValue, WidgetT } from "~/components/types";
 import type { WidgetId } from "~/components/Widgets";
-import { useAppStore } from "~/lib/state/app";
+import { DASHBOARD_LOCKED_MESSAGE, useAppStore } from "~/lib/state/app";
 import { useCopilotDataStore } from "~/lib/state/copilotData";
-import { tickersStore } from "~/lib/state/tickers";
 import { triggerCustomEvent } from "~/lib/utils";
+import {
+  argsProblems,
+  paramValueSchema,
+  uiArgsSchema,
+} from "~/lib/utils/widgetArgsSchema";
+import { isStoredParamValue } from "~/lib/utils/widgetParams";
 import {
   deserializeDashboardTabId,
   getDashboardInfo,
 } from "~/lib/utils/workspaceDashboard";
 
 type WidgetConfig = {
-  dataArgs?: Record<string, any>;
-  uiArgs?: Record<string, any>;
+  dataArgs?: Record<string, unknown>;
+  uiArgs?: Record<string, unknown>;
 };
 
 type DashboardConfig = {
@@ -97,12 +98,12 @@ function validateDashboardLayout(
   }
 }
 
-/**
- * Create a new dashboard in the local Workspace session.
- * @param dashboardId The dashboard identifier.
- * @param config Dashboard configuration.
- * @throws If dashboard already exists or creation fails.
- */
+function lockedDashboardError(dashboardId: string, detail = "") {
+  return new Error(
+    `Dashboard '${dashboardId}' is locked. ${DASHBOARD_LOCKED_MESSAGE}${detail}`,
+  );
+}
+
 function createDashboard(dashboardId: string, config: DashboardConfig): string {
   const appState = useAppStore.getState();
   if (appState.items?.[dashboardId]) {
@@ -127,12 +128,6 @@ function createDashboard(dashboardId: string, config: DashboardConfig): string {
   return dashboardId;
 }
 
-/**
- * Update light metadata for a dashboard.
- * @param dashboardId The dashboard identifier.
- * @param config Dashboard configuration.
- * @throws If dashboard does not exist.
- */
 function updateDashboard(dashboardId: string, config: Partial<DashboardConfig>): void {
   const appState = useAppStore.getState();
   const dashboard = appState.items?.[dashboardId];
@@ -226,8 +221,21 @@ function updateDashboardLayout(
     ...(config.maxW !== undefined ? { maxW: config.maxW } : {}),
     ...(config.maxH !== undefined ? { maxH: config.maxH } : {}),
   };
-  const { gridLayout } = dashboard.data as { gridLayout?: Record<string, Layout[]> };
+  const { gridLayout } = dashboard.data as {
+    gridLayout?: Record<string, LayoutItem[]>;
+  };
   const sourceTabId = widget.innerTab || "";
+  if (
+    appState.isDashboardLocked(dashboardId) &&
+    (sourceTabId !== targetTabId ||
+      config.x !== existingGridData.x ||
+      config.y !== existingGridData.y)
+  ) {
+    throw lockedDashboardError(
+      dashboardId,
+      " Only the width and height of its widgets can change.",
+    );
+  }
   const targetLayout = [...(gridLayout?.[targetTabId] || [])].filter(
     (entry) => entry.i !== widgetUuid,
   );
@@ -246,53 +254,35 @@ function updateDashboardLayout(
   appState.updateWidget(dashboardId, { ...widget, innerTab: targetTabId });
 }
 
-/**
- * Create a new widget instance on a dashboard.
- * @param dashboardId The dashboard identifier.
- * @param backendName The backend name.
- * @param widgetId The widget identifier.
- * @param config Widget configuration data.
- * @returns Promise resolving to the new widget's unique ID.
- * @throws If dashboard does not exist or creation fails.
- */
 async function createWidget(
   dashboardId: string,
   backendName: string,
   widgetId: string,
   config: WidgetConfig,
 ): Promise<string> {
+  if (useAppStore.getState().isDashboardLocked(dashboardId)) {
+    throw lockedDashboardError(dashboardId);
+  }
   const widgetDefinition = getWidgetDefinitionOrThrow(backendName, widgetId);
   const widget = updateWidgetState(widgetDefinition, config);
-  // Clear the definition id so addWidget generates a fresh UUID
-  // (definition ids like "income" are not valid UUIDs)
   const { id: _defId, ...rest } = widget;
   const id = await useAppStore.getState().addWidget(dashboardId, rest as WidgetT);
   if (!id) throw new Error("Failed to create widget");
   return id;
 }
 
-/**
- * Read a widget instance by ID.
- * @param dashboardId The dashboard identifier (uuid).
- * @param widgetUuid The widget instance identifier (uuid).
- * @returns Promise resolving to widget data.
- * @throws If dashboard or widget not found.
- */
 function readWidget(
   dashboardId: string,
   widgetUuid: string,
-): Record<string, any> | null {
+): Record<string, unknown> | null {
   const widget = getDashboardWidgetOrThrow(dashboardId, widgetUuid);
 
   const origin = getWidgetOrigin(widget as WidgetT);
-  // Applied data_args are persisted onto storage.params by updateWidgetState (the
-  // create/update path); the params[] array only carries schema defaults. Prefer
-  // the stored value so read_widget reflects what was actually applied.
-  const storedParams = (widget.storage?.params ?? {}) as Record<string, any>;
-  const resolveParamValue = (param: any) =>
+  const storedParams = widget.storage?.params ?? {};
+  const resolveParamValue = (param: ParamDef) =>
     storedParams[param.paramName] ?? param.value;
 
-  const dataArgs: Record<string, any> = {};
+  const dataArgs: Record<string, unknown> = {};
   if (Array.isArray(widget.params)) {
     for (const param of widget.params) {
       const value = resolveParamValue(param);
@@ -302,7 +292,7 @@ function readWidget(
     }
   }
 
-  const result: Record<string, any> = {
+  const result: Record<string, unknown> = {
     origin,
     widget_id: widget.widgetId,
     name: widget.name,
@@ -310,7 +300,7 @@ function readWidget(
     inner_tab: widget.innerTab,
     data_args: dataArgs,
     params: Array.isArray(widget.params)
-      ? widget.params.map((p: any) => ({
+      ? widget.params.map((p) => ({
           param_name: p.paramName,
           label: p.label ?? p.paramName,
           type: p.type,
@@ -320,12 +310,11 @@ function readWidget(
       : [],
   };
 
-  // Include rendered data from copilot store if available. Generative notes
-  // never populate that store — their (sanitized) body lives in storage.html,
-  // so fall back to it or read_widget returns a note with no content.
   const widgetData = useCopilotDataStore.getState().getDashboardWidgetData(widgetUuid);
   if (widgetData?.data) {
     result.data = widgetData.data;
+  } else if (typeof widget.storage?.text === "string") {
+    result.data = widget.storage.text;
   } else if (typeof widget.storage?.html === "string") {
     result.data = widget.storage.html;
   }
@@ -333,14 +322,6 @@ function readWidget(
   return result;
 }
 
-/**
- * Update an existing widget instance.
- * @param dashboardId The dashboard identifier.
- * @param widgetUuid The widget instance identifier (uuid).
- * @param config Updated widget configuration.
- * @returns Promise resolving to void.
- * @throws If dashboard or widget not found, or update fails.
- */
 async function updateWidget(
   dashboardId: string,
   widgetUuid: string,
@@ -348,84 +329,32 @@ async function updateWidget(
 ): Promise<void> {
   const widget = getDashboardWidgetOrThrow(dashboardId, widgetUuid);
 
-  const tickerParam = widget.params?.find((p) => p.type === "ticker");
-  let mainTicker: Ticker | undefined;
-  if (tickerParam) {
-    const tickerValue = config.dataArgs?.[tickerParam.paramName];
-    if (tickerValue && tickerValue !== "null") {
-      const symbol = String(tickerValue);
-      const tickersObj = await tickersStore.getState().getOrQueryTickers(symbol);
-      const tickers = Object.values(tickersObj);
-      // Fix A: SDK widgets fetch by data.mainTicker.symbol (storage.params.symbol
-      // is filtered out of the request and the query key), so mainTicker MUST
-      // reflect the new symbol or the widget never refetches. When the lookup
-      // returns nothing (e.g. a transient /symbols failure), fall back to a
-      // minimal ticker from the raw value instead of leaving mainTicker stale.
-      mainTicker =
-        tickers?.length > 0
-          ? tickers[0]
-          : {
-              ...(widget.data?.mainTicker ?? {}),
-              id: symbol.replace(/[\^$]/g, ""),
-              symbol,
-              category: widget.data?.mainTicker?.category ?? "equity",
-              type: widget.data?.mainTicker?.type ?? "stock",
-            };
-    }
-  }
-
-  const applyUpdate = (w: WidgetT) => {
-    const updatedWidget = updateWidgetState(w, config);
-    if (mainTicker) {
-      updatedWidget.data = {
-        ...updatedWidget.data,
-        mainTicker,
-      };
-    }
-    return updatedWidget;
-  };
-
-  const isNote = widget.type === "note" || widget.widgetId === "rich_note";
-
-  // Fix B: persist the update directly to the store so widgets on inactive tabs
-  // (not mounted, so no `updateWidget-` listener) still pick up the new ticker/
-  // params. The DOM event alone silently misses them yet reports success.
-  const persistedWidget = applyUpdate(widget);
+  const persistedWidget = updateWidgetState(widget, config);
   useAppStore.getState().updateWidget(dashboardId, persistedWidget);
 
-  // Notify a mounted widget so it updates its live provider state and refetches
-  // immediately (mounted widgets are the source of truth for their live query).
   const updateFn = (w: WidgetT) => {
-    const updatedWidget = applyUpdate(w);
+    const updatedWidget = updateWidgetState(w, config);
     triggerCustomEvent(
       `updateQueryParams-${widgetUuid}`,
       updatedWidget.storage?.params || {},
     );
     return updatedWidget;
   };
-  triggerCustomEvent(`updateWidget-${widgetUuid}`, isNote ? persistedWidget : updateFn);
+  triggerCustomEvent(`updateWidget-${widgetUuid}`, updateFn);
 
   if (import.meta.env.DEV) {
     console.debug("[AI updateWidget]", {
       widgetUuid,
       widgetId: widget.widgetId,
-      isNote,
-      newSymbol: mainTicker?.symbol,
       params: persistedWidget.storage?.params,
     });
   }
 }
 
-/**
- * Delete a widget instance from a dashboard.
- * @param dashboardId The dashboard identifier.
- * @param widgetUuid The widget instance identifier (uuid).
- * @returns Promise resolving to void.
- * @throws If dashboard or widget not found.
- */
 async function deleteWidget(dashboardId: string, widgetUuid: string): Promise<void> {
   const appState = useAppStore.getState();
   getDashboardWidgetOrThrow(dashboardId, widgetUuid);
+  if (appState.isDashboardLocked(dashboardId)) throw lockedDashboardError(dashboardId);
   appState.removeWidget(dashboardId, widgetUuid);
 
   if (useAppStore.getState().getTabWidgetById(dashboardId, widgetUuid)) {
@@ -449,14 +378,6 @@ export {
   updateWidget,
 };
 
-// Only allow known grid layout keys with numeric values to prevent arbitrary data leaking onto gridData
-const GRID_DATA_KEYS = new Set(["w", "h", "x", "y", "minW", "minH", "maxW", "maxH"]);
-
-/**
- * Resolve a widget definition from the widget library, throwing the same
- * recovery-hint error createWidget surfaces when the origin/widget_id pair is
- * unknown. Shared by the real create path and the dry-run path.
- */
 function getWidgetDefinitionOrThrow(backendName: string, widgetId: string): WidgetT {
   const widgetDefinition = useGetWidgetsStore
     .getState()
@@ -468,73 +389,72 @@ function getWidgetDefinitionOrThrow(backendName: string, widgetId: string): Widg
   return widgetDefinition;
 }
 
-/**
- * Pure param-merge rule shared by the real mutation path (updateWidgetState)
- * and the dry-run path: copy dataArgs values for declared params, skipping
- * unset sentinels (undefined/null/"null") — falsy values like false, 0, and ""
- * are valid param values and must be applied. dataArgs keys the widget does
- * not declare are collected as droppedKeys.
- */
 function computeWidgetParamUpdates(
   paramsDef: WidgetT["params"] | null | undefined,
   dataArgs: Record<string, unknown> | null | undefined,
-): { params: Record<string, unknown>; droppedKeys: string[] } {
-  const params: Record<string, unknown> = {};
+): {
+  params: Record<string, StoredParamValue>;
+  droppedKeys: string[];
+  invalidKeys: string[];
+} {
+  const params: Record<string, StoredParamValue> = {};
+  const invalidKeys: string[] = [];
   const defs = Array.isArray(paramsDef) ? paramsDef : [];
   const args = dataArgs ?? {};
 
   const declared = new Set<string>();
   for (const paramDef of defs) {
     const paramName = paramDef.paramName;
-    if (typeof paramName === "string" && paramName.length > 0) {
-      declared.add(paramName);
-    }
+    if (paramDef.type === "form" || typeof paramName !== "string" || !paramName)
+      continue;
+    declared.add(paramName);
     const paramValue = args[paramName];
-    // Only drop unset values; falsy values like false, 0, and "" are valid
-    // param values and must be applied.
     if (paramValue !== undefined && paramValue !== null && paramValue !== "null") {
-      params[paramName] = paramValue;
+      const valid =
+        isStoredParamValue(paramValue) &&
+        argsProblems(paramValueSchema(paramDef), paramValue, paramName).length === 0;
+      if (valid) params[paramName] = paramValue;
+      else invalidKeys.push(paramName);
     }
   }
 
   const droppedKeys = Object.keys(args).filter((key) => !declared.has(key));
-  return { params, droppedKeys };
+  return { params, droppedKeys, invalidKeys };
 }
 
-/**
- * Pure ui_args rule shared by updateWidgetState and the dry-run path: name,
- * description, and source belong on the widget itself; every other key is
- * written to widget storage. Unset sentinels (undefined/null/"null") are
- * skipped.
- */
-function computeWidgetUiUpdates(uiArgs: Record<string, unknown> | null | undefined): {
+interface WidgetUiUpdates {
   name?: string;
   description?: string;
   source?: string | string[];
+  innerTab?: string;
+  gridData?: Record<string, number>;
   storage: Record<string, unknown>;
-} {
-  const updates: {
-    name?: string;
-    description?: string;
-    source?: string | string[];
-    storage: Record<string, unknown>;
-  } = { storage: {} };
+  config?: Record<string, unknown>;
+  problems: string[];
+}
 
-  for (const [key, value] of Object.entries(uiArgs ?? {})) {
-    if (value !== undefined && value !== null && value !== "null") {
-      if (key === "name") {
-        updates.name = value as string;
-      } else if (key === "description") {
-        updates.description = value as string;
-      } else if (key === "source") {
-        updates.source = value as string | string[];
-      } else {
-        updates.storage[key] = value;
-      }
-    }
-  }
+function computeWidgetUiUpdates(
+  widget: Pick<WidgetT, "type" | "plugin" | "widgetId" | "connectionType">,
+  uiArgs: Record<string, unknown> | null | undefined,
+): WidgetUiUpdates {
+  const given = Object.fromEntries(
+    Object.entries(uiArgs ?? {}).filter(
+      ([, value]) => value !== undefined && value !== null && value !== "null",
+    ),
+  );
+  const problems = argsProblems(uiArgsSchema(widget), given, "ui_args");
+  if (problems.length) return { storage: {}, problems };
 
-  return updates;
+  const { name, description, source, innerTab, gridData, config, ...storage } =
+    given as {
+      name?: string;
+      description?: string;
+      source?: string | string[];
+      innerTab?: string;
+      gridData?: Record<string, number>;
+      config?: Record<string, unknown>;
+    };
+  return { name, description, source, innerTab, gridData, config, storage, problems };
 }
 
 function updateWidgetState(widget: WidgetT, config: WidgetConfig): WidgetT {
@@ -543,63 +463,36 @@ function updateWidgetState(widget: WidgetT, config: WidgetConfig): WidgetT {
     config.dataArgs,
   );
 
-  // Handle UI args for storage properties (like html content for rich_note)
-  const uiUpdates = computeWidgetUiUpdates(config.uiArgs);
-  const newStorage = uiUpdates.storage;
-  const widgetName = uiUpdates.name ?? widget.name;
-  const widgetDescription = uiUpdates.description ?? widget.description;
-  const widgetSource = uiUpdates.source ?? widget.source;
+  const ui = computeWidgetUiUpdates(widget, config.uiArgs);
+  if (ui.problems.length)
+    throw new Error(
+      `ui_args were not applied: ${ui.problems.join("; ")}. Call get_widget_schema for the widget's ui_args_schema.`,
+    );
 
-  // Extract widget-level overrides from storage — they belong on the widget, not in storage
-  const {
-    gridData: gridDataOverride,
-    innerTab: innerTabOverride,
-    chartView: chartViewOverride,
-    ...restStorage
-  } = newStorage;
-  const validGridData =
-    gridDataOverride &&
-    typeof gridDataOverride === "object" &&
-    !Array.isArray(gridDataOverride);
-
-  const sanitizedGridData = validGridData
-    ? Object.fromEntries(
-        Object.entries(gridDataOverride as Record<string, unknown>).filter(
-          ([k, v]) =>
-            GRID_DATA_KEYS.has(k) && typeof v === "number" && Number.isFinite(v),
-        ),
-      )
-    : null;
-
-  let updatedWidget = {
+  return {
     ...widget,
     storage: {
       ...widget.storage,
-      ...restStorage,
+      ...ui.storage,
       params: {
         ...(widget.storage?.params ?? {}),
         ...newParams,
       },
+      ...(ui.config
+        ? {
+            plugin: {
+              ...(widget.storage?.plugin as Record<string, unknown> | undefined),
+              config: ui.config,
+            },
+          }
+        : {}),
     },
-    ...(sanitizedGridData && Object.keys(sanitizedGridData).length > 0
-      ? { gridData: { ...widget.gridData, ...sanitizedGridData } }
+    ...(ui.gridData && Object.keys(ui.gridData).length > 0
+      ? { gridData: { ...widget.gridData, ...ui.gridData } as WidgetT["gridData"] }
       : {}),
-    ...(typeof innerTabOverride === "string" ? { innerTab: innerTabOverride } : {}),
-    name: widgetName,
-    description: widgetDescription,
-    source: widgetSource,
+    ...(ui.innerTab ? { innerTab: ui.innerTab } : {}),
+    name: ui.name ?? widget.name,
+    description: ui.description ?? widget.description,
+    source: ui.source ?? widget.source,
   };
-
-  if (
-    chartViewOverride &&
-    typeof chartViewOverride === "object" &&
-    !Array.isArray(chartViewOverride)
-  ) {
-    updatedWidget = applyChartViewToWidget(
-      updatedWidget,
-      chartViewOverride as ChartViewIntent,
-    );
-  }
-
-  return updatedWidget;
 }

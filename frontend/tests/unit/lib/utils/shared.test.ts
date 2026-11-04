@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import { describe, expect, it, vi } from "vitest";
 import { duplicateDashboard } from "~/lib/utils/shared";
+import { makeItem } from "../../factories";
 
 const addTabMock = vi.fn();
 vi.mock("~/lib/state/app", () => ({
@@ -23,14 +24,10 @@ vi.mock("uuid", () => ({
 
 describe("shared utils", () => {
   it("should duplicate a dashboard correctly", () => {
-    const item = {
-      data: {
-        name: "Test Dashboard",
-        widgets: [],
-        groups: {},
-        gridLayout: [],
-      },
-    };
+    const item = makeItem({
+      index: "dashboard-1",
+      data: { name: "Test Dashboard", widgets: [], groups: [], gridLayout: {} },
+    });
 
     const id = duplicateDashboard(item);
 
@@ -41,10 +38,31 @@ describe("shared utils", () => {
         name: "Test Dashboard (Duplicate)",
         type: "custom",
         widgets: [],
-        groups: {},
-        gridLayout: [],
+        groups: [],
+        gridLayout: {},
       },
     });
     expect(toast.success).toHaveBeenCalled();
+  });
+
+  it("keeps a locked dashboard locked in its duplicate", () => {
+    const item = makeItem({
+      index: "dashboard-1",
+      data: {
+        name: "Locked Dashboard",
+        widgets: [],
+        groups: [],
+        gridLayout: {},
+        locked: true,
+      },
+    });
+
+    duplicateDashboard(item);
+
+    expect(addTabMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ locked: true }),
+      }),
+    );
   });
 });

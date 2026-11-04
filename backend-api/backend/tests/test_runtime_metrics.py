@@ -1,4 +1,4 @@
-from utilities.runtime_metrics import _pool_stats
+from utilities.runtime_metrics import POOL_STATES, _pool_stats
 
 
 class _FakePool:
@@ -33,6 +33,11 @@ def test_pool_stats_reads_all_counters():
             "overflow": 2.0,
         }
     }
+
+
+def test_pool_states_name_every_counter_that_is_read():
+    stats = _pool_stats({"e": _FakeEngine(_FakePool(1, 2, 3, 4))})
+    assert tuple(stats["e"]) == POOL_STATES
 
 
 def test_pool_stats_skips_engine_without_pool():

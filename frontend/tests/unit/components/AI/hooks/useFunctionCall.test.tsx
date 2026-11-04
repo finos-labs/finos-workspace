@@ -1,9 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { apiClient } from "~/api/api";
+import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
 import type { CopilotCommandResultT } from "~/lib/state/copilot";
-import type { AddGenerativeWidgetInputArgumentsT } from "~/lib/utils/ai";
+import type { AddGenerativeWidgetInputArgumentsT, DataSourceT } from "~/lib/utils/ai";
 
-// Mock external dependencies
 vi.mock("react-router-dom", () => ({
   useParams: vi.fn(() => ({ id: "test-dashboard-id" })),
 }));
@@ -20,6 +21,7 @@ const mockGetDashboardWidgetData = vi.fn();
 const mockCheckWidgetSignature = vi.fn();
 const mockGetAppWidget = vi.fn();
 const mockGetSharedDashWidget = vi.fn();
+const mockGetWidgetById = vi.fn();
 let mockItems: Record<
   string,
   {
@@ -29,17 +31,20 @@ let mockItems: Record<
         widgetId: string;
         storage: Record<string, unknown>;
       }>[];
+      locked?: boolean;
     };
   }
 > = {};
 
 vi.mock("~/lib/state/app", () => ({
+  DASHBOARD_LOCKED_MESSAGE: "Locked.",
   useAppStore: {
     getState: () => ({
       addWidget: mockAddWidget,
       addWidgets: mockAddWidgets,
       updateInnerTabs: mockUpdateInnerTabs,
       removeWidget: mockRemoveWidget,
+      getWidgetById: mockGetWidgetById,
       items: mockItems,
     }),
   },
@@ -80,12 +85,6 @@ vi.mock("~/lib/state/copilotData", () => ({
   ),
 }));
 
-vi.mock("~/lib/contexts/CachedTickers", () => ({
-  useTickersContext: vi.fn(() => ({
-    queryTickers: vi.fn(),
-  })),
-}));
-
 vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
   useShallowAppWidgetsStore: vi.fn((selector) =>
     selector({
@@ -105,32 +104,15 @@ vi.mock("~/api/auth.api", async (importOriginal) => ({
   getPreSignedUrl: (...args: unknown[]) => mockGetPreSignedUrl(...args),
 }));
 
-const mockSdkPost = vi.fn().mockResolvedValue({ data: {} });
-
-vi.mock("~/lib/api/sdkFetcher", () => ({
-  sdkClient: {
-    post: (...args: unknown[]) => mockSdkPost(...args),
-    get: vi.fn(),
-  },
-}));
-
 const mockCreateWidget = vi.fn().mockResolvedValue("mock-widget-uuid");
 const mockReadWidget = vi.fn();
+const mockUpdateWidget = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("~/api/workspace.api", () => ({
   createWidget: (...args: unknown[]) => mockCreateWidget(...args),
   readWidget: (...args: unknown[]) => mockReadWidget(...args),
+  updateWidget: (...args: unknown[]) => mockUpdateWidget(...args),
 }));
-
-const mockGetChartWidgetData = vi.fn();
-
-vi.mock("~/components/Widgets/Chart", async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
-  return {
-    ...actual,
-    getChartWidgetData: (...args: unknown[]) => mockGetChartWidgetData(...args),
-  };
-});
 
 const mockGetJsonWidget = vi.fn();
 const mockTriggerCustomEvent = vi.fn();
@@ -144,13 +126,13 @@ vi.mock("~/lib/utils", async (importOriginal) => {
   };
 });
 
-// Import after mocking
 import {
   convertToCopilotData,
   extractUuidFromWidgetId,
   useFunctionCall,
 } from "~/components/AI/hooks/useFunctionCall";
 import { useManageNavigationBar } from "~/components/AI/hooks/useManageNavigationBar";
+import { partial, required } from "../../../mocks";
 
 describe("useFunctionCall", () => {
   beforeEach(() => {
@@ -163,8 +145,13 @@ describe("useFunctionCall", () => {
     mockGetAppWidget.mockReset();
     mockCheckWidgetSignature.mockReturnValue(false);
     mockGetSharedDashWidget.mockReset();
+    mockGetWidgetById.mockReset();
+    mockUpdateWidget.mockClear();
     mockItems = {};
     vi.stubGlobal("fetch", vi.fn());
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { token: "agent-token", expires_in: 1800 },
+    });
   });
 
   const renderUseFunctionCall = () => {
@@ -180,7 +167,9 @@ describe("useFunctionCall", () => {
 
       const { result } = renderUseFunctionCall();
 
-      let response: Awaited<ReturnType<typeof result.current.getWidgetData>>;
+      let response:
+        | Awaited<ReturnType<typeof result.current.getWidgetData>>
+        | undefined;
       await act(async () => {
         response = await result.current.getWidgetData([
           {
@@ -192,7 +181,7 @@ describe("useFunctionCall", () => {
         ]);
       });
 
-      expect(response![0]).toEqual({
+      expect(required(response)[0]).toEqual({
         items: [
           {
             content: "<section>Cached HTML</section>",
@@ -213,7 +202,6 @@ describe("useFunctionCall", () => {
         name: "HTML Widget",
         type: "html",
         endpoint: "https://reference-backend.test/html",
-        endpointHeaders: [],
       });
       vi.mocked(fetch).mockResolvedValue(
         new Response("<main>Endpoint HTML</main>", {
@@ -223,7 +211,9 @@ describe("useFunctionCall", () => {
 
       const { result } = renderUseFunctionCall();
 
-      let response: Awaited<ReturnType<typeof result.current.getWidgetData>>;
+      let response:
+        | Awaited<ReturnType<typeof result.current.getWidgetData>>
+        | undefined;
       await act(async () => {
         response = await result.current.getWidgetData([
           {
@@ -234,7 +224,7 @@ describe("useFunctionCall", () => {
         ]);
       });
 
-      expect(response![0]).toEqual({
+      expect(required(response)[0]).toEqual({
         items: [
           {
             content: "<main>Endpoint HTML</main>",
@@ -248,6 +238,63 @@ describe("useFunctionCall", () => {
       });
     });
 
+    it("asks the API to call its own data backend, and sends others no credentials", async () => {
+      useBackendConnectorStore.setState({
+        apiSources: [
+          partial<Source>({
+            id: "src-1",
+            url: "https://reference-backend.test",
+            endpointHeaders: [
+              { key: "X-API-KEY", value: "" },
+              { key: "token", value: "", location: "query" },
+            ],
+          }),
+        ],
+      });
+      vi.mocked(fetch).mockImplementation(
+        async () =>
+          new Response("[]", { headers: { "content-type": "application/json" } }),
+      );
+      const requestFor = async (endpoint: string) => {
+        mockGetAppWidget.mockReturnValue({
+          widgetId: "prices",
+          name: "Prices",
+          type: "markdown",
+          endpoint,
+          sourceId: "src-1",
+          params: [{ paramName: "limit", type: "number" }],
+        });
+        const { result } = renderUseFunctionCall();
+        await act(async () => {
+          await result.current.getWidgetData([
+            {
+              origin: "Reference Backend",
+              id: "prices",
+              input_args: { limit: 5 },
+            },
+          ]);
+        });
+        return vi.mocked(fetch).mock.calls.at(-1) as [string, RequestInit];
+      };
+
+      const [ownRoute, ownInit] = await requestFor(
+        "https://reference-backend.test/prices",
+      );
+      expect(ownRoute).toMatch(/\/app\/data-connectors\/api-source\/src-1\/request$/);
+      const sent = JSON.parse(String(ownInit.body));
+      expect(new URL(sent.url).origin).toBe("https://reference-backend.test");
+      expect(new URL(sent.url).searchParams.get("limit")).toBe("5");
+      expect(new URL(sent.url).searchParams.has("token")).toBe(false);
+      expect(JSON.stringify(ownInit)).not.toContain("backend-key");
+
+      const [otherUrl, otherInit] = await requestFor("https://elsewhere.test/prices");
+      expect(new URL(otherUrl).origin).toBe("https://elsewhere.test");
+      expect(new URL(otherUrl).searchParams.get("limit")).toBe("5");
+      expect(new Headers(otherInit.headers).has("X-API-KEY")).toBe(false);
+
+      useBackendConnectorStore.setState({ apiSources: [] });
+    });
+
     it("resolves dropped-file widgets from the widget id, not the composer store", async () => {
       const fileUuid = "11111111-2222-3333-4444-555555555555";
       mockGetPreSignedUrl.mockResolvedValue({
@@ -257,11 +304,13 @@ describe("useFunctionCall", () => {
 
       const { result } = renderUseFunctionCall();
 
-      let response: Awaited<ReturnType<typeof result.current.getWidgetData>>;
+      let response:
+        | Awaited<ReturnType<typeof result.current.getWidgetData>>
+        | undefined;
       await act(async () => {
         response = await result.current.getWidgetData([
           {
-            origin: "OpenBB Hub",
+            origin: "the backend",
             id: `file-${fileUuid}`,
             input_args: {},
           },
@@ -269,7 +318,7 @@ describe("useFunctionCall", () => {
       });
 
       expect(mockGetPreSignedUrl).toHaveBeenCalledWith(fileUuid, 3600);
-      expect(response![0]).toMatchObject({
+      expect(required(response)[0]).toMatchObject({
         items: [
           {
             url: `https://files.test/${fileUuid}.pdf?Expires=1800`,
@@ -284,12 +333,12 @@ describe("useFunctionCall", () => {
     it("falls back to already-loaded dashboard data when the widget is not in the registry", async () => {
       const rows = [{ date: "1980-01-02", value: 1 }];
       const jsonString = JSON.stringify(rows);
-      const dataSource = {
+      const dataSource: DataSourceT = {
         origin: "Widget Studio",
         id: "widget_studio-f90cedd9-d890-4b68-9e0d-87e120af92ac",
         widget_uuid: "dashboard-widget-uuid",
         input_args: {},
-      } as any;
+      };
 
       mockGetDashboardWidgetData.mockReturnValue({ data: rows });
 
@@ -311,12 +360,12 @@ describe("useFunctionCall", () => {
     it("falls back to shared dashboard widget when the widget is not in the registry", async () => {
       const rows = [{ date: "1980-01-02", value: 1 }];
       const jsonString = JSON.stringify(rows);
-      const dataSource = {
+      const dataSource: DataSourceT = {
         origin: "Widget Studio",
         id: "widget_studio-f90cedd9-d890-4b68-9e0d-87e120af92ac",
         widget_uuid: "dashboard-widget-uuid",
         input_args: {},
-      } as any;
+      };
 
       mockGetSharedDashWidget.mockReturnValue({
         endpoint: "http://example.com",
@@ -340,13 +389,68 @@ describe("useFunctionCall", () => {
       expect(mockGetSharedDashWidget).toHaveBeenCalledWith("dashboard-widget-uuid");
     });
 
+    it("asks a widget with raw for its rows and reads them at data.rawDataKey", async () => {
+      const records = [{ month: "Jan", a: 43, b: 28 }];
+      const dataSource: DataSourceT = {
+        origin: "Widget Studio",
+        id: "widget_studio-raw-plotly",
+        widget_uuid: "dashboard-widget-uuid",
+        input_args: {},
+      };
+      mockGetSharedDashWidget.mockReturnValue({
+        endpoint: "http://example.com/fig",
+        type: "plotly",
+        raw: true,
+        data: { dataKey: "results.chart", rawDataKey: "results.records" },
+      });
+      vi.mocked(fetch).mockResolvedValueOnce(
+        Response.json({ results: { chart: { data: [] }, records } }),
+      );
+
+      const { result } = renderUseFunctionCall();
+      await act(async () => {
+        await expect(
+          result.current.getWidgetData([dataSource]),
+        ).resolves.toContainEqual({
+          items: [{ content: JSON.stringify(records) }],
+        });
+      });
+      const [url] = vi.mocked(fetch).mock.calls.at(-1) as [string, RequestInit];
+      expect(new URL(url).searchParams.get("raw")).toBe("true");
+    });
+
+    it("reads an html widget's rows as JSON, not as its page", async () => {
+      const rows = [{ month: "Jan", a: 43 }];
+      const dataSource: DataSourceT = {
+        origin: "Widget Studio",
+        id: "widget_studio-raw-html",
+        widget_uuid: "dashboard-widget-uuid",
+        input_args: {},
+      };
+      mockGetSharedDashWidget.mockReturnValue({
+        endpoint: "http://example.com/page",
+        type: "html",
+        raw: true,
+      });
+      vi.mocked(fetch).mockResolvedValueOnce(Response.json({ results: rows }));
+
+      const { result } = renderUseFunctionCall();
+      await act(async () => {
+        await expect(
+          result.current.getWidgetData([dataSource]),
+        ).resolves.toContainEqual({
+          items: [{ content: JSON.stringify(rows) }],
+        });
+      });
+    });
+
     it("throws NOT_FOUND when the widget is missing and no dashboard data exists", async () => {
-      const dataSource = {
+      const dataSource: DataSourceT = {
         origin: "Widget Studio",
         id: "widget_studio-missing",
         widget_uuid: "dashboard-widget-uuid",
         input_args: {},
-      } as any;
+      };
 
       const { result } = renderUseFunctionCall();
       const getWidgetData = result.current.getWidgetData;
@@ -360,11 +464,11 @@ describe("useFunctionCall", () => {
     });
 
     it("throws NOT_FOUND when the widget is missing and has no widget_uuid", async () => {
-      const dataSource = {
+      const dataSource: DataSourceT = {
         origin: "Widget Studio",
         id: "widget_studio-missing",
         input_args: {},
-      } as any;
+      };
 
       const { result } = renderUseFunctionCall();
       const getWidgetData = result.current.getWidgetData;
@@ -375,79 +479,12 @@ describe("useFunctionCall", () => {
         });
       });
     });
-
-    describe("raw=true skips the chart export transform", () => {
-      const rows = [{ date: "1980-01-02", value: 1 }];
-      const jsonString = JSON.stringify(rows);
-
-      const chartDataSource = (inputArgs: Record<string, unknown>) =>
-        ({
-          origin: "Custom Backend",
-          id: "chart-widget",
-          widget_uuid: "dashboard-widget-uuid",
-          input_args: inputArgs,
-        }) as any;
-
-      beforeEach(() => {
-        mockGetSharedDashWidget.mockReturnValue({
-          endpoint: "http://example.com",
-          type: "chart",
-        });
-        vi.mocked(fetch).mockResolvedValue(
-          new Response(jsonString, {
-            headers: { "Content-Type": "application/json" },
-          }),
-        );
-      });
-
-      it("runs the chart export transform when raw is not set", async () => {
-        const exportData = [{ x: "1980-01-02", y: 1 }];
-        mockGetChartWidgetData.mockResolvedValue({ exportData });
-
-        const { result } = renderUseFunctionCall();
-
-        await act(async () => {
-          await expect(
-            result.current.getWidgetData([chartDataSource({})]),
-          ).resolves.toContainEqual({
-            items: [{ content: JSON.stringify(exportData) }],
-          });
-        });
-        expect(mockGetChartWidgetData).toHaveBeenCalled();
-      });
-
-      it("returns the backend rows untransformed when raw is true", async () => {
-        const { result } = renderUseFunctionCall();
-
-        await act(async () => {
-          await expect(
-            result.current.getWidgetData([chartDataSource({ raw: true })]),
-          ).resolves.toContainEqual({
-            items: [{ content: jsonString }],
-          });
-        });
-        expect(mockGetChartWidgetData).not.toHaveBeenCalled();
-      });
-
-      it('also honors the string form raw: "true" sent by external MCP callers', async () => {
-        const { result } = renderUseFunctionCall();
-
-        await act(async () => {
-          await expect(
-            result.current.getWidgetData([chartDataSource({ raw: "true" })]),
-          ).resolves.toContainEqual({
-            items: [{ content: jsonString }],
-          });
-        });
-        expect(mockGetChartWidgetData).not.toHaveBeenCalled();
-      });
-    });
   });
 
   describe("getWidgetsParamOptions", () => {
     it("should throw error when widget is not found", async () => {
       const paramOptionsQuery = {
-        origin: "OpenBB Sandbox",
+        origin: "Sandbox",
         id: "non-existent-widget",
         param: "test-param",
         options_endpoint_input_args: {},
@@ -467,10 +504,9 @@ describe("useFunctionCall", () => {
     it("should throw error when param is not found on widget", async () => {
       mockGetAppWidget.mockReturnValue({
         params: [{ paramName: "other-param", type: "text" }],
-        endpointHeaders: {},
       });
       const paramOptionsQuery = {
-        origin: "OpenBB Sandbox",
+        origin: "Sandbox",
         id: "test-widget",
         param: "missing-param",
         options_endpoint_input_args: {},
@@ -490,11 +526,10 @@ describe("useFunctionCall", () => {
     it("should throw error when endpoint param has no optionsEndpoint", async () => {
       mockGetAppWidget.mockReturnValue({
         params: [{ paramName: "test-param", type: "endpoint" }],
-        endpointHeaders: {},
       });
 
       const paramOptionsQuery = {
-        origin: "OpenBB Sandbox",
+        origin: "Sandbox",
         id: "test-widget",
         param: "test-param",
         options_endpoint_input_args: {},
@@ -517,6 +552,28 @@ describe("useFunctionCall", () => {
       setupDashboard();
     });
 
+    it("refuses to add a widget to a locked dashboard and says why", async () => {
+      mockItems["test-dashboard-id"].data = { widgets: [], locked: true };
+      const { result } = renderUseFunctionCall();
+
+      let response: CopilotCommandResultT[] | undefined;
+      await act(async () => {
+        response = await result.current.addGenerativeWidget({
+          widget_type: "note",
+          data: "<p>Hello</p>",
+          name: "Note",
+        });
+      });
+
+      expect(response).toEqual([
+        {
+          status: "error",
+          message: "Dashboard 'test-dashboard-id' is locked. Locked.",
+        },
+      ]);
+      expect(mockAddWidget).not.toHaveBeenCalled();
+    });
+
     describe("note widget creation", () => {
       it("should create a note widget with string data", async () => {
         const { result } = renderUseFunctionCall();
@@ -529,22 +586,22 @@ describe("useFunctionCall", () => {
           description: "A test note widget",
         };
 
-        let response: Awaited<ReturnType<typeof addGenerativeWidget>>;
+        let response: Awaited<ReturnType<typeof addGenerativeWidget>> | undefined;
         await act(async () => {
           response = await addGenerativeWidget(config);
         });
 
-        expect(response![0].status).toBe("success");
-        expect(response![0].message).toContain("Test Note");
+        expect(required(response)[0].status).toBe("success");
+        expect(required(response)[0].message).toContain("Test Note");
 
         expect(mockAddWidget).toHaveBeenCalledWith("test-dashboard-id", {
           id: "mock-uuid-1234",
           name: "Test Note",
           description: "A test note widget",
           type: "custom",
-          widgetId: "rich_note-mock-uuid-1234",
+          widgetId: "markdown",
           gridData: { x: 0, y: 0, w: 40, h: 12, i: "mock-uuid-1234" },
-          storage: { html: "<p>Hello World</p>" },
+          storage: { text: "<p>Hello World</p>", citations: [], artifacts: [] },
         });
       });
 
@@ -590,26 +647,26 @@ describe("useFunctionCall", () => {
         const { addGenerativeWidget } = result.current;
 
         const artifact = {
-          uuid: "table-artifact-uuid",
-          name: "table_artifact_6725b",
-          description: "Country exposure table",
-          type: "table",
-          content: [{ country: "United States", weight: 67.61 }],
+          uuid: "html-artifact-uuid",
+          name: "html_artifact_6725b",
+          description: "Country exposure report",
+          type: "html",
+          content: "<p>United States: 67.61</p>",
         };
         const artifacts = [
           {
-            content: JSON.stringify(artifact.content),
+            content: artifact.content,
             source_info: {
               uuid: artifact.uuid,
               name: artifact.name,
-              description: "Country exposure table",
+              description: "Country exposure report",
             },
-            data_format: { parse_as: "table" },
+            data_format: { parse_as: "html" },
           },
         ];
         const config: AddGenerativeWidgetInputArgumentsT = {
           widget_type: "note",
-          data: "See table <|start_artifact_id|>table_artifact_6725b<|end_artifact_id|>",
+          data: "See report <|start_artifact_id|>html_artifact_6725b<|end_artifact_id|>",
           name: "Artifact Note",
           artifacts,
         };
@@ -626,259 +683,11 @@ describe("useFunctionCall", () => {
           widgetId: "markdown",
           gridData: { x: 0, y: 0, w: 40, h: 12, i: "mock-uuid-1234" },
           storage: {
-            text: "See table <|start_artifact_id|>table_artifact_6725b<|end_artifact_id|>",
+            text: "See report <|start_artifact_id|>html_artifact_6725b<|end_artifact_id|>",
             citations: [],
             artifacts: [artifact],
           },
         });
-      });
-
-      it("should error when non-string data is passed to a note (no empty note)", async () => {
-        const { result } = renderUseFunctionCall();
-        const { addGenerativeWidget } = result.current;
-
-        // Note widgets only accept string data - array data must be rejected
-        const config: AddGenerativeWidgetInputArgumentsT = {
-          widget_type: "note",
-          data: [{ content: "<p>Extracted content</p>" }],
-          name: "Array Data Note",
-        };
-
-        let response: Awaited<ReturnType<typeof addGenerativeWidget>>;
-        await act(async () => {
-          response = await addGenerativeWidget(config);
-        });
-
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toContain("string data");
-        expect(mockAddWidget).not.toHaveBeenCalled();
-      });
-
-      it("should error when data is an empty array for a note", async () => {
-        const { result } = renderUseFunctionCall();
-        const { addGenerativeWidget } = result.current;
-
-        const config: AddGenerativeWidgetInputArgumentsT = {
-          widget_type: "note",
-          data: [],
-          name: "Empty Note",
-        };
-
-        let response: Awaited<ReturnType<typeof addGenerativeWidget>>;
-        await act(async () => {
-          response = await addGenerativeWidget(config);
-        });
-
-        expect(response![0].status).toBe("error");
-        expect(mockAddWidget).not.toHaveBeenCalled();
-      });
-
-      it("should error when non-string data is passed to an html widget", async () => {
-        const { result } = renderUseFunctionCall();
-        const { addGenerativeWidget } = result.current;
-
-        const config: AddGenerativeWidgetInputArgumentsT = {
-          widget_type: "html",
-          data: [{ content: "<p>Markup</p>" }],
-          name: "Array Data Html",
-        };
-
-        let response: Awaited<ReturnType<typeof addGenerativeWidget>>;
-        await act(async () => {
-          response = await addGenerativeWidget(config);
-        });
-
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toContain("string data");
-        expect(mockAddWidget).not.toHaveBeenCalled();
-      });
-    });
-
-    describe("chart widget creation", () => {
-      it("should create a chart widget with data and chart_params", async () => {
-        const { result } = renderUseFunctionCall();
-        const { addGenerativeWidget } = result.current;
-
-        const chartData = [
-          { date: "2024-01-01", value: 100 },
-          { date: "2024-01-02", value: 150 },
-        ];
-
-        const config: AddGenerativeWidgetInputArgumentsT = {
-          widget_type: "chart",
-          data: chartData,
-          name: "Test Chart",
-          description: "A test chart widget",
-          chart_params: {
-            chartType: "line",
-            xKey: "date",
-            yKey: ["value"],
-          },
-        };
-
-        let response: Awaited<ReturnType<typeof addGenerativeWidget>>;
-        await act(async () => {
-          response = await addGenerativeWidget(config);
-        });
-
-        expect(response![0].status).toBe("success");
-
-        expect(mockAddWidget).toHaveBeenCalledWith("test-dashboard-id", {
-          id: "mock-uuid-1234",
-          name: "Test Chart",
-          description: "A test chart widget",
-          type: "custom",
-          widgetId: "copilot_table-mock-uuid-1234",
-          gridData: { x: 0, y: 0, w: 40, h: 12, i: "mock-uuid-1234" },
-          data: {
-            table: {
-              showAll: true,
-              enableCharts: true,
-              chartView: {
-                enabled: true,
-                chartType: "line",
-              },
-            },
-          },
-          storage: {
-            rowsData: chartData,
-            chartSettingsOpen: false,
-            columnDefs: [
-              {
-                field: "date",
-                headerName: "Date",
-                cellDataType: "text",
-                chartDataType: "category",
-              },
-              {
-                field: "value",
-                headerName: "Value",
-                cellDataType: "number",
-                chartDataType: "series",
-              },
-            ],
-            chartView: {
-              enabled: true,
-              chartType: "line",
-            },
-          },
-        });
-      });
-
-      it("should error when chart_params is missing (no silent table fallback)", async () => {
-        const { result } = renderUseFunctionCall();
-        const { addGenerativeWidget } = result.current;
-
-        const chartData = [{ x: 1, y: 10 }];
-
-        const config: AddGenerativeWidgetInputArgumentsT = {
-          widget_type: "chart",
-          data: chartData,
-          name: "Simple Chart",
-        };
-
-        let response: Awaited<ReturnType<typeof addGenerativeWidget>>;
-        await act(async () => {
-          response = await addGenerativeWidget(config);
-        });
-
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toContain("chart_params");
-        expect(mockAddWidget).not.toHaveBeenCalled();
-      });
-
-      it("should error when chart_params has an empty yKey", async () => {
-        const { result } = renderUseFunctionCall();
-        const { addGenerativeWidget } = result.current;
-
-        const config: AddGenerativeWidgetInputArgumentsT = {
-          widget_type: "chart",
-          data: [{ x: 1, y: 10 }],
-          name: "Broken Chart",
-          chart_params: { chartType: "line", xKey: "x", yKey: [] },
-        };
-
-        let response: Awaited<ReturnType<typeof addGenerativeWidget>>;
-        await act(async () => {
-          response = await addGenerativeWidget(config);
-        });
-
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toContain("chart_params");
-        expect(mockAddWidget).not.toHaveBeenCalled();
-      });
-    });
-
-    describe("table widget creation", () => {
-      it("should create a table widget with auto-generated column definitions", async () => {
-        const { result } = renderUseFunctionCall();
-        const { addGenerativeWidget } = result.current;
-
-        const tableData = [
-          { company_name: "Apple", market_cap: 3000000000000 },
-          { company_name: "Microsoft", market_cap: 2800000000000 },
-        ];
-
-        const config: AddGenerativeWidgetInputArgumentsT = {
-          widget_type: "table",
-          data: tableData,
-          name: "Test Table",
-          description: "A test table widget",
-        };
-
-        let response: Awaited<ReturnType<typeof addGenerativeWidget>>;
-        await act(async () => {
-          response = await addGenerativeWidget(config);
-        });
-
-        expect(response![0].status).toBe("success");
-
-        expect(mockAddWidget).toHaveBeenCalledWith("test-dashboard-id", {
-          id: "mock-uuid-1234",
-          name: "Test Table",
-          description: "A test table widget",
-          type: "custom",
-          widgetId: "copilot_table-mock-uuid-1234",
-          gridData: { x: 0, y: 0, w: 40, h: 12, i: "mock-uuid-1234" },
-          data: {
-            table: {
-              showAll: true,
-              enableCharts: true,
-              chartView: { chartType: "line" },
-            },
-          },
-          storage: {
-            rowsData: tableData,
-            columns: ["company_name", "market_cap"],
-          },
-        });
-      });
-
-      it("should create a table widget with empty data", async () => {
-        const { result } = renderUseFunctionCall();
-        const { addGenerativeWidget } = result.current;
-
-        const config: AddGenerativeWidgetInputArgumentsT = {
-          widget_type: "table",
-          data: [],
-          name: "Empty Table",
-        };
-
-        await act(async () => {
-          await addGenerativeWidget(config);
-        });
-
-        expect(mockAddWidget).toHaveBeenCalledWith(
-          "test-dashboard-id",
-          expect.objectContaining({
-            type: "custom",
-            widgetId: "copilot_table-mock-uuid-1234",
-            storage: expect.objectContaining({
-              rowsData: [],
-              columns: [],
-            }),
-          }),
-        );
       });
     });
 
@@ -895,13 +704,13 @@ describe("useFunctionCall", () => {
           name: "Error Test",
         };
 
-        let response: Awaited<ReturnType<typeof addGenerativeWidget>>;
+        let response: Awaited<ReturnType<typeof addGenerativeWidget>> | undefined;
         await act(async () => {
           response = await addGenerativeWidget(config);
         });
 
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toBe("Failed to add widget");
+        expect(required(response)[0].status).toBe("error");
+        expect(required(response)[0].message).toBe("Failed to add widget");
       });
 
       it("should handle unknown errors gracefully", async () => {
@@ -916,28 +725,30 @@ describe("useFunctionCall", () => {
           name: "Unknown Error Test",
         };
 
-        let response: Awaited<ReturnType<typeof addGenerativeWidget>>;
+        let response: Awaited<ReturnType<typeof addGenerativeWidget>> | undefined;
         await act(async () => {
           response = await addGenerativeWidget(config);
         });
 
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toBe("Unknown error creating widget");
+        expect(required(response)[0].status).toBe("error");
+        expect(required(response)[0].message).toBe("Unknown error creating widget");
       });
     });
 
     describe("widget_info fetch", () => {
       it("should use AI-generated title/description from widget_info endpoint", async () => {
-        mockSdkPost.mockResolvedValueOnce({
-          data: { title: "AI Title", description: "AI Desc" },
-        });
+        vi.mocked(fetch).mockResolvedValueOnce(
+          new Response(JSON.stringify({ title: "AI Title", description: "AI Desc" }), {
+            status: 200,
+          }),
+        );
 
         const { result } = renderUseFunctionCall();
         const { addGenerativeWidget } = result.current;
 
         const config: AddGenerativeWidgetInputArgumentsT = {
-          widget_type: "table",
-          data: [{ col: 1 }],
+          widget_type: "note",
+          data: "# Report",
           name: "Original Name",
           description: "Original Desc",
         };
@@ -946,15 +757,18 @@ describe("useFunctionCall", () => {
           await addGenerativeWidget(config);
         });
 
-        expect(mockSdkPost).toHaveBeenCalledWith(
+        expect(fetch).toHaveBeenCalledWith(
           expect.stringContaining("/v1/generate/widget_info"),
-          expect.objectContaining({
-            widget_generation_request: expect.objectContaining({
-              name: "Original Name",
-              description: "Original Desc",
-            }),
-          }),
+          expect.objectContaining({ method: "POST" }),
         );
+        const [, init] = vi.mocked(fetch).mock.calls[0];
+        expect(JSON.parse(init?.body as string)).toEqual({
+          widget_generation_request: {
+            name: "Original Name",
+            description: "Original Desc",
+            widget_data: "# Report",
+          },
+        });
 
         expect(mockAddWidget).toHaveBeenCalledWith(
           "test-dashboard-id",
@@ -966,14 +780,14 @@ describe("useFunctionCall", () => {
       });
 
       it("should fall back to original name/description when widget_info fails", async () => {
-        mockSdkPost.mockRejectedValueOnce(new Error("Network error"));
+        vi.mocked(fetch).mockRejectedValueOnce(new Error("Network error"));
 
         const { result } = renderUseFunctionCall();
         const { addGenerativeWidget } = result.current;
 
         const config: AddGenerativeWidgetInputArgumentsT = {
-          widget_type: "table",
-          data: [{ col: 1 }],
+          widget_type: "note",
+          data: "# Report",
           name: "Fallback Name",
           description: "Fallback Desc",
         };
@@ -991,7 +805,7 @@ describe("useFunctionCall", () => {
         );
       });
     });
-  }); // end addGenerativeWidget
+  });
 
   describe("addWidgetToDashboard - inner_tab", () => {
     it("should resolve inner_tab to uiArgs.innerTab and pass dataArgs through", async () => {
@@ -1008,7 +822,7 @@ describe("useFunctionCall", () => {
       await act(async () => {
         await addWidgetToDashboard([
           {
-            origin: "OpenBB Sandbox",
+            origin: "Sandbox",
             id: "some_widget",
             input_args: {
               inner_tab: "Overview",
@@ -1019,7 +833,6 @@ describe("useFunctionCall", () => {
       });
 
       const callArgs = mockCreateWidget.mock.calls[0][3];
-      // inner_tab stays in dataArgs (updateWidgetState whitelists by paramDef)
       expect(callArgs.dataArgs).toEqual({
         inner_tab: "Overview",
         ticker: "AAPL",
@@ -1030,7 +843,7 @@ describe("useFunctionCall", () => {
     });
 
     it("should create widget without innerTab when no nav bar exists", async () => {
-      setupDashboard(); // no nav bar
+      setupDashboard();
 
       const { result } = renderUseFunctionCall();
       const { addWidgetToDashboard } = result.current;
@@ -1038,7 +851,7 @@ describe("useFunctionCall", () => {
       await act(async () => {
         await addWidgetToDashboard([
           {
-            origin: "OpenBB Sandbox",
+            origin: "Sandbox",
             id: "some_widget",
             input_args: {
               inner_tab: "Overview",
@@ -1049,88 +862,58 @@ describe("useFunctionCall", () => {
       });
 
       const callArgs = mockCreateWidget.mock.calls[0][3];
-      // inner_tab stays in dataArgs (updateWidgetState whitelists by paramDef)
       expect(callArgs.dataArgs).toEqual({
         inner_tab: "Overview",
         ticker: "AAPL",
       });
-      // uiArgs should be undefined or not contain innerTab
       expect(callArgs.uiArgs?.innerTab).toBeUndefined();
     });
+  });
 
-    it("should enable chart view when copilot chart intent is provided", async () => {
+  describe("updateWidgetInDashboard", () => {
+    it("writes the content of a Copilot note to the text of its markdown widget", async () => {
+      mockGetWidgetById.mockReturnValue({ id: "note-1", widgetId: "markdown" });
       const { result } = renderUseFunctionCall();
-      const { addWidgetToDashboard } = result.current;
 
+      let response: CopilotCommandResultT[] = [];
       await act(async () => {
-        await addWidgetToDashboard(
-          [
-            {
-              origin: "OpenBB Sandbox",
-              id: "some_widget",
-              input_args: {
-                query: "SELECT * FROM metrics",
-              },
-            },
-          ],
+        response = await result.current.updateWidgetInDashboard([
           {
-            widget_type: "chart",
-            chart_params: {
-              chartType: "bar",
-              xKey: "date",
-              yKey: ["value"],
-            },
+            origin: "Workspace",
+            id: "markdown",
+            widget_uuid: "note-1",
+            input_args: { content: "# New text", name: "New name", description: "Why" },
           },
-        );
+        ]);
       });
 
-      const callArgs = mockCreateWidget.mock.calls[0][3];
-      expect(callArgs.uiArgs).toEqual(
-        expect.objectContaining({
-          chartSettingsOpen: false,
-          chartView: {
-            enabled: true,
-            chartType: "column",
-          },
-        }),
-      );
+      expect(response[0].status).toBe("success");
+      expect(mockUpdateWidget).toHaveBeenCalledWith("test-dashboard-id", "note-1", {
+        dataArgs: { content: "# New text", name: "New name", description: "Why" },
+        uiArgs: { text: "# New text", name: "New name", description: "Why" },
+      });
     });
 
-    it("should enable chart view when chart params are provided without widget type", async () => {
+    it("leaves a markdown widget fed by an endpoint to its params", async () => {
+      mockGetWidgetById.mockReturnValue({
+        id: "md-1",
+        widgetId: "report",
+        endpoint: { url: "https://example.com/report.md" },
+      });
       const { result } = renderUseFunctionCall();
-      const { addWidgetToDashboard } = result.current;
 
       await act(async () => {
-        await addWidgetToDashboard(
-          [
-            {
-              origin: "OpenBB Sandbox",
-              id: "some_widget",
-              input_args: {
-                query: "SELECT * FROM metrics",
-              },
-            },
-          ],
+        await result.current.updateWidgetInDashboard([
           {
-            chart_params: {
-              chartType: "line",
-              xKey: "date",
-              yKey: ["value"],
-            },
+            origin: "My backend",
+            id: "report",
+            widget_uuid: "md-1",
+            input_args: { content: "ignored", ticker: "AAPL" },
           },
-        );
+        ]);
       });
 
-      const callArgs = mockCreateWidget.mock.calls[0][3];
-      expect(callArgs.uiArgs).toEqual(
-        expect.objectContaining({
-          chartSettingsOpen: false,
-          chartView: {
-            enabled: true,
-            chartType: "line",
-          },
-        }),
-      );
+      expect(mockUpdateWidget.mock.calls[0][2].uiArgs).toBeUndefined();
     });
   });
 
@@ -1164,7 +947,7 @@ describe("useFunctionCall", () => {
     });
 
     it("should not set innerTab when no nav bar exists", async () => {
-      setupDashboard(); // no nav bar
+      setupDashboard();
 
       const { result } = renderUseFunctionCall();
       const { addGenerativeWidget } = result.current;
@@ -1208,9 +991,6 @@ describe("useFunctionCall", () => {
           });
         });
 
-        // A navigate_workspace → add_generative_widget sequence writes the tab
-        // to the URL; the widget must land on that tab, not the store's
-        // lagging currentTab.
         expect(mockAddWidget).toHaveBeenCalledWith(
           "test-dashboard-id",
           expect.objectContaining({ innerTab: "charts" }),
@@ -1239,8 +1019,6 @@ describe("useFunctionCall", () => {
       });
 
       it("ignores the URL tab when targeting a different dashboard", async () => {
-        // The other dashboard has a matching tab, so only the dashboard-id
-        // guard prevents the URL fallback from applying.
         mockItems["other-dashboard-id"] = {
           data: {
             widgets: [
@@ -1273,7 +1051,6 @@ describe("useFunctionCall", () => {
     });
   });
 
-  // Helper to set up mock dashboard with optional navigation bar
   function setupDashboard(
     opts: { navBarTabs?: { id: string; name: string }[]; navBarId?: string } = {},
   ) {
@@ -1314,9 +1091,9 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("success");
-        expect(response![0].message).toContain("Overview");
-        expect(response![0].message).toContain("Analysis");
+        expect(required(response)[0].status).toBe("success");
+        expect(required(response)[0].message).toContain("Overview");
+        expect(required(response)[0].message).toContain("Analysis");
         expect(mockAddWidgets).toHaveBeenCalledWith(
           "test-dashboard-id",
           expect.arrayContaining([
@@ -1349,8 +1126,8 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toContain("already exists");
+        expect(required(response)[0].status).toBe("error");
+        expect(required(response)[0].message).toContain("already exists");
       });
 
       it("should return error when no tabs provided", async () => {
@@ -1367,8 +1144,8 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toContain("At least one tab");
+        expect(required(response)[0].status).toBe("error");
+        expect(required(response)[0].message).toContain("At least one tab");
       });
 
       it("should return error on duplicate slugified tab names", async () => {
@@ -1389,8 +1166,8 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toContain("Duplicate tab name");
+        expect(required(response)[0].status).toBe("error");
+        expect(required(response)[0].message).toContain("Duplicate tab name");
       });
     });
 
@@ -1411,8 +1188,8 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("success");
-        expect(response![0].message).toContain("Charts");
+        expect(required(response)[0].status).toBe("success");
+        expect(required(response)[0].message).toContain("Charts");
         expect(mockUpdateInnerTabs).toHaveBeenCalled();
         expect(mockTriggerCustomEvent).toHaveBeenCalled();
       });
@@ -1431,8 +1208,8 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toContain("No navigation bar found");
+        expect(required(response)[0].status).toBe("error");
+        expect(required(response)[0].message).toContain("No navigation bar found");
       });
 
       it("should return error when tab already exists by slug", async () => {
@@ -1451,8 +1228,8 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toContain("already exists");
+        expect(required(response)[0].status).toBe("error");
+        expect(required(response)[0].message).toContain("already exists");
       });
     });
 
@@ -1477,8 +1254,8 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("success");
-        expect(response![0].message).toContain("Removed tabs: Charts");
+        expect(required(response)[0].status).toBe("success");
+        expect(required(response)[0].message).toContain("Removed tabs: Charts");
         expect(mockUpdateInnerTabs).toHaveBeenCalled();
       });
 
@@ -1499,8 +1276,10 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("success");
-        expect(response![0].message).toContain("Navigation bar has been deleted");
+        expect(required(response)[0].status).toBe("success");
+        expect(required(response)[0].message).toContain(
+          "Navigation bar has been deleted",
+        );
         expect(mockRemoveWidget).toHaveBeenCalledWith(
           "test-dashboard-id",
           "nav-widget-1",
@@ -1526,9 +1305,11 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("success");
-        expect(response![0].message).toContain("Removed tabs: Overview");
-        expect(response![0].message).toContain("not found (skipped): Nonexistent");
+        expect(required(response)[0].status).toBe("success");
+        expect(required(response)[0].message).toContain("Removed tabs: Overview");
+        expect(required(response)[0].message).toContain(
+          "not found (skipped): Nonexistent",
+        );
       });
 
       it("should return error when no navigation bar exists", async () => {
@@ -1545,8 +1326,8 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toContain("No navigation bar found");
+        expect(required(response)[0].status).toBe("error");
+        expect(required(response)[0].message).toContain("No navigation bar found");
       });
     });
 
@@ -1570,8 +1351,8 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("success");
-        expect(response![0].message).toContain('"Overview" → "Dashboard"');
+        expect(required(response)[0].status).toBe("success");
+        expect(required(response)[0].message).toContain('"Overview" → "Dashboard"');
         expect(mockUpdateInnerTabs).toHaveBeenCalled();
       });
 
@@ -1594,8 +1375,8 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toContain("duplicate tab name");
+        expect(required(response)[0].status).toBe("error");
+        expect(required(response)[0].message).toContain("duplicate tab name");
       });
 
       it("should return error when no navigation bar exists", async () => {
@@ -1612,18 +1393,13 @@ describe("useFunctionCall", () => {
           });
         });
 
-        expect(response![0].status).toBe("error");
-        expect(response![0].message).toContain("No navigation bar found");
+        expect(required(response)[0].status).toBe("error");
+        expect(required(response)[0].message).toContain("No navigation bar found");
       });
     });
   });
 
   describe("resolveInnerTabId", () => {
-    // resolveInnerTabId is internal to the hook, but we can test it indirectly
-    // through addWidgetToDashboard which uses it for inner_tab resolution.
-    // For direct testing, we verify the matching logic via manageNavigationBar's
-    // remove_tabs which uses the same findTabMatch helper.
-
     it("should match tab by slug", async () => {
       setupDashboard({
         navBarTabs: [
@@ -1635,8 +1411,6 @@ describe("useFunctionCall", () => {
       const { result } = renderHook(() => useManageNavigationBar());
       const manageNavigationBar = result.current;
 
-      // remove_tabs uses findTabMatch (same as resolveInnerTabId)
-      // Passing the slug "my-overview" should match the tab
       let response: CopilotCommandResultT[] | undefined;
       await act(async () => {
         response = await manageNavigationBar({
@@ -1645,8 +1419,8 @@ describe("useFunctionCall", () => {
         });
       });
 
-      expect(response![0].status).toBe("success");
-      expect(response![0].message).toContain("My Overview");
+      expect(required(response)[0].status).toBe("success");
+      expect(required(response)[0].message).toContain("My Overview");
     });
 
     it("should match tab by case-insensitive name", async () => {
@@ -1668,8 +1442,8 @@ describe("useFunctionCall", () => {
         });
       });
 
-      expect(response![0].status).toBe("success");
-      expect(response![0].message).toContain("Overview");
+      expect(required(response)[0].status).toBe("success");
+      expect(required(response)[0].message).toContain("Overview");
     });
 
     it("should not match when no match found", async () => {
@@ -1688,9 +1462,10 @@ describe("useFunctionCall", () => {
         });
       });
 
-      expect(response![0].status).toBe("success");
-      expect(response![0].message).toContain("not found (skipped): Nonexistent Tab");
-      // updateInnerTabs should NOT be called since nothing was actually removed
+      expect(required(response)[0].status).toBe("success");
+      expect(required(response)[0].message).toContain(
+        "not found (skipped): Nonexistent Tab",
+      );
       expect(mockUpdateInnerTabs).not.toHaveBeenCalled();
     });
   });

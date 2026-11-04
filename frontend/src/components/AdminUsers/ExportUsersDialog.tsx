@@ -10,7 +10,7 @@ import {
 import type { User } from "~/types/user.type";
 import { FormInput } from "../ds/atoms/Input";
 import { RadioGroup, RadioGroupItem } from "../ds/atoms/RadioGroup";
-import { BaseDialog, type BaseDialogProps } from "../ds/dialogs/BaseDialog";
+import { BaseDialog, type ClosableDialogProps } from "../ds/dialogs/BaseDialog";
 import { DialogHeader, DialogTitle } from "../ds/dialogs/Dialog";
 import {
   Form,
@@ -27,8 +27,7 @@ const formSchema = z.object({
 
 type TForm = z.infer<typeof formSchema>;
 
-interface Props extends BaseDialogProps {
-  /** All currently-displayed (filtered) rows — exported when nothing is selected. */
+interface Props extends ClosableDialogProps {
   rows: User[];
   selectedRows: User[];
   entityNameMap: Map<string, string>;
@@ -78,7 +77,7 @@ export default function ExportUsersDialog(props: Props) {
               name="fileName"
               control={form.control}
               render={({ field }) => (
-                <FormInput placeholder="openbb_pro_users" label="Save as" {...field} />
+                <FormInput placeholder="workspace_users" label="Save as" {...field} />
               )}
             />
 

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import type { ComponentProps, ForwardedRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Label, Message } from "~/components/ds/atoms/Label";
 
@@ -37,10 +38,15 @@ describe("Label and Message", () => {
 vi.mock("@radix-ui/react-label", () => {
   const React = require("react");
   return {
-    Root: React.forwardRef(({ children, className, ...props }: any, ref: any) => (
-      <label ref={ref} className={className} {...props}>
-        {children}
-      </label>
-    )),
+    Root: React.forwardRef(
+      (
+        { children, className, ...props }: ComponentProps<"label">,
+        ref: ForwardedRef<HTMLLabelElement>,
+      ) => (
+        <label ref={ref} className={className} {...props}>
+          {children}
+        </label>
+      ),
+    ),
   };
 });

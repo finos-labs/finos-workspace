@@ -1,167 +1,30 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CopilotContext } from "~/components/AI/CopilotContext";
+import { useCopilotStore } from "~/lib/state/copilot";
+import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 
 const {
-  mockConstants,
-  mockFetchAgentsData,
+  mockFetchDefaultAgent,
   mockShowNotification,
   mockUseShallowCopilotStore,
   mockUseShallowCopilotDataStore,
 } = vi.hoisted(() => ({
-  mockConstants: {
-    inSnowflakeNativeApp: false,
-  },
-  mockFetchAgentsData: vi.fn(),
+  mockFetchDefaultAgent: vi.fn(),
   mockShowNotification: vi.fn(),
   mockUseShallowCopilotStore: vi.fn(),
   mockUseShallowCopilotDataStore: vi.fn(),
 }));
 
 vi.mock("~/api/auth.api", () => ({
-  fetchAgentsData: (...args: unknown[]) => mockFetchAgentsData(...args),
+  fetchDefaultAgent: (...args: unknown[]) => mockFetchDefaultAgent(...args),
 }));
-
-vi.mock("~/lib/constants", async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
-  return {
-    ...actual,
-    get inSnowflakeNativeApp() {
-      return mockConstants.inSnowflakeNativeApp;
-    },
-  };
-});
-
-vi.mock("~/lib/runtimeConfig", () => ({
-  getConfig: () => ({
-    urls: {
-      backend: "",
-      ai: "https://workspace.example.com",
-      platform: "",
-      database: "",
-    },
-    authentication: {
-      allowEmailLogin: true,
-      allowRegistration: true,
-      allowForgotPassword: true,
-      identityProviders: [],
-      sendMicrosoftIdToken: false,
-      sendOktaIdToken: false,
-      sendUserEmailAsHeader: false,
-    },
-    authProviders: {
-      googleClientId: "",
-      azureClientId: "",
-      azureTenantId: "",
-      oktaClientId: "",
-      oktaDomain: "",
-    },
-    copilot: {
-      enabled: true,
-      openbbCopilot: true,
-      documentationLinks: true,
-      webSearch: true,
-      secFilings: false,
-      jinaAi: true,
-      aiEnhancements: true,
-      showCustomKey: true,
-    },
-    ui: {
-      showMinimizeWidget: true,
-      showChartGeneration: true,
-      showFeedbackButton: false,
-      showInviteButton: false,
-      showDemoRequestButton: false,
-      showEnterpriseTags: true,
-      showExternalDocLinks: true,
-      showHelpDocumentation: true,
-      showChangelog: true,
-      showOnboardingQuestions: true,
-      showTos: true,
-      showCopilotSwitcher: true,
-      showRemoveFromOrg: true,
-      defaultTheme: "dark",
-      odpDownloadInstaller: true,
-      showSalesEmail: false,
-    },
-    services: {
-      posthog: false,
-      hubspotForms: false,
-      email: true,
-      nixtla: true,
-      cloudflareWorker: true,
-    },
-    data: {
-      packageDataEnabled: true,
-      allowedDataVendors: [],
-      allowedDbTypes: [],
-      openDataPlatformInstallerEnabled: true,
-      allowHtmlJsExecution: false,
-    },
-    mcp: {
-      defaultServerEnabled: true,
-    },
-    analytics: {
-      posthogKey: "",
-      posthogUrl: "",
-    },
-    whiteLabel: {
-      name: "OpenBB Workspace",
-      shortName: "OpenBB",
-      loginImage: "",
-      loginImageDark: "",
-      leftSidebarLogo: "",
-      leftSidebarLogoDark: "",
-      favicon: "",
-      description: "",
-      keywords: "",
-      mainColor: "#0088CC",
-      fontFamily: "Inter",
-      showFloatingThemePreview: false,
-    },
-  }),
-}));
-
-vi.mock("~/lib/state/copilot", () => ({
-  useShallowCopilotStore: (selector: unknown) => mockUseShallowCopilotStore(selector),
-}));
-
-vi.mock("~/lib/state/copilotData", () => ({
-  useShallowCopilotDataStore: (selector: unknown) =>
-    mockUseShallowCopilotDataStore(selector),
-}));
-
-vi.mock("~/lib/state/theme", () => ({
-  useShallowThemeStore: (
-    selector: (state: { theme: string; aiEnhancements: boolean }) => unknown,
-  ) => selector({ theme: "dark", aiEnhancements: true }),
-}));
-
-vi.mock("~/lib/utils", () => ({
-  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
-}));
-
-vi.mock("~/lib/utils/toast", () => ({
-  showNotification: (...args: unknown[]) => mockShowNotification(...args),
-}));
-
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
-  return {
-    ...actual,
-    useParams: () => ({}),
-  };
-});
 
 vi.mock("~/components/Tooltip", () => ({
   default: ({ children }: { children: ReactNode; message: ReactNode }) => (
     <>{children}</>
   ),
-}));
-
-vi.mock("~/components/General/SnowflakeHide", () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock("~/components/Icon", () => ({
@@ -195,7 +58,9 @@ vi.mock("~/components/ds/atoms/Popover", () => ({
 }));
 
 vi.mock("~/components/ds/atoms/Select", () => ({
-  SelectRoot: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SelectRoot: ({ children, value }: { children: ReactNode; value?: string }) => (
+    <div data-value={value}>{children}</div>
+  ),
   SelectTrigger: ({ children }: { children: ReactNode }) => <button>{children}</button>,
   SelectValue: () => null,
   SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -220,10 +85,6 @@ vi.mock("~/components/AI/McpToolsButton", () => ({
   McpToolsButton: () => <div data-testid="mcp-tools-button" />,
 }));
 
-vi.mock("~/components/AI/SemanticViewsDropdown", () => ({
-  SemanticViewsButton: () => <div data-testid="semantic-views-button" />,
-}));
-
 type CopilotStoreState = {
   selectedCopilot: {
     holderUuid?: string | null;
@@ -245,10 +106,6 @@ type CopilotDataStoreState = {
       name?: string;
     }>;
   };
-  extraWidgetsEnabled: boolean;
-  toggleExtraWidgetsEnabled: ReturnType<typeof vi.fn>;
-  generativeUiEnabled: boolean;
-  toggleGenerativeUiEnabled: ReturnType<typeof vi.fn>;
   toggleSelectedWidget: ReturnType<typeof vi.fn>;
   isMentionTrackedWidget: ReturnType<typeof vi.fn>;
   getCopilotWidgets: ReturnType<typeof vi.fn>;
@@ -264,8 +121,7 @@ let copilotDataStoreState: CopilotDataStoreState;
 
 describe("CopilotContext", () => {
   beforeEach(() => {
-    mockConstants.inSnowflakeNativeApp = false;
-    mockFetchAgentsData.mockResolvedValue([]);
+    mockFetchDefaultAgent.mockResolvedValue(undefined);
     mockShowNotification.mockReset();
 
     copilotStoreState = {
@@ -284,10 +140,6 @@ describe("CopilotContext", () => {
       copilotWidgets: {
         selectedWidgets: [],
       },
-      extraWidgetsEnabled: false,
-      toggleExtraWidgetsEnabled: vi.fn(),
-      generativeUiEnabled: false,
-      toggleGenerativeUiEnabled: vi.fn(),
       toggleSelectedWidget: vi.fn(),
       isMentionTrackedWidget: vi.fn().mockReturnValue(false),
       getCopilotWidgets: vi.fn().mockReturnValue({ selectedWidgets: [] }),
@@ -309,6 +161,64 @@ describe("CopilotContext", () => {
   it("renders the copilot settings button", () => {
     render(<CopilotContext />);
 
-    expect(screen.getByRole("button", { name: "Copilot settings" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agent settings" })).toBeInTheDocument();
+  });
+
+  describe("an agent that offers its models through its model setting", () => {
+    const grant = (...modelIds: string[]) =>
+      useCopilotAccessStore.setState({
+        access: {
+          models: modelIds.map((model_id) => ({ agent_id: "default_agent", model_id })),
+          mcp: [],
+        },
+      });
+
+    const openSettings = () => {
+      render(<CopilotContext />);
+      fireEvent.click(screen.getByRole("button", { name: "Agent settings" }));
+    };
+
+    beforeEach(() => {
+      useCopilotStore.setState({
+        selectedCopilot: {
+          id: "default-copilot",
+          name: "Agent",
+          description: "",
+          endpoints: {},
+          features: {
+            model: {
+              label: "Model",
+              type: "select",
+              default: "large",
+              options: [
+                { label: "Large", value: "large" },
+                { label: "Small", value: "small" },
+              ],
+            },
+          },
+        },
+        customFeatureStates: { model: "large" },
+      });
+    });
+
+    it("offers only the models the user's roles grant", () => {
+      grant("small");
+      openSettings();
+
+      expect(screen.queryByText("Large")).not.toBeInTheDocument();
+      expect(screen.getByText("Small").closest("[data-value]")).toHaveAttribute(
+        "data-value",
+        "small",
+      );
+    });
+
+    it("shows no model setting when the user's roles grant no model", () => {
+      grant();
+      openSettings();
+
+      expect(screen.queryByText("Model")).not.toBeInTheDocument();
+      expect(screen.queryByText("Large")).not.toBeInTheDocument();
+      expect(screen.queryByText("Small")).not.toBeInTheDocument();
+    });
   });
 });

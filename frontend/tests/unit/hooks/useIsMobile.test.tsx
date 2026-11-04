@@ -1,16 +1,7 @@
-/**
- * Tests for useIsMobile hook
- *
- * Tests mobile detection based on:
- * - Screen width (< 768px)
- * - User agent string detection
- */
-
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import useIsMobile from "~/hooks/useIsMobile";
 
-// Mock usehooks-ts
 vi.mock("usehooks-ts", () => ({
   useWindowSize: vi.fn(() => ({ width: 1024, height: 768 })),
 }));
@@ -24,12 +15,10 @@ describe("useIsMobile", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset to desktop defaults
     mockUseWindowSize.mockReturnValue({ width: 1024, height: 768 });
   });
 
   afterEach(() => {
-    // Restore original user agent
     Object.defineProperty(window.navigator, "userAgent", {
       value: originalUserAgent,
       writable: true,

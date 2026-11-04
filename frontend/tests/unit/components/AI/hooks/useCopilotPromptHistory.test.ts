@@ -1,4 +1,5 @@
 import { renderHook } from "@testing-library/react";
+import type { MutableRefObject } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCopilotPromptHistory } from "~/components/AI/hooks/useCopilotPromptHistory";
 
@@ -25,7 +26,11 @@ function makeRef({
   value = "",
   selectionStart = 0,
   selectionEnd,
-}: { value?: string; selectionStart?: number; selectionEnd?: number } = {}) {
+}: {
+  value?: string;
+  selectionStart?: number;
+  selectionEnd?: number;
+} = {}) {
   return {
     current: {
       value,
@@ -33,7 +38,7 @@ function makeRef({
       selectionEnd: selectionEnd ?? selectionStart,
       setSelectionRange: vi.fn(),
     },
-  } as any;
+  } as unknown as MutableRefObject<HTMLTextAreaElement>;
 }
 
 function setup({
@@ -43,7 +48,7 @@ function setup({
 }: {
   questionsHistory?: string[];
   currentPrompt?: string;
-  ref?: any;
+  ref?: MutableRefObject<HTMLTextAreaElement>;
 } = {}) {
   const setPrompt = vi.fn();
   const setCompletion = vi.fn();
@@ -73,13 +78,13 @@ describe("useCopilotPromptHistory", () => {
 
   it("repeated ArrowUp walks newest -> oldest then clamps at oldest", () => {
     const { result, setPrompt } = setup({ questionsHistory: ["a", "b", "c"] });
-    result.current.handleHistoryNavigation(makeKey("ArrowUp")); // c
-    result.current.handleHistoryNavigation(makeKey("ArrowUp")); // b
-    result.current.handleHistoryNavigation(makeKey("ArrowUp")); // a
+    result.current.handleHistoryNavigation(makeKey("ArrowUp"));
+    result.current.handleHistoryNavigation(makeKey("ArrowUp"));
+    result.current.handleHistoryNavigation(makeKey("ArrowUp"));
     const clamp = makeKey("ArrowUp");
-    const handled = result.current.handleHistoryNavigation(clamp); // stay on a
+    const handled = result.current.handleHistoryNavigation(clamp);
     expect(setPrompt.mock.calls.map((c) => c[0])).toEqual(["c", "b", "a"]);
-    expect(handled).toBe(true); // consumed so caret does not jump
+    expect(handled).toBe(true);
     expect(clamp.preventDefault).toHaveBeenCalled();
   });
 
@@ -88,16 +93,11 @@ describe("useCopilotPromptHistory", () => {
       questionsHistory: ["a", "b"],
       currentPrompt: "my draft",
     });
-    result.current.handleHistoryNavigation(makeKey("ArrowUp")); // b (newest)
-    result.current.handleHistoryNavigation(makeKey("ArrowUp")); // a (oldest)
-    result.current.handleHistoryNavigation(makeKey("ArrowDown")); // b
-    result.current.handleHistoryNavigation(makeKey("ArrowDown")); // draft
-    expect(setPrompt.mock.calls.map((c) => c[0])).toEqual([
-      "b",
-      "a",
-      "b",
-      "my draft",
-    ]);
+    result.current.handleHistoryNavigation(makeKey("ArrowUp"));
+    result.current.handleHistoryNavigation(makeKey("ArrowUp"));
+    result.current.handleHistoryNavigation(makeKey("ArrowDown"));
+    result.current.handleHistoryNavigation(makeKey("ArrowDown"));
+    expect(setPrompt.mock.calls.map((c) => c[0])).toEqual(["b", "a", "b", "my draft"]);
   });
 
   it("ArrowDown does nothing when not navigating history", () => {
@@ -155,11 +155,11 @@ describe("useCopilotPromptHistory", () => {
       questionsHistory: ["a"],
       currentPrompt: "first",
     });
-    result.current.handleHistoryNavigation(makeKey("ArrowUp")); // stash "first", show "a"
-    result.current.resetHistoryCursor(); // user edited
+    result.current.handleHistoryNavigation(makeKey("ArrowUp"));
+    result.current.resetHistoryCursor();
     rerender({ currentPrompt: "second", questionsHistory: ["a"] });
-    result.current.handleHistoryNavigation(makeKey("ArrowUp")); // show "a" again
-    result.current.handleHistoryNavigation(makeKey("ArrowDown")); // restore new draft
+    result.current.handleHistoryNavigation(makeKey("ArrowUp"));
+    result.current.handleHistoryNavigation(makeKey("ArrowDown"));
     expect(setPrompt.mock.calls.map((c) => c[0])).toEqual(["a", "a", "second"]);
   });
 });

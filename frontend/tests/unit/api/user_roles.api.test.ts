@@ -24,7 +24,7 @@ describe("User Roles API", () => {
 
       const data = await getUserResourcePermissions();
       expect(data).toEqual(mockData);
-      expect(apiClient.get).toHaveBeenCalledWith("/pro/resource-permissions");
+      expect(apiClient.get).toHaveBeenCalledWith("/app/resource-permissions");
     });
 
     it("should return empty permissions on error", async () => {

@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "properties": {
+    "palette": { "type": "string", "enum": ["warm", "cool"], "title": "Palette" },
+    "smooth": { "type": "boolean", "title": "Smooth lines", "default": false },
+    "points": { "type": "integer", "minimum": 2, "maximum": 500 }
+  }
+}

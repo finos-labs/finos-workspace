@@ -2,9 +2,9 @@ import { Meta } from "@storybook/addon-docs/blocks";
 
 <Meta title="Introduction" />
 
-# OpenBB Design System
+# Design System
 
-The design system powering OpenBB Workspace. All components use **semantic color tokens** that automatically adapt to light and dark themes.
+The design system powering FINOS Workspace. All components use **semantic color tokens** that automatically adapt to light and dark themes.
 
 ## Quick start
 
@@ -17,7 +17,7 @@ import { Tag } from "~/components/ds/atoms/Tag";
 ## Principles
 
 - **Token-driven** — Colors reference semantic CSS variables (`--general-bg-primary`, `--btn-primary-bg`, etc.) defined in `src/styles/tokens.css`. Never hardcode hex values.
-- **Tailwind v4** — Utility classes map to the tokens via the Tailwind config. Use classes like `bg-general-bg-primary` or `text-ds-text-heading`.
+- **Tailwind v4** — Utility classes map to the tokens through the `@theme` block in `src/index.css`. Use classes like `bg-general-bg-primary` or `text-ds-text-heading`.
 - **Dark mode** — Toggled by adding `class="dark"` to the root element. Tokens resolve to the correct palette automatically.
 - **CVA variants** — Components use `class-variance-authority` for variant/size props, keeping style logic co-located with the component.
 

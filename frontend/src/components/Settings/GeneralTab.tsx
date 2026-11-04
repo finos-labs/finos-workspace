@@ -3,15 +3,9 @@ import { RadioGroup, RadioGroupItem } from "~/components/ds/atoms/RadioGroup";
 import { Checkbox } from "~/components/Forms/Checkbox";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
-import AdvancedSelectedTicker from "~/components/Widgets/Helpers/AdvancedSelectTicker";
-import { inSnowflakeNativeApp } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { DEFAULT_TICKERS } from "~/lib/types";
 import { cn } from "~/lib/utils";
-import FeatureLock from "../General/FeatureLock";
-import SnowflakeHide from "../General/SnowflakeHide";
 
 function FontSizeDiv({ fontSize }: { fontSize: string }) {
   return (
@@ -30,18 +24,13 @@ const aiCopilotAiEnhancementsFF =
   getConfig().copilot.enabled && getConfig().copilot.aiEnhancements;
 
 export default function GeneralTab() {
-  const { theme, aiEnhancements, fontSize, defaultTicker, updateDisplaySettings } =
+  const { theme, aiEnhancements, fontSize, updateDisplaySettings } =
     useShallowThemeStore((state) => ({
       theme: state.theme,
       aiEnhancements: state.aiEnhancements,
       fontSize: state.fontSize,
-      defaultTicker: state.defaultTicker,
       updateDisplaySettings: state.updateDisplaySettings,
     }));
-
-  const isProTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "pro",
-  );
 
   return (
     <TabsPrimitive.Content className="mt-5 mb-5 text-xs" value="general">
@@ -120,26 +109,6 @@ export default function GeneralTab() {
             />
           </RadioGroup>
         </div>
-        <SnowflakeHide>
-          <div className="flex flex-col bg-general-bg-primary rounded-md p-4 gap-2.5 py-5">
-            <p className="body-sm-medium">Default widget ticker</p>
-            <div className="mt-2.5 flex items-center gap-10 overflow-x-auto">
-              <div className="flex items-center gap-3">
-                <AdvancedSelectedTicker
-                  triggerSize="sm"
-                  ticker={defaultTicker ? defaultTicker : DEFAULT_TICKERS.AAPL}
-                  setTicker={(defaultTicker) =>
-                    updateDisplaySettings({ defaultTicker })
-                  }
-                />
-                <span>
-                  Chose which ticker loads as default when you are adding a new widget
-                  to a tab
-                </span>
-              </div>
-            </div>
-          </div>
-        </SnowflakeHide>
         {aiCopilotAiEnhancementsFF && (
           <div className="flex bg-general-bg-primary rounded-md p-4 flex-col gap-2.5 py-5">
             <p className="body-sm-medium flex items-center gap-2">
@@ -151,13 +120,10 @@ export default function GeneralTab() {
                       <strong>Features include:</strong>
                     </span>
                     <ul className="list-disc pl-4">
-                      <li>Widget title/description suggestion from copilot</li>
+                      <li>Widget title/description suggestion from the agent</li>
                       <li>Widget title/description suggestion upon upload</li>
-                      <li>Copilot chat title generation</li>
+                      <li>Agent chat title generation</li>
                       <li>Dashboard name generation</li>
-                      {inSnowflakeNativeApp && (
-                        <li>Widget metadata on SQL query run</li>
-                      )}
                     </ul>
                   </>
                 }
@@ -169,21 +135,19 @@ export default function GeneralTab() {
             </p>
 
             <div className="flex flex-col gap-3">
-              <FeatureLock isLocked={!isProTier}>
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    checked={aiEnhancements}
-                    onChange={(aiEnhancements) =>
-                      updateDisplaySettings({ aiEnhancements })
-                    }
-                    id="ai-enhancements"
-                  />
-                  <label htmlFor="ai-enhancements" className="grow">
-                    Enable AI-powered features that rely on third-party LLM vendors
-                    (e.g. OpenAI)
-                  </label>
-                </div>
-              </FeatureLock>
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  checked={aiEnhancements}
+                  onChange={(aiEnhancements) =>
+                    updateDisplaySettings({ aiEnhancements })
+                  }
+                  id="ai-enhancements"
+                />
+                <label htmlFor="ai-enhancements" className="grow">
+                  Enable AI-powered features that rely on third-party LLM vendors (e.g.
+                  OpenAI)
+                </label>
+              </div>
             </div>
           </div>
         )}

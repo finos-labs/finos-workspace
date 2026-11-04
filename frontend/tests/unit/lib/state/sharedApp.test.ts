@@ -1,13 +1,3 @@
-/**
- * Tests for sharedApp Zustand store
- *
- * Tests the shared app state management including:
- * - Shared items storage
- * - Dashboard retrieval by ID
- * - Widget retrieval within shared dashboards
- * - Updating shared items with both shared and entity-shared data
- */
-
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Item, Widget } from "~/lib/state/app";
@@ -16,21 +6,21 @@ import {
   type SharedItems,
   useSharedAppStore,
 } from "~/lib/state/sharedApp";
+import { makeParamGroup, makeWidget } from "../../factories";
+import { malformed } from "../../mocks";
 
-const createMockWidget = (overrides: Partial<Widget> = {}): Widget => ({
-  id: "widget-1",
-  // @ts-expect-error - ignored for now
-  widgetId: "equity_profile",
-  name: "Equity Profile",
-  innerTab: "overview",
-  groupId: null,
-  // @ts-expect-error - ignored for now
-  data: { mainTicker: { symbol: "AAPL", id: "AAPL" } },
-  ...overrides,
-});
+const createMockWidget = (overrides: Partial<Widget> = {}): Widget =>
+  makeWidget({
+    id: "widget-1",
+    widgetId: "equity_profile",
+    name: "Equity Profile",
+    innerTab: "overview",
+    ...overrides,
+  });
 
 const createMockItem = (overrides: Partial<Item> = {}): Item => ({
   index: "dashboard-1",
+  children: [],
   isFolder: false,
   data: {
     name: "Test Dashboard",
@@ -50,8 +40,8 @@ const createMockItem = (overrides: Partial<Item> = {}): Item => ({
 const createMockSharedItem = (overrides: Partial<SharedItem> = {}): SharedItem => ({
   creator: true,
   content: createMockItem(),
-  created_date: new Date(),
-  updated_date: new Date(),
+  created_date: new Date().toISOString(),
+  updated_date: new Date().toISOString(),
   created_by: "user@example.com",
   is_shared: true,
   ...overrides,
@@ -172,8 +162,8 @@ describe("useSharedAppStore", () => {
       const sharedItem = createMockSharedItem({
         content: createMockItem({ index: "shared-dashboard-1" }),
         created_by: "user1@example.com",
-        created_date: new Date("2024-01-01"),
-        updated_date: new Date("2024-01-02"),
+        created_date: new Date("2024-01-01").toISOString(),
+        updated_date: new Date("2024-01-02").toISOString(),
       });
 
       const sharedItems: SharedItems = {
@@ -213,7 +203,6 @@ describe("useSharedAppStore", () => {
 
       const state = useSharedAppStore.getState();
       expect(state.sharedItems?.["entity-dashboard-1"]).toBeDefined();
-      // @ts-expect-error - ignored for now
       expect(state.sharedItems?.["entity-dashboard-1"]?.isEntityShared).toBe(true);
     });
 
@@ -232,7 +221,6 @@ describe("useSharedAppStore", () => {
       });
 
       const state = useSharedAppStore.getState();
-      // @ts-expect-error - ignored for now
       expect(state.sharedItems?.["shared-1"]?.isEntityShared).toBe(false);
     });
 
@@ -251,21 +239,20 @@ describe("useSharedAppStore", () => {
       });
 
       const state = useSharedAppStore.getState();
-      // @ts-expect-error - ignored for now
       expect(state.sharedItems?.["entity-1"]?.isEntityShared).toBe(true);
     });
 
     it("should not update when sharedItems is null/undefined", () => {
       act(() => {
         useSharedAppStore.setState({
-          sharedItems: { existing: createMockItem() as any },
+          sharedItems: { existing: createMockItem() },
         });
       });
 
       const stateBefore = useSharedAppStore.getState().sharedItems;
 
       act(() => {
-        useSharedAppStore.getState().updateOnlySharedItems(null as any);
+        useSharedAppStore.getState().updateOnlySharedItems(malformed(null));
       });
 
       expect(useSharedAppStore.getState().sharedItems).toEqual(stateBefore);
@@ -298,8 +285,8 @@ describe("useSharedAppStore", () => {
     });
 
     it("should preserve created_date and updated_date", () => {
-      const createdDate = new Date("2024-01-01");
-      const updatedDate = new Date("2024-02-01");
+      const createdDate = new Date("2024-01-01").toISOString();
+      const updatedDate = new Date("2024-02-01").toISOString();
 
       const sharedItem = createMockSharedItem({
         content: createMockItem({ index: "dashboard-1" }),
@@ -408,9 +395,7 @@ describe("useSharedAppStore", () => {
     it("should handle dashboard with nested data", () => {
       const widget = createMockWidget({
         id: "complex-widget",
-        data: {
-          // @ts-expect-error - ignored for now
-          mainTicker: { symbol: "AAPL", id: "AAPL" },
+        data: malformed({
           params: { startDate: "2024-01-01", endDate: "2024-12-31" },
           nested: {
             level1: {
@@ -419,7 +404,7 @@ describe("useSharedAppStore", () => {
               },
             },
           },
-        },
+        }),
       });
 
       const item = createMockItem({
@@ -428,14 +413,13 @@ describe("useSharedAppStore", () => {
           ...createMockItem().data,
           widgets: [widget],
           groups: [
-            // @ts-expect-error - ignored for now
-            {
+            makeParamGroup({
               id: "group-1",
-              type: "ticker" as const,
+              groupById: "region",
               name: "Group 1",
               color: "#ff0000",
               value: null,
-            },
+            }),
           ],
         },
       });
@@ -457,8 +441,9 @@ describe("useSharedAppStore", () => {
       expect(dashboard?.data?.groups).toHaveLength(1);
 
       const foundWidget = useSharedAppStore.getState().getWidgetById("complex-widget");
-      // @ts-expect-error - ignored for now
-      expect(foundWidget?.data?.nested?.level1?.level2?.value).toBe("deep nested");
+      expect(foundWidget?.data).toMatchObject({
+        nested: { level1: { level2: { value: "deep nested" } } },
+      });
     });
   });
 });

@@ -16,7 +16,6 @@ import { useCreateMcpToken } from "./useMcpTokens";
 interface McpCreateTokenDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Hosted MCP endpoint baked into the install snippets. */
   endpoint: string;
 }
 
@@ -30,9 +29,6 @@ export function McpCreateTokenDialog({
   const { reset } = createToken;
   const created = createToken.data ?? null;
 
-  // The dialog stays mounted across open/close, so wipe the mutation state on
-  // both transitions — the raw secret must not linger in the mutation cache
-  // after Done, and a stale secret must not flash when the dialog reopens.
   useEffect(() => {
     setName("");
     reset();
@@ -54,7 +50,7 @@ export function McpCreateTokenDialog({
         <DialogTitle>Create token</DialogTitle>
         <DialogDescription>
           Save the secret for your token somewhere safe — you won't be able to view it
-          again. Anyone with it can access this Workspace through MCP.
+          again. Anyone with it can access this FINOS Workspace through MCP.
         </DialogDescription>
       </DialogHeader>
 
@@ -104,7 +100,11 @@ export function McpCreateTokenDialog({
               value={created.token}
               inputClassName="font-mono"
             />
-            <McpConnectSnippets endpoint={endpoint} token={created.token} />
+            <McpConnectSnippets
+              endpoint={endpoint}
+              token={created.token}
+              origin={window.location.origin}
+            />
             <Notice
               variant="warning"
               title="Save the API key. This API key won't be accessible afterwards."
@@ -120,7 +120,7 @@ export function McpCreateTokenDialog({
               />
             ) : (
               <span className="body-xs-regular text-ds-text-caption">
-                Generate a token to connect your Workspace
+                Generate a token to connect your FINOS Workspace
               </span>
             )}
           </div>

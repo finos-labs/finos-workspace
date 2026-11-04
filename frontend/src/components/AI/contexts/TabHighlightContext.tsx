@@ -3,7 +3,7 @@ import type { WidgetT } from "~/components/types";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 
-export interface TabHighlightContextType {
+interface TabHighlightContextType {
   hoveredWidgetTabId: string | null;
 }
 
@@ -18,7 +18,6 @@ export function useTabHighlight(): TabHighlightContextType {
   );
 
   const hoveredWidgetTabId = useMemo(() => {
-    // Prioritize direct tab hovering over widget-derived tab hovering
     if (hoveredTabId) {
       return hoveredTabId;
     }

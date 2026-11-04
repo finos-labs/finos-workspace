@@ -3,8 +3,6 @@ import type { IFuseOptions } from "fuse.js";
 export type AppsFuseKey<T> = {
   name: string;
   weight: number;
-  /** If provided, the field is tokenized into words and matched with a word-prefix
-   *  operator (`^term`) so e.g. searching "velo" won't match "developers". */
   tokenize?: (item: T) => string[];
 };
 

@@ -4,7 +4,7 @@ import React from "react";
 import { cn } from "../utils";
 import { DropdownMenuContentVariants } from "./DropdownMenu";
 
-export const tooltipContentClasses = cn([
+const tooltipContentClasses = cn([
   "body-xs-regular z-50 max-w-xs overflow-hidden rounded-sm px-2 py-1 shadow-1 outline-hidden",
   "bg-tooltip-bg text-ds-text-body",
   "fade-in-0 zoom-in-95 animate-in",
@@ -15,10 +15,10 @@ export const tooltipContentClasses = cn([
   "data-[side=top]:slide-in-from-bottom-2",
 ]);
 
-export interface TooltipContentProps
+interface TooltipContentProps
   extends React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content> {}
 
-export const TooltipContent = React.forwardRef<
+const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   TooltipContentProps
 >((props, ref) => {
@@ -27,15 +27,15 @@ export const TooltipContent = React.forwardRef<
     <TooltipPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn("BB-Tooltip", tooltipContentClasses, className)}
+      className={cn(tooltipContentClasses, className)}
       {...rest}
     />
   );
 });
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
-export const TooltipProvider = TooltipPrimitive.Provider;
+const TooltipProvider = TooltipPrimitive.Provider;
 
-export interface TooltipProps
+interface TooltipProps
   extends Omit<React.ComponentProps<typeof TooltipContent>, "content">,
     Pick<
       React.ComponentProps<typeof TooltipProvider>,
@@ -45,14 +45,14 @@ export interface TooltipProps
   arrow?: boolean;
 }
 
-export const tooltipArrowClasses = cn(["fill-tooltip-bg"]);
+const tooltipArrowClasses = cn(["fill-tooltip-bg"]);
 
 export const PopoverRoot = PopoverPrimitive.Root;
-export const PopoverClose = PopoverPrimitive.Close;
-export const PopoverPortal = PopoverPrimitive.Portal;
+
+const PopoverPortal = PopoverPrimitive.Portal;
 export const PopoverTrigger = PopoverPrimitive.Trigger;
 
-export interface ContentProps
+interface ContentProps
   extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {}
 
 export const PopoverContent = React.forwardRef<
@@ -67,7 +67,8 @@ export const PopoverContent = React.forwardRef<
         ref={ref}
         align={align}
         sideOffset={sideOffset}
-        className={cn("BB-Popover", DropdownMenuContentVariants(), className)}
+        data-slot="popover"
+        className={cn(DropdownMenuContentVariants(), className)}
         {...rest}
       />
     </PopoverPortal>
@@ -75,10 +76,10 @@ export const PopoverContent = React.forwardRef<
 });
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
-export interface PopoverArrowProps
+interface PopoverArrowProps
   extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Arrow> {}
 
-export const PopoverArrow = React.forwardRef<
+const PopoverArrow = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Arrow>,
   PopoverArrowProps
 >((props, ref) => {
@@ -87,7 +88,6 @@ export const PopoverArrow = React.forwardRef<
     <PopoverPrimitive.Arrow
       ref={ref}
       className={cn(
-        "BB-PopoverArrow",
         tooltipArrowClasses,
         "bg-dropdown-bg text-general-label",
         className,
@@ -98,16 +98,13 @@ export const PopoverArrow = React.forwardRef<
 });
 PopoverArrow.displayName = PopoverPrimitive.Arrow.displayName;
 
-/* Composed Component */
-
-export interface PopoverProps extends TooltipProps {
+interface PopoverProps extends TooltipProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  onOpenAutoFocus?: (event: FocusEvent) => void;
-  onCloseAutoFocus?: (event: FocusEvent) => void;
+  onOpenAutoFocus?: (event: Event) => void;
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
-/** `Popover` is a hint, same as `Tooltip`, but appears on click or manually */
 export const Popover = React.forwardRef<
   React.ElementRef<typeof PopoverContent>,
   PopoverProps

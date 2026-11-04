@@ -22,19 +22,11 @@ vi.mock("~/components/AI/hooks/useMcpToolSuggestions", () => ({
   useMcpToolSuggestions: () => ({ mcpToolOptions: [{ slashText: "/server_tool" }] }),
 }));
 
-vi.mock("~/components/AI/hooks/useSemanticViewSuggestions", () => ({
-  useSemanticViewSuggestions: () => ({
-    svOptions: [{ slashText: "/sv:DB.SCHEMA.VIEW" }],
-  }),
-}));
-
 describe("TextStyle chip rendering", () => {
   it("renders a brand mention as a single unbreakable pill that ellipsizes", () => {
     render(<TextStyle content="hi @Foo there" />);
 
     const chip = screen.getByText("@Foo");
-    // Static chip = one pill that never wraps; it truncates with an ellipsis
-    // instead of splitting across lines.
     expect(chip).toHaveClass(
       "bg-copilot-mention-bg",
       "rounded-full",
@@ -43,7 +35,6 @@ describe("TextStyle chip rendering", () => {
       "truncate",
       "align-middle",
     );
-    // No absolute-positioned background hack, and no per-line cap cloning.
     expect(chip).not.toHaveClass("absolute");
     expect(chip).not.toHaveClass("box-decoration-clone");
   });
@@ -62,16 +53,17 @@ describe("TextStyle chip rendering", () => {
     render(<TextStyle content="hi @WebThing there" />);
 
     const chip = screen.getByText("@WebThing");
-    expect(chip).toHaveClass("bg-copilot-mention-web-bg", "text-copilot-mention-web-label");
+    expect(chip).toHaveClass(
+      "bg-copilot-mention-web-bg",
+      "text-copilot-mention-web-label",
+    );
     expect(chip).not.toHaveClass("bg-copilot-mention-bg");
   });
 
-  it("renders slash commands (sv / skill / mcp) as chips", () => {
-    render(
-      <TextStyle content="run /sv:DB.SCHEMA.VIEW and /skill:my-skill and /server_tool" />,
-    );
+  it("renders slash commands (skill / mcp) as chips", () => {
+    render(<TextStyle content="run /skill:my-skill and /server_tool" />);
 
-    for (const token of ["/sv:DB.SCHEMA.VIEW", "/skill:my-skill", "/server_tool"]) {
+    for (const token of ["/skill:my-skill", "/server_tool"]) {
       expect(screen.getByText(token)).toHaveClass("bg-copilot-mention-bg");
     }
   });
@@ -92,17 +84,11 @@ describe("TextStyle chip rendering", () => {
       "rounded-full",
       "text-copilot-mention-label",
     );
-    // Anything that shifts inline-flow wrapping would desync the pill from the
-    // real <textarea>: no `px-1`, no truncation, no inline-block. Horizontal
-    // padding is allowed because it's compensated by an equal negative margin.
     expect(chip).not.toHaveClass("px-1");
     expect(chip).not.toHaveClass("truncate");
     expect(chip).not.toHaveClass("inline-block");
     expect(chip).not.toHaveClass("max-w-full");
-    // Slice (default) decoration, not clone, so a wrapped pill reads as one
-    // continuous pill rather than a capped fragment per line.
     expect(chip).not.toHaveClass("box-decoration-clone");
-    // Overlay sits under a pointer-events-none layer, so a hover title is moot.
     expect(chip).not.toHaveAttribute("title");
   });
 
@@ -119,7 +105,6 @@ describe("TextStyle chip rendering", () => {
       <TextStyle content="USE @[id:tab_id=abc&inner_tab=short-term-energy-outlook] to extract" />,
     );
 
-    // The raw token must never reach the user.
     expect(screen.queryByText(/@\[id:/)).toBeNull();
 
     const chip = screen.getByText("@Short Term Energy Outlook");
@@ -129,9 +114,7 @@ describe("TextStyle chip rendering", () => {
       "border-dashed",
       "truncate",
     );
-    // Muted, not branded: a stale reference isn't an active mention.
     expect(chip).not.toHaveClass("bg-copilot-mention-bg");
-    // Explanation goes through the shared Tooltip, not a native title.
     expect(chip).not.toHaveAttribute("title");
     expect(chip).toHaveAttribute("data-state");
   });
@@ -140,13 +123,11 @@ describe("TextStyle chip rendering", () => {
     const token = "@[id:tab_id=abc&inner_tab=short-term-energy-outlook]";
     render(<TextStyle content={`USE ${token} to extract`} overlay />);
 
-    // Relabelling would desync the highlight layer from the real <textarea>.
     const chip = screen.getByText(token);
     expect(chip).toHaveClass("bg-general-bg-secondary");
     expect(chip).not.toHaveClass("border-dashed");
     expect(chip).not.toHaveClass("px-1");
     expect(chip).not.toHaveAttribute("title");
-    // No tooltip trigger either: the overlay is pointer-events-none.
     expect(chip).not.toHaveAttribute("data-state");
   });
 

@@ -1,12 +1,5 @@
-import "@jose-donato/react-grid-layout/css/styles.css";
+import "react-grid-layout/css/styles.css";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { AgChartsEnterpriseModule } from "ag-charts-enterprise";
-import {
-  AllEnterpriseModule,
-  LicenseManager,
-  ModuleRegistry,
-} from "ag-grid-enterprise";
-import posthog from "posthog-js";
 import {
   Fragment,
   lazy,
@@ -20,70 +13,43 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import queryClient from "./queryClient";
 import "react-resizable/css/styles.css";
-import { createBrowserRouter, Link, Navigate, useRouteError } from "react-router-dom";
+import { createBrowserRouter, Link, useRouteError } from "react-router-dom";
 import Icon from "~/components/Icon";
 import "./index.css";
-import { registerSW } from "virtual:pwa-register";
-import { PostHogProvider } from "posthog-js/react";
 import { ErrorBoundary } from "react-error-boundary";
-import { useMcpAuthHandler } from "./components/AI/hooks/mcp/onMcpAuth";
-import { setGlobalGridOptions } from "./components/General/Table/AgGrid";
-import AuthWelcome from "./components/LayoutAuth/AuthWelcome";
-import {
-  inSnowflakeNativeApp,
-  TOOLTIP_OPEN_DELAY_MS,
-  TOOLTIP_SKIP_DELAY_MS,
-} from "./lib/constants";
-import { getEnabledIdentityProviders } from "./lib/onPremFeatureFlags";
+import { useMcpAuthCallback } from "./components/AI/hooks/mcp/onMcpAuth";
+import AuthRedirect from "./components/LayoutAuth/AuthRedirect";
+import { TOOLTIP_OPEN_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from "./lib/constants";
+import { getEnabledIdentityProviders } from "./lib/identityProviders";
+import { removeRetiredBrowserSecrets } from "./lib/retiredBrowserSecrets";
 import { getConfig } from "./lib/runtimeConfig";
-import { useShallowAuthStore } from "./lib/state/auth";
 import { useShallowThemeStore } from "./lib/state/theme";
-import {
-  applyBrandColors,
-  applyFontFamily,
-  applyWhiteLabelMeta,
-} from "./utils/colorUtils";
+import { applyWhiteLabelMeta } from "./utils/colorUtils";
+import { loadStylesheet } from "./utils/stylesheet";
 
-// Auth provider lazy loading — only loads SDK when the provider is enabled
-const LazyMsalProvider = lazy(() => import("./providers/MsalProviderWrapper"));
-const LazyOktaProvider = lazy(() => import("./providers/OktaProviderWrapper"));
 const LazyGoogleProvider = lazy(() => import("./providers/GoogleProviderWrapper"));
 
-// Route-level lazy loading
-const WidgetsBuilder = lazy(
-  () => import("./components/DataConnectors/WidgetsBuilder/WidgetsBuilder"),
-);
 const Setup2FA = lazy(() => import("./routes/2fa"));
 const AppsPage = lazy(() => import("./routes/Apps"));
 const AuthedAppNotFound = lazy(() => import("./routes/AuthedAppNotFound"));
 const AdminHome = lazy(() => import("./routes/admin"));
+const AdminEntities = lazy(() => import("./routes/admin/entities"));
 const AdminAccountSettings = lazy(() => import("./routes/admin/account"));
 const AdminApps = lazy(() => import("./routes/admin/apps"));
 const AdminGroups = lazy(() => import("./routes/admin/roles"));
-const AdminMarketplace = lazy(() => import("./routes/admin/marketplace"));
 
 const AdminThemeSettings = lazy(() => import("./routes/admin/themeSettings"));
 const AdminUsers = lazy(() => import("./routes/admin/users"));
+const AdminWidgets = lazy(() => import("./routes/admin/widgets"));
 const AILibrary = lazy(() => import("./routes/aiLibrary"));
 const MenuHomePage = lazy(() => import("./routes/appHome"));
-const BookingPage = lazy(() => import("./routes/booking"));
 const ConnectionsPage = lazy(() => import("./routes/Connections"));
-const DeveloperOnboardingHomepage = lazy(
-  () => import("./routes/developer_onboarding/DeveloperOnboardingHomepage"),
-);
-const Ds = lazy(() => import("./routes/ds"));
-const ForgotPasswordPage = lazy(() => import("./routes/forgotPassword"));
-const ForgotPasswordConfirmationPage = lazy(
-  () => import("./routes/forgotPasswordConfirmation"),
-);
 const HomePage = lazy(() => import("./routes/home"));
 const LoginPage = lazy(() => import("./routes/login"));
 const DataConnectors = lazy(() => import("./routes/newDataConnectors"));
-const NewsPage = lazy(() => import("./routes/news"));
-const RegisterPage = lazy(() => import("./routes/register"));
+const ResetPasswordPage = lazy(() => import("./routes/resetPassword"));
 const Settings = lazy(() => import("./routes/settings"));
 const TabPage = lazy(() => import("./routes/tab"));
-const TOSPage = lazy(() => import("./routes/tos"));
 
 const LayoutAdmin = lazy(() => import("./components/LayoutAdmin"));
 const LayoutUnauth = lazy(() => import("./components/LayoutUnauth"));
@@ -93,9 +59,6 @@ const TooltipProvider = lazy(() =>
   import("./components/Tooltip").then((mod) => ({ default: mod.TooltipProvider })),
 );
 
-const MsalTokenRefresh = lazy(() => import("./components/MsalTokenRefresh"));
-
-// Conditionally load react-scan for render scanning (stays build-time: dev-only tool)
 if (
   typeof window !== "undefined" &&
   import.meta.env.VITE_ENABLE_RENDER_SCANNING === "true"
@@ -106,25 +69,22 @@ if (
   document.head.appendChild(script);
 }
 
-LicenseManager.setLicenseKey(
-  "Using_this_{AG_Charts_and_AG_Grid}_Enterprise_key_{AG-088127}_in_excess_of_the_licence_granted_is_not_permitted___Please_report_misuse_to_legal@ag-grid.com___For_help_with_changing_this_key_please_contact_info@ag-grid.com___{OpenBB}_is_granted_a_{Single_Application}_Developer_License_for_the_application_{OpenBB-Pro}_only_for_{2}_Front-End_JavaScript_developers___All_Front-End_JavaScript_developers_working_on_{OpenBB-Pro}_need_to_be_licensed___{OpenBB-Pro}_has_been_granted_a_Deployment_License_Add-on_for_{3}_Production_Environments___This_key_works_with_{AG_Charts_and_AG_Grid}_Enterprise_versions_released_before_{26_October_2025}____[v3]_[0102]_MTc2MTQzMzIwMDAwMA==beb256f2264088d7376ddc63ea4e646c",
-);
-ModuleRegistry.registerModules([AllEnterpriseModule.with(AgChartsEnterpriseModule)]);
-
-setGlobalGridOptions();
-
 function OAuthCallback() {
-  const handleMcpAuthorization = useMcpAuthHandler();
-
-  useEffect(() => {
-    handleMcpAuthorization();
-  }, [handleMcpAuthorization]);
+  const error = useMcpAuthCallback();
 
   return (
     <div className="flex h-screen items-center justify-center">
-      <div className="text-center text-light-900 dark:text-light-50">
-        Authenticating… this window will close.
-      </div>
+      {error ? (
+        <div className="max-w-md text-center text-light-900 dark:text-light-50">
+          <h1 className="text-lg font-bold">Authentication Error</h1>
+          <p className="mt-2.5 text-alert-error">{error}</p>
+          <p className="mt-2.5">You can close this window.</p>
+        </div>
+      ) : (
+        <div className="text-center text-light-900 dark:text-light-50">
+          Authenticating… this window will close.
+        </div>
+      )}
     </div>
   );
 }
@@ -138,7 +98,7 @@ function ErrorElement() {
           An error occurred
         </h1>
         <p className="mb-10 mt-2.5 text-xl">Something went wrong.</p>
-        <Link to="/" className="obb-btn-tertiary h-10 text-sm">
+        <Link to="/" className="ws-btn-tertiary h-10 text-sm">
           Go back home
         </Link>
       </div>
@@ -148,37 +108,21 @@ function ErrorElement() {
 
 function RouterErrorElement() {
   const error = useRouteError() as Error;
-  if (posthog) {
-    posthog.capture("Error_critical", {
-      error: {
-        error: error?.stack,
-      },
-    });
-  }
+  console.error(error);
   return <ErrorElement />;
 }
 
 const AuthGuard = memo(({ children }: { children?: ReactNode }) => {
-  const needsOnboarding = useShallowAuthStore(
-    (s) => s.user?.token && s.needsOnboarding,
-  );
-
   return useMemo(() => {
-    const Wrapper = getEnabledIdentityProviders().includes("microsoft")
-      ? MsalTokenRefresh
-      : Fragment;
-
-    return needsOnboarding ? null : (
+    return (
       <Fragment key="auth-guard">
-        <AuthWelcome key="auth-welcome" />
+        <AuthRedirect key="auth-redirect" />
         <Suspense fallback={null}>
-          <Wrapper key="auth-wrapper">
-            <S children={<App key="app">{children}</App>} />
-          </Wrapper>
+          <S children={<App key="app">{children}</App>} />
         </Suspense>
       </Fragment>
     );
-  }, [needsOnboarding, children]);
+  }, [children]);
 });
 
 const S = ({ children }: { children: ReactNode }) => (
@@ -212,39 +156,9 @@ const router = createBrowserRouter([
             id: "login",
           },
           {
-            path: "register",
-            element: <S children={<RegisterPage />} />,
-            id: "register",
-          },
-          {
-            path: "terms-of-service",
-            element: <S children={<TOSPage />} />,
-            id: "terms-of-service",
-          },
-          {
-            path: "booking",
-            element: <S children={<BookingPage />} />,
-            id: "booking",
-          },
-          {
-            path: "forgot-password",
-            element: <S children={<ForgotPasswordPage />} />,
-            id: "forgot-password",
-          },
-          {
-            path: "forgot-password-confirmation",
-            element: <S children={<ForgotPasswordConfirmationPage />} />,
-            id: "forgot-password-confirmation",
-          },
-          {
-            path: "onboarding",
-            element: <S children={<DeveloperOnboardingHomepage />} />,
-            id: "onboarding",
-          },
-          {
-            path: "developer-onboarding",
-            element: <Navigate to="/onboarding" />,
-            id: "developer-onboarding",
+            path: "reset-password",
+            element: <S children={<ResetPasswordPage />} />,
+            id: "reset-password",
           },
         ],
       },
@@ -257,16 +171,7 @@ const router = createBrowserRouter([
         element: <AuthGuard />,
         children: [
           {
-            path: "ds",
-            element: <S children={<Ds />} />,
-          },
-          { path: "data-connectors", element: <Navigate to="/app" /> },
-          {
             path: "",
-            element: <S children={<AppsPage />} />,
-          },
-          {
-            path: "marketplace/:appSlug",
             element: <S children={<AppsPage />} />,
           },
           {
@@ -280,21 +185,6 @@ const router = createBrowserRouter([
             id: "app-tab",
           },
           {
-            path: "news",
-            element: <S children={<NewsPage />} />,
-            id: "app-news",
-          },
-          {
-            path: "data-connectors",
-            element: <Navigate to="/app/widgets" />,
-            id: "app-data-connectors",
-          },
-          {
-            path: "widget-studio",
-            element: <S children={<WidgetsBuilder />} />,
-            id: "app-widget-studio",
-          },
-          {
             path: "widgets",
             element: <S children={<DataConnectors />} />,
             id: "app-widgets",
@@ -303,16 +193,6 @@ const router = createBrowserRouter([
             path: "ai",
             element: <S children={<AILibrary />} />,
             id: "app-ai",
-          },
-          {
-            path: "prompt-library",
-            element: <Navigate to="/app/ai?tab=prompts" />,
-            id: "app-prompt-library",
-          },
-          {
-            path: "prompts",
-            element: <Navigate to="/app/ai?tab=prompts" />,
-            id: "app-prompts",
           },
           {
             path: "settings",
@@ -346,20 +226,25 @@ const router = createBrowserRouter([
             id: "admin-users",
           },
           {
+            path: "entities",
+            element: <S children={<AdminEntities />} />,
+            id: "admin-entities",
+          },
+          {
             path: "roles",
             element: <S children={<AdminGroups />} />,
             id: "admin-roles",
+          },
+          {
+            path: "widgets",
+            element: <S children={<AdminWidgets />} />,
+            id: "admin-widgets",
           },
           {
             path: "apps",
             element: <S children={<AdminApps />} />,
 
             id: "admin-apps",
-          },
-          {
-            path: "marketplace",
-            element: <S children={<AdminMarketplace />} />,
-            id: "admin-marketplace",
           },
           {
             path: "theme-settings",
@@ -376,12 +261,6 @@ const router = createBrowserRouter([
     ],
   },
 ]);
-
-const AUTH_WRAPPERS = {
-  microsoft: LazyMsalProvider,
-  okta: LazyOktaProvider,
-  google: LazyGoogleProvider,
-} as const;
 
 function Root() {
   const setTheme = useShallowThemeStore((state) => state.setTheme);
@@ -401,10 +280,11 @@ function Root() {
         </Suspense>
       </QueryClientProvider>
     );
-    return enabledProviders.reduce((content, provider) => {
-      const Comp = AUTH_WRAPPERS[provider];
-      return <Comp key={`${provider}-wrapper`}>{content}</Comp>;
-    }, content);
+    return enabledProviders.includes("google") ? (
+      <LazyGoogleProvider key="google-wrapper">{content}</LazyGoogleProvider>
+    ) : (
+      content
+    );
   }, [enabledProviders]);
 
   useEffect(() => {
@@ -417,32 +297,12 @@ function Root() {
   return <Suspense fallback={null}>{RootContent}</Suspense>;
 }
 
-if ("serviceWorker" in navigator) {
-  registerSW({ immediate: true });
-}
-
-function bootstrap() {
+async function bootstrap() {
+  removeRetiredBrowserSecrets();
   const config = getConfig();
 
-  // Apply branding from runtime config
-  if (config.whiteLabel.mainColor) {
-    applyBrandColors(config.whiteLabel.mainColor);
-  }
-  if (config.whiteLabel.fontFamily) {
-    applyFontFamily(config.whiteLabel.fontFamily);
-  }
-
-  // Override HTML meta tags from runtime config (no SEO needed for on-prem)
   applyWhiteLabelMeta(config.whiteLabel);
-
-  if (inSnowflakeNativeApp) {
-    const snowflakeFavicon = "/favicon/snowflake-favicon.png";
-    document.querySelector('link[rel="icon"]')?.setAttribute("href", snowflakeFavicon);
-    document
-      .querySelector('link[rel="apple-touch-icon"]')
-      ?.setAttribute("href", snowflakeFavicon);
-    console.log("[bootstrap] Snowflake favicon override applied");
-  }
+  if (config.whiteLabel.stylesheet) await loadStylesheet(config.whiteLabel.stylesheet);
 
   const root = createRoot(document.getElementById("root") as HTMLElement);
   root.render(
@@ -452,39 +312,8 @@ function bootstrap() {
         console.error(error);
       }}
     >
-      {config.services.posthog ? (
-        <PostHogProvider
-          apiKey={config.analytics.posthogKey}
-          options={{
-            api_host: config.analytics.posthogUrl,
-            ui_host: "app.posthog.com",
-            session_recording: {
-              maskAllInputs: true,
-              maskInputFn: (text, element: HTMLElement | { attributes: any }) => {
-                if (
-                  element?.attributes?.name?.value === "password" ||
-                  element?.attributes?.name?.value === "Password" ||
-                  element?.attributes?.id?.value === "api-key"
-                ) {
-                  return "*".repeat(text.length);
-                }
-                return text;
-              },
-              maskInputOptions: {
-                password: true,
-              },
-            },
-          }}
-        >
-          <Root />
-          <div id="dropdown-portal" />
-        </PostHogProvider>
-      ) : (
-        <>
-          <Root />
-          <div id="dropdown-portal" />
-        </>
-      )}
+      <Root />
+      <div id="dropdown-portal" />
     </ErrorBoundary>,
   );
 }

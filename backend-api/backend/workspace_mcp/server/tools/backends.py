@@ -1,5 +1,3 @@
-"""Backend connection management and app-template tools."""
-
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -24,22 +22,19 @@ from workspace_mcp.server._helpers import (
 def register(server: FastMCP, run: CommandRunner) -> None:
     @server.tool(
         description=describe_tool(
-            "Manage Workspace data backends (the connections that power widgets).",
+            "Manage FINOS Workspace data backends (the connections that power widgets).",
             "For list, returns each backend with id, name, url, status, and widget/app/agent counts.",
             "For add, requires name and url.",
-            (
-                "For update, requires backend_id and at least one of name, url, "
-                "endpoint_headers, or is_openbb_platform."
-            ),
+            "For update, requires backend_id and at least one of name, url, endpoint_headers.",
             "For refresh, requires backend_id; re-fetches widgets and templates from the backend URL.",
             "For remove, requires backend_id.",
             "To author or debug a custom backend's widgets.json or apps.json, read the "
-            "openbb://workspace/app-builder/index resource; it links the specs, minimal "
+            "workspace://app-builder/index resource; it links the specs, minimal "
             "working examples, and validation/common-errors.",
         )
     )
     async def manage_backends(  # noqa: PLR0913, PLR0917
-        operation: BackendsOperation,
+        operation: Annotated[BackendsOperation, Field(description="What to do with the backends.")],
         backend_id: Annotated[
             str | None,
             Field(
@@ -71,9 +66,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
                 )
             ),
         ] = None,
-        is_openbb_platform: bool | None = None,
     ) -> ToolResponse:
-        """List, add, update, refresh, or remove Workspace data backends."""
         allowed_operations = literal_values(BackendsOperation)
         if operation not in allowed_operations:
             return invalid_request(
@@ -96,24 +89,12 @@ def register(server: FastMCP, run: CommandRunner) -> None:
                     f"manage_backends operation='{operation}' requires backend_id.",
                     details={"required": ["backend_id"]},
                 )
-            if operation == "update" and not (
-                name
-                or url
-                or endpoint_headers is not None
-                or is_openbb_platform is not None
-            ):
+            if operation == "update" and not (name or url or endpoint_headers is not None):
                 return invalid_request(
                     "manage_backends",
                     "manage_backends operation='update' requires at least one of "
-                    "name, url, endpoint_headers, or is_openbb_platform.",
-                    details={
-                        "required_one_of": [
-                            "name",
-                            "url",
-                            "endpoint_headers",
-                            "is_openbb_platform",
-                        ]
-                    },
+                    "name, url, or endpoint_headers.",
+                    details={"required_one_of": ["name", "url", "endpoint_headers"]},
                 )
 
         return await run(
@@ -125,13 +106,12 @@ def register(server: FastMCP, run: CommandRunner) -> None:
                 url=url,
                 endpoint_headers=endpoint_headers,
                 validate_widgets=validate_widgets,
-                is_openbb_platform=is_openbb_platform,
             )
         )
 
     @server.tool(
         description=describe_tool(
-            "List, read, or instantiate Workspace apps (dashboard templates).",
+            "List, read, or instantiate FINOS Workspace apps (dashboard templates).",
             "There is no app update or delete through this MCP surface.",
             "Apps bundle tabs, widget layouts, parameter groups, and suggested prompts. "
             "Instantiating one is the programmatic equivalent of clicking an app in the gallery.",
@@ -147,11 +127,11 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             "from the app template and returns its dashboard_id. Pass that dashboard_id to "
             "subsequent dashboard-targeting tools.",
             "Apps are defined by the apps.json a backend serves; to author one, read the "
-            "openbb://workspace/app-builder/index resource.",
+            "workspace://app-builder/index resource.",
         )
     )
     async def manage_apps(
-        operation: AppsOperation,
+        operation: Annotated[AppsOperation, Field(description="What to do with the apps.")],
         backend_id: Annotated[
             str | None,
             Field(
@@ -189,7 +169,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ] = None,
     ) -> ToolResponse:
-        """List, read, or instantiate Workspace apps across all app sources."""
         allowed_operations = literal_values(AppsOperation)
         if operation not in allowed_operations:
             return invalid_request(

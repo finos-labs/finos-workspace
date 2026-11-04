@@ -9,7 +9,6 @@ export enum NotificationId {
   DeleteDashboardShared = "delete-dashboard-shared",
   WidgetMoved = "widget-moved",
   AccountRemoved = "account-removed",
-  AccountResetPassword = "account-reset-password",
   AccountReset2FA = "account-reset-2fa",
   Account2FAToggled = "account-2fa-toggled",
   WidgetRemoved = "widget-removed",
@@ -54,7 +53,7 @@ export interface ShowNotificationProps {
 }
 
 interface WithRememberMeProps extends Omit<ShowNotificationProps, "withClose"> {
-  id: NotificationId | `${NotificationId}:${string}`;
+  id?: NotificationId | `${NotificationId}:${string}`;
   rememberOptionLabel?: string;
   action?: {
     label: string;
@@ -76,21 +75,23 @@ export function showNotificationWithRememberMe(props: WithRememberMeProps) {
     toastType,
   } = props;
 
-  const toastId = id?.split?.(":")?.[0] as NotificationId;
+  const toastId = id?.split(":")[0] as NotificationId | undefined;
 
-  const toastDontShowAgain = useToastStore.getState().getToastDontShowAgain(toastId);
+  const toastDontShowAgain = toastId
+    ? useToastStore.getState().getToastDontShowAgain(toastId)
+    : undefined;
 
   if (toastDontShowAgain) {
     action.onClick(toastDontShowAgain);
   } else {
-    const toastFunction = toast[toastType] || toast.warning; // Default to warning if type is not valid
+    const toastFunction = (toastType && toast[toastType]) || toast.warning;
 
     toastFunction(message, {
       id,
       description: (
         <>
           {description}
-          <div className="mt-2 [&_.BB-Checkbox]:!border-light-800 [&_.BB-Checkbox]:!bg-transparent [&_.BB-Checkbox]:hover:!border-light-800 [&_.BB-Checkbox[data-state=checked]]:!border-brand-main [&_.BB-Checkbox[data-state=checked]]:!bg-brand-main [&_.BB-Checkbox[data-state=checked]]:!text-white [&_label]:!text-light-900">
+          <div className="mt-2 [&_[role=checkbox]]:!border-light-800 [&_[role=checkbox]]:!bg-transparent [&_[role=checkbox]]:hover:!border-light-800 [&_[role=checkbox][data-state=checked]]:!border-brand-main [&_[role=checkbox][data-state=checked]]:!bg-brand-main [&_[role=checkbox][data-state=checked]]:!text-white [&_label]:!text-light-900">
             {id && <Checkbox id={id} label={rememberOptionLabel} />}
           </div>
         </>
@@ -100,9 +101,9 @@ export function showNotificationWithRememberMe(props: WithRememberMeProps) {
         ? {
             label: cancel.label,
             onClick: () => {
-              if (!id) return cancel.onClick();
+              if (!(id && toastId)) return cancel.onClick();
               const isChecked =
-                document.getElementById(id).getAttribute("data-state") === "checked";
+                document.getElementById(id)?.getAttribute("data-state") === "checked";
               if (isChecked) {
                 useToastStore.getState().setToastDontShowAgain(toastId, isChecked);
               }
@@ -113,9 +114,9 @@ export function showNotificationWithRememberMe(props: WithRememberMeProps) {
       action: {
         label: action.label,
         onClick: () => {
-          if (!id) return action.onClick();
+          if (!(id && toastId)) return action.onClick();
           const isChecked =
-            document.getElementById(id).getAttribute("data-state") === "checked";
+            document.getElementById(id)?.getAttribute("data-state") === "checked";
           if (isChecked) {
             useToastStore.getState().setToastDontShowAgain(toastId, isChecked);
           }
@@ -136,7 +137,7 @@ export function showNotification(props: ShowNotificationProps) {
     };
   }
 
-  const toastFunction = toast[toastType] || toast.warning; // Default to warning if type is not valid
+  const toastFunction = (toastType && toast[toastType]) || toast.warning;
 
   toastFunction(message, {
     id: id ?? message,

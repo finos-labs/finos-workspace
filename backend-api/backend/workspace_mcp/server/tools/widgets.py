@@ -1,5 +1,3 @@
-"""Widget catalog discovery, schema, data, and lifecycle tools."""
-
 from typing import Annotated, Any
 
 from fastmcp import FastMCP
@@ -33,7 +31,6 @@ from workspace_mcp.server._helpers import (
     data_source_payloads,
     has_layout_ui_args,
     invalid_request,
-    is_generative_only_widget,
     maybe_offload_result,
     param_options_payloads,
     require_widget_identifier,
@@ -55,7 +52,6 @@ _CATALOG_OFFLOAD_MESSAGE = (
 
 
 def summarize_widget_catalog(data: Any) -> dict[str, Any]:
-    """Build the compact selection index for an offloaded widget catalog."""
     widgets = data.get("widgets") if isinstance(data, dict) else None
     if not isinstance(widgets, list):
         widgets = []
@@ -88,7 +84,7 @@ def register(
 ) -> None:
     @server.tool(
         description=describe_tool(
-            "Fetch current data for one Workspace data source.",
+            "Fetch current data for one FINOS Workspace data source.",
             "Only use this after selecting an exact widget identity and explicit data_args.",
         )
     )
@@ -108,19 +104,13 @@ def register(
             Field(
                 description=(
                     "Object of explicit parameter values for this data source. "
-                    "For chart widgets, include raw=true to fetch the underlying "
-                    "rows instead of the Plotly figure JSON; the figure is for "
-                    "the renderer, reasoning needs rows."
+                    "A widget that sets raw answers with the rows it shows, not "
+                    "with its HTML or chart."
                 )
             ),
         ] = None,
         widget_uuid: WidgetUuid = None,
-        ssm_request: Annotated[
-            dict[str, Any] | None,
-            Field(description="Object payload for SSM-backed widgets."),
-        ] = None,
     ) -> ToolResponse:
-        """Fetch widget data using the same browser-side path Ada uses."""
         return await run(
             GetWidgetDataCommand(
                 command="get_widget_data",
@@ -131,7 +121,6 @@ def register(
                             widget_id=widget_id,
                             data_args=data_args or {},
                             widget_uuid=widget_uuid,
-                            ssm_request=ssm_request,
                         )
                     ]
                 ),
@@ -140,7 +129,7 @@ def register(
 
     @server.tool(
         description=describe_tool(
-            "List widgets available to the current Workspace session.",
+            "List widgets available to the current FINOS Workspace session.",
             "Returns deterministic widget identities for later get_widget_schema and create_widget calls.",
             (
                 "Each returned widget includes origin; pass origin to other widget "
@@ -149,9 +138,8 @@ def register(
             ),
             (
                 "Only the deterministic plain-create subset is returned: "
-                "generative-only note widgets such as rich_note and widgets that "
-                "still require runtime-only bootstrap are intentionally excluded; "
-                "use add_generative_widget for notes."
+                "widgets that still require runtime-only bootstrap are "
+                "intentionally excluded; use add_generative_widget for notes."
             ),
             (
                 "Without filters the entire catalog is returned, which can be "
@@ -185,7 +173,6 @@ def register(
             ),
         ] = None,
     ) -> ToolResponse:
-        """List widgets that can be created in the current Workspace session."""
         result = await run(
             ListAvailableWidgetsCommand(
                 command="list_available_widgets",
@@ -204,14 +191,25 @@ def register(
     @server.tool(
         description=describe_tool(
             "Fetch the exact schema for one available widget.",
+            (
+                "data_args_schema and ui_args_schema are closed JSON Schemas for the "
+                "data_args and ui_args of create_widget and update_widget: a ui_args key "
+                "or value they do not accept refuses the call, and a data_args value they "
+                "do not accept is ignored with a warning."
+            ),
+            (
+                "method is the widget's HTTP method, and each param's in says where its "
+                "value goes in the widget's request: path, query, header or body."
+            ),
+            (
+                "mcp_tool, when present, names the MCP tool of the widget's own backend "
+                "that queries what the widget shows, and how its params fill the tool's "
+                "arguments."
+            ),
             "The response includes grid_data when layout defaults or min/max constraints are defined for that widget.",
             (
                 "If a param returns requires_options_lookup=true, call get_params_options "
                 "before using that param in create_widget or update_widget."
-            ),
-            (
-                "rich_note is generative-only; use add_generative_widget with "
-                "widget_type='note' instead."
             ),
         )
     )
@@ -227,7 +225,6 @@ def register(
             ),
         ],
     ) -> ToolResponse:
-        """Fetch one deterministic widget schema from the Workspace widget library."""
         if not origin or not widget_id:
             return invalid_request(
                 "get_widget_schema",
@@ -276,7 +273,6 @@ def register(
             ),
         ] = None,
     ) -> ToolResponse:
-        """Fetch parameter options from the browser bridge."""
         return await run(
             GetParamOptionsCommand(
                 command="get_params_options",
@@ -304,7 +300,6 @@ def register(
         widget_id: WidgetIdFallback = None,
         dashboard_id: DashboardId = None,
     ) -> ToolResponse:
-        """Load one widget's current payload from Workspace."""
         guard = require_widget_identifier(
             "read_widget", widget_uuid=widget_uuid, widget_id=widget_id
         )
@@ -323,7 +318,7 @@ def register(
         description=describe_tool(
             "Create one widget on a target dashboard.",
             "Use list_available_widgets and get_widget_schema first.",
-            "Do not use this for rich_note; use add_generative_widget with widget_type='note'.",
+            "Use add_generative_widget for text notes and HTML widgets.",
             (
                 "Pass dry_run=true to validate and preview effective_params "
                 "without changing the workspace."
@@ -345,12 +340,20 @@ def register(
         data_args: Annotated[
             dict[str, Any] | None,
             Field(
-                description=("Object of data parameter values from the widget schema.")
+                description=(
+                    "Object of data parameter values, as data_args_schema from "
+                    "get_widget_schema defines them."
+                )
             ),
         ] = None,
         ui_args: Annotated[
             dict[str, Any] | None,
-            Field(description="Object of UI config values from the widget schema."),
+            Field(
+                description=(
+                    "Object of UI config values, as ui_args_schema from "
+                    "get_widget_schema defines them."
+                )
+            ),
         ] = None,
         dry_run: Annotated[
             bool | None,
@@ -364,18 +367,11 @@ def register(
             ),
         ] = None,
     ) -> ToolResponse:
-        """Create a new Workspace widget."""
         if not origin or not widget_id:
             return invalid_request(
                 "create_widget",
                 "create_widget requires origin from list_available_widgets and widget_id.",
                 details={"required": ["origin", "widget_id"]},
-            )
-        if is_generative_only_widget(widget_id):
-            return invalid_request(
-                "create_widget",
-                "create_widget does not support 'rich_note'. "
-                "Use add_generative_widget with widget_type='note' instead.",
             )
         return await run(
             CreateWidgetCommand(
@@ -416,12 +412,20 @@ def register(
         data_args: Annotated[
             dict[str, Any] | None,
             Field(
-                description=("Object of data parameter values from the widget schema.")
+                description=(
+                    "Object of data parameter values, as data_args_schema from "
+                    "get_widget_schema defines them."
+                )
             ),
         ] = None,
         ui_args: Annotated[
             dict[str, Any] | None,
-            Field(description="Object of UI config values from the widget schema."),
+            Field(
+                description=(
+                    "Object of UI config values, as ui_args_schema from "
+                    "get_widget_schema defines them."
+                )
+            ),
         ] = None,
         dry_run: Annotated[
             bool | None,
@@ -435,7 +439,6 @@ def register(
             ),
         ] = None,
     ) -> ToolResponse:
-        """Update an existing Workspace widget."""
         guard = require_widget_identifier(
             "update_widget", widget_uuid=widget_uuid, widget_id=widget_id
         )
@@ -480,10 +483,10 @@ def register(
         )
     )
     async def update_widget_layout(  # noqa: PLR0913, PLR0917
-        x: float,
-        y: float,
-        w: float,
-        h: float,
+        x: Annotated[float, Field(description="The column of the widget's left edge on the dashboard grid.")],
+        y: Annotated[float, Field(description="The row of the widget's top edge on the dashboard grid.")],
+        w: Annotated[float, Field(description="The widget's width in grid columns.")],
+        h: Annotated[float, Field(description="The widget's height in grid rows.")],
         widget_uuid: WidgetUuid = None,
         widget_id: WidgetIdFallback = None,
         dashboard_id: DashboardId = None,
@@ -502,7 +505,6 @@ def register(
         max_w: float | None = None,
         max_h: float | None = None,
     ) -> ToolResponse:
-        """Move or resize one widget in dashboard layout space."""
         guard = require_widget_identifier(
             "update_widget_layout", widget_uuid=widget_uuid, widget_id=widget_id
         )
@@ -537,7 +539,6 @@ def register(
         widget_id: WidgetIdFallback = None,
         dashboard_id: DashboardId = None,
     ) -> ToolResponse:
-        """Delete a Workspace widget."""
         guard = require_widget_identifier(
             "delete_widget", widget_uuid=widget_uuid, widget_id=widget_id
         )

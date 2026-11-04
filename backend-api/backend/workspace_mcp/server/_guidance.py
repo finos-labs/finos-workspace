@@ -1,30 +1,18 @@
-"""Static guidance strings used in MCP tool descriptions and server instructions.
-
-Kept here so individual tool modules can import only the snippets they need
-without circular imports, and so the long server-level instruction text lives
-in one place.
-
-Structure: cross-cutting rules live in ``SERVER_INSTRUCTIONS`` (sectioned,
-bulleted); param-specific rules live in the shared ``*_PARAM`` descriptions
-below (attached to tool parameters via ``Annotated[..., Field(description=...)]``);
-tool-workflow rules live in each tool's own description.
-"""
-
 SERVER_INSTRUCTIONS = "\n".join(
     [
-        "Expose the active OpenBB Workspace browser session as MCP tools. "
-        "All tools require a running local Workspace browser bridge.",
+        "Expose the active FINOS Workspace browser session as MCP tools. "
+        "All tools require a running local FINOS Workspace browser bridge.",
         "",
         "Conventions:",
         "- Use snake_case payloads.",
         "- Do not invent identifiers: every dashboard_id, widget_uuid, tab_id, "
         "origin, backend_id, and skill slug must come from a previous tool result.",
-        "- Do not use create_widget for rich_note; use add_generative_widget with "
-        "widget_type='note'.",
+        "- Use add_generative_widget to add a text note (widget_type='note', "
+        "placed as a markdown widget) or an HTML widget.",
         "",
         "Recommended workflow:",
         "1. Call get_workspace_snapshot first to discover valid dashboard_id, "
-        "dashboard_composition, and skills from the live Workspace session.",
+        "dashboard_composition, and skills from the live FINOS Workspace session.",
         "2. Call manage_dashboard with operation='create' when you need a fresh "
         "dashboard.",
         "3. Call list_available_widgets to enumerate candidate widgets, then "
@@ -43,7 +31,7 @@ SERVER_INSTRUCTIONS = "\n".join(
         "navigation step that may have invalidated the tracked context.",
         "- Resolve dashboard_id from current_dashboard_uuid before each write. "
         "Provide dashboard_id explicitly when operating on a dashboard other than "
-        "the current Workspace route.",
+        "the current FINOS Workspace route.",
         "- Never match dashboards by name: duplicates with identical names are "
         'common. "This dashboard" means the current route; resolve via '
         "current_dashboard_uuid, not title.",
@@ -66,12 +54,12 @@ SERVER_INSTRUCTIONS = "\n".join(
         "New-tab workflow:",
         "- add_generative_widget's inner_tab does not create tabs. To put content "
         "on a new tab: call manage_navigation_bar operation='add_tabs' with tabs "
-        'such as [{"name":"AAPL Analysis"}], then navigate_workspace to the '
-        "generated slug tab_id (e.g. aapl-analysis), then create the widget "
+        'such as [{"name":"Q3 Review"}], then navigate_workspace to the '
+        "generated slug tab_id (e.g. q3-review), then create the widget "
         "without inner_tab or move an existing widget with update_widget_layout.",
         "",
         "Data availability:",
-        "- Ground every dashboard in data the Workspace already has. Only use "
+        "- Ground every dashboard in data the FINOS Workspace already has. Only use "
         "widgets returned by list_available_widgets; do not fetch data from "
         "external sources such as the web or local files, and do not build or "
         "modify a backend to supply missing data.",
@@ -84,10 +72,6 @@ SERVER_INSTRUCTIONS = "\n".join(
     ]
 )
 
-
-# ---------------------------------------------------------------------------
-# Shared parameter descriptions
-# ---------------------------------------------------------------------------
 
 DASHBOARD_ID_PARAM = (
     "Dashboard UUID. Omit to target the current dashboard route. Never send "
@@ -102,8 +86,8 @@ WIDGET_UUID_PARAM = (
 )
 WIDGET_ID_FALLBACK_PARAM = (
     "Widget type identifier; fallback only when exactly one matching widget "
-    "instance exists on the target dashboard. Never use a widget title or a "
-    "generic widget type such as rich_note as an identifier."
+    "instance exists on the target dashboard. Never use a widget title as an "
+    "identifier."
 )
 ORIGIN_PARAM = (
     "Widget origin. Pass origin exactly as returned by list_available_widgets."
@@ -111,6 +95,5 @@ ORIGIN_PARAM = (
 
 
 def describe_tool(summary: str, *notes: str) -> str:
-    """Compose a short MCP tool description from reusable guidance snippets."""
     parts = [summary, *notes]
     return " ".join(part for part in parts if part)

@@ -7,11 +7,11 @@ type OperatingSystem = {
 };
 
 const useDetectOS = (): OperatingSystem => {
-  // Use modern userAgentData API with fallback
   const userAgent = navigator.userAgent.toLowerCase();
-  const userAgentData = (navigator as any).userAgentData;
+  const { userAgentData } = navigator as Navigator & {
+    userAgentData?: { platform?: string };
+  };
 
-  // Modern browsers
   if (userAgentData?.platform) {
     const platform = userAgentData.platform.toLowerCase();
     return {
@@ -23,14 +23,13 @@ const useDetectOS = (): OperatingSystem => {
     };
   }
 
-  // Fallback for older browsers
   return {
     isMacOS: /macintosh|mac os x/i.test(userAgent),
     isWindows: /windows/.test(userAgent),
     isLinux: /linux/.test(userAgent),
     isIOS:
       /iphone|ipad|ipod/i.test(userAgent) ||
-      (navigator.maxTouchPoints > 0 && /macintosh/i.test(userAgent)), // iPad on iOS 13+
+      (navigator.maxTouchPoints > 0 && /macintosh/i.test(userAgent)),
     isAndroid: /android/i.test(userAgent),
   };
 };

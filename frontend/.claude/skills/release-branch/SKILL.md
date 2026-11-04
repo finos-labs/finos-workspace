@@ -1,7 +1,7 @@
 ---
 name: release-branch
 description: >
-  Cut a terminalpro release branch from main with develop's tree (the
+  Cut a frontend release branch from main with develop's tree (the
   main→release overlay process). Use when asked to make a release, cut a
   release branch, release/X.Y.Z, ship to main, or /release-branch.
   FE-only release flow for this repo. Works on macOS, Linux, and Windows
@@ -15,15 +15,11 @@ user-invocable: true
 Create `release/X.Y.Z` based on `main`, with a tree that **exactly matches
 `develop`**, then open a PR into `main`.
 
-This is the automated version of Juan's process:
-
-1. Snapshot develop (excluding `.git` / `node_modules`)
-2. Branch from main as `release/X.Y.Z`
-3. Merge develop
-4. Wipe working tree (keep `.git` / `node_modules`)
-5. Paste develop tree → commit
-
-We do the same with git-native ops — no desktop copy-paste.
+The manual version of this process is: snapshot develop (excluding `.git` and
+`node_modules`), branch from main as `release/X.Y.Z`, merge develop, wipe the
+working tree (keeping `.git` and `node_modules`), paste the develop tree and
+commit. This skill does the same with git-native operations, with no
+copy-and-paste through a desktop folder.
 
 ## Platform notes (Windows included)
 
@@ -77,7 +73,7 @@ git rev-parse --show-toplevel
 git status --porcelain
 git fetch origin develop main
 git log origin/main --oneline -20
-git show origin/develop:CHANGELOG.md
+git show origin/develop:frontend/CHANGELOG.md
 git branch --show-current
 git ls-remote --heads origin release/X.Y.Z
 ```
@@ -102,7 +98,7 @@ git checkout -B release/X.Y.Z origin/main
 
 ### 2. Merge develop (for ancestry), force tree = develop
 
-Juan's wipe+paste becomes pure git:
+The wipe and paste become pure git:
 
 ```bash
 git merge --no-commit --no-ff origin/develop
@@ -119,7 +115,7 @@ git add -A
 
 What each does:
 - `read-tree -u --reset` — index + working tree become **exactly** `origin/develop` (replaces the Desktop copy-paste).
-- `git clean -fd -e node_modules` — drop untracked leftovers; keep `node_modules` (same exclusion as Juan).
+- `git clean -fd -e node_modules` — drop untracked leftovers; keep `node_modules` (same exclusion as the manual process).
 - `git add -A` — stage the merge result.
 
 ### 3. Verify tree matches develop (mandatory)
@@ -180,8 +176,6 @@ Historical PR shape (do not invent fluff):
 | title | `Release/X.Y.Z` |
 | body | `Release/X.Y.Z` |
 
-Examples: #2092 (6.2.0), #2085 (6.1.0), #2079 (6.0.0).
-
 ### 7. Report
 
 ```
@@ -207,14 +201,13 @@ Examples: #2092 (6.2.0), #2085 (6.1.0), #2079 (6.0.0).
 4. Working tree must be clean before starting.
 5. Final tree **must** match `origin/develop` (`git diff origin/develop` empty).
 6. This skill only cuts the release branch/PR. It does **not**:
-   - bump package.json version (this repo stays at `0.0.0`)
-   - write the changelog (use `/changelog` first if needed)
+   - bump the version in `frontend/package.json`
+   - write the changelog (add the `## Version X.Y.Z` entry to
+     `frontend/CHANGELOG.md` on `develop` first)
    - deploy, tag, or touch backend repos
 7. If user is mid-feature on another branch, note their previous branch;
    do not switch them back unless they ask.
 8. Do **not** use desktop/temp-folder copy-paste. Git ops only.
-   (Juan's method is the source of truth for *intent*; this skill is the
-   safer cross-platform implementation of that intent.)
 9. Prefer **one command per invocation** when the agent is on Windows PowerShell,
    so a non-zero merge exit does not cancel the rest of a chained script.
 
@@ -232,15 +225,9 @@ When `--dry-run` or user says "just show me":
 |---------|-----|
 | dirty working tree | stash or commit first |
 | `release/X.Y.Z` already on remote | ask: abort, or delete remote branch + redo |
-| changelog missing on develop | finish changelog PR, then re-run |
+| changelog missing on develop | merge the changelog change into develop, then re-run |
 | `git diff origin/develop` not empty after read-tree | stop; paste output; do not force |
 | merge aborts weirdly | `git merge --abort`, re-run from step 1 |
 | Windows "Permission denied" on clean/checkout | kill node/vite/IDE locks; retry |
 | `gh` not found | install [GitHub CLI](https://cli.github.com/) and `gh auth login` |
 | agent chained `merge && read-tree` and stopped on merge | re-run from `read-tree` — conflicts are expected |
-
-## Relation to other skills
-
-- `/changelog <PR#>` — generate CHANGELOG entry **before** cutting release
-  (changelog should already be on `develop`)
-- `/sync-develop` — unrelated; for feature PR branches syncing with develop

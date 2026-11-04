@@ -1,12 +1,3 @@
-/**
- * Tests for toast Zustand store
- *
- * Tests the toast preference state management including:
- * - "Don't show again" preferences per notification type
- * - Getting and setting toast preferences
- * - Persistence behavior
- */
-
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useToastStore } from "~/lib/state/toast";
@@ -14,7 +5,6 @@ import { NotificationId } from "~/lib/utils/toast";
 
 describe("useToastStore", () => {
   beforeEach(() => {
-    // Reset store to initial state
     act(() => {
       useToastStore.setState({
         toasts: {},
@@ -137,7 +127,9 @@ describe("useToastStore", () => {
       });
 
       const newState = useToastStore.getState();
-      expect(newState.toasts[NotificationId.DeleteDashboard]?.dontShowAgain).toBe(false);
+      expect(newState.toasts[NotificationId.DeleteDashboard]?.dontShowAgain).toBe(
+        false,
+      );
       expect(newState.toasts[NotificationId.WidgetRemoved]?.dontShowAgain).toBe(true);
     });
   });
@@ -189,15 +181,9 @@ describe("useToastStore", () => {
   describe("edge cases", () => {
     it("should handle setting same value multiple times", () => {
       act(() => {
-        useToastStore
-          .getState()
-          .setToastDontShowAgain(NotificationId.DeleteTab, true);
-        useToastStore
-          .getState()
-          .setToastDontShowAgain(NotificationId.DeleteTab, true);
-        useToastStore
-          .getState()
-          .setToastDontShowAgain(NotificationId.DeleteTab, true);
+        useToastStore.getState().setToastDontShowAgain(NotificationId.DeleteTab, true);
+        useToastStore.getState().setToastDontShowAgain(NotificationId.DeleteTab, true);
+        useToastStore.getState().setToastDontShowAgain(NotificationId.DeleteTab, true);
       });
 
       expect(
@@ -214,7 +200,6 @@ describe("useToastStore", () => {
         });
       }
 
-      // Last toggle was i=9, so 9 % 2 === 1, meaning false
       expect(
         useToastStore.getState().toasts[NotificationId.GroupNotEmpty]?.dontShowAgain,
       ).toBe(false);

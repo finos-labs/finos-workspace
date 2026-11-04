@@ -22,15 +22,15 @@ describe("linkifyText", () => {
   });
 
   it("keeps surrounding text intact around the link", () => {
-    render(<span>{linkifyText("See https://openbb.co for more.")}</span>);
-    expect(screen.getByRole("link")).toHaveAttribute("href", "https://openbb.co");
+    render(<span>{linkifyText("See https://site.test for more.")}</span>);
+    expect(screen.getByRole("link")).toHaveAttribute("href", "https://site.test");
     expect(screen.getByText(/See/)).toBeInTheDocument();
     expect(screen.getByText(/for more\./)).toBeInTheDocument();
   });
 
   it("does not include trailing punctuation in the href", () => {
-    render(<span>{linkifyText("Visit https://openbb.co.")}</span>);
-    expect(screen.getByRole("link")).toHaveAttribute("href", "https://openbb.co");
+    render(<span>{linkifyText("Visit https://site.test.")}</span>);
+    expect(screen.getByRole("link")).toHaveAttribute("href", "https://site.test");
   });
 
   it("renders multiple URLs", () => {
@@ -49,9 +49,7 @@ describe("linkifyText", () => {
 
   it("supports plain http (not just https) for bare and markdown links", () => {
     render(
-      <span>
-        {linkifyText("Bare http://a.com and markdown [b](http://b.com)")}
-      </span>,
+      <span>{linkifyText("Bare http://a.com and markdown [b](http://b.com)")}</span>,
     );
     const links = screen.getAllByRole("link");
     expect(links).toHaveLength(2);
@@ -61,12 +59,10 @@ describe("linkifyText", () => {
 
   it("renders a markdown link with its label as the visible text", () => {
     render(
-      <span>
-        {linkifyText("Data sourced from [datagolf.com](https://datagolf.com).")}
-      </span>,
+      <span>{linkifyText("Data sourced from [data.test](https://data.test).")}</span>,
     );
-    const link = screen.getByRole("link", { name: "datagolf.com" });
-    expect(link).toHaveAttribute("href", "https://datagolf.com");
+    const link = screen.getByRole("link", { name: "data.test" });
+    expect(link).toHaveAttribute("href", "https://data.test");
     expect(link).toHaveAttribute("target", "_blank");
     expect(screen.getByText(/Data sourced from/)).toBeInTheDocument();
   });

@@ -1,26 +1,10 @@
 #!/bin/bash
 
-# This bash function should be added to `~/.zschr` or `~/.bashrc`
-# so that it can be called from anywhere in the terminal.
-
-# Description:
-    # Build, tag and push docker images to AWS ECR
-# Usage:
-    # dockerbackend -v|--version version -d|--dev|-p|--prod
-# Options:
-    # -v|--version: version of the docker image
-    # -d|--dev: build and push to dev ECR
-    # -p|--prod: build and push to prod ECR
-
-# Example: dockerbackend -v 0.1.0 -d
-
 function dockerbackend () {
-    local version aws tag repo dev_tag prod_tag dev_repo prod_repo
+    local version aws tag repo dev_repo prod_repo
 
-    dev_tag="awsdev1_ecr1"
-    prod_tag="awsbot1_ecr1"
-    dev_repo="467649407693.dkr.ecr.us-east-1.amazonaws.com/awsdev1_ecr1"
-    prod_repo="149911392452.dkr.ecr.us-east-1.amazonaws.com/awsbot1_ecr1"
+    dev_repo="${DOCKERBACKEND_DEV_REPO}"
+    prod_repo="${DOCKERBACKEND_PROD_REPO}"
 
     while [[ $# -gt 0 ]]; do
         key="$1"
@@ -50,20 +34,20 @@ function dockerbackend () {
     fi
 
     if [[ $aws == "dev" ]]; then
-        tag=$dev_tag
         repo=$dev_repo
     elif [[ $aws == "prod" ]]; then
-        tag=$prod_tag
         repo=$prod_repo
     fi
-    echo "Building payments_backend:${version} and payments_worker-${version}"
+    if [[ -z "$repo" ]]; then
+        echo "Set DOCKERBACKEND_DEV_REPO or DOCKERBACKEND_PROD_REPO to the ECR repository URI"
+        return 1
+    fi
+    tag="${repo##*/}"
+    echo "Building payments_backend-${version}"
 
     docker build -t $tag:payments_backend-$version -f fastapi.Dockerfile .
-    docker build -t $tag:payments_worker-$version -f rqworker.Dockerfile .
 
     docker tag $tag:payments_backend-$version $repo:payments_backend-$version
-    docker tag $tag:payments_worker-$version $repo:payments_worker-$version
 
     docker push $repo:payments_backend-$version
-    docker push $repo:payments_worker-$version
 }

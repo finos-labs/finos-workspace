@@ -7,7 +7,7 @@ import {
   MAX_SKILL_DESCRIPTION_LENGTH,
 } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
-import { useShallowAuthStore } from "~/lib/state/auth";
+import { fetchAgent } from "~/lib/state/agentToken";
 import {
   type AIMessage,
   type CopilotCommandResultT,
@@ -24,10 +24,6 @@ interface GeneratedSkill {
   content: string;
 }
 
-/**
- * Serialize the visible conversation for the skill generation endpoint,
- * keeping the newest whole messages that fit within the payload budget.
- */
 function buildConversationPayload() {
   const { messages } = useCopilotStore.getState().getCurrentChat();
   const visible = messages.filter(
@@ -51,14 +47,7 @@ function buildConversationPayload() {
   return kept.reverse();
 }
 
-/**
- * Handles the `save_skill` copilot function call: generates skill metadata and
- * content from the current conversation via the AI backend, saves it to the
- * user's skill library, and shows a toast with an "Edit Skill" action.
- * Mirrors the "create widget from artifact" flow.
- */
 export function useCreateSkillFromConversation() {
-  const userToken = useShallowAuthStore((s) => s.user?.token);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchSkillInfo = useCallback(
@@ -67,28 +56,27 @@ export function useCreateSkillFromConversation() {
       existingSlugs: string[],
       signal: AbortSignal,
     ): Promise<GeneratedSkill> => {
-      const response = await fetch(`${getConfig().urls.ai}/v1/generate/skill_info`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
-        } as HeadersInit,
-        body: JSON.stringify({
-          skill_generation_request: {
-            conversation: buildConversationPayload(),
-            name_hint: args.name || undefined,
-            instructions: args.instructions || undefined,
-            existing_slugs: existingSlugs,
-          },
-        }),
-        signal,
-      });
+      const response = await fetchAgent(
+        `${getConfig().urls.ai}/v1/generate/skill_info`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            skill_generation_request: {
+              conversation: buildConversationPayload(),
+              name_hint: args.name || undefined,
+              instructions: args.instructions || undefined,
+              existing_slugs: existingSlugs,
+            },
+          }),
+          signal,
+        },
+      );
 
       if (!response.ok) {
         throw new Error(`Skill generation failed with status ${response.status}`);
       }
 
-      // Validate the response shape instead of trusting the cast.
       const data = (await response.json()) as Partial<
         Record<keyof GeneratedSkill, unknown>
       >;
@@ -98,14 +86,11 @@ export function useCreateSkillFromConversation() {
         content: typeof data.content === "string" ? data.content : "",
       };
     },
-    [userToken],
+    [],
   );
 
   const createSkillFromConversation = useCallback(
     async (args: SaveSkillInputArgumentsT): Promise<CopilotCommandResultT[]> => {
-      // Deployment-level kill switch. Gate before any work so a copilot that
-      // supports `save_skill` can't send the conversation to the AI service on
-      // a deployment that has the feature turned off.
       const { enabled, saveSkillFromChat } = getConfig().copilot;
       if (!(enabled && saveSkillFromChat)) {
         return [
@@ -147,8 +132,6 @@ export function useCreateSkillFromConversation() {
           useSkillsLibraryStore.getState().skills.map((s) => s.slug),
           abortControllerRef.current.signal,
         );
-        // The user may click "Edit Skill" after generation resolves but before
-        // the save; bail out so we don't save a duplicate behind the dialog.
         if (abortControllerRef.current?.signal.aborted) {
           throw new DOMException("Aborted", "AbortError");
         }
@@ -162,7 +145,7 @@ export function useCreateSkillFromConversation() {
         const payload: SkillCreate = {
           slug,
           description: (
-            generated.description || "Workflow saved from a copilot conversation."
+            generated.description || "Workflow saved from an agent conversation."
           ).slice(0, MAX_SKILL_DESCRIPTION_LENGTH),
           content: generated.content,
         };

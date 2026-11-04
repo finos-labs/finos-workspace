@@ -4,6 +4,8 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TabProvider, useTabContext } from "~/lib/contexts/TabContext";
 import TabPage from "~/routes/tab";
+import { makeItem, makeWidget } from "../factories";
+import { stubStoreState } from "../mocks";
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
@@ -19,15 +21,19 @@ vi.mock("~/lib/providers/MobileProvider", () => ({
   useMobile: () => false,
 }));
 
+const lockedDashboards = vi.hoisted(() => new Set<string>());
+
 vi.mock("~/lib/state/app", () => ({
   useAppStore: {
     getState: () => ({
       updateTabParams: vi.fn(),
     }),
   },
-  useShallowAppStore: vi.fn((selector: any) =>
+  useIsDashboardLocked: (id: string | undefined) =>
+    id !== undefined && lockedDashboards.has(id),
+  useShallowAppStore: vi.fn((selector: (state: Record<string, unknown>) => unknown) =>
     selector({
-      getWidgetById: vi.fn(() => null),
+      getWidgetById: vi.fn(() => undefined),
       updateTabData: vi.fn(),
       getLastInnerTab: vi.fn(() => "main"),
       items: {
@@ -44,11 +50,12 @@ vi.mock("~/lib/state/app", () => ({
 }));
 
 vi.mock("~/lib/state/sharedApp", () => ({
-  useShallowSharedAppStore: vi.fn((selector: any) =>
-    selector({
-      getWidgetById: vi.fn(() => null),
-      sharedItems: {},
-    }),
+  useShallowSharedAppStore: vi.fn(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        getWidgetById: vi.fn(() => undefined),
+        sharedItems: {},
+      }),
   ),
 }));
 
@@ -61,8 +68,6 @@ vi.mock("~/lib/state/theme", () => ({
 }));
 
 vi.mock("~/lib/utils", async () => {
-  // Use the real implementations: the inner-tab param resolution is the logic under
-  // test here, so a hand-rolled stub would make these assertions meaningless.
   const actual =
     await vi.importActual<typeof import("~/lib/utils/app")>("~/lib/utils/app");
   return {
@@ -187,6 +192,26 @@ describe("TabProvider", () => {
     expect(screen.getByTestId("is-shared")).toHaveTextContent("yes");
   });
 
+  it.each([
+    ["123", "no"],
+    ["locked-123", "yes"],
+  ])("provides locked for dashboard %s: %s", (tabId, expected) => {
+    lockedDashboards.add("locked-123");
+    const TestComponent = () => {
+      const { locked } = useTabContext();
+      return <div data-testid="locked">{locked ? "yes" : "no"}</div>;
+    };
+
+    render(
+      <TabProvider currentTab="tab" tabId={tabId} layouts={[]}>
+        <TestComponent />
+      </TabProvider>,
+    );
+
+    expect(screen.getByTestId("locked")).toHaveTextContent(expected);
+    lockedDashboards.clear();
+  });
+
   it("provides getWidget function", () => {
     const TestComponent = () => {
       const { getWidget } = useTabContext();
@@ -229,7 +254,7 @@ describe("TabProvider", () => {
     const customSetLayouts = vi.fn();
     const TestComponent = () => {
       const { setLayouts } = useTabContext();
-      return <button onClick={() => setLayouts([])}>Update layouts</button>;
+      return <button onClick={() => setLayouts?.([])}>Update layouts</button>;
     };
 
     render(
@@ -254,22 +279,21 @@ describe("TabPage", () => {
 
   it("renders grid layout when widgets exist", async () => {
     const { useShallowAppStore } = await import("~/lib/state/app");
-    vi.mocked(useShallowAppStore).mockImplementation((selector: any) =>
-      selector({
-        getWidgetById: vi.fn(() => ({ id: "widget-1" })),
-        updateTabData: vi.fn(),
-        getLastInnerTab: vi.fn(() => "main"),
-        items: {
-          "test-tab-id": {
-            data: {
-              gridLayout: {
-                main: [{ i: "widget-1", x: 0, y: 0, w: 20, h: 10 }],
-              },
+    stubStoreState(useShallowAppStore, {
+      getWidgetById: vi.fn(() => makeWidget({ id: "widget-1" })),
+      updateTabData: vi.fn(),
+      getLastInnerTab: vi.fn(() => "main"),
+      items: {
+        "test-tab-id": makeItem({
+          index: "test-tab-id",
+          data: {
+            gridLayout: {
+              main: [{ i: "widget-1", x: 0, y: 0, w: 20, h: 10 }],
             },
           },
-        },
-      }),
-    );
+        }),
+      },
+    });
 
     render(
       <MemoryRouter initialEntries={["/app/test-tab-id?tab=main"]}>
@@ -282,25 +306,24 @@ describe("TabPage", () => {
 
   it("renders widget wrapper for each widget in layout", async () => {
     const { useShallowAppStore } = await import("~/lib/state/app");
-    vi.mocked(useShallowAppStore).mockImplementation((selector: any) =>
-      selector({
-        getWidgetById: vi.fn(() => ({ id: "widget-1" })),
-        updateTabData: vi.fn(),
-        getLastInnerTab: vi.fn(() => "main"),
-        items: {
-          "test-tab-id": {
-            data: {
-              gridLayout: {
-                main: [
-                  { i: "widget-1", x: 0, y: 0, w: 20, h: 10 },
-                  { i: "widget-2", x: 20, y: 0, w: 20, h: 10 },
-                ],
-              },
+    stubStoreState(useShallowAppStore, {
+      getWidgetById: vi.fn(() => makeWidget({ id: "widget-1" })),
+      updateTabData: vi.fn(),
+      getLastInnerTab: vi.fn(() => "main"),
+      items: {
+        "test-tab-id": makeItem({
+          index: "test-tab-id",
+          data: {
+            gridLayout: {
+              main: [
+                { i: "widget-1", x: 0, y: 0, w: 20, h: 10 },
+                { i: "widget-2", x: 20, y: 0, w: 20, h: 10 },
+              ],
             },
           },
-        },
-      }),
-    );
+        }),
+      },
+    });
 
     render(
       <MemoryRouter initialEntries={["/app/test-tab-id?tab=main"]}>
@@ -314,22 +337,21 @@ describe("TabPage", () => {
 
   it("renders empty dashboard CTA when no widgets", async () => {
     const { useShallowAppStore } = await import("~/lib/state/app");
-    vi.mocked(useShallowAppStore).mockImplementation((selector: any) =>
-      selector({
-        getWidgetById: vi.fn(() => null),
-        updateTabData: vi.fn(),
-        getLastInnerTab: vi.fn(() => "main"),
-        items: {
-          "test-tab-id": {
-            data: {
-              gridLayout: {
-                main: [],
-              },
+    stubStoreState(useShallowAppStore, {
+      getWidgetById: vi.fn(() => undefined),
+      updateTabData: vi.fn(),
+      getLastInnerTab: vi.fn(() => "main"),
+      items: {
+        "test-tab-id": makeItem({
+          index: "test-tab-id",
+          data: {
+            gridLayout: {
+              main: [],
             },
           },
-        },
-      }),
-    );
+        }),
+      },
+    });
 
     render(
       <MemoryRouter initialEntries={["/app/test-tab-id?tab=main"]}>
@@ -342,14 +364,12 @@ describe("TabPage", () => {
 
   it("renders app not found when no layout exists", async () => {
     const { useShallowAppStore } = await import("~/lib/state/app");
-    vi.mocked(useShallowAppStore).mockImplementation((selector: any) =>
-      selector({
-        getWidgetById: vi.fn(() => null),
-        updateTabData: vi.fn(),
-        getLastInnerTab: vi.fn(() => null),
-        items: {},
-      }),
-    );
+    stubStoreState(useShallowAppStore, {
+      getWidgetById: vi.fn(() => undefined),
+      updateTabData: vi.fn(),
+      getLastInnerTab: vi.fn(() => undefined),
+      items: {},
+    });
 
     await act(async () => {
       render(
@@ -372,29 +392,26 @@ describe("TabPage - Shared Dashboard", () => {
     const { useShallowAppStore } = await import("~/lib/state/app");
     const { useShallowSharedAppStore } = await import("~/lib/state/sharedApp");
 
-    vi.mocked(useShallowAppStore).mockImplementation((selector: any) =>
-      selector({
-        getWidgetById: vi.fn(() => null),
-        updateTabData: vi.fn(),
-        getLastInnerTab: vi.fn(() => "main"),
-        items: {},
-      }),
-    );
+    stubStoreState(useShallowAppStore, {
+      getWidgetById: vi.fn(() => undefined),
+      updateTabData: vi.fn(),
+      getLastInnerTab: vi.fn(() => "main"),
+      items: {},
+    });
 
-    vi.mocked(useShallowSharedAppStore).mockImplementation((selector: any) =>
-      selector({
-        getWidgetById: vi.fn(() => null),
-        sharedItems: {
-          "test-tab-id": {
-            data: {
-              gridLayout: {
-                main: [],
-              },
+    stubStoreState(useShallowSharedAppStore, {
+      getWidgetById: vi.fn(() => undefined),
+      sharedItems: {
+        "test-tab-id": makeItem({
+          index: "test-tab-id",
+          data: {
+            gridLayout: {
+              main: [],
             },
           },
-        },
-      }),
-    );
+        }),
+      },
+    });
 
     render(
       <MemoryRouter initialEntries={["/app/test-tab-id?tab=main"]}>

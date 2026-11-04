@@ -9,24 +9,28 @@ import { useStateReducer } from "~/hooks/useStateReducer";
 import {
   type EntityThemeSettings,
   type ThemeSettings,
-  useTableChartThemesStore,
-} from "~/lib/state/tableChartThemes";
+  useEntityThemeStore,
+} from "~/lib/state/entityTheme";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
 import SettingsMenu from "../ds/molecules/SettingsMenu";
 import Icon from "../Icon";
-import { THEME_MODES, ThemeSettingsLayout } from "./ThemeSettingsLayout";
+import {
+  THEME_MODES,
+  type ThemeMode,
+  ThemeSettingsLayout,
+} from "./ThemeSettingsLayout";
 
 const DEFAULT_COLORS = [
-  "#00AAFF", // blue
-  "#EF6689", // pink
-  "#16A34A", // green
-  "#FB923C", // orange
-  "#CCBE00", // yellow
-  "#337DBA", // dark blue
-  "#998E00", // dark yellow
-  "#917DB0", // purple
-  "#FB923C", // orange
+  "#00B5E2",
+  "#EF6689",
+  "#16A34A",
+  "#FB923C",
+  "#CCBE00",
+  "#0086BF",
+  "#998E00",
+  "#917DB0",
+  "#FB923C",
 ];
 
 const MIN_COLORS = 5;
@@ -40,13 +44,11 @@ const THEME_DEFAULT: GroupingThemeState = {
   palette: DEFAULT_COLORS,
 };
 
-type GroupingSettingsState = {
-  light?: GroupingThemeState;
-  dark?: GroupingThemeState;
-  themeMode?: "light" | "dark";
+type GroupingSettingsState = Record<ThemeMode, GroupingThemeState> & {
+  themeMode: ThemeMode;
 };
 
-const STATE_DEFAULT: GroupingSettingsState = {
+const STATE_DEFAULT: Record<ThemeMode, GroupingThemeState> = {
   light: THEME_DEFAULT,
   dark: THEME_DEFAULT,
 };
@@ -67,7 +69,7 @@ function updateState(
 }
 
 function initializer(state: GroupingSettingsState): GroupingSettingsState {
-  const { light, dark } = useTableChartThemesStore.getState();
+  const { light, dark } = useEntityThemeStore.getState();
   const appThemes = { light: light?.appTheme, dark: dark?.appTheme };
   const updatedState = {} as Partial<GroupingSettingsState>;
   for (const mode of THEME_MODES) {
@@ -79,14 +81,14 @@ function initializer(state: GroupingSettingsState): GroupingSettingsState {
 export function GroupingSettings() {
   const theme = useShallowThemeStore((state) => state.theme);
   const [themesState, dispatch] = useStateReducer<GroupingSettingsState>(
-    { themeMode: theme },
+    { ...STATE_DEFAULT, themeMode: theme },
     initializer,
   );
 
-  const saveThemeSettings = useTableChartThemesStore((s) => s.saveThemeSettings);
+  const saveThemeSettings = useEntityThemeStore((s) => s.saveThemeSettings);
 
   useEffect(() => {
-    const unsub = useTableChartThemesStore.subscribe(
+    const unsub = useEntityThemeStore.subscribe(
       (state) => ({ light: state.light?.appTheme, dark: state.dark?.appTheme }),
       (current) => {
         const updatedState = {} as Partial<GroupingSettingsState>;
@@ -271,9 +273,6 @@ export function GroupingSettings() {
   );
 }
 
-// Preview component showing mock groups. The background must reflect the
-// locally-selected theme mode (not the global app theme), so colors are driven
-// off `themeMode` with primitive classes rather than `dark:` variants.
 function GroupingPreview({
   palette,
   themeMode,
@@ -370,7 +369,6 @@ function GroupingPreview({
   );
 }
 
-// Helper to determine if color is light
 function isLight(color: string): boolean {
   const hex = color.replace("#", "");
   const r = Number.parseInt(hex.substr(0, 2), 16);

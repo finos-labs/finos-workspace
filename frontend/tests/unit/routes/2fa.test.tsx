@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { useThemeStore } from "~/lib/state/theme";
 import Setup2FA from "~/routes/2fa";
 
 describe("Setup2FA", () => {
@@ -9,12 +10,13 @@ describe("Setup2FA", () => {
     expect(screen.getByText(/set up two-factor authentication/i)).toBeInTheDocument();
   });
 
-  it("displays the OpenBB logo", () => {
+  it("displays the FINOS Workspace logo", () => {
+    useThemeStore.setState({ theme: "light" });
     render(<Setup2FA />);
 
-    const logo = screen.getByAltText("OpenBB");
+    const logo = screen.getByAltText("FINOS Workspace");
     expect(logo).toBeInTheDocument();
-    expect(logo).toHaveAttribute("src", "/assets/images/logo.svg");
+    expect(logo).toHaveAttribute("src", "/assets/images/logo-horizontal-color.svg");
   });
 
   it("displays the security requirement message", () => {

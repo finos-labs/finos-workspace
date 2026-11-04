@@ -1,0 +1,176 @@
+---
+title: Plugin package and manifest
+sidebar_position: 1
+---
+
+import { PluginList, PluginValue } from "@site/src/components/Reference/plugins";
+import { SchemaTable } from "@site/src/components/Reference/schemas";
+
+# Plugin package and manifest
+
+A plugin is a package of files that adds widget types to FINOS Workspace. This page describes how a package is laid out and what each part of its manifest means. The JSON Schema of the manifest is on [plugin.json](../schemas/plugin-json.mdx).
+
+## The package
+
+Every package lives in a directory that is named after the plugin and its version:
+
+```
+<plugin-id>/<version>/
+  plugin.json        the manifest
+  entry.js           the module, one bundled file
+  entry.css          optional styles
+  assets/            optional: the icon, and files that the module reads with core:asset:read
+  skills/            optional: one markdown file for each skill that the plugin gives the agent
+  backend/           optional server-side code, which is never served to browsers
+```
+
+The names and sizes follow these rules:
+
+- The plugin id consists of lowercase letters, digits and hyphens, and it starts with a letter. It matches <PluginValue of="patterns.pluginId" />.
+- The version has the form `major.minor.patch` and contains only numbers. It matches <PluginValue of="patterns.version" />. An approved version is immutable, so a change of any kind requires a new version directory. On a local stack, the app starts that directory for you, as [Plugin lifecycle and administration](lifecycle.mdx#developing-on-a-local-stack) describes.
+- A file name may contain letters, digits, `.`, `_` and `-`. A package may not contain symbolic links.
+- A version may hold at most <PluginValue of="package.maxFiles" /> files and <PluginValue of="package.maxUnpackedBytes" unit="bytes" /> by default. The deployment can lower or raise both limits.
+- The file <PluginValue of="package.manifestFile" /> may be at most <PluginValue of="package.manifestBytes" unit="bytes" />.
+
+The frame receives `entry.js` and the style sheets. It receives a file from `assets/` only when the module asks for it with the `core:asset:read` command, which is described on [Plugin permissions and commands](commands-and-permissions.mdx). Nothing else in the package reaches the frame, which means that neither `plugin.json` nor `backend/` is ever sent to a browser.
+
+## The manifest
+
+The manifest describes the plugin, the permissions that it asks for and the widgets that it contributes. This example shows every top-level key with placeholder values:
+
+```jsonc
+{
+  "manifestVersion": 1,
+  "id": "<plugin-id>",
+  "version": "1.0.0",
+  "name": "<name shown to admins and users>",
+  "description": "<one or two sentences>",
+  "publisher": { "name": "<who publishes it>", "url": "https://<publisher site>" },
+  "icon": "assets/icon.svg",
+  "host": { "api": 1, "afm": "0.11" },
+  "checksum": "sha256-<printed by plugin_check --digest>",
+  "entry": { "module": "entry.js", "styles": ["entry.css"] },
+  "csp": { "img-src": ["https://<tile host>"] },
+  "cspNotes": { "img-src": "<why the frame loads images from that host>" },
+  "secrets": [{ "name": "<secret_name>", "purpose": "<what the key is for>" }],
+  "server": { "network": ["https://<api host>"], "proxies": [] },
+  "adminSettings": { "schema": {}, "defaults": {} },
+  "contributes": { "widgets": [], "skills": [] }
+}
+```
+
+The manifest is closed, so an unknown key blocks the version. Every string and every list has a bound. The table is generated from the model that the backend validates the manifest with, so its limits are the ones that the backend enforces. A property whose type is a link has a table of its own on [plugin.json](../schemas/plugin-json.mdx).
+
+<SchemaTable set="manifest" schemaPage="/reference/schemas/plugin-json" />
+
+The host blocks a manifest that asks for the permission <PluginList of="permissionsLater" /> or that contains `signatures`, because this host implements neither.
+
+## Widgets
+
+The `contributes.widgets` list holds one entry for each widget type that the plugin offers.
+
+```jsonc
+{
+  "id": "<widget-id>",
+  "name": "<name in Add widget>",
+  "description": "<what it shows>",
+  "category": "<category in Add widget>",
+  "handles": [
+    {
+      "type": "<viz type>",
+      "definition": { "type": "object", "additionalProperties": false, "properties": {} },
+      "response": { "accepts": "json", "description": "<what the backend returns>" }
+    }
+  ],
+  "standalone": false,
+  "artifact": { "description": "<when the agent shows it>", "data": { "type": "object", "additionalProperties": false, "properties": {} } },
+  "permissions": ["core:data:read"],
+  "server": { "proxies": [] },
+  "model": { "traits": {} },
+  "params": [],
+  "settings": { "schema": {}, "defaults": {} },
+  "grid": { "w": 20, "h": 12 }
+}
+```
+
+<SchemaTable set="manifest" name="Widget" schemaPage="/reference/schemas/plugin-json" />
+
+An entry of `handles` has these properties:
+
+<SchemaTable set="manifest" name="Handle" schemaPage="/reference/schemas/plugin-json" />
+
+The id of a widget matches <PluginValue of="patterns.widgetId" />, and a viz type matches <PluginValue of="patterns.vizType" />. A viz type cannot be one of the built-in types <PluginList of="builtInTypes" />. One plugin cannot handle the same type twice. When two plugins handle a type, the organization's admin chooses which of them renders it.
+
+A type that a plugin handles works with any backend whose `widgets.json` declares a widget of that type and whose endpoint returns what `response` describes. FINOS Workspace adds `theme=dark` or `theme=light` to the endpoint's query, which carries the site's mode, and it asks again when the user switches the mode, exactly as it does for `markdown` and `html` widgets. The backend's author decides what each mode looks like. The names `theme` and `raw` are reserved, so a backend's widgets cannot use them as query parameters of their own. [Widget requests](../protocols/widget-requests.mdx) and [Widget rows](../protocols/raw-rows.md) explain both names.
+
+The permissions that a widget asks for are listed on [Plugin permissions and commands](commands-and-permissions.mdx), and the traits that `model.traits` binds are described on [Plugin module contract](module-contract.mdx).
+
+## Skills
+
+A plugin can give the agent skills: instructions it follows for one kind of task, such as how to ask for the data a widget needs. Each skill is a markdown file under `skills/` and an entry in `contributes.skills`:
+
+```jsonc
+"contributes": {
+  "widgets": [],
+  "skills": [
+    { "slug": "forecast-charts", "description": "How to draw a forecast", "file": "skills/forecast.md" }
+  ]
+}
+```
+
+| Key | What it is |
+|---|---|
+| `slug` | 2 to 50 characters: lowercase letters, digits and single `-`. Unique in the plugin. The user starts the skill with `/skill:<slug>`, and the agent can pick it up from its description. |
+| `description` | One line, at most 300 characters, which tells the agent when to use the skill. |
+| `file` | `skills/<name>.md`, UTF-8 text that is not empty and is at most 32 KiB. Unique in the plugin. |
+
+The skills of a plugin that is approved and enabled for an organization appear in the Skills tab of every user of that organization, with the plugin's name and without edit or delete. They need no role grant. They go when the plugin is disabled or a later version drops them. A skill the user made with the same slug wins, and when two plugins use one slug the one whose id comes first in the alphabet wins. A skill file is part of the package: the version's checksum covers it, the reviewer sees each skill in the review and acknowledges it, and a file that differs from the approved one is not given out. A skill is text for the model, so it cannot run code or call tools by itself.
+
+## Artifacts
+
+A widget with `artifact` is a component the agent can use in the chat: it shows the widget under its answer, filled with data it has from the conversation or from the tables it loaded. The user can add the card to a dashboard as a widget of the plugin, which keeps that data.
+
+```jsonc
+"artifact": {
+  "description": "Bars of x labels and y values, for a comparison across a few categories",
+  "data": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["rows"],
+    "properties": {
+      "title": { "type": "string", "maxLength": 80 },
+      "rows": {
+        "type": "array",
+        "maxItems": 200,
+        "items": { "type": "object", "additionalProperties": false, "required": ["x", "y"], "properties": { "x": { "type": "string", "maxLength": 40 }, "y": { "type": "number" } } }
+      }
+    }
+  }
+}
+```
+
+| Key | What it is |
+|---|---|
+| `description` | At most 300 characters. Tells the agent when the component fits the question. |
+| `data` | The JSON Schema of the data the agent gives, in the form of a `definition` (below): an object, closed and bounded. The agent reads it to build the data, the agent drops what it does not name, and data over 256 KiB is refused. |
+
+Nobody who wrote the data themed it: the widget follows the `theme` trait for what the data leaves open. The widget reads the data through its `data` trait, so it needs the permission `core:data:read` and, when it declares `model.traits`, a trait bound to `data`, as [Plugin module contract](module-contract.mdx) describes. Its `settings` are the agent's `config`. In the chat the widget runs with `core:data:read`, `core:ui:notify`, `core:clipboard:write`, `core:backend:call`, `core:state:write` and `core:asset:read`, with its state kept in the card; a proxy, a write to params, a link or a download work once the widget is on a dashboard. A widget on a dashboard made from an artifact has no endpoint, so its `data` trait is the data it was made with.
+
+The artifact is part of the version the reviewer approves: the review lists it, and a change to its description or its data schema is asked for again. Only users whose roles grant the widget are offered it, and the agent is told of the components of the plugins that are approved and enabled for the user's organization. The artifact travels to the browser as an artifact of the `plugin` type, as [Agent query protocol](../protocols/agent-query.mdx#artifacts) describes.
+
+## Schemas
+
+The `definition` of a handled type describes the `data.<type>` object that a backend writes for that type. It is a closed and bounded JSON Schema of at most <PluginValue of="schemaLint.maxFragmentBytes" unit="bytes" /> and <PluginValue of="schemaLint.maxDepth" /> levels of nesting. Every object has `additionalProperties: false`, or a value schema when the object is a map. Every array has `maxItems` and `items`, and every string has `maxLength`, `enum`, `const` or `pattern`. An enum has at most <PluginValue of="schemaLint.maxEnumValues" /> values, and a pattern has at most <PluginValue of="schemaLint.maxPatternLength" /> characters and no backreferences. The allowed keywords are <PluginValue of="schemaLint.fragmentKeywords" />. FINOS Workspace checks backends' widgets against the definition, and the AI agent reads it when it builds widgets of the type.
+
+The `settings` and `adminSettings` entries describe forms that the host renders. A form is a flat object of at most <PluginValue of="schemaLint.maxSettingsProperties" /> properties, and each property name consists of letters, digits and underscores. Each property has one of the types <PluginValue of="schemaLint.settingsTypes" />, and it may use the keywords <PluginValue of="schemaLint.settingsKeywords" />. The form can mark properties as `required`. The `defaults` must satisfy the schema, and the settings of one instance may not exceed <PluginValue of="limits.maxConfigBytes" unit="bytes" />.
+
+## Checking a package
+
+Before a package is placed on a server, its author can check it with the server's own validator. The commands run offline from the `backend-api/backend` directory:
+
+```bash
+python -m scripts.plugin_check <plugins dir>/<plugin-id>/<version>
+python -m scripts.plugin_check --digest <plugins dir>/<plugin-id>/<version>
+```
+
+The first command runs discovery exactly as the server does. It checks the files, the links, the caps, the manifest, the policy, the proxies and the checksum. When the version would be blocked, it prints the reasons and exits with status 1. Warnings, such as a remote import or `eval` without `'unsafe-eval'`, do not block a version. The second command prints the `checksum` that belongs in `plugin.json` and the version digest that a deployer can pin.

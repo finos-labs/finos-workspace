@@ -1,5 +1,4 @@
 import { cloneDeep } from "lodash";
-import posthog from "posthog-js";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -11,13 +10,13 @@ import {
 } from "~/api/auth.api";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
 import { getDefaultCopilot } from "~/lib/constants";
-import { useShallowAuthStore } from "~/lib/state/auth";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import {
   type ExternalCopilotHolder,
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { cn, createURLString } from "~/lib/utils";
+import { cn } from "~/lib/utils";
 import { Button } from "../ds/atoms/Button";
 import { Input } from "../ds/atoms/Input";
 import { Label } from "../ds/atoms/Label";
@@ -32,11 +31,13 @@ import {
 import { ConnectionTestResult } from "../ds/molecules/ConnectionTestResult";
 import Avatar from "../General/Avatar";
 import Icon from "../Icon";
+import { useCopilotKeys, useSaveCopilotKeys } from "./hooks/useCopilotKeys";
+import { resolveAgentEndpoints } from "./hooks/utils";
 
 async function validateApiKey(
   apiKey: string,
   endpoint: string,
-  data?: Record<string, any>,
+  data?: Record<string, unknown>,
 ): Promise<TestResult> {
   try {
     const response = await fetch(endpoint, {
@@ -51,7 +52,7 @@ async function validateApiKey(
     const responseText = await response.text();
 
     if (!response.ok) {
-      let responseData: Record<string, any>;
+      let responseData: { error?: { message?: string } };
       try {
         responseData = JSON.parse(responseText);
       } catch {
@@ -70,7 +71,10 @@ async function validateApiKey(
     if (error instanceof TypeError) {
       return { status: 500, message: "Validation failed." };
     }
-    return { status: 500, message: error.message };
+    return {
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
@@ -141,7 +145,7 @@ function CopilotApiKeyInput({
           message={
             state.testResult.status === 200
               ? "API key is valid!"
-              : state.testResult.message
+              : (state.testResult.message ?? "")
           }
           className="mt-2"
         />
@@ -151,60 +155,46 @@ function CopilotApiKeyInput({
 }
 
 function CopilotApiKeyDialog() {
-  const { apiKeyDialogOpen, onClose, debouncedUpdateSettings } = useShallowThemeStore(
-    (state) => ({
-      apiKeyDialogOpen: state.apiKeyDialogOpen,
-      onClose: () => state.setApiKeyDialogOpen(false),
-      debouncedUpdateSettings: state.debouncedUpdateSettings,
-    }),
-  );
-
-  const { openaiApiKey, setCopilotApiKeys } = useShallowAuthStore((state) => ({
-    openaiApiKey: state.openaiApiKey,
-    setCopilotApiKeys: state.setCopilotApiKeys,
+  const { apiKeyDialogOpen, onClose } = useShallowThemeStore((state) => ({
+    apiKeyDialogOpen: state.apiKeyDialogOpen,
+    onClose: () => state.setApiKeyDialogOpen(false),
   }));
 
-  const [state, dispatch] = useStateReducer({ openaiApiKey });
-
-  const handleValidateApiKey = useCallback(
-    async (type: "openai") => {
-      const apiKey = state[`${type}ApiKey`];
-      let result: TestResult = { status: 0, message: "" };
-
-      if (type === "openai") {
-        result = await validateApiKey(apiKey, "https://api.openai.com/v1/models");
-      }
-
-      return result;
-    },
-    [state.openaiApiKey],
-  );
-
-  const handleOnClick = useCallback(
-    (type: "saved" | "cleared") => {
-      const isCleared = type === "cleared";
-
-      setCopilotApiKeys(isCleared ? {} : state);
-
-      toast.success(`API key ${type}`, {
-        id: `copilot_api_key_${type}`,
-        description:
-          isCleared || !state.openaiApiKey
-            ? "OpenBB Copilot will now use the default API key."
-            : "OpenBB Copilot will now use this API key.",
-      });
-      posthog?.capture(`copilot_api_key_${type}`);
-      onClose();
-      debouncedUpdateSettings();
-    },
-    [state, debouncedUpdateSettings],
-  );
+  const { has_openai_key: hasOpenaiKey } = useCopilotKeys();
+  const { mutateAsync: saveKeys, isPending } = useSaveCopilotKeys();
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
 
   useEffect(() => {
-    if (apiKeyDialogOpen) {
-      dispatch({ openaiApiKey });
-    }
+    if (!apiKeyDialogOpen) setOpenaiApiKey("");
   }, [apiKeyDialogOpen]);
+
+  const handleValidateApiKey = useCallback(
+    () => validateApiKey(openaiApiKey, "https://api.openai.com/v1/models"),
+    [openaiApiKey],
+  );
+
+  const handleSave = useCallback(
+    async (key: string | null) => {
+      try {
+        await saveKeys({ openai_api_key: key });
+      } catch (error) {
+        console.error("Failed to save the API key:", error);
+        toast.error("API key not saved", { description: "Please try again." });
+        return;
+      }
+      const removed = key === null;
+      toast.success(removed ? "API key removed" : "API key saved", {
+        id: removed ? "copilot_api_key_cleared" : "copilot_api_key_saved",
+        description: removed
+          ? "Agent will now use the default API key."
+          : "Agent will now use this API key.",
+      });
+      onClose();
+    },
+    [saveKeys, onClose],
+  );
+
+  const typedKey = openaiApiKey.trim();
 
   return (
     <BaseDialog open={apiKeyDialogOpen} onClose={onClose}>
@@ -213,16 +203,29 @@ function CopilotApiKeyDialog() {
       <div className="dark:bg-dark-800 bg-light-50 p-3 rounded space-y-8">
         <CopilotApiKeyInput
           label="OpenAI API key"
-          description=""
+          description={
+            hasOpenaiKey ? "A key is saved. Enter a new key to replace it." : ""
+          }
           placeholder="sk-1234567890abcdefg"
-          value={state.openaiApiKey}
-          onChange={(openaiApiKey) => dispatch({ openaiApiKey })}
-          onValidate={() => handleValidateApiKey("openai")}
+          value={openaiApiKey}
+          onChange={setOpenaiApiKey}
+          onValidate={handleValidateApiKey}
         />
       </div>
       <div className="text-light-600 dark:text-light-400" />
       <DialogFooter className="flex justify-between">
-        <div />
+        <div>
+          {hasOpenaiKey && (
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => handleSave(null)}
+              disabled={isPending}
+            >
+              Remove key
+            </Button>
+          )}
+        </div>
         <div className="flex gap-2">
           <DialogClose asChild={true}>
             <Button size="sm" variant="outlined">
@@ -231,8 +234,8 @@ function CopilotApiKeyDialog() {
           </DialogClose>
           <Button
             size="sm"
-            onClick={() => handleOnClick("saved")}
-            disabled={state.openaiApiKey === openaiApiKey}
+            onClick={() => handleSave(typedKey)}
+            disabled={!typedKey || isPending}
           >
             Save
           </Button>
@@ -250,6 +253,7 @@ type AgentConfigState = {
   authEditGroup: {
     index: number;
     headerPairs: { key: string; value: string }[];
+    saved: string[];
   } | null;
   searchTerm: string;
 };
@@ -261,6 +265,7 @@ export function AgentConfigDialog() {
       setAgentConfigDialogOpen: state.setAgentConfigDialogOpen,
       setShowAddAgentsDialog: state.setShowAddAgentsDialog,
     }));
+  const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const onClose = useCallback(() => setAgentConfigDialogOpen(false), []);
 
@@ -298,15 +303,11 @@ export function AgentConfigDialog() {
       } else {
         const holder = { ...holderToUpdate, ...partialHolder };
 
-        // Ensure each agent has the latest headers and valid URLs
-        holder.copilots = (holder.copilots || []).map((agent) => {
-          for (const [key, value] of Object.entries(agent?.endpoints || {})) {
-            agent.endpoints[key] = createURLString(value, holder.url);
-          }
-          return { ...agent, headers: holder.headers || {} };
-        });
-        await putCustomCopilot(holder);
-        externalHolders[groupIndex] = holder;
+        holder.copilots = (holder.copilots || []).map((agent) => ({
+          ...agent,
+          endpoints: resolveAgentEndpoints(agent.endpoints, holder.url),
+        }));
+        externalHolders[groupIndex] = await putCustomCopilot(holder);
         updateExternalCopilotHolders(externalHolders);
       }
     },
@@ -321,12 +322,12 @@ export function AgentConfigDialog() {
 
     return state.groups.reduce((acc, holder) => {
       const filteredGroup = holder.copilots?.filter((agent) => {
-        if (agent.id === "openbb-copilot") return false;
+        if (agent.id === "default-copilot") return false;
         if (!trimmedSearch) return true;
 
         return agent.name.toLowerCase().includes(searchLower);
       });
-      if (filteredGroup?.length > 0) {
+      if (filteredGroup?.length) {
         acc.push({ ...holder, copilots: filteredGroup });
       }
       return acc;
@@ -345,7 +346,6 @@ export function AgentConfigDialog() {
         .filter((a) => a.holderUuid !== holder.uuid);
 
       try {
-        // Add minimum delay to show loading state
         const startTime = Date.now();
 
         const copilots = await fetchAgentsData(holder as CustomCopilot);
@@ -353,7 +353,6 @@ export function AgentConfigDialog() {
 
         await updateHolder(groupIndex, { ...holder, copilots, status: "success" });
 
-        // Ensure minimum loading time of 800ms
         const elapsedTime = Date.now() - startTime;
         const remainingTime = Math.max(0, 800 - elapsedTime);
 
@@ -393,6 +392,7 @@ export function AgentConfigDialog() {
 
   const confirmDeleteGroup = useCallback(async () => {
     const groupToDelete = state.groupToDelete;
+    if (groupToDelete === null) return;
     const holderToDelete = externalCopilotHolders?.[groupToDelete];
     if (!holderToDelete) return;
 
@@ -400,7 +400,6 @@ export function AgentConfigDialog() {
       await updateHolder(groupToDelete, "delete");
       toast.success("Group deleted successfully", { id: "delete-group" });
 
-      // If the selected copilot belongs to this group, clear the selection
       if (
         selectedCopilot &&
         holderToDelete?.copilots?.some((copilot) => copilot.id === selectedCopilot.id)
@@ -429,14 +428,8 @@ export function AgentConfigDialog() {
 
   const handleAuthGroup = useCallback(
     (groupIndex: number) => {
-      const holder = externalCopilotHolders[groupIndex];
-      const headers = holder?.headers || {};
-      // Convert headers object to array of key-value pairs
-      const headerPairs = Object.entries(headers).map(([key, value]) => ({
-        key,
-        value,
-      }));
-      // If no headers exist, add a default empty pair for user convenience
+      const saved = externalCopilotHolders[groupIndex]?.headerNames ?? [];
+      const headerPairs = saved.map((key) => ({ key, value: "" }));
       if (headerPairs.length === 0) {
         headerPairs.push({ key: "", value: "" });
       }
@@ -444,6 +437,7 @@ export function AgentConfigDialog() {
         authEditGroup: {
           index: groupIndex,
           headerPairs,
+          saved,
         },
       });
     },
@@ -452,11 +446,11 @@ export function AgentConfigDialog() {
 
   const handleSaveAuth = useCallback(
     async (authEditGroup: AgentConfigState["authEditGroup"]) => {
-      const holder = state.groups[authEditGroup?.index];
+      if (!authEditGroup) return;
+      const holder = state.groups[authEditGroup.index];
       if (!holder) return;
 
-      // Check for duplicate keys before saving
-      const { index: groupIndex, headerPairs } = authEditGroup;
+      const { index: groupIndex, headerPairs, saved } = authEditGroup;
       const allKeys = headerPairs.map((pair) => pair.key);
       const uniqueKeys = new Set(allKeys);
 
@@ -468,7 +462,6 @@ export function AgentConfigDialog() {
         return;
       }
 
-      // Check for empty keys
       const hasEmptyKeys = headerPairs.some((pair) => !pair.key.trim());
       if (hasEmptyKeys) {
         toast.error("Header keys cannot be empty. Please provide valid header names.", {
@@ -477,7 +470,14 @@ export function AgentConfigDialog() {
         return;
       }
 
-      // Convert headerPairs back to headers object
+      const missing = headerPairs.find(
+        (pair) => !pair.value && !saved.includes(pair.key),
+      );
+      if (missing) {
+        toast.error(`Enter a value for ${missing.key}.`, { id: "auth-update" });
+        return;
+      }
+
       const headers = headerPairs.reduce(
         (acc, pair) => {
           acc[pair.key] = pair.value;
@@ -566,20 +566,24 @@ export function AgentConfigDialog() {
                   <p className="text-xs font-bold text-light-600 dark:text-light-400 leading-[18px]">
                     No agents have been added yet
                   </p>
-                  <p className="text-xs font-normal text-light-500 dark:text-light-400 leading-[18px]">
-                    Add your first AI Agent
-                  </p>
+                  {mayAdd && (
+                    <p className="text-xs font-normal text-light-500 dark:text-light-400 leading-[18px]">
+                      Add your first AI Agent
+                    </p>
+                  )}
                 </div>
               </div>
-              <Button
-                onClick={() => setShowAddAgentsDialog(true)}
-                size="xs"
-                className="!bg-brand-main hover:!bg-brand-darker h-6 px-2 !text-2xs font-medium"
-              >
-                <span className="text-white leading-[1.5]">
-                  Add your first AI Agent
-                </span>
-              </Button>
+              {mayAdd && (
+                <Button
+                  onClick={() => setShowAddAgentsDialog(true)}
+                  size="xs"
+                  className="!bg-brand-main hover:!bg-brand-darker h-6 px-2 !text-2xs font-medium"
+                >
+                  <span className="text-white leading-[1.5]">
+                    Add your first AI Agent
+                  </span>
+                </Button>
+              )}
             </div>
           ) : (
             <>
@@ -599,13 +603,15 @@ export function AgentConfigDialog() {
                     onChange={(searchTerm: string) => dispatch({ searchTerm })}
                   />
                 </div>
-                <Button
-                  onClick={() => setShowAddAgentsDialog(true)}
-                  size="sm"
-                  className="!bg-brand-main hover:!bg-brand-darker h-6.5"
-                >
-                  <span className="text-white">Add new Agent</span>
-                </Button>
+                {mayAdd && (
+                  <Button
+                    onClick={() => setShowAddAgentsDialog(true)}
+                    size="sm"
+                    className="!bg-brand-main hover:!bg-brand-darker h-6.5"
+                  >
+                    <span className="text-white">Add new Agent</span>
+                  </Button>
+                )}
               </div>
               <div className="flex-1 min-h-0 overflow-auto">
                 <div className="space-y-4 h-full overflow-y-auto">
@@ -649,7 +655,6 @@ export function AgentConfigDialog() {
 
       <CopilotApiKeyDialog />
 
-      {/* Delete Confirmation Dialog */}
       {state.groupToDelete !== null && (
         <AgentDeleteConfirmDialog
           cancelDeleteGroup={cancelDeleteGroup}
@@ -657,7 +662,6 @@ export function AgentConfigDialog() {
         />
       )}
 
-      {/* Authentication Settings Dialog */}
       {state.authEditGroup !== null && (
         <AgentAuthEditor
           authEditGroup={state.authEditGroup}
@@ -720,7 +724,7 @@ function AgentDeleteConfirmDialog(props: {
 type AgentGroupItemProps = {
   holder: HolderGroup;
   groupIndex: number;
-  handleSaveRefresh: (groupIndex: number) => Promise<any>;
+  handleSaveRefresh: (groupIndex: number) => Promise<unknown>;
   handleAuthGroup: (groupIndex: number) => void;
   dispatch: StateDispatch<AgentConfigState>;
 };
@@ -728,10 +732,7 @@ type AgentGroupItemProps = {
 const AgentGroupItem = memo((props: AgentGroupItemProps) => {
   const { holder, groupIndex, handleSaveRefresh, handleAuthGroup, dispatch } = props;
 
-  const hasHeaders = useMemo(
-    () => Object.keys(holder.headers || {}).length > 0,
-    [holder.headers],
-  );
+  const hasHeaders = (holder.headerNames?.length ?? 0) > 0;
   const [isLoading, setIsLoading] = useState(false);
 
   const onSaveRefreshClick = useCallback(async () => {
@@ -800,7 +801,6 @@ const AgentGroupItem = memo((props: AgentGroupItemProps) => {
           )}
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          {/* Auth status indicator */}
           <div className="flex items-center gap-1 mr-2">
             <span
               className={cn("text-2xs", {
@@ -882,7 +882,7 @@ type AgentAuthEditorProps = {
 const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
   const { authEditGroup, dispatch, handleSaveAuth } = props;
 
-  const inputRefs = useRef<Record<string, HTMLInputElement>>({});
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [editGroup, setEditGroup] = useState(authEditGroup);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -895,9 +895,8 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
         return { ...prev, headerPairs: newPairs };
       });
 
-      if (inputRefs.current[`${field}-${index}`]) {
-        inputRefs.current[`${field}-${index}`]!.value = value;
-      }
+      const input = inputRefs.current[`${field}-${index}`];
+      if (input) input.value = value;
     },
     [inputRefs],
   );
@@ -914,7 +913,7 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
   useEffect(() => {
     setEditGroup(authEditGroup);
     return () => {
-      inputRefs.current! = {};
+      inputRefs.current = {};
     };
   }, [authEditGroup]);
 
@@ -948,7 +947,9 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
                     Key
                   </Label>
                   <Input
-                    ref={(el) => (inputRefs.current[`key-${index}`] = el)}
+                    ref={(el) => {
+                      inputRefs.current[`key-${index}`] = el;
+                    }}
                     size="sm"
                     placeholder="Authorization"
                     defaultValue={pair.key}
@@ -962,9 +963,15 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
                     Value
                   </Label>
                   <Input
-                    ref={(el) => (inputRefs.current[`value-${index}`] = el)}
+                    ref={(el) => {
+                      inputRefs.current[`value-${index}`] = el;
+                    }}
                     size="sm"
-                    placeholder="Bearer token..."
+                    placeholder={
+                      editGroup.saved.includes(pair.key)
+                        ? "Saved. Leave blank to keep it"
+                        : "Bearer token..."
+                    }
                     defaultValue={pair.value}
                     onChange={(newValue: string) => {
                       onChange(index, "value", newValue);
@@ -973,10 +980,14 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
                 </div>
                 <button
                   onClick={() => {
-                    setEditGroup((prev) => ({
-                      ...prev,
-                      headerPairs: prev.headerPairs.filter((_, i) => i !== index),
-                    }));
+                    setEditGroup((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            headerPairs: prev.headerPairs.filter((_, i) => i !== index),
+                          }
+                        : prev,
+                    );
                   }}
                   className="mt-6 p-1"
                 >
@@ -995,10 +1006,14 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
           variant="outlined"
           size="sm"
           onClick={() => {
-            setEditGroup((prev) => ({
-              ...prev,
-              headerPairs: [...prev.headerPairs, { key: "", value: "" }],
-            }));
+            setEditGroup((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    headerPairs: [...prev.headerPairs, { key: "", value: "" }],
+                  }
+                : prev,
+            );
           }}
         >
           + Add Authentication

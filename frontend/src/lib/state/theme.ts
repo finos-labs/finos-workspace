@@ -1,33 +1,38 @@
 import debounce from "lodash.debounce";
 import isEqual from "lodash.isequal";
-import type { TreeItem } from "react-complex-tree";
 import { persist, subscribeWithSelector } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
-import { migrateDefaultTicker } from "~/api/auth.api";
 import { updateUserDisplaySettings } from "~/api/user.api";
 import type { SearchTabId } from "~/components/LayoutAuth/Search/SearchDialog";
 import type { WidgetItem } from "~/components/LayoutAuth/Search/WidgetMenu";
-import type { Ticker } from "~/components/types";
 import { getConfig } from "~/lib/runtimeConfig";
-import type { DefaultSkillSlugs, DisplaySettings } from "~/types/auth.type";
-import { DEFAULT_TICKERS } from "../types";
+import type { DisplaySettings } from "~/types/auth.type";
 import type { Selector } from "./app";
 import { useAuthStore } from "./auth";
 import type { Source } from "./backendConnector";
 
 type McpAuthPopup = {
-  serverName: string;
-  serverUrlHash: string;
+  serverName?: string;
   url: string;
   authUrl: string;
-  popupFeatures: string;
+  popupFeatures?: string;
 };
+type ExportFormatFn = (title: string) => void;
+
+export interface ExportWidgetData {
+  widgetId: string;
+  widgetName: string;
+  selectedExportFormat: string;
+  possibleExportFormats: {
+    value: string;
+    label?: string;
+    fn: ExportFormatFn | null | undefined;
+  }[];
+}
+
 interface ThemeState {
-  // Track removed default skills by slug to prevent re-adding them
-  removedSkillSlugs: DefaultSkillSlugs[];
-  removeDefaultSkill: (slug: DefaultSkillSlugs) => void;
   mcpAuthPopup: McpAuthPopup | null;
   setMcpAuthPopup: (popup: ThemeState["mcpAuthPopup"]) => void;
   promptsSuggestionsMenuOpen: boolean;
@@ -40,7 +45,7 @@ interface ThemeState {
     data: Source | null;
   };
   setManageAppDialog: (dialogState: Partial<ThemeState["manageAppDialog"]>) => void;
-  groupingVisible: boolean; // to be able to toggle the visibility of the grouping button in the dashboard toolbar
+  groupingVisible: boolean;
   setGroupingVisible: (visible: boolean) => void;
   toggleGroupingVisibility: () => void;
   showAddAgentsDialog: boolean;
@@ -53,21 +58,15 @@ interface ThemeState {
   setRecentlyAddedWidgets: (widget: WidgetItem[]) => void;
   apiKeyDialogOpen: boolean;
   setApiKeyDialogOpen: (open: boolean) => void;
-  bookingOpen: boolean;
-  setBookingOpen: (open: boolean) => void;
   shareDashboardPopupId: string | null;
   setShareDashboardPopupId: (id: string | null) => void;
   shareUserAppsPopupId: string | null;
   setShareUserAppsPopupId: (id: string | null) => void;
-  defaultTicker: Ticker;
   updateThemeState: (state: Partial<ThemeState>) => void;
-  setDefaultTicker: (ticker: Ticker) => void;
   userAcknowledgedMobile: boolean;
   setUserAcknowledgedMobile: (acknowledged: boolean) => void;
   userAcknowledgedNonChromium: boolean;
   setUserAcknowledgedNonChromium: (acknowledged: boolean) => void;
-  decimalDigits: number;
-  setDecimalDigits: (digits: number) => void;
   gridCorners: Array<"ne" | "nw" | "se" | "sw">;
   setGridCorners: (corners: Array<"ne" | "nw" | "se" | "sw">) => void;
   showWidgetControlsEllipsis: boolean;
@@ -78,12 +77,8 @@ interface ThemeState {
   setQuickAddButtonVisible: (visible: boolean) => void;
   showMinimizeButton: boolean;
   setShowMinimizeButton: (show: boolean) => void;
-  showChartGeneration: boolean;
-  setShowChartGeneration: (show: boolean) => void;
   fontSize: "medium" | "large";
   setFontSize: (size: "medium" | "large") => void;
-  tablePagination: boolean;
-  setTablePagination: (pagination: boolean) => void;
   isEditingTab: boolean;
   setIsEditingTab: (mode: boolean) => void;
   gridSnapping: "off" | "vertical";
@@ -114,26 +109,8 @@ interface ThemeState {
   exportPopup: boolean;
   toggleExportPopup: () => void;
   setExportPopup: (popup: boolean) => void;
-  exportWidgetData: {
-    widgetId: string;
-    widgetName: string;
-    selectedExportFormat: string;
-    possibleExportFormats: {
-      value: string;
-      fn: any;
-    }[];
-  } | null;
-  setExportWidgetData: (
-    data: {
-      widgetId: string;
-      widgetName: string;
-      selectedExportFormat: string;
-      possibleExportFormats: {
-        value: string;
-        fn: any;
-      }[];
-    } | null,
-  ) => void;
+  exportWidgetData: ExportWidgetData | null;
+  setExportWidgetData: (data: ExportWidgetData | null) => void;
   changeSearch: (search: boolean) => void;
   toggleSearch: () => void;
   theme: "light" | "dark";
@@ -146,10 +123,6 @@ interface ThemeState {
   shortcutSidebarOpen: boolean;
   toggleShortcutSidebar: () => void;
   setShortcutSidebarOpen: (open: boolean) => void;
-  openDataPlatformModalOpen: boolean;
-  setOpenDataPlatformModalOpen: (open: boolean) => void;
-  feedbackOpen: boolean;
-  setFeedbackOpen: (open: boolean) => void;
   presenterMode: boolean;
   togglePresenterMode: () => void;
   setPresenterMode: (mode: boolean) => void;
@@ -161,11 +134,7 @@ interface ThemeState {
   setIsResizingGridElement: (resizing: string) => void;
   getDisplaySettings: () => DisplaySettings;
   updateDisplaySettings: (settings: Partial<DisplaySettings>) => void;
-  debouncedUpdateSettings: () => Promise<void>;
-  excelExportPopup: boolean;
-  setExcelExportPopup: (popup: boolean) => void;
-  excelExportItem: (TreeItem<any> & { index: string }) | null;
-  setExcelExportItem: (item: (TreeItem<any> & { index: string }) | null) => void;
+  debouncedUpdateSettings: () => Promise<void> | undefined;
   setEditAppDialog: (dialogState: Partial<ThemeState["editAppDialog"]>) => void;
   exportFolderPopup: boolean;
   setExportFolderPopup: (popup: boolean) => void;
@@ -173,7 +142,7 @@ interface ThemeState {
   setExportFolderItem: (item: { id: string; name: string } | null) => void;
 
   generateAppDashboardId: string | null;
-  setGenerateAppDashboardId: (dashboardId: string) => void;
+  setGenerateAppDashboardId: (dashboardId: string | null) => void;
 
   editAppDialog: {
     isOpen: boolean;
@@ -187,6 +156,39 @@ interface ThemeState {
   };
 }
 
+const PERSISTED_PREFERENCES = [
+  "theme",
+  "fontSize",
+  "gridCorners",
+  "gridSnapping",
+  "showWidgetControlsEllipsis",
+  "aiEnhancements",
+  "quickAddButtonVisible",
+  "showMinimizeButton",
+  "collapsedPanelExpandOnHover",
+  "autoHideWidgetNavbar",
+  "groupingVisible",
+  "recentlyAddedWidgets",
+  "userAcknowledgedMobile",
+  "userAcknowledgedNonChromium",
+  "pulseAnimationButtonsAlreadyClicked",
+] as const satisfies readonly (keyof ThemeState)[];
+
+type PersistedPreferences = Partial<
+  Pick<ThemeState, (typeof PERSISTED_PREFERENCES)[number]>
+>;
+
+function pickPreferences(state: unknown): PersistedPreferences {
+  if (typeof state !== "object" || state === null) return {};
+  const source = state as Record<string, unknown>;
+  return Object.fromEntries(
+    PERSISTED_PREFERENCES.filter((key) => key in source).map((key) => [
+      key,
+      source[key],
+    ]),
+  ) as PersistedPreferences;
+}
+
 export const useThemeStore = createWithEqualityFn<ThemeState>()(
   subscribeWithSelector(
     persist(
@@ -195,17 +197,10 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
         const resolvedTheme = uiCfg.defaultTheme || "dark";
 
         return {
-          removedSkillSlugs: [],
-          removeDefaultSkill: (slug) => {
-            const { removedSkillSlugs } = get();
-            const updatedRemovedSkillSlugs = new Set([...removedSkillSlugs, slug]);
-            set({ removedSkillSlugs: Array.from(updatedRemovedSkillSlugs) });
-            get().debouncedUpdateSettings();
-          },
           mcpAuthPopup: null,
           setMcpAuthPopup: (popup) => set({ mcpAuthPopup: popup }),
           generateAppDashboardId: null,
-          setGenerateAppDashboardId: (dashboardId: string) =>
+          setGenerateAppDashboardId: (dashboardId: string | null) =>
             set({ generateAppDashboardId: dashboardId }),
           editAppDialog: {
             isOpen: false,
@@ -241,16 +236,12 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
           recentlyAddedWidgets: [],
           setRecentlyAddedWidgets: (widget: WidgetItem[]) =>
             set({ recentlyAddedWidgets: widget }),
-          bookingOpen: false,
-          setBookingOpen: (open) => set({ bookingOpen: open }),
           apiKeyDialogOpen: false,
           setApiKeyDialogOpen: (open) => set({ apiKeyDialogOpen: open }),
           shareDashboardPopupId: null,
           setShareDashboardPopupId: (id) => set({ shareDashboardPopupId: id }),
           shareUserAppsPopupId: null,
           setShareUserAppsPopupId: (id) => set({ shareUserAppsPopupId: id }),
-          defaultTicker: DEFAULT_TICKERS.AAPL,
-          setDefaultTicker: (ticker) => set({ defaultTicker: ticker }),
           updateThemeState: (state) => {
             const fontSize = state.fontSize;
             state.theme = state.theme || localStorage.theme || resolvedTheme;
@@ -267,11 +258,7 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
             }
 
             if (fontSize) {
-              const root = document?.documentElement;
-              root?.style?.setProperty(
-                "--text-scale",
-                fontSize === "large" ? "1.25" : "1",
-              );
+              document.documentElement.dataset.fontSize = fontSize;
             }
 
             if (state.aiEnhancements === undefined) {
@@ -286,8 +273,6 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
           userAcknowledgedNonChromium: false,
           setUserAcknowledgedNonChromium: (acknowledged) =>
             set({ userAcknowledgedNonChromium: acknowledged }),
-          decimalDigits: 2,
-          setDecimalDigits: (digits) => set({ decimalDigits: digits }),
           pulseAnimationButtonsAlreadyClicked: false,
           setPulseAnimationButtonsAlreadyClicked: (clicked) =>
             set({ pulseAnimationButtonsAlreadyClicked: clicked }),
@@ -307,16 +292,11 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
             set({ quickAddButtonVisible: visible }),
           showMinimizeButton: uiCfg.showMinimizeWidget,
           setShowMinimizeButton: (show) => set({ showMinimizeButton: show }),
-          showChartGeneration: uiCfg.showChartGeneration,
-          setShowChartGeneration: (show) => set({ showChartGeneration: show }),
           fontSize: "medium" as "medium" | "large",
           setFontSize: (size) => {
-            const root = document?.documentElement;
-            root?.style?.setProperty("--text-scale", size === "large" ? "1.25" : "1");
+            document.documentElement.dataset.fontSize = size;
             set({ fontSize: size });
           },
-          tablePagination: true,
-          setTablePagination: (pagination) => set({ tablePagination: pagination }),
           isEditingTab: true,
           setIsEditingTab: (mode) => set({ isEditingTab: mode }),
           gridSnapping: "vertical" as "off" | "vertical",
@@ -381,11 +361,6 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
             const { shortcutSidebarOpen, setShortcutSidebarOpen } = get();
             setShortcutSidebarOpen(!shortcutSidebarOpen);
           },
-          openDataPlatformModalOpen: false,
-          setOpenDataPlatformModalOpen: (open) =>
-            set({ openDataPlatformModalOpen: open }),
-          feedbackOpen: false,
-          setFeedbackOpen: (open) => set({ feedbackOpen: open }),
           isResizingGridElement: "",
           setIsResizingGridElement: (resizing) =>
             set({ isResizingGridElement: resizing }),
@@ -405,48 +380,32 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
           },
           getDisplaySettings: () => {
             const {
-              decimalDigits,
               theme,
               showWidgetControlsEllipsis,
               aiEnhancements,
-              tablePagination,
               fontSize,
-              defaultTicker,
               gridCorners,
               gridSnapping,
               quickAddButtonVisible,
               showMinimizeButton,
-              showChartGeneration,
               collapsedPanelExpandOnHover,
               autoHideWidgetNavbar,
-              removedSkillSlugs,
             } = get();
 
-            const {
-              lastVisitedPage = "/app",
-              openaiApiKey,
-              perplexityApiKey,
-            } = useAuthStore.getState();
+            const { lastVisitedPage = "/app" } = useAuthStore.getState();
 
             return {
-              decimalDigits,
               theme,
               showWidgetControlsEllipsis,
               aiEnhancements,
-              tablePagination,
               fontSize,
-              defaultTicker,
               gridCorners,
               gridSnapping,
               quickAddButtonVisible,
               showMinimizeButton,
-              showChartGeneration,
               lastVisitedPage,
-              openaiApiKey,
-              perplexityApiKey,
               collapsedPanelExpandOnHover,
               autoHideWidgetNavbar,
-              removedSkillSlugs,
             } as DisplaySettings;
           },
           updateDisplaySettings: (settings) => {
@@ -462,10 +421,6 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
             const settings = get().getDisplaySettings();
             updateUserDisplaySettings(settings);
           }, 5000),
-          excelExportPopup: false,
-          setExcelExportPopup: (popup) => set({ excelExportPopup: popup }),
-          excelExportItem: null,
-          setExcelExportItem: (item) => set({ excelExportItem: item }),
           exportFolderPopup: false,
           setExportFolderPopup: (popup) => set({ exportFolderPopup: popup }),
           exportFolderItem: null,
@@ -474,33 +429,14 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
       },
       {
         name: "theme-storage",
-        version: 2,
-        onRehydrateStorage: () => (state) => {
-          if (state) state.mcpAuthPopup = null;
-        },
-        migrate: (persistedState: any) => {
-          console.log("Migrating theme storage");
-
-          if (typeof persistedState.defaultTicker === "string") {
-            Promise.all([migrateDefaultTicker(persistedState.defaultTicker)]).then(
-              ([newTicker]) => {
-                persistedState.defaultTicker = newTicker;
-              },
-            );
-          }
-
-          console.log("Migrated theme storage to version 1");
-          console.log(persistedState);
-          return persistedState as ThemeState;
-        },
+        partialize: pickPreferences,
+        merge: (persisted, current) => ({ ...current, ...pickPreferences(persisted) }),
       },
     ),
   ),
   shallow,
 );
 
-export function useShallowThemeStore<S extends ThemeState, T>(
-  selector: Selector<S, T>,
-): T {
+export function useShallowThemeStore<T>(selector: Selector<ThemeState, T>): T {
   return useThemeStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }

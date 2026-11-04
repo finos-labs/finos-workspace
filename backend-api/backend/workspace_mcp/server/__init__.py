@@ -1,20 +1,14 @@
-"""FastMCP tool surface for the Workspace sidecar.
-
-This package wires the per-domain tool modules into a single ``FastMCP``
-instance. The public entry point is ``create_mcp_server``; the rest of the
-re-exports keep ``from workspace_mcp.server import ...`` working for callers
-that depend on the original flat-module layout (notably the test suite).
-"""
-
 import json
 from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ResourceError
 from fastmcp.prompts.base import Message
+from fastmcp.server.auth import AuthProvider
 from starlette.types import Lifespan
 
 from workspace_mcp.app_builder import register_app_builder_resources
+from workspace_mcp.models import GetWidgetsSchemaCommand
 from workspace_mcp.server._guidance import SERVER_INSTRUCTIONS, describe_tool
 from workspace_mcp.server._helpers import (
     RESULT_REF_URI_TEMPLATE,
@@ -24,7 +18,6 @@ from workspace_mcp.server._helpers import (
     data_source_payloads,
     has_layout_ui_args,
     invalid_request,
-    is_generative_only_widget,
     param_options_payloads,
     payload_list,
     required_widget_config,
@@ -43,15 +36,19 @@ from workspace_mcp.server.tools import (
 )
 from workspace_mcp.state import BridgeSessionManager, BrowserUnavailableError
 
+LIVE_RESOURCE_TAG = "live"
+WIDGETS_JSON_SCHEMA_URI = "workspace://specs/widgets-json-schema"
+
 __all__ = [
+    "LIVE_RESOURCE_TAG",
     "SERVER_INSTRUCTIONS",
+    "WIDGETS_JSON_SCHEMA_URI",
     "ToolResponse",
     "create_mcp_server",
     "data_source_payloads",
     "describe_tool",
     "has_layout_ui_args",
     "invalid_request",
-    "is_generative_only_widget",
     "param_options_payloads",
     "payload_list",
     "required_widget_config",
@@ -62,13 +59,15 @@ __all__ = [
 
 
 def create_mcp_server(
-    state: BridgeSessionManager, lifespan: Lifespan | None = None
+    state: BridgeSessionManager,
+    lifespan: Lifespan | None = None,
+    auth: AuthProvider | None = None,
 ) -> FastMCP:
-    """Create the Workspace MCP server with the full v1 tool list."""
     server = FastMCP(
-        name="OpenBB Workspace MCP",
+        name="FINOS Workspace MCP",
         instructions=SERVER_INSTRUCTIONS,
         lifespan=lifespan,
+        auth=auth,
     )
 
     register_app_builder_resources(server)
@@ -85,7 +84,6 @@ def create_mcp_server(
         mime_type="application/json",
     )
     def offloaded_result(result_id: str) -> str:
-        """Serve one offloaded full tool result payload."""
         try:
             data = offload_store.get(result_id)
         except KeyError:
@@ -98,10 +96,9 @@ def create_mcp_server(
 
     @server.prompt(
         name="workspace_tool_usage",
-        description="Generic guidance for using the OpenBB Workspace MCP tool surface.",
+        description="Generic guidance for using the FINOS Workspace MCP tool surface.",
     )
     def workspace_tool_usage() -> list[Message]:
-        """Return a compact, generic usage prompt for MCP agents."""
         return [
             Message(SERVER_INSTRUCTIONS, role="user"),
             Message(session_context_prompt_content(state), role="user"),
@@ -109,10 +106,9 @@ def create_mcp_server(
 
     @server.prompt(
         name="workspace_session_context",
-        description="Current tracked Workspace dashboard and tab context.",
+        description="Current tracked FINOS Workspace dashboard and tab context.",
     )
     def workspace_session_context() -> list[Message]:
-        """Return the current tracked Workspace dashboard and tab context."""
         return [Message(session_context_prompt_content(state), role="user")]
 
     async def run(command: Any) -> ToolResponse:
@@ -141,6 +137,24 @@ def create_mcp_server(
         return result.model_dump(mode="json")
 
     runner: CommandRunner = run
+
+    @server.resource(
+        WIDGETS_JSON_SCHEMA_URI,
+        name="widgets.json JSON Schema",
+        description=(
+            "The JSON Schema a backend's widgets.json is validated against for the "
+            "signed-in user: the built-in types and the plugin types enabled for their "
+            "organization, every key and value closed. Read from the user's FINOS Workspace "
+            "session, so it needs the browser connected."
+        ),
+        mime_type="application/schema+json",
+        tags={LIVE_RESOURCE_TAG},
+    )
+    async def widgets_json_schema() -> str:
+        result = await run(GetWidgetsSchemaCommand(command="get_widgets_schema"))
+        if not result["ok"]:
+            raise ResourceError(result["message"])
+        return json.dumps(result["data"]["schema"])
 
     snapshot_tools.register(server, runner)
     widgets_tools.register(server, runner, offload_store)

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminThemeSettings from "~/routes/admin/themeSettings";
+import { stubStoreState } from "../../mocks";
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
@@ -12,9 +13,10 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-vi.mock("~/lib/state/tableChartThemes", () => ({
-  useShallowTableChartThemesStore: vi.fn((selector: any) =>
-    selector({ updateThemeSettings: vi.fn() }),
+vi.mock("~/lib/state/entityTheme", () => ({
+  useShallowEntityThemeStore: vi.fn(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({ updateThemeSettings: vi.fn() }),
   ),
 }));
 
@@ -26,7 +28,7 @@ vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
   }: {
     children: ReactNode;
     title: string;
-    tabs: any[];
+    tabs: { id: string; label?: ReactNode; disabled?: boolean }[];
   }) => (
     <div data-testid="settings-layout">
       <h1>{title}</h1>
@@ -50,12 +52,8 @@ vi.mock("@radix-ui/react-tabs", () => ({
   ),
 }));
 
-vi.mock("~/components/ThemeSettings/TableSettings", () => ({
-  TableSettings: () => <div data-testid="table-settings">Table Settings Component</div>,
-}));
-
-vi.mock("~/components/ThemeSettings/ChartSettings", () => ({
-  ChartSettings: () => <div data-testid="chart-settings">Chart Settings Component</div>,
+vi.mock("~/components/ThemeSettings/PresetsSettings", () => ({
+  PresetsSettings: () => <div data-testid="presets-settings">Presets Component</div>,
 }));
 
 vi.mock("~/components/ThemeSettings/GroupingSettings", () => ({
@@ -79,24 +77,27 @@ describe("AdminThemeSettings", () => {
     expect(screen.getByText("Theme Settings")).toBeInTheDocument();
   });
 
-  it("renders the Tables tab", () => {
+  it("renders the Presets and Grouping tabs, presets first", () => {
     render(
       <BrowserRouter>
         <AdminThemeSettings />
       </BrowserRouter>,
     );
 
-    expect(screen.getByText("Tables")).toBeInTheDocument();
+    const ids = Array.from(screen.getByTestId("tabs").children).map((tab) =>
+      tab.getAttribute("data-tab-id"),
+    );
+    expect(ids).toEqual(["presets", "grouping"]);
   });
 
-  it("renders the Charts tab", () => {
+  it("renders the PresetsSettings component", () => {
     render(
       <BrowserRouter>
         <AdminThemeSettings />
       </BrowserRouter>,
     );
 
-    expect(screen.getByText("Charts")).toBeInTheDocument();
+    expect(screen.getByTestId("presets-settings")).toBeInTheDocument();
   });
 
   it("renders the Grouping tab", () => {
@@ -107,26 +108,6 @@ describe("AdminThemeSettings", () => {
     );
 
     expect(screen.getByText("Grouping")).toBeInTheDocument();
-  });
-
-  it("renders the TableSettings component", () => {
-    render(
-      <BrowserRouter>
-        <AdminThemeSettings />
-      </BrowserRouter>,
-    );
-
-    expect(screen.getByTestId("table-settings")).toBeInTheDocument();
-  });
-
-  it("renders the ChartSettings component", () => {
-    render(
-      <BrowserRouter>
-        <AdminThemeSettings />
-      </BrowserRouter>,
-    );
-
-    expect(screen.getByTestId("chart-settings")).toBeInTheDocument();
   });
 
   it("renders the GroupingSettings component", () => {
@@ -140,14 +121,10 @@ describe("AdminThemeSettings", () => {
   });
 
   it("calls updateThemeSettings on mount", async () => {
-    const { useShallowTableChartThemesStore } = await import(
-      "~/lib/state/tableChartThemes"
-    );
+    const { useShallowEntityThemeStore } = await import("~/lib/state/entityTheme");
     const updateThemeSettings = vi.fn();
 
-    vi.mocked(useShallowTableChartThemesStore).mockImplementation((selector: any) =>
-      selector({ updateThemeSettings }),
-    );
+    stubStoreState(useShallowEntityThemeStore, { updateThemeSettings });
 
     render(
       <BrowserRouter>

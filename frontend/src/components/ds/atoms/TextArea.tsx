@@ -1,5 +1,6 @@
 import { cva } from "class-variance-authority";
-import React, { useEffect, useId, useImperativeHandle, useRef } from "react";
+import React, { useEffect, useId, useRef } from "react";
+import { useComposeRefs } from "~/hooks/useRefHooks";
 import { FormControl, FormItem, FormLabel, FormMessage } from "../molecules/Form";
 import { cn } from "../utils";
 import { CopyButton } from "./CopyButton";
@@ -7,7 +8,7 @@ import { Label, Message } from "./Label";
 
 const groupVariants = cva(
   [
-    "BB-Textarea group body-xs-regular flex min-h-[80px] w-full rounded-sm border",
+    "group body-xs-regular flex min-h-[80px] w-full rounded-sm border",
     "disabled:cursor-not-allowed",
     "transition",
     "bg-input-field-bg",
@@ -35,7 +36,7 @@ const groupVariants = cva(
 
 const textareaVariants = cva(
   [
-    "BB-TextareaInput flex min-h-[80px] w-full border-none bg-transparent",
+    "flex min-h-[80px] w-full border-none bg-transparent",
     "resize-none",
     "focus-visible:outline-hidden",
     "disabled:cursor-not-allowed disabled:bg-transparent",
@@ -58,21 +59,16 @@ const textareaVariants = cva(
   },
 );
 
-export type ReactTextareaProps = Omit<
+type ReactTextareaProps = Omit<
   React.TextareaHTMLAttributes<HTMLTextAreaElement>,
   "onChange"
 >;
 
-export interface TextareaProps extends ReactTextareaProps {
-  /** Show copy icon appears to copy input value. */
+interface TextareaProps extends ReactTextareaProps {
   copiable?: boolean;
-  /** Make its height auto expandable depending on value. Default is `true` */
   autoheight?: boolean;
-  /** Add floating label. Requires `placeholder`. */
   label?: React.ReactNode;
-  /** Text below input */
   message?: React.ReactNode;
-  /** Make it red and display error message */
   error?: boolean;
   size?: "md";
   onChange?: (value: string) => void;
@@ -93,7 +89,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     } = props;
 
     const ref = useRef<HTMLTextAreaElement>(null);
-    useImperativeHandle(fwRef, () => ref.current!);
+    const composedRef = useComposeRefs(ref, fwRef);
     const autoId = useId();
     const textareaId = rest.id || autoId;
 
@@ -129,7 +125,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             <textarea
               id={textareaId}
               className={textareaClasses}
-              ref={ref}
+              ref={composedRef}
               onChange={handleChange}
               {...rest}
             />
@@ -150,17 +146,14 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 );
 Textarea.displayName = "Textarea";
 
-/* Form */
+type FormTextareaProps = Omit<TextareaProps, "error">;
 
-export type FormTextareaProps = Omit<TextareaProps, "error">;
-
-/** Input field used inside <Form> only. */
 export const FormTextarea = React.forwardRef<HTMLTextAreaElement, FormTextareaProps>(
   (props, ref) => {
     const { label, message, ...rest } = props;
 
     return (
-      <FormItem className="BB-FormTextarea group" aria-disabled={props.disabled}>
+      <FormItem className="group" aria-disabled={props.disabled}>
         <FormLabel>{label}</FormLabel>
         <FormControl>
           <Textarea ref={ref} {...rest} />

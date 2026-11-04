@@ -1,24 +1,26 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { apiClient } from "~/api/api";
 import { getApiSources } from "~/api/auth.api";
-import { saveDashboards } from "~/api/dashboard.api";
+import { saveDashboards, saveDashboardsOnExit } from "~/api/dashboard.api";
+import { usePluginRegistrySync } from "~/hooks/usePlugins";
 import { useCreateRef } from "~/hooks/useRefHooks";
-import { useShallowAppStore } from "~/lib/state/app";
+import { useShallowAccessStore } from "~/lib/state/access";
+import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useAuthStore, useShallowAuthStore } from "~/lib/state/auth";
 import {
   useBackendConnectorStore,
   useShallowBackendConnectorStore,
 } from "~/lib/state/backendConnector";
-import { useShallowTradingViewStore } from "~/lib/state/charting";
+import { watchDeclaredMcpServers } from "~/lib/state/backendMcpServers";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
+import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import { useCopilotDataStore } from "~/lib/state/copilotData";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
+import { useShallowEntityThemeStore } from "~/lib/state/entityTheme";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { useSharedAppStore } from "~/lib/state/sharedApp";
 import { useShallowSkillsLibraryStore } from "~/lib/state/skillsLibrary";
-import { useShallowTableChartThemesStore } from "~/lib/state/tableChartThemes";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { useShallowUserAppsStore } from "~/lib/state/userApps";
 import { dispatchSaveState } from "~/lib/utils";
@@ -27,21 +29,17 @@ import { useGetAppWidgets } from "../AI/hooks/useGetAppWidgets";
 
 export default function useSyncItems() {
   const { pathname } = useLocation();
-  useGetAppWidgets(); // Initialize the app widgets store
+  useGetAppWidgets();
+  usePluginRegistrySync();
+  useEffect(watchDeclaredMcpServers, []);
 
-  const { user, checkNewBundles } = useShallowAuthStore((state) => ({
-    user: state.user,
-    checkNewBundles: state.checkNewBundles,
-  }));
-  const updateThemeSettings = useShallowTableChartThemesStore(
+  const user = useShallowAuthStore((state) => state.user);
+  const updateThemeSettings = useShallowEntityThemeStore(
     (state) => state.updateThemeSettings,
   );
   const updateUserApps = useShallowUserAppsStore((state) => state.updateUserApps);
 
-  const { updateRemoteItems, checkForChanges } = useShallowAppStore((state) => ({
-    updateRemoteItems: state.updateRemoteItems,
-    checkForChanges: state.checkForChanges,
-  }));
+  const updateRemoteItems = useShallowAppStore((state) => state.updateRemoteItems);
   const updateChats = useShallowCopilotStore((state) => state.updateChats);
   const { updateApiSources, updateBackendConnector } = useShallowBackendConnectorStore(
     (state) => ({
@@ -49,13 +47,10 @@ export default function useSyncItems() {
       updateBackendConnector: state.updateBackendConnector,
     }),
   );
-  const updateTVState = useShallowTradingViewStore((state) => state.updateTVState);
   const updateOnlySharedItems = useSharedAppStore(
     (state) => state.updateOnlySharedItems,
   );
-  const setFeatureFlagsAndUsage = useShallowFeatureFlagsStore(
-    (state) => state.setFeatureFlagsAndUsage,
-  );
+  const setAccessAndUsage = useShallowAccessStore((state) => state.setAccessAndUsage);
   const updateThemeState = useShallowThemeStore((state) => state.updateThemeState);
   const updateMCPServers = useShallowMcpToolsStore((state) => state.updateServers);
   const updateUserSkills = useShallowSkillsLibraryStore((state) => state.updateSkills);
@@ -66,7 +61,7 @@ export default function useSyncItems() {
   const { refetch: refetchApiSources } = useQuery({
     queryKey: ["apiSources"],
     queryFn: async () => getApiSources().then(updateApiSources),
-    enabled: false, // Only fetch when needed
+    enabled: false,
     staleTime: Number.POSITIVE_INFINITY,
     refetchInterval: false,
     refetchOnWindowFocus: false,
@@ -75,10 +70,9 @@ export default function useSyncItems() {
   const { mutateAsync: getDashboards } = useMutation<DashSyncT>({
     mutationFn: async () => {
       const { data } = await apiClient
-        .get("/pro/dash/validate-and-sync")
+        .get("/app/dash/validate-and-sync")
         .catch((error) => {
           if (error?.response?.status === 401) {
-            // If the user is unauthorized, log them out
             useAuthStore.getState().logout();
           }
           throw error;
@@ -89,37 +83,28 @@ export default function useSyncItems() {
     onSuccess: (dashboardsData) => {
       queueMicrotask(async () => {
         const data = dashboardsData;
-        setFeatureFlagsAndUsage(
-          {
-            ...data.feature_entitlements,
-            is_trial: data.is_trial_entity,
-            can_submit_marketplace: data.can_submit_marketplace ?? false,
-          },
-          data.usage,
-        );
+        if (data.access) {
+          setAccessAndUsage(data.access, data.usage ?? null);
+        }
 
         updateChats(data.copilot_chats, { questionsHistory: data.questions_history });
         updateRemoteItems(data.owned);
         updateOnlySharedItems({
-          shared: data.shared,
-          entityShared: data.entity_shared,
+          shared: data.shared ?? {},
+          entityShared: data.entity_shared ?? {},
         });
 
         if (data.entity_theme_settings) updateThemeSettings(data.entity_theme_settings);
 
-        updateTVState(data.trading_view);
-        checkNewBundles(data.feature_entitlements.tier === "pro");
-        updateThemeState(data.pro_display_settings || {});
+        updateThemeState(data.display_settings || {});
         updateBackendConnector({
           storedFiles: data.file_widgets || [],
-          singleWidgets: data.single_widgets || [],
           widgetMetadata: data.widget_metadata || [],
         });
-        updateMCPServers(data.mcp_servers);
+        updateMCPServers(data.mcp_servers ?? []);
+        useCopilotAccessStore.getState().setAccess(data.copilot_access);
         updateUserApps(data.user_apps || {}, true);
         updateUserSkills(data.user_skills || []);
-        if (pathname === "/app") return;
-
         refetchApiSources();
       });
     },
@@ -130,40 +115,38 @@ export default function useSyncItems() {
     },
   });
 
-  const handleBeforeUnload = useCallback(
-    (_e: BeforeUnloadEvent) => {
-      const hasDiff = checkForChanges();
-      if (hasDiff) saveDashboards();
-    },
-    [checkForChanges],
-  );
-
   useEffect(() => {
-    // Check if the user is logged in and items are null
     if (user && !itemsRef?.current) {
       getDashboards();
     }
   }, [user, items, itemsRef]);
 
   useEffect(() => {
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") saveDashboardsOnExit();
+    };
+    window.addEventListener("pagehide", saveDashboardsOnExit);
+    document.addEventListener("visibilitychange", onVisibility);
+    const unsubscribeItems = useAppStore.subscribe(
+      (state) => state.items,
+      () => useAppStore.getState().debounceSaveDashboards(),
+    );
 
-    const debouncedSaveInt = setInterval(() => saveDashboards(), 1000 * 60 * 1); // Save every minute
-    const clearInt = setInterval(() => dispatchSaveState(), 1000 * 30); // Save every 30 seconds
+    const debouncedSaveInt = setInterval(() => saveDashboards(), 1000 * 60 * 1);
+    const clearInt = setInterval(() => dispatchSaveState(), 1000 * 30);
 
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      // Cleanup function: cancel the debounced call and immediately save changes
+      window.removeEventListener("pagehide", saveDashboardsOnExit);
+      document.removeEventListener("visibilitychange", onVisibility);
+      unsubscribeItems();
       clearInterval(debouncedSaveInt);
       clearInterval(clearInt);
-      dispatchSaveState(); // Ensure all local widget changes are pushed to the store
+      dispatchSaveState();
 
-      // Clear the selected widgets
       useCopilotDataStore.getState().clearState();
 
-      saveDashboards(); // Save immediately when the component unmounts or before re-running the effect
+      saveDashboards();
 
-      // Makes sure the user is logged in and items aren't null before refetching
       if (user && !itemsRef?.current) {
         getDashboards();
       }

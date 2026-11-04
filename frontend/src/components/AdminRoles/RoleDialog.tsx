@@ -9,8 +9,11 @@ import {
   patchEntityRole,
   postEntityRole,
 } from "~/api/entity_roles.api";
+import type { SharingLevel } from "~/lib/state/access";
 import { Button } from "../ds/atoms/Button";
+import { Checkbox } from "../ds/atoms/Checkbox";
 import { FormInput, Input } from "../ds/atoms/Input";
+import { FormSelect } from "../ds/atoms/Select";
 import { Tag } from "../ds/atoms/Tag";
 import { FormTextarea } from "../ds/atoms/TextArea";
 import { BaseDialog } from "../ds/dialogs/BaseDialog";
@@ -22,7 +25,7 @@ import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import AddUsersSelect, { colorForEmail, getUserInitials } from "./AddUsersSelect";
 import { useUsers } from "./adminUseQueries";
-import type { RoleT } from "./types";
+import type { RoleSettings, RoleT } from "./types";
 
 interface User {
   name: string;
@@ -37,12 +40,31 @@ interface Props {
   roles: string[];
 }
 
+const SHARING_OPTIONS: { value: SharingLevel; label: string }[] = [
+  { value: "none", label: "None" },
+  { value: "receive", label: "Receive only" },
+  { value: "share", label: "Can share" },
+];
+
+const limit = z
+  .object({ none: z.boolean(), value: z.string().trim() })
+  .refine((l) => l.none || /^\d+$/.test(l.value), {
+    message: "Enter a whole number",
+    path: ["value"],
+  });
+
 const createRoleSchema = (initialData: RoleT | undefined, roles: string[]) =>
   z
     .object({
       name: z.string().min(1, "Name is required"),
       description: z.string().optional(),
       users: z.array(z.string()).optional(),
+      sharing: z.enum(["none", "receive", "share"]),
+      copilot_calls_day: limit,
+      copilot_tokens_day: limit,
+      upload_size_gb: limit,
+      search_web: z.boolean(),
+      fetch_from_web: z.boolean(),
     })
     .refine(
       (data) => {
@@ -64,7 +86,50 @@ const createRoleSchema = (initialData: RoleT | undefined, roles: string[]) =>
 
 type RoleForm = z.infer<ReturnType<typeof createRoleSchema>>;
 
-const emptyDefaults: RoleForm = { name: "", description: "", users: [] };
+type LimitForm = RoleForm["copilot_calls_day"];
+
+const limitForm = (value: number | null | undefined): LimitForm =>
+  value == null ? { none: true, value: "" } : { none: false, value: String(value) };
+const limitValue = (limit: LimitForm) => (limit.none ? null : Number(limit.value));
+
+function roleFormValues(role: RoleT | undefined): RoleForm {
+  return {
+    name: role?.name ?? "",
+    description: role?.description ?? "",
+    users: role?.users ?? [],
+    sharing: role?.sharing ?? "none",
+    copilot_calls_day: limitForm(role?.copilot_calls_day),
+    copilot_tokens_day: limitForm(role?.copilot_tokens_day),
+    upload_size_gb: limitForm(role?.upload_size_gb),
+    search_web: role?.search_web ?? true,
+    fetch_from_web: role?.fetch_from_web ?? true,
+  };
+}
+
+function roleSettings(values: RoleForm): RoleSettings {
+  return {
+    sharing: values.sharing,
+    copilot_calls_day: limitValue(values.copilot_calls_day),
+    copilot_tokens_day: limitValue(values.copilot_tokens_day),
+    upload_size_gb: limitValue(values.upload_size_gb),
+    search_web: values.search_web,
+    fetch_from_web: values.fetch_from_web,
+  };
+}
+
+const LIMIT_FIELDS = [
+  { name: "copilot_calls_day", label: "Agent calls per day" },
+  { name: "copilot_tokens_day", label: "Agent tokens per day" },
+  { name: "upload_size_gb", label: "Upload size (GB)" },
+] as const;
+
+const SWITCH_FIELDS = [
+  { name: "search_web", label: "Agent may search the web (SEARCH_WEB)" },
+  {
+    name: "fetch_from_web",
+    label: "Agent may read pages from the web (FETCH_FROM_WEB)",
+  },
+] as const;
 
 export function RoleDialog(props: Props) {
   const { open, onClose, mode, initialData, roles } = props;
@@ -78,7 +143,7 @@ export function RoleDialog(props: Props) {
   useEffect(() => {
     if (usersData.length === 0) return;
     const transformedUsers = usersData
-      .filter((user) => user.source !== "takeover" && user.permissions_uuid)
+      .filter((user) => user.permissions_uuid)
       .map((user) => ({
         name: user.fullName || `${user.first_name} ${user.last_name}`,
         email: user.email,
@@ -98,24 +163,15 @@ export function RoleDialog(props: Props) {
   const form = useForm<RoleForm>({
     resolver,
     mode: "onChange",
-    defaultValues: {
-      name: initialData?.name ?? "",
-      description: initialData?.description ?? "",
-      users: initialData?.users ?? [],
-    },
+    defaultValues: roleFormValues(initialData),
   });
 
   useEffect(() => {
     if (mode === "edit" && initialData) {
-      form.reset({
-        name: initialData.name,
-        description: initialData.description ?? "",
-        users: initialData.users ?? [],
-      });
-      // Settle isValid on mount for prefilled edit forms.
+      form.reset(roleFormValues(initialData));
       form.trigger();
     } else if (mode === "create") {
-      form.reset(emptyDefaults);
+      form.reset(roleFormValues(undefined));
     }
   }, [mode, initialData, open, form]);
 
@@ -123,11 +179,7 @@ export function RoleDialog(props: Props) {
     mutationFn: postEntityRole,
     onSuccess: (_data, variables) => {
       queryClient.refetchQueries({ queryKey: ["roles"] });
-      form.reset({
-        name: variables.name,
-        description: variables.description ?? "",
-        users: variables.users ?? [],
-      });
+      form.reset(roleFormValues(variables));
       toast.success("Role created");
       onClose();
     },
@@ -138,11 +190,7 @@ export function RoleDialog(props: Props) {
     mutationFn: patchEntityRole,
     onSuccess: (_data, variables) => {
       queryClient.refetchQueries({ queryKey: ["roles"] });
-      form.reset({
-        name: variables.name,
-        description: variables.description ?? "",
-        users: variables.users ?? [],
-      });
+      form.reset(roleFormValues(variables));
       toast.success("Role updated");
       onClose();
     },
@@ -161,18 +209,20 @@ export function RoleDialog(props: Props) {
 
   const handleSubmit = useCallback(
     async (data: RoleForm) => {
+      const role = {
+        name: data.name,
+        description: data.description ?? "",
+        users: data.users ?? [],
+        ...roleSettings(data),
+      };
       if (mode === "edit" && initialData) {
-        const updatedRole = { ...initialData, ...data };
-        await updateMutation.mutateAsync(updatedRole);
+        await updateMutation.mutateAsync({ ...initialData, ...role });
       } else {
-        const newRole = {
+        await createMutation.mutateAsync({
+          ...role,
           uuid: crypto.randomUUID(),
-          name: data.name,
-          description: data.description ?? "",
-          users: data.users ?? [],
           createdAt: Date.now(),
-        };
-        await createMutation.mutateAsync(newRole);
+        });
       }
     },
     [mode, initialData, updateMutation.mutateAsync, createMutation.mutateAsync],
@@ -185,13 +235,8 @@ export function RoleDialog(props: Props) {
     setDeleteConfirmOpen(false);
   }, [deleteMutation.mutateAsync, initialData]);
 
-  const users = form.watch("users");
+  const users = form.watch("users") ?? [];
 
-  // Track the AddUsersSelect dropdown's open state. Close intents fired while
-  // the dropdown is open (or in the same event window where the dropdown is
-  // closing) are dismiss-dropdown clicks — not Dialog-close intents — so we
-  // swallow them here. Without this, clicking the Dialog backdrop to dismiss
-  // the dropdown also tries to close the Dialog and pops the discard confirm.
   const dropdownStateRef = useRef({ isOpen: false, closedAt: 0 });
 
   const handleAddUsersOpenChange = useCallback((isOpen: boolean) => {
@@ -216,21 +261,11 @@ export function RoleDialog(props: Props) {
   }, [form, onClose]);
 
   const handleDiscard = useCallback(() => {
-    form.reset(
-      initialData
-        ? {
-            name: initialData.name,
-            description: initialData.description ?? "",
-            users: initialData.users ?? [],
-          }
-        : emptyDefaults,
-    );
+    form.reset(roleFormValues(initialData));
     setDiscardConfirmOpen(false);
     onClose();
   }, [form, initialData, onClose]);
 
-  // Memoised member list for the dialog body — avoids O(n·m) .find on each
-  // re-render now that every checkbox tick re-renders the parent.
   const filteredUsersList = useMemo(() => {
     return users
       .map((userEmail) => {
@@ -271,7 +306,7 @@ export function RoleDialog(props: Props) {
         open={open}
         onClose={requestClose}
         onPointerDownOutside={(e) => e.preventDefault()}
-        className="max-w-md lg:max-w-3xl xl:max-w-5xl max-h-[760px] overflow-y-auto"
+        className="max-w-md lg:max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto"
       >
         <div className="flex items-center gap-2">
           <DialogTitle
@@ -323,6 +358,76 @@ export function RoleDialog(props: Props) {
                 )}
               />
 
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-2">
+                <FormField
+                  name="sharing"
+                  control={form.control}
+                  render={({ field }) => (
+                    <FormSelect label="Sharing" options={SHARING_OPTIONS} {...field} />
+                  )}
+                />
+                {LIMIT_FIELDS.map(({ name, label }) => {
+                  const none = form.watch(`${name}.none`);
+                  return (
+                    <div key={name} className="flex flex-col gap-1">
+                      <FormField
+                        name={`${name}.value`}
+                        control={form.control}
+                        render={({ field }) => (
+                          <FormInput
+                            type="number"
+                            label={label}
+                            className="h-8"
+                            disabled={none}
+                            placeholder={none ? "No limit" : "Enter a whole number"}
+                            error={!none && !!form.formState.errors[name]?.value}
+                            message={
+                              none
+                                ? undefined
+                                : form.formState.errors[name]?.value?.message
+                            }
+                            {...field}
+                            value={none ? "" : field.value}
+                          />
+                        )}
+                      />
+                      <FormField
+                        name={`${name}.none`}
+                        control={form.control}
+                        render={({ field }) => (
+                          <Checkbox
+                            label="No limit"
+                            aria-label={`${label}: no limit`}
+                            labelClassName="max-w-none whitespace-nowrap ml-1"
+                            checked={field.value}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked === true);
+                              form.trigger(name);
+                            }}
+                          />
+                        )}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {SWITCH_FIELDS.map(({ name, label }) => (
+                <FormField
+                  key={name}
+                  name={name}
+                  control={form.control}
+                  render={({ field }) => (
+                    <Checkbox
+                      label={label}
+                      labelClassName="max-w-none whitespace-nowrap ml-1"
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                    />
+                  )}
+                />
+              ))}
+
               <div className="space-y-2.5">
                 <FormField
                   name="users"
@@ -339,9 +444,9 @@ export function RoleDialog(props: Props) {
                 />
                 <div
                   className={cn(
-                    "flex flex-col h-[260px] gap-2 bg-general-bg-secondary p-2.5 rounded",
+                    "flex flex-col gap-2 bg-general-bg-secondary p-2.5 rounded",
                     {
-                      "items-center justify-center": users.length === 0,
+                      "items-center justify-center py-4": users.length === 0,
                     },
                   )}
                 >
@@ -358,12 +463,12 @@ export function RoleDialog(props: Props) {
                       No members added yet
                     </p>
                   ) : (
-                    <div className="flex flex-col h-full">
+                    <div className="flex flex-col">
                       <p className="mb-2.5 text-2xs text-ds-text-caption uppercase tracking-wide">
                         MEMBERS ({users.length})
                       </p>
                       <hr />
-                      <div className="flex flex-col gap-2.5 mt-2.5 text-2xs max-h-[calc(260px-100px)] overflow-y-auto">
+                      <div className="flex flex-col gap-2.5 mt-2.5 text-2xs max-h-40 overflow-y-auto">
                         {filteredUsersList.length === 0 && searchQuery ? (
                           <p
                             role="status"
@@ -379,7 +484,7 @@ export function RoleDialog(props: Props) {
                             >
                               <div className="flex items-center gap-2.5 flex-1">
                                 <div
-                                  className="obb-avatar-user"
+                                  className="ws-avatar-user"
                                   style={{
                                     backgroundColor: user.color,
                                   }}

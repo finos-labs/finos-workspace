@@ -1,17 +1,18 @@
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
-import { useAppStore } from "../state/app";
+import { type Item, useAppStore } from "../state/app";
 
-export function duplicateDashboard(item: any) {
+export function duplicateDashboard(item: Item) {
   const id = uuidv4();
   useAppStore.getState().addTab({
     index: id,
     data: {
-      name: `${item.data?.name} (Duplicate)`,
+      name: `${item.data.name} (Duplicate)`,
       type: "custom",
-      widgets: item.data?.widgets,
-      groups: item.data?.groups,
-      gridLayout: item.data?.gridLayout,
+      widgets: item.data.widgets,
+      groups: item.data.groups,
+      gridLayout: item.data.gridLayout,
+      ...(item.data.locked && { locked: true }),
     },
   });
   toast.success("Duplicated dashboard", {

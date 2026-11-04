@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { UnifiedTemplate } from "~/hooks/useAllTemplates";
@@ -8,7 +8,7 @@ import type { Source } from "~/lib/state/backendConnector";
 let mockSource: Source | null = null;
 
 vi.mock("~/lib/state/theme", () => ({
-  useShallowThemeStore: (selector: (s: any) => any) =>
+  useShallowThemeStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       theme: "light",
       setEditAppDialog: vi.fn(),
@@ -16,13 +16,10 @@ vi.mock("~/lib/state/theme", () => ({
     }),
 }));
 
-vi.mock("~/lib/state/featureFlags", () => ({
-  useShallowFeatureFlagsStore: (selector: (s: any) => any) =>
-    selector({ featureFlags: { tier: "pro" } }),
-}));
-
 vi.mock("~/lib/state/backendConnector", () => ({
-  useShallowBackendConnectorStore: (selector: (s: any) => any) =>
+  useShallowBackendConnectorStore: (
+    selector: (state: Record<string, unknown>) => unknown,
+  ) =>
     selector({
       getApiSourceById: () => mockSource,
       refreshApiSourceById: vi.fn(),
@@ -30,47 +27,20 @@ vi.mock("~/lib/state/backendConnector", () => ({
 }));
 
 vi.mock("~/lib/state/mcpTools", () => ({
-  useShallowMcpToolsStore: (selector: (s: any) => any) =>
+  useShallowMcpToolsStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ servers: [], getMCPConnection: () => undefined }),
 }));
-
-vi.mock("~/lib/runtimeConfig", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("~/lib/runtimeConfig")>();
-  return {
-    ...actual,
-    getConfig: () => {
-      const config = actual.getConfig();
-      return {
-        ...config,
-        whiteLabel: {
-          ...config.whiteLabel,
-          leftSidebarLogo: "",
-          name: "OpenBB Workspace",
-        },
-        ui: {
-          ...config.ui,
-          odpDownloadInstaller: false,
-        },
-      };
-    },
-  };
-});
 
 vi.mock("~/lib/constants", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,
-    inSnowflakeNativeApp: false,
   };
 });
 
-vi.mock("~/lib/appSubmissionFlag", () => ({
-  useCanSubmitApp: () => false,
-}));
-
 vi.mock("~/components/ds/utils", () => ({
   cn: (...args: unknown[]) =>
-    (args as any[])
+    args
       .flatMap((a) =>
         typeof a === "object" && a !== null && !Array.isArray(a)
           ? Object.entries(a)
@@ -98,16 +68,14 @@ vi.mock("~/components/General/Avatar", () => ({
   AuthenticatedAvatar: () => <div data-testid="avatar" />,
 }));
 
-vi.mock("~/components/General/FeatureLock", () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
-}));
-
 vi.mock("~/components/ds/dialogs/ConfirmDialog", () => ({
   ConfirmDialog: () => null,
 }));
 
 vi.mock("~/components/ds/atoms/Button", () => ({
-  Button: ({ children, ...rest }: any) => <button {...rest}>{children}</button>,
+  Button: ({ children, ...rest }: ComponentProps<"button">) => (
+    <button {...rest}>{children}</button>
+  ),
 }));
 
 vi.mock("~/components/AI/WidgetTooltipItem", () => ({
@@ -137,8 +105,12 @@ vi.mock("./SharedWithPopover", () => ({
 vi.mock("./Tag", () => ({ Tag: () => null }));
 
 import AppCard from "~/components/LayoutAuth/AppCard/AppCard";
+import { partial } from "../../../mocks";
 
-function makeTemplate(type: UnifiedTemplate["type"], sourceId = "src"): UnifiedTemplate {
+function makeTemplate(
+  type: UnifiedTemplate["type"],
+  sourceId = "src",
+): UnifiedTemplate {
   return {
     id: "tpl",
     name: "Tpl",
@@ -147,7 +119,7 @@ function makeTemplate(type: UnifiedTemplate["type"], sourceId = "src"): UnifiedT
     widgets: [],
     prompts: [],
     onClick: vi.fn(),
-    source: { id: sourceId, name: "src", url: "", endpointHeaders: [] } as any,
+    source: partial({ id: sourceId, name: "src", url: "", endpointHeaders: [] }),
   };
 }
 
@@ -175,7 +147,7 @@ describe("AppCard isBackendLoading", () => {
     mockSource = makeSource("rehydrated");
     const { container } = render(
       <MemoryRouter>
-        <AppCard template={makeTemplate("listed")} setDeleteConfirm={vi.fn()} />
+        <AppCard template={makeTemplate("user")} setDeleteConfirm={vi.fn()} />
       </MemoryRouter>,
     );
     const card = getCardEl(container);
@@ -187,7 +159,7 @@ describe("AppCard isBackendLoading", () => {
     mockSource = makeSource("success");
     const { container } = render(
       <MemoryRouter>
-        <AppCard template={makeTemplate("listed")} setDeleteConfirm={vi.fn()} />
+        <AppCard template={makeTemplate("user")} setDeleteConfirm={vi.fn()} />
       </MemoryRouter>,
     );
     const card = getCardEl(container);
@@ -198,7 +170,7 @@ describe("AppCard isBackendLoading", () => {
     mockSource = makeSource("pending");
     const { container } = render(
       <MemoryRouter>
-        <AppCard template={makeTemplate("listed")} setDeleteConfirm={vi.fn()} />
+        <AppCard template={makeTemplate("user")} setDeleteConfirm={vi.fn()} />
       </MemoryRouter>,
     );
     const card = getCardEl(container);
@@ -206,22 +178,11 @@ describe("AppCard isBackendLoading", () => {
     expect(card.className).toContain("cursor-wait");
   });
 
-  it("does NOT show loading opacity for non-listed template with no status (hydrated user app)", () => {
+  it("does NOT show loading opacity for template with no status (hydrated user app)", () => {
     mockSource = makeSource(undefined);
     const { container } = render(
       <MemoryRouter>
         <AppCard template={makeTemplate("user")} setDeleteConfirm={vi.fn()} />
-      </MemoryRouter>,
-    );
-    const card = getCardEl(container);
-    expect(card.className).not.toContain("opacity-50");
-  });
-
-  it("does NOT show loading opacity for listed template with undefined status (was buggy before)", () => {
-    mockSource = makeSource(undefined);
-    const { container } = render(
-      <MemoryRouter>
-        <AppCard template={makeTemplate("listed")} setDeleteConfirm={vi.fn()} />
       </MemoryRouter>,
     );
     const card = getCardEl(container);

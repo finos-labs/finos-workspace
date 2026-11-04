@@ -11,6 +11,11 @@ import useDetectOS from "~/hooks/useDetectOS";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
 import { ENABLE_SHARING } from "~/lib/constants";
 import { useMobile } from "~/lib/providers/MobileProvider";
+import {
+  canAddConnections,
+  canReceiveShares,
+  useShallowAccessStore,
+} from "~/lib/state/access";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 import { useShallowSidebarStore, useSidebarStore } from "~/lib/state/sidebar";
 import { useShallowThemeStore } from "~/lib/state/theme";
@@ -20,9 +25,7 @@ import {
 } from "~/lib/state/workspaceBridge";
 import { cn } from "~/lib/utils";
 import { groupVariants } from "../ds/atoms/Input";
-import FeatureLock from "../General/FeatureLock";
 import Sidebar from "../General/Sidebar";
-import SnowflakeHide from "../General/SnowflakeHide";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import { usePanelsState } from "./AppLayout/hooks/usePanelsState";
@@ -40,8 +43,6 @@ type TabLinkProps = {
   href: string;
   label: string;
   icon: string;
-  locked?: boolean;
-  lockMessage?: string;
 };
 
 const TABS_LINKS: Record<string, TabLinkProps[]> = {
@@ -58,7 +59,7 @@ const TABS_LINKS: Record<string, TabLinkProps[]> = {
       id: "connections",
       href: "/app/connections",
       label: "Connections",
-      icon: "terminal-browser",
+      icon: "window-browser",
     },
   ],
   library: [
@@ -93,7 +94,7 @@ function McpStatusIndicator() {
     if (status === "disabled") return null;
     const { color = "text-yellow-500", messageSuffix } = MCP_STATUS_MAP[status];
     return (
-      <Tooltip message={`Workspace MCP Companion is ${messageSuffix}`}>
+      <Tooltip message={`FINOS Workspace MCP Companion is ${messageSuffix}`}>
         <div className="flex items-center justify-center size-6 p-1">
           <Icon
             id="mcp"
@@ -161,9 +162,9 @@ function AuthSidebar({ isMobile }: { isMobile?: boolean }) {
               setInitialSelectedSearchTab("widgets");
               changeSearch(true);
             }}
-            className="obb-navigation-item mx-auto rounded border border-[#DCDCDC]
-            bg-white hover:bg-light-50 dark:border-[#303038]
-            dark:bg-[#212126] dark:hover:bg-[#202025]"
+            className="ws-navigation-item mx-auto rounded border border-[#DCDCDC]
+            bg-white hover:bg-light-50 dark:border-dark-600
+            dark:bg-dark-800 dark:hover:bg-dark-700"
           >
             <Icon
               id="magnifying-glass-icon"
@@ -193,12 +194,12 @@ function AuthSidebar({ isMobile }: { isMobile?: boolean }) {
 function TabLink(props: TabLinkProps) {
   const collapsed = useShallowSidebarStore((state) => !state.effectiveExpanded);
 
-  const { id, href, label, icon, locked, lockMessage } = props;
+  const { id, href, label, icon } = props;
 
   const classNameCb = useCallback(
     (props: NavLinkRenderProps) =>
-      cn("obb-navigation-item @max-[100px]:h-8 @max-[100px]:w-8! ", {
-        "obb-navigation-item-active text-light-800 dark:text-light-100": props.isActive,
+      cn("ws-navigation-item @max-[100px]:h-8 @max-[100px]:w-8! ", {
+        "ws-navigation-item-active text-light-800 dark:text-light-100": props.isActive,
       }),
     [],
   );
@@ -219,7 +220,7 @@ function TabLink(props: TabLinkProps) {
     [icon, label],
   );
 
-  const linkContent = useMemo(
+  return useMemo(
     () => (
       <Tooltip
         id={`links-${id}-tooltip`}
@@ -241,34 +242,10 @@ function TabLink(props: TabLinkProps) {
     ),
     [id, href, label, classNameCb, childrenCb, collapsed],
   );
-
-  if (locked) {
-    return collapsed ? (
-      <Tooltip id={`links-${id}-lock-tooltip`} message={lockMessage} position="right">
-        <span className="opacity-50">
-          <span className="pointer-events-none">
-            <NavLink
-              key={`auth-sidebar-${id}`}
-              to={href}
-              id={id}
-              end={true}
-              className={classNameCb}
-              children={childrenCb}
-            />
-          </span>
-        </span>
-      </Tooltip>
-    ) : (
-      <FeatureLock isLocked={true} message={lockMessage} className="max-w-[220px]">
-        {linkContent}
-      </FeatureLock>
-    );
-  }
-
-  return linkContent;
 }
 
 function LinksNav() {
+  const mayAddConnections = useShallowAccessStore((s) => canAddConnections(s.access));
   const linksMemo = useMemo(
     () => (
       <div key="auth-links" className="mt-4">
@@ -277,11 +254,10 @@ function LinksNav() {
             <TabLink key={`auth-link-${link.id}`} {...link} />
           ))}
 
-          <SnowflakeHide>
-            {TABS_LINKS.connections.map((link) => (
+          {mayAddConnections &&
+            TABS_LINKS.connections.map((link) => (
               <TabLink key={`auth-link-${link.id}`} {...link} />
             ))}
-          </SnowflakeHide>
         </div>
 
         <SidebarSection className="mt-4" id="library" title="Library">
@@ -293,7 +269,7 @@ function LinksNav() {
         </SidebarSection>
       </div>
     ),
-    [],
+    [mayAddConnections],
   );
 
   return (
@@ -369,8 +345,8 @@ function useResizeObserver(
 }
 
 const calculateHeights = (
-  sidebarRef?: MutableRefObject<HTMLDivElement | null>,
-  dispatch?: StateDispatch<ResizeObserverState>,
+  sidebarRef: MutableRefObject<HTMLDivElement | null>,
+  dispatch: StateDispatch<ResizeObserverState>,
 ) => {
   const container = sidebarRef.current;
   if (!container) return;
@@ -380,7 +356,7 @@ const calculateHeights = (
   const sharedDashboardsSection = container.querySelector(
     '[data-section="shared-dashboards"]',
   );
-  const dividers = container.querySelectorAll(".obb-divider");
+  const dividers = container.querySelectorAll(".ws-divider");
 
   let totalDividerHeight = 0;
   dividers.forEach((divider) => {
@@ -446,7 +422,6 @@ const calculateHeights = (
     }
 
     dispatch((prev) => {
-      //  only update if values have changed to prevent re-renders
       if (
         prev.myDashboards !== myDashboardsMaxHeight ||
         prev.sharedDashboards !== sharedMaxHeight
@@ -495,8 +470,9 @@ type SharedDashboardsProps = {
 
 function SharedDashboards(props: SharedDashboardsProps) {
   const { maxHeight } = props;
+  const mayReceive = useShallowAccessStore((state) => canReceiveShares(state.access));
   const hasSharedItems = useShallowSharedAppStore(
-    (state) => Object.keys(state.sharedItems).length > 0,
+    (state) => Object.keys(state.sharedItems ?? {}).length > 0,
   );
   const { expandedShared, expandedMyDashboards } = useShallowSidebarStore((state) => ({
     expandedShared: state.expandedShared,
@@ -538,7 +514,7 @@ function SharedDashboards(props: SharedDashboardsProps) {
     [hasSharedItems, expandedShared, maxHeight, expandedMyDashboards],
   );
 
-  return ENABLE_SHARING !== "true" ? null : sharedSectionMemo;
+  return ENABLE_SHARING !== "true" || !mayReceive ? null : sharedSectionMemo;
 }
 
 type MyDashboardsProps = {
@@ -571,7 +547,9 @@ const MyDashboards = memo((props: MyDashboardsProps) => {
             ? { maxHeight: `${maxHeight}px` }
             : undefined
         }
-        ref={(el) => (tabsRef.current = el)}
+        ref={(el) => {
+          tabsRef.current = el;
+        }}
         onScroll={(e) => expandedMyDashboards && setScrollY(e.currentTarget.scrollTop)}
       >
         <TabsItems key="auth-sidebar-tab-items" tabsRef={tabsRef} />

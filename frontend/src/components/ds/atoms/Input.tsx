@@ -16,7 +16,7 @@ import { Label, Message } from "./Label";
 
 export const groupVariants = cva(
   [
-    "BB-Input group body-xs-regular flex w-full items-center gap-2 rounded-sm border",
+    "group body-xs-regular flex w-full items-center gap-2 rounded-sm border",
     "disabled:cursor-not-allowed",
     "transition",
     "bg-input-field-bg",
@@ -32,8 +32,7 @@ export const groupVariants = cva(
         default: "",
       },
       size: {
-        //! Keep pl and pr, don't use px! It's overriding below.
-        xs: "gap-1 pr-1 pl-1 [&_.BB-Icon]:size-3 [&_button]:max-h-3",
+        xs: "gap-1 pr-1 pl-1 [&_button]:max-h-3",
         sm: "gap-1 pr-2 pl-2 [&_button]:max-h-4",
         md: "gap-2 pr-3 pl-3 [&_button]:max-h-6",
         lg: "gap-2 pr-3 pl-3 [&_button]:max-h-8",
@@ -46,9 +45,9 @@ export const groupVariants = cva(
   },
 );
 
-export const inputVariants = cva(
+const inputVariants = cva(
   [
-    "BB-Input flex w-full border-none bg-transparent",
+    "flex w-full border-none bg-transparent [&[type=date]::-webkit-inner-spin-button]:cursor-pointer [&[type=date]::-webkit-inner-spin-button]:opacity-0 [&[type=date]::-webkit-calendar-picker-indicator]:cursor-pointer [&[type=date]::-webkit-calendar-picker-indicator]:opacity-0",
     "file:border-0 file:bg-transparent file:font-medium file:text-sm",
     "disabled:cursor-not-allowed disabled:bg-transparent",
     "focus-visible:outline-hidden",
@@ -85,44 +84,29 @@ export interface InputProps<
   T extends InputValue = string,
   TValue = T extends `${infer V}` ? V : T,
 > extends Omit<ReactInputProps, "defaultValue"> {
-  /** Add floating label. Requires `placeholder`. */
   label?: React.ReactNode;
-  /** When value is not empty, x icon appears to clear input. */
   clearable?: boolean;
-  /** Show copy icon appears to copy input value. */
   copiable?: boolean;
-  /** Show eye icon to reveal and hide password. Password is hidden by default. */
   revealable?: boolean;
-  /** Add React element inside border before input. */
   prefix?: React.ReactNode;
-  /** Add React element inside border after input. */
   suffix?: React.ReactNode;
   size?: "xs" | "sm" | "md" | "lg";
   value?: T;
   defaultValue?: T;
-  /** Text below input */
   message?: React.ReactNode;
-  /** Make it red and display error message */
   error?: boolean;
-  /** TODO: Replace password with 🦋. */
-  // butterflies?: boolean;
   onChange?: (value: TValue) => void;
-  /** Input className */
   inputClassName?: string;
-  /** Prevent browsers from prompting to save password. Only applies when type="password". */
   noPasswordSave?: boolean;
 }
 
-/** Plain input component, can be used in form or outside it */
-export const Input = React.forwardRef<HTMLInputElement, InputProps>((props, fwRef) => {
+const InputBase = React.forwardRef<HTMLInputElement, InputProps>((props, fwRef) => {
   const {
-    // default props
     className,
     type: defaultType = "text",
     placeholder,
     onFocus,
     onBlur,
-    // custom props
     label,
     prefix,
     suffix,
@@ -137,11 +121,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>((props, fwRe
     error,
     inputClassName,
     noPasswordSave,
-    // butterflies = revealable,
     ...rest
   } = props;
 
-  // Uncontrolled state support
   const localRef = useRef<HTMLInputElement>(null);
   const ref = (fwRef as React.RefObject<HTMLInputElement>) ?? localRef;
   const autoId = useId();
@@ -176,7 +158,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>((props, fwRe
   }
 
   function clear() {
-    const onChange = props.onChange! as (value: string) => void;
+    const onChange = props.onChange as ((value: string) => void) | undefined;
     if (onChange) {
       onChange("");
     } else {
@@ -282,24 +264,22 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>((props, fwRe
       <Message error={error}>{message}</Message>
     </div>
   );
-}) as <T extends InputValue = string>(
+});
+
+InputBase.displayName = "Input";
+
+export const Input = InputBase as <T extends InputValue = string>(
   props: InputProps<T> & { ref?: ForwardedRef<HTMLInputElement> },
 ) => ReactElement;
 
-// @ts-expect-error
-Input.displayName = "Input";
-
-/* Form */
-
 type FormInputProps<T extends InputValue = string> = InputProps<T>;
 
-/** Input field used inside <Form> only. */
-export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
+const FormInputBase = React.forwardRef<HTMLInputElement, FormInputProps>(
   (props, ref) => {
     const { label, message, ...rest } = props;
 
     return (
-      <FormItem className="BB-FormInput group" aria-disabled={props.disabled}>
+      <FormItem className="group" aria-disabled={props.disabled}>
         <FormLabel>{label}</FormLabel>
         <FormControl>
           <Input ref={ref} {...rest} />
@@ -308,9 +288,10 @@ export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
       </FormItem>
     );
   },
-) as <T extends InputValue = string>(
+);
+
+FormInputBase.displayName = "FormInput";
+
+export const FormInput = FormInputBase as <T extends InputValue = string>(
   props: FormInputProps<T> & { ref?: ForwardedRef<HTMLInputElement> },
 ) => ReactElement;
-
-// @ts-expect-error
-FormInput.displayName = "FormInput";

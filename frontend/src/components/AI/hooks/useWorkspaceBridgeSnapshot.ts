@@ -3,10 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import { useActiveWorkspaceDashboardId } from "~/components/AI/hooks/useActiveWorkspaceDashboardId";
 import type { WorkspaceStateT } from "~/components/AI/hooks/useAiFetchRequestInit";
 import { ALL_AI_FEATURES } from "~/lib/constants";
-import { useAppStore } from "~/lib/state/app";
+import { type Item, useAppStore } from "~/lib/state/app";
 import { useAuthStore } from "~/lib/state/auth";
 import { useCopilotStore } from "~/lib/state/copilot";
-import { useCopilotDataStore } from "~/lib/state/copilotData";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
 import { useSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 import type { DashboardInfoT } from "~/lib/utils/workspaceDashboard";
@@ -50,15 +49,11 @@ function getPageContext(
   }
 }
 
-function getDashboardTabCount(item: Record<string, any>) {
-  const widgets = Array.isArray(item.data?.widgets) ? item.data.widgets : [];
-  const gridLayout = item.data?.gridLayout || {};
-  const navBarWidget = widgets.find(
-    (widget: Record<string, unknown>) => widget.widgetId === "navigation_bar",
-  );
-  const navBarTabs = Array.isArray(navBarWidget?.storage?.tabs)
-    ? (navBarWidget.storage.tabs as { id: string; name: string }[])
-    : [];
+function getDashboardTabCount(item: Item) {
+  const widgets = item.data?.widgets ?? [];
+  const gridLayout = item.data?.gridLayout ?? {};
+  const navBarWidget = widgets.find((widget) => widget.widgetId === "navigation_bar");
+  const navBarTabs = navBarWidget?.storage?.tabs ?? [];
   const tabIds = new Set<string>();
 
   for (const tab of navBarTabs) {
@@ -89,7 +84,6 @@ export function useWorkspaceBridgeSnapshot() {
     const appState = useAppStore.getState();
     const authState = useAuthStore.getState();
     const copilotState = useCopilotStore.getState();
-    const copilotDataState = useCopilotDataStore.getState();
     const mcpToolsState = useMcpToolsStore.getState();
     const skillsLibraryState = useSkillsLibraryStore.getState();
 
@@ -159,12 +153,9 @@ export function useWorkspaceBridgeSnapshot() {
     const customFeatureStates = copilotState.customFeatureStates || {};
     const enabledOptions = new Set<string>();
 
-    if (features["widget-global-search"] && copilotDataState.extraWidgetsEnabled)
-      enabledOptions.add("widget-global-search");
+    if (features["widget-global-search"]) enabledOptions.add("widget-global-search");
     if (features["agent-orchestration"] && copilotState.orchestrationModeEnabled)
       enabledOptions.add("agent-orchestration");
-    if (features["generative-ui"] && copilotDataState.generativeUiEnabled)
-      enabledOptions.add("generative-ui");
     if (features["mcp-tools"] && mcpToolsState.getEnabledToolCount() > 0)
       enabledOptions.add("mcp-tools");
 

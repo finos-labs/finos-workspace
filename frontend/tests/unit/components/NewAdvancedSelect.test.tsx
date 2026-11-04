@@ -9,7 +9,10 @@ vi.mock("~/lib/utils", () => ({
 }));
 
 vi.mock("@tanstack/react-virtual", () => ({
-  useVirtualizer: (opts: any) => ({
+  useVirtualizer: (opts: {
+    count: number;
+    getItemKey?: (index: number) => string | number;
+  }) => ({
     getVirtualItems: () =>
       Array.from({ length: opts.count }, (_, i) => ({
         key: opts.getItemKey?.(i) ?? i,
@@ -55,7 +58,6 @@ describe("AdvancedSelect Component", () => {
 
     userEvent.click(screen.getByText("Test 1"));
 
-    // Wait for the dropdown options to be available
     await screen.findByText("Test 2");
 
     userEvent.click(screen.getByText("Test 2"));
@@ -79,12 +81,10 @@ describe("AdvancedSelect Component", () => {
 
     userEvent.click(screen.getByText("Test 1"));
 
-    // Wait for the dropdown to open
     await waitFor(() => {
       expect(screen.getByRole("menu")).toBeInTheDocument();
     });
 
-    // Check that search input is present when withSearch is true
     await waitFor(() => {
       expect(screen.getByPlaceholderText("Search")).toBeInTheDocument();
     });
@@ -103,10 +103,8 @@ describe("AdvancedSelect Component", () => {
 
     userEvent.hover(screen.getByText("Test 1"));
 
-    // Use getAllByText to find all elements with the tooltip text
     const tooltips = await screen.findAllByText("This is a tooltip");
 
-    // Assert that at least one tooltip is present
     expect(tooltips.length).toBeGreaterThan(0);
   });
 

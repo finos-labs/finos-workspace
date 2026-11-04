@@ -2,12 +2,21 @@ import { useQuery } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { forwardRef, type ReactNode } from "react";
-import { BrowserRouter, MemoryRouter, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BackendPermissionsT } from "~/api/user_roles.api";
 import type { ButtonProps } from "~/components/ds/atoms/Button";
+import { useAccessStore } from "~/lib/state/access";
 import type { ExternalCopilotHolder } from "~/lib/state/copilot";
 import ConnectionsPage from "~/routes/Connections";
+import { setAccess } from "../factories";
+import { partial, required } from "../mocks";
 
 const {
   mockDeleteApiSource,
@@ -43,8 +52,6 @@ const {
 }));
 
 vi.mock("~/api/auth.api", () => ({
-  SUBSCRIPTIONS_QUERY_KEY: ["marketplace", "subscriptions"],
-  getUserSubscriptions: vi.fn(),
   deleteApiSource: (...args: unknown[]) => mockDeleteApiSource(...args),
   getApiSources: () => mockGetApiSources(),
   removeCustomCopilot: (...args: unknown[]) => mockRemoveCustomCopilot(...args),
@@ -67,25 +74,28 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("~/lib/state/backendConnector", () => ({
-  useShallowBackendConnectorStore: (selector: any) =>
-    mockUseShallowBackendConnectorStore(selector),
+  useShallowBackendConnectorStore: (
+    selector: (state: Record<string, unknown>) => unknown,
+  ) => mockUseShallowBackendConnectorStore(selector),
 }));
 
 vi.mock("~/lib/state/copilot", () => ({
-  useShallowCopilotStore: (selector: any) => mockUseShallowCopilotStore(selector),
+  useShallowCopilotStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    mockUseShallowCopilotStore(selector),
 }));
 
 vi.mock("~/lib/state/permissions", () => ({
-  useShallowPermissionsStore: (selector: any) =>
+  useShallowPermissionsStore: (selector: (state: Record<string, unknown>) => unknown) =>
     mockUseShallowPermissionsStore(selector),
 }));
 
 vi.mock("~/lib/state/theme", () => ({
-  useShallowThemeStore: (selector: any) => mockUseShallowThemeStore(selector),
+  useShallowThemeStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    mockUseShallowThemeStore(selector),
 }));
 
 vi.mock("~/lib/utils", () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
 vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
@@ -308,8 +318,8 @@ const mockExternalCopilotHolders: ExternalCopilotHolder[] = [
     url: "https://api.example.com",
     headers: {},
     copilots: [
-      { id: "agent-1", name: "Agent 1", description: "Test agent" },
-      { id: "agent-2", name: "Agent 2", description: "Test agent 2" },
+      { id: "agent-1", name: "Agent 1", description: "Test agent", endpoints: {} },
+      { id: "agent-2", name: "Agent 2", description: "Test agent 2", endpoints: {} },
     ],
   },
 ];
@@ -327,72 +337,80 @@ const mockSharedBackends: BackendPermissionsT[] = [
 ];
 
 function setupDefaultMocks() {
-  mockUseShallowBackendConnectorStore.mockImplementation((selector: any) =>
-    selector({
-      apiSources: mockApiSources,
-      updateApiSources: mockUpdateApiSources,
-      removeApiSource: mockRemoveApiSource,
-      refreshApiSourceById: mockRefreshApiSourceById,
-      deleteApiSource: mockDeleteApiSource,
-    }),
+  mockUseShallowBackendConnectorStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        apiSources: mockApiSources,
+        updateApiSources: mockUpdateApiSources,
+        removeApiSource: mockRemoveApiSource,
+        refreshApiSourceById: mockRefreshApiSourceById,
+        deleteApiSource: mockDeleteApiSource,
+      }),
   );
 
-  mockUseShallowCopilotStore.mockImplementation((selector: any) =>
-    selector({
-      externalCopilotHolders: mockExternalCopilotHolders,
-      setExternalCopilotHolders: mockSetExternalCopilotHolders,
-    }),
+  mockUseShallowCopilotStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        externalCopilotHolders: mockExternalCopilotHolders,
+        setExternalCopilotHolders: mockSetExternalCopilotHolders,
+      }),
   );
 
-  mockUseShallowPermissionsStore.mockImplementation((selector: any) =>
-    selector({
-      permissions: {
-        backends: mockSharedBackends,
-        files: [],
-        prompts: [],
-      },
-    }),
+  mockUseShallowPermissionsStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        permissions: {
+          backends: mockSharedBackends,
+          files: [],
+          prompts: [],
+        },
+      }),
   );
 
-  mockUseShallowThemeStore.mockImplementation((selector: any) =>
-    selector({
-      setManageAppDialog: mockSetManageAppDialog,
-    }),
+  mockUseShallowThemeStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        setManageAppDialog: mockSetManageAppDialog,
+      }),
   );
 }
 
 function setupEmptyMocks() {
-  mockUseShallowBackendConnectorStore.mockImplementation((selector: any) =>
-    selector({
-      apiSources: [],
-      updateApiSources: mockUpdateApiSources,
-      removeApiSource: mockRemoveApiSource,
-      refreshApiSourceById: mockRefreshApiSourceById,
-      deleteApiSource: mockDeleteApiSource,
-    }),
+  mockUseShallowBackendConnectorStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        apiSources: [],
+        updateApiSources: mockUpdateApiSources,
+        removeApiSource: mockRemoveApiSource,
+        refreshApiSourceById: mockRefreshApiSourceById,
+        deleteApiSource: mockDeleteApiSource,
+      }),
   );
 
-  mockUseShallowCopilotStore.mockImplementation((selector: any) =>
-    selector({
-      externalCopilotHolders: [],
-      setExternalCopilotHolders: mockSetExternalCopilotHolders,
-    }),
+  mockUseShallowCopilotStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        externalCopilotHolders: [],
+        setExternalCopilotHolders: mockSetExternalCopilotHolders,
+      }),
   );
 
-  mockUseShallowPermissionsStore.mockImplementation((selector: any) =>
-    selector({
-      permissions: {
-        backends: [],
-        files: [],
-        prompts: [],
-      },
-    }),
+  mockUseShallowPermissionsStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        permissions: {
+          backends: [],
+          files: [],
+          prompts: [],
+        },
+      }),
   );
 
-  mockUseShallowThemeStore.mockImplementation((selector: any) =>
-    selector({
-      setManageAppDialog: mockSetManageAppDialog,
-    }),
+  mockUseShallowThemeStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        setManageAppDialog: mockSetManageAppDialog,
+      }),
   );
 }
 
@@ -410,6 +428,7 @@ describe("ConnectionsPage", () => {
     mockDeleteApiSource.mockResolvedValue({});
     mockRemoveCustomCopilot.mockResolvedValue({});
     setupDefaultMocks();
+    setAccess({ user_type: "Developer" });
   });
 
   describe("Rendering", () => {
@@ -453,8 +472,6 @@ describe("ConnectionsPage", () => {
       renderConnections();
       expect(screen.getByText("My Backend")).toBeInTheDocument();
       expect(screen.getByText("Shared Backend")).toBeInTheDocument();
-      // "Another Backend" has status "error" and is in the collapsed Inactive section
-      // Expand the inactive section to see it
       const inactiveButton = screen.getByRole("button", { name: /inactive/i });
       await user.click(inactiveButton);
       expect(screen.getByText("Another Backend")).toBeInTheDocument();
@@ -467,7 +484,6 @@ describe("ConnectionsPage", () => {
       expect(myBackendRow).toBeDefined();
       if (myBackendRow) {
         const cells = within(myBackendRow).getAllByRole("cell");
-        // Column order: Checkbox, Backend, Apps, Widgets, Prompts, Agents, Last Updated, Actions
         expect(cells[3]).toHaveTextContent("2");
       }
     });
@@ -485,6 +501,45 @@ describe("ConnectionsPage", () => {
         mode: "add",
         data: null,
       });
+    });
+
+    const renderAtTheRoute = () =>
+      render(
+        <MemoryRouter initialEntries={["/app/connections"]}>
+          <Routes>
+            <Route path="/app" element={<p>apps page</p>} />
+            <Route path="/app/connections" element={<ConnectionsPage />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+    it("sends a User, who brings no connections, to Apps", () => {
+      setAccess({ user_type: "User" });
+      renderAtTheRoute();
+
+      expect(screen.getByText("apps page")).toBeInTheDocument();
+      expect(screen.queryByText("My Backend")).not.toBeInTheDocument();
+    });
+
+    it("waits for the session to say who the user is", () => {
+      useAccessStore.setState({ access: null });
+      renderAtTheRoute();
+
+      expect(screen.queryByText("apps page")).not.toBeInTheDocument();
+      expect(screen.queryByText("My Backend")).not.toBeInTheDocument();
+    });
+
+    it.each([
+      "Admin",
+      "Developer",
+    ] as const)("is an %s's, who brings their own connections", (userType) => {
+      setAccess({ user_type: userType });
+      renderAtTheRoute();
+
+      expect(screen.getByText("My Backend")).toBeInTheDocument();
+      expect(
+        screen.getAllByRole("button", { name: /connect backend/i }).length,
+      ).toBeGreaterThan(0);
     });
   });
 
@@ -508,8 +563,6 @@ describe("ConnectionsPage", () => {
       const searchInput = screen.getByTestId("search-input");
       await user.type(searchInput, "another.example");
 
-      // "Another Backend" has status "error" and is in the collapsed Inactive section
-      // Expand the inactive section to see filtered results
       await waitFor(() => {
         const inactiveButton = screen.getByRole("button", { name: /inactive/i });
         return inactiveButton;
@@ -624,7 +677,6 @@ describe("ConnectionsPage", () => {
       const user = userEvent.setup();
       renderConnections();
 
-      // The Tooltip wrapper has the title, find the button inside
       const deleteWrappers = screen.getAllByTitle("Delete connection");
       const deleteButton = within(deleteWrappers[0]).getByRole("button");
       await user.click(deleteButton);
@@ -667,7 +719,6 @@ describe("ConnectionsPage", () => {
         expect(screen.getByTestId("confirm-dialog")).toBeInTheDocument();
       });
 
-      // Find the confirm button inside the dialog (the danger variant button)
       const dialog = screen.getByTestId("confirm-dialog");
       const confirmButton = within(dialog).getByRole("button", {
         name: /yes, delete/i,
@@ -710,7 +761,6 @@ describe("ConnectionsPage", () => {
       const user = userEvent.setup();
       renderConnections();
 
-      // Before selection, bulk delete button should not be rendered
       expect(
         screen.queryByRole("button", { name: /delete connection/i }),
       ).not.toBeInTheDocument();
@@ -718,7 +768,6 @@ describe("ConnectionsPage", () => {
       const checkboxes = screen.getAllByRole("checkbox");
       await user.click(checkboxes[1]);
 
-      // After selection, bulk delete button appears
       const bulkDeleteButton = screen.getByRole("button", {
         name: /delete connection/i,
       });
@@ -755,12 +804,10 @@ describe("ConnectionsPage", () => {
       const user = userEvent.setup();
       renderConnections();
 
-      // Expand inactive section to have more selectable connections
       const inactiveButton = screen.getByRole("button", { name: /inactive/i });
       await user.click(inactiveButton);
 
       const checkboxes = screen.getAllByRole("checkbox");
-      // [0]=Active header, [1]=My Backend, [2]=Shared Backend (disabled), [3]=Inactive header, [4]=Another Backend
       await user.click(checkboxes[1]);
       await user.click(checkboxes[4]);
 
@@ -780,7 +827,6 @@ describe("ConnectionsPage", () => {
       const user = userEvent.setup();
       renderConnections();
 
-      // The Tooltip wrapper has the title, find the button inside
       const editWrappers = screen.getAllByTitle("Edit backend");
       const editButton = within(editWrappers[0]).getByRole("button");
       await user.click(editButton);
@@ -825,6 +871,26 @@ describe("ConnectionsPage", () => {
       }
     });
 
+    it("lists a backend once when the user's own list and a role's grant both name it", () => {
+      mockUseShallowPermissionsStore.mockImplementation(
+        (selector: (state: Record<string, unknown>) => unknown) =>
+          selector({
+            permissions: {
+              backends: [
+                { ...mockSharedBackends[0], uuid: "uuid-1", name: "My Backend" },
+                ...mockSharedBackends,
+              ],
+              files: [],
+              prompts: [],
+            },
+          }),
+      );
+      renderConnections();
+
+      expect(screen.getAllByText("My Backend")).toHaveLength(1);
+      expect(screen.getByText("Shared Backend")).toBeInTheDocument();
+    });
+
     it("disables checkbox for shared connections", () => {
       renderConnections();
 
@@ -853,7 +919,6 @@ describe("ConnectionsPage", () => {
     it("shows URL in backend name tooltip", () => {
       renderConnections();
 
-      // URL is rendered inside HintLabel tooltip content
       expect(screen.getByText("https://api.example.com")).toBeInTheDocument();
     });
 
@@ -868,11 +933,10 @@ describe("ConnectionsPage", () => {
 
       renderConnections();
 
-      // The copy button is rendered inside the HintLabel tooltip content, next to the URL
       const urlElement = screen.getByText("https://api.example.com");
       const copyButton = urlElement.parentElement?.querySelector("button");
       expect(copyButton).toBeTruthy();
-      await user.click(copyButton!);
+      await user.click(required(copyButton));
 
       await waitFor(() => {
         expect(mockWriteText).toHaveBeenCalledWith("https://api.example.com");
@@ -945,20 +1009,19 @@ describe("ConnectionsPage", () => {
 
   describe("Progressive Loading", () => {
     const fetchingQuery = () =>
-      ({
+      partial<ReturnType<typeof useQuery>>({
         isFetching: true,
         data: null,
         refetch: vi.fn().mockResolvedValue({}),
-      }) as any;
+      });
 
     afterEach(() => {
-      vi.mocked(useQuery).mockImplementation(
-        () =>
-          ({
-            isFetching: false,
-            data: null,
-            refetch: vi.fn().mockResolvedValue({}),
-          }) as any,
+      vi.mocked(useQuery).mockImplementation(() =>
+        partial<ReturnType<typeof useQuery>>({
+          isFetching: false,
+          data: null,
+          refetch: vi.fn().mockResolvedValue({}),
+        }),
       );
     });
 
@@ -982,37 +1045,40 @@ describe("ConnectionsPage", () => {
 
     it("shows a validating indicator on rows that are still pending", () => {
       vi.mocked(useQuery).mockImplementation(fetchingQuery);
-      mockUseShallowBackendConnectorStore.mockImplementation((selector: any) =>
-        selector({
-          apiSources: [
-            mockApiSources[0],
-            {
-              id: "backend-pending",
-              uuid: "uuid-pending",
-              name: "Pending Backend",
-              url: "https://pending.example.com",
-              widgets: {},
-              templates: [],
-              status: "pending" as const,
-              createdDate: "2024-01-05T00:00:00Z",
-            },
-          ],
-          updateApiSources: mockUpdateApiSources,
-          removeApiSource: mockRemoveApiSource,
-          refreshApiSourceById: mockRefreshApiSourceById,
-          deleteApiSource: mockDeleteApiSource,
-        }),
+      mockUseShallowBackendConnectorStore.mockImplementation(
+        (selector: (state: Record<string, unknown>) => unknown) =>
+          selector({
+            apiSources: [
+              mockApiSources[0],
+              {
+                id: "backend-pending",
+                uuid: "uuid-pending",
+                name: "Pending Backend",
+                url: "https://pending.example.com",
+                widgets: {},
+                templates: [],
+                status: "pending" as const,
+                createdDate: "2024-01-05T00:00:00Z",
+              },
+            ],
+            updateApiSources: mockUpdateApiSources,
+            removeApiSource: mockRemoveApiSource,
+            refreshApiSourceById: mockRefreshApiSourceById,
+            deleteApiSource: mockDeleteApiSource,
+          }),
       );
       renderConnections();
 
       const pendingRow = screen.getByText("Pending Backend").closest("tr");
       expect(pendingRow).toBeTruthy();
-      expect(within(pendingRow!).getByTestId("icon-mdi-loading")).toBeInTheDocument();
+      expect(
+        within(required(pendingRow)).getByTestId("icon-mdi-loading"),
+      ).toBeInTheDocument();
 
       const successRow = screen.getByText("My Backend").closest("tr");
       expect(successRow).toBeTruthy();
       expect(
-        within(successRow!).queryByTestId("icon-mdi-loading"),
+        within(required(successRow)).queryByTestId("icon-mdi-loading"),
       ).not.toBeInTheDocument();
     });
   });

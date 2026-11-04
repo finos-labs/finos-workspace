@@ -1,56 +1,52 @@
-import { type UseQueryOptions, useQueries, useQuery } from "@tanstack/react-query";
+import { type UseQueryOptions, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useWidgetContext } from "~/components/Widget.context";
-import { cleanSearchParams, convertHeadersToRecord } from "~/lib/utils/widgetParams";
-import { REFRESH_WIDGET_INTERVAL } from "./constants";
-import { getConfig } from "./runtimeConfig";
-import { useAuthStore, useShallowAuthStore } from "./state/auth";
-import { useShallowBackendConnectorStore } from "./state/backendConnector";
+import {
+  fetchRequest,
+  isApiFileUrl,
+  isApiUrl,
+  WORKSPACE_CLIENT,
+  WORKSPACE_CLIENT_HEADER,
+} from "~/lib/utils/fetch";
+import {
+  type BuiltRequest,
+  RequestProblemsError,
+  requestKey,
+} from "~/lib/utils/widgetRequest";
+import {
+  canFetchFromSource,
+  SOURCE_UNAVAILABLE_MESSAGE,
+  useShallowBackendConnectorStore,
+  useWidgetSourceState,
+} from "./state/backendConnector";
 import { useShallowPermissionsStore } from "./state/permissions";
 import { resolveCronRefetchInterval } from "./utils/cronSchedule";
+import { jitteredRefreshInterval } from "./utils/refreshInterval";
 
-export {
-  cleanSearchParams,
-  convertHeadersToRecord,
-} from "~/lib/utils/widgetParams";
-
-// File widgets persist the absolute URL the backend minted at upload time
-// (built from the backend's SELFURL, which still points at payments.openbb.*)
-const LEGACY_FILE_URL_ORIGIN =
-  /^https:\/\/payments\.openbb\.(co|dev)(?=\/pro\/files\/)/;
-
-function isBackendOrigin(url: string) {
-  return (
-    url?.includes(getConfig().urls.backend) || LEGACY_FILE_URL_ORIGIN?.test(url || "")
-  );
-}
+type ApiErrorBody = {
+  warnings?: string[];
+  detail?: unknown;
+  message?: unknown;
+  error?: unknown;
+  error_kind?: string;
+  status?: number;
+};
 
 export type TResponseCb<TData> = (
   data: Response,
   resolve: (data: TData | Promise<TData>) => void,
-  reject: (reason?: any) => void,
+  reject: (reason?: unknown) => void,
 ) => Promise<void>;
 
-export interface QueryOptions<TQueryFnData = any | any[]> {
-  url: string;
-  endpointHeaders?: Record<string, string>;
-  params?: { [key: string]: any };
-  method?: "GET" | "POST";
-  body?: object; // If the body is sent it is a POST request, otherwise it is a GET request
-  asText?: boolean; // If asText is true, the response will be returned as text instead of JSON
-  responseCb?: TResponseCb<TQueryFnData>; // Custom resolve callback to handle the response before resolving the promise
-  addBearerToken?: boolean; // Adds User Bearer token to the request Authorization header
-  queryKey?: any[];
-  onError?: (error: Error) => void;
-  ignoreRefresh?: boolean;
-  /** @deprecated - use endpointHeaders instead */
-  headers?: never;
-  /** @deprecated - use method instead */
-  endpointMethod?: never;
+export interface QueryOptions<TQueryFnData = unknown> {
+  request: BuiltRequest | null;
+  asText?: boolean;
+  responseCb?: TResponseCb<TQueryFnData>;
+  queryKey?: unknown[];
 }
 
 export function useJsonData<
-  TQueryFnData = any | any[],
+  TQueryFnData = unknown,
   TError = Error,
   TData = TQueryFnData,
   T extends QueryOptions<TQueryFnData> = QueryOptions<TQueryFnData>,
@@ -58,27 +54,10 @@ export function useJsonData<
   queryOptions: T,
   options?: Omit<UseQueryOptions<TQueryFnData, TError, TData>, "queryKey">,
 ) {
-  const {
-    url,
-    endpointHeaders,
-    params = {},
-    method = "GET",
-    body,
-    asText = false,
-    responseCb,
-    addBearerToken = true,
-    queryKey,
-    onError,
-    ignoreRefresh = false,
-  } = queryOptions;
-  // Convert endpointHeaders to Record format if necessary
-  const userToken = useShallowAuthStore((authState) => authState.user?.token);
-  const { headers, newParams } = convertHeadersToRecord(endpointHeaders, params);
+  const { request, asText = false, responseCb, queryKey } = queryOptions;
   const {
     widget: {
       id: uuId,
-      type: widgetType,
-      external,
       refreshQuery,
       staleTime,
       refetchInterval,
@@ -86,19 +65,25 @@ export function useJsonData<
       widgetId,
       isSharedWidget,
       sourceName,
+      connectionType,
     } = {},
     activeDashboardId,
   } = useWidgetContext(true);
 
-  // Check if the widget has permission before making the API call
+  const sourceState = useWidgetSourceState({
+    sourceId,
+    connectionType,
+    isSharedWidget,
+  });
+  const sourceReady = canFetchFromSource(sourceState);
+
   const hasAccess = useShallowPermissionsStore((state) =>
     isSharedWidget
-      ? state.hasAccess(sourceId, widgetId.replace(`${sourceName}-`, ""))
+      ? state.hasAccess(sourceId ?? "", (widgetId ?? "").replace(`${sourceName}-`, ""))
       : true,
   );
-  const removedApp = url === "" && external && sourceName;
-
-  const withAuth = addBearerToken && isBackendOrigin(url);
+  const sent = request?.ok ? request.request : null;
+  const withAuth = !!sent && sent.method === "GET" && isApiFileUrl(sent.url);
   const updateQueuedRefreshId = useShallowBackendConnectorStore(
     (state) => state.updateQueuedRefreshId,
   );
@@ -109,12 +94,10 @@ export function useJsonData<
         try {
           await responseCb(response, resolve, reject);
         } catch (error) {
-          onError?.(error);
           reject(error);
         }
         return;
       }
-      // Read the response once and use it for both logging and refresh logic
       try {
         const data = asText ? await response.text() : await response.json();
 
@@ -123,34 +106,26 @@ export function useJsonData<
           data?.refreshBackend !== undefined &&
           sourceId
         ) {
-          // Add or remove the sourceId from the queued refresh ids
           updateQueuedRefreshId(sourceId, data?.refreshBackend);
         }
 
         resolve(data);
       } catch (error) {
-        onError?.(error);
         reject(error);
       }
     },
-    [asText, responseCb, onError, sourceId],
+    [asText, responseCb, sourceId],
   );
-
-  // Clean the URL and add any query parameters
-  const cleanUrl = cleanSearchParams(url, newParams);
-  const headerKeys = Object.keys(headers || {});
 
   const finalQueryKey = queryKey ?? [
     "json",
     activeDashboardId ?? "",
-    cleanUrl || uuId,
-    method,
-    body ? JSON.stringify(body) : "",
-    headerKeys ? JSON.stringify(headerKeys) : "",
-    ...(widgetType === "ssrm_advanced" ? [uuId] : []),
-    ...(ignoreRefresh ? [] : [refreshQuery ?? 0]),
+    ...(request ? requestKey(request) : [uuId ?? ""]),
+    refreshQuery ?? 0,
     hasAccess,
+    sourceReady,
   ];
+  const optionEnabled = options?.enabled;
 
   return useQuery<TQueryFnData, TError, TData>({
     queryKey: finalQueryKey,
@@ -159,20 +134,21 @@ export function useJsonData<
         if (!hasAccess) {
           return reject(new Error("User does not have access to this widget"));
         }
+        if (!sourceReady) {
+          return reject(new Error(SOURCE_UNAVAILABLE_MESSAGE));
+        }
+        if (!request) return reject(new Error("Nothing to request"));
+        if (!request.ok) return reject(new RequestProblemsError(request.problems));
 
-        fetch(cleanUrl, {
-          headers: {
-            ...headers,
-            ...(withAuth && userToken ? { Authorization: `Bearer ${userToken}` } : {}),
-          },
-          method,
+        fetchRequest(request.request, {
           signal,
-          body: body && method === "POST" ? JSON.stringify(body) : undefined,
+          credentials: withAuth ? "include" : "omit",
+          headers: withAuth ? { [WORKSPACE_CLIENT_HEADER]: WORKSPACE_CLIENT } : {},
         })
           .then(async (r) => {
             const noContent = r.status === 204;
             if (!r.ok || noContent) {
-              let error: any;
+              let error: ApiErrorBody | undefined;
 
               try {
                 error = await r.json();
@@ -196,170 +172,62 @@ export function useJsonData<
               const errorObj = new Error(errorMessage, {
                 cause: error?.error_kind || error?.status || "unknown",
               });
+              const retryAfter = Number(r.headers.get("retry-after"));
+              if (Number.isFinite(retryAfter) && retryAfter > 0)
+                Object.assign(errorObj, {
+                  retryAfterMs: Math.min(retryAfter, MAX_RETRY_AFTER_SECONDS) * 1000,
+                });
 
-              onError?.(errorObj);
               return reject(errorObj);
             }
 
             resolveCallback(r, resolve, reject);
           })
-          .catch((error) => {
-            onError?.(error);
-            reject(error);
-          });
+          .catch((error) => reject(error));
       }),
-    enabled: !removedApp && !!cleanUrl && hasAccess,
     staleTime: staleTime ?? 1000 * 60 * 5,
-    retry: 1,
-    retryDelay: 1000,
+    retry: (failures, error) =>
+      !(error instanceof RequestProblemsError) &&
+      failures < (retryAfterOf(error) ? MAX_RETRIES_WHEN_TOLD : 1),
+    retryDelay: (_failures, error) => retryAfterOf(error) ?? 1000,
     ...(options ?? {}),
+    enabled: (query) =>
+      !!request &&
+      hasAccess &&
+      sourceReady &&
+      (typeof optionEnabled === "function"
+        ? optionEnabled(query)
+        : (optionEnabled ?? true)),
     refetchInterval: resolveCronRefetchInterval(
       refetchInterval,
-      options?.refetchInterval ?? REFRESH_WIDGET_INTERVAL,
+      options?.refetchInterval ?? jitteredRefreshInterval,
     ),
   });
 }
 
-export function fetchWithToken(
+const MAX_RETRY_AFTER_SECONDS = 60;
+const MAX_RETRIES_WHEN_TOLD = 3;
+
+function retryAfterOf(error: unknown): number | undefined {
+  return (error as { retryAfterMs?: number } | null)?.retryAfterMs;
+}
+
+export function fetchBackend(
   url: string | URL,
   options: RequestInit = {},
   signal?: AbortSignal,
 ) {
-  const token = useAuthStore.getState().user?.token;
-
-  if (!token) return Promise.reject(new Error("No token found"));
+  if (!isApiUrl(url)) {
+    return Promise.reject(
+      new Error("fetchBackend only calls the FINOS Workspace API."),
+    );
+  }
+  const headers = new Headers(options.headers);
+  headers.set(WORKSPACE_CLIENT_HEADER, WORKSPACE_CLIENT);
   return fetch(url, {
-    ...(options ?? {}),
-    headers: {
-      ...(options?.headers ?? {}),
-      Authorization: `Bearer ${token}`,
-    },
-    signal,
-  });
-}
-
-export function useMultipleQueries<
-  TQueryFnData = any | any[],
-  TError = Error,
-  TData = TQueryFnData,
->(
-  queriesOptions: QueryOptions<TQueryFnData>[],
-  options?: Omit<UseQueryOptions<TQueryFnData, TError, TData>, "queryKey">,
-) {
-  const {
-    widget: { id: uuId, refreshQuery, staleTime, refetchInterval } = {},
-    activeDashboardId,
-  } = useWidgetContext(true);
-
-  const queries = queriesOptions.map((queryOption) => {
-    const {
-      url,
-      endpointHeaders,
-      params = {},
-      method = "GET",
-      body,
-      asText = false,
-      responseCb,
-      addBearerToken = true,
-      queryKey,
-      onError,
-    } = queryOption;
-    // Convert endpointHeaders to Record format if necessary
-    const userToken = "";
-    const { headers, newParams } = convertHeadersToRecord(endpointHeaders, params);
-    const withAuth = addBearerToken && isBackendOrigin(url);
-
-    const resolveCallback = async (response, resolve, reject) => {
-      if (responseCb) {
-        try {
-          await responseCb(response, resolve, reject);
-        } catch (error) {
-          onError?.(error);
-          reject(error);
-        }
-        return;
-      }
-      resolve(asText ? response.text() : response.json());
-    };
-
-    // Clean the URL and add any query parameters
-    const cleanUrl = cleanSearchParams(url, newParams);
-
-    const finalQueryKey = queryKey ?? [
-      "json",
-      activeDashboardId ?? "",
-      cleanUrl || uuId,
-      body ? JSON.stringify(body) : "",
-      refreshQuery ?? 0,
-    ];
-
-    return {
-      queryKey: finalQueryKey,
-      queryFn: ({ signal }) =>
-        new Promise((resolve, reject) =>
-          fetch(cleanUrl, {
-            headers: {
-              ...headers,
-              ...(withAuth && userToken
-                ? { Authorization: `Bearer ${userToken}` }
-                : {}),
-            },
-            method,
-            signal,
-            body: method === "POST" ? JSON.stringify(body) : undefined,
-          })
-            .then(async (r) => {
-              const noContent = r.status === 204;
-              if (!r.ok || noContent) {
-                let error: any;
-
-                try {
-                  error = await r.json();
-                } catch (_) {
-                  return reject(r.statusText);
-                }
-
-                const warnings = error?.warnings;
-
-                if (warnings?.length)
-                  for (const warning of warnings) console.warn(warning);
-
-                const errorDetail =
-                  error?.detail || error?.message || error?.error || error;
-
-                const errorMessage =
-                  typeof errorDetail === "string"
-                    ? errorDetail
-                    : JSON.stringify(errorDetail);
-
-                const errorObj = new Error(errorMessage, {
-                  cause: error?.error_kind || error?.status || "unknown",
-                });
-
-                onError?.(errorObj);
-                return reject(errorObj);
-              }
-
-              resolveCallback(r, resolve, reject);
-            })
-            .catch((error) => reject(error)),
-        ),
-      enabled: !!cleanUrl,
-      staleTime: staleTime ?? 1000 * 60 * 5,
-      retry: 1,
-      retryDelay: 1000,
-      ...(options ?? {}),
-      refetchInterval: resolveCronRefetchInterval(
-        refetchInterval,
-        options?.refetchInterval ?? REFRESH_WIDGET_INTERVAL,
-      ),
-    } as UseQueryOptions<TQueryFnData, TError, TData>;
-  });
-
-  const { refetchInterval: _, ...restOptions } = options ?? {};
-
-  return useQueries({
-    queries,
-    ...restOptions,
+    ...options,
+    headers,
+    credentials: "include",
+    signal: signal ?? options.signal,
   });
 }

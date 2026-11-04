@@ -23,15 +23,12 @@ export const CenterPanel = forwardRef<HTMLDivElement, { children?: ReactNode }>(
     const isFullscreen = useShallowCopilotStore((state) => state.isFullscreen);
     const centerPanelRef = useRef<ImperativePanelHandle>(null);
 
-    // React to fullscreen changes
     useEffect(() => {
       if (isFullscreen) {
-        // When entering fullscreen, collapse center panel
         if (centerPanelRef.current && !centerPanelRef.current.isCollapsed()) {
           centerPanelRef.current.collapse();
         }
       } else if (centerPanelRef.current?.isCollapsed()) {
-        // When exiting fullscreen, expand center panel
         centerPanelRef.current.expand();
       }
     }, [isFullscreen]);

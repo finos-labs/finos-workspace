@@ -27,11 +27,7 @@ const defaultProps = {
 describe("CopilotMessageTitle - displayEventType logic", () => {
   it("shows error icon when ERROR and isLastGroup=true", () => {
     render(
-      <CopilotMessageTitle
-        {...defaultProps}
-        eventType="ERROR"
-        isLastGroup={true}
-      />,
+      <CopilotMessageTitle {...defaultProps} eventType="ERROR" isLastGroup={true} />,
     );
 
     expect(screen.getByTestId("icon-x-outline-circle")).toBeInTheDocument();
@@ -40,11 +36,7 @@ describe("CopilotMessageTitle - displayEventType logic", () => {
 
   it("downgrades ERROR to INFO icon when isLastGroup=false", () => {
     render(
-      <CopilotMessageTitle
-        {...defaultProps}
-        eventType="ERROR"
-        isLastGroup={false}
-      />,
+      <CopilotMessageTitle {...defaultProps} eventType="ERROR" isLastGroup={false} />,
     );
 
     expect(screen.getByTestId("icon-info-outline-circle")).toBeInTheDocument();
@@ -53,11 +45,7 @@ describe("CopilotMessageTitle - displayEventType logic", () => {
 
   it("downgrades WARNING to INFO icon when isLastGroup=false", () => {
     render(
-      <CopilotMessageTitle
-        {...defaultProps}
-        eventType="WARNING"
-        isLastGroup={false}
-      />,
+      <CopilotMessageTitle {...defaultProps} eventType="WARNING" isLastGroup={false} />,
     );
 
     expect(screen.getByTestId("icon-info-outline-circle")).toBeInTheDocument();
@@ -68,21 +56,13 @@ describe("CopilotMessageTitle - displayEventType logic", () => {
 
   it("keeps INFO as INFO regardless of isLastGroup", () => {
     const { rerender } = render(
-      <CopilotMessageTitle
-        {...defaultProps}
-        eventType="INFO"
-        isLastGroup={true}
-      />,
+      <CopilotMessageTitle {...defaultProps} eventType="INFO" isLastGroup={true} />,
     );
 
     expect(screen.getByTestId("icon-info-outline-circle")).toBeInTheDocument();
 
     rerender(
-      <CopilotMessageTitle
-        {...defaultProps}
-        eventType="INFO"
-        isLastGroup={false}
-      />,
+      <CopilotMessageTitle {...defaultProps} eventType="INFO" isLastGroup={false} />,
     );
 
     expect(screen.getByTestId("icon-info-outline-circle")).toBeInTheDocument();
@@ -90,15 +70,9 @@ describe("CopilotMessageTitle - displayEventType logic", () => {
 
   it("shows WARNING icon when WARNING and isLastGroup=true", () => {
     render(
-      <CopilotMessageTitle
-        {...defaultProps}
-        eventType="WARNING"
-        isLastGroup={true}
-      />,
+      <CopilotMessageTitle {...defaultProps} eventType="WARNING" isLastGroup={true} />,
     );
 
-    expect(
-      screen.getByTestId("icon-exclamation-outline-triangle"),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("icon-exclamation-outline-triangle")).toBeInTheDocument();
   });
 });

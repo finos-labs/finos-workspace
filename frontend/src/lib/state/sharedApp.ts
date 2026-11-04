@@ -4,27 +4,28 @@ import { persist, subscribeWithSelector } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
+import { withoutEndpointCredentials } from "~/lib/utils/endpointCredentials";
 import type { Group, Item, Selector, Widget } from "./app";
 
 export type SharedItem = {
   creator: boolean;
   content: Item;
-  created_date: Date;
-  updated_date: Date;
+  created_date: string;
+  updated_date: string;
   created_by: string;
   is_shared: boolean;
 };
 
 export type SharedItems = Record<"shared" | "entityShared", Record<string, SharedItem>>;
 
-type SharedItemesT = Record<string, Item & { created_by: string }>;
+type SharedItemesT = Record<string, Item>;
 
 export type SharedAppState = {
   sharedItems: SharedItemesT | null;
-  getDashboardById: (dashboardId: string) => Item | null;
+  getDashboardById: (dashboardId: string) => Item | undefined;
   updateSharedDashboard: (tabId: string, tabItem: Item) => void;
   updateOnlySharedItems: (sharedItems: SharedItems) => void;
-  getWidgetById: (widgetId: string) => Widget;
+  getWidgetById: (widgetId: string) => Widget | undefined;
   getWidgetGroups: (tabId: string, widgetId: string) => Group[];
 };
 
@@ -60,10 +61,8 @@ export const useSharedAppStore = createWithEqualityFn<SharedAppState>()(
           const widget = tab.data.widgets.find((w) => w.id === widgetId);
           if (!widget) return [];
 
-          return tab.data.groups.filter(
-            (g) =>
-              Object.values(widget.paramGroups || {}).includes(g.id) ||
-              g.id === widget.groupId,
+          return tab.data.groups.filter((g) =>
+            Object.values(widget.paramGroups || {}).includes(g.id),
           );
         },
         updateSharedDashboard: (tabId: string, data: Item) => {
@@ -88,7 +87,7 @@ export const useSharedAppStore = createWithEqualityFn<SharedAppState>()(
           }
           set((_state: SharedAppState) => ({
             sharedItems: {
-              ...Object.keys(sharedItems.shared).reduce((acc, key) => {
+              ...Object.keys(sharedItems.shared).reduce<SharedItemesT>((acc, key) => {
                 acc[key] = {
                   ...sharedItems.shared[key].content,
                   isEntityShared: false,
@@ -98,30 +97,49 @@ export const useSharedAppStore = createWithEqualityFn<SharedAppState>()(
                 };
                 return acc;
               }, {}),
-              ...Object.keys(sharedItems.entityShared).reduce((acc, key) => {
-                acc[key] = {
-                  ...sharedItems.entityShared[key].content,
-                  isEntityShared: true,
-                  created_date: sharedItems.entityShared[key].created_date,
-                  updated_date: sharedItems.entityShared[key].updated_date,
-                  created_by: sharedItems.entityShared[key].created_by,
-                };
-                return acc;
-              }, {}),
+              ...Object.keys(sharedItems.entityShared).reduce<SharedItemesT>(
+                (acc, key) => {
+                  acc[key] = {
+                    ...sharedItems.entityShared[key].content,
+                    isEntityShared: true,
+                    created_date: sharedItems.entityShared[key].created_date,
+                    updated_date: sharedItems.entityShared[key].updated_date,
+                    created_by: sharedItems.entityShared[key].created_by,
+                  };
+                  return acc;
+                },
+                {},
+              ),
             },
           }));
         },
       }),
       {
         name: "shared-app-storage",
+        partialize: ({ sharedItems }) => ({
+          sharedItems:
+            sharedItems &&
+            Object.fromEntries(
+              Object.entries(sharedItems).map(([id, item]) => [
+                id,
+                item.data?.widgets
+                  ? {
+                      ...item,
+                      data: {
+                        ...item.data,
+                        widgets: item.data.widgets.map(withoutEndpointCredentials),
+                      },
+                    }
+                  : item,
+              ]),
+            ),
+        }),
       },
     ),
   ),
   shallow,
 );
 
-export function useShallowSharedAppStore<S extends SharedAppState, T>(
-  selector: Selector<S, T>,
-): T {
+export function useShallowSharedAppStore<T>(selector: Selector<SharedAppState, T>): T {
   return useSharedAppStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }

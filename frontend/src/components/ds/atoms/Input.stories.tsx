@@ -45,7 +45,7 @@ export const Default: Story = {
 };
 
 export const WithLabel: Story = {
-  args: { label: "Email", placeholder: "you@example.com" },
+  args: { label: "Email", placeholder: "Email address" },
 };
 
 export const AllSizes: Story = {
@@ -76,7 +76,7 @@ export const WithSuffix: Story = {
 export const ErrorState: Story = {
   args: {
     label: "Email",
-    placeholder: "you@example.com",
+    placeholder: "Email address",
     error: true,
     message: "Invalid email address",
     defaultValue: "not-an-email",

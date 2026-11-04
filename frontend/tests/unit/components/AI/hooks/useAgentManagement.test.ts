@@ -1,8 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAgentManagement } from "~/components/AI/hooks/useAgentManagement";
+import { required } from "../../../mocks";
 
-// --- Hoisted mocks ---
 const {
   mockFetchAgentsData,
   mockHasCopilotConflict,
@@ -39,13 +39,13 @@ interface CopilotMock {
   description: string;
   holderUuid?: string;
   endpoints: Record<string, string>;
-  headers?: Record<string, string>;
 }
 
 interface ExternalCopilotHolderMock {
   uuid: string;
   url: string;
-  headers: Record<string, string>;
+  headers?: Record<string, string>;
+  headerNames?: string[];
   copilots?: CopilotMock[];
   status?: "success" | "error";
 }
@@ -106,8 +106,8 @@ vi.mock("~/lib/constants", async (importOriginal) => {
   return {
     ...actual,
     DEFAULT_COPILOT: {
-      id: "openbb-copilot",
-      name: "OpenBB Copilot",
+      id: "default-copilot",
+      name: "Copilot",
       description: "Default",
       endpoints: {},
     },
@@ -127,8 +127,6 @@ vi.mock("~/lib/state/theme", () => ({
     selector({ setShowAddAgentsDialog: vi.fn() }),
 }));
 
-// --- Factories ---
-
 function makeCopilot(overrides: Partial<CopilotMock> = {}): CopilotMock {
   return {
     id: "agent-1",
@@ -136,7 +134,6 @@ function makeCopilot(overrides: Partial<CopilotMock> = {}): CopilotMock {
     description: "A test agent",
     holderUuid: "holder-1",
     endpoints: { query: "/api/query" },
-    headers: {},
     ...overrides,
   };
 }
@@ -147,21 +144,24 @@ function makeHolder(
   return {
     uuid: "holder-1",
     url: "https://agents.example.com",
-    headers: {},
+    headerNames: [],
     copilots: [makeCopilot()],
     status: "success",
     ...overrides,
   };
 }
 
-// --- Tests ---
-
 describe("useAgentManagement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCopilotStoreState.externalCopilotHolders = [];
     mockSelectedCopilot = null;
-    mockPutCustomCopilot.mockResolvedValue(undefined);
+    mockPutCustomCopilot.mockImplementation(
+      async ({ headers, ...saved }: ExternalCopilotHolderMock) => ({
+        ...saved,
+        headerNames: headers ? Object.keys(headers) : (saved.headerNames ?? []),
+      }),
+    );
     mockRemoveCustomCopilot.mockResolvedValue(undefined);
     mockHasCopilotConflict.mockReturnValue(false);
   });
@@ -198,6 +198,23 @@ describe("useAgentManagement", () => {
       expect(mockToast.success).toHaveBeenCalledWith("Agents refreshed successfully", {
         id: "refresh-holder-1",
       });
+    });
+
+    it("keeps the holder's headers on the holder and not on its agents", async () => {
+      const holder = makeHolder({ headers: { Authorization: "Bearer token123" } });
+      mockCopilotStoreState.externalCopilotHolders = [holder];
+      mockFetchAgentsData.mockResolvedValue([makeCopilot({ id: "agent-refreshed" })]);
+
+      const { result } = renderHook(() => useAgentManagement());
+
+      await act(async () => {
+        await result.current.handleSaveRefresh("holder-1");
+      });
+
+      const [saved] = mockPutCustomCopilot.mock.calls[0];
+      expect(saved.headers).toEqual({ Authorization: "Bearer token123" });
+      expect(saved.copilots).toHaveLength(1);
+      expect(saved.copilots[0]).not.toHaveProperty("headers");
     });
 
     it("shows error toast when fetchAgentsData rejects", async () => {
@@ -249,7 +266,6 @@ describe("useAgentManagement", () => {
       const freshCopilots = [makeCopilot({ id: "agent-refreshed" })];
 
       mockFetchAgentsData.mockImplementation(async () => {
-        // Simulate state change during the async operation
         mockCopilotStoreState.externalCopilotHolders = [holder, holder2];
         return freshCopilots;
       });
@@ -260,12 +276,8 @@ describe("useAgentManagement", () => {
         await result.current.handleSaveRefresh("holder-1");
       });
 
-      // hasCopilotConflict should have been called with copilots from the FRESH state
-      // (which includes holder2's copilots), filtered to exclude holder-1's agents
       expect(mockHasCopilotConflict).toHaveBeenCalledTimes(1);
       const [, existingCopilots] = mockHasCopilotConflict.mock.calls[0];
-      // The fresh state has holder2, whose agent has holderUuid "holder-2" (not "holder-1"),
-      // so it should be included in existingCopilots
       expect(existingCopilots).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ id: "agent-2", holderUuid: "holder-2" }),
@@ -291,7 +303,6 @@ describe("useAgentManagement", () => {
       expect(mockFetchAgentsData).toHaveBeenCalledTimes(2);
       expect(mockToast.success).toHaveBeenCalledTimes(1);
       expect(mockToast.success).toHaveBeenCalledWith("Agents refreshed");
-      // Per-holder toasts are suppressed during a bulk refresh.
       expect(mockToast.success).not.toHaveBeenCalledWith(
         "Agents refreshed successfully",
         expect.anything(),
@@ -304,12 +315,10 @@ describe("useAgentManagement", () => {
         makeHolder({ uuid: "holder-1" }),
         makeHolder({ uuid: "holder-2", url: "https://other.example.com" }),
       ];
-      mockFetchAgentsData.mockImplementation(
-        async (holder: { uuid: string }) => {
-          if (holder.uuid === "holder-2") throw new Error("boom");
-          return [makeCopilot()];
-        },
-      );
+      mockFetchAgentsData.mockImplementation(async (holder: { uuid: string }) => {
+        if (holder.uuid === "holder-2") throw new Error("boom");
+        return [makeCopilot()];
+      });
 
       const { result } = renderHook(() => useAgentManagement());
 
@@ -350,6 +359,7 @@ describe("useAgentManagement", () => {
         uuid: "holder-1",
         url: "https://new-url.example.com",
         headerPairs: [{ key: "Authorization", value: "Bearer token123" }],
+        saved: [],
       };
 
       await act(async () => {
@@ -357,11 +367,76 @@ describe("useAgentManagement", () => {
       });
 
       expect(mockFetchAgentsData).toHaveBeenCalledWith({
+        uuid: "holder-1",
         url: "https://new-url.example.com",
         headers: { Authorization: "Bearer token123" },
       });
       expect(mockPutCustomCopilot).toHaveBeenCalled();
       expect(mockToast.success).toHaveBeenCalledWith("Agent settings updated");
+    });
+
+    it("keeps the typed credentials out of the store and names them instead", async () => {
+      const holder = makeHolder();
+      mockCopilotStoreState.externalCopilotHolders = [holder];
+      mockFetchAgentsData.mockResolvedValue([makeCopilot()]);
+
+      const { result } = renderHook(() => useAgentManagement());
+
+      await act(async () => {
+        await result.current.handleSaveEdit({
+          uuid: "holder-1",
+          url: "https://agents.example.com",
+          headerPairs: [{ key: "Authorization", value: "Bearer token123" }],
+          saved: [],
+        });
+      });
+
+      const [stored] = mockUpdateExternalCopilotHolders.mock.calls[0][0];
+      expect(stored.headers).toBeUndefined();
+      expect(stored.headerNames).toEqual(["Authorization"]);
+      expect(JSON.stringify(stored)).not.toContain("token123");
+    });
+
+    it("keeps a saved credential when its value is left blank", async () => {
+      const holder = makeHolder({ headerNames: ["Authorization"] });
+      mockCopilotStoreState.externalCopilotHolders = [holder];
+      mockFetchAgentsData.mockResolvedValue([makeCopilot()]);
+
+      const { result } = renderHook(() => useAgentManagement());
+
+      await act(async () => {
+        await result.current.handleSaveEdit({
+          uuid: "holder-1",
+          url: "https://agents.example.com",
+          headerPairs: [{ key: "Authorization", value: "" }],
+          saved: ["Authorization"],
+        });
+      });
+
+      expect(mockFetchAgentsData).toHaveBeenCalledWith({
+        uuid: "holder-1",
+        url: "https://agents.example.com",
+        headers: { Authorization: "" },
+      });
+      expect(mockToast.success).toHaveBeenCalledWith("Agent settings updated");
+    });
+
+    it("asks for a value when a new credential has none", async () => {
+      mockCopilotStoreState.externalCopilotHolders = [makeHolder()];
+
+      const { result } = renderHook(() => useAgentManagement());
+
+      await act(async () => {
+        await result.current.handleSaveEdit({
+          uuid: "holder-1",
+          url: "https://agents.example.com",
+          headerPairs: [{ key: "X-New", value: "" }],
+          saved: [],
+        });
+      });
+
+      expect(mockToast.error).toHaveBeenCalledWith("Enter a value for X-New");
+      expect(mockFetchAgentsData).not.toHaveBeenCalled();
     });
 
     it("rejects duplicate header keys without calling fetchAgentsData", async () => {
@@ -377,6 +452,7 @@ describe("useAgentManagement", () => {
           { key: "X-Custom", value: "value1" },
           { key: "X-Custom", value: "value2" },
         ],
+        saved: [],
       };
 
       await act(async () => {
@@ -399,6 +475,7 @@ describe("useAgentManagement", () => {
         uuid: "holder-1",
         url: "https://agents.example.com",
         headerPairs: [{ key: "Authorization", value: "Bearer xyz" }],
+        saved: [],
       };
 
       await act(async () => {
@@ -420,7 +497,6 @@ describe("useAgentManagement", () => {
 
       const { result } = renderHook(() => useAgentManagement());
 
-      // Set groupToDelete
       await act(async () => {
         result.current.handleDeleteGroup("holder-1");
       });
@@ -437,7 +513,7 @@ describe("useAgentManagement", () => {
         "Agent group deleted successfully",
       );
       expect(mockSetSelectedCopilot).toHaveBeenCalledWith(
-        expect.objectContaining({ id: "openbb-copilot" }),
+        expect.objectContaining({ id: "default-copilot" }),
       );
       expect(result.current.state.groupToDelete).toBeNull();
     });
@@ -479,10 +555,8 @@ describe("useAgentManagement", () => {
   });
 
   describe("handleEditGroup", () => {
-    it("populates editGroup state with holder data and header pairs", async () => {
-      const holder = makeHolder({
-        headers: { "X-Api-Key": "key123", Authorization: "Bearer abc" },
-      });
+    it("populates editGroup state with the holder and its credentials by name, blank", async () => {
+      const holder = makeHolder({ headerNames: ["X-Api-Key", "Authorization"] });
       mockCopilotStoreState.externalCopilotHolders = [holder];
 
       const { result } = renderHook(() => useAgentManagement());
@@ -495,9 +569,10 @@ describe("useAgentManagement", () => {
         uuid: "holder-1",
         url: "https://agents.example.com",
         headerPairs: [
-          { key: "X-Api-Key", value: "key123" },
-          { key: "Authorization", value: "Bearer abc" },
+          { key: "X-Api-Key", value: "" },
+          { key: "Authorization", value: "" },
         ],
+        saved: ["X-Api-Key", "Authorization"],
       });
     });
   });
@@ -519,18 +594,16 @@ describe("useAgentManagement", () => {
 
       const { result } = renderHook(() => useAgentManagement());
 
-      // Before search, all agents shown
       expect(result.current.filteredGroups).toHaveLength(1);
       expect(result.current.filteredGroups[0].copilots).toHaveLength(2);
 
-      // Search for "alpha" - only agentAlpha should match
       await act(async () => {
         result.current.handleSearchChange("alpha");
       });
 
       expect(result.current.filteredGroups).toHaveLength(1);
       expect(result.current.filteredGroups[0].copilots).toHaveLength(1);
-      expect(result.current.filteredGroups[0].copilots![0].id).toBe("alpha");
+      expect(required(result.current.filteredGroups[0].copilots)[0].id).toBe("alpha");
     });
 
     it("includes holders when URL matches search term even if no agents match", async () => {

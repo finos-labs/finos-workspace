@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Button } from "~/components/ds/atoms/Button";
 import { BaseDialog } from "~/components/ds/dialogs/BaseDialog";
 import {
@@ -13,7 +14,6 @@ interface ExternalLinkDialogProps {
   url: string;
   onOpenInIframe: (url: string) => void;
   onOpenInNewTab: (url: string) => void;
-  /** When false, the iframe option is disabled (e.g. no active dashboard to add the widget to). */
   canOpenInIframe?: boolean;
 }
 
@@ -25,6 +25,11 @@ export function ExternalLinkDialog({
   onOpenInNewTab,
   canOpenInIframe = true,
 }: ExternalLinkDialogProps) {
+  const [previewing, setPreviewing] = useState(false);
+  useEffect(() => {
+    setPreviewing(false);
+  }, [open, url]);
+
   const handleIframeClick = () => {
     onOpenInIframe(url);
     onClose();
@@ -45,7 +50,7 @@ export function ExternalLinkDialog({
         <DialogTitle>Opening External Link</DialogTitle>
         <DialogDescription>
           You are about to open an external link:{" "}
-          <span className="obb-hyper-link">{url}</span>
+          <span className="ws-hyper-link">{url}</span>
         </DialogDescription>
       </DialogHeader>
 
@@ -55,13 +60,30 @@ export function ExternalLinkDialog({
           test)
         </div>
         <div className="relative">
-          <iframe src={url} width="100%" height="224" className="border-0" />
+          {previewing ? (
+            <iframe
+              src={url}
+              width="100%"
+              height="224"
+              className="border-0"
+              title="Link preview"
+              sandbox="allow-scripts allow-same-origin"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="flex h-24 items-center justify-center">
+              <Button variant="secondary" size="sm" onClick={() => setPreviewing(true)}>
+                Load preview
+              </Button>
+            </div>
+          )}
         </div>
       </div>
       <p className="dark:text-dark-50 text-light-600">
-        The preview shows if this website can be embedded. If you see the content
-        loading, the iframe option will work. If it shows an error or blank page, use
-        "Open in new tab" instead.
+        The preview loads the website here, so it shows if the website can be embedded.
+        If you see the content loading, the iframe option will work. If it shows an
+        error or blank page, use "Open in new tab" instead. Nothing is loaded until you
+        choose "Load preview".
       </p>
 
       <DialogFooter className="flex items-center justify-between gap-2">

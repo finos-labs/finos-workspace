@@ -1,13 +1,7 @@
-/**
- * API Client Mock
- *
- * Mock for the axios-based API client.
- * Use MSW for more realistic API testing; this mock is for unit tests
- * that need to isolate components from network requests.
- */
 import { vi } from "vitest";
 
 vi.mock("~/api/api", () => ({
+  setOnSessionRefused: vi.fn(),
   apiClient: {
     get: vi.fn(),
     post: vi.fn(),

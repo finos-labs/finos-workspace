@@ -20,10 +20,6 @@ vi.mock("~/components/AI/SkillsTab", () => ({
   SkillsTab: () => <div data-testid="skills-tab">SkillsTab content</div>,
 }));
 
-vi.mock("~/lib/constants", () => ({
-  inSnowflakeNativeApp: false,
-}));
-
 vi.mock("~/lib/utils", () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
@@ -49,7 +45,6 @@ describe("AILibrary", () => {
       "active",
     );
     expect(screen.getByTestId("ai-agents-tab")).toBeInTheDocument();
-    // Other tabs are force-mounted (always in DOM to preserve state)
     expect(screen.getByTestId("prompts-tab")).toBeInTheDocument();
     expect(screen.getByTestId("mcp-servers-tab")).toBeInTheDocument();
   });
@@ -74,7 +69,6 @@ describe("AILibrary", () => {
       "data-state",
       "inactive",
     );
-    // All tabs are force-mounted (always in DOM to preserve state)
     expect(screen.getByTestId("prompts-tab")).toBeInTheDocument();
     expect(screen.getByTestId("ai-agents-tab")).toBeInTheDocument();
   });
@@ -93,7 +87,6 @@ describe("AILibrary", () => {
       "data-state",
       "inactive",
     );
-    // All tabs are force-mounted (always in DOM to preserve state)
     expect(screen.getByTestId("mcp-servers-tab")).toBeInTheDocument();
     expect(screen.getByTestId("ai-agents-tab")).toBeInTheDocument();
   });
@@ -112,7 +105,6 @@ describe("AILibrary", () => {
       "data-state",
       "inactive",
     );
-    // All tabs are force-mounted (always in DOM to preserve state)
     expect(screen.getByTestId("skills-tab")).toBeInTheDocument();
     expect(screen.getByTestId("ai-agents-tab")).toBeInTheDocument();
   });
@@ -128,7 +120,6 @@ describe("AILibrary", () => {
       "data-state",
       "inactive",
     );
-    // All tabs are force-mounted (always in DOM to preserve state)
     expect(screen.getByTestId("mcp-servers-tab")).toBeInTheDocument();
     expect(screen.getByTestId("ai-agents-tab")).toBeInTheDocument();
   });

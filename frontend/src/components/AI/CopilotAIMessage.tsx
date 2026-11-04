@@ -6,11 +6,10 @@ import {
   useMemo,
 } from "react";
 import { toast } from "sonner";
-import { useLocalStorage } from "usehooks-ts";
 import {
   type AIMessage,
   type ArtifactT,
-  type Citation as CitationT,
+  type MessageGroup,
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
 import { cn } from "../ds/utils";
@@ -18,43 +17,24 @@ import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import Citation from "./Citation";
 import { CopilotFeedback } from "./CopilotFeedback";
-import { useShallowStreamingStore } from "./hooks/useStreaming";
 import { dispatchCreate } from "./hooks/utils";
-import {
-  isSafeMarkdownImageSrc,
-  MarkdownAIMessageOverrides,
-  renderRule,
-} from "./MarkdownOverrides";
+import { MarkdownAIMessageOverrides, renderRule } from "./MarkdownOverrides";
 import { getEnhancedDatetimePositionStrategy } from "./utils/datetimePositioning";
 import { escapeMarkdownUnderscores } from "./utils/markdown";
 
 type CopilotAIMessageProps = {
   message: AIMessage;
-  isLastGroup: boolean;
-  allGroups?: any[];
+  allGroups?: MessageGroup[];
   groupIndex?: number;
 };
 
-function useMessageContent(message: AIMessage, isLastGroup: boolean) {
-  const isStreaming = useShallowStreamingStore(
-    (s) => s.streamingStatus === "streaming-started",
-  );
-
-  // this makes sure only the last group has this active,
-  // avoiding multiple re-renders of the component when streaming
-  const localKeyStream = isLastGroup && isStreaming ? "streamedData" : "_empty";
-  const localKeyCitations = isLastGroup && isStreaming ? "streamedCitations" : "_empty";
-
-  const [streamedData] = useLocalStorage(localKeyStream, "");
-  const [streamedCitations] = useLocalStorage<CitationT[]>(localKeyCitations, []);
-
+function useMessageContent(message: AIMessage) {
   const getCurrentChatArtifact = useShallowCopilotStore(
     (state) => state.getCurrentChatArtifact,
   );
 
-  const messageText = isLastGroup && isStreaming ? streamedData : message.content;
-  const messageCitations =
-    isLastGroup && isStreaming ? streamedCitations : message.citations;
+  const messageText = message.content;
+  const messageCitations = message.citations;
 
   return useMemo(() => {
     const messageContent = preprocessText(messageText);
@@ -64,22 +44,19 @@ function useMessageContent(message: AIMessage, isLastGroup: boolean) {
 }
 
 export default function CopilotAIMessage(props: CopilotAIMessageProps) {
-  const { message, isLastGroup, allGroups, groupIndex } = props;
+  const { message, allGroups, groupIndex } = props;
 
   const { showDatetime, hideDatetime } = useShallowCopilotStore((state) => ({
     showDatetime: state.showDatetime,
     hideDatetime: state.hideDatetime,
   }));
 
-  const { messageContent, visibleText, messageCitations } = useMessageContent(
-    message,
-    isLastGroup,
-  );
+  const { messageContent, visibleText, messageCitations } = useMessageContent(message);
 
   const markdownOptions = useMemo<MarkdownToJSX.Options>(() => {
     const renderCitation = (citationId: string, key: string) => {
       const normalizedCitationId = citationId.replace(/\\_/g, "_");
-      const { citation, index } = messageCitations.reduce(
+      const { citation, index } = (messageCitations ?? []).reduce(
         (acc, citation, index) => {
           if (citation.id === normalizedCitationId) {
             Object.assign(acc, { citation, index });
@@ -130,21 +107,19 @@ export default function CopilotAIMessage(props: CopilotAIMessageProps) {
   const handleMouseEnter = useCallback(() => {
     if (!allGroups || typeof groupIndex !== "number") return;
 
-    // Use the datetime positioning strategy to determine what to show
     const strategy = getEnhancedDatetimePositionStrategy(
       message,
       allGroups,
       groupIndex,
     );
 
-    if (strategy.shouldShowDatetime) {
+    if (strategy.shouldShowDatetime && strategy.targetGroupId) {
       showDatetime(strategy.timestamp, strategy.targetGroupId);
     }
   }, [message, allGroups, groupIndex, showDatetime]);
 
   const handleMouseLeave = useCallback(
     (e: ReactMouseEvent) => {
-      // check if the mouse left the message content area
       const target = e.currentTarget as HTMLElement;
       if (!target.closest("._message-title")) return hideDatetime();
     },
@@ -184,7 +159,7 @@ export default function CopilotAIMessage(props: CopilotAIMessageProps) {
       </div>
       {(!message.isCancelled || (message.isCancelled && messageContent)) && (
         <div className="inline-block">
-          <div className="obb-divider my-1 mx-1.25" />
+          <div className="ws-divider my-1 mx-1.25" />
           <div className="flex items-center">
             <Tooltip message="Copy message text">
               <button
@@ -228,13 +203,10 @@ function preprocessText(text: string) {
   if (!text) return "";
   text = replaceRawImageTags(text);
 
-  // Replace <latex>...</latex> with fenced code block for latex
   text = text.replace(/<latex>([\s\S]*?)<\/latex>/g, (_match, equation) => {
     return `\n\`\`\`latex\n${equation}\n\`\`\`\n`;
   });
 
-  // Escape plain-text underscores to prevent markdown italics rendering, while
-  // preserving URLs and code exactly as returned.
   return escapeMarkdownUnderscores(text);
 }
 
@@ -306,26 +278,7 @@ function escapeRegExp(value: string) {
 
 function replaceRawImageTags(text: string) {
   return text.replace(/<img\b[^>]*>/gi, (tag) => {
-    const attrs = parseHtmlTagAttributes(tag);
-    const src = attrs.src?.trim();
-    if (!isSafeMarkdownImageSrc(src)) return tag;
-
-    // This is deliberately a tiny compatibility bridge for common agent output,
-    // not raw HTML support: only src/alt survive and the markdown image renderer
-    // applies the final URL policy.
-    const alt = (attrs.alt ?? "").replace(/[\r\n[\]]/g, " ");
-    return `![${alt}](${src})`;
+    const alt = /\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i.exec(tag);
+    return (alt?.[1] ?? alt?.[2] ?? alt?.[3] ?? "").replace(/[\r\n]/g, " ");
   });
-}
-
-function parseHtmlTagAttributes(tag: string) {
-  const attrs: Record<string, string> = {};
-  const attrPattern =
-    /\s([a-zA-Z][\w:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
-
-  for (const match of tag.matchAll(attrPattern)) {
-    attrs[match[1].toLowerCase()] = match[2] ?? match[3] ?? match[4] ?? "";
-  }
-
-  return attrs;
 }

@@ -29,27 +29,24 @@ export function useUsers() {
       return Object.values(transformedUsers);
     },
     enabled: true,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 1000 * 60 * 15, // 15 minutes
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 15,
   });
 }
 
-/** Maps each permission-group (entity-map) uuid to its display name. */
 export function buildEntityNameMap(items: EntityMapItem[]): Map<string, string> {
   return new Map(items.map((item) => [item.uuid, item.name]));
 }
 
-/** Shared entity-map query — cache key matches the invite dialog. */
 export function useEntityMap() {
   return useQuery({
     queryKey: ["admin", "entities"],
     queryFn: getEntityMap,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 1000 * 60 * 15, // 15 minutes
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 15,
   });
 }
 
-/** Maps each user email to the names of the roles it belongs to. */
 export function buildUserRolesMap(roles: RoleT[]): Map<string, string[]> {
   const map = new Map<string, string[]>();
   for (const role of roles) {
@@ -62,11 +59,10 @@ export function buildUserRolesMap(roles: RoleT[]): Map<string, string[]> {
   return map;
 }
 
-/** Shared entity-roles query — cache key matches the invite form. */
 export function useEntityRoles() {
   return useQuery({
     queryKey: ["roles"],
     queryFn: getEntityRoles,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 }

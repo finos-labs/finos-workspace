@@ -1,20 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "~/api/api";
 import {
-  getRemainingInvites,
-  sendInvite,
+  getCopilotKeys,
+  putCopilotKeys,
   updateUserDisplaySettings,
 } from "~/api/user.api";
+import type { DisplaySettings } from "~/types/auth.type";
+import { partial } from "../mocks";
 
-// Mock apiClient
 vi.mock("~/api/api", () => ({
   apiClient: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
   },
 }));
 
-// Mock useThemeStore
 vi.mock("~/lib/state/theme", () => ({
   useThemeStore: {
     getState: vi.fn().mockReturnValue({
@@ -28,55 +29,43 @@ describe("User API functions", () => {
     vi.clearAllMocks();
   });
 
-  describe("getRemainingInvites", () => {
-    it("should fetch remaining invites correctly", async () => {
-      vi.spyOn(apiClient, "get").mockResolvedValue({ data: { remaining: 5 } });
+  describe("copilot provider keys", () => {
+    const flags = { has_openai_key: true, has_perplexity_key: false };
 
-      const data = await getRemainingInvites();
-      expect(data).toEqual({ remaining: 5 });
-      expect(apiClient.get).toHaveBeenCalledWith("/pro/invites/remaining");
-    });
-  });
+    it("reads which keys are saved, never the keys", async () => {
+      vi.spyOn(apiClient, "get").mockResolvedValue({ data: flags });
 
-  describe("sendInvite", () => {
-    it("should send an invite successfully", async () => {
-      vi.spyOn(apiClient, "post").mockResolvedValue({
-        data: { remaining: 4 },
-        status: 200,
-      });
-
-      const response = await sendInvite("test@example.com", "Welcome!");
-      expect(response).toEqual({ data: { remaining: 4 }, status: 200 });
-      expect(apiClient.post).toHaveBeenCalledWith("/pro/invites/create", {
-        email: "test@example.com",
-        message: "Welcome!",
-      });
+      await expect(getCopilotKeys()).resolves.toEqual(flags);
+      expect(apiClient.get).toHaveBeenCalledWith("/app/copilot-keys");
     });
 
-    it("should handle errors when sending an invite", async () => {
-      const error = { response: { status: 500 } };
-      vi.spyOn(apiClient, "post").mockRejectedValue(error);
+    it("sends a key to save and null to remove one", async () => {
+      vi.spyOn(apiClient, "put").mockResolvedValue({ data: flags });
 
-      const response = await sendInvite("test@example.com", "Welcome!");
-      expect(response).toEqual({ data: { remaining: null }, status: 500 });
+      await expect(
+        putCopilotKeys({ openai_api_key: "sk-new", perplexity_api_key: null }),
+      ).resolves.toEqual(flags);
+      expect(apiClient.put).toHaveBeenCalledWith("/app/copilot-keys", {
+        openai_api_key: "sk-new",
+        perplexity_api_key: null,
+      });
     });
   });
 
   describe("updateUserDisplaySettings", () => {
     it("should update display settings with provided settings", async () => {
-      const settings = { theme: "light" };
+      const settings = partial<DisplaySettings>({ theme: "light" });
       vi.spyOn(apiClient, "post").mockResolvedValue({});
 
-      // @ts-expect-error - theme: string is not assignable to DisplaySettings object
       await updateUserDisplaySettings(settings);
-      expect(apiClient.post).toHaveBeenCalledWith("/pro/display-settings", settings);
+      expect(apiClient.post).toHaveBeenCalledWith("/app/display-settings", settings);
     });
 
     it("should update display settings with default settings if none provided", async () => {
       vi.spyOn(apiClient, "post").mockResolvedValue({});
 
       await updateUserDisplaySettings();
-      expect(apiClient.post).toHaveBeenCalledWith("/pro/display-settings", {
+      expect(apiClient.post).toHaveBeenCalledWith("/app/display-settings", {
         theme: "dark",
       });
     });

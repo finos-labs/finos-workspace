@@ -1,4 +1,4 @@
-import { useGoogleLogin } from "@react-oauth/google";
+import { type CredentialResponse, useGoogleLogin } from "@react-oauth/google";
 import Icon from "~/components/Icon";
 import type { StateDispatch } from "~/hooks/useStateReducer";
 import type { LoginState } from "~/routes/login";
@@ -6,7 +6,7 @@ import { Button } from "../ds/atoms/Button";
 
 interface GoogleLoginProps {
   dispatch: StateDispatch<LoginState>;
-  handleGoogleSuccess: any;
+  handleGoogleSuccess: (response: CredentialResponse) => Promise<unknown>;
   state: LoginState;
 }
 
@@ -18,25 +18,18 @@ export const GoogleLogin = ({
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       dispatch({ oauthLoading: true, error: null });
-      try {
-        // handleGoogleSuccess owns the outcome: it dispatches the backend error
-        // message itself (403, 402, ...). Only clear the spinner here - writing
-        // `error: null` afterwards would erase the message it just set.
-        await handleGoogleSuccess({ credential: tokenResponse.access_token });
-        dispatch({ oauthLoading: false });
-      } catch (error) {
-        dispatch({
-          oauthLoading: false,
-          error: "Google sign-in was unsuccessful. Please try again.",
-        });
-      }
+      await handleGoogleSuccess({ credential: tokenResponse.access_token });
+      dispatch({ oauthLoading: false });
     },
     onError: () => {
       const error = "Google sign-in was unsuccessful. Please try again.";
       dispatch({ oauthLoading: false, error });
     },
     onNonOAuthError: (error) => {
-      const updatedState = { oauthLoading: false, error: null };
+      const updatedState: { oauthLoading: boolean; error: string | null } = {
+        oauthLoading: false,
+        error: null,
+      };
       if (error.type === "popup_failed_to_open") {
         updatedState.error = "Failed to open Google sign-in popup";
       }

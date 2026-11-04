@@ -56,6 +56,6 @@ describe("Notice", () => {
 
   it("omits the body wrapper when no children are provided", () => {
     const { container } = render(<Notice variant="info" title="Only title" />);
-    expect(container.querySelectorAll("div")).toHaveLength(2); // outer box + content column
+    expect(container.querySelectorAll("div")).toHaveLength(2);
   });
 });

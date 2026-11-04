@@ -1,14 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import type { MutableRefObject } from "react";
 import { useDropzone } from "react-dropzone";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { CopilotDropzone } from "~/components/AI/CopilotDropzone";
 import useQueriesLeft from "~/components/AI/hooks/useQueriesLeft";
 import { useShallowStreamingStore } from "~/components/AI/hooks/useStreaming";
 import { useUploadDocuments } from "~/components/AI/hooks/useUploadDocuments";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 
-// Mock dependencies
 vi.mock("react-dropzone", () => ({
   useDropzone: vi.fn(),
 }));
@@ -35,21 +34,15 @@ vi.mock("~/components/AI/DragFileHere", () => ({
   default: () => <div data-testid="drag-file-here">DragFileHere Component</div>,
 }));
 
-
-
-// Mock useRef and useEffect hooks
 vi.mock("react", async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = await importOriginal<typeof import("react")>();
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...(actual as any),
+    ...actual,
     useRef: () => ({ current: null }),
-    useEffect: vi.fn(), // Don't execute useEffect callbacks to avoid async issues
+    useEffect: vi.fn(),
   };
 });
 
-// Mock timers to prevent async setTimeout issues
-// biome-ignore lint/correctness/useHookAtTopLevel: This is a Vitest utility, not a React hook
 vi.useFakeTimers();
 
 describe("CopilotDropzone Component", () => {
@@ -77,10 +70,8 @@ describe("CopilotDropzone Component", () => {
     vi.clearAllMocks();
     vi.clearAllTimers();
 
-    // Reset the ref element properties but keep it as the same object
     mockMessagesRefElement.scrollTop = 0;
 
-    // Mock useDropzone
     (useDropzone as Mock).mockReturnValue({
       rootRef: mockRootRef,
       getRootProps: mockGetRootProps,
@@ -88,7 +79,6 @@ describe("CopilotDropzone Component", () => {
       isDragActive: false,
     });
 
-    // Mock streaming store
     (useShallowStreamingStore as Mock).mockImplementation((selector) => {
       return selector({
         dispatch: vi.fn(),
@@ -96,7 +86,6 @@ describe("CopilotDropzone Component", () => {
       });
     });
 
-    // Mock copilot store
     (useShallowCopilotStore as Mock).mockImplementation((selector) => {
       return selector({
         selectedCopilot: {
@@ -108,18 +97,14 @@ describe("CopilotDropzone Component", () => {
       });
     });
 
-    // Mock queries left hook
     (useQueriesLeft as Mock).mockReturnValue({
       queriesLeft: 10,
     });
 
-    // Mock upload documents hook
     mockUploadDocuments.mockReset();
     mockUploadDocuments.mockResolvedValue(undefined);
     (useUploadDocuments as Mock).mockReturnValue(mockUploadDocuments);
 
-
-    // Mock getRootProps and getInputProps
     mockGetRootProps.mockReturnValue({
       "data-testid": "dropzone-root",
     });
@@ -140,7 +125,6 @@ describe("CopilotDropzone Component", () => {
   });
 
   it("displays DragFileHere component when drag is active", () => {
-    // Mock drag active state
     (useDropzone as Mock).mockReturnValue({
       rootRef: mockRootRef,
       getRootProps: mockGetRootProps,
@@ -170,7 +154,6 @@ describe("CopilotDropzone Component", () => {
       <CopilotDropzone messagesRef={mockMessagesRef}>{mockChildren}</CopilotDropzone>,
     );
 
-    // Verify useDropzone was called with correct accept object
     expect(useDropzone).toHaveBeenCalledWith(
       expect.objectContaining({
         accept: {
@@ -193,7 +176,6 @@ describe("CopilotDropzone Component", () => {
   });
 
   it("disables dropzone when no copilot selected or queries left is 0", () => {
-    // Mock disabled state
     (useShallowCopilotStore as Mock).mockImplementation((selector) => {
       return selector({
         selectedCopilot: null,
@@ -209,7 +191,6 @@ describe("CopilotDropzone Component", () => {
       <CopilotDropzone messagesRef={mockMessagesRef}>{mockChildren}</CopilotDropzone>,
     );
 
-    // Verify useDropzone was called with disabled true
     expect(useDropzone).toHaveBeenCalledWith(
       expect.objectContaining({
         disabled: true,
@@ -222,18 +203,14 @@ describe("CopilotDropzone Component", () => {
       <CopilotDropzone messagesRef={mockMessagesRef}>{mockChildren}</CopilotDropzone>,
     );
 
-    // Get the onDrop function from the useDropzone mock
     const onDrop = (useDropzone as Mock).mock.calls[0][0].onDrop;
 
-    // Create a mock file with unicode name
     const mockFile = new File(["content"], "Библиография для диссертации.md", {
       type: "text/markdown",
     });
 
-    // Call onDrop with the mock file
     onDrop([mockFile]);
 
-    // Verify uploadDocuments was called with the slugified filename
     expect(mockUploadDocuments).toHaveBeenCalledWith([
       expect.objectContaining({
         name: "библиография_для_диссертации.md",
@@ -246,18 +223,14 @@ describe("CopilotDropzone Component", () => {
       <CopilotDropzone messagesRef={mockMessagesRef}>{mockChildren}</CopilotDropzone>,
     );
 
-    // Get the onDrop function from the useDropzone mock
     const onDrop = (useDropzone as Mock).mock.calls[0][0].onDrop;
 
-    // Create a mock file with special characters
     const mockFile = new File(["content"], "My File (1).txt", {
       type: "text/plain",
     });
 
-    // Call onDrop with the mock file
     onDrop([mockFile]);
 
-    // Verify uploadDocuments was called with the slugified filename
     expect(mockUploadDocuments).toHaveBeenCalledWith([
       expect.objectContaining({
         name: "my_file_1.txt",
@@ -270,18 +243,14 @@ describe("CopilotDropzone Component", () => {
       <CopilotDropzone messagesRef={mockMessagesRef}>{mockChildren}</CopilotDropzone>,
     );
 
-    // Get the onDrop function from the useDropzone mock
     const onDrop = (useDropzone as Mock).mock.calls[0][0].onDrop;
 
-    // Create a mock file with multiple periods
     const mockFile = new File(["content"], "my.cool.file.xlsx", {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
 
-    // Call onDrop with the mock file
     onDrop([mockFile]);
 
-    // Verify uploadDocuments was called with the slugified filename
     expect(mockUploadDocuments).toHaveBeenCalledWith([
       expect.objectContaining({
         name: "my.cool.file.xlsx",

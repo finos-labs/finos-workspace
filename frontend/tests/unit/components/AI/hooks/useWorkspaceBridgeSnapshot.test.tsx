@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockUseAppStoreGetState = vi.fn();
 const mockUseAuthStoreGetState = vi.fn();
 const mockUseCopilotStoreGetState = vi.fn();
-const mockUseCopilotDataStoreGetState = vi.fn();
 const mockUseMcpToolsStoreGetState = vi.fn();
 const mockUseSkillsLibraryStoreGetState = vi.fn();
 const mockGetDashboardInfo = vi.fn();
@@ -32,12 +31,6 @@ vi.mock("~/lib/state/auth", () => ({
 vi.mock("~/lib/state/copilot", () => ({
   useCopilotStore: {
     getState: () => mockUseCopilotStoreGetState(),
-  },
-}));
-
-vi.mock("~/lib/state/copilotData", () => ({
-  useCopilotDataStore: {
-    getState: () => mockUseCopilotDataStoreGetState(),
   },
 }));
 
@@ -110,10 +103,6 @@ describe("useWorkspaceBridgeSnapshot", () => {
       agentOrchestrationMap: {},
       customFeatureStates: {},
     });
-    mockUseCopilotDataStoreGetState.mockReturnValue({
-      extraWidgetsEnabled: false,
-      generativeUiEnabled: false,
-    });
     mockUseMcpToolsStoreGetState.mockReturnValue({
       getEnabledToolCount: () => 0,
     });
@@ -166,9 +155,6 @@ describe("useWorkspaceBridgeSnapshot", () => {
     expect(snapshot).not.toHaveProperty("tools");
   });
 
-  // Regression: workspace-mcp's WorkspaceSnapshot.workspace_options is list[str].
-  // Sending {} fails Pydantic validation and the sidecar returns
-  // "Browser returned an invalid workspace snapshot payload."
   it("emits workspace_options as a string[] (not an object)", () => {
     const { result } = renderHook(() => useWorkspaceBridgeSnapshot());
 
@@ -187,16 +173,11 @@ describe("useWorkspaceBridgeSnapshot", () => {
         features: {
           "agent-orchestration": true,
           "mcp-tools": true,
-          "generative-ui": true,
           "widget-global-search": true,
         },
       },
       agentOrchestrationMap: {},
       customFeatureStates: {},
-    });
-    mockUseCopilotDataStoreGetState.mockReturnValue({
-      extraWidgetsEnabled: true,
-      generativeUiEnabled: true,
     });
     mockUseMcpToolsStoreGetState.mockReturnValue({
       getEnabledToolCount: () => 3,
@@ -209,7 +190,6 @@ describe("useWorkspaceBridgeSnapshot", () => {
       expect.arrayContaining([
         "agent-orchestration",
         "mcp-tools",
-        "generative-ui",
         "widget-global-search",
       ]),
     );

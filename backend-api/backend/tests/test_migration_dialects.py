@@ -1,10 +1,3 @@
-"""Test alembic migrations against all supported database dialects.
-
-Spins up testcontainers for MySQL and PostgreSQL (plus Redis for each),
-uses a temp file for SQLite, runs ``alembic upgrade head`` via subprocess,
-and then introspects every table to verify there are no type-mapping errors.
-"""
-
 from __future__ import annotations
 
 import os
@@ -17,10 +10,6 @@ import pymysql
 import pytest
 import sqlalchemy as sa
 
-# ---------------------------------------------------------------------------
-# Markers / skips
-# ---------------------------------------------------------------------------
-
 _DOCKER_AVAILABLE = True
 try:
     import docker
@@ -32,29 +21,19 @@ except Exception:
 needs_docker = pytest.mark.skipif(not _DOCKER_AVAILABLE, reason="Docker not available")
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 _BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Tables seeded by 0002_seed_data
-_SEED_TABLES = {"tier": 2, "default_tier": 2, "data_bundle": 3}
-
-# Minimum expected tables (model-created tables)
-_MIN_TABLES = 40
+_MIN_TABLES = 38
 
 
 def _base_env() -> dict[str, str]:
-    """Return minimal env vars shared across all dialects."""
     return {
         "MODE": "test",
-        "JWT_SECRET": "testsecretfortesting12345678",
-        "OPENBB_AES_KEY": "sixteenbytekey!!",
-        "PROURL": "http://localhost:3000",
+        "JWT_SECRET": "testsecretfortesting12345678901234",
+        "WORKSPACE_AES_KEY": "d29ya3NwYWNlLXRlc3Qtc3VpdGUtYXQtcmVzdC1rZXk",
+        "APPURL": "http://localhost:3000",
         "SELFURL": "http://localhost:8000",
-        "DISABLE_CORS": "true",
-        "HUBSPOT": "0",
+        "BACKEND_CORS_ORIGINS": "http://localhost:3000",
         "PROMETHEUS": "0",
         "WORKERS": "1",
         "STORAGE_PROVIDER": "aws",
@@ -64,20 +43,14 @@ def _base_env() -> dict[str, str]:
         "S3_FILE_BUCKET": "test",
         "S3_ENDPOINT_URL": "http://localhost",
         "FRONTENDURL": "http://localhost",
-        "OPENBB_FRONTEND_USER_AGENT": "test",
-        "OPENBB_AI_USER_AGENT": "test",
-        "OPENBB_GEO_KEY": "test",
-        "OPENBB_CHARGEBEE_SITE_KEY": "test",
-        "OPENBB_CHARGEBEE_API_KEY": "test",
-        "OKTA_DOMAIN": "test.okta.com",
-        "SUPPRESSED_API_ROUTERS": '["bot", "terminal", "sdk", "run_tasks", "testing", "metrics"]',
+
+        "SUPPRESSED_API_ROUTERS": "[]",
         "SUPPRESSED_API_ROUTES": "[]",
-        "OPENBB_AUTH_TOKEN": "test-token",
+        "WORKSPACE_AUTH_TOKEN": "test-token",
     }
 
 
 def _run_alembic_upgrade(env_vars: dict[str, str]):
-    """Run alembic upgrade head as a subprocess for full isolation."""
     env = {**os.environ, **env_vars}
     result = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
@@ -98,7 +71,6 @@ def _run_alembic_upgrade(env_vars: dict[str, str]):
 
 
 def _alembic_head() -> str:
-    """Return the head revision of the migration chain."""
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
@@ -107,11 +79,9 @@ def _alembic_head() -> str:
 
 
 def _inspect_and_verify(engine: sa.engine.Engine, dialect_name: str):
-    """Introspect all tables and run a SELECT on each to verify types work."""
     inspector = sa.inspect(engine)
     tables = inspector.get_table_names()
 
-    # Verify minimum table count
     assert (
         len(tables) >= _MIN_TABLES
     ), f"{dialect_name}: Expected at least {_MIN_TABLES} tables, got {len(tables)}: {sorted(tables)}"
@@ -123,7 +93,6 @@ def _inspect_and_verify(engine: sa.engine.Engine, dialect_name: str):
             if table_name == "alembic_version":
                 continue
 
-            # Verify columns can be reflected (catches type-mapping issues)
             try:
                 columns = inspector.get_columns(table_name)
                 assert (
@@ -135,7 +104,6 @@ def _inspect_and_verify(engine: sa.engine.Engine, dialect_name: str):
                 )
                 continue
 
-            # Run a SELECT to verify the types are actually usable at runtime
             try:
                 result = conn.execute(
                     sa.text(f"SELECT * FROM {_quote(table_name, dialect_name)} LIMIT 1")
@@ -144,21 +112,6 @@ def _inspect_and_verify(engine: sa.engine.Engine, dialect_name: str):
             except Exception as exc:
                 errors.append(f"{dialect_name}: SELECT failed on {table_name}: {exc}")
 
-        # Verify seed data
-        for table_name, expected_count in _SEED_TABLES.items():
-            try:
-                count = conn.execute(
-                    sa.text(f"SELECT COUNT(*) FROM {_quote(table_name, dialect_name)}")
-                ).scalar()
-                assert (
-                    count == expected_count
-                ), f"{dialect_name}: {table_name} expected {expected_count} rows, got {count}"
-            except Exception as exc:
-                errors.append(
-                    f"{dialect_name}: Seed check failed on {table_name}: {exc}"
-                )
-
-        # Verify alembic version is at head
         expected_head = _alembic_head()
         version = conn.execute(
             sa.text("SELECT version_num FROM alembic_version")
@@ -171,14 +124,12 @@ def _inspect_and_verify(engine: sa.engine.Engine, dialect_name: str):
 
 
 def _quote(table_name: str, dialect_name: str) -> str:
-    """Quote a table name appropriately for the dialect."""
     if dialect_name == "mysql":
         return f"`{table_name}`"
     return f'"{table_name}"'
 
 
 def _wait_for_mysql(host: str, port: int, timeout: int = 60):
-    """Wait for MySQL to accept connections."""
     for attempt in range(timeout):
         try:
             conn = pymysql.connect(
@@ -198,18 +149,17 @@ def _wait_for_mysql(host: str, port: int, timeout: int = 60):
 
 
 def _wait_for_postgres(host: str, port: int, timeout: int = 60):
-    """Wait for PostgreSQL to accept connections."""
-    import psycopg2
+    import pg8000.dbapi
 
     for attempt in range(timeout):
         try:
-            conn = psycopg2.connect(
+            conn = pg8000.dbapi.connect(
                 host=host,
                 port=port,
                 user="root",
                 password="test_password",  # noqa: S106
-                dbname="test_db",
-                connect_timeout=3,
+                database="test_db",
+                timeout=3,
             )
             conn.close()
             return
@@ -222,15 +172,8 @@ def _wait_for_postgres(host: str, port: int, timeout: int = 60):
                 )
 
 
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
-
-
 @needs_docker
 class TestMySQLMigrations:
-    """Test alembic upgrade head on a fresh MySQL database."""
-
     def test_mysql_upgrade_head(self):
         from testcontainers.community.mysql import MySqlContainer
         from testcontainers.community.redis import RedisContainer
@@ -243,7 +186,7 @@ class TestMySQLMigrations:
                 password="test_password",
                 dbname="test_db",
             ).with_env("MYSQL_ROOT_HOST", "%") as mysql,
-            RedisContainer("redis:alpine") as redis,
+            RedisContainer("valkey/valkey:9.1.2-alpine") as redis,
         ):
             mysql_host = mysql.get_container_host_ip()
             mysql_port = int(mysql.get_exposed_port(3306))
@@ -290,8 +233,6 @@ class TestMySQLMigrations:
 
 @needs_docker
 class TestPostgreSQLMigrations:
-    """Test alembic upgrade head on a fresh PostgreSQL database."""
-
     def test_postgres_upgrade_head(self):
         from testcontainers.community.postgres import PostgresContainer
         from testcontainers.community.redis import RedisContainer
@@ -303,7 +244,7 @@ class TestPostgreSQLMigrations:
                 password="test_password",
                 dbname="test_db",
             ) as pg,
-            RedisContainer("redis:alpine") as redis,
+            RedisContainer("valkey/valkey:9.1.2-alpine") as redis,
         ):
             pg_host = pg.get_container_host_ip()
             pg_port = int(pg.get_exposed_port(5432))
@@ -338,7 +279,7 @@ class TestPostgreSQLMigrations:
             ), f"No migrations ran:\n{result.stderr}"
 
             url = (
-                f"postgresql+psycopg2://root:test_password@{pg_host}:{pg_port}/test_db"
+                f"postgresql+pg8000://root:test_password@{pg_host}:{pg_port}/test_db"
             )
             engine = sa.create_engine(url)
             try:
@@ -348,14 +289,10 @@ class TestPostgreSQLMigrations:
 
 
 class TestSQLiteMigrations:
-    """Test alembic upgrade head on a fresh SQLite database."""
-
     def test_sqlite_upgrade_head(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = os.path.join(tmpdir, "test.db")
 
-            # SQLite needs Redis env vars set for Settings validation,
-            # even though it won't use the Redis lock in alembic.
             env_vars = {
                 **_base_env(),
                 "DATABASE_TYPE": "sqlite",

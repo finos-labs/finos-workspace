@@ -1,0 +1,222 @@
+name: workspace
+
+x-backend: &backend
+  env_file:
+    - ./backend-api/backend/envs/.env
+  platform: ${PLATFORM:-linux/amd64}
+  environment:
+    MODE: local
+    WIDGET_PLUGINS_DIR: /opt/widget-plugins
+    DB_HOST: mysql
+    REDIS_HOST: valkey
+    FOLDER_STORAGE_PATH: /opt/code/local_storage
+    DEFAULT_MCP_SERVERS: '[{"id": "agent-tools", "name": "Agent Tools", "url": "http://agent-mcp:8787/mcp"}]'
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  networks:
+    - workspace
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    cap_add:
+      - SYS_NICE
+    environment:
+      TZ: America/New_York
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: workspace
+    command:
+      [
+        "mysqld",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci",
+      ]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -P 3306 -u root -proot --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+    volumes:
+      - db:/var/lib/mysql
+    networks:
+      - workspace
+
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
+    restart: unless-stopped
+    command: valkey-server --save 20 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - valkey:/data
+    networks:
+      - workspace
+
+  init:
+    <<: *backend
+    build:
+      context: ./backend-api/backend
+      dockerfile: fastapi.Dockerfile
+    image: workspace-api:local
+    user: root
+    command:
+      - python
+      - -c
+      - |
+        import pathlib, subprocess, sys
+        pathlib.Path("user_create.json").write_text("{}")
+        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+        subprocess.run([sys.executable, "-m", "scripts.init_users"], check=True)
+    restart: "no"
+    volumes:
+      - ./backend-api/backend/user_create.json:/opt/code/user_create.json
+      - ./backend-api/backend/scripts/cfgs:/opt/code/scripts/cfgs:ro
+      - ${WORKSPACE_PLUGINS_DIR:-./widget-plugins}:/opt/widget-plugins
+    depends_on:
+      mysql:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    image: workspace-api:local
+    pull_policy: never
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend-api/backend/user_create.json:/opt/code/user_create.json:ro
+      - storage:/opt/code/local_storage
+      - ${WORKSPACE_PLUGINS_DIR:-./widget-plugins}:/opt/widget-plugins
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=4)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *backend
+    image: workspace-api:local
+    pull_policy: never
+    command: ["python", "base_workers.py"]
+    restart: unless-stopped
+    volumes:
+      - ./backend-api/backend/user_create.json:/opt/code/user_create.json:ro
+      - storage:/opt/code/local_storage
+      - ${WORKSPACE_PLUGINS_DIR:-./widget-plugins}:/opt/widget-plugins
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: ./frontend
+      additional_contexts:
+        node: docker-image://ghcr.io/finos-labs/finos-node:26.12.1-3@sha256:41118ae12c0c038f04f6ccb2d9d8b4c16a86c1d7cd5bbc5ecd67e6c8f31deece
+    platform: ${PLATFORM:-linux/amd64}
+    image: workspace-web:local
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: ${API_URL:-http://localhost:8000}
+      AI_API_URL: ${AI_API_URL:-http://localhost:7777}
+      AI_COPILOT_ENABLED: ${AI_COPILOT_ENABLED:-true}
+      ALLOW_HTML_JS_EXECUTION: ${ALLOW_HTML_JS_EXECUTION:-true}
+      UI_SHOW_COMPANION_MCP_MODE: ${UI_SHOW_COMPANION_MCP_MODE:-true}
+    ports:
+      - "3000:8080"
+    depends_on:
+      - api
+      - agent
+    networks:
+      - workspace
+
+  agent:
+    build:
+      context: ./agent
+      target: agent
+      additional_contexts:
+        node: docker-image://ghcr.io/finos-labs/finos-node:26.12.1-3@sha256:41118ae12c0c038f04f6ccb2d9d8b4c16a86c1d7cd5bbc5ecd67e6c8f31deece
+    image: workspace-agent:local
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${AGENT_MEM_LIMIT:-4g}
+    pids_limit: 1024
+    env_file:
+      - ./agent/.env
+    environment:
+      WORKSPACE_API_URL: http://api:8000
+      WORKSPACE_ORIGIN: ${WEB_URL:-http://localhost:3000}
+      WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
+      REDIS_URL: redis://valkey:6379
+      AGENT_CORS_ORIGINS: ${WEB_URL:-*}
+    ports:
+      - "7777:7777"
+    depends_on:
+      api:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    networks:
+      - workspace
+
+  agent-mcp:
+    build:
+      context: ./agent
+      target: agent-mcp
+      additional_contexts:
+        node: docker-image://ghcr.io/finos-labs/finos-node:26.12.1-3@sha256:41118ae12c0c038f04f6ccb2d9d8b4c16a86c1d7cd5bbc5ecd67e6c8f31deece
+    image: workspace-agent-mcp:local
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${AGENT_MEM_LIMIT:-4g}
+    pids_limit: 1024
+    env_file:
+      - ./agent/.env
+    environment:
+      WORKSPACE_API_URL: http://api:8000
+      WORKSPACE_ORIGIN: ${WEB_URL:-http://localhost:3000}
+      WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
+      REDIS_URL: redis://valkey:6379
+    depends_on:
+      valkey:
+        condition: service_healthy
+    networks:
+      - workspace
+
+networks:
+  workspace:
+
+volumes:
+  db:
+  valkey:
+  storage:

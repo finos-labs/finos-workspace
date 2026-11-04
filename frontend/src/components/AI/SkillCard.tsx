@@ -8,10 +8,8 @@ import { CollapsibleSection } from "~/components/ds/atoms/CollapsibleSection";
 import { LibraryRow } from "~/components/ds/molecules/LibraryList";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
-import { cn } from "~/lib/utils";
 import { sanitizeMarkdown } from "~/lib/utils/sanitize";
 import type { Skill } from "~/types/auth.type";
-import { isDefaultSkill } from "./skills";
 
 export const SkillCard = memo(function SkillCard({
   skill,
@@ -26,7 +24,6 @@ export const SkillCard = memo(function SkillCard({
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
 }) {
-  const isDefault = isDefaultSkill(skill.id);
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleToggle = useCallback(() => setIsExpanded((prev) => !prev), []);
@@ -81,20 +78,16 @@ export const SkillCard = memo(function SkillCard({
                 <button
                   type="button"
                   onClick={handleCopyContent}
-                  className="obb-small-navbar-btn"
+                  className="ws-small-navbar-btn"
                 >
                   <Icon id="clipboard-icon" className="size-3.5" />
                 </button>
               </Tooltip>
-              <Tooltip message={isDefault ? "Default skills can't be edited" : "Edit"}>
+              <Tooltip message="Edit">
                 <button
                   type="button"
-                  onClick={isDefault ? undefined : handleEdit}
-                  disabled={isDefault}
-                  className={cn(
-                    "obb-small-navbar-btn",
-                    isDefault && "opacity-40 cursor-not-allowed",
-                  )}
+                  onClick={handleEdit}
+                  className="ws-small-navbar-btn"
                 >
                   <Icon id="edit" className="size-3.5" />
                 </button>
@@ -103,7 +96,7 @@ export const SkillCard = memo(function SkillCard({
                 <button
                   type="button"
                   onClick={handleDelete}
-                  className="obb-small-navbar-btn"
+                  className="ws-small-navbar-btn"
                 >
                   <Icon id="trash-02" className="size-3.5" />
                 </button>
@@ -116,6 +109,32 @@ export const SkillCard = memo(function SkillCard({
           <Markdown options={CodeMarkdownOptions}>{sanitizedContent}</Markdown>
         </div>
       </CollapsibleSection>
+    </LibraryRow>
+  );
+});
+
+export const AgentSkillCard = memo(function AgentSkillCard({
+  skill,
+  agentName,
+}: {
+  skill: Pick<Skill, "slug" | "description">;
+  agentName: string;
+}) {
+  return (
+    <LibraryRow>
+      <div className="flex items-start gap-2 pl-6">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-xs font-medium text-ds-text-heading">{skill.slug}</span>
+          <span className="text-xs text-ds-text-caption truncate">
+            {skill.description}
+          </span>
+        </div>
+        <Tooltip message={`Comes with ${agentName}. It cannot be edited or deleted.`}>
+          <span className="shrink-0 rounded bg-general-bg-secondary px-1.5 py-0.5 text-2xs text-ds-text-caption">
+            {agentName}
+          </span>
+        </Tooltip>
+      </div>
     </LibraryRow>
   );
 });

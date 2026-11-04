@@ -2,24 +2,28 @@ import asyncio
 from uuid import uuid4
 
 import pytest
-from routers.pro.workspace_mcp.schemas import BrowserSessionStartRequest
+from routers.app.workspace_mcp.schemas import BrowserSessionStartRequest
 
 
 class FakeSocket:
     def __init__(self):
         self.sent: list[object] = []
         self.closed = False
+        self.close_code: int | None = None
 
     async def send_json(self, data: object) -> None:
         self.sent.append(data)
 
     async def close(self, code: int = 1000) -> None:
         self.closed = True
+        self.close_code = code
+
+
+async def session_lasts() -> bool:
+    return True
 
 
 class FakePubSub:
-    """Minimal async pub/sub matching the redis.asyncio.client.PubSub surface the bridge uses."""
-
     def __init__(self, broker: dict):
         self._broker = broker
         self._queue: asyncio.Queue = asyncio.Queue()
@@ -49,8 +53,6 @@ class FakePubSub:
 
 
 class FakeAsyncRedis:
-    """In-memory async Redis double sharing one broker so multiple clients interconnect."""
-
     def __init__(self, broker: dict | None = None):
         self._broker = broker if broker is not None else {"channels": {}, "store": {}}
 
@@ -85,7 +87,7 @@ class FakeAsyncRedis:
 
 @pytest.mark.asyncio
 async def test_bridge_start_session_replaces_existing_user_session():
-    from routers.pro.workspace_mcp.bridge import (
+    from routers.app.workspace_mcp.bridge import (
         BridgeSessionManager,
         BrowserUnavailableError,
     )
@@ -109,14 +111,15 @@ async def test_bridge_start_session_replaces_existing_user_session():
     with pytest.raises(BrowserUnavailableError):
         await manager.connect_browser(
             session_id=first.session.session_id,
-            token=first.session.token,
+            user_uuid=user_uuid,
             socket=FakeSocket(),
+            authorized=session_lasts,
         )
 
 
 @pytest.mark.asyncio
 async def test_bridge_executes_connected_browser_command():
-    from routers.pro.workspace_mcp.bridge import BridgeSessionManager
+    from routers.app.workspace_mcp.bridge import BridgeSessionManager
 
     manager = BridgeSessionManager(redis_client=None, worker_id="test-worker")
     if manager.redis is None:
@@ -131,8 +134,9 @@ async def test_bridge_executes_connected_browser_command():
     socket = FakeSocket()
     await manager.connect_browser(
         session_id=start.session.session_id,
-        token=start.session.token,
+        user_uuid=user_uuid,
         socket=socket,
+        authorized=session_lasts,
     )
 
     command_task = asyncio.create_task(
@@ -155,6 +159,7 @@ async def test_bridge_executes_connected_browser_command():
                 "data": {"dashboards": []},
             },
         },
+        socket,
     )
 
     result = await command_task
@@ -163,9 +168,31 @@ async def test_bridge_executes_connected_browser_command():
     assert result["data"] == {"dashboards": []}
 
 
+def test_a_command_result_keeps_its_warnings():
+    from routers.app.workspace_mcp.schemas import browser_message_adapter
+
+    message = browser_message_adapter.validate_python(
+        {
+            "type": "command_result",
+            "result": {
+                "ok": True,
+                "command": "create_widget",
+                "request_id": "cmd_1",
+                "message": "Dry run: widget would be created. Nothing was changed.",
+                "data": {"valid": True},
+                "warnings": ["data_args keys not declared by this widget were ignored: bogus."],
+            },
+        }
+    )
+
+    assert message.result.model_dump(mode="json")["warnings"] == [
+        "data_args keys not declared by this widget were ignored: bogus."
+    ]
+
+
 @pytest.mark.asyncio
 async def test_bridge_command_without_browser_is_unavailable():
-    from routers.pro.workspace_mcp.bridge import (
+    from routers.app.workspace_mcp.bridge import (
         BridgeSessionManager,
         BrowserUnavailableError,
     )
@@ -178,7 +205,7 @@ async def test_bridge_command_without_browser_is_unavailable():
 
 @pytest.mark.asyncio
 async def test_disconnect_only_fails_that_users_pending_commands():
-    from routers.pro.workspace_mcp.bridge import BridgeSessionManager, ConnectedBrowser
+    from routers.app.workspace_mcp.bridge import BridgeSessionManager, ConnectedBrowser
 
     manager = BridgeSessionManager(redis_client=None, worker_id="test-worker")
 
@@ -188,10 +215,11 @@ async def test_disconnect_only_fails_that_users_pending_commands():
             request=BrowserSessionStartRequest(client_name="workspace-ui"),
             base_url="http://test",
         )
-        # Register the browser directly: the credential handshake in
-        # connect_browser requires Redis-backed active-session lookup.
         manager._active_by_user[user_uuid] = ConnectedBrowser(
-            user_uuid=user_uuid, session=start.session, socket=FakeSocket()
+            user_uuid=user_uuid,
+            session=start.session,
+            socket=FakeSocket(),
+            authorized=session_lasts,
         )
 
     user_a = uuid4()
@@ -208,14 +236,11 @@ async def test_disconnect_only_fails_that_users_pending_commands():
     await asyncio.sleep(0.01)
     assert len(manager._pending_commands) == 2
 
-    # User A's browser disconnects.
-    await manager.disconnect_browser(user_a)
+    await manager.disconnect_browser(user_a, manager._active_by_user[user_a].socket)
 
-    # User A's in-flight command fails fast.
     result_a = await task_a
     assert result_a["ok"] is False
 
-    # User B's browser is still connected, so its command must stay pending.
     await asyncio.sleep(0.01)
     assert not task_b.done()
 
@@ -224,7 +249,7 @@ async def test_disconnect_only_fails_that_users_pending_commands():
 
 @pytest.mark.asyncio
 async def test_completed_results_cache_is_bounded():
-    from routers.pro.workspace_mcp.bridge import BridgeSessionManager, ConnectedBrowser
+    from routers.app.workspace_mcp.bridge import BridgeSessionManager, ConnectedBrowser
 
     cap = 5
     manager = BridgeSessionManager(
@@ -238,7 +263,7 @@ async def test_completed_results_cache_is_bounded():
     )
     socket = FakeSocket()
     manager._active_by_user[user] = ConnectedBrowser(
-        user_uuid=user, session=start.session, socket=socket
+        user_uuid=user, session=start.session, socket=socket, authorized=session_lasts
     )
 
     for i in range(cap * 3):
@@ -260,6 +285,7 @@ async def test_completed_results_cache_is_bounded():
                     "data": {},
                 },
             },
+            socket,
         )
         await task
 
@@ -268,12 +294,9 @@ async def test_completed_results_cache_is_bounded():
 
 @pytest.mark.asyncio
 async def test_ensure_started_pins_worker_id_to_pid():
-    """Guards the multi-worker fix: a manager constructed pre-fork must not keep a shared
-    worker_id once it starts in a worker process, or all workers share one command channel.
-    """
     import os
 
-    from routers.pro.workspace_mcp.bridge import BridgeSessionManager
+    from routers.app.workspace_mcp.bridge import BridgeSessionManager
 
     manager = BridgeSessionManager(redis_client=FakeAsyncRedis(), worker_id="shared")
     await manager.ensure_started()
@@ -286,8 +309,7 @@ async def test_ensure_started_pins_worker_id_to_pid():
 
 @pytest.mark.asyncio
 async def test_bridge_routes_command_across_processes_via_redis():
-    """A command issued on one worker reaches a browser held by another worker over Redis."""
-    from routers.pro.workspace_mcp.bridge import BridgeSessionManager
+    from routers.app.workspace_mcp.bridge import BridgeSessionManager
 
     broker: dict = {"channels": {}, "store": {}}
     holder = BridgeSessionManager(
@@ -306,16 +328,15 @@ async def test_bridge_routes_command_across_processes_via_redis():
     socket = FakeSocket()
     await holder.connect_browser(
         session_id=start.session.session_id,
-        token=start.session.token,
+        user_uuid=user_uuid,
         socket=socket,
+        authorized=session_lasts,
     )
 
-    # caller has no local browser for this user -> must publish over Redis to holder.
     command_task = asyncio.create_task(
         caller.execute_command(user_uuid, {"command": "get_workspace_snapshot"})
     )
 
-    # Wait for holder's listener to relay the command to the browser socket.
     for _ in range(200):
         if socket.sent:
             break
@@ -336,6 +357,7 @@ async def test_bridge_routes_command_across_processes_via_redis():
                 "data": {"dashboards": []},
             },
         },
+        socket,
     )
 
     result = await asyncio.wait_for(command_task, timeout=2.0)

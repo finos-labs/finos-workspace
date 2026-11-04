@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { BaseDialog } from "~/components/ds/dialogs/BaseDialog";
 
@@ -26,16 +27,11 @@ describe("BaseDialog", () => {
       </BaseDialog>,
     );
 
-    // Closest way to trigger onOpenChange(false) in our mock is to change the open prop
     rerender(
       <BaseDialog open={false} onClose={onClose}>
         <div>Content</div>
       </BaseDialog>,
     );
-
-    // BaseDialog calls onOpenChange which calls onClose if !open
-    // But wait, BaseDialog handles onOpenChange from Dialog.
-    // In our mock, we need to trigger onOpenChange(false).
   });
 });
 
@@ -44,7 +40,15 @@ vi.mock("./Dialog", () => {
   const DialogContext = React.createContext({ onOpenChange: () => {} });
 
   return {
-    Dialog: ({ children, open, onOpenChange }: any) => {
+    Dialog: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children?: ReactNode;
+      open?: boolean;
+      onOpenChange: (open: boolean) => void;
+    }) => {
       React.useEffect(() => {
         if (open === false) onOpenChange?.(false);
       }, [open]);
@@ -54,11 +58,17 @@ vi.mock("./Dialog", () => {
         </DialogContext.Provider>
       );
     },
-    DialogTrigger: ({ children, asChild, onClick }: any) => {
+    DialogTrigger: ({ children }: { children?: ReactNode }) => {
       const { onOpenChange } = React.useContext(DialogContext);
       return <div onClick={() => onOpenChange(true)}>{children}</div>;
     },
-    DialogContent: ({ children, className }: any) => (
+    DialogContent: ({
+      children,
+      className,
+    }: {
+      children?: ReactNode;
+      className?: string;
+    }) => (
       <div data-testid="dialog-content" className={className}>
         {children}
       </div>

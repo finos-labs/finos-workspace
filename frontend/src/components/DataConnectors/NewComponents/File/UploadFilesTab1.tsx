@@ -1,5 +1,4 @@
 import type { AxiosRequestConfig } from "axios";
-import Papa from "papaparse";
 import { useCallback, useEffect, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { useFormContext } from "react-hook-form";
@@ -19,23 +18,16 @@ import {
   validExtension,
 } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
-import { useShallowAuthStore } from "~/lib/state/auth";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn, formatFileSize } from "~/lib/utils";
 import { type FileType, useFileContext } from "../../FileContext";
 
 export function getExtension(path: string): Extension {
-  const basename = path.split(/[\\/]/).pop();
+  const basename = path.split(/[\\/]/).pop() ?? "";
   const pos = basename.lastIndexOf(".");
   if (basename === "" || pos < 1) return "" as Extension;
   return basename.slice(pos + 1)?.toLowerCase() as Extension;
-}
-
-export function getLabel(path: string, count: string | number): string {
-  if (path === "None") {
-    return path;
-  }
-  return `${path} (${count})`;
 }
 
 const aiCopilotAiEnhancementsFF =
@@ -65,7 +57,7 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
     uploadProgress: null as number | null,
     message: null as string | null,
   });
-  const abortControllerRef = useRef<AbortController>();
+  const abortControllerRef = useRef<AbortController>(undefined);
 
   const { files, setFiles } = useFileContext();
   const filesRef = useRef(files);
@@ -134,8 +126,6 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
     [dispatch, setFiles, filesRef],
   );
 
-  const user = useShallowAuthStore((s) => s.user);
-
   const uploadFile = useCallback(
     async (toUpload: File[]) => {
       const toUploadFileNames = toUpload.map((f) => f.name);
@@ -177,7 +167,7 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
         }
 
         apiClient
-          .post<PostUploadFileResponse>("pro/files", formData, config)
+          .post<PostUploadFileResponse>("app/files", formData, config)
           .then(async ({ data: uploadedFiles }) => {
             for (const file of uploadedFiles) {
               setValue("extension", file.extension, { shouldValidate: true });
@@ -204,15 +194,9 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
                   const formData = new FormData();
                   formData.append("file", currFiles[fileIndex]);
                   try {
-                    const aiResponse = await fetch(
+                    const aiResponse = await fetchAgent(
                       `${getConfig().urls.ai}/v1/generate/widget_info/file`,
-                      {
-                        method: "POST",
-                        headers: {
-                          Authorization: `Bearer ${user.token}`,
-                        },
-                        body: formData,
-                      },
+                      { method: "POST", body: formData },
                     );
                     if (aiResponse.ok) {
                       const data = await aiResponse.json();
@@ -289,37 +273,12 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
   );
 
   const checkIfValid = useCallback(
-    async (extension: Extension, file: File) => {
-      try {
-        if (extension === "csv") {
-          return new Promise<boolean>((resolve, reject) => {
-            const config = {
-              complete: () => resolve(true),
-              error: () => reject(false),
-              header: true,
-            } as Papa.ParseLocalConfig;
-
-            Papa.parse(file, config);
-          });
-        }
-        if (extension === "json") {
-          const data = await file.text();
-          JSON.parse(data);
-        }
-
-        return validExtension(extension);
-      } catch (e) {
-        console.error(e);
-        dispatch({ uploadProgress: null, message: "Unknown error occurred" });
-      }
-
-      return false;
-    },
-    [uploadFile, dispatch],
+    async (extension: Extension, _file: File) => validExtension(extension),
+    [],
   );
 
   const errorMessage = useCallback(() => {
-    const urlError = formState.errors?.url?.message.toString();
+    const urlError = formState.errors?.url?.message?.toString();
     const { message, uploadProgress } = state;
     if (message) {
       return message;
@@ -328,7 +287,7 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
       if (uploadProgress === 100) {
         return undefined;
       }
-      if (uploadProgress > 0) {
+      if (uploadProgress !== null && uploadProgress > 0) {
         return "Upload in progress";
       }
     }
@@ -348,12 +307,6 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
         ".docx",
       ],
       "application/pdf": [".pdf"],
-      "text/csv": [".csv"],
-      "image/png": [".png"],
-      "image/jpeg": [".jpg", ".jpeg"],
-      "image/gif": [".gif"],
-      "application/json": [".json"],
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
     },
     onDrop: async (acceptedFiles, fileRejections) => {
       if (abortControllerRef.current) {
@@ -382,7 +335,6 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
 
       const toUpload = await prepareFiles(acceptedFiles);
 
-      // check if all files are valid
       if (toUpload.length === 0) {
         dispatch({
           uploadProgress: null,
@@ -396,11 +348,10 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
       await uploadFile(toUpload.map((f) => f.file));
 
       setTimeout(() => {
-        // reset the input value after upload
         const input = document.getElementById(
           "data-connector-upload",
         ) as HTMLInputElement;
-        if (input) input.value = null;
+        if (input) input.value = "";
       });
     },
   });
@@ -412,7 +363,6 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
           const newFiles = prev.filter((f) => f.uuid !== file.uuid);
 
           if (newFiles.length === 0) {
-            // Reset the upload progress if there are no files
             dispatch({ uploadProgress: null });
           }
 
@@ -453,57 +403,6 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
         <input id="data-connector-upload" {...getInputProps()} />
         {isDragActive ? <DragFileHere /> : <UploadChildren />}
       </div>
-      {/*
-      <div
-        className={cn(
-          "mt-4 rounded p-2 gap-6 flex justify-between items-center text-light-900 dark:text-white",
-          {
-            "bg-[#FCA5A533] dark:bg-red-600/20": percentage > STORAGE_THRESHOLD * 100,
-            "bg-[#66CCFF33] dark:bg-brand-main/20":
-              percentage <= STORAGE_THRESHOLD * 100,
-          },
-        )}
-      >
-        <div className="flex flex-col w-full gap-3">
-          <div className="flex gap-1 items-center">
-            <Icon id="cloud-icon" className="w-4 h-4" />
-            <span>
-              Storage (
-              <span
-                className={cn({
-                  "text-brand-main dark:text-brand-lighter":
-                    percentage <= STORAGE_THRESHOLD * 100,
-                  "text-red-600 dark:text-red-500":
-                    percentage > STORAGE_THRESHOLD * 100,
-                })}
-              >
-                {`${percentage}% full`}
-              </span>
-              )
-            </span>
-            <span className="text-light-500 dark:text-dark-50">
-              {`${formatFileSize(
-                (percentage / 100) * MAX_STORAGE_CAPACITY,
-                2,
-              )} of ${formatFileSize(MAX_STORAGE_CAPACITY)} used`}
-            </span>
-          </div>
-          <Progress
-            className="h-[3px]"
-            value={percentage}
-            indicatorClassname={cn({
-              "bg-brand-main dark:bg-brand-lighter":
-                percentage <= STORAGE_THRESHOLD * 100,
-              "bg-red-600 dark:bg-red-500": percentage > STORAGE_THRESHOLD * 100,
-            })}
-          />
-        </div>
-        <Link to={bookingUrl}>
-          <Button size="xs" variant="outlined" className="whitespace-nowrap">
-            Upgrade plan
-          </Button>
-        </Link>
-      </div>*/}
       <FormMessage
         className="text-light-700 mt-1 mb-2 dark:text-light-200 w-full p-2.5
         rounded border-[#EF4444] border dark:bg-[#4E1616] bg-red-500/10"

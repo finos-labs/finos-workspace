@@ -1,6 +1,5 @@
-"""ASGI application for the Workspace MCP sidecar."""
-
 import contextlib
+import re
 
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
@@ -20,11 +19,17 @@ from workspace_mcp.server import create_mcp_server
 from workspace_mcp.state import BridgeSessionManager, BrowserUnavailableError
 
 LOCALHOST_ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
-DEFAULT_CORS_ALLOW_ORIGINS = ("https://pro.openbb.co",)
+
+
+def is_allowed_origin(settings: Settings, origin: str | None) -> bool:
+    if origin is None:
+        return False
+    if settings.cors_allow_origins:
+        return origin in settings.cors_allow_origins
+    return re.fullmatch(LOCALHOST_ORIGIN_REGEX, origin) is not None
 
 
 def create_app(settings: Settings | None = None) -> Starlette:
-    """Create the ASGI application hosting MCP and browser bridge endpoints."""
     settings = settings or Settings.from_env()
     state = BridgeSessionManager(
         base_url=settings.base_url,
@@ -47,7 +52,6 @@ def create_app(settings: Settings | None = None) -> Starlette:
     else:
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=list(DEFAULT_CORS_ALLOW_ORIGINS),
             allow_origin_regex=LOCALHOST_ORIGIN_REGEX,
             allow_methods=["GET", "POST", "OPTIONS"],
             allow_headers=["*"],
@@ -57,19 +61,27 @@ def create_app(settings: Settings | None = None) -> Starlette:
         return JSONResponse(await state.health())
 
     async def start_session(request: Request) -> Response:
+        if not is_allowed_origin(settings, request.headers.get("origin")):
+            return JSONResponse({"detail": "Origin not allowed"}, status_code=403)
         payload = BrowserSessionStartRequest.model_validate(await request.json())
         session = await state.start_session(payload)
         return JSONResponse(session.model_dump(mode="json"))
 
     async def bridge_socket(websocket: WebSocket) -> None:
-        await websocket.accept()
         session_id = websocket.query_params.get("session_id", "")
-        token = websocket.query_params.get("token", "")
+        if not is_allowed_origin(settings, websocket.headers.get("origin")):
+            await websocket.close(code=1008)
+            return
+        try:
+            state.check_browser(session_id=session_id)
+        except BrowserUnavailableError:
+            await websocket.close(code=1008)
+            return
 
+        await websocket.accept()
         try:
             session = await state.connect_browser(
                 session_id=session_id,
-                token=token,
                 socket=websocket,
             )
         except BrowserUnavailableError as error:

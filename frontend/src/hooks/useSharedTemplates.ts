@@ -26,7 +26,7 @@ export function useSharedTemplates(
   options: RolePermissionsOptions = { enabled: true },
 ) {
   const { data, refetch, ...rest } = useUserResourcePermissions({
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     ...options,
   });
@@ -34,7 +34,6 @@ export function useSharedTemplates(
   const sharedTemplates = useMemo(() => {
     if (!data) return;
 
-    // Transform the data into a flat list of templates with their source information
     const templates = data.backends.flatMap((backend) =>
       (backend.templates || []).map((template) => {
         const { widgets, totalWidgets } = getTemplateWidgetsMetadata(template, backend);

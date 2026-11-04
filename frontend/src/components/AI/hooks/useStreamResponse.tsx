@@ -1,15 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
-import posthog from "posthog-js";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
-import { v4 as uuidv4 } from "uuid";
 import { useCallbackRef } from "~/hooks/useRefHooks";
 import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
 import { getConfig } from "~/lib/runtimeConfig";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useAppStore, useShallowAppStore } from "~/lib/state/app";
-import { useShallowAuthStore } from "~/lib/state/auth";
 import {
   type BackendTemplate,
   useShallowBackendConnectorStore,
@@ -17,6 +15,7 @@ import {
 import {
   type AIMessage,
   type AppArtifactT,
+  type ArtifactT,
   type Citation as CitationT,
   type Copilot,
   type CopilotCommandResultT,
@@ -29,9 +28,9 @@ import {
   useCopilotStore,
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
-import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 import { useShallowThemeStore, useThemeStore } from "~/lib/state/theme";
+import { WORKSPACE_SERVER_ID } from "~/lib/state/workspaceTools";
 import {
   type AddGenerativeWidgetInputArgumentsT,
   type FunctionCallT,
@@ -42,7 +41,6 @@ import { createCustomTemplateTab } from "~/lib/utils/createTemplates";
 import type { SkillPayload } from "~/types/auth.type";
 import {
   buildAppArtifactSource,
-  buildWidgetMetadataResolver,
   buildWidgetSourceResolver,
   shouldAutoOpenAppArtifact,
 } from "../appArtifactUtils";
@@ -54,13 +52,20 @@ import { useManageNavigationBar } from "./useManageNavigationBar";
 import useQueriesLeft from "./useQueriesLeft";
 import {
   ResetState,
+  type StreamingData,
   type StreamingState,
   StreamingStatus,
   useShallowStreamingStore,
   useStreamingHooks,
   useStreamingStore,
 } from "./useStreaming";
-import { dispatchCopilotCommand, partitionFilesOnSend } from "./utils";
+import { useWorkspaceToolExecutor } from "./useWorkspaceToolExecutor";
+import {
+  dispatchCopilotCommand,
+  normalizeCitations,
+  partitionFilesOnSend,
+  withoutCitedWidgets,
+} from "./utils";
 
 export type CopilotSubmitParams = {
   question?: string;
@@ -69,13 +74,18 @@ export type CopilotSubmitParams = {
     | string
     | {
         messageContent: string;
-        citations?: any[];
-        artifact?: any;
+        citations?: CitationT[];
+        artifact?: ArtifactT;
       };
 };
 
 const aiCopilotAiEnhancementsFF =
   getConfig().copilot.enabled && getConfig().copilot.aiEnhancements;
+
+type StreamAccumulator = {
+  accumulatedMessageData: string;
+  accumulatedCitations: CitationT[];
+};
 
 const createFunctionCallMessages = (
   dataOrResults: (CopilotDataT | CopilotFunctionCallError)[] | CopilotCommandResultT[],
@@ -120,17 +130,8 @@ function useStreamResponse(stopSubmit: () => void) {
 
   const queriesLeft = useQueriesLeft()?.queriesLeft;
 
-  const userToken = useShallowAuthStore((s) => s.user?.token);
   const addTab = useShallowAppStore((s) => s.addTab);
-  const { apiSources, widgetMetadata } = useShallowBackendConnectorStore((s) => ({
-    apiSources: s.apiSources,
-    widgetMetadata: s.widgetMetadata,
-  }));
-  const resolveWidget = useMemo(
-    () => buildWidgetMetadataResolver(widgetMetadata),
-    [widgetMetadata],
-  );
-  const generativeUiEnabled = useShallowCopilotDataStore((s) => s.generativeUiEnabled);
+  const apiSources = useShallowBackendConnectorStore((s) => s.apiSources);
 
   const copilot = useShallowCopilotStore((s) => ({
     addArtifactToCurrentChat: s.addArtifactToCurrentChat,
@@ -161,39 +162,27 @@ function useStreamResponse(stopSubmit: () => void) {
   } = useFunctionCall();
   const manageNavigationBar = useManageNavigationBar();
 
-  // MCP tool execution
   const executeAgentTool = useMcpExecutor();
+  const executeWorkspaceTool = useWorkspaceToolExecutor();
 
-  // Skills store access for get_skill_content function call
   const getSkillBySlug = useShallowSkillsLibraryStore((s) => s.getSkillBySlug);
 
-  // Save the current conversation as a skill (save_skill function call)
   const createSkillFromConversation = useCreateSkillFromConversation();
 
-  // Add a new ref to store the resolution function
   const resolveStreamRef = useRef<(() => void) | null>(null);
   const handleEventRef =
-    useRef<(props: HandleEventProps) => Promise<Record<string, any>>>();
+    useRef<(props: HandleEventProps) => Promise<StreamAccumulator>>(undefined);
 
-  // Store pending MCP citations across streaming lifecycle (accumulates across multiple tool calls)
   const pendingMcpCitationsRef = useRef<CitationT[]>([]);
 
+  const pendingSuggestionsRef = useRef<string[] | null>(null);
+  const focusInputRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
   const autoOpenAppArtifact = useCallback(
-    async (artifact: AppArtifactT, targetAgent?: Copilot) => {
-      const features = targetAgent?.features || copilot.selectedCopilot?.features;
-      // Read items imperatively: back-to-back artifacts in one stream must see the dashboard
-      // state left by the previous auto-open, which the render closure would not reflect.
+    async (artifact: AppArtifactT) => {
       const items = useAppStore.getState().items;
       const currentDashboardItem = currentDashboard ? items?.[currentDashboard] : null;
-      if (
-        !shouldAutoOpenAppArtifact({
-          generativeUiEnabled,
-          features,
-          currentDashboardItem,
-        })
-      ) {
-        return;
-      }
+      if (!shouldAutoOpenAppArtifact({ currentDashboardItem })) return;
 
       try {
         await createCustomTemplateTab({
@@ -208,7 +197,6 @@ function useStreamResponse(stopSubmit: () => void) {
             artifact.widget_refs ?? [],
             apiSources,
           ),
-          resolveWidget,
         });
       } catch (error) {
         toast.error("Failed to open app", {
@@ -216,31 +204,17 @@ function useStreamResponse(stopSubmit: () => void) {
         });
       }
     },
-    [
-      addTab,
-      navigate,
-      currentDashboard,
-      apiSources,
-      resolveWidget,
-      generativeUiEnabled,
-      copilot.selectedCopilot?.features,
-    ],
+    [addTab, navigate, currentDashboard, apiSources],
   );
 
   const updateCopilotTitle = useCallback(
     async (xTraceId: string) => {
-      // only update the title if the title needs to be updated, i.e.
-      //   1. the title is "New Chat" because it hasn't been manually updated by the user
-      //   2. one of the messages has been edited and so we re-update the title in case it changes topic of conversation
-      //   3. the title has never been updated and we need to generate a title
-      // Note: if the user manually updates the title, we don't want to overwrite it
-
       const { titleManuallyUpdated, titleNeedsUpdate, messages } =
         copilot.getCurrentChat();
       if (!(!titleManuallyUpdated && titleNeedsUpdate && messages.length > 1)) return;
       const { url, init } = await getUpdateCopilotTitleFetchParams({ xTraceId });
       try {
-        const response = await fetch(url, init);
+        const response = await fetchAgent(url, init);
         if (!response.ok) throw new Error(response.statusText);
         const data = await response.json();
         copilot.updateCopilotLabelAndSetTitleNeedsUpdate(data, false);
@@ -249,11 +223,7 @@ function useStreamResponse(stopSubmit: () => void) {
         return;
       }
     },
-    [
-      copilot.getCurrentChat,
-      copilot.updateCopilotLabelAndSetTitleNeedsUpdate,
-      userToken,
-    ],
+    [copilot.getCurrentChat, copilot.updateCopilotLabelAndSetTitleNeedsUpdate],
   );
 
   const processStream = useCallback(
@@ -262,12 +232,12 @@ function useStreamResponse(stopSubmit: () => void) {
       reader: ReadableStreamDefaultReader,
       abortSignal: AbortSignal,
       question: string,
-      keepAlive = false, // Whether to keep the streaming state alive after processing the stream
+      keepAlive = false,
       targetAgent?: Copilot,
     ) => {
       const decoder = new TextDecoder("utf-8");
       let accumulatedMessageData = "";
-      let accumulatedCitations = [];
+      let accumulatedCitations: CitationT[] = [];
       let streamBuffer = "";
 
       while (true) {
@@ -286,27 +256,14 @@ function useStreamResponse(stopSubmit: () => void) {
             });
           break;
         }
-        /*
-          each chunk is the following:
-          event: message_chunk
-          data: {'delta': '...'}
-
-          event: message_chunk
-          data: {'delta': '...'}
-
-          etc
-      */
         const chunk = decoder.decode(value, { stream: true });
         streamBuffer += chunk;
         const events = streamBuffer.split(/\r\n\r\n|\r\r|\n\n/g);
 
-        // The leftover text to remain in the buffer is whatever doesn't have two newlines after it. If the buffer ended
-        // with two newlines, this will be an empty string.
-        streamBuffer = events.pop()!;
+        streamBuffer = events.pop() ?? "";
         let event = "";
 
         for (const eventChunk of events) {
-          // Split up by single newlines.
           const lines = eventChunk.split(/\n|\r|\r\n/g);
           let data = "";
           for (const line of lines) {
@@ -325,29 +282,25 @@ function useStreamResponse(stopSubmit: () => void) {
                     data += "\n";
                     break;
                   }
-                  // other types are explicitly ignored
                 }
               }
             } catch (e) {
               console.error(e);
             }
           }
-          // Skip the event if the data buffer is the empty string.
           if (data === "") continue;
 
-          // Remove the last newline character if it exists
           if (data[data.length - 1] === "\n") {
             data = data.slice(0, -1);
           }
 
-          // Parse the data as JSON
-          data = JSON.parse(data);
+          const parsedData: unknown = JSON.parse(data);
 
           if (handleEventRef.current)
             ({ accumulatedMessageData, accumulatedCitations } =
               await handleEventRef.current({
                 event,
-                data,
+                data: parsedData,
                 question,
                 accumulatedMessageData,
                 accumulatedCitations,
@@ -374,7 +327,7 @@ function useStreamResponse(stopSubmit: () => void) {
       const copilotId = targetAgent?.id || copilot.selectedCopilot?.id;
 
       const updateChatMessages = (aiMessage: AIMessage, toolMessage: ToolMessage) => {
-        if (!copilot.selectedCopilot) return;
+        if (!copilot.selectedCopilot || !copilotId) return;
         copilot.addMessage({
           ...aiMessage,
           copilotId,
@@ -394,20 +347,21 @@ function useStreamResponse(stopSubmit: () => void) {
         functionCallSpec,
       );
 
-      // Extract MCP extra_citations (if any) and accumulate for injection at 'done'
       if (
         functionCallSpec.function === "execute_agent_tool" &&
         Array.isArray(dataOrResults)
       ) {
-        const citations = dataOrResults.flatMap((item: any) =>
-          Array.isArray(item?.extra_citations) ? item.extra_citations : [],
-        );
+        const citations = dataOrResults.flatMap((item): unknown[] => {
+          const extra = (item as { extra_citations?: unknown } | null)?.extra_citations;
+          return Array.isArray(extra) ? extra : [];
+        });
         if (citations.length > 0) {
-          const normalized = normalizeCitations(citations);
-          // Deduplicate by id while accumulating
-          const existingIds = new Set(pendingMcpCitationsRef.current.map((c) => c.id));
-          const toAdd = normalized.filter((c) => !existingIds.has(c.id));
-          pendingMcpCitationsRef.current.push(...toAdd);
+          pendingMcpCitationsRef.current.push(
+            ...withoutCitedWidgets(
+              pendingMcpCitationsRef.current,
+              normalizeCitations(citations),
+            ),
+          );
         }
       }
 
@@ -418,7 +372,7 @@ function useStreamResponse(stopSubmit: () => void) {
         abortSignal,
         targetAgent,
       });
-      const response = await fetch(queryUrl, init);
+      const response = await fetchAgent(queryUrl, init);
       if (!response.ok) throw new Error(response.statusText);
       const reader = response.body?.getReader();
       if (!isReadableStream(reader))
@@ -447,22 +401,6 @@ function useStreamResponse(stopSubmit: () => void) {
       const { functionCallSpec, xHeaders, abortSignal, incomingMessage } = props;
       copilot.makeLastMessageFC();
 
-      if (posthog) {
-        const dataSources = functionCallSpec.input_arguments?.data_sources;
-        const sourceOrigins = Array.isArray(dataSources)
-          ? [
-              ...new Set(
-                dataSources.map((ds: { origin?: string }) => ds.origin).filter(Boolean),
-              ),
-            ]
-          : undefined;
-        posthog.capture(`copilot_${functionCallSpec.function}`, {
-          widget_uuid: dataSources,
-          trace_id: xHeaders?.traceId,
-          source_origins: sourceOrigins,
-        });
-      }
-
       const forwardMessageToAi = async (
         message: string,
         fromAgentId: string,
@@ -481,20 +419,16 @@ function useStreamResponse(stopSubmit: () => void) {
           targetAgent,
         });
 
-        const response = await fetch(queryUrl, init);
+        const response = await fetchAgent(queryUrl, init);
 
         if (!response.ok) throw new Error(response.statusText);
 
-        // Check if this is a streaming response
         const contentType = response.headers.get("content-type");
 
         if (targetAgent && !contentType?.includes("text/event-stream")) {
-          // Handle non-streaming response from external agent
           try {
             const jsonResponse = await response.json();
 
-            // Convert to streaming format for compatibility
-            // This is a simplified approach - you may need to adjust based on the actual response format
             copilot.addMessage({
               role: "ai",
               content: JSON.stringify(jsonResponse),
@@ -503,7 +437,9 @@ function useStreamResponse(stopSubmit: () => void) {
             });
             return;
           } catch (e) {
-            throw new Error(`Failed to process agent response: ${e.message}`);
+            throw new Error(
+              `Failed to process agent response: ${e instanceof Error ? e.message : String(e)}`,
+            );
           }
         }
 
@@ -521,7 +457,6 @@ function useStreamResponse(stopSubmit: () => void) {
       };
 
       switch (functionCallSpec.function) {
-        // We handle both LLM functions in the same way
         case "get_widget_data":
         case "get_extra_widget_data": {
           const data = await getWidgetData(
@@ -538,7 +473,6 @@ function useStreamResponse(stopSubmit: () => void) {
         case "add_widget_to_dashboard": {
           const results = await addWidgetToDashboard(
             functionCallSpec.input_arguments.data_sources || [],
-            functionCallSpec.extra_state?.copilot_function_call_arguments,
           );
           return await submitFunctionCallResponse(props, results);
         }
@@ -553,9 +487,6 @@ function useStreamResponse(stopSubmit: () => void) {
             functionCallSpec.input_arguments.task_requests || [],
             forwardMessageToAi,
           );
-          // If we expect a direct response from the agent, don't show the tool results
-          // The agent's response will be displayed directly
-          // if any of the tasks failed, we show the results as normal
           const expectDirectResponse =
             functionCallSpec.extra_state?.expect_direct_response &&
             results.every((val) => val.status === "success");
@@ -567,7 +498,12 @@ function useStreamResponse(stopSubmit: () => void) {
         }
         case "execute_agent_tool": {
           const { server_id, tool_name, parameters } = functionCallSpec.input_arguments;
-          const data = await executeAgentTool(server_id, tool_name, parameters);
+          if (!(server_id && tool_name))
+            throw new Error("execute_agent_tool requires server_id and tool_name");
+          const data =
+            server_id === WORKSPACE_SERVER_ID
+              ? await executeWorkspaceTool(tool_name, parameters)
+              : await executeAgentTool(server_id, tool_name, parameters);
           return await submitFunctionCallResponse(props, data);
         }
         case "manage_navigation_bar": {
@@ -597,15 +533,6 @@ function useStreamResponse(stopSubmit: () => void) {
             reason?: string;
           };
           const skill = getSkillBySlug(slug);
-
-          if (posthog) {
-            posthog.capture("skill_model_requested", {
-              skill_slug: slug,
-              reason: reason,
-              found: !!skill,
-              trace_id: xHeaders?.traceId,
-            });
-          }
 
           if (!skill) {
             return await submitFunctionCallResponse(props, [
@@ -646,6 +573,7 @@ function useStreamResponse(stopSubmit: () => void) {
       addWidgetToDashboard,
       updateWidgetInDashboard,
       executeAgentTool,
+      executeWorkspaceTool,
       manageNavigationBar,
       addGenerativeWidget,
       getSkillBySlug,
@@ -663,20 +591,35 @@ function useStreamResponse(stopSubmit: () => void) {
         props;
       let aiMessageBuffer: string = props.accumulatedMessageData;
       let citationBuffer: CitationT[] = props.accumulatedCitations;
-      const copilotId = targetAgent?.id || copilot.selectedCopilot?.id;
 
-      if (!copilot.selectedCopilot) return;
+      if (!copilot.selectedCopilot) {
+        return {
+          accumulatedMessageData: aiMessageBuffer,
+          accumulatedCitations: citationBuffer,
+        };
+      }
+      const copilotId = targetAgent?.id || copilot.selectedCopilot.id;
 
-      const flushBuffers = () => {
-        // Used when there is a MessageChunk receiving stream ongoing
-        // but we there is an incoming FunctionCall or StatusUpdate
-        if (!aiMessageBuffer) return;
-        copilot.updateLastMessage({
+      const commitAnswer = (extra: Partial<AIMessage> = {}) => {
+        if (!aiMessageBuffer) return false;
+        const suggestions = pendingSuggestionsRef.current;
+        pendingSuggestionsRef.current = null;
+        copilot.addMessage({
+          role: "ai",
           content: aiMessageBuffer,
-          citations: citationBuffer,
+          ...(citationBuffer.length > 0 ? { citations: citationBuffer } : {}),
+          ...(suggestions ? { suggestions } : {}),
+          ...extra,
+          copilotId,
+          timestamp: Date.now() + 1,
         });
         aiMessageBuffer = "";
         citationBuffer = [];
+        return true;
+      };
+
+      const flushBuffers = () => {
+        if (!commitAnswer()) return;
         dispatch(
           { ...ResetState, ...StreamingStatus.READY, loading: true },
           setStreamedData,
@@ -688,29 +631,10 @@ function useStreamResponse(stopSubmit: () => void) {
         case "copilotStatusUpdate": {
           flushBuffers();
           const content = data as SystemSSEContent;
-          // Hidden updates are not shown in the chat, but
-          // the state is still loading until the next message
           if (content.hidden) break;
           if (content.eventType === "WARNING") {
-            if (posthog) {
-              posthog.capture("WARNING_COPILOT_MESSAGE", {
-                copilot_warning_error: content?.eventType,
-                copilot_warning_message: content?.message,
-                trace_id: xHeaders?.traceId,
-              });
-            }
           }
           if (content.eventType === "ERROR") {
-            if (posthog) {
-              posthog.capture("ERROR_COPILOT_MESSAGE", {
-                copilot_error_error: content?.eventType,
-                copilot_error_message: content?.message,
-                trace_id: xHeaders?.traceId,
-              });
-            }
-            // Usually this will be a context exceeded error.
-            // By removing the last AI and tool messages we remove
-            // the function call result that is exceeding the context.
             const { messages } = copilot.getCurrentChat();
             const timestamps = getLatestAiToolPairTimestamps(messages);
             if (timestamps) copilot.removeMessages(timestamps);
@@ -721,59 +645,32 @@ function useStreamResponse(stopSubmit: () => void) {
             copilotId,
             orchestrationModeEnabled:
               useCopilotStore.getState().orchestrationModeEnabled,
-            timestamp: Date.now() + 1, // adding 1 to avoid timestamp collision with the human message
+            timestamp: Date.now() + 1,
           });
           break;
         }
         case "copilotMessageArtifact": {
-          if (!aiMessageBuffer) {
-            copilot.addMessage({
-              role: "ai",
-              content: "",
-              copilotId,
-              timestamp: Date.now() + 1,
-            });
-            dispatch(StreamingStatus.STARTED);
-          }
+          const artifact = data as ArtifactT;
           const suffix = aiMessageBuffer.endsWith("| ") ? "\n" : "";
-          const artifactMarker = `${suffix}<artifact className="${data.name}"/>`;
+          const artifactMarker = `${suffix}<artifact className="${artifact.name}"/>`;
           aiMessageBuffer += artifactMarker;
-          copilot.addArtifactToCurrentChat(data);
+          copilot.addArtifactToCurrentChat(artifact);
           setStreamedData((prevData) => prevData + artifactMarker);
-          if (data?.type === "app") void autoOpenAppArtifact(data, targetAgent);
+          if (artifact.type === "app") void autoOpenAppArtifact(artifact);
 
           break;
         }
         case "copilotMessageChunk": {
-          if (!aiMessageBuffer) {
-            // We add an empty message that will be updated with the data from the chunks
-            copilot.addMessage({
-              role: "ai",
-              content: "",
-              copilotId,
-              timestamp: Date.now() + 1, // adding 1 to avoid timestamp collision with the human message
-            });
-            dispatch(StreamingStatus.STARTED);
-          }
-          const delta = data.delta;
+          const delta = (data as { delta?: string }).delta;
           if (!delta) break;
           aiMessageBuffer += delta;
           setStreamedData((prevData) => prevData + delta);
           break;
         }
         case "copilotCitationCollection": {
-          if (!aiMessageBuffer) {
-            copilot.addMessage({
-              role: "ai",
-              content: "",
-              copilotId,
-              timestamp: Date.now() + 1,
-            });
-            dispatch(StreamingStatus.STARTED);
-          }
-
-          let citationMarkers = data.citations
-            .map((citation: CitationT) => `<citation className="${citation.id}"/>`)
+          const { citations } = data as { citations: CitationT[] };
+          let citationMarkers = citations
+            .map((citation) => `<citation className="${citation.id}"/>`)
             .join("");
 
           if (citationMarkers && aiMessageBuffer.endsWith("| "))
@@ -783,10 +680,10 @@ function useStreamResponse(stopSubmit: () => void) {
           setStreamedData((prevData) => prevData + citationMarkers);
 
           setStreamedCitations((prevData) => {
-            return [...prevData, ...data.citations];
+            return [...prevData, ...citations];
           });
 
-          citationBuffer.push(...data.citations);
+          citationBuffer.push(...citations);
           break;
         }
         case "copilotFunctionCall": {
@@ -802,9 +699,11 @@ function useStreamResponse(stopSubmit: () => void) {
           break;
         }
         case "copilotPromptSuggestions": {
-          const suggestions = data?.suggestions;
+          const suggestions = (data as { suggestions?: unknown } | undefined)
+            ?.suggestions;
           if (Array.isArray(suggestions) && suggestions.length > 0) {
-            copilot.updateLastMessage({ suggestions });
+            if (aiMessageBuffer) pendingSuggestionsRef.current = suggestions;
+            else copilot.updateLastMessage({ suggestions });
           }
           break;
         }
@@ -817,8 +716,10 @@ function useStreamResponse(stopSubmit: () => void) {
             );
           const updateMessage = {} as Partial<AIMessage>;
 
-          // Merge any pending MCP citations into the buffer and append markers
-          const pending = pendingMcpCitationsRef.current;
+          const pending = withoutCitedWidgets(
+            citationBuffer,
+            pendingMcpCitationsRef.current,
+          );
           if (pending.length) {
             const idsInContent = new Set(
               Array.from(
@@ -834,36 +735,28 @@ function useStreamResponse(stopSubmit: () => void) {
               aiMessageBuffer +=
                 (aiMessageBuffer?.endsWith("| ") ? "\n" : "") + newMarkers;
             }
-            // Merge into citationBuffer with deduplication
-            const bufferIds = new Set(citationBuffer.map((c) => c.id));
-            for (const c of pending) if (!bufferIds.has(c.id)) citationBuffer.push(c);
-            // Clear accumulated pending citations
-            pendingMcpCitationsRef.current = [];
+            citationBuffer.push(...pending);
+          }
+          pendingMcpCitationsRef.current = [];
+
+          if (copilot.selectedCopilot.id === "default-copilot") {
+            for (const key of ["traceId", "completionId"] as const) {
+              const value = xHeaders[key];
+              if (value) updateMessage[key] = value;
+            }
           }
 
           if (aiMessageBuffer) {
-            updateMessage.content = aiMessageBuffer;
-            // Only update title if there is actual AI message content
-            // Title generation is an OpenBB backend feature available for all agents
+            commitAnswer(updateMessage);
             if (aiEnhancements && aiCopilotAiEnhancementsFF) {
               updateCopilotTitle(xHeaders?.traceId || "");
             }
-          }
-          if (citationBuffer.length > 0) {
-            updateMessage.citations = citationBuffer;
-          }
-          if (copilot.selectedCopilot.id === "openbb-copilot") {
-            for (const key of ["traceId", "completionId"]) {
-              if (xHeaders[key]) {
-                updateMessage[key] = xHeaders[key];
-              }
-            }
-          }
-          if (Object.keys(updateMessage).length > 0) {
+          } else if (Object.keys(updateMessage).length > 0) {
             copilot.updateLastMessage(updateMessage);
           }
 
-          setTimeout(() => {
+          clearTimeout(focusInputRef.current);
+          focusInputRef.current = setTimeout(() => {
             document.getElementById("copilot-input")?.focus();
           }, 100);
           break;
@@ -884,6 +777,7 @@ function useStreamResponse(stopSubmit: () => void) {
       commandRef,
       autoOpenAppArtifact,
       pendingMcpCitationsRef,
+      pendingSuggestionsRef,
     ],
   );
 
@@ -891,9 +785,13 @@ function useStreamResponse(stopSubmit: () => void) {
     handleEventRef.current = handleEvent;
   }, [handleEvent]);
 
+  useEffect(() => () => clearTimeout(focusInputRef.current), []);
+
   const startStreamCb = useCallback(
     async (params: CopilotSubmitParams): Promise<void> => {
       const { question, addHumanMessage = true, mockResponse } = params;
+      const selectedCopilot = copilot.selectedCopilot;
+      if (!selectedCopilot) return;
       copilot.setIsTyping(false);
 
       const { sent, hasPending } = partitionFilesOnSend(
@@ -904,7 +802,6 @@ function useStreamResponse(stopSubmit: () => void) {
         return;
       }
 
-      // Attached files move onto the message they are sent with.
       const sentFiles = addHumanMessage ? sent : [];
       const clearSentFiles = sentFiles.length
         ? {
@@ -914,12 +811,11 @@ function useStreamResponse(stopSubmit: () => void) {
         : {};
 
       if (mockResponse) {
-        // Add the human message if needed
         if (addHumanMessage) {
           copilot.addMessage({
             role: "human",
             content: question || commandRef.current,
-            copilotId: copilot.selectedCopilot.id,
+            copilotId: selectedCopilot.id,
             timestamp: Date.now(),
             ...(sentFiles.length ? { files: sentFiles } : {}),
           });
@@ -928,26 +824,22 @@ function useStreamResponse(stopSubmit: () => void) {
         let content =
           typeof mockResponse === "string" ? mockResponse : mockResponse.messageContent;
 
-        // Add the artifact if it exists
         if (typeof mockResponse === "object" && mockResponse.artifact) {
           copilot.addArtifactToCurrentChat(mockResponse.artifact);
-          // Add artifact marker to content
           const artifactName = mockResponse.artifact.name || mockResponse.artifact.uuid;
           const artifactMarker = `<artifact className="${artifactName}"/>`;
           content = `${content}\n${artifactMarker}`;
         }
 
-        // Add the mock AI response
         copilot.addMessage({
           role: "ai",
           content: content,
-          copilotId: copilot.selectedCopilot.id,
+          copilotId: selectedCopilot.id,
           timestamp: Date.now() + 1,
           citations:
             typeof mockResponse === "object" ? mockResponse.citations : undefined,
         });
 
-        // Reset state
         dispatch(
           { ...ResetState, ...StreamingStatus.NOT_STARTED, ...clearSentFiles },
           setStreamedData,
@@ -955,7 +847,6 @@ function useStreamResponse(stopSubmit: () => void) {
         );
         dispatchCopilotCommand("");
 
-        // Resolve the promise for mock responses
         if (resolveStreamRef.current) {
           resolveStreamRef.current();
           resolveStreamRef.current = null;
@@ -970,7 +861,6 @@ function useStreamResponse(stopSubmit: () => void) {
       }
 
       if (streamingStatus === "streaming-ready") {
-        // Ensure that previous requests are aborted and state is reset
         const newState = { ...ResetState } as Partial<StreamingState>;
         if (abortController) {
           abortController.abort();
@@ -986,14 +876,15 @@ function useStreamResponse(stopSubmit: () => void) {
         copilot.addMessage({
           role: "human" as const,
           content: incomingMessage,
-          copilotId: copilot.selectedCopilot.id,
+          copilotId: selectedCopilot.id,
           timestamp: Date.now(),
           ...(sentFiles.length ? { files: sentFiles } : {}),
         });
 
       const newAbortController = new AbortController();
 
-      // Clear previous data
+      pendingSuggestionsRef.current = null;
+
       dispatch(
         {
           ...ResetState,
@@ -1007,13 +898,12 @@ function useStreamResponse(stopSubmit: () => void) {
       dispatchCopilotCommand("");
 
       const { queryUrl, init } = await getQueryFetchParams({
-        // Reverse non-breaking space/hyphen from message
         incomingMessage: incomingMessage
           .replace(/\u00A0/g, " ")
           .replace(/\u2011/g, "-"),
         abortSignal: newAbortController.signal,
       });
-      const response = await fetch(queryUrl, init);
+      const response = await fetchAgent(queryUrl, init);
       if (!response.ok) {
         const errBody = await response.text().catch(() => "");
         console.error(`[copilot] ${response.status} ${queryUrl}:`, errBody);
@@ -1049,33 +939,28 @@ function useStreamResponse(stopSubmit: () => void) {
     ],
   );
 
-  const { mutateAsync } = useMutation<any, Error, CopilotSubmitParams>({
+  const { mutateAsync } = useMutation<void, Error, CopilotSubmitParams>({
     mutationFn: startStreamCb,
     onSuccess: (_data, _question) => {},
     onError: (error) => throwError(error),
   });
 
   const throwError = useCallback(
-    (error: any) => {
-      if (typeof error === "string") {
-        error = new Error(error);
-      }
-      if (error.name === "AbortError") {
-        // Ignore errors related to user aborting the request
+    (error: unknown) => {
+      const err = typeof error === "string" ? new Error(error) : error;
+      if (err instanceof Error && err.name === "AbortError") {
         return;
       }
-      console.error("Error:", error);
-      if (posthog) {
-        posthog.capture("CRITICAL_COPILOT_MESSAGE", {
-          copilot_critical_error: error.stack,
-          copilot_critical_message: error.message,
-        });
-      }
+      console.error("Error:", err);
       copilot.updateLastMessageError(true);
-      dispatch({ loading: false, ...StreamingStatus.READY });
+      dispatch(
+        { loading: false, ...StreamingStatus.READY },
+        setStreamedData,
+        setStreamedCitations,
+      );
       dispatchCopilotCommand("");
     },
-    [copilot.updateLastMessageError, dispatch],
+    [copilot.updateLastMessageError, dispatch, setStreamedData, setStreamedCitations],
   );
 
   const startStreamRef = useRef(mutateAsync);
@@ -1085,12 +970,9 @@ function useStreamResponse(stopSubmit: () => void) {
   }, [mutateAsync]);
 
   const handleSubmit = useCallback(
-    async ({ question, addHumanMessage, mockResponse }) => {
-      // makes sure all widgets are visible before sending the question
-      // otherwise dashboard data might be incomplete
+    async ({ question, addHumanMessage, mockResponse }: CopilotSubmitParams = {}) => {
       useThemeStore.getState().setPendingExport(true);
 
-      // Create a promise that resolves when streaming is complete
       const streamComplete = new Promise<void>((resolve) => {
         resolveStreamRef.current = resolve;
       });
@@ -1126,7 +1008,7 @@ export function useHandleStreaming() {
   }));
 
   const stopSubmit = useCallbackRef(() => {
-    const newState = { ...ResetState } as any;
+    const newState: Partial<StreamingData> = { ...ResetState };
     if (abortController) {
       abortController.abort();
       newState.abortController = null;
@@ -1137,27 +1019,25 @@ export function useHandleStreaming() {
     const { messages } = getCurrentChat();
     const lastMessage = messages[messages.length - 1];
 
-    if (streamedData) {
-      // Case 1: There is streamed AI content - update it with cancellation
-      const updateData: Partial<AIMessage> = {
+    if (streamedData && selectedCopilot) {
+      const newMessage: AIMessage = {
+        role: "ai",
         content: streamedData,
         isCancelled: true,
+        copilotId: selectedCopilot.id,
+        timestamp: Date.now() + 1,
       };
-      // Include citations if they exist
       if (streamedCitations && streamedCitations.length > 0) {
-        updateData.citations = streamedCitations;
+        newMessage.citations = streamedCitations;
       }
-      updateLastMessage(updateData);
+      addMessage(newMessage);
     } else if (lastMessage && lastMessage.role === "ai") {
-      // Case 2: AI message exists but no streamed data yet - mark as cancelled
       const updateData: Partial<AIMessage> = { isCancelled: true };
-      // Still include citations if they exist in localStorage
       if (streamedCitations && streamedCitations.length > 0) {
         updateData.citations = streamedCitations;
       }
       updateLastMessage(updateData);
     } else if (selectedCopilot) {
-      // Case 3: No AI message exists yet, only system messages - create cancelled AI message
       const newMessage: AIMessage = {
         role: "ai",
         content: "",
@@ -1165,7 +1045,6 @@ export function useHandleStreaming() {
         copilotId: selectedCopilot.id,
         timestamp: Date.now() + 1,
       };
-      // Include citations if they exist
       if (streamedCitations && streamedCitations.length > 0) {
         newMessage.citations = streamedCitations;
       }
@@ -1184,7 +1063,7 @@ export function useHandleStreaming() {
     stopSubmitRef.current = stopSubmit;
     const ctrl = new AbortController();
 
-    function dispatchedSubmit(e: CustomEvent) {
+    function dispatchedSubmit(e: CustomEvent<CopilotSubmitParams | undefined>) {
       handleSubmit(e.detail);
     }
     window.addEventListener("copilotSubmit", dispatchedSubmit, { signal: ctrl.signal });
@@ -1193,14 +1072,12 @@ export function useHandleStreaming() {
   }, [handleSubmitRef, stopSubmitRef, handleSubmit, stopSubmit]);
 }
 
-export default useStreamResponse;
-
 type HandleEventProps = {
   event: string;
-  data?: any;
+  data?: unknown;
   question: string;
   accumulatedMessageData: string;
-  accumulatedCitations: any[];
+  accumulatedCitations: CitationT[];
   abortSignal: AbortSignal;
   xHeaders: XHeadersT;
   keepAlive?: boolean;
@@ -1215,8 +1092,8 @@ type HandleFunctionCallProps = {
   targetAgent?: Copilot;
 };
 
-function isReadableStream<T>(obj: any): obj is ReadableStreamDefaultReader<T> {
-  return obj && typeof obj.read === "function";
+function isReadableStream<T>(obj: unknown): obj is ReadableStreamDefaultReader<T> {
+  return !!obj && typeof (obj as { read?: unknown }).read === "function";
 }
 
 function getLatestAiToolPairTimestamps(messages: Message[]): number[] | null {
@@ -1225,7 +1102,6 @@ function getLatestAiToolPairTimestamps(messages: Message[]): number[] | null {
   const previousMessage = messages[lastToolIndex - 1];
   if (previousMessage?.role === "ai") {
     try {
-      // Check if the ai message is a function call
       const content = JSON.parse(previousMessage.content);
       if (content.function) return [previousMessage.timestamp, toolMessage.timestamp];
     } catch (_) {
@@ -1233,20 +1109,4 @@ function getLatestAiToolPairTimestamps(messages: Message[]): number[] | null {
     }
   }
   return null;
-}
-
-// Helper to normalize extra_citations (add id/signature) into CitationT[]
-function normalizeCitations(citations: any[]): CitationT[] {
-  if (!Array.isArray(citations)) return [];
-  return citations.map((c: any) => {
-    if (c?.id && c?.signature !== undefined) return c as CitationT;
-    return {
-      id: c?.id || uuidv4(),
-      signature: c?.signature || "",
-      source_info: c?.source_info,
-      details: c?.details,
-      artifacts: c?.artifacts,
-      quote_bounding_boxes: c?.quote_bounding_boxes,
-    } as CitationT;
-  });
 }

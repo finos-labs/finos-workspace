@@ -1,21 +1,11 @@
-/**
- * Tests for useRefHooks utilities
- *
- * Tests custom ref hooks:
- * - useRecordRef: Record-based ref management
- * - useCreateRef: Simple ref creation with auto-update
- * - useCallbackRef: Stable callback refs
- * - useComposeRefs: Compose multiple refs into one
- */
-
 import { renderHook } from "@testing-library/react";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
-  useRecordRef,
-  useCreateRef,
   useCallbackRef,
   useComposeRefs,
+  useCreateRef,
+  useRecordRef,
 } from "~/hooks/useRefHooks";
 
 describe("useRecordRef", () => {
@@ -62,9 +52,7 @@ describe("useRecordRef", () => {
   });
 
   it("should maintain ref identity across rerenders", () => {
-    const { result, rerender } = renderHook(() =>
-      useRecordRef({ value: "test" }),
-    );
+    const { result, rerender } = renderHook(() => useRecordRef({ value: "test" }));
 
     const firstRef = result.current;
     rerender();
@@ -162,7 +150,6 @@ describe("useCallbackRef", () => {
   it("should handle undefined callback", () => {
     const { result } = renderHook(() => useCallbackRef(undefined));
 
-    // Should not throw when called
     expect(() => result.current()).not.toThrow();
     expect(result.current()).toBeUndefined();
   });
@@ -200,10 +187,8 @@ describe("useComposeRefs", () => {
 
     const { result } = renderHook(() => useComposeRefs(ref1, ref2));
 
-    // Should return a function
     expect(typeof result.current).toBe("function");
 
-    // Mock DOM element
     const mockElement = document.createElement("div");
     result.current?.(mockElement);
 
@@ -270,18 +255,14 @@ describe("useComposeRefs", () => {
     const ref1 = createRef<string>();
     const ref2 = createRef<string>();
 
-    const { result, rerender } = renderHook(
-      ({ refs }) => useComposeRefs(...refs),
-      {
-        initialProps: { refs: [ref1, ref2] as const },
-      },
-    );
+    const { result, rerender } = renderHook(({ refs }) => useComposeRefs(...refs), {
+      initialProps: { refs: [ref1, ref2] as const },
+    });
 
     const firstResult = result.current;
     rerender({ refs: [ref1, ref2] as const });
     const secondResult = result.current;
 
-    // Same refs should give same composed function
     expect(firstResult).toBe(secondResult);
   });
 });

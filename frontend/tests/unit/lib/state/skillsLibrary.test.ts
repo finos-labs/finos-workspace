@@ -1,18 +1,7 @@
-/**
- * Tests for skillsLibrary Zustand store
- *
- * Tests the skills library state management including:
- * - Dialog state management
- * - Slug validation and uniqueness
- * - Skills catalog generation
- */
-
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { isDefaultSkill } from "~/components/AI/skills";
 import { isValidSlug, toSlug, useSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 
-// Test data factory
 const createMockSkill = (
   overrides: Partial<{
     id: string;
@@ -31,24 +20,6 @@ const createMockSkill = (
   updatedDate: overrides.updatedDate ?? new Date().toISOString(),
 });
 
-vi.mock("~/lib/state/theme", () => ({
-  useThemeStore: {
-    getState: () => ({
-      removedSkillSlugs: ["openbb-html-report"],
-    }),
-    // Mock function to track calls to removeDefaultSkill
-    removeDefaultSkill: vi.fn(),
-  },
-}));
-
-/**
- * `updateSkills` always appends the built-in default skills, so assertions about
- * user-supplied skills must ignore them. Filtering by `isDefaultSkill` keeps these
- * tests correct as defaults are added or removed, rather than hard-coding a count.
- */
-const userSkillsInStore = () =>
-  useSkillsLibraryStore.getState().skills.filter((skill) => !isDefaultSkill(skill.id));
-
 describe("skillsLibrary utilities", () => {
   describe("isValidSlug", () => {
     it("returns true for valid slugs", () => {
@@ -56,15 +27,15 @@ describe("skillsLibrary utilities", () => {
       expect(isValidSlug("my-skill")).toBe(true);
       expect(isValidSlug("skill-123")).toBe(true);
       expect(isValidSlug("a-b-c")).toBe(true);
-      expect(isValidSlug("ab")).toBe(true); // minimum length
+      expect(isValidSlug("ab")).toBe(true);
     });
 
     it("returns false for invalid slugs", () => {
       expect(isValidSlug("")).toBe(false);
-      expect(isValidSlug("a")).toBe(false); // too short
-      expect(isValidSlug("-invalid")).toBe(false); // leading hyphen
-      expect(isValidSlug("invalid-")).toBe(false); // trailing hyphen
-      expect(isValidSlug("Invalid")).toBe(false); // uppercase
+      expect(isValidSlug("a")).toBe(false);
+      expect(isValidSlug("-invalid")).toBe(false);
+      expect(isValidSlug("invalid-")).toBe(false);
+      expect(isValidSlug("Invalid")).toBe(false);
       expect(isValidSlug("has spaces")).toBe(false);
       expect(isValidSlug("has_underscore")).toBe(false);
       expect(isValidSlug("special!chars")).toBe(false);
@@ -107,7 +78,6 @@ describe("skillsLibrary utilities", () => {
 
 describe("useSkillsLibraryStore", () => {
   beforeEach(() => {
-    // Reset store to initial state
     act(() => {
       useSkillsLibraryStore.setState({
         skills: [],
@@ -166,10 +136,10 @@ describe("useSkillsLibraryStore", () => {
       });
 
       act(() => {
-        useSkillsLibraryStore.getState().setSkillDialogOpen(null);
+        useSkillsLibraryStore.getState().setSkillDialogOpen(false);
       });
 
-      expect(useSkillsLibraryStore.getState().skillDialogOpen).toBeNull();
+      expect(useSkillsLibraryStore.getState().skillDialogOpen).toBe(false);
     });
   });
 
@@ -231,7 +201,7 @@ describe("useSkillsLibraryStore", () => {
         useSkillsLibraryStore.getState().updateSkills(mockSkills);
       });
 
-      const userSkills = userSkillsInStore();
+      const userSkills = useSkillsLibraryStore.getState().skills;
       expect(userSkills).toHaveLength(2);
       expect(userSkills[0].slug).toBe("first");
       expect(userSkills[1].slug).toBe("second");
@@ -249,7 +219,7 @@ describe("useSkillsLibraryStore", () => {
         useSkillsLibraryStore.getState().updateSkills(newSkills);
       });
 
-      const userSkills = userSkillsInStore();
+      const userSkills = useSkillsLibraryStore.getState().skills;
       expect(userSkills).toHaveLength(1);
       expect(userSkills[0].slug).toBe("new");
     });
@@ -345,7 +315,6 @@ describe("useSkillsLibraryStore", () => {
         useSkillsLibraryStore.getState().updateSkills([mockSkill]);
       });
 
-      // Same slug is allowed when excluding the skill's own id (for editing)
       expect(
         useSkillsLibraryStore.getState().isSlugUnique("my-skill", "skill-123"),
       ).toBe(true);
@@ -371,16 +340,7 @@ describe("useSkillsLibraryStore", () => {
         useSkillsLibraryStore.getState().updateSkills(mockSkills);
       });
 
-      const defaultSlugs = new Set(
-        useSkillsLibraryStore
-          .getState()
-          .skills.filter((skill) => isDefaultSkill(skill.id))
-          .map((skill) => skill.slug),
-      );
-      const catalog = useSkillsLibraryStore
-        .getState()
-        .getSkillsCatalog()
-        .filter((entry) => !defaultSlugs.has(entry.slug));
+      const catalog = useSkillsLibraryStore.getState().getSkillsCatalog();
 
       expect(catalog).toHaveLength(2);
       expect(catalog[0]).toHaveProperty("slug");

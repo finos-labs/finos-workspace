@@ -3,15 +3,15 @@ import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { extendTrialUser, updateUser } from "~/api/admin.api";
+import { updateUser } from "~/api/admin.api";
 import { useEntityMap } from "~/components/AdminRoles/adminUseQueries";
 import AdminDialogFooter from "~/components/AdminUsers/common/AdminDialogFooter";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowAuthStore } from "~/lib/state/auth";
+import { USER_TYPES } from "~/types/entity.type";
 import type { User } from "~/types/user.type";
 import { Button } from "../ds/atoms/Button";
-import { Checkbox } from "../ds/atoms/Checkbox";
 import { Select } from "../ds/atoms/Select";
 import { Tag } from "../ds/atoms/Tag";
 import { BaseDialog } from "../ds/dialogs/BaseDialog";
@@ -31,14 +31,11 @@ const uiShowRemoveFromOrgFF = getConfig().ui.showRemoveFromOrg;
 interface Props {
   user: User;
   onClose: () => void;
-  /** Role names assigned to this user, shown as tags in the general info section. */
   roles?: string[];
 }
 
 interface UserInfo {
   permissions_uuid: User["permissions_uuid"];
-  billing_active: User["billing_active"];
-  pro_entitlements: User["pro_entitlements"];
 }
 
 interface BaseState extends UserInfo {
@@ -48,7 +45,6 @@ interface BaseState extends UserInfo {
   openRemove: boolean;
   openResetPassword: boolean;
   openReset2FA: boolean;
-  temporaryPassword: string | null;
 }
 
 const initialState = {
@@ -58,14 +54,11 @@ const initialState = {
   openRemove: false,
   openResetPassword: false,
   openReset2FA: false,
-  temporaryPassword: null,
 };
 
-export function getBaseState(user: User | UserInfo, initial?: Partial<BaseState>) {
+function getBaseState(user: User | UserInfo, initial?: Partial<BaseState>) {
   return {
     permissions_uuid: user.permissions_uuid,
-    billing_active: user.billing_active,
-    pro_entitlements: user.pro_entitlements,
     ...(initial || {}),
   } as BaseState;
 }
@@ -77,14 +70,13 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
 
   const userInfo = useMemo(() => {
     const activeUser = user.status === "active";
-    const sameUser = user.email === loggedInUser.email;
-    const isTrial = user.permissions_uuid === "11111111-1111-1111-1111-111111111111";
+    const sameUser = user.email === loggedInUser?.email;
     const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ");
     const lastLogin = user.last_login
       ? dayjs(user.last_login).locale("en").format("MMM D, YYYY h:mm A")
       : "-";
 
-    return { activeUser, sameUser, isTrial, fullName, lastLogin };
+    return { activeUser, sameUser, fullName, lastLogin };
   }, [user, loggedInUser?.email]);
 
   useEffect(() => {
@@ -102,9 +94,6 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
       queryClient.invalidateQueries({
         queryKey: ["admin", "users"],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["admin", "entityInfo"],
-      });
       onClose();
     },
     onError: (err: { response: { data: { detail?: string } } }) => {
@@ -114,31 +103,19 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
     },
   });
   const { data: entityMap = [] } = useEntityMap();
-  const rolesOptions = useMemo(
-    () => entityMap.map((item) => ({ label: item.name, value: item.uuid })),
+  const typeOptions = useMemo(
+    () =>
+      USER_TYPES.flatMap((type) =>
+        entityMap
+          .filter((item) => item.name === type)
+          .map((item) => ({ label: item.name, value: item.uuid })),
+      ),
     [entityMap],
   );
-
-  const userExtension = useMutation({
-    mutationFn: async () => extendTrialUser(user.uuid),
-    onSuccess: (_data) => {
-      toast.success("User extended successfully!");
-      onClose();
-    },
-    onError: (err) => {
-      toast.error("Something went wrong");
-      console.error(err);
-    },
-  });
 
   const handleSubmit = useCallback(async () => {
     await userMutation.mutateAsync(getBaseState(state));
   }, [userMutation.mutateAsync, state]);
-
-  const handleExtend = useCallback(async () => {
-    if (userExtension.isPending) return;
-    await userExtension.mutateAsync();
-  }, [userExtension.isPending, userExtension.mutateAsync]);
 
   return (
     <>
@@ -169,7 +146,7 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
                     <button
                       type="button"
                       data-testid="reset-2fa-button"
-                      className="obb-small-navbar-btn flex items-center justify-center size-6 rounded"
+                      className="ws-small-navbar-btn flex items-center justify-center size-6 rounded"
                       onClick={(e) => {
                         e.stopPropagation();
                         dispatch({ openReset2FA: true });
@@ -182,7 +159,7 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
                     <button
                       type="button"
                       data-testid="reset-password-button"
-                      className="obb-small-navbar-btn flex items-center justify-center size-6 rounded"
+                      className="ws-small-navbar-btn flex items-center justify-center size-6 rounded"
                       onClick={(e) => {
                         e.stopPropagation();
                         dispatch({ openResetPassword: true });
@@ -196,7 +173,7 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
                       <button
                         type="button"
                         data-testid="remove-account-button"
-                        className="obb-small-navbar-btn flex items-center justify-center size-6 rounded"
+                        className="ws-small-navbar-btn flex items-center justify-center size-6 rounded"
                         onClick={(e) => {
                           e.stopPropagation();
                           dispatch({ openRemove: true });
@@ -210,7 +187,7 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
                     <button
                       type="button"
                       data-testid="delete-account-button"
-                      className="obb-small-navbar-btn flex items-center justify-center size-6 rounded"
+                      className="ws-small-navbar-btn flex items-center justify-center size-6 rounded"
                       onClick={(e) => {
                         e.stopPropagation();
                         dispatch({ openDelete: true });
@@ -235,11 +212,11 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
 
             <div className="grid grid-cols-[100px_1fr] gap-4 items-center">
               <span className="font-medium">Type</span>
-              <div className="[&>.BB-Select]:inline">
+              <div className="[&>*]:inline">
                 <Select
                   className="inline-flex h-7 w-[120px] rounded-sm px-2"
-                  options={rolesOptions}
-                  placeholder="Select role"
+                  options={typeOptions}
+                  placeholder="Select type"
                   disabled={!userInfo.activeUser || userInfo.sameUser}
                   value={state.permissions_uuid}
                   onValueChange={(permissions_uuid) => dispatch({ permissions_uuid })}
@@ -296,30 +273,11 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
               </Button>
             }
           >
-            <AdminUserPermissionsSection userUuid={user.uuid} />
-          </SettingsMenu>
-
-          <div className="hidden">
-            <Checkbox
-              label="Seat Assigned"
-              defaultChecked={state.billing_active}
-              onCheckedChange={(billing_active) =>
-                typeof billing_active === "boolean" && dispatch({ billing_active })
-              }
-              disabled={!userInfo.activeUser || userInfo.sameUser}
+            <AdminUserPermissionsSection
+              userUuid={user.uuid}
+              invited={user.source === "invite"}
             />
-            {userInfo.isTrial && !user.renewed && (
-              <Button variant="secondary" size="xs" onClick={handleExtend}>
-                Extend Account
-              </Button>
-            )}
-            {state.temporaryPassword && (
-              <div className="flex items-center gap-1">
-                <span className="body-xs-medium">Temporary password:</span>
-                <span className="body-xs-regular">{state.temporaryPassword}</span>
-              </div>
-            )}
-          </div>
+          </SettingsMenu>
         </div>
         <AdminDialogFooter
           primaryButtonName="Save"
@@ -351,8 +309,7 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
           open={state.openResetPassword}
           onClose={() => dispatch({ openResetPassword: false })}
           user={user}
-          onConfirm={(temporaryPassword) => {
-            dispatch({ temporaryPassword });
+          onConfirm={() => {
             queryClient.invalidateQueries({
               queryKey: ["admin", "users"],
             });

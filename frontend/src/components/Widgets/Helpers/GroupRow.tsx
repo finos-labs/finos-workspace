@@ -10,18 +10,13 @@ import Tooltip from "~/components/SpecialTooltip";
 interface GroupRowProps {
   name: string;
   color: string;
-  /** Value shown in the trailing pill (e.g. ticker symbol or group type). */
   valueLabel?: ReactNode;
-  /** Optional tooltip for the value pill when it can overflow. */
   valueTooltip?: ReactNode;
-  /** When true, renders a leading checkbox and makes the row clickable. */
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: (e: ReactMouseEvent) => void;
-  /** When provided, the color swatch opens a picker; otherwise it is static. */
   onColorChange?: (color: string) => void;
   onDelete: () => void;
-  disabled?: boolean;
   className?: string;
 }
 
@@ -47,8 +42,6 @@ function ColorSwatch({
       sideOffset={4}
       className="w-auto p-2"
       content={
-        // Portaled content bubbles through the React tree, so stop clicks here
-        // to avoid toggling the row's selection handler.
         <div
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
@@ -92,7 +85,7 @@ export function GroupPanelHeader({ onCreate }: { onCreate?: () => void }) {
           </Tooltip>
         ) : null}
       </div>
-      <hr className="obb-divider my-0 group-dropdown" />
+      <hr className="ws-divider my-0 group-dropdown" />
     </>
   );
 }
@@ -107,7 +100,6 @@ export function GroupRow({
   onToggleSelect,
   onColorChange,
   onDelete,
-  disabled,
   className,
 }: GroupRowProps) {
   const pill = valueLabel ? (
@@ -118,7 +110,6 @@ export function GroupRow({
     <div
       className={cn(
         "group group-dropdown flex items-center justify-between gap-2",
-        disabled && "opacity-50",
         className,
       )}
     >

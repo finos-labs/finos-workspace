@@ -1,0 +1,88 @@
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { QueryRequest, SSEEvent } from "../../../src/protocol/types.ts";
+import {
+  llmCallsTool,
+  llmEmitsText,
+  makeSequencedMockLlm,
+} from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
+import { rememberRows } from "../../../src/agent/row-cache.ts";
+
+beforeEach(() => clearAllModuleState());
+
+function findFunctionCall(events: SSEEvent[], fn: string): SSEEvent | undefined {
+  return events.find(
+    (e) =>
+      e.event === "copilotFunctionCall" &&
+      (e.data as { function?: string }).function === fn,
+  );
+}
+
+describe("SQL family — in-process execution", () => {
+  it("execute_sql runs locally without an executeAgentTool round-trip", async () => {
+    await rememberRows("sql-1", "prices", [
+      { symbol: "NVDA", close: 100 },
+      { symbol: "AAPL", close: 200 },
+    ]);
+    const events = await collectGenerator(
+      runAgentLoop({
+        request: {
+          messages: [{ role: "human", content: "what's the max close" }],
+        } as QueryRequest,
+        rawModelId: "openai:gpt-4o-mini",
+        model: makeSequencedMockLlm([
+          llmCallsTool("execute_sql", { sql: "SELECT MAX(close) AS m FROM prices" }),
+          llmEmitsText("max close is 200"),
+        ]),
+        allWidgets: [],
+        workspaceState: null,
+        conversationId: "sql-1",
+      }),
+    );
+    expect(findFunctionCall(events, "execute_agent_tool")).toBeUndefined();
+    const chunk = events.find((e) => e.event === "copilotMessageChunk");
+    expect((chunk!.data as { delta: string }).delta).toContain("200");
+  });
+
+  it("create_artifact emits the rendered artifact into the answer stream", async () => {
+    await rememberRows("sql-2", "prices", [
+      { symbol: "NVDA", close: 100 },
+      { symbol: "AAPL", close: 200 },
+    ]);
+    const events = await collectGenerator(
+      runAgentLoop({
+        request: {
+          messages: [{ role: "human", content: "chart prices" }],
+        } as QueryRequest,
+        rawModelId: "openai:gpt-4o-mini",
+        model: makeSequencedMockLlm([
+          llmCallsTool("create_artifact", {
+            sql: "SELECT * FROM prices",
+            artifact: { type: "table", name: "Prices", description: "loaded prices" },
+          }),
+          llmEmitsText("here's the table"),
+        ]),
+        allWidgets: [],
+        workspaceState: null,
+        conversationId: "sql-2",
+      }),
+    );
+    const status = events.find(
+      (e) =>
+        e.event === "copilotStatusUpdate" &&
+        (e.data as { message?: string }).message ===
+          'Rendered table artifact "Prices" from 2 rows.',
+    );
+    expect(status).toBeDefined();
+    const artifact = events.find((e) => e.event === "copilotMessageArtifact");
+    expect(artifact).toBeDefined();
+    const data = artifact!.data as { type: string; name: string; content: string };
+    expect(data.type).toBe("html");
+    expect(data.name).toBe("Prices");
+    expect((data.content.match(/<tr>/g) ?? []).length).toBe(3);
+    expect(findFunctionCall(events, "execute_agent_tool")).toBeUndefined();
+  });
+});

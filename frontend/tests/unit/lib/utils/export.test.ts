@@ -1,11 +1,9 @@
-import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
-// Mock html-to-image
 vi.mock("html-to-image", () => ({
   toPng: vi.fn(),
 }));
 
-// Mock jspdf
 let mockPdfInstance: {
   addImage: Mock;
   addPage: Mock;
@@ -14,13 +12,10 @@ let mockPdfInstance: {
 } | null = null;
 
 vi.mock("jspdf", () => {
-  // Factory function - this runs at module load time
-  // We return a vi.fn() that will read mockPdfInstance at call time
   const mock = vi.fn();
   return { jsPDF: mock };
 });
 
-// Mock jszip
 let mockZipInstance: {
   file: Mock;
   folder: Mock;
@@ -32,26 +27,18 @@ vi.mock("jszip", () => {
   return { default: mock };
 });
 
-// Mock app store for tabHasSlowWidget
-vi.mock("~/lib/state/app", () => ({
-  useAppStore: {
-    getState: () => ({
-      items: {},
-    }),
-  },
-}));
-
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import JSZip from "jszip";
 import {
   type DashboardInfo,
-  type TabInfo,
   generateFolderReport,
   generateMultiTabReport,
+  type TabInfo,
 } from "~/lib/utils/utils";
+import { required } from "../../mocks";
 
-const checkIfLoadingData = () => false; // Stub - not testing loading state here
+const checkIfLoadingData = () => false;
 
 describe("generateMultiTabReport", () => {
   let mockElement: Partial<Element>;
@@ -64,13 +51,11 @@ describe("generateMultiTabReport", () => {
     vi.useFakeTimers();
     vi.clearAllMocks();
 
-    // Store originals
     originalLocation = window.location;
     originalHistory = window.history;
     originalCreateElement = document.createElement.bind(document);
     originalGetElementsByClassName = document.getElementsByClassName.bind(document);
 
-    // Mock window.location
     Object.defineProperty(window, "location", {
       value: {
         href: "http://localhost:3000/app/test-dashboard?tab=tab1",
@@ -80,7 +65,6 @@ describe("generateMultiTabReport", () => {
       writable: true,
     });
 
-    // Mock window.history
     Object.defineProperty(window, "history", {
       value: {
         replaceState: vi.fn(),
@@ -88,10 +72,8 @@ describe("generateMultiTabReport", () => {
       writable: true,
     });
 
-    // Mock dispatchEvent
     window.dispatchEvent = vi.fn();
 
-    // Mock element
     mockElement = {
       scrollWidth: 800,
       clientWidth: 800,
@@ -99,13 +81,10 @@ describe("generateMultiTabReport", () => {
       clientHeight: 600,
     };
 
-    // Mock getElementsByClassName
     document.getElementsByClassName = vi.fn().mockReturnValue([mockElement]);
 
-    // Mock document.createElement for canvas - create new mock each time
     document.createElement = vi.fn((tagName: string) => {
       if (tagName === "canvas") {
-        // Return a new canvas mock each time to avoid state sharing
         return {
           width: 816,
           height: 680,
@@ -132,37 +111,30 @@ describe("generateMultiTabReport", () => {
       return originalCreateElement(tagName);
     }) as typeof document.createElement;
 
-    // Mock toPng
     (toPng as Mock).mockResolvedValue("data:image/png;base64,mockImageData");
 
-    // Mock jsPDF - set the module-level mock instance
     mockPdfInstance = {
       addImage: vi.fn(),
       addPage: vi.fn(),
       save: vi.fn(),
       output: vi.fn().mockReturnValue(new Blob(["pdf content"])),
     };
-    // Configure jsPDF mock to return mockPdfInstance
     vi.mocked(jsPDF).mockImplementation(function (this: unknown) {
       return mockPdfInstance;
     });
 
-    // Mock JSZip - set the module-level mock instance
     mockZipInstance = {
       file: vi.fn(),
       folder: vi.fn().mockReturnThis(),
       generateAsync: vi.fn().mockResolvedValue(new Blob(["zip content"])),
     };
-    // Configure JSZip mock to return mockZipInstance
     vi.mocked(JSZip).mockImplementation(function (this: unknown) {
       return mockZipInstance as unknown as JSZip;
     });
 
-    // Mock URL
     URL.createObjectURL = vi.fn().mockReturnValue("blob:http://localhost/mock");
     URL.revokeObjectURL = vi.fn();
 
-    // Mock Image - use queueMicrotask for synchronous-like resolution
     global.Image = vi.fn().mockImplementation(function MockImage() {
       const img = {
         onload: null as (() => void) | null,
@@ -175,8 +147,6 @@ describe("generateMultiTabReport", () => {
         },
         set src(value: string) {
           this._src = value;
-          // Use queueMicrotask to trigger onload after src is set
-          // This runs at the end of the current task, after onload is assigned
           queueMicrotask(() => {
             if (this.onload) this.onload();
           });
@@ -212,8 +182,6 @@ describe("generateMultiTabReport", () => {
       await vi.advanceTimersByTimeAsync(10000);
       await promise;
 
-      // Should have called replaceState for each tab + 1 for restore in finally
-      // (originalTab is "tab1" from mock URL ?tab=tab1)
       expect(window.history.replaceState).toHaveBeenCalledTimes(3);
       expect(window.dispatchEvent).toHaveBeenCalledTimes(3);
     });
@@ -239,9 +207,9 @@ describe("generateMultiTabReport", () => {
       await promise;
 
       expect(jsPDF).toHaveBeenCalled();
-      expect(mockPdfInstance!.addPage).toHaveBeenCalledTimes(2); // First page is created with constructor
-      expect(mockPdfInstance!.addImage).toHaveBeenCalledTimes(3);
-      expect(mockPdfInstance!.save).toHaveBeenCalledWith("test.pdf");
+      expect(required(mockPdfInstance).addPage).toHaveBeenCalledTimes(2);
+      expect(required(mockPdfInstance).addImage).toHaveBeenCalledTimes(3);
+      expect(required(mockPdfInstance).save).toHaveBeenCalledWith("test.pdf");
     });
   });
 
@@ -264,8 +232,10 @@ describe("generateMultiTabReport", () => {
       await promise;
 
       expect(JSZip).toHaveBeenCalled();
-      expect(mockZipInstance!.file).toHaveBeenCalledTimes(2);
-      expect(mockZipInstance!.generateAsync).toHaveBeenCalledWith({ type: "blob" });
+      expect(required(mockZipInstance).file).toHaveBeenCalledTimes(2);
+      expect(required(mockZipInstance).generateAsync).toHaveBeenCalledWith({
+        type: "blob",
+      });
     });
   });
 
@@ -320,7 +290,6 @@ describe("generateMultiTabReport", () => {
       const tabs: TabInfo[] = [{ id: "tab1", name: "Tab 1" }];
       const onError = vi.fn();
 
-      // Make toPng fail
       (toPng as Mock).mockRejectedValue(new Error("Capture failed"));
 
       const promise = generateMultiTabReport(
@@ -343,7 +312,6 @@ describe("generateMultiTabReport", () => {
     it("restores original tab in finally block", async () => {
       const tabs: TabInfo[] = [{ id: "tab1", name: "Tab 1" }];
 
-      // Set original tab
       Object.defineProperty(window, "location", {
         value: {
           href: "http://localhost:3000/app/test-dashboard?tab=original-tab",
@@ -364,7 +332,6 @@ describe("generateMultiTabReport", () => {
       await vi.advanceTimersByTimeAsync(10000);
       await promise;
 
-      // Should have called replaceState to restore original tab
       const calls = (window.history.replaceState as Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[1]).toBe("");
@@ -391,7 +358,6 @@ describe("generateMultiTabReport", () => {
         onError,
       );
 
-      // Advance timers past the max wait time (5000ms + buffer)
       await vi.advanceTimersByTimeAsync(6000);
       await promise;
 
@@ -403,8 +369,6 @@ describe("generateMultiTabReport", () => {
     });
 
     it("throws error when no content was captured", async () => {
-      // This test is tricky since we need all captures to fail
-      // but the current implementation throws on first missing element
       const tabs: TabInfo[] = [{ id: "tab1", name: "Tab 1" }];
       const onError = vi.fn();
 
@@ -422,7 +386,6 @@ describe("generateMultiTabReport", () => {
         onError,
       );
 
-      // Advance timers past the max wait time (5000ms + buffer)
       await vi.advanceTimersByTimeAsync(6000);
       await promise;
 
@@ -442,13 +405,11 @@ describe("generateFolderReport", () => {
     vi.useFakeTimers();
     vi.clearAllMocks();
 
-    // Store originals
     originalLocation = window.location;
     originalHistory = window.history;
     originalCreateElement = document.createElement.bind(document);
     originalGetElementsByClassName = document.getElementsByClassName.bind(document);
 
-    // Mock window.location
     Object.defineProperty(window, "location", {
       value: {
         href: "http://localhost:3000/app/original-dashboard?tab=original-tab",
@@ -458,7 +419,6 @@ describe("generateFolderReport", () => {
       writable: true,
     });
 
-    // Mock window.history
     Object.defineProperty(window, "history", {
       value: {
         replaceState: vi.fn(),
@@ -466,10 +426,8 @@ describe("generateFolderReport", () => {
       writable: true,
     });
 
-    // Mock dispatchEvent
     window.dispatchEvent = vi.fn();
 
-    // Mock element
     mockElement = {
       scrollWidth: 800,
       clientWidth: 800,
@@ -477,13 +435,10 @@ describe("generateFolderReport", () => {
       clientHeight: 600,
     };
 
-    // Mock getElementsByClassName
     document.getElementsByClassName = vi.fn().mockReturnValue([mockElement]);
 
-    // Mock document.createElement for canvas - create new mock each time
     document.createElement = vi.fn((tagName: string) => {
       if (tagName === "canvas") {
-        // Return a new canvas mock each time to avoid state sharing
         return {
           width: 816,
           height: 680,
@@ -510,37 +465,30 @@ describe("generateFolderReport", () => {
       return originalCreateElement(tagName);
     }) as typeof document.createElement;
 
-    // Mock toPng
     (toPng as Mock).mockResolvedValue("data:image/png;base64,mockImageData");
 
-    // Mock jsPDF - set the module-level mock instance
     mockPdfInstance = {
       addImage: vi.fn(),
       addPage: vi.fn(),
       save: vi.fn(),
       output: vi.fn().mockReturnValue(new Blob(["pdf content"])),
     };
-    // Configure jsPDF mock to return mockPdfInstance
     vi.mocked(jsPDF).mockImplementation(function (this: unknown) {
       return mockPdfInstance;
     });
 
-    // Mock JSZip - set the module-level mock instance
     mockZipInstance = {
       file: vi.fn(),
       folder: vi.fn().mockReturnThis(),
       generateAsync: vi.fn().mockResolvedValue(new Blob(["zip content"])),
     };
-    // Configure JSZip mock to return mockZipInstance
     vi.mocked(JSZip).mockImplementation(function (this: unknown) {
       return mockZipInstance as unknown as JSZip;
     });
 
-    // Mock URL
     URL.createObjectURL = vi.fn().mockReturnValue("blob:http://localhost/mock");
     URL.revokeObjectURL = vi.fn();
 
-    // Mock Image - use queueMicrotask for synchronous-like resolution
     global.Image = vi.fn().mockImplementation(function MockImage() {
       const img = {
         onload: null as (() => void) | null,
@@ -553,7 +501,6 @@ describe("generateFolderReport", () => {
         },
         set src(value: string) {
           this._src = value;
-          // Use queueMicrotask to trigger onload after src is set
           queueMicrotask(() => {
             if (this.onload) this.onload();
           });
@@ -590,7 +537,6 @@ describe("generateFolderReport", () => {
       await vi.advanceTimersByTimeAsync(60000);
       await promise;
 
-      // Should navigate to each dashboard
       const calls = (window.history.replaceState as Mock).mock.calls;
       expect(calls.some((c) => c[2].includes("/app/dash1"))).toBe(true);
       expect(calls.some((c) => c[2].includes("/app/dash2"))).toBe(true);
@@ -622,7 +568,6 @@ describe("generateFolderReport", () => {
       await vi.advanceTimersByTimeAsync(60000);
       await promise;
 
-      // Should only capture once per dashboard (not per tab)
       expect(toPng).toHaveBeenCalledTimes(1);
     });
   });
@@ -652,7 +597,6 @@ describe("generateFolderReport", () => {
       await vi.advanceTimersByTimeAsync(60000);
       await promise;
 
-      // Should capture once per tab
       expect(toPng).toHaveBeenCalledTimes(2);
     });
   });
@@ -675,11 +619,13 @@ describe("generateFolderReport", () => {
       await vi.advanceTimersByTimeAsync(60000);
       await promise;
 
-      expect(mockZipInstance!.file).toHaveBeenCalledWith(
+      expect(required(mockZipInstance).file).toHaveBeenCalledWith(
         "dashboard-1.pdf",
         expect.any(Blob),
       );
-      expect(mockZipInstance!.generateAsync).toHaveBeenCalledWith({ type: "blob" });
+      expect(required(mockZipInstance).generateAsync).toHaveBeenCalledWith({
+        type: "blob",
+      });
     });
 
     it("creates ZIP with folder structure for PNG all-tabs export", async () => {
@@ -706,7 +652,7 @@ describe("generateFolderReport", () => {
       await vi.advanceTimersByTimeAsync(60000);
       await promise;
 
-      expect(mockZipInstance!.folder).toHaveBeenCalledWith("dashboard-1");
+      expect(required(mockZipInstance).folder).toHaveBeenCalledWith("dashboard-1");
     });
   });
 
@@ -737,12 +683,10 @@ describe("generateFolderReport", () => {
       await vi.advanceTimersByTimeAsync(60000);
       await promise;
 
-      // Should be called with dashboard and tab progress
       expect(onProgress).toHaveBeenCalled();
-      // First call should have dashboard info
-      expect(onProgress.mock.calls[0][0]).toBe(1); // dashboard current
-      expect(onProgress.mock.calls[0][1]).toBe(1); // dashboard total
-      expect(onProgress.mock.calls[0][2]).toBe("Dashboard 1"); // dashboard name
+      expect(onProgress.mock.calls[0][0]).toBe(1);
+      expect(onProgress.mock.calls[0][1]).toBe(1);
+      expect(onProgress.mock.calls[0][2]).toBe("Dashboard 1");
     });
   });
 
@@ -776,7 +720,6 @@ describe("generateFolderReport", () => {
       ];
       const onError = vi.fn();
 
-      // Make toPng fail
       (toPng as Mock).mockRejectedValue(new Error("Capture failed"));
 
       const promise = generateFolderReport(
@@ -816,14 +759,12 @@ describe("generateFolderReport", () => {
       await vi.advanceTimersByTimeAsync(60000);
       await promise;
 
-      // Last replaceState call should restore original path
       const calls = (window.history.replaceState as Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[2]).toContain("/app/original-dashboard");
     });
 
     it("restores URL even when original path is not a dashboard path", async () => {
-      // Set original path to non-dashboard
       Object.defineProperty(window, "location", {
         value: {
           href: "http://localhost:3000/settings",
@@ -849,7 +790,6 @@ describe("generateFolderReport", () => {
       await vi.advanceTimersByTimeAsync(60000);
       await promise;
 
-      // Should restore original path
       const calls = (window.history.replaceState as Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[2]).toBe("/settings");
@@ -863,7 +803,6 @@ describe("generateFolderReport", () => {
         { id: "dash2", name: "Dashboard 2", tabs: [{ id: "tab1", name: "Tab 1" }] },
       ];
 
-      // First call returns empty, second returns element
       let callCount = 0;
       document.getElementsByClassName = vi.fn().mockImplementation(() => {
         callCount++;
@@ -887,7 +826,6 @@ describe("generateFolderReport", () => {
       await vi.advanceTimersByTimeAsync(60000);
       await promise;
 
-      // Should still complete successfully
       expect(onFinish).toHaveBeenCalled();
     });
   });

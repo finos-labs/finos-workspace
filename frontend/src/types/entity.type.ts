@@ -1,23 +1,28 @@
-import type { Entitlements } from "./user.type";
+import type { UserType } from "~/lib/state/access";
+
+export const USER_TYPES = [
+  "Admin",
+  "Developer",
+  "User",
+] as const satisfies readonly UserType[];
 
 export interface Entity {
   uuid: string;
   name: string;
-  company_type: string;
-  country: string;
-  email: string;
-  entity_type: any; // TODO
-  aum: number;
-  organization_size: string;
+  sharing_enabled: boolean;
 }
 
 export interface EntityMapItem {
   uuid: string;
-  /** Name of the user role */
-  name: string;
+  name: UserType;
   entity_uuid: string;
   entity: Entity;
-  entitlements: Entitlements;
+}
+
+export interface EntityUser {
+  uuid: string;
+  email: string;
+  permissions: EntityMapItem | null;
 }
 
 export interface EntitySettings {

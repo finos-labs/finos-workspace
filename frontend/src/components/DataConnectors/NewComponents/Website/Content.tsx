@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { usePostHog } from "posthog-js/react";
 import {
   createRef,
   forwardRef,
@@ -46,7 +45,6 @@ const WebsiteSchema = z.object({
     .min(1, "URL is required")
     .refine(
       (value) => {
-        // Regular expression to match various URL formats
         const urlPattern =
           /^(https?:\/\/)?(localhost(:\d{1,5})?|([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})(\/\S*)?$/;
         return urlPattern.test(value);
@@ -105,7 +103,7 @@ const WebsiteForm = forwardRef<HTMLFormElement, WebsiteFormProps>((props, _ref) 
           name="url"
           control={form.control}
           render={({ field }) => (
-            <FormInput label="Iframe URL" placeholder="https://openbb.co" {...field} />
+            <FormInput label="Iframe URL" placeholder="https://…" {...field} />
           )}
         />
         <div className="collapsible border-t dark:border-dark-500 border-light-200 py-1">
@@ -131,7 +129,7 @@ const WebsiteForm = forwardRef<HTMLFormElement, WebsiteFormProps>((props, _ref) 
                 render={({ field }) => (
                   <FormTextarea
                     label="Description"
-                    placeholder="Iframe from OpenBB, the company building an AI-powered Research Workspace"
+                    placeholder="What this page shows"
                     {...field}
                     rows={3}
                   />
@@ -155,7 +153,7 @@ const WebsiteForm = forwardRef<HTMLFormElement, WebsiteFormProps>((props, _ref) 
                 name="source"
                 control={form.control}
                 render={({ field }) => (
-                  <FormInput label="Source" placeholder="OpenBB" {...field} />
+                  <FormInput label="Source" placeholder="FINOS Workspace" {...field} />
                 )}
               />
             </div>
@@ -168,7 +166,7 @@ const WebsiteForm = forwardRef<HTMLFormElement, WebsiteFormProps>((props, _ref) 
 
 interface WebsiteFormState {
   id: string;
-  ref: RefObject<HTMLFormElement>;
+  ref: RefObject<HTMLFormElement | null>;
   data: WebsiteFormData;
 }
 
@@ -191,7 +189,6 @@ export default function WebsiteContent() {
 
   const { setOpen, pendingNavigate, mode, id, onWidgetAdded } =
     useDataConnectorContext();
-  const posthog = usePostHog();
 
   const [websiteForms, setWebsiteForms] = useState<WebsiteFormState[]>([
     {
@@ -213,12 +210,12 @@ export default function WebsiteContent() {
   }, [id]);
 
   const [websiteData, setWebsiteData] = useState<WebsiteFormData>({
-    url: metadata?.storage?.html as string,
-    name: metadata?.name,
-    description: metadata?.description,
-    category: metadata?.category,
-    subCategory: metadata?.subCategory,
-    source: metadata?.source,
+    url: String(metadata?.storage?.html ?? ""),
+    name: metadata?.name ?? "",
+    description: metadata?.description ?? undefined,
+    category: metadata?.category ?? undefined,
+    subCategory: metadata?.subCategory ?? undefined,
+    source: metadata?.source ?? undefined,
   });
 
   const updateEditFormData = useCallback((data: WebsiteFormData) => {
@@ -244,10 +241,8 @@ export default function WebsiteContent() {
   );
 
   useEffect(() => {
-    // Check if the currently selected tab still exists
     const tabExists = websiteForms.some((form) => form.id === selectedTab);
 
-    // If the selected tab doesn't exist, select the last tab
     if (!tabExists && websiteForms.length > 0) {
       setSelectedTab(websiteForms[websiteForms.length - 1].id);
     }
@@ -288,7 +283,6 @@ export default function WebsiteContent() {
         const result = await patchWidgetMetadata(widgetMetadata, id);
 
         if (result.success) {
-          // Update the global widget metadata state
           const updatedMetadata = await getWidgetMetadata();
           setWidgetMetadata(updatedMetadata);
 
@@ -385,18 +379,11 @@ export default function WebsiteContent() {
         setWebsiteForms([{ id: uuidv4(), ref: createRef(), data: getDefault() }]);
         setOpen(false);
         onWidgetAdded?.();
-        handleConnectionAdded(dashboardId, widgets, pendingNavigate);
-
-        if (posthog) {
-          for (const website of widgets) {
-            posthog.capture("added_website", {
-              name: website.name,
-              category: website.category,
-              source: website.source,
-              url: website.storage?.html,
-            });
-          }
-        }
+        handleConnectionAdded(
+          dashboardId,
+          widgets.filter((widget): widget is WidgetT => !!widget),
+          pendingNavigate,
+        );
       } catch (error) {
         console.error("Error adding iframe widgets:", error);
         toast.error("An error occurred while adding iframe widgets");
@@ -436,7 +423,7 @@ export default function WebsiteContent() {
                 </TabsTrigger>
               ))}
               <button
-                className="BB-TabTrigger transition text-nowrap rounded-t-sm px-2.5 disabled:pointer-events-none disabled:opacity-50 bg-light-100 text-light-500 hover:text-light-750 radix-state-active:bg-brand-main radix-state-active:text-light-50 [&.active]:bg-brand-main [&.active]:text-light-50 dark:bg-dark-700 dark:text-dark-50 dark:hover:text-light-200 dark:radix-state-active:bg-brand-main dark:radix-state-active:text-light-50 dark:[&.active]:bg-brand-main dark:[&.active]:text-light-50"
+                className="transition text-nowrap rounded-t-sm px-2.5 disabled:pointer-events-none disabled:opacity-50 bg-light-100 text-light-500 hover:text-light-750 data-[state=active]:bg-brand-main data-[state=active]:text-light-50 [&.active]:bg-brand-main [&.active]:text-light-50 dark:bg-dark-700 dark:text-dark-50 dark:hover:text-light-200 dark:data-[state=active]:bg-brand-main dark:data-[state=active]:text-light-50 dark:[&.active]:bg-brand-main dark:[&.active]:text-light-50"
                 onClick={addWebsiteForm}
               >
                 <Icon id="plus" />

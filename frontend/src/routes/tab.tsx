@@ -1,25 +1,21 @@
 import { useEffect, useMemo } from "react";
-import type { Layout } from "react-grid-layout";
+import type { LayoutItem } from "react-grid-layout";
 import { useParams, useSearchParams } from "react-router-dom";
 
 import EmptyDashboardCTA from "~/components/General/EmptyDashboardCTA";
 import SearchResultsNotFound from "~/components/General/SearchResultsNotFound";
 import GridLayout from "~/components/GridLayout";
 import { WidgetWrapper } from "~/components/Widget";
-import { TabProvider } from "~/lib/contexts/TabContext";
+import { type GridItem, TabProvider } from "~/lib/contexts/TabContext";
 import { useMobile } from "~/lib/providers/MobileProvider";
-import { type GridData, useAppStore, useShallowAppStore } from "~/lib/state/app";
+import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 import { useThemeStore } from "~/lib/state/theme";
 import { resolveInnerTabParams } from "~/lib/utils";
 
 import AuthedAppNotFound from "./AuthedAppNotFound";
 
-function useTabWidgets() {
-  const { id } = useParams();
-
-  const tabId = useMemo(() => id, [id]);
-
+function useTabWidgets(tabId: string) {
   const gridLayout = useShallowAppStore(
     (state) => state?.items?.[tabId]?.data?.gridLayout,
   );
@@ -41,7 +37,6 @@ function useTabWidgets() {
 
   useEffect(() => {
     return () => {
-      // just in case pending export is still true
       useThemeStore.getState().setPendingExport(false);
     };
   }, [tabId]);
@@ -57,6 +52,12 @@ function useTabWidgets() {
 
 export default function TabPage() {
   const { id } = useParams();
+  if (!id) return <AuthedAppNotFound />;
+
+  return <TabContent id={id} />;
+}
+
+function TabContent({ id }: { id: string }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const lastInnerTab = useShallowAppStore((state) => state?.getLastInnerTab(id));
@@ -66,7 +67,7 @@ export default function TabPage() {
     [lastInnerTab, searchParams.get("tab")],
   );
 
-  const { gridLayout, isShared } = useTabWidgets();
+  const { gridLayout, isShared } = useTabWidgets(id);
 
   const isMobile = useMobile((state) => state.isMobile);
 
@@ -81,23 +82,20 @@ export default function TabPage() {
       lastInnerTab,
       searchParams,
     });
-    // `null` means the URL already matches — navigating anyway would push a
-    // duplicate history entry on every pass and trip the browser's navigation throttle.
     if (nextParams) setSearchParams(nextParams, { replace: true });
   }, [hasLayout, gridLayout, currentTab, lastInnerTab, searchParams, setSearchParams]);
 
   const currentGrid = useMemo(
-    () => (gridLayout?.[currentTab] || []) as Layout[],
+    () => (gridLayout?.[currentTab] || []) as LayoutItem[],
     [gridLayout?.[currentTab]],
   );
 
-  // Current tab widgets (visible in grid)
   const gridItemsMemo = useMemo(() => {
     const uniqueGrid = currentGrid.reduce((acc, layout) => {
       if (!acc.has(layout.i)) acc.set(layout.i, layout);
 
       return acc;
-    }, new Map<string, GridData>());
+    }, new Map<string, GridItem>());
 
     return Array.from(uniqueGrid.values()).map((l) => {
       return (
@@ -120,7 +118,7 @@ export default function TabPage() {
 
   const emptyDashMemo = useMemo(() => {
     return isShared ? (
-      <div className="mx-4 my-3 h-[calc(100vh-1.6rem)] rounded bg-white p-5 dark:bg-[#151518]">
+      <div className="mx-4 my-3 h-[calc(100vh-1.6rem)] rounded bg-white p-5 dark:bg-dark-900">
         <SearchResultsNotFound
           icon={true}
           firstMessage="Empty shared dashboard"

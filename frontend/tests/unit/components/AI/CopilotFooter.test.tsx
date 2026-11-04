@@ -7,7 +7,6 @@ import {
   useShallowStreamingStore,
 } from "~/components/AI/hooks/useStreaming";
 import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
-import { useMobile } from "~/lib/providers/MobileProvider";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 
@@ -19,7 +18,6 @@ vi.mock("~/components/AI/hooks/useStreaming", () => ({
   useShallowStreamingStore: vi.fn(),
   StreamingStatus: {
     READY: { streamingStatus: "streaming-ready" },
-    STARTED: { streamingStatus: "streaming-started" },
     STOPPED: { streamingStatus: "streaming-stopped" },
   },
   useLocalCommand: vi.fn(() => ""),
@@ -34,24 +32,13 @@ vi.mock("~/lib/state/auth", () => ({
   useAuthStore: () => ({ getState: () => ({}) }),
 }));
 
-vi.mock("~/lib/providers/MobileProvider", () => ({
-  useMobile: vi.fn(),
-}));
-
 vi.mock("~/components/LayoutAuth/AppLayout/hooks/usePanelsState", () => ({
   usePanelsState: vi.fn(() => true),
 }));
 
-vi.mock("react-speech-recognition", () => ({
-  default: {
-    startListening: vi.fn(),
-    stopListening: vi.fn(),
-  },
-  useSpeechRecognition: vi.fn(() => ({
-    transcript: "",
-    listening: false,
-    browserSupportsSpeechRecognition: false,
-  })),
+const dictation = { state: "idle", start: vi.fn(), stop: vi.fn() };
+vi.mock("~/components/AI/hooks/useDictation", () => ({
+  useDictation: () => dictation,
 }));
 
 vi.mock("~/components/AI/CopilotSwitcher", () => ({
@@ -112,7 +99,7 @@ describe("CopilotFooter", () => {
     (useShallowCopilotStore as Mock).mockImplementation((selector) => {
       return selector({
         selectedCopilot: {
-          id: "openbb-copilot",
+          id: "default-copilot",
           features: {
             "file-upload": true,
           },
@@ -126,10 +113,6 @@ describe("CopilotFooter", () => {
       return selector({
         user: { token: "test-token" },
       });
-    });
-
-    (useMobile as Mock).mockImplementation((selector) => {
-      return selector({ isMobile: false });
     });
   });
 
@@ -156,10 +139,68 @@ describe("CopilotFooter", () => {
       expect(screen.getByTestId("copilot-switcher")).toBeInTheDocument();
     });
 
-    it("renders prompt suggestions on desktop", () => {
+    it("renders prompt suggestions", () => {
       render(<CopilotFooter />);
 
       expect(screen.getByTestId("prompt-suggestions")).toBeInTheDocument();
+    });
+  });
+
+  describe("voice input", () => {
+    const withSpeechToText = () =>
+      (useShallowCopilotStore as Mock).mockImplementation((selector) =>
+        selector({
+          selectedCopilot: {
+            id: "default-copilot",
+            features: { "file-upload": true, "speech-to-text": true },
+          },
+          selectedModelByAgent: {},
+          setSelectedModelForAgent: vi.fn(),
+        }),
+      );
+
+    beforeEach(() => {
+      dictation.state = "idle";
+    });
+
+    it("shows the microphone next to the prompt suggestions when the agent transcribes", () => {
+      withSpeechToText();
+      render(<CopilotFooter />);
+
+      expect(
+        screen.getByRole("button", { name: "Start voice input" }),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("prompt-suggestions")).toBeInTheDocument();
+    });
+
+    it("shows no microphone when the agent does not transcribe", () => {
+      render(<CopilotFooter />);
+
+      expect(
+        screen.queryByRole("button", { name: "Start voice input" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("prompt-suggestions")).toBeInTheDocument();
+    });
+
+    it("starts recording, and stops it when pressed again", () => {
+      withSpeechToText();
+      const { rerender } = render(<CopilotFooter />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Start voice input" }));
+      expect(dictation.start).toHaveBeenCalled();
+
+      dictation.state = "recording";
+      rerender(<CopilotFooter />);
+      fireEvent.click(screen.getByRole("button", { name: "Stop voice input" }));
+      expect(dictation.stop).toHaveBeenCalled();
+    });
+
+    it("cannot be pressed while the recording is being transcribed", () => {
+      withSpeechToText();
+      dictation.state = "transcribing";
+      render(<CopilotFooter />);
+
+      expect(screen.getByRole("button", { name: "Start voice input" })).toBeDisabled();
     });
   });
 
@@ -261,7 +302,7 @@ describe("CopilotFooter", () => {
       (useShallowCopilotStore as Mock).mockImplementation((selector) => {
         return selector({
           selectedCopilot: {
-            id: "openbb-copilot",
+            id: "default-copilot",
             features: {
               "file-upload": false,
             },

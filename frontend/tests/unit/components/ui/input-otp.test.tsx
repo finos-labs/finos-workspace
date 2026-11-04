@@ -7,6 +7,7 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from "~/components/ui/input-otp";
+import { partial } from "../../mocks";
 
 describe("InputOTP", () => {
   it("renders InputOTP correctly", () => {
@@ -33,7 +34,7 @@ describe("InputOTP", () => {
     };
 
     const { container } = render(
-      <OTPInputContext.Provider value={mockContext as any}>
+      <OTPInputContext.Provider value={partial(mockContext)}>
         <InputOTPSlot index={0} />
       </OTPInputContext.Provider>,
     );

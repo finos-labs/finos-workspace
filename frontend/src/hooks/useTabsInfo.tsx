@@ -2,17 +2,12 @@ import { useMemo } from "react";
 import type { Item } from "~/lib/state/app";
 import type { TabInfo } from "~/lib/utils";
 
-export interface TabsInfoResult {
+interface TabsInfoResult {
   hasMultipleTabs: boolean;
   tabsInfo: TabInfo[];
 }
 
-/**
- * Extracts tab information from a dashboard item.
- * @param item - The dashboard item to extract tabs from
- * @returns TabInfo array sorted by navigation_bar stored order
- */
-export function extractTabsFromItem(item: Item | null): TabInfo[] {
+export function extractTabsFromItem(item: Item | null | undefined): TabInfo[] {
   const gridLayout = item?.data?.gridLayout || {};
   const validTabIds = Object.keys(gridLayout).filter(
     (k) => k && gridLayout[k]?.length > 0,
@@ -43,13 +38,7 @@ export function extractTabsFromItem(item: Item | null): TabInfo[] {
   return tabsInfo;
 }
 
-/**
- * Hook to extract tab information from a dashboard.
- * Returns whether the dashboard has multiple tabs and the tabs info.
- * @param dashboard - The dashboard item to analyze
- * @returns hasMultipleTabs and tabsInfo array
- */
-export function useTabsInfo(dashboard: Item | null): TabsInfoResult {
+export function useTabsInfo(dashboard: Item | null | undefined): TabsInfoResult {
   return useMemo(() => {
     const tabsInfo = extractTabsFromItem(dashboard);
 

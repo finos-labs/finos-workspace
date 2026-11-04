@@ -1,8 +1,17 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { useIframeProtocol as UseIframeProtocol } from "~/components/Widgets/Helpers/useIframeProtocol";
 import Iframe from "~/components/Widgets/Iframe";
+import type { Group } from "~/lib/state/app";
 import { useThemeStore } from "~/lib/state/theme";
-import { renderWidget } from "./WidgetTestWrapper";
+import "../../../mocks/runtimeConfig";
+import { postFrameGrant } from "~/api/auth.api";
+import { makeEndpointParamGroup } from "../../factories";
+import { partial } from "../../mocks";
+import { renderWidget, WidgetTestWrapper } from "./WidgetTestWrapper";
+
+type IframeProtocol = ReturnType<typeof UseIframeProtocol>;
 
 const iframeProtocolMock = vi.hoisted(() => ({
   state: {
@@ -10,21 +19,25 @@ const iframeProtocolMock = vi.hoisted(() => ({
     paramDefs: null,
     requestWidgetData: vi.fn(),
     sendParamsUpdate: vi.fn(),
-  } as any,
+  } as unknown as IframeProtocol,
 }));
 
 const appStoreMock = vi.hoisted(() => ({
-  getWidgetGroups: vi.fn((..._args) => []),
+  getWidgetGroups: vi.fn<(tabId: string, widgetId: string | undefined) => Group[]>(
+    () => [],
+  ),
   updateGroup: vi.fn(),
 }));
 
 const sharedAppStoreMock = vi.hoisted(() => ({
-  getWidgetGroups: vi.fn((..._args) => []),
+  getWidgetGroups: vi.fn<(tabId: string, widgetId: string | undefined) => Group[]>(
+    () => [],
+  ),
 }));
 
 const queryParamsMock = vi.hoisted(() => ({
-  renderRow0Params: null as any,
-  renderBelowNavbarRows: null as any,
+  renderRow0Params: null as ReactNode,
+  renderBelowNavbarRows: null as ReactNode,
 }));
 
 vi.mock("~/components/DraggableCard", () => ({
@@ -34,7 +47,13 @@ vi.mock("~/components/DraggableCard", () => ({
     elementNextToTitle,
     elementBelowNavbar,
     extraNavbarElements,
-  }: any) => (
+  }: {
+    children?: ReactNode;
+    elementRightNextToTitle?: ReactNode;
+    elementNextToTitle?: ReactNode;
+    elementBelowNavbar?: ReactNode;
+    extraNavbarElements?: ReactNode;
+  }) => (
     <div data-testid="draggable-card">
       {elementRightNextToTitle}
       {elementNextToTitle}
@@ -46,7 +65,13 @@ vi.mock("~/components/DraggableCard", () => ({
 }));
 
 vi.mock("~/components/General/SearchResultsNotFound", () => ({
-  default: ({ firstMessage, children }: any) => (
+  default: ({
+    firstMessage,
+    children,
+  }: {
+    firstMessage?: ReactNode;
+    children?: ReactNode;
+  }) => (
     <div data-testid="search-not-found">
       <span>{firstMessage}</span>
       {children}
@@ -55,7 +80,7 @@ vi.mock("~/components/General/SearchResultsNotFound", () => ({
 }));
 
 vi.mock("~/components/ds/dialogs/BaseDialog", () => ({
-  BaseDialog: ({ children, open }: any) =>
+  BaseDialog: ({ children, open }: { children?: ReactNode; open?: boolean }) =>
     open ? <div data-testid="url-dialog">{children}</div> : null,
 }));
 
@@ -67,42 +92,43 @@ vi.mock("~/lib/providers/MobileProvider", () => ({
 }));
 
 vi.mock("~/lib/state/app", () => ({
-  useShallowAppStore: (selector: any) =>
+  useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       items: {},
-      getWidgetGroups: vi.fn((...args) => {
-        const [tabId] = args;
+      getWidgetGroups: vi.fn((tabId: string, widgetId: string | undefined) => {
         if (tabId === "shared-tab") {
-          return sharedAppStoreMock.getWidgetGroups(...args);
+          return sharedAppStoreMock.getWidgetGroups(tabId, widgetId);
         }
-        return appStoreMock.getWidgetGroups(...args);
+        return appStoreMock.getWidgetGroups(tabId, widgetId);
       }),
       updateGroup: appStoreMock.updateGroup,
     }),
 }));
 
 vi.mock("~/lib/state/sharedApp", () => ({
-  useShallowSharedAppStore: (selector: any) =>
+  useShallowSharedAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       getWidgetGroups: sharedAppStoreMock.getWidgetGroups,
     }),
 }));
 
 vi.mock("~/components/Widgets/Helpers/IframeParamControls", () => ({
-  IframeParamControls: ({ paramDefs }: any) => (
+  IframeParamControls: ({ paramDefs }: { paramDefs: { paramName: string }[] }) => (
     <div data-testid="iframe-param-controls">
-      {paramDefs.map((param: any) => (
+      {paramDefs.map((param) => (
         <span key={param.paramName}>{param.paramName}</span>
       ))}
     </div>
   ),
 }));
 
+vi.mock("~/api/auth.api", () => ({ postFrameGrant: vi.fn() }));
+
 vi.mock("~/components/Widgets/Helpers/useIframeProtocol", () => ({
   useIframeProtocol: () => iframeProtocolMock.state,
 }));
 
-vi.mock("~/components/General/Table/NavBar/QueryParams", () => ({
+vi.mock("~/components/WidgetParams/QueryParams", () => ({
   useWidgetParamsPositions: () => queryParamsMock,
 }));
 
@@ -118,6 +144,62 @@ describe("Iframe Widget", () => {
     sharedAppStoreMock.getWidgetGroups.mockReturnValue([]);
     queryParamsMock.renderRow0Params = null;
     queryParamsMock.renderBelowNavbarRows = null;
+  });
+
+  describe("a page that requires the connection's credentials", () => {
+    const framedWidget = {
+      sourceId: "src-1",
+      sourceName: "Backend",
+      widgetId: "Backend-dashboard",
+      requires_auth: true,
+      storage: { html: "https://backend.test/dash/index.html", scale: 1.0 },
+    };
+
+    beforeEach(() => {
+      vi.mocked(postFrameGrant).mockReset();
+    });
+
+    it("opens through the API with the token and a sandbox without storage", async () => {
+      vi.mocked(postFrameGrant).mockResolvedValue({
+        token: "ws_frame_tok",
+        prefix: "/dash/",
+        expiresIn: 3600,
+      });
+      renderWidget(<Iframe />, { widgetOverrides: framedWidget });
+
+      await waitFor(() =>
+        expect(document.querySelector("iframe")).toHaveAttribute(
+          "src",
+          "http://localhost:3000/app/data-connectors/frame/ws_frame_tok/dash/index.html?theme=dark",
+        ),
+      );
+      expect(postFrameGrant).toHaveBeenCalledWith("src-1", "dashboard");
+      const sandbox = document.querySelector("iframe")?.getAttribute("sandbox") ?? "";
+      expect(sandbox).toContain("allow-scripts");
+      expect(sandbox).not.toContain("allow-same-origin");
+    });
+
+    it("shows nothing of the page and says so when the connection refuses", async () => {
+      vi.mocked(postFrameGrant).mockRejectedValue(new Error("403"));
+      renderWidget(<Iframe />, { widgetOverrides: framedWidget });
+
+      expect(await screen.findByText("The page cannot be opened")).toBeInTheDocument();
+      expect(document.querySelector("iframe")).toBeNull();
+    });
+
+    it("is not asked for without requires_auth, and keeps the page's own storage", () => {
+      renderWidget(<Iframe />, {
+        widgetOverrides: { ...framedWidget, requires_auth: undefined },
+      });
+
+      expect(postFrameGrant).not.toHaveBeenCalled();
+      const iframe = document.querySelector("iframe");
+      expect(iframe).toHaveAttribute(
+        "src",
+        "https://backend.test/dash/index.html?theme=dark",
+      );
+      expect(iframe?.getAttribute("sandbox")).toContain("allow-same-origin");
+    });
   });
 
   it("renders empty state when no URL is provided", () => {
@@ -165,11 +247,11 @@ describe("Iframe Widget", () => {
   it("displays URL in button when URL is set", () => {
     renderWidget(<Iframe />, {
       widgetOverrides: {
-        storage: { html: "https://openbb.co", scale: 1.0 },
+        storage: { html: "https://site.test", scale: 1.0 },
       },
     });
 
-    expect(screen.getByText("https://openbb.co")).toBeInTheDocument();
+    expect(screen.getByText("https://site.test")).toBeInTheDocument();
   });
 
   it("shows zoom controls when URL is provided", () => {
@@ -183,7 +265,9 @@ describe("Iframe Widget", () => {
   });
 
   it("hides iframe protocol params that are hidden by the widget manifest", () => {
-    iframeProtocolMock.state.manifest = [{ widgetId: "browse_markets" }];
+    iframeProtocolMock.state.manifest = [
+      { widgetId: "browse_markets", name: "Browse Markets", dataType: "markdown" },
+    ];
     iframeProtocolMock.state.paramDefs = [
       {
         paramName: "event_ticker",
@@ -242,7 +326,9 @@ describe("Iframe Widget", () => {
   });
 
   it("does not duplicate iframe protocol params already owned by widget params", () => {
-    iframeProtocolMock.state.manifest = [{ widgetId: "browse_markets" }];
+    iframeProtocolMock.state.manifest = [
+      { widgetId: "browse_markets", name: "Browse Markets", dataType: "markdown" },
+    ];
     iframeProtocolMock.state.paramDefs = [
       {
         paramName: "selection",
@@ -280,12 +366,11 @@ describe("Iframe Widget", () => {
 
   it("uses grouped params in the iframe URL even when widget storage is stale", () => {
     appStoreMock.getWidgetGroups.mockReturnValue([
-      {
+      makeEndpointParamGroup({
         id: "selection-group",
-        type: "endpointParam",
         groupById: "selection-options",
         value: "Sports",
-      },
+      }),
     ]);
 
     renderWidget(<Iframe />, {
@@ -317,12 +402,11 @@ describe("Iframe Widget", () => {
 
   it("uses grouped params in the iframe URL when widget params are row-grouped", () => {
     appStoreMock.getWidgetGroups.mockReturnValue([
-      {
+      makeEndpointParamGroup({
         id: "selection-group",
-        type: "endpointParam",
         groupById: "selection-options",
         value: "Sports",
-      },
+      }),
     ]);
 
     renderWidget(<Iframe />, {
@@ -333,7 +417,7 @@ describe("Iframe Widget", () => {
           scale: 1.0,
           params: { selection: "All" },
         },
-        params: [
+        params: partial([
           {
             paramName: "selection",
             type: "endpoint",
@@ -341,7 +425,7 @@ describe("Iframe Widget", () => {
             value: "All",
             show: true,
           },
-        ] as any,
+        ]),
       },
     });
 
@@ -354,12 +438,11 @@ describe("Iframe Widget", () => {
 
   it("uses shared grouped params in the iframe URL", () => {
     sharedAppStoreMock.getWidgetGroups.mockReturnValue([
-      {
+      makeEndpointParamGroup({
         id: "selection-group",
-        type: "endpointParam",
         groupById: "selection-options",
         value: "Crypto",
-      },
+      }),
     ]);
 
     renderWidget(<Iframe />, {
@@ -389,5 +472,111 @@ describe("Iframe Widget", () => {
       "src",
       "https://example.com/browse?selection=Crypto&theme=dark",
     );
+  });
+
+  describe("when a parameter changes", () => {
+    const widgetOverrides = (refreshQuery?: number) => ({
+      id: "browse_markets",
+      ...(refreshQuery === undefined ? {} : { refreshQuery }),
+      storage: {
+        html: "https://example.com/browse",
+        scale: 1.0,
+        params: { selection: "All" },
+      },
+      params: [
+        {
+          paramName: "selection",
+          type: "endpoint" as const,
+          groupById: "selection-options",
+          value: "All",
+          show: true,
+        },
+      ],
+    });
+    const selectionIs = (value: string) =>
+      appStoreMock.getWidgetGroups.mockReturnValue([
+        makeEndpointParamGroup({
+          id: "selection-group",
+          groupById: "selection-options",
+          value,
+        }),
+      ]);
+    const page = (refreshQuery?: number) => (
+      <WidgetTestWrapper widgetOverrides={widgetOverrides(refreshQuery)}>
+        <Iframe />
+      </WidgetTestWrapper>
+    );
+    const connected = () => {
+      iframeProtocolMock.state.manifest = [
+        { widgetId: "page-widget", name: "Page", dataType: "table" },
+      ] as IframeProtocol["manifest"];
+    };
+
+    it("loads a page that has not connected over the protocol with the new address", () => {
+      selectionIs("Sports");
+      const view = renderWidget(<Iframe />, { widgetOverrides: widgetOverrides() });
+      expect(document.querySelector("iframe")).toHaveAttribute(
+        "src",
+        "https://example.com/browse?selection=Sports&theme=dark",
+      );
+
+      selectionIs("Politics");
+      view.rerender(page());
+
+      expect(document.querySelector("iframe")).toHaveAttribute(
+        "src",
+        "https://example.com/browse?selection=Politics&theme=dark",
+      );
+    });
+
+    it("does not reload a page that speaks the protocol: it is told with a message", () => {
+      connected();
+      selectionIs("Sports");
+      const view = renderWidget(<Iframe />, { widgetOverrides: widgetOverrides() });
+      const sent = vi.mocked(iframeProtocolMock.state.sendParamsUpdate);
+      sent.mockClear();
+
+      selectionIs("Politics");
+      view.rerender(page());
+
+      expect(document.querySelector("iframe")).toHaveAttribute(
+        "src",
+        "https://example.com/browse?selection=Sports&theme=dark",
+      );
+      expect(sent).toHaveBeenLastCalledWith(
+        expect.objectContaining({ selection: "Politics" }),
+      );
+    });
+
+    it("keeps the same iframe element, so nothing starts over", () => {
+      connected();
+      selectionIs("Sports");
+      const view = renderWidget(<Iframe />, { widgetOverrides: widgetOverrides() });
+      const before = document.querySelector("iframe");
+
+      selectionIs("Politics");
+      view.rerender(page());
+
+      expect(document.querySelector("iframe")).toBe(before);
+    });
+
+    it("loads the current params when the user refreshes the widget", () => {
+      connected();
+      selectionIs("Sports");
+      const view = renderWidget(<Iframe />, { widgetOverrides: widgetOverrides(1) });
+
+      selectionIs("Politics");
+      view.rerender(page(1));
+      expect(document.querySelector("iframe")).toHaveAttribute(
+        "src",
+        "https://example.com/browse?selection=Sports&theme=dark",
+      );
+
+      view.rerender(page(2));
+      expect(document.querySelector("iframe")).toHaveAttribute(
+        "src",
+        "https://example.com/browse?selection=Politics&theme=dark",
+      );
+    });
   });
 });

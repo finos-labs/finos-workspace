@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import { type Mock, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 import Avatar from "~/components/General/Avatar";
 
 vi.mock("@tanstack/react-query", () => ({
@@ -12,7 +12,6 @@ vi.mock("@tanstack/react-query", () => ({
 
 describe("Avatar Component", () => {
   beforeEach(() => {
-    // Scoped mocks
     vi.resetAllMocks();
 
     (useQuery as Mock).mockReturnValue({

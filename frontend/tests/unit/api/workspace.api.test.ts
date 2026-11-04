@@ -17,8 +17,8 @@ const mockGetWidgetGridData = vi.fn();
 const mockUpdateTabWidgetsLayout = vi.fn();
 const mockUpdateWidgetInStore = vi.fn();
 const mockRemoveWidget = vi.fn();
+const mockIsDashboardLocked = vi.fn((_dashboardId: string) => false);
 const mockGetDashboardWidgetData = vi.fn();
-const mockGetOrQueryTickers = vi.fn();
 const mockTriggerCustomEvent = vi.fn();
 const mockGetDashboardInfo = vi.fn();
 const mockDeserializeDashboardTabId = vi.fn((...args: unknown[]) => args[0]);
@@ -32,6 +32,7 @@ vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
 }));
 
 vi.mock("~/lib/state/app", () => ({
+  DASHBOARD_LOCKED_MESSAGE: "Locked.",
   useAppStore: {
     getState: () => ({
       addWidget: mockAddWidget,
@@ -41,6 +42,7 @@ vi.mock("~/lib/state/app", () => ({
       updateTabWidgetsLayout: mockUpdateTabWidgetsLayout,
       updateWidget: mockUpdateWidgetInStore,
       removeWidget: mockRemoveWidget,
+      isDashboardLocked: (dashboardId: string) => mockIsDashboardLocked(dashboardId),
       items: {
         "dashboard-123": {
           data: {
@@ -66,14 +68,6 @@ vi.mock("~/lib/state/copilotData", () => ({
   },
 }));
 
-vi.mock("~/lib/state/tickers", () => ({
-  tickersStore: {
-    getState: () => ({
-      getOrQueryTickers: mockGetOrQueryTickers,
-    }),
-  },
-}));
-
 vi.mock("~/lib/utils", () => ({
   triggerCustomEvent: (...args: unknown[]) => mockTriggerCustomEvent(...args),
 }));
@@ -89,7 +83,7 @@ const createMockWidget = (overrides: Partial<WidgetT> = {}): WidgetT =>
     widgetId: "test-widget",
     name: "Test Widget",
     description: "A test widget",
-    type: "chart",
+    type: "html",
     params: [],
     storage: {},
     data: {},
@@ -103,9 +97,10 @@ const dashboardWidget = createMockWidget({
   params: [{ paramName: "symbol", type: "text" }],
 });
 
-describe("Workspace API", () => {
+describe("FINOS Workspace API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsDashboardLocked.mockReturnValue(false);
     mockTriggerCustomEvent.mockReturnValue(true);
     mockGetTabWidgetById.mockImplementation(
       (_dashboardId: string, widgetUuid: string) =>
@@ -115,7 +110,7 @@ describe("Workspace API", () => {
 
   describe("createWidget", () => {
     const dashboardId = "dashboard-123";
-    const backendName = "openbb";
+    const backendName = "workspace";
     const widgetId = "stock-chart";
     const config = {
       dataArgs: { symbol: "AAPL" },
@@ -134,7 +129,7 @@ describe("Workspace API", () => {
 
       const result = await createWidget(dashboardId, backendName, widgetId, config);
 
-      expect(mockGetAppWidget).toHaveBeenCalledWith("stock-chart", "openbb");
+      expect(mockGetAppWidget).toHaveBeenCalledWith("stock-chart", "workspace");
       expect(mockAddWidget).toHaveBeenCalledWith(
         dashboardId,
         expect.objectContaining({
@@ -154,7 +149,7 @@ describe("Workspace API", () => {
       await expect(
         createWidget(dashboardId, backendName, "nonexistent-widget", config),
       ).rejects.toThrow(
-        "Widget 'nonexistent-widget' not found in 'openbb'. Call list_available_widgets to get valid origin/widget_id pairs.",
+        "Widget 'nonexistent-widget' not found in 'workspace'. Call list_available_widgets to get valid origin/widget_id pairs.",
       );
     });
 
@@ -262,7 +257,7 @@ describe("Workspace API", () => {
       );
     });
 
-    it("should store arbitrary uiArgs in storage", async () => {
+    it("stores the keys the widget's component reads", async () => {
       const mockWidgetDef = createMockWidget({
         widgetId: "rich-note",
       });
@@ -271,64 +266,13 @@ describe("Workspace API", () => {
       mockAddWidget.mockResolvedValue("widget-id");
 
       await createWidget(dashboardId, backendName, "rich-note", {
-        uiArgs: { html: "<p>Note content</p>", customProp: "value" },
+        uiArgs: { html: "<p>Note content</p>" },
       });
 
       expect(mockAddWidget).toHaveBeenCalledWith(
         dashboardId,
         expect.objectContaining({
-          storage: expect.objectContaining({
-            html: "<p>Note content</p>",
-            customProp: "value",
-          }),
-        }),
-      );
-    });
-
-    it("should persist chart view intent into both widget data and storage", async () => {
-      const mockWidgetDef = createMockWidget({
-        widgetId: "sql-table",
-        type: "table",
-        data: {
-          table: {
-            showAll: true,
-            enableCharts: true,
-          },
-        },
-      });
-
-      mockGetAppWidget.mockReturnValue(mockWidgetDef);
-      mockAddWidget.mockResolvedValue("widget-id");
-
-      await createWidget(dashboardId, backendName, "sql-table", {
-        uiArgs: {
-          chartSettingsOpen: false,
-          chartView: {
-            enabled: true,
-            chartType: "bar",
-          },
-        },
-      });
-
-      expect(mockAddWidget).toHaveBeenCalledWith(
-        dashboardId,
-        expect.objectContaining({
-          data: expect.objectContaining({
-            table: expect.objectContaining({
-              enableCharts: true,
-              chartView: expect.objectContaining({
-                enabled: true,
-                chartType: "column",
-              }),
-            }),
-          }),
-          storage: expect.objectContaining({
-            chartSettingsOpen: false,
-            chartView: {
-              enabled: true,
-              chartType: "column",
-            },
-          }),
+          storage: expect.objectContaining({ html: "<p>Note content</p>" }),
         }),
       );
     });
@@ -378,18 +322,33 @@ describe("Workspace API", () => {
       expect(result).not.toHaveProperty("data");
     });
 
-    it("returns the stored note body as data when the copilot store has none", () => {
-      // Generative notes store their (sanitized) body in storage.html and never
-      // populate the copilot data store — read_widget must still echo the body.
+    it("returns the stored note text as data when the copilot store has none", () => {
       const noteWidget = createMockWidget({
         id: widgetUuid,
-        widgetId: `rich_note-${widgetUuid}`,
+        widgetId: "markdown",
+        name: "Summary",
+        type: "custom",
+        params: [],
+        storage: { text: "# Heading\n\nSome **text**" },
+      });
+      mockGetTabWidgetById.mockReturnValue(noteWidget);
+      mockGetDashboardWidgetData.mockReturnValue(undefined);
+
+      const result = readWidget(dashboardId, widgetUuid);
+
+      expect(result?.data).toBe("# Heading\n\nSome **text**");
+    });
+
+    it("returns the stored html as data for a generative html widget", () => {
+      const htmlWidget = createMockWidget({
+        id: widgetUuid,
+        widgetId: `html-${widgetUuid}`,
         name: "XSS Probe",
         type: "custom",
         params: [],
         storage: { html: '<h1>Hi <img src="x" /></h1>' },
       });
-      mockGetTabWidgetById.mockReturnValue(noteWidget);
+      mockGetTabWidgetById.mockReturnValue(htmlWidget);
       mockGetDashboardWidgetData.mockReturnValue(undefined);
 
       const result = readWidget(dashboardId, widgetUuid);
@@ -397,19 +356,19 @@ describe("Workspace API", () => {
       expect(result?.data).toBe('<h1>Hi <img src="x" /></h1>');
     });
 
-    it("prefers rendered copilot data over the stored note body", () => {
+    it("prefers rendered copilot data over the stored note text", () => {
       const noteWidget = createMockWidget({
         id: widgetUuid,
-        widgetId: `rich_note-${widgetUuid}`,
+        widgetId: "markdown",
         type: "custom",
-        storage: { html: "<p>stored</p>" },
+        storage: { text: "stored" },
       });
       mockGetTabWidgetById.mockReturnValue(noteWidget);
-      mockGetDashboardWidgetData.mockReturnValue({ data: "<p>rendered</p>" });
+      mockGetDashboardWidgetData.mockReturnValue({ data: "rendered" });
 
       const result = readWidget(dashboardId, widgetUuid);
 
-      expect(result?.data).toBe("<p>rendered</p>");
+      expect(result?.data).toBe("rendered");
     });
   });
 
@@ -501,6 +460,77 @@ describe("Workspace API", () => {
     });
   });
 
+  describe("a locked dashboard", () => {
+    const dashboardId = "dashboard-123";
+    const widgetUuid = "widget-uuid-456";
+    const lockedError = `Dashboard '${dashboardId}' is locked. Locked.`;
+
+    beforeEach(() => {
+      mockIsDashboardLocked.mockReturnValue(true);
+      mockGetDashboardInfo.mockReturnValue({
+        id: dashboardId,
+        tabs: [
+          { tab_id: "__no_tab__", tab_name: "__no_tab__", widgets: [], layout: [] },
+          { tab_id: "charts", tab_name: "Charts", widgets: [], layout: [] },
+        ],
+      });
+      mockGetTabWidgetById.mockReturnValue(
+        createMockWidget({ id: widgetUuid, gridData: { x: 0, y: 0, w: 20, h: 10 } }),
+      );
+      mockGetWidgetGridData.mockReturnValue({
+        i: widgetUuid,
+        x: 0,
+        y: 0,
+        w: 20,
+        h: 10,
+      });
+    });
+
+    it("does not get a widget created in it", async () => {
+      mockGetAppWidget.mockReturnValue(createMockWidget());
+
+      await expect(createWidget(dashboardId, "workspace", "chart", {})).rejects.toThrow(
+        lockedError,
+      );
+      expect(mockAddWidget).not.toHaveBeenCalled();
+    });
+
+    it("does not lose a widget", async () => {
+      await expect(deleteWidget(dashboardId, widgetUuid)).rejects.toThrow(lockedError);
+      expect(mockRemoveWidget).not.toHaveBeenCalled();
+    });
+
+    it("does not let a widget be moved to another place", () => {
+      expect(() =>
+        updateDashboardLayout(dashboardId, widgetUuid, { x: 0, y: 4, w: 20, h: 10 }),
+      ).toThrow(`${lockedError} Only the width and height of its widgets can change.`);
+      expect(mockUpdateTabWidgetsLayout).not.toHaveBeenCalled();
+    });
+
+    it("does not let a widget be moved to another tab", () => {
+      expect(() =>
+        updateDashboardLayout(dashboardId, widgetUuid, {
+          tabId: "charts",
+          x: 0,
+          y: 0,
+          w: 20,
+          h: 10,
+        }),
+      ).toThrow(lockedError);
+      expect(mockUpdateTabWidgetsLayout).not.toHaveBeenCalled();
+    });
+
+    it("lets a widget be resized where it is", () => {
+      updateDashboardLayout(dashboardId, widgetUuid, { x: 0, y: 0, w: 30, h: 12 });
+
+      expect(mockUpdateTabWidgetsLayout).toHaveBeenCalledWith(
+        dashboardId,
+        [expect.objectContaining({ i: widgetUuid, x: 0, y: 0, w: 30, h: 12 })],
+        "",
+      );
+    });
+  });
+
   describe("updateWidget", () => {
     const dashboardId = "dashboard-123";
     const widgetUuid = "widget-uuid-789";
@@ -550,9 +580,6 @@ describe("Workspace API", () => {
       });
 
       mockGetTabWidgetById.mockReturnValue(mockWidget);
-      // A non-cancelable event returns true even with no listener, so the old
-      // `result === false` throw was dead; Fix B persists through the store so
-      // widgets on inactive tabs still get the update.
       mockTriggerCustomEvent.mockReturnValue(false);
 
       await expect(
@@ -570,115 +597,33 @@ describe("Workspace API", () => {
       );
     });
 
-    it("should handle ticker parameter and query tickers", async () => {
+    it("should update the text of a markdown note", async () => {
       const mockWidget = createMockWidget({
         id: widgetUuid,
-        params: [{ paramName: "ticker", type: "ticker" }],
+        widgetId: "markdown",
+        type: "custom",
+        params: [],
+        storage: { text: "old" },
       });
-      const mockTicker = { symbol: "AAPL", name: "Apple Inc." };
 
       mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockGetOrQueryTickers.mockResolvedValue({ AAPL: mockTicker });
       mockTriggerCustomEvent.mockReturnValue(true);
 
       await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { ticker: "AAPL" },
+        uiArgs: { text: "new" },
       });
 
-      expect(mockGetOrQueryTickers).toHaveBeenCalledWith("AAPL");
+      expect(mockUpdateWidgetInStore.mock.calls[0][1].storage?.text).toBe("new");
       expect(mockTriggerCustomEvent).toHaveBeenCalledWith(
         `updateWidget-${widgetUuid}`,
         expect.any(Function),
       );
     });
 
-    it("should not query tickers when ticker value is null string", async () => {
+    it("should trigger updateQueryParams event", async () => {
       const mockWidget = createMockWidget({
         id: widgetUuid,
-        params: [{ paramName: "ticker", type: "ticker" }],
-      });
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { ticker: "null" },
-      });
-
-      expect(mockGetOrQueryTickers).not.toHaveBeenCalled();
-    });
-
-    it("should not query tickers when ticker value is empty", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        params: [{ paramName: "ticker", type: "ticker" }],
-      });
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { ticker: "" },
-      });
-
-      expect(mockGetOrQueryTickers).not.toHaveBeenCalled();
-    });
-
-    it("should handle note widget type differently", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        type: "note",
-        params: [],
-      });
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        uiArgs: { html: "<p>Updated note</p>" },
-      });
-
-      expect(mockTriggerCustomEvent).toHaveBeenCalledWith(
-        `updateWidget-${widgetUuid}`,
-        expect.objectContaining({
-          type: "note",
-          storage: expect.objectContaining({
-            html: "<p>Updated note</p>",
-          }),
-        }),
-      );
-    });
-
-    it("should handle rich_note widgetId differently", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        widgetId: "rich_note",
-        type: "custom",
-        params: [],
-      });
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        uiArgs: { html: "<p>Rich note content</p>" },
-      });
-
-      expect(mockTriggerCustomEvent).toHaveBeenCalledWith(
-        `updateWidget-${widgetUuid}`,
-        expect.objectContaining({
-          widgetId: "rich_note",
-          storage: expect.objectContaining({
-            html: "<p>Rich note content</p>",
-          }),
-        }),
-      );
-    });
-
-    it("should trigger updateQueryParams event for non-note widgets", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        type: "chart",
+        type: "html",
         params: [{ paramName: "symbol", type: "text" }],
       });
 
@@ -706,123 +651,26 @@ describe("Workspace API", () => {
       }
     });
 
-    it("should set mainTicker in widget data when ticker is resolved", async () => {
+    it("should persist the updated params to the store", async () => {
       const mockWidget = createMockWidget({
         id: widgetUuid,
-        params: [{ paramName: "symbol", type: "ticker" }],
-      });
-      const mockTicker = { symbol: "TSLA", name: "Tesla Inc.", id: "tsla-id" };
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockGetOrQueryTickers.mockResolvedValue({ TSLA: mockTicker });
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { symbol: "TSLA" },
-      });
-
-      const updateFnCall = mockTriggerCustomEvent.mock.calls.find(
-        (call) => call[0] === `updateWidget-${widgetUuid}`,
-      );
-
-      expect(updateFnCall).toBeDefined();
-
-      if (typeof updateFnCall?.[1] === "function") {
-        const updateFn = updateFnCall[1];
-        const result = updateFn(mockWidget);
-
-        expect(result.data).toEqual(
-          expect.objectContaining({
-            mainTicker: mockTicker,
-          }),
-        );
-      }
-    });
-
-    it("should handle widget with no ticker params", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        params: [{ paramName: "date", type: "date" }],
+        params: [{ paramName: "region", type: "text" }],
       });
 
       mockGetTabWidgetById.mockReturnValue(mockWidget);
       mockTriggerCustomEvent.mockReturnValue(true);
 
       await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { date: "2024-01-01" },
+        dataArgs: { region: "north" },
       });
 
-      expect(mockGetOrQueryTickers).not.toHaveBeenCalled();
-    });
-
-    it("should preserve existing mainTicker metadata in the ticker fallback", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        params: [{ paramName: "symbol", type: "ticker" }],
-        data: {
-          mainTicker: {
-            symbol: "NVDA",
-            id: "NVDA",
-            category: "crypto",
-            type: "index",
-            color: "#abc123",
-          },
-        },
-      });
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockGetOrQueryTickers.mockResolvedValue({});
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { symbol: "TSLA" },
-      });
-
-      const updateFnCall = mockTriggerCustomEvent.mock.calls.find(
-        (call) => call[0] === `updateWidget-${widgetUuid}`,
-      );
-
-      // Fallback overrides symbol/id but keeps other resolved fields (color, etc.)
-      expect(updateFnCall?.[1]).toBeTypeOf("function");
-      if (typeof updateFnCall?.[1] === "function") {
-        const result = updateFnCall[1](mockWidget);
-        expect(result.data.mainTicker).toEqual(
-          expect.objectContaining({
-            symbol: "TSLA",
-            id: "TSLA",
-            category: "crypto",
-            type: "index",
-            color: "#abc123",
-          }),
-        );
-      }
-    });
-
-    it("should persist the updated widget (with mainTicker + params) to the store", async () => {
-      const mockWidget = createMockWidget({
-        id: widgetUuid,
-        params: [{ paramName: "symbol", type: "ticker" }],
-      });
-      const mockTicker = { symbol: "TSLA", id: "TSLA", name: "Tesla Inc." };
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockGetOrQueryTickers.mockResolvedValue({ TSLA: mockTicker });
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget(dashboardId, widgetUuid, {
-        dataArgs: { symbol: "TSLA" },
-      });
-
-      // Fix B: the update is written straight to the store (covers inactive-tab
-      // widgets), carrying both the new mainTicker and storage params.
       expect(mockUpdateWidgetInStore).toHaveBeenCalledTimes(1);
       expect(mockUpdateWidgetInStore).toHaveBeenCalledWith(
         dashboardId,
         expect.objectContaining({
           id: widgetUuid,
-          data: expect.objectContaining({ mainTicker: mockTicker }),
           storage: expect.objectContaining({
-            params: expect.objectContaining({ symbol: "TSLA" }),
+            params: expect.objectContaining({ region: "north" }),
           }),
         }),
       );
@@ -874,7 +722,7 @@ describe("Workspace API", () => {
 
   describe("updateWidgetState (internal helper via createWidget)", () => {
     const dashboardId = "dashboard-123";
-    const backendName = "openbb";
+    const backendName = "workspace";
 
     it("should preserve existing storage when updating", async () => {
       const mockWidgetDef = createMockWidget({
@@ -980,58 +828,54 @@ describe("Workspace API", () => {
       mockGetAppWidget.mockReturnValue(mockWidgetDef);
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "openbb", "test-widget", {
-        uiArgs: { gridData: { w: 40, h: 12 }, customProp: "value" },
+      await createWidget("dashboard-123", "workspace", "test-widget", {
+        uiArgs: { gridData: { w: 40, h: 12 } },
       });
 
       expect(mockAddWidget).toHaveBeenCalledWith(
         "dashboard-123",
-        expect.objectContaining({
-          gridData: { x: 0, y: 0, w: 40, h: 12 },
-          storage: expect.objectContaining({ customProp: "value" }),
-        }),
+        expect.objectContaining({ gridData: { x: 0, y: 0, w: 40, h: 12 } }),
       );
-      // gridData should NOT be in storage
       const widget = mockAddWidget.mock.calls[0][1];
       expect(widget.storage.gridData).toBeUndefined();
     });
 
-    it("should not apply gridData when it is an array", async () => {
-      const mockWidgetDef = createMockWidget({
-        widgetId: "test-widget",
-        gridData: { x: 0, y: 0, w: 20, h: 10 },
-      });
-
-      mockGetAppWidget.mockReturnValue(mockWidgetDef);
+    it("refuses gridData that is not an object of numbers, and creates nothing", async () => {
+      mockGetAppWidget.mockReturnValue(
+        createMockWidget({ gridData: { x: 0, y: 0, w: 20, h: 10 } }),
+      );
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "openbb", "test-widget", {
-        uiArgs: { gridData: [1, 2, 3] },
-      });
-
-      const widget = mockAddWidget.mock.calls[0][1];
-      // gridData should remain the original, not overridden
-      expect(widget.gridData).toEqual({ x: 0, y: 0, w: 20, h: 10 });
-      expect(widget.storage.gridData).toBeUndefined();
+      await expect(
+        createWidget("dashboard-123", "workspace", "test-widget", {
+          uiArgs: { gridData: [1, 2, 3] },
+        }),
+      ).rejects.toThrow("`ui_args.gridData` must be object");
+      await expect(
+        createWidget("dashboard-123", "workspace", "test-widget", {
+          uiArgs: { gridData: { w: "not-a-number", h: 12 } },
+        }),
+      ).rejects.toThrow("`ui_args.gridData.w` must be number");
+      await expect(
+        createWidget("dashboard-123", "workspace", "test-widget", {
+          uiArgs: { gridData: { depth: 3 } },
+        }),
+      ).rejects.toThrow("`ui_args.gridData.depth` is not a key this widget accepts");
+      expect(mockAddWidget).not.toHaveBeenCalled();
     });
 
-    it("should filter out non-numeric gridData values", async () => {
-      const mockWidgetDef = createMockWidget({
-        widgetId: "test-widget",
-        gridData: { x: 0, y: 0, w: 20, h: 10 },
-      });
-
-      mockGetAppWidget.mockReturnValue(mockWidgetDef);
+    it("refuses a ui_args key the widget's type does not read", async () => {
+      mockGetAppWidget.mockReturnValue(createMockWidget({ type: "markdown" }));
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "openbb", "test-widget", {
-        uiArgs: { gridData: { w: "not-a-number", h: 12, x: Number.NaN } },
-      });
-
-      const widget = mockAddWidget.mock.calls[0][1];
-      // Only h: 12 should be applied (w is string, x is NaN)
-      expect(widget.gridData).toEqual({ x: 0, y: 0, w: 20, h: 12 });
-      expect(widget.storage.gridData).toBeUndefined();
+      await expect(
+        createWidget("dashboard-123", "workspace", "test-widget", {
+          uiArgs: { html: "<p>x</p>", customProp: "value" },
+        }),
+      ).rejects.toThrow(
+        "ui_args were not applied: `ui_args.html` is not a key this widget accepts; `ui_args.customProp` is not a key this widget accepts",
+      );
+      expect(mockAddWidget).not.toHaveBeenCalled();
     });
 
     it("should not apply gridData when it is null", async () => {
@@ -1043,7 +887,7 @@ describe("Workspace API", () => {
       mockGetAppWidget.mockReturnValue(mockWidgetDef);
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "openbb", "test-widget", {
+      await createWidget("dashboard-123", "workspace", "test-widget", {
         uiArgs: { gridData: null },
       });
 
@@ -1059,31 +903,25 @@ describe("Workspace API", () => {
       mockGetAppWidget.mockReturnValue(mockWidgetDef);
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "openbb", "test-widget", {
-        uiArgs: { innerTab: "overview", customProp: "value" },
+      await createWidget("dashboard-123", "workspace", "test-widget", {
+        uiArgs: { innerTab: "overview" },
       });
 
       const widget = mockAddWidget.mock.calls[0][1];
       expect(widget.innerTab).toBe("overview");
       expect(widget.storage.innerTab).toBeUndefined();
-      expect(widget.storage.customProp).toBe("value");
     });
 
-    it("should not set innerTab when value is not a string", async () => {
-      const mockWidgetDef = createMockWidget({
-        widgetId: "test-widget",
-      });
-
-      mockGetAppWidget.mockReturnValue(mockWidgetDef);
+    it("refuses an innerTab that is not a string", async () => {
+      mockGetAppWidget.mockReturnValue(createMockWidget());
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "openbb", "test-widget", {
-        uiArgs: { innerTab: 123 },
-      });
-
-      const widget = mockAddWidget.mock.calls[0][1];
-      expect(widget.innerTab).toBeUndefined();
-      expect(widget.storage.innerTab).toBeUndefined();
+      await expect(
+        createWidget("dashboard-123", "workspace", "test-widget", {
+          uiArgs: { innerTab: 123 },
+        }),
+      ).rejects.toThrow("`ui_args.innerTab` must be string");
+      expect(mockAddWidget).not.toHaveBeenCalled();
     });
 
     it("should handle gridData and innerTab together", async () => {
@@ -1095,7 +933,7 @@ describe("Workspace API", () => {
       mockGetAppWidget.mockReturnValue(mockWidgetDef);
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "openbb", "test-widget", {
+      await createWidget("dashboard-123", "workspace", "test-widget", {
         uiArgs: {
           gridData: { w: 40, h: 12 },
           innerTab: "charts",
@@ -1128,7 +966,12 @@ describe("Workspace API", () => {
         query: "",
       });
 
-      expect(result.params).toEqual({ symbol: "AAPL", raw: false, limit: 0, query: "" });
+      expect(result.params).toEqual({
+        symbol: "AAPL",
+        raw: false,
+        limit: 0,
+        query: "",
+      });
       expect(result.droppedKeys).toEqual([]);
     });
 
@@ -1141,7 +984,6 @@ describe("Workspace API", () => {
       });
 
       expect(result.params).toEqual({ symbol: "AAPL" });
-      // declared-but-unset keys are sentinels, not undeclared keys
       expect(result.droppedKeys).toEqual([]);
     });
 
@@ -1154,6 +996,51 @@ describe("Workspace API", () => {
 
       expect(result.params).toEqual({ symbol: "AAPL" });
       expect(result.droppedKeys).toEqual(["bogus_param", "another"]);
+    });
+
+    it("collects values their param's schema does not accept as invalidKeys", () => {
+      const result = computeWidgetParamUpdates(
+        [
+          ...(paramsDef ?? []),
+          {
+            paramName: "period",
+            type: "text",
+            options: [
+              { label: "Annual", value: "annual" },
+              { label: "Quarter", value: "quarter" },
+            ],
+          },
+          { paramName: "start", type: "date" },
+        ] as WidgetT["params"],
+        {
+          limit: "ten",
+          raw: "maybe",
+          period: "weekly",
+          start: "yesterday",
+          symbol: "AAPL",
+        },
+      );
+
+      expect(result.params).toEqual({ symbol: "AAPL" });
+      expect(result.invalidKeys).toEqual(["raw", "limit", "period", "start"]);
+    });
+
+    it("accepts what the widget's request accepts: numeric strings, $currentDate, lists", () => {
+      const result = computeWidgetParamUpdates(
+        [
+          { paramName: "limit", type: "number" },
+          { paramName: "start", type: "date" },
+          { paramName: "tags", type: "endpoint", multiSelect: true },
+        ] as WidgetT["params"],
+        { limit: "10", start: "$currentDate-1M", tags: ["a", "b"] },
+      );
+
+      expect(result.invalidKeys).toEqual([]);
+      expect(result.params).toEqual({
+        limit: "10",
+        start: "$currentDate-1M",
+        tags: ["a", "b"],
+      });
     });
 
     it("returns empty params and drops every key when the widget declares no params", () => {
@@ -1172,42 +1059,62 @@ describe("Workspace API", () => {
   });
 
   describe("computeWidgetUiUpdates", () => {
-    it("routes name/description/source onto widget props and the rest to storage", () => {
-      const result = computeWidgetUiUpdates({
+    it("routes name/description/source onto widget props and the type's keys to storage", () => {
+      const result = computeWidgetUiUpdates(
+        { type: "html" },
+        {
+          name: "New Name",
+          description: "New Description",
+          source: ["a", "b"],
+          html: "<p>content</p>",
+        },
+      );
+
+      expect(result).toMatchObject({
         name: "New Name",
         description: "New Description",
         source: ["a", "b"],
-        html: "<p>content</p>",
-        customProp: "value",
-      });
-
-      expect(result.name).toBe("New Name");
-      expect(result.description).toBe("New Description");
-      expect(result.source).toEqual(["a", "b"]);
-      expect(result.storage).toEqual({
-        html: "<p>content</p>",
-        customProp: "value",
+        storage: { html: "<p>content</p>" },
+        problems: [],
       });
     });
 
-    it("skips undefined, null, and 'null' values", () => {
-      const result = computeWidgetUiUpdates({
-        name: "null",
-        description: null,
-        source: undefined,
-        customProp: null,
-      });
+    it("reports a key the widget's type does not read, and applies nothing", () => {
+      const result = computeWidgetUiUpdates(
+        { type: "html" },
+        { name: "New Name", text: "a note", customProp: "value" },
+      );
 
+      expect(result.problems).toEqual([
+        "`ui_args.text` is not a key this widget accepts",
+        "`ui_args.customProp` is not a key this widget accepts",
+      ]);
       expect(result.name).toBeUndefined();
-      expect(result.description).toBeUndefined();
-      expect(result.source).toBeUndefined();
       expect(result.storage).toEqual({});
     });
 
-    it("handles missing uiArgs", () => {
-      const result = computeWidgetUiUpdates(undefined);
+    it("skips undefined, null, and 'null' values", () => {
+      const result = computeWidgetUiUpdates(
+        { type: "html" },
+        {
+          name: "null",
+          description: null,
+          source: undefined,
+          customProp: null,
+        },
+      );
 
-      expect(result).toEqual({ storage: {} });
+      expect(result).toMatchObject({ storage: {}, problems: [] });
+      expect(result.name).toBeUndefined();
+      expect(result.description).toBeUndefined();
+      expect(result.source).toBeUndefined();
+    });
+
+    it("handles missing uiArgs", () => {
+      expect(computeWidgetUiUpdates({ type: "markdown" }, undefined)).toMatchObject({
+        storage: {},
+        problems: [],
+      });
     });
   });
 
@@ -1244,40 +1151,6 @@ describe("Workspace API", () => {
       expect(mockTriggerCustomEvent).toHaveBeenCalledTimes(3);
     });
 
-    it("should fall back to a minimal ticker when getOrQueryTickers returns empty", async () => {
-      const mockWidget = createMockWidget({
-        params: [{ paramName: "ticker", type: "ticker" }],
-      });
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockGetOrQueryTickers.mockResolvedValue({});
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget("dashboard-123", "widget", {
-        dataArgs: { ticker: "UNKNOWN" },
-      });
-
-      const updateFnCall = mockTriggerCustomEvent.mock.calls.find(
-        (call) => call[0] === "updateWidget-widget",
-      );
-
-      // Fix A: SDK widgets fetch by data.mainTicker.symbol, so a failed lookup
-      // must still update mainTicker to the requested symbol rather than leaving
-      // it stale (which would silently skip the refetch).
-      expect(updateFnCall?.[1]).toBeTypeOf("function");
-      if (typeof updateFnCall?.[1] === "function") {
-        const result = updateFnCall[1](mockWidget);
-        expect(result.data?.mainTicker).toEqual(
-          expect.objectContaining({
-            symbol: "UNKNOWN",
-            id: "UNKNOWN",
-            category: "equity",
-            type: "stock",
-          }),
-        );
-      }
-    });
-
     it("should propagate error when addWidget fails", async () => {
       const mockWidgetDef = createMockWidget({ widgetId: "test-widget" });
       const addWidgetError = new Error("Failed to add widget to dashboard");
@@ -1286,42 +1159,8 @@ describe("Workspace API", () => {
       mockAddWidget.mockRejectedValue(addWidgetError);
 
       await expect(
-        createWidget("dashboard-123", "openbb", "test-widget", {}),
+        createWidget("dashboard-123", "workspace", "test-widget", {}),
       ).rejects.toThrow("Failed to add widget to dashboard");
-    });
-
-    it("should handle getOrQueryTickers error gracefully", async () => {
-      const mockWidget = createMockWidget({
-        params: [{ paramName: "ticker", type: "ticker" }],
-      });
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockGetOrQueryTickers.mockRejectedValue(new Error("Network error"));
-
-      await expect(
-        updateWidget("dashboard-123", "widget", { dataArgs: { ticker: "AAPL" } }),
-      ).rejects.toThrow("Network error");
-    });
-
-    it("should handle multiple ticker type params (uses first one)", async () => {
-      const mockWidget = createMockWidget({
-        params: [
-          { paramName: "primaryTicker", type: "ticker" },
-          { paramName: "secondaryTicker", type: "ticker" },
-        ],
-      });
-      const mockTicker = { symbol: "AAPL", name: "Apple Inc." };
-
-      mockGetTabWidgetById.mockReturnValue(mockWidget);
-      mockGetOrQueryTickers.mockResolvedValue({ AAPL: mockTicker });
-      mockTriggerCustomEvent.mockReturnValue(true);
-
-      await updateWidget("dashboard-123", "widget", {
-        dataArgs: { primaryTicker: "AAPL", secondaryTicker: "MSFT" },
-      });
-
-      expect(mockGetOrQueryTickers).toHaveBeenCalledWith("AAPL");
-      expect(mockGetOrQueryTickers).toHaveBeenCalledTimes(1);
     });
 
     it("should handle widget with undefined params array", async () => {
@@ -1333,7 +1172,7 @@ describe("Workspace API", () => {
       mockGetAppWidget.mockReturnValue(mockWidgetDef);
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "openbb", "no-params-widget", {
+      await createWidget("dashboard-123", "workspace", "no-params-widget", {
         dataArgs: { someArg: "value" },
       });
 
@@ -1354,7 +1193,7 @@ describe("Workspace API", () => {
       mockGetAppWidget.mockReturnValue(mockWidgetDef);
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "openbb", "test-widget", {
+      await createWidget("dashboard-123", "workspace", "test-widget", {
         uiArgs: { name: undefined, description: undefined, customProp: undefined },
       });
 
@@ -1376,7 +1215,7 @@ describe("Workspace API", () => {
       mockGetAppWidget.mockReturnValue(mockWidgetDef);
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "openbb", "test-widget", {
+      await createWidget("dashboard-123", "workspace", "test-widget", {
         uiArgs: { name: "null", description: "null" },
       });
 
@@ -1451,7 +1290,7 @@ describe("Workspace API", () => {
 
     it("should fallback to empty object when storage.params is undefined", async () => {
       const mockWidget = createMockWidget({
-        type: "chart",
+        type: "html",
         params: [],
         storage: undefined,
       }) as WidgetT;

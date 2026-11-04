@@ -33,7 +33,15 @@ describe("SpacingInput", () => {
 });
 
 vi.mock("~/components/ds/atoms/Input", () => ({
-  Input: ({ value, onChange, className }: any) => (
+  Input: ({
+    value,
+    onChange,
+    className,
+  }: {
+    value?: string;
+    onChange: (value: string) => void;
+    className?: string;
+  }) => (
     <input
       data-testid="mock-input"
       value={value}
@@ -44,7 +52,15 @@ vi.mock("~/components/ds/atoms/Input", () => ({
 }));
 
 vi.mock("~/components/ds/atoms/Select", () => ({
-  Select: ({ value, onValueChange, className }: any) => (
+  Select: ({
+    value,
+    onValueChange,
+    className,
+  }: {
+    value?: string;
+    onValueChange: (value: string) => void;
+    className?: string;
+  }) => (
     <select
       data-testid="mock-select"
       value={value}
@@ -58,5 +74,5 @@ vi.mock("~/components/ds/atoms/Select", () => ({
 }));
 
 vi.mock("../utils", () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));

@@ -46,9 +46,6 @@ export default function ChatSelection() {
   const updateDimensions = useCallback(() => {
     const viewportWidth = window.innerWidth;
 
-    // Mobile drawer doesn't render the resizable right-panel, so the desktop
-    // DOM lookup below would early-return with popoverWidth stuck at 0.
-    // Compute mobile bounds directly from viewport.
     if (isMobile) {
       dispatch({
         popoverWidth: viewportWidth - 16,
@@ -58,8 +55,8 @@ export default function ChatSelection() {
     }
 
     const aiPanelDiv = document.querySelector('[data-panel-id="right-panel"]');
-    const headerDiv = aiPanelDiv?.querySelector("[id='obb-copilot-header']");
-    const buttonDiv = headerDiv?.querySelector('[id="obb-copilot-header-buttons"]');
+    const headerDiv = aiPanelDiv?.querySelector("[id='ws-copilot-header']");
+    const buttonDiv = headerDiv?.querySelector('[id="ws-copilot-header-buttons"]');
 
     if (!(aiPanelDiv && headerDiv && buttonDiv)) {
       dispatch({ titleMaxWidth: 200 });
@@ -67,10 +64,9 @@ export default function ChatSelection() {
     }
 
     const buttonWidth = buttonDiv?.clientWidth || 120;
-    const chevronWidth = 20; // chevron icon width
-    const headerPadding = 16; // px-4 = 16px padding
+    const chevronWidth = 20;
+    const headerPadding = 16;
 
-    // Step 4: Calculate title width
     const headerWidth = headerDiv.clientWidth;
     const availableWidth = headerWidth - buttonWidth - chevronWidth - headerPadding;
 
@@ -79,11 +75,8 @@ export default function ChatSelection() {
       Math.min(isFullscreen ? 500 : 300, availableWidth),
     );
 
-    // Also update popover width - constrain to prevent horizontal scrolling
     const panelWidth = aiPanelDiv.clientWidth;
 
-    // Desktop fullscreen: up to 40% of viewport, max 400px.
-    // Desktop normal: up to 90% of panel width, min 280px, max 400px.
     const popoverWidth = Math.min(
       400,
       isFullscreen ? viewportWidth * 0.4 : Math.max(280, panelWidth * 0.9),
@@ -94,14 +87,11 @@ export default function ChatSelection() {
 
   useEffect(() => {
     if (triggerRef.current) {
-      // Initial calculation
       updateDimensions();
 
-      // Observe the AI panel container (the one that actually changes size)
       const aiPanelContainer = document.querySelector('[data-panel-id="right-panel"]');
 
       if (aiPanelContainer) {
-        // Step 5: Set up ResizeObserver on the correct panel container
         const resizeObserver = new ResizeObserver(updateDimensions);
         resizeObserver.observe(aiPanelContainer);
 
@@ -156,7 +146,7 @@ export default function ChatSelection() {
               "!border-transparent hover:!border-transparent focus-visible:!border-transparent !m-0 h-auto",
               {
                 "w-full justify-center": isFullscreen,
-                "justify-between flex-1 max-w-full": !isFullscreen,
+                "min-w-0 flex-1 max-w-full justify-between": !isFullscreen,
                 "opacity-50": loading,
               },
             )}
@@ -335,8 +325,6 @@ const ChatItem = memo((props: ChatItemProps) => {
                   return;
                 }
                 removeChat(chat.createdAt);
-                // in case the chat that was deleted was the current one
-                // we assign the last chat as the new one
                 if (chat?.createdAt === currentChat) {
                   handleChatSelection(0);
                 }
@@ -432,7 +420,6 @@ const ChatItems = memo((props: ChatItemsProps) => {
 
   useEffect(() => {
     return () => {
-      // Cleanup: reset search input when component unmounts
       dispatch({ searchInput: "" });
     };
   }, []);
@@ -455,8 +442,6 @@ const ChatItems = memo((props: ChatItemsProps) => {
     });
   }, [filteredChats, isSearching, state.collapsedGroups]);
 
-  // search text is highlighted inline by ChatItem, gated on isLoading so
-  // stale placeholder results aren't highlighted with the new query's terms
   const searchTerms = useMemo(() => {
     if (!isSearching || isLoading) return undefined;
     const terms = deferredInput
@@ -485,7 +470,6 @@ const ChatItems = memo((props: ChatItemsProps) => {
   });
 
   useEffect(() => {
-    // Scroll the active chat into view once, when the popover first mounts.
     const index = rows.findIndex(
       (row) => row.type === "chat" && row.chat.createdAt === currentChat,
     );
@@ -494,8 +478,6 @@ const ChatItems = memo((props: ChatItemsProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The visible rows change whenever the search/grouping/collapse state does,
-  // so any previously highlighted row may no longer exist.
   useEffect(() => {
     dispatch({ selectionIndex: -1 });
   }, [rows.length]);
@@ -667,18 +649,18 @@ function EditChatDialog(props: { chat: ChatMatch; onClose: () => void }) {
         ref={inputRef}
         defaultValue={chat.label}
         key={`input-${chat.uuid}`}
-        className="obb-minimal-input-search !h-[34px] w-full my-4"
+        className="ws-minimal-input-search !h-[34px] w-full my-4"
       />
       <div
         className="mt-auto flex items-center justify-end gap-2.5"
         key={`footer-${chat.uuid}`}
       >
-        <DialogClose className="obb-btn-secondary-v2 px-3 py-1 font-medium md:w-fit">
+        <DialogClose className="ws-btn-secondary-v2 px-3 py-1 font-medium md:w-fit">
           Cancel
         </DialogClose>
         <button
           onClick={handleSubmit}
-          className="obb-btn-tertiary h-8 px-3 py-1 font-medium md:w-fit"
+          className="ws-btn-tertiary h-8 px-3 py-1 font-medium md:w-fit"
         >
           Update
         </button>

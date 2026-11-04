@@ -14,10 +14,6 @@ function downloadBlob(blob: Blob, fileName: string) {
   window.URL.revokeObjectURL(url);
 }
 
-/**
- * Writes plain-text records to a CSV or XLSX file and triggers a browser
- * download. Shared by the admin Users/Apps export flows (no AG Grid).
- */
 export async function exportRecordsToFile(
   rows: Record<string, string>[],
   headers: readonly string[],
@@ -25,11 +21,10 @@ export async function exportRecordsToFile(
   fileName: string,
   format: ExportFormat,
 ): Promise<void> {
-  const name = fileName || `openbb_pro_${sheetName.toLowerCase()}`;
+  const name = fileName || `workspace_${sheetName.toLowerCase()}`;
 
   if (format === "csv") {
     const csv = Papa.unparse(rows, { columns: [...headers], delimiter: ";" });
-    // `sep=;` prefix tells Excel to use ";" as the column separator (locale-safe).
     const blob = new Blob([`sep=;\n${csv}`], { type: "text/csv;charset=utf-8;" });
     downloadBlob(blob, `${name}.csv`);
     return;

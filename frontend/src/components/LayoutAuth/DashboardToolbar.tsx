@@ -4,11 +4,15 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import { motion } from "framer-motion";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { inSnowflakeNativeApp } from "~/lib/constants";
-import { type Item, useShallowAppStore } from "~/lib/state/app";
+import {
+  DASHBOARD_LOCKED_MESSAGE,
+  type Item,
+  useIsDashboardLocked,
+  useShallowAppStore,
+} from "~/lib/state/app";
 import { useShallowSharedAppStore, useSharedAppStore } from "~/lib/state/sharedApp";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { cn } from "~/lib/utils";
+import { cn, getGroupKindLabel } from "~/lib/utils";
 import { duplicateDashboard } from "~/lib/utils/shared";
 import { NotificationId, showNotificationWithRememberMe } from "~/lib/utils/toast";
 import { Button } from "../ds/atoms/Button";
@@ -17,18 +21,16 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "../ds/atoms/DropdownMenu";
-import SnowflakeHide from "../General/SnowflakeHide";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import { GroupPanelHeader, GroupRow } from "../Widgets/Helpers/GroupRow";
 
 dayjs.extend(relativeTime);
 
-const formatDistanceToNow = (date: number) => {
-  return dayjs(date).fromNow();
-};
-
-function getDashboardInfo(item: Item & { created_by?: string }, isShared = false) {
+function getDashboardInfo(
+  item: (Item & { created_by?: string }) | undefined,
+  isShared = false,
+) {
   if (!item) return undefined;
   if (isShared)
     return {
@@ -44,7 +46,7 @@ function getDashboardInfo(item: Item & { created_by?: string }, isShared = false
 }
 
 export default function DashboardToolbar() {
-  const { id } = useParams();
+  const { id = "" } = useParams();
   const { tabGroups, deleteGroup, getWidgetsFromGroup } = useShallowAppStore(
     (state) => ({
       tabGroups: state?.getAllTabActiveGroups(id),
@@ -62,6 +64,7 @@ export default function DashboardToolbar() {
     getDashboardInfo(state?.sharedItems?.[id], true),
   );
   const isShared = !!sharedDashboardInfo;
+  const isLocked = useIsDashboardLocked(id);
 
   const { quickAddButtonVisible, toggleSearch, setInitialSelectedSearchTab } =
     useShallowThemeStore((state) => ({
@@ -77,7 +80,6 @@ export default function DashboardToolbar() {
       const widgetsInGroup = getWidgetsFromGroup(groupId, id);
 
       if (widgetsInGroup?.length > 0) {
-        // If there are, show a warning message
         return showNotificationWithRememberMe({
           id: NotificationId.GroupNotEmpty,
           message: "Group not empty",
@@ -95,7 +97,6 @@ export default function DashboardToolbar() {
         });
       }
 
-      // If there are no widgets in the group, delete the group
       deleteGroup(id, groupId);
     },
     [id, deleteGroup, getWidgetsFromGroup],
@@ -107,13 +108,21 @@ export default function DashboardToolbar() {
   }, [setInitialSelectedSearchTab, toggleSearch]);
 
   const SharedDashboardTooltipMessage = useMemo(() => {
+    if (isLocked) {
+      return (
+        <p className="body-xs-regular max-w-md break-words whitespace-normal">
+          <strong>This dashboard is locked</strong> — {DASHBOARD_LOCKED_MESSAGE} You're
+          still allowed to change parameters and resize widgets.
+        </p>
+      );
+    }
     if (!isShared) return "Share";
     return (
       <div className="max-w-[457px]">
         <p className="body-xs-regular max-w-md break-words whitespace-normal">
-          <strong>This dashboard is shared</strong> — You're allowed to change tickers
-          and switch tabs. You don't have permission to add, remove or resizing widgets.
-          Duplicate the template first before applying any modifications.
+          <strong>This dashboard is shared</strong> — You're allowed to change
+          parameters and switch tabs. You don't have permission to add, remove or resize
+          widgets. Duplicate the template first before applying any modifications.
         </p>
         <Button
           variant="primary"
@@ -121,6 +130,7 @@ export default function DashboardToolbar() {
           size="xs"
           onClick={() => {
             const sharedDashboard = useSharedAppStore.getState().getDashboardById(id);
+            if (!sharedDashboard) return;
             const newId = duplicateDashboard(sharedDashboard);
             navigate(`/app/${newId}`);
           }}
@@ -129,7 +139,7 @@ export default function DashboardToolbar() {
         </Button>
       </div>
     );
-  }, [id, isShared]);
+  }, [id, isShared, isLocked, navigate]);
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -139,7 +149,6 @@ export default function DashboardToolbar() {
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    // Check if mouse is over dropdown content or tooltip content - we need a delay to allow for the mouse to enter the dropdown content
     setTimeout(() => {
       const dropdownContent = document.querySelector("._dropdown-menu-content");
       const tooltipContent = document.querySelector(".TooltipContent");
@@ -157,9 +166,9 @@ export default function DashboardToolbar() {
     <motion.div
       data-testid="dashboard-toolbar"
       initial="closed"
-      animate={isExpanded && !inSnowflakeNativeApp ? "open" : "closed"}
-      onMouseEnter={inSnowflakeNativeApp ? undefined : handleMouseEnter}
-      onMouseLeave={inSnowflakeNativeApp ? undefined : handleMouseLeave}
+      animate={isExpanded ? "open" : "closed"}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       variants={{
         open: {
           width: "auto",
@@ -195,116 +204,106 @@ export default function DashboardToolbar() {
           },
         }}
       >
-        <SnowflakeHide>
-          <div className="rounded flex items-center gap-1.5">
-            <Tooltip
-              className={cn({
-                "w-[356px] p-3": !groupingVisible,
-              })}
-              message={
-                isExpanded ? (
-                  groupingVisible ? (
-                    <p className="body-xs-regular">
-                      Hide group labels and indicators in the dashboard.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="body-xs-regular mb-2.5">
-                        Show group labels and indicators in the dashboard to visualize
-                        widget groupings.
-                      </p>
-                      <div className="dark:bg-dark-300 bg-light-100 rounded p-2">
-                        <p className="inline-flex items-center gap-1">
-                          <Icon
-                            id="info-circled-icon"
-                            className="min-w-3 size-3 dark:text-white"
-                          />
-                          <span className="body-xs-bold dark:text-light-50 text-dark-800">
-                            Note:
-                          </span>
-                        </p>
-                        <img
-                          src="/assets/images/features/Grouping.gif"
-                          alt="Group info"
-                          className="w-[318px] h-[206px] mt-2.5"
-                        />
-                      </div>
-                    </>
-                  )
-                ) : (
-                  ""
-                )
-              }
-            >
-              <button
-                onClick={() => setGroupingVisible(!groupingVisible)}
-                className={cn(
-                  "size-6 flex items-center justify-center rounded",
-                  groupingVisible && "bg-brand-main",
-                )}
-              >
-                <Icon id="grouping" className="min-w-4 size-4 text-white" />
-              </button>
-            </Tooltip>
-            <DropdownMenu
-              modal={false}
-              open={isDropdownOpen}
-              onOpenChange={setIsDropdownOpen}
-            >
-              <Tooltip
-                hide={!isExpanded}
-                position="top"
-                message={
-                  isExpanded
-                    ? tabGroups.length === 0
-                      ? "No groups available"
-                      : "Manage groups"
-                    : ""
-                }
-              >
-                <DropdownMenuTrigger className="w-2.5 h-6 flex items-center justify-center rounded-[2px] radix-state-open:bg-brand-main hover:bg-brand-main/50">
-                  <ChevronDownIcon className="min-w-2.5 size-2.5 text-white" />
-                </DropdownMenuTrigger>
-              </Tooltip>
-              <DropdownMenuContent
-                sideOffset={10}
-                className="_dropdown-menu-content min-w-[180px] flex flex-col gap-2"
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-              >
-                <GroupPanelHeader />
-                {tabGroups.length === 0 ? (
-                  <p className="body-xs-regular text-ds-text-caption py-1">
-                    No groups available
+        <div className="rounded flex items-center gap-1.5">
+          <Tooltip
+            className={cn({
+              "w-[356px] p-3": !groupingVisible,
+            })}
+            message={
+              isExpanded ? (
+                groupingVisible ? (
+                  <p className="body-xs-regular">
+                    Hide group labels and indicators in the dashboard.
                   </p>
                 ) : (
-                  <div className="py-1 space-y-1">
-                    {tabGroups.map((group) => {
-                      //TODO: we need to update types because they dont match reality?
-                      //@ts-expect-error
-                      let label = group.groupBy ?? group.paramName ?? group.type;
-                      if (
-                        group.type === "ticker" &&
-                        group?.value?.category === "country"
-                      ) {
-                        label = "country";
-                      }
-                      return (
-                        <GroupRow
-                          key={group.id}
-                          name={group.name}
-                          color={group.color}
-                          valueLabel={<span className="capitalize">{label}</span>}
-                          onDelete={() => onDeleteGroupClick(group.id)}
+                  <>
+                    <p className="body-xs-regular mb-2.5">
+                      Show group labels and indicators in the dashboard to visualize
+                      widget groupings.
+                    </p>
+                    <div className="dark:bg-dark-300 bg-light-100 rounded p-2">
+                      <p className="inline-flex items-center gap-1">
+                        <Icon
+                          id="info-circled-icon"
+                          className="min-w-3 size-3 dark:text-white"
                         />
-                      );
-                    })}
-                  </div>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </SnowflakeHide>
+                        <span className="body-xs-bold dark:text-light-50 text-dark-800">
+                          Note:
+                        </span>
+                      </p>
+                      <img
+                        src="/assets/images/features/grouping.png"
+                        alt="Group info"
+                        className="w-[318px] h-[206px] mt-2.5"
+                      />
+                    </div>
+                  </>
+                )
+              ) : (
+                ""
+              )
+            }
+          >
+            <button
+              onClick={() => setGroupingVisible(!groupingVisible)}
+              className={cn(
+                "size-6 flex items-center justify-center rounded",
+                groupingVisible && "bg-brand-main",
+              )}
+            >
+              <Icon id="grouping" className="min-w-4 size-4 text-white" />
+            </button>
+          </Tooltip>
+          <DropdownMenu
+            modal={false}
+            open={isDropdownOpen}
+            onOpenChange={setIsDropdownOpen}
+          >
+            <Tooltip
+              hide={!isExpanded}
+              position="top"
+              message={
+                isExpanded
+                  ? tabGroups.length === 0
+                    ? "No groups available"
+                    : "Manage groups"
+                  : ""
+              }
+            >
+              <DropdownMenuTrigger className="w-2.5 h-6 flex items-center justify-center rounded-[2px] data-[state=open]:bg-brand-main hover:bg-brand-main/50">
+                <ChevronDownIcon className="min-w-2.5 size-2.5 text-white" />
+              </DropdownMenuTrigger>
+            </Tooltip>
+            <DropdownMenuContent
+              sideOffset={10}
+              className="_dropdown-menu-content min-w-[180px] flex flex-col gap-2"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <GroupPanelHeader />
+              {tabGroups.length === 0 ? (
+                <p className="body-xs-regular text-ds-text-caption py-1">
+                  No groups available
+                </p>
+              ) : (
+                <div className="py-1 space-y-1">
+                  {tabGroups.map((group) => {
+                    const label = getGroupKindLabel(group);
+                    return (
+                      <GroupRow
+                        key={group.id}
+                        name={group.name}
+                        color={group.color}
+                        valueLabel={<span className="capitalize">{label}</span>}
+                        onDelete={() => onDeleteGroupClick(group.id)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </motion.div>
 
       <div
@@ -313,12 +312,12 @@ export default function DashboardToolbar() {
       >
         <Tooltip
           position="top"
-          message={isShared ? SharedDashboardTooltipMessage : "Add widgets"}
-          {...(isShared ? { align: "end", alignOffset: -4 } : {})}
+          message={isShared || isLocked ? SharedDashboardTooltipMessage : "Add widgets"}
+          {...(isShared || isLocked ? { align: "end", alignOffset: -4 } : {})}
         >
           <button
             data-testid="dashboard-toolbar-add-widget-button"
-            disabled={isShared}
+            disabled={isShared || isLocked}
             className="disabled:opacity-50 size-6 hover:bg-brand-main flex items-center justify-center rounded"
             onClick={handleClickWidget}
           >

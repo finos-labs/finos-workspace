@@ -1,6 +1,6 @@
 # Stress / load tests
 
-A repeatable, multi-user load simulator for the backend + Workspace MCP, plus a launcher that
+A repeatable, multi-user load simulator for the backend + FINOS Workspace MCP, plus a launcher that
 brings up the topology you want to test.
 
 > These are **manual** load tests against a running stack — not part of the pytest suite. The
@@ -11,8 +11,8 @@ brings up the topology you want to test.
 
 | file | purpose |
 |---|---|
-| `run_stress.sh` | launcher — brings up a topology (DB type × worker count) and runs the simulator |
-| `load_simulator.py` | the load generator (realistic multi-user Workspace MCP traffic) |
+| `run_stress.sh` | launcher — brings up the MySQL dev stack with a chosen worker count and runs the simulator |
+| `load_simulator.py` | the load generator (realistic multi-user FINOS Workspace MCP traffic) |
 | `docker-compose.stress.yml` | one parameterized overlay (workers + Prometheus), layered on a base stack |
 
 ## Prerequisites
@@ -27,26 +27,22 @@ brings up the topology you want to test.
 ```bash
 cd backend/tests/stress
 
-# MySQL (server build), 3 workers, 80 users — the production-representative run
-./run_stress.sh --db mysql --workers 3 --users 80
-
-# Lite build (SQLite), single worker, realistic small load — seed the DB on first run
-./run_stress.sh --db sqlite --workers 1 --users 20 --seed
+# 3 workers, 80 users — the production-representative run
+./run_stress.sh --workers 3 --users 80
 
 # MCP-impact A/B: hold API load fixed, add a pool of MCP-only hammerers
-./run_stress.sh --db mysql --workers 3 --users 80 --mcp-users 0  --api-mcp 0   # baseline
-./run_stress.sh --db mysql --workers 3 --users 80 --mcp-users 40 --api-mcp 0   # + MCP load
+./run_stress.sh --workers 3 --users 80 --mcp-users 0  --api-mcp 0   # baseline
+./run_stress.sh --workers 3 --users 80 --mcp-users 40 --api-mcp 0   # + MCP load
 
-# Just bring a stack up (no load), or tear it down
-./run_stress.sh --db sqlite --workers 1 --no-run
-./run_stress.sh --db mysql --down
+# Just bring the stack up (no load), or tear it down
+./run_stress.sh --workers 1 --no-run
+./run_stress.sh --down
 ```
 
 ## Flags
 
 | flag | default | meaning |
 |---|---|---|
-| `--db` | `mysql` | `mysql` (server build) or `sqlite` (lite Cython build) |
 | `--workers` | `1` | uvicorn worker processes |
 | `--users` | `40` | simulated API users |
 | `--duration` | `20` | seconds |
@@ -57,16 +53,23 @@ cd backend/tests/stress
 | `--no-run` | off | bring the stack up but skip the simulator |
 | `--down` | off | tear the stack down and exit |
 
-The simulator authenticates as `admin@openbb.co` / `asdQWE123!` (override with `ADMIN_EMAIL` /
-`ADMIN_PASSWORD` env). It needs the frontend User-Agent to skip rate limiting — this defaults to
-`test` (the value in the dev/lite envs); override with `FRONTEND_UA` if your env differs.
+The simulator authenticates as the administrator that `ADMIN_EMAIL` and `ADMIN_PASSWORD` name; both
+are required. With `--seed`, that is the administrator listed in `scripts/cfgs/config.toml`
+(write it with `python -m scripts.create_local_env --admin-email <your-email>`), and the seed step
+sets their password to `ADMIN_PASSWORD` (read from standard input, never printed). Every
+simulated user comes from one address, so they send the stack's `WORKSPACE_AUTH_TOKEN` as
+`X-Workspace-Authorization` and the stress overlay sets `RATE_LIMIT_EXEMPT_ENABLED=1`, which lets
+that token skip rate limiting (development stacks only; set both yourself for a stack you started
+another way). The simulated users are the web app: they ride its session cookie with its client header and the
+origin `ORIGIN` (default `http://localhost:3000`), which must be one of the stack's
+`BACKEND_CORS_ORIGINS`.
 
 ## What it does
 
 Each simulated user logs in, opens a bridge WebSocket (an auto-answering "browser tab"), and loops a
 weighted mix of real endpoints: `validate-and-sync` (once, the dashboard-open aggregation),
 `dash/sync` (save), the read endpoints (`api-source`, `apps`, `shared`, `resource-permissions`),
-`display-settings`, and Workspace MCP tool calls over `/mcp`. A `--mcp-users` pool can add MCP-only
+`display-settings`, and FINOS Workspace MCP tool calls over `/mcp`. A `--mcp-users` pool can add MCP-only
 load to isolate the MCP server's impact on the rest of the API.
 
 ## Reading the output
@@ -78,12 +81,3 @@ Then it reports the live runtime gauges scraped from `/metrics`:
 - `threadpool_tokens` — worker thread-pool occupancy.
 - `event_loop_lag_seconds` — event-loop scheduling delay (the main "something is blocking the loop"
   signal).
-
-## Notes / gotchas
-
-- **MySQL and SQLite stacks share container names** (`fastapi`, `redis`), so the launcher tears down
-  any existing stack before starting. Only one runs at a time.
-- **SQLite is single-writer.** `--db sqlite --workers >1` will produce `database is locked` errors
-  under write load — that's expected; the lite build is meant to run `--workers 1`.
-- The lite (`sqlite`) image is **Cython-compiled**, so the launcher rebuilds it each run to pick up
-  code changes; the MySQL dev image is bind-mounted and doesn't need a rebuild.

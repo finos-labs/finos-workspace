@@ -12,9 +12,11 @@ import {
 import type { Extension } from "~/lib/constants";
 import { useShallowPermissionsStore } from "~/lib/state/permissions";
 
-export type UserResourcePermissionsT<T extends boolean = false> = {
-  backends: ProcessedBackendT<T>[];
-  files: FilePermissionsT[];
+type SharedFilePermissionsT = FilePermissionsT & { shared: true };
+
+export type UserResourcePermissionsT = {
+  backends: ProcessedBackendT[];
+  files: SharedFilePermissionsT[];
   prompts: PromptPermissionsT[];
 };
 export type RolePermissionsOptions = Omit<
@@ -55,7 +57,7 @@ export function useUserResourcePermissions(
         throw error;
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     ...options,
   });

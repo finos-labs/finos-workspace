@@ -1,5 +1,3 @@
-"""Navigation-bar mutation and route navigation tools."""
-
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -32,13 +30,13 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
             (
                 "After add_tabs, navigate_workspace to the generated slug tab_id, "
-                "e.g. AAPL Analysis -> aapl-analysis, before creating content for "
+                "e.g. Q3 Review -> q3-review, before creating content for "
                 "that tab."
             ),
         )
     )
     async def manage_navigation_bar(
-        operation: NavigationOperation,
+        operation: Annotated[NavigationOperation, Field(description="What to do with the navigation tabs.")],
         dashboard_id: Annotated[
             str | None, Field(description=DASHBOARD_ID_PARAM)
         ] = None,
@@ -47,9 +45,9 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             Field(
                 description=(
                     'Array of {"name": ...} objects, for example '
-                    '[{"name":"AAPL Analysis"}]; name is the only key (tab_id and '
+                    '[{"name":"Q3 Review"}]; name is the only key (tab_id and '
                     "tab_name are rejected) and tab_id is generated as the slug "
-                    'of name. Not a string array such as ["AAPL Analysis"]. '
+                    'of name. Not a string array such as ["Q3 Review"]. '
                     "Required for create, add_tabs, and remove_tabs."
                 )
             ),
@@ -66,7 +64,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ] = None,
     ) -> ToolResponse:
-        """Create tabs or update navigation tab metadata."""
         allowed_operations = literal_values(NavigationOperation)
         if operation not in allowed_operations:
             return invalid_request(
@@ -100,7 +97,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
 
     @server.tool(
         description=describe_tool(
-            "Navigate the Workspace browser to an existing dashboard or inner tab.",
+            "Navigate the FINOS Workspace browser to an existing dashboard or inner tab.",
             "For operation='dashboard', pass dashboard_id and optional tab_id.",
             (
                 "For operation='tab', pass tab_id and optional dashboard_id; "
@@ -109,7 +106,10 @@ def register(server: FastMCP, run: CommandRunner) -> None:
         )
     )
     async def navigate_workspace(
-        operation: WorkspaceNavigationOperation,
+        operation: Annotated[
+            WorkspaceNavigationOperation,
+            Field(description="Whether to move to a dashboard or to an inner tab."),
+        ],
         dashboard_id: Annotated[
             str | None, Field(description=DASHBOARD_ID_PARAM)
         ] = None,
@@ -117,13 +117,12 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             str | None,
             Field(
                 description=(
-                    "Inner tab slug id, e.g. aapl-analysis. Required for "
+                    "Inner tab slug id, e.g. q3-review. Required for "
                     "operation='tab'."
                 )
             ),
         ] = None,
     ) -> ToolResponse:
-        """Navigate to a dashboard route or switch an inner tab."""
         if operation == "dashboard":
             if not dashboard_id:
                 return invalid_request(

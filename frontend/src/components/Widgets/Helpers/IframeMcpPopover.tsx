@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatSchemaValue, isRecord } from "~/components/AI/utils/mcpToolSchema";
 import { Button } from "~/components/ds/atoms/Button";
 import { Input } from "~/components/ds/atoms/Input";
 import {
@@ -62,7 +63,6 @@ export const IframeMcpPopover = memo(
     const urlInitialized = useRef(false);
     const lockedMcpUrl = mcpUrl?.trim() ?? "";
 
-    // Single subscription with fast field-level equality
     const {
       serverId,
       serverUrl,
@@ -88,12 +88,10 @@ export const IframeMcpPopover = memo(
       };
     }, mcpStateEqual);
 
-    // Stable action refs
     const addServer = useMcpToolsStore((s) => s.addServer);
     const removeServer = useMcpToolsStore((s) => s.removeServer);
     const updateServer = useMcpToolsStore((s) => s.updateServer);
 
-    // Initialize URL input from persisted server on mount
     useEffect(() => {
       const configuredUrl = serverUrl || lockedMcpUrl;
       if (configuredUrl && (!urlInitialized.current || lockedMcpUrl)) {
@@ -126,7 +124,6 @@ export const IframeMcpPopover = memo(
         name: widgetName || getServerName(trimmed),
         url: trimmed,
         enabled: true,
-        isLocal: trimmed.includes("localhost") || trimmed.includes("127.0.0.1"),
       };
 
       if (serverId) {
@@ -335,23 +332,23 @@ export const IframeMcpPopover = memo(
                               {params && Object.keys(params).length > 0 && (
                                 <div className="text-xs mt-1.5 pt-1.5 border-t border-light-300 dark:border-dark-500">
                                   <div className="font-medium mb-0.5">Parameters:</div>
-                                  {Object.entries(params).map(
-                                    ([key, schema]: [string, any]) => (
-                                      <div
-                                        key={key}
-                                        className="flex justify-between gap-2"
-                                      >
-                                        <span className="text-ds-text-caption">
-                                          {key}
-                                        </span>
-                                        <span className="font-mono text-brand-main dark:text-brand-lighter">
-                                          {iframeParams?.[key] ??
-                                            schema?.default ??
-                                            "—"}
-                                        </span>
-                                      </div>
-                                    ),
-                                  )}
+                                  {Object.entries(params).map(([key, schema]) => (
+                                    <div
+                                      key={key}
+                                      className="flex justify-between gap-2"
+                                    >
+                                      <span className="text-ds-text-caption">
+                                        {key}
+                                      </span>
+                                      <span className="font-mono text-brand-main dark:text-brand-lighter">
+                                        {iframeParams?.[key] ??
+                                          (isRecord(schema)
+                                            ? formatSchemaValue(schema.default)
+                                            : undefined) ??
+                                          "—"}
+                                      </span>
+                                    </div>
+                                  ))}
                                 </div>
                               )}
                             </div>

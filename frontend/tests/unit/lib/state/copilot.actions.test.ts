@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getCopilotChat } from "~/api/auth.api";
 import {
@@ -5,49 +6,64 @@ import {
   type ArtifactT,
   type Chat,
   type Copilot,
+  copilotSchema,
   type ExternalCopilotHolder,
   type HumanMessage,
+  type Message,
   useCopilotStore,
 } from "~/lib/state/copilot";
 
-// Mock uuid
 vi.mock("uuid", () => ({
   v4: () => "test-uuid-1234",
 }));
 
-// Mock the external API call
 vi.mock("~/api/auth.api", () => ({
   getExternalCopilotHolders: vi.fn((_, callback) => callback([])),
   getCopilotChat: vi.fn(),
 }));
 
-// Mock deprecated flags toast
-vi.mock("~/components/AI/hooks/utils", () => ({
-  showDeprecatedFlagsToast: vi.fn(),
-}));
-
 describe("useCopilotStore - Actions", () => {
+  describe("setSelectedCopilot", () => {
+    it("selects an agent that uses the flags hasStreaming, hasFunctionCalling and hasDocuments, and warns about nothing", () => {
+      const warning = vi.spyOn(toast, "warning");
+      const agent = copilotSchema.parse({
+        id: "agent",
+        name: "Agent",
+        description: "An agent",
+        endpoints: { query: "https://agent.example.test/query" },
+        hasStreaming: true,
+        hasFunctionCalling: true,
+        hasDocuments: true,
+      });
+
+      useCopilotStore.getState().setSelectedCopilot(agent);
+
+      expect(useCopilotStore.getState().selectedCopilot).toEqual(agent);
+      expect(warning).not.toHaveBeenCalled();
+    });
+  });
+
   const mockChat: Chat = {
     uuid: "chat-1",
     createdAt: 1000,
     label: "Test Chat",
     messages: [],
     lastOpened: 1000,
-    agentIds: ["openbb-copilot"],
+    agentIds: ["default-copilot"],
   };
 
   const mockHumanMessage: HumanMessage = {
     role: "human",
     content: "Hello",
     timestamp: 2000,
-    copilotId: "openbb-copilot",
+    copilotId: "default-copilot",
   };
 
   const mockAIMessage: AIMessage = {
     role: "ai",
     content: "Hi there!",
     timestamp: 2001,
-    copilotId: "openbb-copilot",
+    copilotId: "default-copilot",
   };
 
   beforeEach(() => {
@@ -57,7 +73,7 @@ describe("useCopilotStore - Actions", () => {
       questionsHistory: [],
       actionHistory: [],
       isTyping: false,
-      selectedModelByAgent: { "openbb-copilot": "gpt-4" },
+      selectedModelByAgent: { "default-copilot": "gpt-4" },
       selectedCopilot: null,
       externalCopilotHolders: [],
       orchestrationModeEnabled: false,
@@ -84,7 +100,7 @@ describe("useCopilotStore - Actions", () => {
       copilots: [{ id: "rita", name: "Agent Rita" }],
     } as unknown as ExternalCopilotHolder;
 
-    it("auto-selects the first available agent when none is selected (lite)", () => {
+    it("auto-selects the first available agent when none is selected", () => {
       useCopilotStore.setState({ selectedCopilot: null, externalCopilotHolders: [] });
 
       useCopilotStore.getState().setExternalCopilotHolders([ritaHolder]);
@@ -103,15 +119,15 @@ describe("useCopilotStore - Actions", () => {
       expect(useCopilotStore.getState().selectedCopilot?.id).toBe("rita");
     });
 
-    it("preserves the built-in OpenBB copilot selection", () => {
+    it("preserves the built-in copilot selection", () => {
       useCopilotStore.setState({
-        selectedCopilot: { id: "openbb-copilot" } as Copilot,
+        selectedCopilot: { id: "default-copilot" } as Copilot,
         externalCopilotHolders: [],
       });
 
       useCopilotStore.getState().setExternalCopilotHolders([ritaHolder]);
 
-      expect(useCopilotStore.getState().selectedCopilot?.id).toBe("openbb-copilot");
+      expect(useCopilotStore.getState().selectedCopilot?.id).toBe("default-copilot");
     });
 
     it("leaves selection null when there are no agents", () => {
@@ -234,13 +250,12 @@ describe("useCopilotStore - Actions", () => {
         label: "Test Chat",
         messages: [mockHumanMessage],
         lastOpened: 1721284317112,
-        agentIds: ["openbb-copilot"],
+        agentIds: ["default-copilot"],
       };
       vi.mocked(getCopilotChat).mockResolvedValue(fetchedChat);
 
       useCopilotStore.setState({
-        // simulating a chat list entry that hasn't loaded its messages yet
-        chats: [{ ...mockChat, messages: undefined }],
+        chats: [{ ...mockChat, messages: undefined as unknown as Message[] }],
       });
 
       await useCopilotStore.getState().loadChatData("chat-1");
@@ -274,8 +289,7 @@ describe("useCopilotStore - Actions", () => {
       vi.mocked(getCopilotChat).mockResolvedValue(null);
 
       useCopilotStore.setState({
-        // simulating a chat list entry that hasn't loaded its messages yet
-        chats: [{ ...mockChat, messages: undefined }],
+        chats: [{ ...mockChat, messages: undefined as unknown as Message[] }],
         currentChat: 0,
       });
 
@@ -316,8 +330,7 @@ describe("useCopilotStore - Actions", () => {
 
       const chat = useCopilotStore.getState().chats[0];
       expect(chat.messages).toHaveLength(1);
-      // @ts-expect-error - ignored for now
-      expect(chat.messages[0].content).toBe("Hello");
+      expect(chat.messages[0]).toMatchObject({ content: "Hello" });
     });
 
     it("adds human message to questions history", () => {
@@ -371,13 +384,13 @@ describe("useCopilotStore - Actions", () => {
         role: "ai",
         content: "here is art-orphan",
         timestamp: 3000,
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
       };
       const aiWithKeptRef: AIMessage = {
         role: "ai",
         content: "here is art-kept",
         timestamp: 4000,
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
       };
       useCopilotStore.setState({
         chats: [
@@ -494,9 +507,9 @@ describe("useCopilotStore - Actions", () => {
   describe("Model Selection", () => {
     it("sets selected model for agent", () => {
       const { setSelectedModelForAgent } = useCopilotStore.getState();
-      setSelectedModelForAgent("openbb-copilot", "gpt-3.5-turbo");
+      setSelectedModelForAgent("default-copilot", "gpt-3.5-turbo");
 
-      expect(useCopilotStore.getState().selectedModelByAgent["openbb-copilot"]).toBe(
+      expect(useCopilotStore.getState().selectedModelByAgent["default-copilot"]).toBe(
         "gpt-3.5-turbo",
       );
     });
@@ -729,9 +742,7 @@ describe("useCopilotStore - Actions", () => {
     it("excludes messages and artifacts from getChatsData", () => {
       const artifact: ArtifactT = { uuid: "art-1", type: "text", content: "t1" };
       useCopilotStore.setState({
-        chats: [
-          { ...mockChat, messages: [mockHumanMessage], artifacts: [artifact] },
-        ],
+        chats: [{ ...mockChat, messages: [mockHumanMessage], artifacts: [artifact] }],
       });
 
       const { getChatsData } = useCopilotStore.getState();

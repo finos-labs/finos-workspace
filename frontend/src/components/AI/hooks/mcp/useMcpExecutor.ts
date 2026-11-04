@@ -1,10 +1,11 @@
-import posthog from "posthog-js";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { getIframeWidget } from "~/lib/iframeWidgetRegistry";
 import type { CopilotDataT } from "~/lib/state/copilot";
 import { CopilotErrorType } from "~/lib/state/copilot";
-import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
+import { type McpServer, useShallowMcpToolsStore } from "~/lib/state/mcpTools";
+import { citeMcpCall } from "~/lib/utils/mcpLink";
+import { toError } from "~/lib/utils/utils";
 import { getAllWidgets } from "~/lib/utils/widget";
 
 type ExecuteAgentTool = (
@@ -18,6 +19,8 @@ interface WidgetCitation {
   source: string;
   name?: string;
   description?: string;
+  inputArgs: Record<string, unknown>;
+  details: Record<string, unknown>;
 }
 
 interface IframeMcpCitation {
@@ -31,40 +34,28 @@ interface IframeMcpCitation {
 }
 
 function findEquivalentWidget(
-  mcpServerName: string,
-  mcpToolName: string,
+  server: McpServer,
+  toolName: string,
+  callArgs: Record<string, unknown>,
 ): WidgetCitation | null {
-  // Preserve underscores and spaces; only lowercase + trim
-  const norm = (s: string) => (s || "").trim().toLowerCase();
-
-  const serverKey = norm(mcpServerName);
-  const toolKey = norm(mcpToolName);
-
-  // Get external, backend, advanced-backend widgets that declare mcp_tool
-  const widgets = getAllWidgets(null, ["backend"]).filter(
-    (w) =>
-      // @ts-expect-error
-      w?.mcp_tool?.mcp_server &&
-      // @ts-expect-error
-      w?.mcp_tool?.tool_id,
+  const citation = citeMcpCall(
+    server,
+    toolName,
+    callArgs,
+    getAllWidgets(undefined, ["backend"]),
   );
-
-  for (const w of widgets) {
-    // @ts-expect-error
-    const meta = w.mcp_tool;
-    if (norm(meta.mcp_server) !== serverKey) continue;
-    if (norm(meta.tool_id) !== toolKey) continue;
-    return {
-      widgetId: w.widgetId || "",
-      source:
-        w.sourceName ||
-        (Array.isArray(w.source) ? w.source.join(", ") : w.source || ""),
-      name: w.name,
-      description: w.description,
-    };
-  }
-
-  return null;
+  if (!citation) return null;
+  const { widget, inputArgs, details } = citation;
+  return {
+    widgetId: widget.widgetId || "",
+    source:
+      widget.sourceName ||
+      (Array.isArray(widget.source) ? widget.source.join(", ") : widget.source || ""),
+    name: widget.name,
+    description: widget.description,
+    inputArgs,
+    details,
+  };
 }
 
 function getErrorContent(
@@ -72,7 +63,6 @@ function getErrorContent(
   _serverName: string,
   error: Error,
 ): CopilotDataT {
-  // Create a user-friendly error message
   const errorContent = {
     error_type: CopilotErrorType.UNEXPECTED,
     content: `Error executing MCP tool "${toolName}": ${error.message}
@@ -97,14 +87,12 @@ export function useMcpExecutor() {
 
   const executeAgentTool = useCallback<ExecuteAgentTool>(
     async (serverId, toolName, parameters) => {
-      // Extract server ID from tool name (format: serverId_toolName)
       const [serverName, ...toolNameParts] = toolName.split("_");
       const actualToolName = toolNameParts.join("_");
 
       if (!(serverId && actualToolName))
         throw new Error(`Invalid tool name format: ${toolName}`);
 
-      // Get server info from store
       const { getServerById, getMCPConnection } = mcpToolsStore;
       const mcpConnection = getMCPConnection(serverId);
       const server = getServerById(serverId);
@@ -112,33 +100,28 @@ export function useMcpExecutor() {
       try {
         if (!server) throw new Error(`Server not found: ${serverName}`);
 
-        // Check if server is enabled (not disconnected via MCP Server config)
         if (!server.enabled) {
           throw new Error(
             `Server ${server.name} is disconnected. Connect it in the MCP Servers settings.`,
           );
         }
 
-        // Check if server tools are enabled
         if (!server.toolsEnabled) {
           throw new Error(
             `Server ${server.name} tools are disabled. Enable them in the MCP Tools dialog to use its tools.`,
           );
         }
 
-        // Check if server is connected
         if (!server.connected) {
           throw new Error(
             `Server ${server.name} is not connected. Check connection in MCP Servers settings.`,
           );
         }
 
-        // Get the MCP connection from use-mcp's connection registry
         if (!mcpConnection?.callTool) {
           throw new Error(`No active MCP connection found for server ${server.name}.`);
         }
 
-        // Additional validation - check if connection is truly ready
         if (mcpConnection.state !== "ready") {
           throw new Error(
             `MCP connection for server \`${server.name}\` is not ready (state: ${mcpConnection.state})`,
@@ -152,24 +135,23 @@ export function useMcpExecutor() {
           );
         }
 
-        // Add retry logic for race conditions
         let retryCount = 0;
         const maxRetries = 3;
-        let result: any;
+        let result: unknown;
 
         while (retryCount < maxRetries) {
           try {
-            // Ensure parameters is always an object, even for parameter-less tools
             const safeParameters = parameters || {};
             result = await mcpConnection.callTool(actualToolName, safeParameters);
-            break; // Success, exit retry loop
+            break;
           } catch (error) {
-            if (error.message.includes("not ready") && retryCount < maxRetries - 1) {
+            if (
+              toError(error).message.includes("not ready") &&
+              retryCount < maxRetries - 1
+            ) {
               retryCount++;
-              // Wait a bit before retrying
               await new Promise((resolve) => setTimeout(resolve, 500));
 
-              // Refresh connection from registry in case it was updated
               const refreshedConnection = getMCPConnection(serverId);
               if (
                 refreshedConnection?.callTool &&
@@ -179,17 +161,9 @@ export function useMcpExecutor() {
                 mcpConnection.state = refreshedConnection.state;
               }
             } else {
-              throw error; // Re-throw if not a retry-able error or max retries reached
+              throw error;
             }
           }
-        }
-
-        if (posthog) {
-          posthog.capture("MCP_USE_MCP_SUCCESS", {
-            tool_name: toolName,
-            server_id: serverId,
-            result_type: typeof result,
-          });
         }
 
         if (server.iframeWidgetId) {
@@ -198,20 +172,20 @@ export function useMcpExecutor() {
           }
         }
 
-        const getContent = (result: any): string | object => {
+        const getContent = (result: unknown): unknown => {
           if (result && typeof result === "object") {
             const isMcpErrorResult = "isError" in result && result.isError === true;
-            // Preserve the raw MCP error payload so backend logic can detect isError.
             if (isMcpErrorResult) return result;
 
             if (
               "structuredContent" in result &&
-              typeof result.structuredContent?.results === "object"
+              typeof (result.structuredContent as { results?: unknown } | null)
+                ?.results === "object"
             )
               return result.structuredContent;
 
             if ("content" in result && typeof result.content === "object") {
-              const handleItem = (item: any) => {
+              const handleItem = (item: unknown): unknown => {
                 if (item === null || item === undefined) return item;
                 if (Array.isArray(item)) return item.map(handleItem);
                 if (typeof item === "object" && "text" in item) return item.text;
@@ -224,20 +198,19 @@ export function useMcpExecutor() {
           return result;
         };
 
-        let content = getContent(result);
-        content =
-          typeof content === "string" ? content : JSON.stringify(content, null, 2);
+        const rawContent = getContent(result);
+        const content =
+          typeof rawContent === "string"
+            ? rawContent
+            : JSON.stringify(rawContent, null, 2);
 
-        // Find equivalent widget and build citation (if any). Iframe-bound MCP
-        // calls cite the iframe widget itself because they may not have a
-        // catalog widget mapping.
         const equivalentWidget = server.iframeWidgetId
           ? null
-          : findEquivalentWidget(server?.clientName || server?.name, actualToolName);
+          : findEquivalentWidget(server, actualToolName, parameters ?? {});
         if (equivalentWidget) {
           const widgetName = equivalentWidget.name || equivalentWidget.widgetId;
           toast.info("Matching widget found", {
-            description: `The widget ${widgetName} has the same id than the MCP tool call ${actualToolName}`,
+            description: `The call to ${actualToolName} is cited as the widget ${widgetName}`,
           });
         }
 
@@ -263,7 +236,7 @@ export function useMcpExecutor() {
                 source_info: {
                   type: "widget",
                   name: iframeCitation.widgetName || iframeCitation.serverName,
-                  origin: "OpenBB Workspace",
+                  origin: "Workspace",
                   uuid: iframeCitation.widgetId,
                   widget_id: iframeCitation.widgetId,
                   description:
@@ -286,8 +259,14 @@ export function useMcpExecutor() {
             ];
           }
 
-          if (!match) return [] as any[];
-          const details = entries.length > 0 ? [detailsObj] : [];
+          if (!match) return [];
+          const unmapped = Object.entries(match.details).filter(
+            ([, v]) => v !== null && v !== undefined,
+          );
+          const details =
+            unmapped.length > 0
+              ? [Object.fromEntries(unmapped.map(([k, v]) => [toTitleCase(k), v]))]
+              : [];
           return [
             {
               source_info: {
@@ -299,7 +278,7 @@ export function useMcpExecutor() {
                 citable: true,
                 metadata: {
                   matching: true,
-                  input_args: params || {},
+                  input_args: match.inputArgs,
                 },
               },
               details,
@@ -323,22 +302,11 @@ export function useMcpExecutor() {
             : null,
         );
 
-        // Convert response to CopilotDataT format
         return [{ items: [{ content }], extra_citations: extraCitations }];
       } catch (error) {
-        if (posthog) {
-          posthog.capture("MCP_TOOL_EXECUTION_ERROR", {
-            tool_name: toolName,
-            server_id: serverId,
-            error_message: error.message,
-            error_stack: error.stack,
-          });
-        }
-
         console.error(`[MCP Executor] Tool execution failed for ${toolName}:`, error);
 
-        // Return error in the expected format
-        return [getErrorContent(toolName, server?.name || serverId, error as Error)];
+        return [getErrorContent(toolName, server?.name || serverId, toError(error))];
       }
     },
     [mcpToolsStore],

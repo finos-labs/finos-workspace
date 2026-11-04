@@ -1,41 +1,37 @@
-import json
 import re
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeAlias, TypeVar
+from enum import StrEnum
+from typing import TYPE_CHECKING, Annotated, Any, Literal
+from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID, uuid4
 
-import requests
 from fastapi.responses import JSONResponse
 from pydantic import (
     AliasGenerator,
-    AliasPath,
+    BaseModel,
     ConfigDict,
     EmailStr,
     Field,
     HttpUrl,
+    StringConstraints,
     alias_generators,
     field_validator,
     model_validator,
 )
 from pydantic.functional_validators import AfterValidator, BeforeValidator
-from pydantic.networks import IPvAnyAddress
 
 from api import base
 from api.events.types import RoleAuditAction, RoleResourceType
-from utilities.config import BaseModel, settings
+from utilities.config import settings
 
 if TYPE_CHECKING:
-    from api.models.tauri_models import CopilotChat, StoredFile
+    from api.models.workspace_models import CopilotChat
 
-
-StoredFileT = TypeVar("StoredFileT", bound="StoredFile")
 
 main_config = ConfigDict(extra="forbid", from_attributes=True)
-source_type = Literal["terminal", "hub", "sdk", "pro", "oauth-pro", "oauth-hub", "excel"]
+AppLoginSource = Literal["app", "oauth-app"]
 MetaDataWidgetType = Literal[
     "iframe",
-    "rss_viewer",
-    "rich_note",
     "copilot_table",
     "youtube",
     "widget_studio",
@@ -44,8 +40,8 @@ MetaDataWidgetType = Literal[
     "ag_chart_from_table",
 ]
 
-permissions_type = Literal["view", "comment"]  # "edit"
-UserSourceType = Literal["user", "invite", "takeover"]
+permissions_type = Literal["view", "comment"]
+UserSourceType = Literal["user", "invite"]
 ExtensionType = Literal[
     "csv",
     "json",
@@ -63,29 +59,9 @@ ExtensionType = Literal[
     "doc",
     "html",
 ]
-ProgrammingExperience = Literal["no-experience", "basic", "intermediate-advanced"]
-DashboardTypes = Literal[
-    "charting",
-    "news",
-    "countryEconomics",
-    "calendars",
-    "equityAnalyst",
-    "equity",
-    "comparison",
-    "etfTemplate",
-    "onboarding",
-    "earnings",
-]
-WidgetTypes = Literal[
-    "etf_holdings",
-    "economic_calendar",
-    "earnings_trends",
-    "revenue_trends",
-    "etf_classification",
-    "etf_characteristics",
-]
 AccessType = Literal["no-access", "access", "full-access"]
-BundleNames = Literal["Default", "Equity Research", "Pro Trial", "On-Premise"]
+UserType = Literal["Admin", "Developer", "User"]
+SharingLevel = Literal["none", "receive", "share"]
 
 
 def is_bad_word(word: str) -> bool:
@@ -104,14 +80,11 @@ def username_check(username: str) -> None | str:
         )
 
     if is_bad_word(username.lower()):
-        return "This username violates OpenBB Guidelines"
+        return "This username violates Community Guidelines"
     return None
 
 
 def check_email(v: str) -> str:
-    # Chargebee has a 70 character limit on emails
-    if len(v) > 70:  # noqa: PLR2004
-        raise ValueError("Email must be 70 characters or less")
     if not base.check_email(v):
         raise ValueError("Invalid email")
     return v
@@ -137,14 +110,6 @@ def check_password(v: str) -> str:
     return v
 
 
-def check_username(v: None | str) -> None | str:
-    if v:
-        result = username_check(v)
-        if result:
-            raise ValueError(result)
-    return v
-
-
 def check_email_or_username(v: str) -> str:
     if not base.check_email(v) and username_check(v):
         raise ValueError("Invalid email or username")
@@ -152,43 +117,8 @@ def check_email_or_username(v: str) -> str:
 
 
 def check_totp_token(v: None | int) -> None | int:
-    # The totp can be less than 6 because
     if v and len(str(v)) > 6:  # noqa: PLR2004
         raise ValueError("Invalid TOTP token")
-    return v
-
-
-def check_name(v: None | str) -> None | str:
-    if v:
-        for char in settings.UNUSABLE_JSON_CHARACTERS:
-            if char in v:
-                raise ValueError(f"Script name cannot contain {char}")
-    return v
-
-
-def check_system(v: None | str) -> None | str:
-    if v:
-        for system in v.split(","):
-            if system not in base.get_systems():
-                raise ValueError(f"Invalid system: {system}")
-    return v
-
-
-def check_version(v: None | str) -> None | str:
-    if v and not re.match(r"^\d+\.\d+\.\d+$", v):
-        raise ValueError(f"Invalid version: {v}")
-    return v
-
-
-def datetime_to_string(v: str | datetime | None):
-    if isinstance(v, datetime):
-        return v.isoformat()
-    return v
-
-
-def blank_to_none(v: None | str) -> None | str:
-    if not v:
-        return None
     return v
 
 
@@ -200,101 +130,12 @@ def get_camel_config(**config: ConfigDict) -> ConfigDict:
     )
 
 
-def get_widget_metadata(
-    apps_json_cache: list[dict] | None,
-    widgets_json_cache: dict[str, dict] | None = None,
-) -> dict[Literal["widgets", "totalWidgets"], Any]:
-    """Extract app widget metadata and counts from cached manifests."""
-    if (
-        not apps_json_cache
-        or not isinstance(apps_json_cache, list)
-        or not widgets_json_cache
-        or not isinstance(widgets_json_cache, dict)
-    ):
-        return {"widgets": [], "totalWidgets": 0}
-
-    widgetCounts = {}
-    for app in apps_json_cache:
-        for tab in app.get("tabs", {}).values():
-            for layout in tab.get("layout", []):
-                widgetId = layout.get("i")
-                if widgetId:
-                    widgetCounts[widgetId] = widgetCounts.get(widgetId, 0) + 1
-
-    widgets = []
-    if widgets_json_cache and isinstance(widgets_json_cache, dict):
-        for widgetId, widget in widgets_json_cache.items():
-            if widgetId in widgetCounts and widget.get("name"):
-                widgets.append(
-                    AppWidgetMetadata(
-                        id=widgetId,
-                        name=widget.get("name"),
-                        description=widget.get("description"),
-                        count=widgetCounts[widgetId],
-                    )
-                )
-
-    totalWidgets = sum(widgetCounts.values())
-    return {"widgets": widgets, "totalWidgets": totalWidgets}
-
-
-def get_prompts(apps_json_cache: list | None) -> list[str]:
-    """Extract prompts from cached apps.json."""
-    if not apps_json_cache or not isinstance(apps_json_cache, list):
-        return []
-
-    prompts = []
-    for app in apps_json_cache:
-        if isinstance(app, dict) and "prompts" in app:
-            prompts.extend(app["prompts"])
-    return prompts
-
-
-def app_rating_to_average(ratings: list | None) -> float | None:
-    """Calculate average rating from a list of ratings."""
-    if not ratings:
-        return None
-
-    if (total_ratings := len(ratings)) == 0:
-        return None
-
-    rating_sum = sum(r.rating for r in ratings)
-    average_rating = rating_sum / total_ratings
-    return round(average_rating, 2)
-
-
-# Named replacements for inline lambdas inside Annotated[...] — Cython
-# can't serialise lambdas in those forward refs, so Pydantic later trips
-# on `<lambda>`. See marketplace_schemas._is_development_status for the
-# original example of this workaround.
-def _prompts_count(v: list | None) -> int:
-    return len(get_prompts(v))
-
-
-def _none_to_empty_str(v: str | None) -> str:
-    return v or ""
-
-
-def _is_development_status(v) -> bool:
-    return v == base.AppStatus.development
-
-
 def _is_not_none(v) -> bool:
     return v is not None
 
 
-VenderAppPrompts = Annotated[list[str], BeforeValidator(get_prompts)]
-PromptsCount = Annotated[int, BeforeValidator(_prompts_count)]
-AppRating: TypeAlias = Annotated[float | None, BeforeValidator(app_rating_to_average)]
-NoneToStr: TypeAlias = Annotated[str | None, BeforeValidator(_none_to_empty_str)]
-
-
-class ValidateReturn(BaseModel):
-    authenticated: bool
-
-
 class SuccessReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    success: bool
+    success: bool = Field(description="Whether the operation succeeded.")
 
     @classmethod
     def success_instance(cls):
@@ -309,714 +150,444 @@ class SuccessReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
         return cls(success=value)
 
 
-class ResetPasswordReturn(SuccessReturn):
-    temporary_password: str
+class PasswordResetLink(SuccessReturn):
+    link: str = Field(description="The single-use link at which the user chooses a new password.")
+    expires_at: datetime = Field(description="When the link stops working.")
+
+
+class PasswordReset(BaseModel, extra="forbid"):  # type: ignore[call-arg]
+    token: Annotated[str, Field(min_length=1, max_length=128, description="The token from the password reset link.")]
+    new_password: Annotated[str, AfterValidator(check_password)] = Field(
+        description=(
+            "The new password. It needs at least 8 characters, with an uppercase letter, a lowercase letter, a "
+            "number and a special character, and no spaces."
+        ),
+    )
 
 
 class DashboardShareReturn(BaseModel):
-    created_date: None | datetime
-    permissions: None | base.PermissionEnum
-    first_name: None | str
-    last_name: None | str
-    is_invite: bool
+    created_date: None | datetime = Field(description="When the share was created.")
+    permissions: None | base.PermissionEnum = Field(
+        description="What the recipient may do with the dashboard: `view`, `comment` or `edit`.",
+    )
+    first_name: None | str = Field(description="The recipient's first name.")
+    last_name: None | str = Field(description="The recipient's last name.")
+    pending: bool = Field(False, description="Whether the share waits for an admin's approval.")
+
+
+class ShareReturn(SuccessReturn):
+    pending_approval: bool = Field(
+        False,
+        description="Whether the request waits for an admin's approval instead of taking effect.",
+    )
+
+
+class ShareRequestUser(BaseModel):
+    email: str = Field(description="The user's email address.")
+    first_name: None | str = Field(description="The user's first name.")
+    last_name: None | str = Field(description="The user's last name.")
+
+
+class ShareRequestReturn(BaseModel):
+    uuid: UUID = Field(description="The UUID of the share request.")
+    created_date: None | datetime = Field(description="When the request was made.")
+    requester: ShareRequestUser = Field(description="The user who asked to share.")
+    item_type: Literal["dashboard", "app"] = Field(description="What the request shares: a `dashboard` or an `app`.")
+    item_uuid: UUID = Field(description="The UUID of the dashboard or the app.")
+    item_name: str = Field(description="The name of the dashboard or the app.")
+    recipient: None | ShareRequestUser = Field(
+        description=(
+            "The user who receives the share. It is empty when a dashboard is shared with the whole organization."
+        ),
+    )
+    permissions: None | str = Field(description="What the recipient may do with the item: `view` or `comment`.")
 
 
 class TotpGenerateReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    uri: str
-    secret: str
-
-
-class ContentReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    content: str
+    uri: str = Field(description="The provisioning URI that an authenticator app reads, usually as a QR code.")
+    secret: str = Field(description="The authenticator secret, in base 32.")
 
 
 class MessageReturn(SuccessReturn, extra="ignore"):  # type: ignore[call-arg]
-    message: str
-
-
-class ProfileUrlReturn(MessageReturn, extra="ignore"):  # type: ignore[call-arg]
-    profile_url: None | str = None
-
-
-class UrlReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    url: None | str = None
+    message: str = Field(description="A sentence that describes the result.")
 
 
 class PendingFileReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    stored_file_uuid: None | UUID = None
-    extension: None | str = None
-    original_file_name: None | str = None
-    url: None | str = None
-    failed: bool = False
+    stored_file_uuid: None | UUID = Field(None, description="The UUID that the stored file received.")
+    extension: None | str = Field(None, description="The file's extension.")
+    original_file_name: None | str = Field(None, description="The name of the file as the user uploaded it.")
+    url: None | str = Field(None, description="The address at which the API serves the file.")
+    failed: bool = Field(False, description="Whether the upload failed.")
 
 
 class PreSignedUrlReturn(BaseModel):
     model_config = ConfigDict(extra="ignore", from_attributes=True)
-    pre_signed_url: str
-    stored_file_uuid: UUID = Field(serialization_alias="stored_file_uuid", alias="uuid")
-    original_file_name: str
+    pre_signed_url: str = Field(description="The signed link, which works without a session until it expires.")
+    stored_file_uuid: UUID = Field(
+        serialization_alias="stored_file_uuid",
+        alias="uuid",
+        description="The UUID of the stored file.",
+    )
+    original_file_name: str = Field(description="The name of the file as the user uploaded it.")
 
 
-class CodeReturn(BaseModel):
-    code: str
-    used: bool
-
-
-class RemainingCodes(BaseModel):
-    remaining: None | int
-
-
-class Token(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    username: None | str = None
-    email: str
-    primary_usage: str
-    access_token: str
-    token_type: str
-    profile_url: None | str = None
-    uuid: UUID
-
-
-class FullToken(Token, extra="ignore"):  # type: ignore[call-arg]
-    information_complete: Literal["bot", "complete", "incomplete"]
-    has_pro: bool
-
-
-class TokenData(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    email: None | EmailStr = None
-
-
-class LogCreate(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    request: str
-    error: str
-    status_code: int
-    method: str
-
-
-class Email(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    message: str
-
-
-class TokenGet(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    token: str
-
-
-class TokenReturn(TokenGet, extra="ignore"):  # type: ignore[call-arg]
-    expiration: datetime
-
-
-class Expiration(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    days: int
-
-
-class HubspotId(BaseModel):
-    id: int
-
-
-class Type(BaseModel):
-    associationCategory: str
-    associationTypeId: int
-
-
-class Association(BaseModel):
-    to: HubspotId
-    types: list[Type]
-
-    @classmethod
-    def default(cls, hubspot_id: int):
-        the_type = Type(associationCategory="HUBSPOT_DEFINED", associationTypeId=16)
-        the_id = HubspotId(id=hubspot_id)
-        return cls(to=the_id, types=[the_type])
-
-
-class BaseProperties(BaseModel):
-    subject: str
-    hs_pipeline_stage: int
-    hs_pipeline: int
-    ticket_email: None | str
-    content: str
-
-    def full_json_dump(self, hubspot_id: int):
-        new_data = Association.default(hubspot_id).model_dump()
-        start = {"properties": self.model_dump(), "associations": [new_data]}
-        return json.dumps(start)
-
-
-class Feedback(BaseProperties):
-    ticket_type: str
-    location_page: str
-    version: str
+class AgentToken(BaseModel):
+    model_config = main_config
+    token: str = Field(description="The bearer token.")
+    expires_in: int = Field(description="How many seconds the token stays valid.")
 
 
 class UUIDReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    uuid: UUID
+    uuid: UUID = Field(description="The UUID of the new item.")
 
 
-class ProEntitlements(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    benzinga: Literal["Read", "Write", "None"] = "Read"
-    polygon: Literal["Read", "Write", "None"] = "Read"
-    intrinio: Literal["Read", "Write", "None"] = "Read"
-    fmp: Literal["Read", "Write", "None"] = "Read"
-    datarade: Literal["Read", "Write", "None"] = "Read"
-    veraset: Literal["Read", "Write", "None"] = "Read"
-    alphavantage: Literal["Read", "Write", "None"] = "Read"
+DISPLAY_SETTINGS_SECRETS = ("openaiApiKey", "perplexityApiKey")
 
+
+class UserDisplaySettings(BaseModel, extra="allow"):  # type: ignore[call-arg]
+    theme: Literal["light", "dark"] | None = Field(
+        None,
+        description=(
+            "The color mode that the user chose, `light` or `dark`. When it is empty, the web app follows the "
+            "system."
+        ),
+    )
+    showWidgetControls: bool = Field(False, description="Whether widget cards always show their controls.")
+    virtualizeWidgets: bool = Field(
+        False,
+        description="Whether the web app unloads widgets that are scrolled far out of view.",
+    )
+    fontSize: Literal["small", "medium", "large"] = Field(
+        "medium",
+        description="The size of the text: `small`, `medium` or `large`.",
+    )
+    gridCorners: list[Literal["ne", "nw", "se", "sw"]] = Field(
+        ["se"],
+        description="The corners of a widget card that offer a handle for resizing it.",
+    )
+    gridSnapping: Literal["off", "vertical"] = Field(
+        "vertical",
+        description="How widgets snap to the grid: `off`, or `vertical` for vertical snapping.",
+    )
+    quickAddButtonTransparent: bool = Field(False, description="Whether the quick add button is drawn transparent.")
+    lastVisitedPage: str | None = Field("/app", description="The last page that the user visited.")
+
+    @model_validator(mode="before")
     @classmethod
-    def trial_values(cls) -> "ProEntitlements":
-        return cls(
-            benzinga="Read",
-            polygon="Read",
-            intrinio="Read",
-            fmp="Read",
-            datarade="Read",
-            veraset="Read",
-            alphavantage="Read",
-        )
-
-
-class ProKeys(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    benzinga: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    polygon: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    intrinio: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    fmp: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    datarade: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    veraset: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    alphavantage: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    trading_economics: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-
-    def __hash__(self):
-        return hash((type(self),) + tuple(self.model_dump().items()))
-
-    def validate_keys(self) -> None | str:
-        for key in self.model_fields_set:
-            func_name = f"test_{key}"
-            if getattr(self, key) is None:
-                continue
-            if hasattr(self, func_name) and not getattr(self, func_name)():
-                return key
-        return None
-
-    def test_benzinga(self) -> bool:
-        url = "https://api.benzinga.com/api/v2.1/calendar/offerings"
-        response = requests.get(url, params={"token": self.benzinga}, timeout=10)
-        return response.status_code != 401  # noqa: PLR2004
-
-    def test_polygon(self) -> bool:
-        url = "https://api.polygon.io/v2/aggs/ticker/AAPL/range/1/day/2023-01-09/2023-01-09"
-        response = requests.get(url, params={"apiKey": self.polygon}, timeout=10)
-        return response.status_code != 401  # noqa: PLR2004
-
-    def test_intrinio(self) -> bool:
-        url = "https://api-v2.intrinio.com/securities/AAPL/prices/technicals/atr"
-        response = requests.get(url, params={"api_key": self.intrinio}, timeout=10)
-        return response.status_code != 401  # noqa: PLR2004
-
-    def test_fmp(self) -> bool:
-        url = "https://financialmodelingprep.com/api/v3/search"
-        response = requests.get(url, params={"apikey": self.fmp, "query": "AA"}, timeout=10)
-        return response.status_code != 401  # noqa: PLR2004
-
-    def test_alphavantage(self) -> bool:
-        "This does NOT work because AlphaVantage runs with bad keys just fine"
-        url = "https://www.alphavantage.co/query?interval=5min&apikey=demo"
-        params = {
-            "function": "TIME_SERIES_INTRADAY",
-            "symbol": "IBM",
-            "apikey": self.alphavantage,
-        }
-        response = requests.get(url, params=params, timeout=10)
-        return response.status_code != 401  # noqa: PLR2004
-
-    def test_trading_economics(self) -> bool:
-        url = "https://api.tradingeconomics.com/country/mexico"
-        response = requests.get(url, params={"c": self.trading_economics}, timeout=10)
-        return response.status_code not in {401, 500}  # noqa: PLR2004
-
-
-class ProInfoDeveloper(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    primaryUsage: Annotated[
-        None | Literal["academic", "professional", "personal"],
-        BeforeValidator(blank_to_none),
-    ] = None
-    organization: None | str = None
-    role: None | str = None
-    programmingExperience: Annotated[None | ProgrammingExperience, BeforeValidator(blank_to_none)] = None
-    dataTypes: None | list[str] = None
-    otherDataType: None | str = None
-    organizationName: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    skipOnboarding: bool = False
-
-    def to_hubspot_properties(self) -> "HubspotProperties":
-        return HubspotProperties(
-            primary_usage=self.primaryUsage,
-            org_segment=self.organization,
-            role=self.role,
-            programming_experience=self.programmingExperience,
-            data_types=",".join(self.dataTypes),
-            other_data_types=self.otherDataType,
-            organization_name=self.organizationName,
-        )
-
-    def to_marketing(self) -> "UserMarketing":
-        return UserMarketing(
-            primary_usage=self.primaryUsage,
-            organization_segment=self.organization,
-            role=self.role,
-            programming_experience=self.programmingExperience,
-            data_types=",".join(self.dataTypes) if self.dataTypes else None,
-            other_data_types=self.otherDataType,
-            organization_name=self.organizationName,
-        )
-
-
-class DefaultTicker(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    """Default ticker for the user"""
-
-    id_: str = Field(serialization_alias="id", alias="id")
-    symbol: str
-    category: str
-    type_: str = Field(serialization_alias="type", alias="type")
-    name: str
-    exchange: str
-    exchange_name: str | None = None
-    currency: str | None = None
-    industry: str | None = None
-    sector: str | None = None
-    country: str | None = None
-    cik: str | None = None
-    isin: str | None = None
-    cusip: str | None = None
-    has_options: bool | None = False
-
-    @classmethod
-    def default(cls) -> "DefaultTicker":
-        return cls(
-            id="AAPL",
-            symbol="AAPL",
-            ticker="AAPL",
-            name="Apple Inc.",
-            exchange="NASDAQ",
-            exchange_name="NASDAQ Global Select",
-            category="equity",
-            type="stock",
-            currency="USD",
-            industry="Consumer Electronics",
-            sector="Technology",
-            country="US",
-            cik="0000320193",
-            isin="US0378331005",
-            cusip="037833100",
-            has_options=True,
-        )
-
-
-class ProInfo(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    """Deprecated. Retained only so historical alembic migrations remain importable."""
-
-
-class ProDisplaySettings(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    decimalDigits: int = 2
-    theme: Literal["light", "dark"] | None = None
-    showWidgetControls: bool = False
-    virtualizeWidgets: bool = False
-    tablePagination: bool = False
-    fontSize: Literal["small", "medium", "large"] = "medium"
-    defaultTicker: DefaultTicker | None = DefaultTicker.default()
-    gridCorners: list[Literal["ne", "nw", "se", "sw"]] = ["se"]
-    gridSnapping: Literal["off", "vertical"] = "vertical"
-    quickAddButtonTransparent: bool = False
-    lastVisitedPage: str | None = "/app/data-connectors"
-
-    @field_validator("defaultTicker", mode="before", check_fields=False)
-    @classmethod
-    def check_default_ticker(cls, value: dict[str, str] | str | None) -> DefaultTicker:
-        try:
-            while isinstance(value, str):
-                value = json.loads(value)
-            return DefaultTicker.model_validate(value)
-        except (json.JSONDecodeError, ValueError):
-            return DefaultTicker.default()
-
-
-class NudgeTriggerRecord(BaseModel, extra="allow"):
-    nudgeId: None | str = None
-    timestamp: None | datetime = None
-
-
-class ProZeroToHero(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    grouping: None | datetime = None
-    table_charting: None | datetime = None
-    data_connectors: None | datetime = None
-    charting: None | datetime = None
-    group_sector_companies: None | datetime = None
-    analyst_walkthrough: None | datetime = None
-    developer_walkthrough: None | datetime = None
-    nudge_trigger_history: None | list[NudgeTriggerRecord] = None
-
-    @classmethod
-    def default(cls) -> "ProZeroToHero":
-        return cls(
-            grouping=None,
-            table_charting=None,
-            data_connectors=None,
-            charting=None,
-            group_sector_companies=None,
-            analyst_walkthrough=None,
-            developer_walkthrough=None,
-            nudge_trigger_history=None,
-        )
+    def drop_secrets(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            return {k: v for k, v in data.items() if k not in DISPLAY_SETTINGS_SECRETS}
+        return data
 
 
 class WidgetMetadata(BaseModel):
     model_config = get_camel_config()
-    description: None | str = None
-    category: None | str = None
-    sub_category: None | str = None
-
-
-class CreateSingleWidget(WidgetMetadata, extra="forbid"):  # type: ignore[call-arg]
-    model_config = get_camel_config()
-    endpoint: str
-    name: str
-    grid_data: None | dict = None
-    data: None | dict = None
-    endpoint_headers: None | dict | list[dict] = None
-    source: None | list[str] | str = None
-    data_key: None | str = None
-
-    @field_validator("source", mode="before", check_fields=False)
-    @classmethod
-    def check_source(cls, value: None | str | list[str]) -> None | list[str]:
-        if value and isinstance(value, str):
-            return value.split(",")
-        return value
-
-
-class ReturnSingleWidget(CreateSingleWidget, extra="ignore"):  # type: ignore[call-arg]
-    model_config = get_camel_config(from_attributes=True)
-    uuid: UUID
-    widgetId: UUID = Field(serialization_alias="widgetId", alias="uuid")
-    created_date: datetime = Field(serialization_alias="createdDate", alias="created_date")
-    updated_date: datetime = Field(serialization_alias="updatedDate", alias="updated_date")
-
-    @field_validator("source", mode="before", check_fields=False)
-    @classmethod
-    def check_source(cls, value: None | str | list[str]) -> None | str:
-        if value and isinstance(value, list):
-            return ",".join(value)
-        return value
+    description: None | str = Field(None, description="A description of the widget.")
+    category: None | str = Field(None, description="The widget's category.")
+    sub_category: None | str = Field(None, description="The widget's subcategory.")
 
 
 class CreateFileWidget(WidgetMetadata, extra="forbid"):  # type: ignore[call-arg]
     model_config = get_camel_config()
-    stored_file_uuid: None | UUID = None
-    url: HttpUrl
-    name: str
-    extension: ExtensionType
-    data_key: None | str
-    original_file_name: None | str
-    source: None | str = None
+    stored_file_uuid: None | UUID = Field(None, description="The UUID of the uploaded file that the widget shows.")
+    url: HttpUrl = Field(description="The address of the file.")
+    name: str = Field(description="The widget's name.")
+    extension: ExtensionType = Field(description="The file's extension.")
+    data_key: None | str = Field(description="The key that holds the data in the file.")
+    original_file_name: None | str = Field(description="The name of the file as the user uploaded it.")
+    source: None | str = Field(None, description="Where the file came from.")
 
 
 class ReturnFileWidget(CreateFileWidget, extra="ignore"):  # type: ignore[call-arg]
     model_config = get_camel_config(from_attributes=True)
-    uuid: UUID
-    id_: UUID = Field(serialization_alias="id", alias="uuid")
-    created_date: datetime = Field(serialization_alias="createdDate", alias="created_date")
-    updated_date: datetime = Field(serialization_alias="updatedDate", alias="updated_date")
+    uuid: UUID = Field(description="The UUID of the widget.")
+    id_: UUID = Field(serialization_alias="id", alias="uuid", description="The UUID of the widget, repeated as `id`.")
+    created_date: datetime = Field(
+        serialization_alias="createdDate",
+        alias="created_date",
+        description="When the widget was created.",
+    )
+    updated_date: datetime = Field(
+        serialization_alias="updatedDate",
+        alias="updated_date",
+        description="When the widget was last changed.",
+    )
 
 
 class ApiSourceEndpointHeaders(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     model_config = get_camel_config()
-    key: str
-    value: str
-    location: Literal["headers", "query"] = "headers"
+    key: str = Field(description="The name of the header or of the query parameter.")
+    value: str = Field(description="The value to send.")
+    location: Literal["headers", "query"] = Field(
+        "headers",
+        description="Where the web app puts the value: `headers` or `query`.",
+    )
 
 
 class ApiSourceBase(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     model_config = get_camel_config()
-    name: str
-    url: HttpUrl
-    endpointHeaders: None | list[ApiSourceEndpointHeaders] = Field(default_factory=list)
+    name: str = Field(description="The backend's name.")
+    url: HttpUrl = Field(description="The backend's base address.")
+    endpointHeaders: None | list[ApiSourceEndpointHeaders] = Field(
+        default_factory=list,
+        description="The headers and query parameters that the web app adds to every request to the backend.",
+    )
 
     @field_validator("endpointHeaders", mode="before", check_fields=False)
     @classmethod
     def check_endpoint_headers(cls, value: None | dict | list) -> None | list:
-        # Handle case where database has {} instead of [] or null
         if isinstance(value, dict):
             return list(value.values()) if value else []
         return value
 
 
 class CreateApiSource(ApiSourceBase):
-    vendor_app_uuid: None | UUID = None
+    pass
 
 
-class AppWidgetMetadata(BaseModel):
-    id_: str = Field(serialization_alias="id", alias="id")
-    name: str
-    description: None | str = None
-    count: int
+class ApiSourceHeaderName(BaseModel, extra="ignore"):  # type: ignore[call-arg]
+    model_config = get_camel_config()
+    key: str = Field(description="The name of the credential: a header name or a query parameter name.")
+    location: Literal["headers", "query"] = Field(
+        "headers", description="Where the connection puts the credential: in a header or in the query."
+    )
 
 
-class VendorAppSchema(BaseModel):
-    model_config = get_camel_config(from_attributes=True)
+class SourceRequest(BaseModel, extra="forbid"):  # type: ignore[call-arg]
+    url: str = Field(
+        max_length=4096, description="The absolute URL on the connection's own origin, without its credentials"
+    )
+    method: Literal["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] = Field(
+        default="GET", description="How the data connection is called"
+    )
+    headers: dict[str, str] = Field(
+        default_factory=dict, max_length=32, description="Header params of the widget; never a credential"
+    )
+    body: str | None = Field(
+        default=None,
+        max_length=1_048_576,
+        description="The text to send as the body, JSON unless the connection sets another Content-Type",
+    )
+    accept: str | None = Field(default=None, max_length=200, description="The media types the caller accepts")
 
-    uuid: UUID
-    name: str
-    parent_app_uuid: UUID | None = Field(None, validation_alias="parent_app_uuid")
-    vendor_name: str = Field(..., validation_alias=AliasPath("vendor", "name"))
-    short_description: str | None = None
-    category: str | None = None
-    tagline: str | None = None
-    apps_json_url: str | None = None
-    widgets_json_url: str | None = None
-    thumbnail: NoneToStr = Field("", validation_alias="thumbnail_url")
-    thumbnail_dark: NoneToStr = Field("", validation_alias="thumbnail_url_dark")
-    thumbnail_light: NoneToStr = Field("", validation_alias="thumbnail_url_light")
-    version: str | None = None
-    widgets: list[AppWidgetMetadata] | None = Field(default_factory=list)
-    total_widgets: int | None = Field(0)
 
-    prompts: VenderAppPrompts = Field(default_factory=list, validation_alias="apps_json_cache")
-    widgets_json_cache: None | dict = None
-    apps_json_cache: None | list = None
-    average_rating: AppRating = Field(None, validation_alias="ratings")
-    is_development: Annotated[
-        bool,
-        BeforeValidator(_is_development_status),
-    ] = Field(False, validation_alias="status")
+class FrameRequest(BaseModel):
+    model_config = get_camel_config(extra="forbid")
+    widget_id: str = Field(
+        min_length=1, max_length=200, description="The id of the iframe widget in the connection's widgets.json"
+    )
 
-    @model_validator(mode="after")
-    def populate_widgets(self) -> "VendorAppSchema":
-        widget_metadata = get_widget_metadata(self.apps_json_cache, self.widgets_json_cache)
-        self.widgets = widget_metadata.get("widgets", []) if widget_metadata else []
-        self.total_widgets = widget_metadata.get("totalWidgets", 0) if widget_metadata else 0
-        return self
+
+class FrameGrant(BaseModel):
+    model_config = get_camel_config()
+    token: str = Field(description="Names the page in the address the browser opens; it opens nothing else")
+    prefix: str = Field(description="The path below which the token lets the page load anything")
+    expires_in: int = Field(description="Seconds until the token stops working")
+
+
+class SourceTestRequest(BaseModel, extra="forbid"):  # type: ignore[call-arg]
+    id: UUID | None = Field(
+        default=None, description="The saved data connection whose stored values a blank header value keeps"
+    )
+    url: HttpUrl = Field(description="The address of the data connection being tested")
+    endpointHeaders: list[ApiSourceEndpointHeaders] = Field(
+        default_factory=list, max_length=32, description="The credentials being tested; a blank value keeps the saved one"
+    )
+    request: SourceRequest = Field(description="The request that the test sends to the connection")
 
 
 class ReturnApiSource(ApiSourceBase, extra="ignore"):  # type: ignore[call-arg]
     model_config = get_camel_config(from_attributes=True)
-    uuid: UUID
-    id_: UUID = Field(serialization_alias="id", alias="uuid")
-    created_date: datetime = Field(serialization_alias="createdDate", alias="created_date")
-    updated_date: datetime = Field(serialization_alias="updatedDate", alias="updated_date")
-    is_entity_backend: Annotated[bool, BeforeValidator(_is_not_none)] = Field(validation_alias="entity_uuid")
-    vendor_app: VendorAppSchema | None = Field(None, validation_alias="vendor_app")
-
-
-class EntityTypeCreate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    entity_type: str
-    code: str
-    active: bool
-    permission_hierarchy: int
-
-
-class EntityTypeReturn(EntityTypeCreate):  # type: ignore[call-arg]
-    model_config = ConfigDict(extra="ignore", from_attributes=True)
-    uuid: UUID
+    endpointHeaders: None | list[ApiSourceHeaderName] = Field(
+        default_factory=list,
+        description="The credential headers of the connection, with the values that are stored for it.",
+    )
+    uuid: UUID = Field(description="The UUID of the backend.")
+    id_: UUID = Field(serialization_alias="id", alias="uuid", description="The UUID of the backend, repeated as `id`.")
+    created_date: datetime = Field(
+        serialization_alias="createdDate",
+        alias="created_date",
+        description="When the backend was created.",
+    )
+    updated_date: datetime = Field(
+        serialization_alias="updatedDate",
+        alias="updated_date",
+        description="When the backend was last changed.",
+    )
+    is_entity_backend: Annotated[bool, BeforeValidator(_is_not_none)] = Field(
+        validation_alias="entity_uuid",
+        description="Whether the backend belongs to the organization and not to one user.",
+    )
+    mcp_servers: list[str] | None = Field(
+        default=None,
+        description="The MCP server URLs the backend declares, as last reported by its owner.",
+    )
 
 
 class EntityBase(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    name: str
-    entity_code: str
-    email: EmailStr
-    company_type: str
-    organization_size: str
-    aum: int
-    country: str
-    seats: int
-    expiration_date: datetime
-    stripe_id: None | str = None
-    api_keys: ProKeys = ProKeys()
+    name: str = Field(description="The organization's name.")
+    sharing_enabled: bool = Field(description="Whether the organization's users may share dashboards and apps.")
 
 
 class EntityPost(EntityBase):
-    admin_email: EmailStr
+    admin_email: EmailStr = Field(description="The email address of the organization's admin.")
+    sharing_enabled: bool = Field(
+        True,
+        description="Whether the organization's users may share dashboards and apps. It defaults to true.",
+    )
 
 
 class EntityReturn(BaseModel):
     model_config = ConfigDict(extra="ignore", from_attributes=True)
-    uuid: UUID
-    name: str
-    entity_type: EntityTypeReturn
-    email: None | str
-    company_type: None | str
-    organization_size: None | str
-    aum: None | int
-    country: None | str
-    seats: None | int
-    expiration_date: Annotated[None | str, BeforeValidator(datetime_to_string)]
-    stripe_id: None | str
-    api_keys: ProKeys = ProKeys()
-
-
-class EntityRelationshipCreate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    parent_uuid: UUID
-    child_uuid: UUID
-
-
-class EntityRelationshipGet(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    parent_uuid: UUID
-    child_uuid: UUID
-
-
-class EntityRelationshipReturn(EntityRelationshipCreate, extra="forbid"):  # type: ignore[call-arg]
-    parent: EntityReturn
-    child: EntityReturn
-    supreme: EntityReturn
-    uuid: UUID
+    uuid: UUID = Field(description="The UUID of the organization.")
+    name: str = Field(description="The organization's name.")
+    sharing_enabled: bool = Field(description="Whether the organization's users may share dashboards and apps.")
 
 
 class UserAdminUpdate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    pro_entitlements: None | ProEntitlements = None
-    permissions_uuid: None | UUID = None
-    billing_active: None | bool = None
+    permissions_uuid: None | UUID = Field(None, description="The UUID of the permissions map to move the user to.")
 
 
 class EntityMapCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", from_attributes=True)
-    entity_uuid: UUID
-    name: str
-    entitlements: ProEntitlements
+    entity_uuid: UUID = Field(description="The UUID of the organization.")
+    name: UserType = Field(description="The user type that the map stands for: Admin, Developer or User.")
 
 
 class EntityMapReturn(EntityMapCreate):
     model_config = ConfigDict(extra="ignore", from_attributes=True)
-    uuid: UUID
-    entity: EntityReturn
-    name: str
-    entitlements: ProEntitlements
-
-
-class EntityInfoReturn(BaseModel):
-    seats: int
-    used_seats: int
-    expiration_date: None | datetime
+    uuid: UUID = Field(description="The UUID of the permissions map.")
+    entity: EntityReturn = Field(description="The organization that the map belongs to.")
+    name: str = Field(description="The user type that the map stands for: Admin, Developer or User.")
 
 
 class EntityUserReturn(BaseModel):
     model_config = ConfigDict(extra="ignore", from_attributes=True)
-    uuid: UUID
-    email: str
-    permissions: EntityMapReturn | None = None
-    pro_trial_end: None | datetime = None
+    uuid: UUID = Field(description="The user's UUID.")
+    email: str = Field(description="The user's email address.")
+    permissions: EntityMapReturn | None = Field(None, description="The permissions map that gives the user their type.")
 
 
 class AddEntityReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    entity_uuid: UUID
-    permission_map_uuid: UUID
+    entity_uuid: UUID = Field(description="The UUID of the new organization.")
+    permission_map_uuid: UUID = Field(description="The UUID of the organization's Admin permissions map.")
 
 
 class DashboardReturn(BaseModel):
     model_config = main_config
-    creator: bool
-    content: None | dict
-    created_date: datetime
-    updated_date: datetime
-    created_by: str
-    is_shared: bool | None = False
+    creator: bool = Field(description="Whether the signed-in user created the dashboard.")
+    content: None | dict = Field(description="The dashboard as the web app saved it.")
+    created_date: datetime = Field(description="When the dashboard was created.")
+    updated_date: datetime = Field(description="When the dashboard was last changed.")
+    created_by: str = Field(description="The email address of the dashboard's owner.")
+    is_shared: bool | None = Field(False, description="Whether the dashboard is shared with anyone.")
+
+
+ENDPOINT_CREDENTIAL_KEYS = frozenset({"headers", "query"})
+
+
+def strip_endpoint_credentials(content: Any) -> Any:
+    if isinstance(content, list):
+        return [strip_endpoint_credentials(item) for item in content]
+    if not isinstance(content, dict):
+        return content
+    stripped = {
+        key: strip_endpoint_credentials(value)
+        for key, value in content.items()
+        if key != "endpointHeaders"
+    }
+    if isinstance(endpoint := stripped.get("endpoint"), dict):
+        stripped["endpoint"] = {
+            key: value
+            for key, value in endpoint.items()
+            if key not in ENDPOINT_CREDENTIAL_KEYS
+        }
+    return stripped
 
 
 class DashboardsCreate(BaseModel):
-    items: dict[UUID, Literal["DELETE"] | dict]
+    items: dict[UUID, Literal["DELETE"] | dict] = Field(
+        description=(
+            "The dashboards to save, by UUID. Each value is the dashboard's content, or `DELETE` to delete the "
+            "dashboard."
+        ),
+    )
+
+    @field_validator("items")
+    @classmethod
+    def strip_credentials(
+        cls, items: dict[UUID, Literal["DELETE"] | dict]
+    ) -> dict[UUID, Literal["DELETE"] | dict]:
+        return {
+            uuid: strip_endpoint_credentials(content) for uuid, content in items.items()
+        }
 
 
 class DashboardOwned(BaseModel):
-    owned: dict[UUID, DashboardReturn]
+    owned: dict[UUID, DashboardReturn] = Field(description="The dashboards that the user owns, by UUID.")
 
 
 class DashboardShared(BaseModel):
-    shared: dict[UUID, DashboardReturn]
-    entity_shared: dict[UUID, DashboardReturn]
+    shared: dict[UUID, DashboardReturn] = Field(
+        description="The dashboards that other users shared with the user, by UUID.",
+    )
+    entity_shared: dict[UUID, DashboardReturn] = Field(
+        description="The dashboards that the user's organization shares with all of its users, by UUID.",
+    )
 
 
 class DashboardComplete(DashboardOwned, DashboardShared):
     pass
 
 
-class DataBundle(BaseModel):
-    model_config = ConfigDict(extra="allow", from_attributes=True)
-
-    bundle_name: BundleNames
-    except_widgets: list[WidgetTypes] | None = None
-    except_dashboard_templates: list[DashboardTypes] | None = None
-    except_team_collaboration: list[Literal["pdf_reports", "sharing"]] | None = None
-    excel_add_in: bool
-    data_export: bool
-    providers: list[Literal["fmp", "econdb", "benzinga"]] | None
-    dashboards_at_launch: list[DashboardTypes] | None
-    my_dashboards: list[DashboardTypes] | None
-    invite_your_colleagues: bool
-    number_copilot_calls_day: int
-    total_file_upload_size_gb: int
-    allow_custom_backends: bool | None = True
-
-    @field_validator(
-        "except_widgets",
-        "except_dashboard_templates",
-        "except_team_collaboration",
-        "providers",
-        "dashboards_at_launch",
-        "my_dashboards",
-        mode="before",
-        check_fields=False,
-    )
-    @classmethod
-    def json_to_lists(cls, value: None | str | list) -> None | list:
-        if value and isinstance(value, str):
-            return json.loads(value)
-        return value
-
-
-class EntitlementBase(BaseModel):
+class UserAccess(BaseModel):
     model_config = main_config
-
-    tier: Literal["pro", "terminal"] | None = None
-    number_copilot_calls_day: int = None
-    total_file_upload_size_gb: int = None
-    share_widgets: Literal["public", "private"] | None = None
-    bring_your_own_data: bool = None
-    bring_your_own_copilot: bool = None
-    admin_access: bool = None
-    support: bool = None
-    excel_add_in: bool = None
-    data_add_ons_redistribution: bool = None
-    bundle_name: BundleNames | None = None
-    allow_custom_backends: bool | None = True
-
-
-class EntitlementGet(EntitlementBase):
-    data_bundle_info: DataBundle | None = None
-
-
-class EntitlementUsageBase(BaseModel):
-    def entitlement_match_dump(self):
-        entitlement_match = {}
-
-        for field_name, field in self.__class__.model_fields.items():
-            entitlement_match[field.json_schema_extra["entitlement_match"]] = getattr(self, field_name)
-        return entitlement_match
-
-    model_config = main_config
-    number_copilot_calls_day_count: int = Field(..., json_schema_extra={"entitlement_match": "number_copilot_calls_day"})
-    total_file_upload_size_gb_count: float = Field(
-        ..., json_schema_extra={"entitlement_match": "total_file_upload_size_gb"}
+    user_type: UserType | None = Field(description="The user's type: Admin, Developer or User.")
+    sharing: SharingLevel = Field(
+        description="The sharing level that the user's roles allow: `none`, `receive` or `share`.",
     )
 
 
-class EntitlementUsagePut(BaseModel):
-    add_copilot_count: int | None = Field(0, ge=0)
-    subtract_copilot_count: int | None = Field(0, ge=0)
-    reset_copilot_count: bool | None = False
+class UserLimits(BaseModel):
+    copilot_calls_day: int | None
+    copilot_tokens_day: int | None
+    upload_size_gb: int | None
 
 
-class EntitlementUsageGet(EntitlementUsageBase, extra="ignore"):  # type: ignore[call-arg]
-    copilot_calls_limit: int | None = None
-    file_upload_size_limit: float | None = None
+class UsageBase(BaseModel):
+    model_config = main_config
+    number_copilot_calls_day_count: int = Field(description="The Copilot calls that the user made today.")
+    number_copilot_tokens_day_count: int = Field(0, description="The Copilot tokens that the user used today.")
+    total_file_upload_size_gb_count: float = Field(description="The storage that the user's files use, in gigabytes.")
+
+
+class UsagePut(BaseModel):
+    add_copilot_count: int | None = Field(0, ge=0, description="How many Copilot calls to add to today's count.")
+    subtract_copilot_count: int | None = Field(0, ge=0, description="How many Copilot calls to take off today's count.")
+    reset_copilot_count: bool | None = Field(
+        False,
+        description="Whether to reset today's counts to zero before the change.",
+    )
+    add_copilot_tokens: int | None = Field(0, ge=0, description="How many Copilot tokens to add to today's count.")
+
+
+class UsageGet(UsageBase, extra="ignore"):  # type: ignore[call-arg]
+    copilot_calls_limit: int | None = Field(
+        None,
+        description="The user's daily limit of Copilot calls. It is empty when there is no limit.",
+    )
+    copilot_tokens_limit: int | None = Field(
+        None,
+        description="The user's daily limit of Copilot tokens. It is empty when there is no limit.",
+    )
+    file_upload_size_limit: float | None = Field(
+        None,
+        description="The limit of the user's stored files, in gigabytes. It is empty when there is no limit.",
+    )
 
     @classmethod
-    async def check_cache(cls, db, user) -> "EntitlementUsageGet":
-        from routers.pro.helpers import check_usage_cache  # noqa: PLC0415
+    async def check_cache(cls, db, user) -> "UsageGet":
+        from routers.app.helpers import check_usage_cache  # noqa: PLC0415
 
         return await check_usage_cache(db, user)
 
@@ -1027,13 +598,25 @@ class UsageLimitError(BaseModel):
     current_usage: int
 
     @classmethod
-    def limit_error(cls, usage: EntitlementUsageGet) -> JSONResponse:
+    def limit_error(cls, usage: UsageGet, tokens: bool = False) -> JSONResponse:
+        if tokens:
+            message = (
+                "The daily token limit of "
+                f"{usage.copilot_tokens_limit} has been reached"
+            )
+            current_usage = usage.number_copilot_tokens_day_count
+        else:
+            message = (
+                "Cannot increment usage beyond the maximum limit of "
+                f"{usage.copilot_calls_limit}"
+            )
+            current_usage = usage.number_copilot_calls_day_count
         return JSONResponse(
             status_code=422,
             content={
                 "error": "Maximum usage limit reached",
-                "message": f"Cannot increment usage beyond the maximum limit of {usage.copilot_calls_limit}",
-                "current_usage": usage.number_copilot_calls_day_count,
+                "message": message,
+                "current_usage": current_usage,
             },
         )
 
@@ -1054,275 +637,144 @@ def default_chats() -> list["Chat"]:
 
 class DashboardCompleteWithContext(DashboardComplete):
     model_config = main_config
-    is_trial_entity: bool
-    can_submit_marketplace: bool = False
-    feature_entitlements: EntitlementGet | None = None
-    usage: EntitlementUsageGet | None = None
-    copilot_chats: list["ChatInfo | Chat"] | None = Field(default_factory=default_chats)
-    questions_history: list[str] | None = None
-    mcp_servers: list[dict] | None = Field(default_factory=list)
-    trading_view: "TVStateResponse | None" = None
-    pro_display_settings: ProDisplaySettings = ProDisplaySettings()
-    entity_theme_settings: "EntityThemeSettings"
-    single_widgets: list[ReturnSingleWidget]
-    file_widgets: list[ReturnFileWidget]
-    user_apps: "UserAppsComplete"
-    user_skills: list["SkillReturn"] | None = Field(default_factory=list)
-    widget_metadata: list["WidgetMetadataResponse"] | None = None
+    access: UserAccess | None = Field(None, description="The user's type and sharing level.")
+    usage: UsageGet | None = Field(None, description="The user's Copilot usage and limits.")
+    copilot_chats: list["ChatInfo | Chat"] | None = Field(
+        default_factory=default_chats,
+        description="The user's Copilot chats.",
+    )
+    questions_history: list[str] | None = Field(None, description="The questions that the user asked the Copilot.")
+    mcp_servers: list[dict] | None = Field(default_factory=list, description="The user's saved MCP servers.")
+    display_settings: UserDisplaySettings = Field(UserDisplaySettings(), description="The user's display settings.")
+    entity_theme_settings: "EntityThemeSettings" = Field(description="The theme settings of the user's organization.")
+    file_widgets: list[ReturnFileWidget] = Field(description="The file widgets that the user created.")
+    user_apps: "UserAppsComplete" = Field(
+        description="The apps that the user owns and the apps that others shared with the user.",
+    )
+    user_skills: list["SkillReturn"] | None = Field(default_factory=list, description="The user's skills.")
+    widget_metadata: list["WidgetMetadataResponse"] | None = Field(
+        None,
+        description="The metadata that the user saved for widgets.",
+    )
+    copilot_access: "CopilotAccess | None" = Field(
+        None,
+        description="The Copilot models, MCP tools and capabilities that the user's roles grant.",
+    )
 
 
 class DashboardSave(BaseModel):
     model_config = main_config
-    content: dict
-    uuid: UUID
-    created_date: datetime
+    content: dict = Field(description="The saved content of the dashboard.")
+    uuid: UUID = Field(description="The UUID of the saved version.")
+    created_date: datetime = Field(description="When the version was saved.")
 
 
 class UserEntityInfo(BaseModel):
     model_config = main_config
-    entity_name: str
-    permission_name: str
+    entity_name: str = Field(description="The name of the user's organization.")
+    permission_name: str = Field(description="The user's type: Admin, Developer or User.")
 
 
-class ProUserReturn(BaseModel):
+class AppUserReturn(BaseModel):
     model_config = main_config
-    expiration_date: datetime
-    entitlements: None | ProEntitlements
-    accepted_pro_tos: bool
-    first_name: None | str = None
-    last_name: None | str = None
-    pro_display_settings: ProDisplaySettings = ProDisplaySettings()
-    pro_zero_to_hero: ProZeroToHero = ProZeroToHero.default()
-    single_widgets: list[ReturnSingleWidget]
-    file_widgets: list[ReturnFileWidget]
-    api_sources: list[ReturnApiSource]
-    username: None | str = None
-    email: str
-    uuid: UUID
-    primary_usage: None | str = None
-    widget_metadata: list["WidgetMetadataResponse"] | None = None
-    entity_info: UserEntityInfo | None = None
-
-
-class ProBackendReturn(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    expiration_date: datetime
-    api_keys: ProKeys
-    username: None | str = None
-    email: str
-    uuid: UUID
-    primary_usage: None | str = None
-
-
-class OpenaiPost(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    prompt: str
-
-
-class TimegptPost(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    fh: int = 30
-    y: dict[str, float]
-    freq: Literal["H", "D", "W", "M"] = "M"
-    clean_ex_first: bool = True
-    level: list[int] = [80, 95]
-    finetune_steps: int = 2
-
-
-class TimegptData(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    timestamp: list[datetime]
-    value: list[float]
-
-
-class TimegptReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    data: TimegptData
-    message: str
-    details: str
-    code: str
-    requestID: str
-    support: str
+    expiration_date: datetime = Field(description="When the session expires.")
+    first_name: None | str = Field(None, description="The user's first name.")
+    last_name: None | str = Field(None, description="The user's last name.")
+    display_settings: UserDisplaySettings = Field(UserDisplaySettings(), description="The user's display settings.")
+    file_widgets: list[ReturnFileWidget] = Field(description="The file widgets that the user created.")
+    api_sources: list[ReturnApiSource] = Field(
+        description="The user's own backends and, for an Admin, the organization's backends.",
+    )
+    username: None | str = Field(None, description="The user's username.")
+    email: str = Field(description="The user's email address.")
+    uuid: UUID = Field(description="The user's UUID.")
+    widget_metadata: list["WidgetMetadataResponse"] | None = Field(
+        None,
+        description="The metadata that the user saved for widgets.",
+    )
+    entity_info: UserEntityInfo | None = Field(None, description="The user's organization and user type.")
 
 
 class UserAdminReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    uuid: UUID
-    first_name: None | str = None
-    last_name: None | str = None
-    email: str
-    billing_active: None | bool = False
-    role: str
-    last_login: None | datetime = None
-    last_active: None | datetime = None
-    status: Literal["active", "pending", "revoked", "expired"] = "pending"
-    pro_entitlements: None | ProEntitlements = None
-    permissions_uuid: UUID | None = None
-    # Which table the information comes from, essential for properly implementing a delete function
-    source: UserSourceType
-    # pro_trial_renewals is > 0 or pro_trial_extensions is True
-    renewed: bool = False
-
-
-class InviteEmail(BaseModel):
-    model_config = main_config
-    to_emails: list[EmailStr]
-
-
-class UserForgot(BaseModel):
-    model_config = main_config
-    email: Annotated[EmailStr, AfterValidator(check_email)]
-    redirect: Literal["pro", "hub"] = "hub"
-
-
-class UserReset(BaseModel):
-    model_config = main_config
-    password: Annotated[str, AfterValidator(check_password)]
-    token: str
-
-
-class HubspotProperties(BaseModel):
-    marketing_email: None | bool = None
-    academia_email: None | bool = None
-    bot_email: None | bool = None
-    pro_waitlist: None | bool = None
-    primary_use: None | str = None
-    wants_contacted: None | bool = None
-    newsletter_only: bool = False
-    is_verified: None | bool = None
-    pro_start_date: None | float = None
-    pro_trial_granted: None | bool = None
-    pro_trial_granted_date: None | str = None
-    is_paid_user: None | bool = None
-    is_admin: None | bool = None
-    trial_extended_0124: None | bool = None
-    firstname: None | str = None
-    lastname: None | str = None
-    org_name: None | str = None
-    org_segment: None | str = None
-    role: None | str = None
-    # Developer Onboarding
-    programming_experience: None | str = None
-    data_types: None | str = None
-    other_data_types: None | str = None
-
-
-class UserMarketing(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    model_config = main_config
-    # Tag-based booleans (Mailchimp tags)
-    email_academia: None | bool = None
-    email_bot: None | bool = None
-    email_newsletter: None | bool = None
-    email_prowaitlist: None | bool = None
-    # Profile / survey fields (Mailchimp merge fields)
-    first_name: None | str = None
-    last_name: None | str = None
-    primary_usage: None | str = None
-    organization_name: None | str = None
-    organization_segment: None | str = None
-    role: None | str = None
-    wants_contacted: None | bool = None
-    is_verified: None | bool = None
-    is_paid_user: None | bool = None
-    is_admin: None | bool = None
-    pro_start_date: None | float = None
-    pro_trial_granted: None | bool = None
-    pro_trial_granted_date: None | str = None
-    trial_extended: None | bool = None
-    # Onboarding survey
-    programming_experience: None | str = None
-    data_types: None | str = None
-    other_data_types: None | str = None
-
-    def hubspot_properties(self) -> HubspotProperties:
-        return HubspotProperties(
-            marketing_email=self.email_newsletter,
-            academia_email=self.email_academia,
-            bot_email=self.email_bot,
-            pro_waitlist=self.email_prowaitlist,
-            primary_use=self.primary_usage,
-            wants_contacted=self.wants_contacted,
-            is_verified=self.is_verified,
-            firstname=self.first_name,
-            lastname=self.last_name,
-            pro_start_date=self.pro_start_date,
-            pro_trial_granted=self.pro_trial_granted,
-            pro_trial_granted_date=self.pro_trial_granted_date,
-            is_paid_user=self.is_paid_user,
-            is_admin=self.is_admin,
-            trial_extended_0124=self.trial_extended,
-            org_name=self.organization_name,
-            org_segment=self.organization_segment,
-            programming_experience=self.programming_experience,
-            data_types=self.data_types,
-            other_data_types=self.other_data_types,
-        )
-
-    @classmethod
-    def from_hubspot(cls, hub_dict: dict) -> "UserMarketing":
-        email_academia = hub_dict.get("academia_email", False)
-        return cls(
-            email_academia=email_academia,
-            email_bot=hub_dict.get("bot_email", False),
-            email_newsletter=hub_dict.get("marketing_email", False),
-            email_prowaitlist=hub_dict.get("pro_waitlist", False),
-        )
-
-
-class UserCreate(UserMarketing):
-    model_config = main_config
-    email: Annotated[EmailStr, AfterValidator(check_email)]
-    password: Annotated[str, AfterValidator(check_password)]
-    username: Annotated[None | str, AfterValidator(check_username)] = None
-    referred_by: None | str = None
+    uuid: UUID = Field(description="The UUID of the user or of the invitation.")
+    first_name: None | str = Field(None, description="The user's first name.")
+    last_name: None | str = Field(None, description="The user's last name.")
+    email: str = Field(description="The user's email address.")
+    role: str = Field(description="The user's type: Admin, Developer or User.")
+    last_login: None | datetime = Field(None, description="When the user last signed in.")
+    last_active: None | datetime = Field(None, description="When the user was last active.")
+    status: Literal["active", "pending", "revoked", "expired"] = Field(
+        "pending",
+        description="The state of the account: `active`, `pending`, `revoked` or `expired`.",
+    )
+    permissions_uuid: UUID | None = Field(None, description="The UUID of the user's permissions map.")
+    source: UserSourceType = Field(description="Whether the entry is a `user` or an `invite`.")
 
 
 class UserCreateAdmin(BaseModel):
     model_config = main_config
-    email: Annotated[EmailStr, AfterValidator(check_email)]
-    permissions_uuid: UUID = settings.PRO_TRIAL_MAPPING
-    first_name: None | str = None
-    last_name: None | str = None
-    message: None | str = Field(max_length=500, default=None)
-    role: None | UUID = None
+    email: Annotated[EmailStr, AfterValidator(check_email)] = Field(description="The user's email address.")
+    permissions_uuid: UUID = Field(description="The UUID of the permissions map that gives the user their type.")
+    first_name: None | str = Field(None, description="The user's first name.")
+    last_name: None | str = Field(None, description="The user's last name.")
+    message: None | str = Field(
+        max_length=500,
+        default=None,
+        description="A message for the new user, up to 500 characters.",
+    )
+    role: None | UUID = Field(None, description="The UUID of a role to give the user.")
 
 
-class UserCreateProAdmin(BaseModel):
+class UserCreateAppAdmin(BaseModel):
     model_config = main_config
     email: Annotated[EmailStr, AfterValidator(check_email)]
-    permissions_uuid: UUID = settings.PRO_TRIAL_MAPPING
+    permissions_uuid: UUID
     first_name: None | str = None
     last_name: None | str = None
     message: None | str = Field(max_length=500, default=None)
-    newsletter: None | bool = False
-    hear_about_us: None | str = None
 
 
 class UserUpdateAdmin(BaseModel):
     model_config = main_config
-    permissions_uuid: None | str = None
-    pro_trial_end: None | datetime = None
+    permissions_uuid: UUID = Field(description="The UUID of the permissions map to move the user to.")
 
 
 class TotpToken(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    totp_token: Annotated[None | int, AfterValidator(check_totp_token)] = None
+    totp_token: Annotated[None | int, AfterValidator(check_totp_token)] = Field(
+        None,
+        description="The code from the user's authenticator app.",
+    )
 
 
-class ExternalUserLogin(BaseModel):
+class TotpActivate(TotpToken):
+    remember: bool = Field(False, description="Whether to keep the user signed in for longer.")
+    version: None | str = Field(None, description="The version of the web app.")
+
+
+class UserLogin(BaseModel):
     model_config = main_config
-    email: Annotated[str, AfterValidator(check_email_or_username)]
-    remember: bool = False
-    ip_address: Annotated[None | IPvAnyAddress, BeforeValidator(blank_to_none)] = None
-    source: None | source_type = None
-    totp_token: Annotated[None | int, AfterValidator(check_totp_token)] = None
-
-
-class UserLogin(ExternalUserLogin):
-    model_config = main_config
-    password: Annotated[str, AfterValidator(check_password)]
+    email: Annotated[str, AfterValidator(check_email_or_username)] = Field(
+        description="The user's email address or username.",
+    )
+    remember: bool = Field(False, description="Whether to keep the user signed in for longer.")
+    totp_token: Annotated[None | int, AfterValidator(check_totp_token)] = Field(
+        None,
+        description="The code from the user's authenticator app. It is needed when the user has an active authenticator.",
+    )
+    password: Annotated[str, AfterValidator(check_password)] = Field(description="The user's password.")
 
     _bypass_password_check: bool = False
 
 
-class ProUserLogin(UserLogin):
-    version: None | str = None
+class AppUserLogin(UserLogin):
+    source: None | AppLoginSource = Field(
+        None,
+        description="The kind of client that signs in: `app` or `oauth-app`. It defaults to `app`.",
+    )
+    version: None | str = Field(None, description="The version of the web app that signs in.")
 
 
-class OAuthLogin(ProUserLogin):
+class OAuthLogin(AppUserLogin):
     password: str | None = None
 
     def bypass_password_check(self):
@@ -1331,30 +783,20 @@ class OAuthLogin(ProUserLogin):
         return self
 
 
-class UserJsonUpdate(BaseModel):
-    model_config = main_config
-    key: str
-    value: Any = None
-
-
 class UserUpdate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    first_name: None | str = None
-    last_name: None | str = None
-    old_password: Annotated[None | str, AfterValidator(check_password)] = None
-    new_password: Annotated[None | str, AfterValidator(check_password)] = None
-    email: Annotated[None | EmailStr, AfterValidator(check_email)] = None
-    username: Annotated[None | str, AfterValidator(check_username)] = None
-    primary_usage: None | str = None
-    wants_contacted: None | bool = None
+    old_password: Annotated[None | str, AfterValidator(check_password)] = Field(
+        None,
+        description="The user's current password.",
+    )
+    new_password: Annotated[None | str, AfterValidator(check_password)] = Field(
+        None,
+        description=(
+            "The new password. It needs at least 8 characters, with an uppercase letter, a lowercase letter, a "
+            "number and a special character, and no spaces."
+        ),
+    )
 
     def validated_dict(self, password: str):
-        """Converts the model into a dictionary, valid for updating the user model.
-
-        Parameters
-        ----------
-        password: str
-            The user's old password hashed, used to validated old_password
-        """
         if isinstance(password, bytes):
             password = password.decode("utf-8")
 
@@ -1370,30 +812,11 @@ class UserUpdate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
         return new_dict
 
 
-class UserReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    model_config = main_config
-    confirmed: bool
-    created_date: datetime
-    first_name: None | str = None
-    last_name: None | str = None
-    referral_count: None | int = None
-    email: str
-    username: Annotated[None | str, AfterValidator(check_username)] = None
-    profile_url: None | str = None
-    referral_code: str
-    primary_usage: None | str = None
-    information_complete: Literal["bot", "complete", "incomplete"]
-
-
-class UserReturnExpanded(UserReturn):
-    model_config = main_config
-    uuid: UUID
-
-
 class ShareDashboard(BaseModel):
     model_config = main_config
-    # For right now, we are NOT allowing edit
-    shares: SharesPermissions
+    shares: SharesPermissions = Field(
+        description="The users to share with, by email address, each with the permissions to give: `view` or `comment`.",
+    )
 
 
 class ShareUserApp(ShareDashboard):
@@ -1402,20 +825,17 @@ class ShareUserApp(ShareDashboard):
 
 class ShareDashboardList(BaseModel):
     model_config = main_config
-    # For right now, we are NOT allowing edit
-    shares: list[Annotated[str, AfterValidator(check_email)]]
+    shares: list[Annotated[str, AfterValidator(check_email)]] = Field(
+        description="The email addresses of the users to stop sharing with.",
+    )
 
 
 class ShareUserAppList(ShareDashboardList):
     pass
 
 
-class RegisterProUser(BaseModel):
-    inviting_uuid: UUID
-    inviting_email: str
-    shared_user_app: None | UUID = None
-    shared_dashboard: None | UUID = None
-    shared_permissions: None | permissions_type = None
+class RegisterAppUser(BaseModel):
+    inviting_uuid: None | UUID = None
 
 
 ForceInt = Annotated[int, BeforeValidator(int)]
@@ -1423,21 +843,24 @@ ForceInt = Annotated[int, BeforeValidator(int)]
 
 class ChatMessage(BaseModel):
     model_config = ConfigDict(extra="allow", from_attributes=True)
-    uuid: UUID | None = Field(default=None)
-    role: base.ChatMessageRole
-    copilotId: str
-    timestamp: ForceInt
-    content: str | dict | None = None
-    isError: None | bool = None
-    isFC: None | bool = None
-    function: None | str = None
-    input: None | dict = None
-    copilot_function_call_arguments: None | dict = None
-    isHidden: None | bool = None
-    usedPersonalOpenAiKey: None | bool = None
-    citations: None | list[dict] = None
-    data: None | dict | list[dict] = None
-    extra_state: None | dict = None
+    uuid: UUID | None = Field(default=None, description="The UUID of the message.")
+    role: base.ChatMessageRole = Field(description="Who wrote the message: `ai`, `human`, `summary`, `system` or `tool`.")
+    copilotId: str = Field(description="The id of the Copilot that the message belongs to.")
+    timestamp: ForceInt = Field(description="When the message was written, in milliseconds since 1970.")
+    content: str | dict | None = Field(None, description="The message, as text or as an object for a structured message.")
+    isError: None | bool = Field(None, description="Whether the message reports an error.")
+    isFC: None | bool = Field(None, description="Whether the message is a function call or the result of one.")
+    function: None | str = Field(None, description="The name of the function that was called.")
+    input: None | dict = Field(None, description="The input of the function call.")
+    copilot_function_call_arguments: None | dict = Field(
+        None,
+        description="The arguments of the function call, as the Copilot gave them.",
+    )
+    isHidden: None | bool = Field(None, description="Whether the web app hides the message.")
+    usedPersonalOpenAiKey: None | bool = Field(None, description="Whether the user's own OpenAI key produced the answer.")
+    citations: None | list[dict] = Field(None, description="The sources that the answer cites.")
+    data: None | dict | list[dict] = Field(None, description="Data that the message carries.")
+    extra_state: None | dict = Field(None, description="Further state that the web app keeps with the message.")
 
     @field_validator("usedPersonalOpenAiKey", mode="before", check_fields=False)
     @classmethod
@@ -1455,13 +878,19 @@ def parse_created_at(value: datetime | int | None) -> int:
 
 class ChatInfo(BaseModel):
     model_config = ConfigDict(extra="allow", from_attributes=True)
-    uuid: str | UUID | None = Field(default=None, serialization_alias="uuid", alias="id")
-    createdAt: Annotated[int, BeforeValidator(parse_created_at)]
-    label: str
+    uuid: str | UUID | None = Field(
+        default=None,
+        serialization_alias="uuid",
+        alias="id",
+        description="The UUID of the chat.",
+    )
+    createdAt: Annotated[int, BeforeValidator(parse_created_at)] = Field(
+        description="When the chat was created, in milliseconds since 1970.",
+    )
+    label: str = Field(description="The chat's title.")
 
     @classmethod
     def corrupted(cls, uuid: UUID) -> "Chat":
-        """Creates a corrupted chat object with the given UUID."""
         return cls(
             uuid=uuid,
             createdAt=int(datetime.now(UTC).timestamp() * 1000),
@@ -1475,30 +904,19 @@ class ChatInfo(BaseModel):
                         "message": "This chat contains corrupted data and cannot be displayed.",
                     },
                     timestamp=int(datetime.now(UTC).timestamp() * 1000),
-                    copilotId="openbb-copilot",
+                    copilotId="default-copilot",
                 )
             ],
             lastOpened=int(datetime.now(UTC).timestamp() * 1000),
         )
 
     def to_content(self) -> dict:
-        """Converts the Chat object to a dictionary suitable for database storage."""
         return self.model_dump(mode="json", exclude={"messages", "artifacts"}, by_alias=True)
 
 
 class Chat(ChatInfo):
-    artifacts: list[dict] | None = Field(default_factory=list)
-    messages: list[ChatMessage]
-
-    @classmethod
-    def from_db(cls, value: dict | None, uuid: UUID) -> "Chat":
-        if value is None:
-            return cls.corrupted(uuid)
-
-        value.pop("id_", None)
-        value.pop("id", None)
-        value.update({"uuid": uuid})
-        return cls.model_validate(value)
+    artifacts: list[dict] | None = Field(default_factory=list, description="The artifacts that the chat produced.")
+    messages: list[ChatMessage] = Field(description="The messages of the chat, in order.")
 
     @classmethod
     def from_row(cls, row: "CopilotChat", from_search: bool = False) -> "ChatInfo | Chat":
@@ -1518,10 +936,12 @@ class Chat(ChatInfo):
 
 
 class ChatUpdate(Chat):
-    messages: dict[UUID, Literal["DELETE"] | dict] = Field(default_factory=dict)
+    messages: dict[UUID, Literal["DELETE"] | dict] = Field(
+        default_factory=dict,
+        description="The messages to save, by UUID. Each value is the message, or `DELETE` to delete the message.",
+    )
 
     def to_entry(self, chat_uuid: UUID, owner_uuid: UUID):
-        """Converts the ChatUpdate object to a dictionary suitable for database storage."""
         v = self.model_dump(mode="json", by_alias=True)
         v.pop("id_", None)
         v.pop("id", None)
@@ -1539,60 +959,230 @@ class ChatUpdate(Chat):
 
 
 class CopilotChatsCreate(BaseModel):
-    chats: dict[UUID, Literal["DELETE"] | ChatUpdate]
+    chats: dict[UUID, Literal["DELETE"] | ChatUpdate] = Field(
+        description="The chats to save, by UUID. Each value is the chat, or `DELETE` to delete the chat.",
+    )
 
 
 class MCPTool(BaseModel):
     model_config = get_camel_config(extra="ignore", from_attributes=True)
-    id_: str = Field(serialization_alias="id", alias="id")
-    name: str
-    description: str | None = None
-    enabled: bool = True
+    id_: str = Field(serialization_alias="id", alias="id", description="The tool's id.")
+    name: str = Field(description="The tool's name.")
+    description: str | None = Field(None, description="What the tool does, in the server's words.")
+    enabled: bool = Field(True, description="Whether the user switched the tool on.")
+
+
+MCPHeaderName = Annotated[
+    str, StringConstraints(pattern=r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$", max_length=100)
+]
+MCPHeaderValue = Annotated[str, StringConstraints(pattern=r"^[^\r\n\x00]*$", max_length=8192)]
 
 
 class MCPServer(BaseModel):
     model_config = get_camel_config(extra="allow", from_attributes=True)
-    id_: str = Field(serialization_alias="id", alias="id")
-    client_name: str | None = None
-    tools: list[MCPTool] = Field(default_factory=list)
-    name: str
-    url: str
-    enabled: bool
-    is_local: bool = False
-    custom_headers: dict[str, str] | None = Field(default_factory=dict)
+    id_: str = Field(serialization_alias="id", alias="id", description="The server's id.")
+    client_name: str | None = Field(None, description="The name that the server reported for itself.")
+    tools: list[MCPTool] = Field(default_factory=list, description="The tools that the server offers.")
+    name: str = Field(description="The name that the user gave the server.")
+    url: str = Field(description="The server's address.")
+    enabled: bool = Field(description="Whether the user switched the server on.")
+    custom_headers: dict[MCPHeaderName, MCPHeaderValue | None] | None = Field(
+        default=None,
+        exclude=True,
+        description=(
+            "The headers that the web app sends to the server, by name. The API stores the values and never returns "
+            "them."
+        ),
+    )
+    custom_header_names: list[str] = Field(
+        default_factory=list,
+        description="The names of the headers that the user saved for the server.",
+    )
+    has_token: bool = Field(False, description="Whether the user saved an authorization token for the server.")
+
+    def stored_fields(self) -> dict:
+        return self.model_dump(exclude={"custom_header_names", "has_token"})
 
 
 class MCPServers(BaseModel):
     model_config = ConfigDict(extra="ignore", from_attributes=True)
-    servers: list[MCPServer] = Field(default_factory=list)
+    servers: list[MCPServer] = Field(default_factory=list, description="The user's MCP servers.")
 
     def get_servers_json(self):
         return self.model_dump(by_alias=True).get("servers", [])
 
 
-class TVChartsState(BaseModel):
-    model_config = {"populate_by_name": True, "extra": "allow"}
-    charts: list[dict] | None = Field(default_factory=list)
-    studyTemplates: list[dict] | None = Field(default_factory=list)
-    drawingTemplates: list[dict] | None = Field(default_factory=list)
-    chartTemplates: list[dict] | None = Field(default_factory=list)
-    chartLayouts: dict[str, dict[str, Any]] | None = Field(default_factory=dict)
+def mcp_header_flags(headers: dict[str, str] | None) -> dict[str, list[str] | bool]:
+    names = sorted(headers) if headers else []
+    return {
+        "custom_header_names": names,
+        "has_token": any(name.lower() == "authorization" for name in names),
+    }
 
 
-class TVStateCreate(BaseModel):
-    charts_state: TVChartsState
-    settings: dict[str, Any]
+def normalize_mcp_url(url: str) -> str:
+    parsed = urlsplit(url.strip())
+    path = parsed.path.rstrip("/")
+    return urlunsplit((parsed.scheme.lower(), parsed.netloc.lower(), path, "", ""))
 
 
-class TVStateResponse(BaseModel):
-    model_config = {"from_attributes": True, "populate_by_name": True}
-    charts_state: TVChartsState | None = None
-    settings: dict[str, Any] | None = None
+def mcp_server_url(url: str) -> str:
+    normalized = normalize_mcp_url(url)
+    parsed = urlsplit(normalized)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("The MCP server URL must be an http or https URL")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("The MCP server URL must not carry credentials")
+    return normalized
 
 
-class UserProSchema(BaseModel):
-    "A schema for the user pro"
+class MCPOAuthServer(BaseModel):
+    model_config = main_config
+    server_url: Annotated[
+        str,
+        Field(max_length=2048, description="The address of the MCP server."),
+        AfterValidator(mcp_server_url),
+    ]
 
+
+class ApiSourceMcpServers(BaseModel):
+    model_config = main_config
+    servers: list[Annotated[str, Field(max_length=400), AfterValidator(mcp_server_url)]] = Field(
+        max_length=100,
+        description="The MCP server URLs the backend declares: iframe widgets' storage.mcpUrl and the apps' mcpServers.",
+    )
+
+
+class MCPOAuthAuthorization(BaseModel):
+    model_config = main_config
+    authorization_url: str = Field(
+        description="The address at which the user grants FINOS Workspace access to the MCP server.",
+    )
+
+
+class MCPOAuthCallback(BaseModel):
+    model_config = main_config
+    code: str = Field(
+        min_length=1,
+        max_length=4096,
+        description="The authorization code that the MCP server's authorization server returned.",
+    )
+    state: str = Field(
+        min_length=1,
+        max_length=512,
+        description="The state that the sign-in started with, which the redirect carried back.",
+    )
+
+
+class MCPOAuthCompleted(BaseModel):
+    model_config = main_config
+    server_url: str = Field(description="The address of the MCP server that the user is now signed in to.")
+
+
+ALL_MCP_TOOLS = "*"
+ALL_MODELS = "*"
+
+
+class CopilotCapability(StrEnum):
+    SEARCH_WEB = "SEARCH_WEB"
+    FETCH_FROM_WEB = "FETCH_FROM_WEB"
+
+
+CAPABILITY_MCP_TOOLS: dict[CopilotCapability, frozenset[str]] = {
+    CopilotCapability.SEARCH_WEB: frozenset({"web_search"}),
+    CopilotCapability.FETCH_FROM_WEB: frozenset({"fetch_webpage", "inspect_webpage"}),
+}
+
+
+class CopilotModelGrant(BaseModel):
+    model_config = main_config
+    agent_id: str = Field(min_length=1, max_length=255, description="The id of the agent.")
+    model_id: str = Field(
+        min_length=1,
+        max_length=255,
+        description="The id of the model, or `*` for every model of the agent.",
+    )
+
+
+class McpGrant(BaseModel):
+    model_config = main_config
+    server_url: str = Field(min_length=1, max_length=400, description="The address of the MCP server.")
+    tool_name: str = Field(
+        default=ALL_MCP_TOOLS,
+        min_length=1,
+        max_length=200,
+        description="The name of the tool, or `*` for every tool of the server.",
+    )
+
+    @field_validator("server_url")
+    @classmethod
+    def normalize_url(cls, value: str) -> str:
+        return normalize_mcp_url(value)
+
+
+class RoleCopilotAccess(BaseModel):
+    model_config = main_config
+    models: list[CopilotModelGrant] = Field(
+        default_factory=list,
+        description="The agents and models that the role grants.",
+    )
+    mcp: list[McpGrant] = Field(default_factory=list, description="The MCP tools that the role grants.")
+
+
+class CopilotAccess(RoleCopilotAccess):
+    disabled_capabilities: list[CopilotCapability] = Field(
+        default_factory=list,
+        description="The Copilot capabilities that the user's roles switch off.",
+    )
+
+
+class CopilotToolRef(BaseModel):
+    model_config = main_config
+    url: str = Field(description="The address of the MCP server.")
+    tool_name: str = Field(description="The name of the tool.")
+
+
+class CopilotAuthorize(BaseModel):
+    model_config = main_config
+    agent_id: str | None = Field(None, description="The id of the agent.")
+    model: str | None = Field(None, description="The id of the model.")
+    tools: list[CopilotToolRef] = Field(default_factory=list, description="The MCP tools that the agent wants to use.")
+
+
+ProviderKey = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1024, pattern=r"^\S+$")
+]
+
+
+class CopilotProviderKeys(BaseModel):
+    model_config = main_config
+    openai_api_key: ProviderKey | None = Field(None, description="The user's own OpenAI key.")
+    perplexity_api_key: ProviderKey | None = Field(None, description="The user's own Perplexity key.")
+
+
+class CopilotKeysStatus(BaseModel):
+    model_config = main_config
+    has_openai_key: bool = Field(False, description="Whether the user saved an OpenAI key.")
+    has_perplexity_key: bool = Field(False, description="Whether the user saved a Perplexity key.")
+
+
+class CopilotAuthorizeResult(BaseModel):
+    model_config = main_config
+    allowed: bool = Field(description="Whether the user may use the agent, the model and the tools.")
+    denied_model: str | None = Field(None, description="The model that the user may not use.")
+    denied_tools: list[CopilotToolRef] = Field(default_factory=list, description="The tools that the user may not use.")
+    provider_keys: CopilotProviderKeys | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+        description="The user's own provider keys. Only an answer to the Copilot agent carries them.",
+    )
+    disabled_capabilities: list[CopilotCapability] = Field(
+        default_factory=list,
+        description="The Copilot capabilities that the user's roles switch off.",
+    )
+
+
+class AppUserSchema(BaseModel):
     model_config = {"from_attributes": True, "populate_by_name": True}
 
     email: str
@@ -1602,23 +1192,15 @@ class UserProSchema(BaseModel):
     password: str
     latest_version: str | None = None
     permissions_uuid: None | UUID = None
-    pro_entitlements: ProEntitlements | None = None
-    pro_trial_end: None | datetime = None
-    pro_trial_renewals: None | int = None
-    pro_trial_extension: None | bool = None
     temporary_password: None | bool = None
     totp_secret: None | str = None
     totp_active: bool | None = None
     two_factor_auth: bool | None = None
-    billing_active: None | bool = None
     entity_uuid: UUID | None = None
     require_authenticator: bool | None = None
     name: str | None = None
-    expiration_date: None | datetime = None
     role: str | None = None
-    welcome_screen: bool | None = None
     is_superuser: bool | None = None
-    can_submit_marketplace: bool | None = None
 
 
 class StoredFileSchema(BaseModel, extra="ignore"):  # type: ignore[call-arg]
@@ -1637,7 +1219,7 @@ class StoredFileSchema(BaseModel, extra="ignore"):  # type: ignore[call-arg]
             stored_file_uuid=self.uuid,
             original_file_name=self.original_file_name,
             extension=self.extension,
-            url=f"{settings.SELFURL}/pro/files/{self.uuid}.{self.extension}",
+            url=f"{settings.SELFURL}/app/files/{self.uuid}.{self.extension}",
             failed=self.failed,
         )
 
@@ -1647,12 +1229,15 @@ class StoredFileSchema(BaseModel, extra="ignore"):  # type: ignore[call-arg]
 
 
 class StoredFileReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    uuid: UUID
-    file_widget_uuid: UUID | None = None
-    extension: ExtensionType
-    original_file_name: None | str
-    size: int | None = None
-    is_global: bool = False
+    uuid: UUID = Field(description="The UUID of the stored file.")
+    file_widget_uuid: UUID | None = Field(
+        None,
+        description="The UUID of the file widget that uses the file. It is empty while no widget uses it.",
+    )
+    extension: ExtensionType = Field(description="The file's extension.")
+    original_file_name: None | str = Field(description="The name of the file as the user uploaded it.")
+    size: int | None = Field(None, description="The file's size in bytes.")
+    is_global: bool = Field(False, description="Whether the file is available to every user.")
 
 
 class DownloadManifest(StoredFileReturn):
@@ -1669,146 +1254,193 @@ class DownloadManifest(StoredFileReturn):
 
 
 class DeleteStoredFiles(BaseModel):
-    file_uuids: list[UUID]
+    file_uuids: list[UUID] = Field(description="The UUIDs of the stored files to delete.")
 
 
 class WidgetMetadataResponse(BaseModel):
     model_config = get_camel_config()
-    name: str
-    description: str
-    source: str
-    category: str
-    sub_category: str
-    widget_type: MetaDataWidgetType
-    storage: dict
-    widget_config: dict | None = None
-    widget_id: UUID
+    name: str = Field(description="The widget's name.")
+    description: str = Field(description="A description of the widget.")
+    source: str = Field(description="Where the widget's data comes from.")
+    category: str = Field(description="The widget's category.")
+    sub_category: str = Field(description="The widget's subcategory.")
+    widget_type: MetaDataWidgetType = Field(
+        description=(
+            "The kind of widget: `iframe`, `copilot_table`, `youtube`, `widget_studio`, `chart`, `html` or "
+            "`ag_chart_from_table`."
+        ),
+    )
+    storage: dict = Field(description="The widget's stored content.")
+    widget_config: dict | None = Field(None, description="The widget's configuration.")
+    widget_id: UUID = Field(description="The id of the widget that the metadata describes.")
 
 
 class WidgetMetadataResponsePatch(BaseModel):
     model_config = get_camel_config()
-    name: str | None = None
-    description: str | None = None
-    source: str | None = None
-    category: str | None = None
-    sub_category: str | None = None
-    widget_type: MetaDataWidgetType | None = None
-    widget_config: dict | None = None
-    storage: dict | None = None
+    name: str | None = Field(None, description="The widget's new name.")
+    description: str | None = Field(None, description="The widget's new description.")
+    source: str | None = Field(None, description="The widget's new source.")
+    category: str | None = Field(None, description="The widget's new category.")
+    sub_category: str | None = Field(None, description="The widget's new subcategory.")
+    widget_type: MetaDataWidgetType | None = Field(None, description="The widget's new kind.")
+    widget_config: dict | None = Field(None, description="The widget's new configuration.")
+    storage: dict | None = Field(None, description="The widget's new stored content.")
 
 
 class UserAppCreate(BaseModel):
     model_config = ConfigDict(extra="allow", from_attributes=True, populate_by_name=True)
-    name: str
-    description: str | None = None
-    img: str | None = None
-    img_dark: str | None = None
-    img_light: str | None = None
-    prompts: list[str] = Field(default_factory=list)
-    widgets: list[dict] = Field(default_factory=list)
-    groups: list[dict] = Field(default_factory=list)
-    gridLayout: dict[str, list[dict]] = Field(default_factory=dict)
-    currentTab: str | None = None
+    name: str = Field(description="The app's name.")
+    description: str | None = Field(None, description="A description of the app.")
+    img: str | None = Field(None, description="The app's image.")
+    img_dark: str | None = Field(None, description="The image to use in dark mode.")
+    img_light: str | None = Field(None, description="The image to use in light mode.")
+    prompts: list[str] = Field(default_factory=list, description="The prompts that the app offers.")
+    widgets: list[dict] = Field(default_factory=list, description="The widgets of the app.")
+    groups: list[dict] = Field(default_factory=list, description="The widget groups of the app.")
+    gridLayout: dict[str, list[dict]] = Field(
+        default_factory=dict,
+        description="The layout of the app's widgets, by tab.",
+    )
+    currentTab: str | None = Field(None, description="The tab that the app opens on.")
+
+    @model_validator(mode="before")
+    @classmethod
+    def strip_credentials(cls, content: Any) -> Any:
+        return strip_endpoint_credentials(content)
 
 
 class UserAppReturn(BaseModel):
     model_config = get_camel_config(from_attributes=True)
-    content: UserAppCreate
-    creator: bool
-    is_shared: bool | None = False
-    created_date: datetime = Field(serialization_alias="createdDate", alias="created_date")
-    updated_date: datetime = Field(serialization_alias="updatedDate", alias="updated_date")
-    created_by: str = Field(serialization_alias="createdBy", alias="created_by")
-    sharedWith: list[dict] | None = Field(default_factory=list, serialization_alias="sharedWith", alias="shared_with")
+    content: UserAppCreate = Field(description="The app's content.")
+    creator: bool = Field(description="Whether the signed-in user created the app.")
+    is_shared: bool | None = Field(False, description="Whether the app is shared with anyone.")
+    created_date: datetime = Field(
+        serialization_alias="createdDate",
+        alias="created_date",
+        description="When the app was created.",
+    )
+    updated_date: datetime = Field(
+        serialization_alias="updatedDate",
+        alias="updated_date",
+        description="When the app was last changed.",
+    )
+    created_by: str = Field(
+        serialization_alias="createdBy",
+        alias="created_by",
+        description="The email address of the app's owner.",
+    )
+    sharedWith: list[dict] | None = Field(
+        default_factory=list,
+        serialization_alias="sharedWith",
+        alias="shared_with",
+        description="The users with whom the app is shared.",
+    )
 
 
 class UserAppShareReturn(BaseModel):
-    created_date: None | datetime
-    permissions: None | base.PermissionEnum
-    first_name: None | str
-    last_name: None | str
-    is_invite: bool
+    created_date: None | datetime = Field(description="When the share was created.")
+    permissions: None | base.PermissionEnum = Field(
+        description="What the recipient may do with the app: `view`, `comment` or `edit`.",
+    )
+    first_name: None | str = Field(description="The recipient's first name.")
+    last_name: None | str = Field(description="The recipient's last name.")
+    pending: bool = Field(False, description="Whether the share waits for an admin's approval.")
 
 
 class UserAppsComplete(BaseModel):
-    shared: dict[UUID, UserAppReturn]
-    owned: dict[UUID, UserAppReturn]
-
-
-class EnabledBundles(BaseModel):
-    enabled_bundles: list[str]
-    disabled_widgets: list[str] | None = None
-
-
-class EntitlementPost(BaseModel):
-    model_config = main_config
-    tier: Literal["pro", "terminal"]
-
-
-class EntitlementPut(EntitlementPost): ...  # type: ignore
-
-
-class EntitlementPatch(EntitlementBase): ...  # type: ignore
-
-
-class ValidateAndSync(BaseModel):
-    model_config = main_config
-    feature_entitlements: EntitlementGet
-
-
-class TierPut(BaseModel):
-    model_config = main_config
-
-    tier: Literal["terminal"]
-
-
-class TierPutResponse(BaseModel):
-    model_config = main_config
-    entitlement: EntitlementGet
-    usage: EntitlementUsageGet
-    is_trial_entity: bool
+    shared: dict[UUID, UserAppReturn] = Field(description="The apps that others shared with the user, by UUID.")
+    owned: dict[UUID, UserAppReturn] = Field(description="The apps that the user owns, by UUID.")
 
 
 class SharedDashboardViewed(BaseModel):
-    dashboard_uuid: UUID
-    viewed: bool
+    dashboard_uuid: UUID = Field(description="The UUID of the dashboard.")
+    viewed: bool = Field(description="Whether the user has viewed the dashboard.")
 
 
 class SharedAppViewed(BaseModel):
-    app_uuid: UUID
-    viewed: bool
+    app_uuid: UUID = Field(description="The UUID of the app.")
+    viewed: bool = Field(description="Whether the user has viewed the app.")
+
+
+class SignInStart(BaseModel):
+    model_config = main_config
+
+    version: None | str = Field(
+        default=None, max_length=64, description="The version of the web app that asks for the sign-in."
+    )
+
+
+class SignInStarted(BaseModel):
+    model_config = main_config
+
+    authorization_url: str = Field(description="The address of the provider's sign-in page, which the browser opens.")
+
+
+class JsonWebKeySet(BaseModel):
+    keys: list[dict] = Field(description="The public keys that verify the identity token, newest first")
 
 
 class AuthData(BaseModel):
     model_config = main_config
 
-    token: str | None = None
-    newsletter: bool | None = False
-    version: None | str = None
+    token: str | None = Field(default=None, max_length=8192, description="The Google credential.")
+    version: None | str = Field(None, description="The version of the web app that signs in.")
 
 
 class CustomCopilot(BaseModel):
-    model_config = ConfigDict(extra="ignore", from_attributes=True)
-    uuid: UUID | None = Field(default_factory=uuid4)
-    url: str
-    headers: dict[str, str]
-    copilots: list[dict] | None = Field(default_factory=list)
+    model_config = get_camel_config(extra="ignore", from_attributes=True)
+    uuid: UUID | None = Field(default_factory=uuid4, description="The UUID of the custom Copilot.")
+    url: str = Field(max_length=200, description="The address of the agent.")
+    headers: dict[MCPHeaderName, MCPHeaderValue] | None = Field(
+        default=None,
+        exclude=True,
+        description=(
+            "The credentials the API sends to the agent. They are never returned. Left out, the stored ones are "
+            "kept; given, they are the whole set: a blank value keeps the stored value of that name and a name "
+            "that is missing is removed"
+        ),
+    )
+    header_names: list[str] = Field(default_factory=list, description="The names of the stored credentials")
+    copilots: list[dict] | None = Field(
+        default_factory=list,
+        description="The agent descriptors that the address serves.",
+    )
+
+    @field_validator("copilots")
+    @classmethod
+    def drop_credentials(cls, copilots: list[dict] | None) -> list[dict] | None:
+        return [{k: v for k, v in copilot.items() if k != "headers"} for copilot in copilots] if copilots else copilots
+
+
+class AgentDiscoverRequest(BaseModel, extra="forbid"):  # type: ignore[call-arg]
+    id: UUID | None = Field(
+        default=None, description="The saved agent connection whose stored credentials a blank value keeps"
+    )
+    url: str = Field(max_length=200, description="The address of the agent connection")
+    headers: dict[MCPHeaderName, MCPHeaderValue] | None = Field(
+        default=None, description="The credentials being tried; left out, those of the saved connection are used"
+    )
+
+
+class AgentDiscovery(BaseModel):
+    status: int = Field(description="The status the agent answered for its agents.json, or 0 when it did not answer")
+    agents: dict | None = Field(default=None, description="The agents.json the agent answered")
 
 
 class Prompt(BaseModel):
     model_config = ConfigDict(extra="allow", from_attributes=True)
-    id: str
-    prompt: str
-    widgets: list | None = Field(default_factory=list)
-    createdAt: str
-    updatedAt: str
+    id: str = Field(description="The prompt's id.")
+    prompt: str = Field(description="The prompt's text.")
+    widgets: list | None = Field(default_factory=list, description="The widgets that the prompt uses.")
+    createdAt: str = Field(description="When the prompt was created.")
+    updatedAt: str = Field(description="When the prompt was last changed.")
 
 
 class SkillCreate(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     model_config = get_camel_config(from_attributes=True)
-    slug: str
-    description: str
-    content: str
+    slug: str = Field(description="The skill's short name, in lowercase letters, digits and hyphens.")
+    description: str = Field(description="What the skill does and when to use it.")
+    content: str = Field(description="The skill's instructions.")
 
     @field_validator("slug")
     @classmethod
@@ -1823,105 +1455,238 @@ class SkillCreate(BaseModel, extra="ignore"):  # type: ignore[call-arg]
 class SkillReturn(SkillCreate):
     model_config = get_camel_config(from_attributes=True)
 
-    uuid: UUID
-    id_: UUID = Field(serialization_alias="id", alias="uuid")
-    created_date: datetime = Field(serialization_alias="createdDate", alias="created_date")
-    updated_date: datetime = Field(serialization_alias="updatedDate", alias="updated_date")
+    plugin_name: str | None = Field(
+        default=None,
+        description=(
+            "The widget plugin that provides this skill. A plugin's skill is read-only; "
+            "left out for the user's own skills"
+        ),
+    )
+    uuid: UUID = Field(description="The UUID of the skill.")
+    id_: UUID = Field(serialization_alias="id", alias="uuid", description="The UUID of the skill, repeated as `id`.")
+    created_date: datetime = Field(
+        serialization_alias="createdDate",
+        alias="created_date",
+        description="When the skill was created.",
+    )
+    updated_date: datetime = Field(
+        serialization_alias="updatedDate",
+        alias="updated_date",
+        description="When the skill was last changed.",
+    )
 
 
 class TwoFactorAuth(BaseModel):
     model_config = main_config
-    two_factor_auth: bool
+    two_factor_auth: bool = Field(description="Whether two-factor authentication is on for the user.")
 
 
 class TwoFactorAuthGet(TwoFactorAuth):
-    entity_require_authenticator: bool
+    entity_require_authenticator: bool = Field(
+        description="Whether the user's organization requires two-factor authentication.",
+    )
+
+
+ROLE_LIMITS = ("copilot_calls_day", "copilot_tokens_day", "upload_size_gb")
 
 
 class GetRoleWithUsers(BaseModel):
     model_config = main_config
-    uuid: UUID
-    name: str
-    description: str
-    updated_date: datetime
-    users: list[EmailStr]
+    uuid: UUID = Field(description="The UUID of the role.")
+    name: str = Field(description="The role's name.")
+    description: str = Field(description="What the role is for.")
+    updated_date: datetime = Field(description="When the role was last changed.")
+    users: list[EmailStr] = Field(description="The email addresses of the role's users.")
+    sharing: SharingLevel = Field(description="The sharing level that the role gives: `none`, `receive` or `share`.")
+    copilot_calls_day: int | None = Field(
+        description="The daily limit of Copilot calls that the role sets. It is empty when the role sets none.",
+    )
+    copilot_tokens_day: int | None = Field(
+        description="The daily limit of Copilot tokens that the role sets. It is empty when the role sets none.",
+    )
+    upload_size_gb: int | None = Field(
+        description="The limit of stored files in gigabytes that the role sets. It is empty when the role sets none.",
+    )
+    search_web: bool = Field(description="Whether the role lets its users search the web.")
+    fetch_from_web: bool = Field(description="Whether the role lets its users fetch pages from the web.")
+
+    @classmethod
+    def from_role(cls, role, users: list[str]) -> "GetRoleWithUsers":
+        return cls(
+            uuid=role.uuid,
+            name=role.name,
+            description=role.description,
+            updated_date=role.updated_date,
+            users=users,
+            sharing=role.sharing,
+            copilot_calls_day=role.copilot_calls_day,
+            copilot_tokens_day=role.copilot_tokens_day,
+            upload_size_gb=role.upload_size_gb,
+            search_web=role.search_web,
+            fetch_from_web=role.fetch_from_web,
+        )
 
 
 class PostRole(BaseModel):
     model_config = main_config
-    uuid: UUID | None = None
-    name: str
-    description: str
-    users: list[EmailStr] | None = None
+    uuid: UUID | None = Field(None, description="The UUID for the new role.")
+    name: str = Field(description="The role's name.")
+    description: str = Field(description="What the role is for.")
+    users: list[EmailStr] | None = Field(None, description="The email addresses of the users that the role starts with.")
+    sharing: SharingLevel = Field(
+        "none",
+        description="The sharing level that the role gives: `none`, `receive` or `share`.",
+    )
+    copilot_calls_day: int | None = Field(
+        None,
+        ge=0,
+        description="The daily limit of Copilot calls for the role's users. Leave it empty for no limit.",
+    )
+    copilot_tokens_day: int | None = Field(
+        None,
+        ge=0,
+        description="The daily limit of Copilot tokens for the role's users. Leave it empty for no limit.",
+    )
+    upload_size_gb: int | None = Field(
+        None,
+        ge=0,
+        description="The limit of stored files in gigabytes for the role's users. Leave it empty for no limit.",
+    )
+    search_web: bool = Field(True, description="Whether the role lets its users search the web.")
+    fetch_from_web: bool = Field(True, description="Whether the role lets its users fetch pages from the web.")
 
 
 class PatchRole(BaseModel):
     model_config = main_config
-    name: str | None = None
-    description: str | None = None
-    users: list[EmailStr] | None = None
+    name: str | None = Field(None, description="The role's new name.")
+    description: str | None = Field(None, description="The role's new description.")
+    users: list[EmailStr] | None = Field(
+        None,
+        description=(
+            "The email addresses that the role's members become. Users that the list leaves out are removed from the "
+            "role."
+        ),
+    )
+    sharing: SharingLevel | None = Field(None, description="The role's new sharing level: `none`, `receive` or `share`.")
+    copilot_calls_day: int | None = Field(
+        None,
+        ge=0,
+        description="The role's new daily limit of Copilot calls. Null removes the limit.",
+    )
+    copilot_tokens_day: int | None = Field(
+        None,
+        ge=0,
+        description="The role's new daily limit of Copilot tokens. Null removes the limit.",
+    )
+    upload_size_gb: int | None = Field(
+        None,
+        ge=0,
+        description="The role's new limit of stored files in gigabytes. Null removes the limit.",
+    )
+    search_web: bool | None = Field(None, description="Whether the role lets its users search the web.")
+    fetch_from_web: bool | None = Field(None, description="Whether the role lets its users fetch pages from the web.")
+
+    def changes(self) -> dict[str, Any]:
+        return {
+            key: value
+            for key, value in self.model_dump(
+                exclude={"users"}, exclude_unset=True
+            ).items()
+            if value is not None or key in ROLE_LIMITS
+        }
 
 
 class WidgetAccess(BaseModel):
-    widgetId: str
-    access: AccessType
+    widgetId: str = Field(description="The id of the widget.")
+    access: AccessType = Field(
+        description="The access level that the role gives: `no-access`, `access` or `full-access`.",
+    )
 
 
 class PromptAccess(BaseModel):
-    promptId: str
-    access: AccessType
+    promptId: str = Field(description="The id of the prompt.")
+    access: AccessType = Field(
+        description="The access level that the role gives: `no-access`, `access` or `full-access`.",
+    )
 
 
 class TemplateAccess(BaseModel):
-    templateId: str
-    access: AccessType
-    prompts: list[PromptAccess] | None = None
+    templateId: str = Field(description="The id of the template.")
+    access: AccessType = Field(
+        description="The access level that the role gives: `no-access`, `access` or `full-access`.",
+    )
+    prompts: list[PromptAccess] | None = Field(None, description="The access to each prompt of the template.")
 
 
 class AppReturn(BaseModel):
-    uuid: UUID
-    name: str
-    url: str
-    user_uuid: UUID
-    user_email: str | None = None
-    created_date: datetime
-    updated_date: datetime
+    uuid: UUID = Field(description="The UUID of the backend.")
+    name: str = Field(description="The backend's name.")
+    url: str = Field(description="The backend's address.")
+    user_uuid: UUID = Field(description="The UUID of the user who connected the backend.")
+    user_email: str | None = Field(None, description="The email address of the user who connected the backend.")
+    created_date: datetime = Field(description="When the backend was created.")
+    updated_date: datetime = Field(description="When the backend was last changed.")
 
 
 class RolePermissions(BaseModel):
     model_config = main_config
-    uuid: UUID
-    type: Literal["backend", "file", "prompt"]
-    access: AccessType
-    category: Literal["data-connectors", "templates", "prompts"]
-    widgets: list[WidgetAccess] | None = None
-    templates: list[TemplateAccess] | None = None
-    file_extension: ExtensionType | None = None
-    prompt: Prompt | None = None
+    uuid: UUID = Field(description="The UUID of the backend, the file widget or the prompt.")
+    type: Literal["backend", "file", "prompt"] = Field(
+        description="What the permission is about: a `backend`, a `file` or a `prompt`.",
+    )
+    access: AccessType = Field(
+        description="The access level that the role gives: `no-access`, `access` or `full-access`.",
+    )
+    category: Literal["data-connectors", "templates", "prompts"] = Field(
+        description="The group that the item belongs to: `data-connectors`, `templates` or `prompts`.",
+    )
+    widgets: list[WidgetAccess] | None = Field(None, description="The access to each widget of a backend.")
+    templates: list[TemplateAccess] | None = Field(None, description="The access to each template of a backend.")
+    file_extension: ExtensionType | None = Field(None, description="The file's extension, for a file.")
+    prompt: Prompt | None = Field(None, description="The prompt, for a prompt.")
 
 
 class BackendPermissionsModel(BaseModel):
     model_config = main_config
-    uuid: UUID
-    name: str
-    access: AccessType
-    widgets: list[WidgetAccess] | None = None
-    templates: list[TemplateAccess] | None = None
-    url: str | None = None
-    endpointHeaders: list[ApiSourceEndpointHeaders] | None = None
-    created_date: datetime = Field(serialization_alias="createdDate", alias="created_date")
-    updated_date: datetime = Field(serialization_alias="updatedDate", alias="updated_date")
-    created_by: str | None = Field(serialization_alias="createdBy", alias="created_by")
+    uuid: UUID = Field(description="The UUID of the backend.")
+    name: str = Field(description="The backend's name.")
+    access: AccessType = Field(
+        description="The access level that the role gives: `no-access`, `access` or `full-access`.",
+    )
+    widgets: list[WidgetAccess] | None = Field(None, description="The access to each widget of the backend.")
+    templates: list[TemplateAccess] | None = Field(None, description="The access to each template of the backend.")
+    url: str | None = Field(None, description="The backend's address.")
+    endpointHeaders: list[ApiSourceHeaderName] | None = Field(
+        None,
+        description="The credentials of the connection, which the API adds to every request to the backend.",
+    )
+    created_date: datetime = Field(
+        serialization_alias="createdDate",
+        alias="created_date",
+        description="When the backend was created.",
+    )
+    updated_date: datetime = Field(
+        serialization_alias="updatedDate",
+        alias="updated_date",
+        description="When the backend was last changed.",
+    )
+    created_by: str | None = Field(
+        serialization_alias="createdBy",
+        alias="created_by",
+        description="The email address of the user who created the backend.",
+    )
 
 
 class FilePermissionsModel(BaseModel):
     model_config = main_config
-    uuid: UUID
-    access: AccessType
-    name: str
-    description: str
-    url: str | None = None
-    stored_file_uuid: UUID | None = None
+    uuid: UUID = Field(description="The UUID of the file widget.")
+    access: AccessType = Field(
+        description="The access level that the role gives: `no-access`, `access` or `full-access`.",
+    )
+    name: str = Field(description="The file widget's name.")
+    description: str = Field(description="A description of the file widget.")
+    url: str | None = Field(None, description="The address of the file.")
+    stored_file_uuid: UUID | None = Field(None, description="The UUID of the stored file.")
 
     @model_validator(mode="after")
     def check_stored_file_uuid(self):
@@ -1936,97 +1701,200 @@ class FilePermissionsModel(BaseModel):
 
 class PromptPermissionsModel(BaseModel):
     model_config = main_config
-    uuid: UUID
-    access: AccessType
-    prompt: Prompt
+    uuid: UUID = Field(description="The UUID of the prompt.")
+    access: AccessType = Field(
+        description="The access level that the role gives: `no-access`, `access` or `full-access`.",
+    )
+    prompt: Prompt = Field(description="The prompt.")
 
 
 class UserRolePermissions(BaseModel):
     model_config = main_config
-    backends: list[BackendPermissionsModel] | None = Field(default_factory=list)
-    files: list[FilePermissionsModel] | None = Field(default_factory=list)
-    prompts: list[PromptPermissionsModel] | None = Field(default_factory=list)
+    backends: list[BackendPermissionsModel] | None = Field(
+        default_factory=list,
+        description="The backends that the role grants, with the access to each.",
+    )
+    files: list[FilePermissionsModel] | None = Field(
+        default_factory=list,
+        description="The file widgets that the role grants, with the access to each.",
+    )
+    prompts: list[PromptPermissionsModel] | None = Field(
+        default_factory=list,
+        description="The prompts that the role grants, with the access to each.",
+    )
 
 
 class UserRolesPermissions(BaseModel):
     model_config = main_config
-    permissions: dict[UUID, UserRolePermissions] = Field(default_factory=dict)
+    permissions: dict[UUID, UserRolePermissions] = Field(
+        default_factory=dict,
+        description="The permissions of each of the user's roles, by role UUID.",
+    )
 
 
 class UserRolesPermissionsFlattened(BaseModel):
     model_config = main_config
-    backends: list[BackendPermissionsModel] | None = Field(default_factory=list)
-    files: list[FilePermissionsModel] | None = Field(default_factory=list)
-    prompts: list[PromptPermissionsModel] | None = Field(default_factory=list)
+    backends: list[BackendPermissionsModel] | None = Field(
+        default_factory=list,
+        description="The backends that the user's roles grant, with the access to each.",
+    )
+    files: list[FilePermissionsModel] | None = Field(
+        default_factory=list,
+        description="The file widgets that the user's roles grant, with the access to each.",
+    )
+    prompts: list[PromptPermissionsModel] | None = Field(
+        default_factory=list,
+        description="The prompts that the user's roles grant, with the access to each.",
+    )
 
 
 class RoleAuditLogReturn(BaseModel):
-    """Return model for audit logs"""
-
-    uuid: UUID
-    created_at: datetime
-    entity_uuid: UUID
-    role_uuid: None | UUID = None
-    action: RoleAuditAction
-    resource_type: RoleResourceType
-    resource_uuid: UUID
-    performed_by_email: str
-    details: dict
-    role_name: str
-    details_msg: str | None = None
+    uuid: UUID = Field(description="The UUID of the entry.")
+    created_at: datetime = Field(description="When the change happened.")
+    entity_uuid: UUID = Field(description="The UUID of the organization.")
+    role_uuid: None | UUID = Field(None, description="The UUID of the role that changed.")
+    action: RoleAuditAction = Field(description="What kind of change it was.")
+    resource_type: RoleResourceType = Field(description="The kind of resource that the change concerned.")
+    resource_uuid: UUID = Field(description="The UUID of the resource that the change concerned.")
+    performed_by_email: str = Field(description="The email address of the admin who made the change.")
+    details: dict = Field(description="Details of the change, which depend on the action.")
+    role_name: str = Field(description="The name of the role.")
+    details_msg: str | None = Field(None, description="A sentence that describes the change.")
 
 
 class UserPermissions(BaseModel):
-    data_connectors: list[dict]
-    templates: list[dict]
-    prompts: list[dict]
+    data_connectors: list[dict] = Field(
+        description="The data connectors that the user can reach, with the user's final access to each.",
+    )
+    templates: list[dict] = Field(
+        description="The templates that the user can reach, with the user's final access to each.",
+    )
+    prompts: list[dict] = Field(description="The prompts that the user can reach, with the user's final access to each.")
 
 
 class ThemeSettings(BaseModel):
     model_config = ConfigDict(extra="allow", from_attributes=True)
-    tableTheme: dict | None = None
-    chartTheme: dict | None = None
-    appTheme: dict | None = None
+    appTheme: dict | None = Field(None, description="The app's theme.")
+
+
+THEME_PROPERTY_NAME_TAIL_MAX_LENGTH = 80
+THEME_PROPERTY_VALUE_MAX_LENGTH = 200
+THEME_PRESET_NAME_MAX_LENGTH = 60
+THEME_PROPERTY_NAME = re.compile(rf"^--[a-z][a-z0-9-]{{0,{THEME_PROPERTY_NAME_TAIL_MAX_LENGTH}}}$")
+THEME_PROPERTY_VALUE = re.compile(rf"^[A-Za-z0-9 #%.,()/_+*\"'-]{{1,{THEME_PROPERTY_VALUE_MAX_LENGTH}}}$")
+THEME_MAX_PROPERTIES = 400
+THEME_MAX_PRESETS = 50
+
+
+def check_theme_declarations(declarations: dict[str, str]) -> dict[str, str]:
+    if len(declarations) > THEME_MAX_PROPERTIES:
+        raise ValueError(f"A theme holds at most {THEME_MAX_PROPERTIES} properties")
+    for name, value in declarations.items():
+        if not THEME_PROPERTY_NAME.match(name):
+            raise ValueError(f"{name!r} is not a custom property name")
+        if not THEME_PROPERTY_VALUE.match(value) or "url(" in value.lower():
+            raise ValueError(f"The value of {name} is not allowed")
+    return declarations
+
+
+ThemeDeclarations = Annotated[dict[str, str], AfterValidator(check_theme_declarations)]
+
+
+class ThemeVariants(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    light: ThemeDeclarations = Field(default_factory=dict, description="The theme's properties for light mode.")
+    dark: ThemeDeclarations = Field(default_factory=dict, description="The theme's properties for dark mode.")
+
+
+class ThemePresetBody(ThemeVariants):
+    name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=THEME_PRESET_NAME_MAX_LENGTH)
+    ] = Field(
+        description="The preset's name.",
+    )
+
+
+class ThemePreset(ThemePresetBody):
+    uuid: UUID = Field(description="The UUID of the preset.")
+
+
+class ThemePresets(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    presets: list[ThemePreset] = Field(
+        default_factory=list,
+        max_length=THEME_MAX_PRESETS,
+        description="The organization's theme presets.",
+    )
+    active_preset: UUID | None = Field(
+        None,
+        description="The UUID of the active preset. It is empty when no preset is active.",
+    )
+
+
+class ThemeActivePreset(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    uuid: UUID | None = Field(description="The UUID of the preset to make active, or null to clear the selection.")
 
 
 class EntityThemeSettings(BaseModel):
     model_config = ConfigDict(extra="ignore", from_attributes=True)
-    light: ThemeSettings | None = None
-    dark: ThemeSettings | None = None
+    light: ThemeSettings | None = Field(None, description="The theme settings for light mode.")
+    dark: ThemeSettings | None = Field(None, description="The theme settings for dark mode.")
+    properties: ThemeVariants | None = Field(None, description="The theme properties for light and dark mode.")
 
 
-class ProToken(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    uuid: UUID
-    email: EmailStr
-    access_token: str
-    username: str | None
-    entitlements: ProEntitlements
-    expiration_date: datetime
-    temporary_password: bool
-    force_2fa: bool
-    entity_name: None | str
-    entity_theme_settings: EntityThemeSettings
-    role: None | str
-    is_trial_entity: bool
-    pro_trial_end: None | datetime
-    show_changelog: bool
-    show_welcome_screen: bool | None = False
+class AppToken(BaseModel, extra="ignore"):  # type: ignore[call-arg]
+    uuid: UUID = Field(description="The user's UUID.")
+    email: EmailStr = Field(description="The user's email address.")
+    username: str | None = Field(description="The user's username.")
+    expiration_date: datetime = Field(description="When the session expires.")
+    temporary_password: bool = Field(description="Whether the password is temporary and the user must change it.")
+    force_2fa: bool = Field(description="Whether the user must set up two-factor authentication.")
+    entity_name: None | str = Field(description="The name of the user's organization.")
+    entity_theme_settings: EntityThemeSettings = Field(description="The theme settings of the user's organization.")
+    role: None | str = Field(description="The user's type: Admin, Developer or User.")
+    show_changelog: bool = Field(
+        description=(
+            "Whether the web app should show the change log, because the user last signed in with another version."
+        ),
+    )
 
 
-class ProTokenWithContext(ProToken):
-    copilot_chats: list["ChatInfo | Chat"] | None = None
-    questions_history: list[str] | None = None
-    trading_view: TVStateResponse | None = None
-    dash_sync: DashboardComplete | None = None
-    user_apps: UserAppsComplete
-    user_skills: list[SkillReturn] | None = None
-    user: ProUserReturn | None = None
-    feature_entitlements: EntitlementGet | None = None
-    can_submit_marketplace: bool = False
-    moved_to_developer: bool = False
-    enabled_widget_bundles: EnabledBundles | None = None
-    developer_onboarding_info: ProInfoDeveloper | None = None
-    usage: EntitlementUsageGet | None = None
-    custom_copilots: list[CustomCopilot] | None = None
-    mcp_servers: list[MCPServer] | None = None
-    is_first_login: bool | None = False
+class AppTokenWithContext(AppToken):
+    copilot_chats: list["ChatInfo | Chat"] | None = Field(None, description="The user's Copilot chats.")
+    questions_history: list[str] | None = Field(None, description="The questions that the user asked the Copilot.")
+    dash_sync: DashboardComplete | None = Field(None, description="The user's dashboards.")
+    user_apps: UserAppsComplete = Field(
+        description="The apps that the user owns and the apps that others shared with the user.",
+    )
+    user_skills: list[SkillReturn] | None = Field(None, description="The user's skills.")
+    user: AppUserReturn | None = Field(None, description="The user's profile data.")
+    access: UserAccess | None = Field(None, description="The user's type and sharing level.")
+    usage: UsageGet | None = Field(None, description="The user's Copilot usage and limits.")
+    custom_copilots: list[CustomCopilot] | None = Field(None, description="The user's custom Copilots.")
+    mcp_servers: list[MCPServer] | None = Field(None, description="The user's saved MCP servers.")
+    copilot_keys: CopilotKeysStatus | None = Field(None, description="Which provider keys the user saved.")
+    is_first_login: bool | None = Field(False, description="Whether this is the user's first sign-in.")
+
+
+class SessionUser(BaseModel):
+    model_config = main_config
+    first_name: None | str = Field(None, description="The user's first name.")
+    last_name: None | str = Field(None, description="The user's last name.")
+    display_settings: UserDisplaySettings = Field(UserDisplaySettings(), description="The user's display settings.")
+
+
+class AppSession(BaseModel):
+    model_config = main_config
+    uuid: UUID = Field(description="The user's UUID.")
+    email: EmailStr = Field(description="The user's email address.")
+    username: str | None = Field(description="The user's username.")
+    expiration_date: datetime = Field(description="When the session expires.")
+    temporary_password: bool = Field(description="Whether the password is temporary and the user must change it.")
+    force_2fa: bool = Field(description="Whether the user must set up two-factor authentication.")
+    entity_name: None | str = Field(description="The name of the user's organization.")
+    role: None | str = Field(description="The user's type: Admin, Developer or User.")
+    access: UserAccess = Field(description="The user's type and sharing level.")
+    usage: UsageGet | None = Field(None, description="The user's Copilot usage and limits.")
+    copilot_keys: CopilotKeysStatus = Field(description="Which provider keys the user saved.")
+    user: SessionUser = Field(description="The user's name and display settings.")

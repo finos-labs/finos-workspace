@@ -22,10 +22,6 @@ const subscribe = (cb: () => void) => {
 };
 const getSnapshot = () => mobileQuery?.matches ?? false;
 
-// Tracks whether a root <TooltipProvider> is mounted (see main.tsx). When present,
-// each Tooltip renders a bare Root so Radix's skipDelayDuration is shared across all
-// tooltips. When absent (e.g. isolated renders in tests), Tooltip falls back to its
-// own provider so it stays self-sufficient.
 const HasRootTooltipProvider = createContext(false);
 
 export function TooltipProvider(
@@ -54,7 +50,6 @@ type TooltipProps = {
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
   style?: CSSProperties;
-  /** Renders the trigger as a child element instead of wrapping it in a span. Defaults to `true` */
   asChild?: boolean;
 };
 

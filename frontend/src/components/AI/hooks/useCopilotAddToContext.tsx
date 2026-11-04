@@ -41,12 +41,14 @@ import { useMentions } from "./useMentions";
 import { dispatchCopilotCommand } from "./utils";
 
 type ContextSuggestionsProps = {
-  inputRef?: RefObject<HTMLInputElement | HTMLTextAreaElement>;
-  suggestionsRef?: RefObject<HTMLDivElement>;
+  inputRef?: RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
+  suggestionsRef?: RefObject<HTMLDivElement | null>;
   fromTextArea?: boolean;
   textAreatype?: TextAreaProps["type"];
   setIsDropdownOpen?: (isOpen: boolean) => void;
-  onSuggestionClickRef?: MutableRefObject<(suggestion: HierarchicalMention) => void>;
+  onSuggestionClickRef?: MutableRefObject<
+    ((suggestion: HierarchicalMention) => void) | null
+  >;
   getSearchQuery?: () => string;
 };
 
@@ -71,7 +73,7 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
   const { id: currentDashboardId } = useParams();
   const [searchParams] = useSearchParams();
   const lastInnerTab = useShallowAppStore((state) =>
-    state.getLastInnerTab(currentDashboardId),
+    state.getLastInnerTab(currentDashboardId ?? ""),
   );
 
   const currentInnerTab = useMemo(
@@ -94,9 +96,7 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
     getAppWidget: s.getAppWidget,
   }));
 
-  // Get the tab highlighting function to highlight tabs on hover
   const setHovered = useShallowCopilotStore((state) => state.setHovered);
-  // @ Dropdown state
   const [state, dispatch] = useStateReducer<DropdownState>({
     searchQuery: "",
     suggestions: [],
@@ -120,7 +120,7 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
   const getSearchQuery = useCallbackRef(() => {
     if (props.getSearchQuery) return props.getSearchQuery();
 
-    return inputRef.current?.value || "";
+    return inputRef?.current?.value || "";
   });
 
   const { search, removeMentionFromText } = useMentions();
@@ -152,44 +152,40 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
         ...(!fromTextArea && { isDropdownOpen: true }),
       });
       setIsDropdownOpen?.(true);
-      setHovered(); // Clear any previous hover state
+      setHovered();
       return suggestions;
     },
     [search],
   );
 
-  // Helper function to remove a mention from text by widget UUID
   const handleRemoveMentionFromText = useCallback(
     (widgetUuid: string) => {
       dispatchCopilotCommand((prev) => {
         const updatedText = removeMentionFromText(prev, widgetUuid);
-        if (updatedText === prev) return prev; // No change, return original
-        return updatedText; // Update command with new text
+        if (updatedText === prev) return prev;
+        return updatedText;
       });
       queueMicrotask(focusCopilotInput);
     },
     [removeMentionFromText],
   );
 
-  // Filter out widgets that are already selected in context
   const selectedWidgetUuids = useMemo(
     () =>
       new Set(
-        copilot.selectedWidgets?.map((widget) => widget.uuid).filter(Boolean) || [],
+        copilot.selectedWidgets
+          ?.map((widget) => widget.uuid)
+          .filter((uuid): uuid is string => Boolean(uuid)) || [],
       ),
     [copilot.selectedWidgets],
   );
 
-  // --- Build lookup for dashboard widget suggestions and fallback builder ---
-
-  // Create hierarchical suggestions when no search query, flat when searching
   const suggestions = useMemo(() => {
     const rawSuggestions = state.suggestions;
     if (rawSuggestions.length === 0) return [];
 
     const searchQuery = state.searchQuery || "";
 
-    // Filter suggestions by type for hierarchical processing
     const filteredByType = rawSuggestions.filter(
       (suggestion) =>
         suggestion.group === "dashboard" ||
@@ -197,9 +193,7 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
         suggestion.group === "tab",
     );
 
-    // Filter out tabs with 0 widgets
     const baseFiltered = filteredByType.filter((suggestion) => {
-      // Filter out already selected widgets
       if (
         !fromTextArea &&
         suggestion.content?.uuid &&
@@ -221,27 +215,25 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
       widget.widget_id?.startsWith("tab_"),
     );
 
-    // Helper: Check if a tab is already selected (as a whole tab entity)
     const selectedTabUuids = new Set(
-      selectedTabWidgets.map((widget) => widget.uuid).filter(Boolean),
+      selectedTabWidgets
+        .map((widget) => widget.uuid)
+        .filter((uuid): uuid is string => Boolean(uuid)),
     );
     const isTabSelected = isTabSelectedFn(selectedTabUuids);
     const isTabFullySelected = isTabFullySelectedFn(selectedWidgetUuids);
     const isParentTabSelected = isParentTabSelectedFn(filteredByType, selectedTabUuids);
 
-    // --- Search mode -----------------------------------------------------
     if (searchQuery.trim()) {
       let filteredResults = baseFiltered;
       if (fromTextArea) {
         filteredResults = baseFiltered.filter((suggestion) => {
-          // Filter tabs: exclude if already selected or all widgets individually selected
           if (
             suggestion.group === "tab" &&
             (isTabSelected(suggestion) || isTabFullySelected(suggestion))
           )
             return false;
 
-          // Filter dashboard widgets: exclude if parent tab is selected
           if (
             suggestion.group === "dashboard" &&
             suggestion.content?.uuid &&
@@ -254,7 +246,6 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
       }
 
       const sortedResults = filteredResults.sort((a, b) => {
-        // Prioritize tabs over widgets when scores are similar
         if (a.group === "tab" && b.group !== "tab") return -1;
         if (a.group !== "tab" && b.group === "tab") return 1;
         return 0;
@@ -263,10 +254,7 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
       return sortedResults;
     }
 
-    // --- Hierarchical mode ----------------------------------------------
     const tabSuggestions = baseFiltered.filter((s) => {
-      // Don't show tab if it's already selected
-      // Don't show tab if all its widgets are individually selected
       if (
         s.group === "tab" &&
         !fromTextArea &&
@@ -282,27 +270,23 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
     const createHierarchicalCopy = (tabSuggestion: Mention) => {
       hierarchicalSuggestions.push(tabSuggestion);
 
-      // Add widgets from this tab
       const tabWidgets = tabSuggestion.content?.metadata?.tabWidgets || [];
       for (const tabWidget of tabWidgets) {
         if (!tabWidget.uuid) continue;
-        // Skip if widget already selected in context
         if (!fromTextArea && selectedWidgetUuids.has(tabWidget.uuid)) continue;
-        // Skip if the parent tab of this widget is already selected
         if (!fromTextArea && isParentTabSelected(tabWidget.uuid)) continue;
 
         const widgetSuggestion = {
           id: `widget_id=${tabWidget.widget_id}&uuid=${tabWidget.uuid}`,
           group: "dashboard" as const,
           trigger: "@",
-          // Non-breaking space/hyphen to prevent textarea line breaks
           name: (tabWidget.name || tabWidget.widget_id || "Unnamed widget")
             .replace(/ /g, "\u00A0")
             .replace(/-/g, "\u2011"),
           description: tabWidget.description,
           content: {
             ...tabWidget,
-            origin: tabWidget.origin || "OpenBB Sandbox", // Ensure origin is set
+            origin: tabWidget.origin || "Workspace",
           },
           _isChildWidget: true,
           _parentTabId: tabSuggestion.content?.metadata?.innerTabId,
@@ -311,7 +295,6 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
       }
     };
 
-    // 2) current tab + its widgets
     const currentTabSuggestion = tabSuggestions.find(
       (tab) => tab.content?.metadata?.innerTabId === currentInnerTab,
     );
@@ -322,33 +305,28 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
       .filter((tab) => tab.content?.metadata?.innerTabId !== currentInnerTab)
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    // 3) other tabs + their widgets
     for (const tabSuggestion of otherTabs) createHierarchicalCopy(tabSuggestion);
 
-    // Collect UUIDs of all widgets that are children of tabs to avoid duplication
     const tabChildWidgetUuids = new Set<string>();
     if (!fromTextArea) {
       const addTabChildWidgetUuids = addTabChildWidgetUuidsFn(tabChildWidgetUuids);
 
-      // Add UUIDs from current tab widgets
-      if (currentTabSuggestion) addTabChildWidgetUuids(currentTabSuggestion.content);
+      if (currentTabSuggestion?.content)
+        addTabChildWidgetUuids(currentTabSuggestion.content);
 
-      // Add UUIDs from other tab widgets
-      for (const suggestion of otherTabs) addTabChildWidgetUuids(suggestion.content);
+      for (const suggestion of otherTabs) {
+        if (suggestion.content) addTabChildWidgetUuids(suggestion.content);
+      }
 
-      // CRITICAL: Also add UUIDs from selected tabs (which are not in suggestion lists anymore)
-      // This prevents widgets from selected tabs appearing in dashboard widgets section
       for (const selectedTab of selectedTabWidgets) addTabChildWidgetUuids(selectedTab);
     }
 
-    // 4) widgets from dashboard when there are no tabs (Overview widgets)
     let dashboardWidgetsNoTab: HierarchicalMention[] = [];
     if (tabSuggestions.length === 0 || !fromTextArea) {
       dashboardWidgetsNoTab = baseFiltered
         .filter((s) => {
           if (!fromTextArea && s.group === "dashboard") {
             if (!s.content?.uuid) return true;
-            // Filter out widgets that are already included as children of tabs
             const notIncluded = !(
               s.content?.uuid && tabChildWidgetUuids.has(s.content.uuid)
             );
@@ -372,7 +350,6 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
       })
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    // 5) widgets not yet on dashboard (all group) – skip ones we already added above
     for (const widget of allWidgets) hierarchicalSuggestions.push(widget);
 
     return hierarchicalSuggestions;
@@ -383,11 +360,9 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
       const { widget, name, isTab, isMention } = getSuggestionInfo(data);
       if (isMention && !widget) return name;
 
-      // Check if this is a tab entity (widget_id starts with "tab_")
       const title = widget.name || "";
 
       if (isTab && widget.metadata) {
-        // Handle tab tooltip - show widgets within the tab
         const id = widget.uuid || uuidv4();
 
         const element = (
@@ -395,25 +370,17 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
             widget={widget}
             getAppWidget={getAppWidget}
             onMouseEnter={(tabId) => {
-              // Highlight all widgets in the tab when hovering over the tab tooltip
               if (tabId) {
                 setHovered({ tabId });
               }
             }}
-            onMouseLeave={() =>
-              // Clear highlighting when leaving tab tooltip
-              setHovered()
-            }
+            onMouseLeave={() => setHovered()}
             onWidgetMouseEnter={(widgetUuid) => {
-              // Highlight widget regardless of which tab is currently active (cross-tab highlighting)
               if (widgetUuid) {
-                // Clear tab highlighting and set specific widget highlighting
                 setHovered({ widgetUuid });
               }
             }}
             onWidgetMouseLeave={() => {
-              // When leaving a widget: clear individual highlighting but DON'T restore tab highlighting
-              // This prevents the flickering effect when moving between widgets
               setHovered();
             }}
           />
@@ -439,57 +406,10 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
       const description = widget.description || "";
       const widgetId = widget.widget_id || "";
 
-      // Regular widget tooltip
       const widgetDefinition = getAppWidget(widgetId as WidgetId);
 
-      // Check if this is a multi-file viewer widget
-      const isMultiFileViewer = widgetDefinition?.type === "multi_file_viewer";
-      let displayTitle = title;
-      let extraElements: React.ReactNode = null;
-
-      if (isMultiFileViewer) {
-        // Find the file selector parameter
-        const fileSelectorParam = widgetDefinition.params?.find((param) => {
-          return param?.roles?.includes("fileSelector");
-        });
-
-        if (fileSelectorParam) {
-          // Get the selected files from widget params
-          const filesParam = widget.params?.find(
-            (p) => p.name === fileSelectorParam.paramName,
-          );
-          const files = (filesParam?.current_value as string[]) || [];
-
-          // Update display title to include file count
-          if (files.length > 0) {
-            displayTitle = `${title} (${files.length})`;
-            extraElements = (
-              <>
-                <div className="text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90] mb-2 mt-3">
-                  FILES ({files.length})
-                </div>
-                <hr className="border-[#EBEBED] dark:border-[#454550] mb-2" />
-                <div className="max-h-[100px] overflow-y-auto">
-                  <div className="text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90] flex flex-col gap-1">
-                    {files.map((file, index) => (
-                      <div key={index} className="truncate max-w-[10rem] text-ellipsis">
-                        {file}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            );
-          }
-        }
-      }
-
       const element = title ? (
-        <TabWidgetElement
-          tabWidget={widget}
-          widgetDefinition={widgetDefinition}
-          extraElements={extraElements}
-        />
+        <TabWidgetElement tabWidget={widget} widgetDefinition={widgetDefinition} />
       ) : (
         <span>{description || "Widget"}</span>
       );
@@ -503,25 +423,20 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
           position="top"
           message={element}
         >
-          <span className="truncate max-w-[10rem]">{displayTitle}</span>
+          <span className="truncate max-w-[10rem]">{title}</span>
         </Tooltip>
       );
     },
     [getAppWidget, lastUpdated, currentDashboardId, currentInnerTab, fromTextArea],
   );
 
-  // Virtualizer scroll handle — populated by VirtualizedSuggestionList on mount.
-  // Lets keyboard navigation scroll the active suggestion into view without DOM lookups.
   const virtualizerScrollRef = useRef<((index: number) => void) | null>(null);
 
-  // Enhanced handleSelection with verification
   const handleSelection = useCallbackRef(async (suggestion: HierarchicalMention) => {
     if (textAreatype === "promptDialog") return resetState();
 
-    // Verify suggestion integrity
-    if (!verifySuggestionIntegrity(suggestion, "Click selection")) return;
+    if (!verifySuggestionIntegrity(suggestion)) return;
 
-    // Clean up any hierarchical properties before processing
     suggestion._isChildWidget = undefined;
     suggestion._parentTabId = undefined;
 
@@ -538,39 +453,31 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
 
     const isAlreadyInContext =
       suggestion.content?.uuid &&
-      selectedWidgets?.some((w) => w.uuid === suggestion.content.uuid);
+      selectedWidgets?.some((w) => w.uuid === suggestion.content?.uuid);
 
-    // Handle tab mentions - add the tab itself as a single entity to context
     if (suggestion.group === "tab" && suggestion.content) {
       if (isAlreadyInContext && fromTextArea) {
         updates.preSelectedWidget = copilot.addPreSelectedWidget;
       } else if (!isAlreadyInContext) {
-        // Add the tab widget directly to the selectedWidgets array for immediate UI display
         updates.addSelectedWidget = suggestion.content;
-        // IMPORTANT: Also add to selectedWidgetIDs for persistence across messages
         updates.toggleSelected = true;
-        // CRITICAL: Add tab widget to dashboardWidgetsData so it persists through useGetCopilotWidgets rebuilds
         updates.addDataOnDashboardWidget = {
           title: suggestion.content.name,
           description: suggestion.content.description,
           metadata: {
             ...suggestion.content.metadata,
-            widgetId: suggestion.content.widget_id, // Include widgetId for tab detection
+            widgetId: suggestion.content.widget_id,
             name: suggestion.content.name,
           },
-          data: null, // Tab widgets don't have data
+          data: null,
         };
         if (fromTextArea) {
-          // NOTE: We don't add to mention tracking here - tabs added via @ button persist after submit
           updates.trackedWidget = copilot.addMentionTrackedWidget;
         } else {
-          // Mark tab as pre-selected since it was added via CopilotContext @ button
           updates.preSelectedWidget = copilot.addPreSelectedWidget;
         }
       }
-    }
-    // Handle widgets from "all" group (workspace widgets not on dashboard)
-    else if (
+    } else if (
       suggestion.group === "all" &&
       suggestion.content &&
       !suggestion.content.uuid
@@ -585,14 +492,12 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
           });
         }
 
-        // Retrieve original widget definition
         const widgetId = suggestion.content.widget_id;
         const originalWidget = getAppWidget(widgetId as WidgetId);
 
         if (!originalWidget)
           throw new Error(`Widget definition not found for widgetId: ${widgetId}`);
 
-        // Create real widget instance and add to dashboard
         const virtualWidgetUuid = uuidv4();
         updates.uuid = virtualWidgetUuid;
 
@@ -602,17 +507,15 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
           innerTab: currentInnerTab || "",
         } as WidgetT;
 
-        // Build a Copilot-compatible widget object
         const virtualWidget = createCopilotWidget(virtualWidgetUuid, widgetToAdd);
-        // 1. Surface it immediately in the Copilot context UI
+        if (!virtualWidget) {
+          throw new Error(`Unable to create the widget for widgetId: ${widgetId}`);
+        }
         updates.addSelectedWidget = virtualWidget;
-        // Track in copilot context
         updates.toggleSelected = true;
         if (fromTextArea) {
-          // NOTE: We don't add to mention tracking here - tabs added via @ button persist after submit
           updates.trackedWidget = copilot.addMentionTrackedWidget;
         } else {
-          // Mark tab as pre-selected since it was added via CopilotContext @ button
           updates.preSelectedWidget = copilot.addPreSelectedWidget;
         }
         updates.addDataOnDashboardWidget = {
@@ -622,9 +525,8 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
           data: null,
         };
 
-        // Show badge immediately
         updates.addSelectedWidget = {
-          origin: suggestion.content.origin ?? "OpenBB Sandbox",
+          origin: suggestion.content.origin ?? "Workspace",
           widget_id: suggestion.content.widget_id,
           uuid: virtualWidgetUuid,
           name: widgetToAdd.name,
@@ -634,7 +536,6 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
         };
 
         if (fromTextArea) {
-          // Inform the user with an info toast & CTA to add widget
           toast.info("Add widget to dashboard", {
             description: `Add "${suggestion.content.name}" to your dashboard.`,
             action: {
@@ -651,7 +552,7 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
                 useAppStore.getState().addWidget(currentDashboardId, widgetToAdd);
                 toast.success("Widget added to dashboard", {
                   id: `copilot-add-widget-${virtualWidgetUuid}`,
-                  description: `"${suggestion.content.name}" has been added to your dashboard and Copilot context.`,
+                  description: `"${suggestion.content?.name}" has been added to your dashboard and agent context.`,
                 });
               },
             },
@@ -660,7 +561,7 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
           useAppStore.getState().addWidget(currentDashboardId, widgetToAdd);
           toast.success("Widget added to dashboard", {
             id: `copilot-add-widget-${virtualWidgetUuid}`,
-            description: `"${widgetToAdd.name}" has been added to your dashboard and Copilot context.`,
+            description: `"${widgetToAdd.name}" has been added to your dashboard and agent context.`,
           });
         }
       } catch (error) {
@@ -668,47 +569,36 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
           description: "There was an error while adding the widget to the dashboard.",
         });
       }
-    }
-    // Handle regular widget selections (including hierarchical child widgets with UUIDs)
-    else if (
+    } else if (
       suggestion.content?.uuid &&
       (!fromTextArea || suggestion.group === "dashboard" || suggestion.group === "all")
     ) {
       if (isAlreadyInContext && fromTextArea) {
-        // If widget was already in context, mark it as pre-selected so it persists after submit
         updates.preSelectedWidget = copilot.addPreSelectedWidget;
       } else if (!isAlreadyInContext) {
-        // Check if widget has dashboardWidgetsData (for cross-tab widgets)
         const dashboardWidgetData = copilot.getDashboardWidgetData(
           suggestion.content.uuid,
         );
 
-        // If widget doesn't have dashboardWidgetsData (widgets from other tabs), create it
         if (!dashboardWidgetData && (!fromTextArea || suggestion._isChildWidget)) {
-          // Create dashboardWidgetsData entry for this widget
           updates.addDataOnDashboardWidget = {
             title: suggestion.content.name,
             description: suggestion.content.description || "",
             metadata: suggestion.content.metadata || {},
-            data: null, // Widget data will be populated when needed
+            data: null,
           };
         }
 
-        // Also toggle it in the selectedWidgetIDs set
         updates.toggleSelected = true;
         if (fromTextArea) {
-          // Track via mention-tracking ONLY if the widget wasn't already in context.
           updates.trackedWidget = copilot.addMentionTrackedWidget;
-          // Add widget to selectedWidgets array for immediate UI display
           updates.addSelectedWidget = suggestion.content;
         } else {
-          // Mark widget as pre-selected since it was added via CopilotContext @ button
           updates.preSelectedWidget = copilot.addPreSelectedWidget;
         }
       }
     }
 
-    // If we have updates, apply them
     if (updates.addSelectedWidget)
       copilot.setCopilotWidgets({
         selectedWidgets: [
@@ -717,16 +607,19 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
         ],
       });
 
-    if (updates.addDataOnDashboardWidget)
-      copilot.addDataOnDashboardWidget(updates.uuid, updates.addDataOnDashboardWidget);
+    const { uuid } = updates;
+    if (uuid) {
+      if (updates.addDataOnDashboardWidget)
+        copilot.addDataOnDashboardWidget(uuid, updates.addDataOnDashboardWidget);
 
-    updates.toggleSelected && copilot.toggleSelectedWidget(updates.uuid);
-    updates.preSelectedWidget?.(updates.uuid);
-    updates.trackedWidget?.(updates.uuid);
+      updates.toggleSelected && copilot.toggleSelectedWidget(uuid);
+      updates.preSelectedWidget?.(uuid);
+      updates.trackedWidget?.(uuid);
+    }
 
-    queueMicrotask(focusCopilotInput); // Focus the input after selection
+    queueMicrotask(focusCopilotInput);
     resetState();
-    setHovered(); // Clear hovered state after selection
+    setHovered();
   });
 
   const handleKeyDown = useCallbackRef((e: React.KeyboardEvent) => {
@@ -761,7 +654,7 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
       if (suggestions[state.selectionIndex]) {
         const currentSuggestion = suggestions[state.selectionIndex];
 
-        if (verifySuggestionIntegrity(currentSuggestion, "Keyboard selection")) {
+        if (verifySuggestionIntegrity(currentSuggestion)) {
           if (!fromTextArea) handleSelection(currentSuggestion);
           return currentSuggestion;
         }
@@ -774,12 +667,12 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
 
     if (newIndex !== null) {
       const currentSuggestion = suggestions[newIndex];
-      // Scroll the virtualized list to the new index
       virtualizerScrollRef.current?.(newIndex);
-      // Update selection immediately
       dispatch({ selectionIndex: newIndex });
-      const hoveredUpdate = { tabId: null, widgetUuid: null };
-      // Handle highlighting based on suggestion type
+      const hoveredUpdate: { tabId: string | null; widgetUuid: string | null } = {
+        tabId: null,
+        widgetUuid: null,
+      };
       if (
         currentSuggestion?.group === "tab" &&
         currentSuggestion.content?.metadata?.innerTabId
@@ -796,18 +689,14 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
   const handleClickOutside = useCallback(
     (event: MouseEvent) => {
       const target = event.target as Node;
-      // Check if click is outside both the button and the dropdown
-      if (suggestionsRef.current && !suggestionsRef.current.contains(target)) {
+      if (suggestionsRef?.current && !suggestionsRef.current.contains(target)) {
         resetState();
-        if (!fromTextArea && inputRef.current)
-          // Focus the search input when closing dropdown
-          inputRef.current.value = "";
+        if (!fromTextArea && inputRef?.current) inputRef.current.value = "";
       }
     },
     [inputRef, suggestionsRef, resetState],
   );
 
-  // Reset state when clicking outside
   useEffect(() => {
     const ctrl = new AbortController();
     document.addEventListener("mousedown", handleClickOutside, {
@@ -869,7 +758,9 @@ type MentionVirtualListProps = {
     withTooltip?: boolean,
   ) => React.ReactNode;
   handleSelection: (suggestion: HierarchicalMention) => void;
-  onSuggestionClickRef?: MutableRefObject<(suggestion: HierarchicalMention) => void>;
+  onSuggestionClickRef?: MutableRefObject<
+    ((suggestion: HierarchicalMention) => void) | null
+  >;
   dispatch: (update: Partial<DropdownState>) => void;
   setHovered: (update?: { tabId?: string | null; widgetUuid?: string | null }) => void;
   virtualizerScrollRef: MutableRefObject<((index: number) => void) | null>;
@@ -1003,7 +894,9 @@ type MentionSuggestionItemProps = {
     withTooltip?: boolean,
   ) => React.ReactNode;
   handleSelection: (suggestion: HierarchicalMention) => void;
-  onSuggestionClickRef?: MutableRefObject<(suggestion: HierarchicalMention) => void>;
+  onSuggestionClickRef?: MutableRefObject<
+    ((suggestion: HierarchicalMention) => void) | null
+  >;
   dispatch: (update: Partial<DropdownState>) => void;
   setHovered: (update?: { tabId?: string | null; widgetUuid?: string | null }) => void;
 };
@@ -1106,7 +999,7 @@ interface TabGroupElementProps extends SuggestionElementProps {
   onWidgetMouseLeave?: () => void;
 }
 
-export const TabGroupElement = memo((props: TabGroupElementProps) => {
+const TabGroupElement = memo((props: TabGroupElementProps) => {
   const {
     widget,
     getAppWidget,
@@ -1133,20 +1026,18 @@ export const TabGroupElement = memo((props: TabGroupElementProps) => {
       }}
       onMouseLeave={onMouseLeave}
     >
-      {/* Header with name and count - hovering here highlights all widgets */}
       <div
         className="flex items-center justify-between mb-4"
         onMouseEnter={() => onMouseEnter?.(widget.metadata?.innerTabId)}
       >
-        <div className="font-bold text-[12px] leading-[18px] text-[#070707] dark:text-white">
+        <div className="font-bold text-[12px] leading-[18px] text-light-900 dark:text-white">
           {widget.name}
         </div>
-        <span className="text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#909094]">
+        <span className="text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8]">
           ({widgetCount} widget{widgetCount !== 1 ? "s" : ""})
         </span>
       </div>
 
-      {/* Widget list - hovering individual items highlights only that widget */}
       <div className="max-h-[200px] overflow-y-auto space-y-3">
         {tabWidgets.map((tabWidget, index) => (
           <TabWidgetElement
@@ -1170,7 +1061,6 @@ interface TabWidgetElementProps extends SuggestionElementProps {
   className?: string;
   widgetDefinition?: WidgetT;
   index?: number;
-  extraElements?: React.ReactNode;
 }
 
 export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
@@ -1181,16 +1071,13 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
     widgetDefinition,
     onMouseEnter,
     onMouseLeave,
-    extraElements = null,
   } = props;
   const localId = useId();
   const id = tabWidget.uuid || localId;
 
-  // Get widget definition if available
   const widgetInfo = useMemo(() => {
     const widgetId = tabWidget.widget_id || "";
 
-    // Extract metadata
     const title = tabWidget.name || widgetId || "Unnamed widget";
     const description = tabWidget.description || "";
     const category = widgetDefinition?.category || "";
@@ -1198,8 +1085,8 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
     const backend = widgetDefinition?.external
       ? widgetDefinition?.connectionType === "advanced-backend"
         ? widgetDefinition?.sourceName || "Unknown"
-        : "OpenBB API"
-      : tabWidget.origin || "OpenBB Sandbox";
+        : "FINOS Workspace API"
+      : tabWidget.origin || "Workspace";
 
     const subCategory = widgetDefinition?.subCategory || "";
     const source = widgetDefinition?.source || "";
@@ -1224,12 +1111,11 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
       }}
       onMouseLeave={onMouseLeave}
     >
-      {/* Header row with backend tag and source */}
       <div className="flex justify-between items-center gap-2 mb-2.5 min-w-0">
         <Tooltip message={widgetInfo.backend} position="top">
           <div className="bg-[rgba(188,188,188,0.3)] dark:bg-[rgba(90,89,97,0.3)] rounded-xl min-w-0 max-w-[140px]">
             <div className="px-1.5 py-0">
-              <span className="block truncate whitespace-nowrap text-2xs leading-[1.5] text-[#717177] dark:text-[#b8b9bc]">
+              <span className="block truncate whitespace-nowrap text-2xs leading-[1.5] text-light-600 dark:text-dark-50">
                 {widgetInfo.backend}
               </span>
             </div>
@@ -1237,42 +1123,35 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
         </Tooltip>
         {widgetInfo.source && (
           <Tooltip message={widgetInfo.source} position="top">
-            <span className="block truncate whitespace-nowrap min-w-0 max-w-[140px] text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90]">
+            <span className="block truncate whitespace-nowrap min-w-0 max-w-[140px] text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8]">
               {widgetInfo.source}
             </span>
           </Tooltip>
         )}
       </div>
 
-      {/* Widget title/name */}
-      <div className="font-bold text-[12px] leading-[18px] text-[#070707] dark:text-white mb-2">
+      <div className="font-bold text-[12px] leading-[18px] text-light-900 dark:text-white mb-2">
         {widgetInfo.title}
       </div>
 
-      {/* Horizontal line */}
-      <hr className="border-[#EBEBED] dark:border-[#454550] mb-2" />
+      <hr className="border-light-200 dark:border-dark-400 mb-2" />
 
-      {/* Category and subcategory */}
       {(widgetInfo.category || widgetInfo.subCategory) && (
-        <div className="text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90] mb-1">
+        <div className="text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8] mb-1">
           {[widgetInfo.category, widgetInfo.subCategory].filter(Boolean).join(" • ")}
         </div>
       )}
 
-      {/* Description */}
       {widgetInfo.description && (
-        <div className="text-[12px] leading-[18px] text-[#151518] dark:text-white mt-2 max-h-[150px] overflow-y-auto">
+        <div className="text-[12px] leading-[18px] text-dark-900 dark:text-white mt-2 max-h-[150px] overflow-y-auto">
           {widgetInfo.description}
         </div>
       )}
-
-      {/* Extra elements (e.g. Multi-file viewer files section) */}
-      {extraElements}
     </div>
   );
 });
 
-export const ICON_MAP = {
+const ICON_MAP = {
   all: "file-plus-03",
   dashboard: "file-check-03",
   web: "globe-01",
@@ -1280,41 +1159,7 @@ export const ICON_MAP = {
   tab: "folder-closed",
 } as const;
 
-type ExtraWidgetsSelectButtonProps = {
-  enabled: boolean;
-  onToggle: () => void;
-  buttonEnabled?: boolean;
-};
 type Action = (uuid: string) => void;
-
-export const ExtraWidgetsSelectButton = (props: ExtraWidgetsSelectButtonProps) => {
-  const { enabled, onToggle, buttonEnabled = true } = props;
-  return (
-    <Tooltip
-      message={
-        buttonEnabled
-          ? "Search across widgets and tabs"
-          : "Searching across all widgets is not enabled for this copilot."
-      }
-    >
-      <button
-        disabled={!buttonEnabled}
-        onClick={onToggle}
-        className={cn(
-          "flex items-center justify-center w-6 h-6 rounded transition-colors duration-200 min-w-6",
-          {
-            "opacity-25": !buttonEnabled,
-            "bg-brand-main border-brand-main text-white": enabled,
-            "text-light-700 dark:text-light-300 hover:bg-light-100 dark:border-dark-400 dark:hover:bg-dark-400":
-              !enabled && buttonEnabled,
-          },
-        )}
-      >
-        <Icon id="layout-top" className="text-lg" />
-      </button>
-    </Tooltip>
-  );
-};
 
 interface DropdownState {
   searchQuery: string;
@@ -1324,7 +1169,6 @@ interface DropdownState {
   pendingSelection: boolean;
 }
 
-// Helper function to highlight the current selection in the dropdown
 export const highlightSelection = (index: number, fromTextArea = false) => {
   const allElements = document.getElementsByClassName(
     `${fromTextArea ? "" : "context-"}suggestion-item`,
@@ -1336,14 +1180,13 @@ export const highlightSelection = (index: number, fromTextArea = false) => {
   }
 };
 
-// Helper function to scroll to the current selection - instant scrolling for responsive navigation
 export const scrollToSuggestion = (index: number, fromTextArea = false) => {
   const element = document.getElementById(
     `${fromTextArea ? "" : "context-"}suggestion-${index}`,
   );
   element?.scrollIntoView?.({
     block: "nearest",
-    behavior: "instant", // Changed from "smooth" to "instant" for rapid key navigation
+    behavior: "instant",
     inline: "nearest",
   });
 
@@ -1364,31 +1207,24 @@ export function getSelectionIndex(fromTextArea: boolean) {
     }
   }
 
-  return 0; // No selection found
+  return 0;
 }
 
-// Verify that suggestions maintain proper data integrity for both mouse and keyboard interactions
-const verifySuggestionIntegrity = (suggestion: any, _actionType: string) => {
-  // Ensure suggestion has required properties
+const verifySuggestionIntegrity = (suggestion: Mention) => {
   if (!suggestion.content) return false;
-  // Special case: "all" group widgets don't have UUIDs yet (they'll be created)
   if (suggestion.group === "all" && !suggestion.content.uuid) {
-    // For "all" group widgets, we just need the widget_id to create them
     if (!suggestion.content.widget_id) return false;
     return true;
   }
-  // For other groups (tab, dashboard), UUID is required
   if (!suggestion.content.uuid) return false;
   return true;
 };
 
-// Helper: Check if a widget is already selected (as an individual widget)
 function isTabSelectedFn(selectedTabUuids: Set<string>) {
   return (suggestion: Mention) =>
     suggestion.content?.uuid && selectedTabUuids.has(suggestion.content.uuid);
 }
 
-// Helper: Check if all widgets from a tab are individually selected
 function isTabFullySelectedFn(selectedWidgetUuids: Set<string>) {
   return (tabSuggestion: Mention) => {
     const tabWidgets = tabSuggestion.content?.metadata?.tabWidgets || [];
@@ -1400,14 +1236,11 @@ function isTabFullySelectedFn(selectedWidgetUuids: Set<string>) {
   };
 }
 
-// Helper: Check if a widget's parent tab is already selected
 function isParentTabSelectedFn(
   filteredByType: Mention[],
   selectedTabUuids: Set<string>,
 ) {
   return (widgetUuid: string) => {
-    // Find which tab this widget belongs to - search in filteredByType not baseFiltered
-    // because baseFiltered excludes selected tabs but we need to find them to check parent relationship
     const parentTab = filteredByType.find((suggestion) => {
       if (suggestion.group !== "tab") return false;
       const tabWidgets = suggestion.content?.metadata?.tabWidgets || [];
@@ -1419,7 +1252,6 @@ function isParentTabSelectedFn(
   };
 }
 
-// Helper: Add UUIDs of widgets that are children of tabs
 function addTabChildWidgetUuidsFn(tabChildWidgetUuids: Set<string>) {
   return (copilotWidget: CopilotWidget) => {
     const tabWidgets = copilotWidget?.metadata?.tabWidgets || [];

@@ -65,7 +65,7 @@ describe("MobileProvider visualViewport resize listener", () => {
   it("updates --mobile-viewport-height when visualViewport fires a resize event", () => {
     mockUseIsMobile.mockReturnValue(true);
 
-    let capturedListener: (() => void) | null = null;
+    let capturedListener: (() => void) | undefined;
     const mockVisualViewport = {
       height: 700,
       addEventListener: vi.fn((event: string, handler: () => void) => {

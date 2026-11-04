@@ -9,7 +9,7 @@ interface Props {
   setOpen: (open: boolean) => void;
   title: string;
   children?: ReactNode;
-  onSubmit?: () => any | Promise<boolean>;
+  onSubmit?: () => unknown;
   extraActions?: ReactNode;
   showActionsSettings: boolean;
   className?: string;
@@ -39,7 +39,6 @@ export const SettingsDialog = memo((props: Props) => {
 
   return (
     <BaseDialog
-      // modal={true}
       open={open}
       onClose={() => setOpen(false)}
       className={className}

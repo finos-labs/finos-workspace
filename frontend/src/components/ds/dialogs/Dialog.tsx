@@ -23,9 +23,9 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "BB-DialogOverlay fixed inset-0 z-[40] only-sm:z-[60] bg-surface-layer transition-all",
-      "radix-state-open:fade-in-0 radix-state-open:animate-in",
-      "radix-state-closed:fade-out-0 radix-state-closed:animate-out",
+      "fixed inset-0 z-[40] only-sm:z-[60] bg-surface-layer transition-all",
+      "data-[state=open]:fade-in-0 data-[state=open]:animate-in",
+      "data-[state=closed]:fade-out-0 data-[state=closed]:animate-out",
       className,
     )}
     {...props}
@@ -58,10 +58,6 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
 >(({ className, children, hasOverlay = true, ...props }, ref) => {
-  // Check if children contain a DialogDescription or DialogTitle
-  // If not, we will add a default DialogTitle for accessibility,
-  // and remove the aria-describedby attribute from the DialogContent
-  // Reasoning: emits warning in console (only runs on mount)
   const { dialogContentProps, hasTitle } = React.useMemo(() => {
     const checks = { hasDescription: false, hasTitle: false };
     for (const child of React.Children.toArray(children)) {
@@ -162,8 +158,6 @@ export {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogOverlay,
-  DialogPortal,
   DialogTitle,
   DialogTrigger,
 };

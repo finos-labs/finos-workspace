@@ -1,11 +1,21 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { useIframeProtocol as UseIframeProtocol } from "~/components/Widgets/Helpers/useIframeProtocol";
 import { mockConfig } from "../../../../mocks/runtimeConfig";
+import { required } from "../../../mocks";
 
 function createMockIframeRef(contentWindow: Window | null = window, src = "") {
   return {
     current: { contentWindow, src },
   } as unknown as React.RefObject<HTMLIFrameElement>;
+}
+
+type DataRequest = ReturnType<
+  ReturnType<typeof UseIframeProtocol>["requestWidgetData"]
+>;
+
+function setContentWindow(iframeRef: React.RefObject<HTMLIFrameElement>, win: object) {
+  Object.assign(iframeRef.current as object, { contentWindow: win });
 }
 
 function postFromIframe(iframeRef: React.RefObject<HTMLIFrameElement>, data: unknown) {
@@ -45,42 +55,75 @@ describe("useIframeProtocol", () => {
     expect(result.current.manifest).toBeNull();
   });
 
-  it("sets manifest on openbb-connect message", () => {
+  it("sets manifest on workspace-connect message", () => {
     const iframeRef = createMockIframeRef();
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
     const widgets = [{ widgetId: "w1", name: "Widget 1", dataType: "table" as const }];
 
     act(() => {
-      postFromIframe(iframeRef, { type: "openbb-connect", widgets });
+      postFromIframe(iframeRef, { type: "workspace-connect", widgets });
     });
 
     expect(result.current.manifest).toEqual(widgets);
   });
 
-  it("requestWidgetData sends openbb-request and resolves on response", async () => {
+  it("answers a page without an origin of its own, as a sandbox without allow-same-origin is", () => {
+    const postMessage = vi.fn();
+    const frame = { postMessage } as unknown as Window;
+    const iframeRef = createMockIframeRef(
+      frame,
+      "https://api.test/app/frame/ws_frame_x/page",
+    );
+    const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "workspace-connect", widgets: [] },
+          source: frame,
+          origin: "null",
+        }),
+      );
+    });
+    act(() => {
+      void result.current.requestWidgetData("w1").catch(() => undefined);
+      result.current.sendParamsUpdate({ a: "1" });
+    });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      { type: "workspace-request", widgetId: "w1" },
+      "*",
+    );
+    expect(postMessage).toHaveBeenCalledWith(
+      { type: "workspace-params-update", params: { a: "1" } },
+      "*",
+    );
+    expect(postMessage).not.toHaveBeenCalledWith(expect.anything(), "null");
+  });
+
+  it("requestWidgetData sends workspace-request and resolves on response", async () => {
     const iframeRef = createMockIframeRef();
     const postMessageSpy = vi.fn();
-    (iframeRef.current as any).contentWindow = {
+    setContentWindow(iframeRef, {
       postMessage: postMessageSpy,
-    };
-    // Override source check — use the mocked contentWindow
-    const mockWindow = (iframeRef.current as any).contentWindow;
+    });
+    const mockWindow = iframeRef.current?.contentWindow;
 
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
-    let resolved: any;
+    let resolved: DataRequest | undefined;
     act(() => {
       resolved = result.current.requestWidgetData("w1");
     });
 
     expect(postMessageSpy).toHaveBeenCalledWith(
-      { type: "openbb-request", widgetId: "w1" },
+      { type: "workspace-request", widgetId: "w1" },
       "*",
     );
 
     const responseData = {
-      type: "openbb-data",
+      type: "workspace-data",
       widgetId: "w1",
       dataType: "table",
       data: [{ a: 1 }],
@@ -100,13 +143,13 @@ describe("useIframeProtocol", () => {
   it("requestWidgetData rejects after timeout", async () => {
     const iframeRef = createMockIframeRef();
     const postMessageSpy = vi.fn();
-    (iframeRef.current as any).contentWindow = {
+    setContentWindow(iframeRef, {
       postMessage: postMessageSpy,
-    };
+    });
 
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
-    let promise: Promise<any>;
+    let promise: DataRequest | undefined;
     act(() => {
       promise = result.current.requestWidgetData("w1");
     });
@@ -115,20 +158,22 @@ describe("useIframeProtocol", () => {
       vi.advanceTimersByTime(10_000);
     });
 
-    await expect(promise!).rejects.toThrow('Request for widget "w1" timed out');
+    await expect(required(promise)).rejects.toThrow(
+      'Request for widget "w1" timed out',
+    );
   });
 
-  it("openbb-error rejects pending requestWidgetData with error message", async () => {
+  it("workspace-error rejects pending requestWidgetData with error message", async () => {
     const iframeRef = createMockIframeRef();
     const postMessageSpy = vi.fn();
-    (iframeRef.current as any).contentWindow = {
+    setContentWindow(iframeRef, {
       postMessage: postMessageSpy,
-    };
-    const mockWindow = (iframeRef.current as any).contentWindow;
+    });
+    const mockWindow = iframeRef.current?.contentWindow;
 
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
-    let promise: Promise<any>;
+    let promise: DataRequest | undefined;
     act(() => {
       promise = result.current.requestWidgetData("w1");
     });
@@ -136,7 +181,7 @@ describe("useIframeProtocol", () => {
     act(() => {
       const event = new MessageEvent("message", {
         data: {
-          type: "openbb-error",
+          type: "workspace-error",
           widgetId: "w1",
           error: "Data source unavailable",
         },
@@ -145,18 +190,17 @@ describe("useIframeProtocol", () => {
       window.dispatchEvent(event);
     });
 
-    await expect(promise!).rejects.toThrow("Data source unavailable");
+    await expect(required(promise)).rejects.toThrow("Data source unavailable");
   });
 
-  it("openbb-error for unknown widget does not crash", () => {
+  it("workspace-error for unknown widget does not crash", () => {
     const iframeRef = createMockIframeRef();
 
     renderHook(() => useIframeProtocol({ iframeRef }));
 
-    // Should not throw — no pending request for "unknown"
     act(() => {
       postFromIframe(iframeRef, {
-        type: "openbb-error",
+        type: "workspace-error",
         widgetId: "unknown",
         error: "Not found",
       });
@@ -168,10 +212,9 @@ describe("useIframeProtocol", () => {
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
     act(() => {
-      // Post with null source (different from iframe's contentWindow)
       const event = new MessageEvent("message", {
         data: {
-          type: "openbb-connect",
+          type: "workspace-connect",
           widgets: [{ widgetId: "w1", name: "X", dataType: "table" }],
         },
         source: null,
@@ -201,7 +244,7 @@ describe("useIframeProtocol", () => {
 
     act(() => {
       postFromIframe(iframeRef, {
-        type: "openbb:widget-params:update",
+        type: "workspace:widget-params:update",
         params: { event_ticker: "KXSB-27", reverse: false, limit: 40 },
       });
     });
@@ -220,7 +263,7 @@ describe("useIframeProtocol", () => {
 
     act(() => {
       postFromIframe(iframeRef, {
-        type: "openbb:params:update",
+        type: "workspace:params:update",
         paramName: "event_ticker",
         value: "KXNBA-26",
       });
@@ -231,11 +274,9 @@ describe("useIframeProtocol", () => {
     });
   });
 
-  it("accepts openbb-connect from nested iframe via origin match", () => {
-    const iframeRef = createMockIframeRef(
-      {} as Window, // outer Streamlit window — won't match event.source
-      "http://localhost:8501/app",
-    );
+  it("accepts workspace-connect from an iframe nested in the widget's iframe", () => {
+    const outer = {} as Window;
+    const iframeRef = createMockIframeRef(outer, "http://localhost:8501/app");
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
     const widgets = [
@@ -243,10 +284,9 @@ describe("useIframeProtocol", () => {
     ];
 
     act(() => {
-      // Simulate message from nested sub-iframe with matching origin
       const event = new MessageEvent("message", {
-        data: { type: "openbb-connect", widgets },
-        source: { postMessage: vi.fn() } as unknown as Window,
+        data: { type: "workspace-connect", widgets },
+        source: { postMessage: vi.fn(), parent: outer } as unknown as Window,
         origin: "http://localhost:8501",
       });
       window.dispatchEvent(event);
@@ -255,20 +295,150 @@ describe("useIframeProtocol", () => {
     expect(result.current.manifest).toEqual(widgets);
   });
 
-  it("sends openbb-request to stored bridgeSource after handshake", async () => {
+  it("accepts it from an iframe nested several frames deep", () => {
+    const outer = {} as Window;
+    const middle = { parent: outer } as unknown as Window;
+    const iframeRef = createMockIframeRef(outer, "http://localhost:8501/app");
+    const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
+    const widgets = [{ widgetId: "w1", name: "Deep", dataType: "table" as const }];
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "workspace-connect", widgets },
+          source: { parent: middle } as unknown as Window,
+          origin: "http://localhost:8501",
+        }),
+      );
+    });
+
+    expect(result.current.manifest).toEqual(widgets);
+  });
+
+  it("does not take the messages of another iframe of the same origin for its own", () => {
+    const top = {} as Window;
+    const own = { parent: top } as unknown as Window;
+    const sibling = { postMessage: vi.fn(), parent: top } as unknown as Window;
+    const iframeRef = createMockIframeRef(own, "http://127.0.0.1:6900/view/a");
+    const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: {
+            type: "workspace-connect",
+            widgets: [{ widgetId: "theirs", name: "Theirs", dataType: "table" }],
+          },
+          source: sibling,
+          origin: "http://127.0.0.1:6900",
+        }),
+      );
+    });
+
+    expect(result.current.manifest).toBeNull();
+  });
+
+  it("keeps sending to its own iframe after a sibling of the same origin has spoken", async () => {
+    const top = {} as Window;
+    const ownPostMessage = vi.fn();
+    const siblingPostMessage = vi.fn();
+    const own = { postMessage: ownPostMessage, parent: top } as unknown as Window;
+    const sibling = {
+      postMessage: siblingPostMessage,
+      parent: top,
+    } as unknown as Window;
+    const iframeRef = createMockIframeRef(own, "http://127.0.0.1:6900/view/a");
+    const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
+    const handshake = (source: Window, widgetId: string) =>
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: {
+            type: "workspace-connect",
+            widgets: [{ widgetId, name: widgetId, dataType: "table" }],
+          },
+          source,
+          origin: "http://127.0.0.1:6900",
+        }),
+      );
+
+    act(() => {
+      handshake(own, "mine");
+      handshake(sibling, "theirs");
+    });
+    act(() => {
+      result.current.requestWidgetData("mine");
+    });
+
+    expect(result.current.manifest?.map((w) => w.widgetId)).toEqual(["mine"]);
+    expect(ownPostMessage).toHaveBeenCalledWith(
+      { type: "workspace-request", widgetId: "mine" },
+      "http://127.0.0.1:6900",
+    );
+    expect(siblingPostMessage).not.toHaveBeenCalled();
+  });
+
+  it("does not take the data of another iframe of the same origin for the answer to its request", async () => {
+    const top = {} as Window;
+    const own = { postMessage: vi.fn(), parent: top } as unknown as Window;
+    const sibling = { postMessage: vi.fn(), parent: top } as unknown as Window;
+    const iframeRef = createMockIframeRef(own, "http://127.0.0.1:6900/view/a");
+    const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
+
+    let request!: DataRequest;
+    act(() => {
+      request = result.current.requestWidgetData("mine");
+    });
+    const settled = vi.fn();
+    request.then(settled, () => {});
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: {
+            type: "workspace-data",
+            widgetId: "mine",
+            dataType: "table",
+            data: [{ a: 1 }],
+          },
+          source: sibling,
+          origin: "http://127.0.0.1:6900",
+        }),
+      );
+    });
+    await Promise.resolve();
+    expect(settled).not.toHaveBeenCalled();
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: {
+            type: "workspace-data",
+            widgetId: "mine",
+            dataType: "table",
+            data: [{ a: 2 }],
+          },
+          source: own,
+          origin: "http://127.0.0.1:6900",
+        }),
+      );
+    });
+    await expect(request).resolves.toMatchObject({ data: [{ a: 2 }] });
+  });
+
+  it("sends workspace-request to stored bridgeSource after handshake", async () => {
+    const outer = {} as Window;
     const nestedPostMessage = vi.fn();
     const nestedWindow = {
       postMessage: nestedPostMessage,
+      parent: outer,
     } as unknown as Window;
-    const iframeRef = createMockIframeRef({} as Window, "http://localhost:8501/app");
+    const iframeRef = createMockIframeRef(outer, "http://localhost:8501/app");
 
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
-    // Simulate handshake from nested iframe
     act(() => {
       const event = new MessageEvent("message", {
         data: {
-          type: "openbb-connect",
+          type: "workspace-connect",
           widgets: [{ widgetId: "w1", name: "W", dataType: "table" }],
         },
         source: nestedWindow,
@@ -277,18 +447,17 @@ describe("useIframeProtocol", () => {
       window.dispatchEvent(event);
     });
 
-    // Request should be sent to the nested source, not the outer iframe
     act(() => {
       result.current.requestWidgetData("w1");
     });
 
     expect(nestedPostMessage).toHaveBeenCalledWith(
-      { type: "openbb-request", widgetId: "w1" },
+      { type: "workspace-request", widgetId: "w1" },
       "http://localhost:8501",
     );
   });
 
-  it("parses params from openbb-connect message", () => {
+  it("parses params from workspace-connect message", () => {
     const iframeRef = createMockIframeRef();
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
@@ -307,13 +476,13 @@ describe("useIframeProtocol", () => {
     ];
 
     act(() => {
-      postFromIframe(iframeRef, { type: "openbb-connect", widgets, params });
+      postFromIframe(iframeRef, { type: "workspace-connect", widgets, params });
     });
 
     expect(result.current.paramDefs).toEqual(params);
   });
 
-  it("parses number, date, and boolean param types from openbb-connect", () => {
+  it("parses number, date, and boolean param types from workspace-connect", () => {
     const iframeRef = createMockIframeRef();
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
@@ -343,7 +512,7 @@ describe("useIframeProtocol", () => {
     ];
 
     act(() => {
-      postFromIframe(iframeRef, { type: "openbb-connect", widgets, params });
+      postFromIframe(iframeRef, { type: "workspace-connect", widgets, params });
     });
 
     expect(result.current.paramDefs).toEqual(params);
@@ -355,13 +524,13 @@ describe("useIframeProtocol", () => {
     expect(result.current.paramDefs).toBeNull();
   });
 
-  it("paramDefs remain null when openbb-connect has no params", () => {
+  it("paramDefs remain null when workspace-connect has no params", () => {
     const iframeRef = createMockIframeRef();
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
     act(() => {
       postFromIframe(iframeRef, {
-        type: "openbb-connect",
+        type: "workspace-connect",
         widgets: [{ widgetId: "w1", name: "W", dataType: "table" }],
       });
     });
@@ -369,20 +538,21 @@ describe("useIframeProtocol", () => {
     expect(result.current.paramDefs).toBeNull();
   });
 
-  it("sendParamsUpdate posts openbb-params-update to bridge source", () => {
+  it("sendParamsUpdate posts workspace-params-update to bridge source", () => {
+    const outer = {} as Window;
     const nestedPostMessage = vi.fn();
     const nestedWindow = {
       postMessage: nestedPostMessage,
+      parent: outer,
     } as unknown as Window;
-    const iframeRef = createMockIframeRef({} as Window, "http://localhost:8501/app");
+    const iframeRef = createMockIframeRef(outer, "http://localhost:8501/app");
 
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
-    // Handshake to establish bridge source
     act(() => {
       const event = new MessageEvent("message", {
         data: {
-          type: "openbb-connect",
+          type: "workspace-connect",
           widgets: [{ widgetId: "w1", name: "W", dataType: "table" }],
           params: [{ paramName: "sector", type: "text", value: "All" }],
         },
@@ -397,7 +567,7 @@ describe("useIframeProtocol", () => {
     });
 
     expect(nestedPostMessage).toHaveBeenCalledWith(
-      { type: "openbb-params-update", params: { sector: "Financials" } },
+      { type: "workspace-params-update", params: { sector: "Financials" } },
       "http://localhost:8501",
     );
   });
@@ -405,7 +575,7 @@ describe("useIframeProtocol", () => {
   it("sendParamsUpdate falls back to contentWindow when no bridge source", () => {
     const postMessageSpy = vi.fn();
     const iframeRef = createMockIframeRef();
-    (iframeRef.current as any).contentWindow = { postMessage: postMessageSpy };
+    setContentWindow(iframeRef, { postMessage: postMessageSpy });
 
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
@@ -414,46 +584,31 @@ describe("useIframeProtocol", () => {
     });
 
     expect(postMessageSpy).toHaveBeenCalledWith(
-      { type: "openbb-params-update", params: { ticker: "MSFT" } },
+      { type: "workspace-params-update", params: { ticker: "MSFT" } },
       "*",
     );
   });
 
-  it("does not listen when disabled", () => {
-    const iframeRef = createMockIframeRef();
-    const onAiData = vi.fn();
-    // mockGetConfig.mockReturnValue({ data: { allowHtmlJsExecution: false } });
-    mockConfig.data.allowHtmlJsExecution = false;
-
-    renderHook(() => useIframeProtocol({ iframeRef, onAiData }));
-
-    act(() => {
-      postFromIframe(iframeRef, { type: "aiData", data: { foo: "bar" } });
-    });
-
-    expect(onAiData).not.toHaveBeenCalled();
-  });
-
   describe("message validation", () => {
-    it("rejects openbb-connect with missing widgets array", () => {
+    it("rejects workspace-connect with missing widgets array", () => {
       const iframeRef = createMockIframeRef();
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
       const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
       act(() => {
-        postFromIframe(iframeRef, { type: "openbb-connect" });
+        postFromIframe(iframeRef, { type: "workspace-connect" });
       });
 
       expect(result.current.manifest).toBeNull();
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("invalid openbb-connect"),
+        expect.stringContaining("invalid workspace-connect"),
         expect.any(Array),
       );
       warnSpy.mockRestore();
     });
 
-    it("rejects openbb-connect with malformed widget entries", () => {
+    it("rejects workspace-connect with malformed widget entries", () => {
       const iframeRef = createMockIframeRef();
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
@@ -461,91 +616,173 @@ describe("useIframeProtocol", () => {
 
       act(() => {
         postFromIframe(iframeRef, {
-          type: "openbb-connect",
+          type: "workspace-connect",
           widgets: [{ name: "Missing widgetId" }],
         });
       });
 
       expect(result.current.manifest).toBeNull();
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("invalid openbb-connect"),
+        expect.stringContaining("invalid workspace-connect"),
         expect.any(Array),
       );
       warnSpy.mockRestore();
     });
 
-    it("rejects openbb-data with missing widgetId", async () => {
+    it("rejects workspace-data with missing widgetId", async () => {
       const iframeRef = createMockIframeRef();
       const postMessageSpy = vi.fn();
-      (iframeRef.current as any).contentWindow = {
+      setContentWindow(iframeRef, {
         postMessage: postMessageSpy,
-      };
-      const mockWindow = (iframeRef.current as any).contentWindow;
+      });
+      const mockWindow = iframeRef.current?.contentWindow;
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
       const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
-      let promise: Promise<any>;
+      let promise: DataRequest | undefined;
       act(() => {
         promise = result.current.requestWidgetData("w1");
       });
 
       act(() => {
         const event = new MessageEvent("message", {
-          data: { type: "openbb-data", data: [{ a: 1 }] },
+          data: { type: "workspace-data", data: [{ a: 1 }] },
           source: mockWindow,
         });
         window.dispatchEvent(event);
       });
 
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("invalid openbb-data"),
+        expect.stringContaining("invalid workspace-data"),
         expect.any(Array),
       );
 
-      // Request should still be pending (not resolved by invalid message)
       act(() => {
         vi.advanceTimersByTime(10_000);
       });
-      await expect(promise!).rejects.toThrow("timed out");
+      await expect(required(promise)).rejects.toThrow("timed out");
       warnSpy.mockRestore();
     });
 
-    it("rejects openbb-error with missing error string", async () => {
+    it("rejects workspace-error with missing error string", async () => {
       const iframeRef = createMockIframeRef();
       const postMessageSpy = vi.fn();
-      (iframeRef.current as any).contentWindow = {
+      setContentWindow(iframeRef, {
         postMessage: postMessageSpy,
-      };
-      const mockWindow = (iframeRef.current as any).contentWindow;
+      });
+      const mockWindow = iframeRef.current?.contentWindow;
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
       const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
-      let promise: Promise<any>;
+      let promise: DataRequest | undefined;
       act(() => {
         promise = result.current.requestWidgetData("w1");
       });
 
       act(() => {
         const event = new MessageEvent("message", {
-          data: { type: "openbb-error", widgetId: "w1" },
+          data: { type: "workspace-error", widgetId: "w1" },
           source: mockWindow,
         });
         window.dispatchEvent(event);
       });
 
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("invalid openbb-error"),
+        expect.stringContaining("invalid workspace-error"),
         expect.any(Array),
       );
 
-      // Request should still be pending (not rejected by invalid message)
       act(() => {
         vi.advanceTimersByTime(10_000);
       });
-      await expect(promise!).rejects.toThrow("timed out");
+      await expect(required(promise)).rejects.toThrow("timed out");
       warnSpy.mockRestore();
     });
+  });
+
+  it("sends the iframe workspace-auth after the handshake, with the headers the browser may hold", async () => {
+    mockConfig.authentication.sendUserEmailAsHeader = true;
+    const { setUserEmail } = await import("~/lib/state/userEmail");
+    setUserEmail("someone@example.com");
+    const postMessage = vi.fn();
+    const frame = { postMessage } as unknown as Window;
+    const iframeRef = createMockIframeRef(frame, "http://localhost:8501/app");
+    renderHook(() => useIframeProtocol({ iframeRef }));
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "workspace-connect", widgets: [] },
+          source: frame,
+          origin: "http://localhost:8501",
+        }),
+      );
+    });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      {
+        type: "workspace-auth",
+        headers: { "X-Workspace-User": "someone@example.com" },
+      },
+      "http://localhost:8501",
+    );
+    mockConfig.authentication.sendUserEmailAsHeader = false;
+    setUserEmail("");
+  });
+
+  it("sends no workspace-auth when there is no header to hand over, or to another origin", async () => {
+    mockConfig.authentication.sendUserEmailAsHeader = false;
+    const postMessage = vi.fn();
+    const frame = { postMessage } as unknown as Window;
+    const iframeRef = createMockIframeRef(frame, "http://localhost:8501/app");
+    renderHook(() => useIframeProtocol({ iframeRef }));
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "workspace-connect", widgets: [] },
+          source: frame,
+          origin: "http://localhost:8501",
+        }),
+      );
+    });
+
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("sends a widget request to the iframe after the handshake", async () => {
+    const { useWidgetContext } = await import("~/components/Widget.context");
+    vi.mocked(useWidgetContext).mockReturnValue({
+      widget: {
+        id: "w",
+        sourceId: "src-1",
+        endpoint: { url: "http://localhost:8501/app", method: "GET" },
+      },
+    } as unknown as ReturnType<typeof useWidgetContext>);
+    const postMessage = vi.fn();
+    const frame = { postMessage } as unknown as Window;
+    const iframeRef = createMockIframeRef(frame, "http://localhost:8501/app");
+    const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "workspace-connect", widgets: [] },
+          source: frame,
+          origin: "http://localhost:8501",
+        }),
+      );
+    });
+    expect(postMessage).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.requestWidgetData("w1");
+    });
+    expect(postMessage).toHaveBeenLastCalledWith(
+      { type: "workspace-request", widgetId: "w1" },
+      "http://localhost:8501",
+    );
   });
 });

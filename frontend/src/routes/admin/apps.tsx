@@ -23,7 +23,7 @@ const DEFAULT_SORT: SortState = { id: "updated_date", dir: "desc" };
 const getAppRowId = (app: App) => app.uuid;
 
 const ACTION_BTN =
-  "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 obb-small-navbar-btn rounded flex items-center justify-center";
+  "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center";
 
 function UrlCell({ url }: { url: string }) {
   if (!url) return <>-</>;
@@ -168,7 +168,6 @@ export default function AdminApps() {
     [apps, state.selectedIds],
   );
 
-  // Every user record sharing the selected app's (name, url).
   const detailApps = useMemo(() => {
     const target = state.detailApp;
     if (!target) return [];
@@ -338,7 +337,7 @@ export default function AdminApps() {
           />
         </div>
 
-        <div className="obb-divider my-6" />
+        <div className="ws-divider my-6" />
 
         <div className="flex items-center gap-[10px]">
           <Input

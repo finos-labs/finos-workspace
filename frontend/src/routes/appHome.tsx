@@ -6,7 +6,7 @@ import { Button } from "~/components/ds/atoms/Button";
 import { BaseDialog } from "~/components/ds/dialogs/BaseDialog";
 import Icon from "~/components/Icon";
 import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout";
-import WelcomeMessage from "~/components/LayoutAuth/WelcomeMessage";
+import { docsUrl } from "~/lib/docsUrl";
 
 export function DialogVideo({
   videoUrl,
@@ -66,7 +66,7 @@ export function Card({
   return (
     <div
       className={twMerge(
-        "flex h-[180px] flex-col gap-2.5 rounded bg-white p-2.5 body-xs-regular shadow-xs dark:bg-[#151518]",
+        "flex h-[180px] flex-col gap-2.5 rounded bg-white p-2.5 body-xs-regular shadow-xs dark:bg-dark-900",
         extraClassname,
       )}
     >
@@ -93,30 +93,17 @@ import { getConfig } from "~/lib/runtimeConfig";
 const uiShowExternalDocumentationLinksFF = getConfig().ui.showExternalDocLinks;
 
 export default function MenuHomePage() {
-  const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
-
+  const workspaceDocsHref = docsUrl("workspace");
   const TOP_CARDS = [
-    {
-      title: "Interactive Walkthrough",
-      buttonText: "Start Walkthrough",
-      description:
-        "Start with our step-by-step guide to create data-driven dashboards that connect data and AI agents for immediate insights.",
-      isDisabled: false,
-      icon: "search",
-      onClick: () => {
-        setShowWelcomeMessage(true);
-      },
-    },
-    ...(uiShowExternalDocumentationLinksFF
+    ...(uiShowExternalDocumentationLinksFF && workspaceDocsHref
       ? [
           {
-            title: "Workspace Documentation",
+            title: "FINOS Workspace Documentation",
             buttonText: "Read Documentation",
             description:
               "Access technical specifications for building custom data widgets, integrating AI agents, configuring role-based access controls, and much more.",
-            isDisabled: false,
             icon: "book-open-01",
-            href: "https://docs.openbb.co/workspace",
+            href: workspaceDocsHref,
           },
         ]
       : []),
@@ -145,37 +132,20 @@ export default function MenuHomePage() {
               <p className="body-xs-regular dark:text-light-100 text-light-800 mb-1.5">
                 {card.description}
               </p>
-              {card.href ? (
-                <a
-                  href={card.href}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="mt-auto"
-                >
-                  <Button className="w-fit" size="sm">
-                    {card.buttonText}
-                    <Icon id="external-link-icon" className="size-4" />
-                  </Button>
-                </a>
-              ) : (
-                <Button
-                  className="w-fit mt-auto"
-                  size="sm"
-                  onClick={card.onClick}
-                  disabled={card.isDisabled}
-                >
+              <a
+                href={card.href}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="mt-auto"
+              >
+                <Button className="w-fit" size="sm">
                   {card.buttonText}
+                  <Icon id="external-link-icon" className="size-4" />
                 </Button>
-              )}
+              </a>
             </div>
           ))}
         </div>
-        <WelcomeMessage
-          open={showWelcomeMessage}
-          tier="openbbdeveloper"
-          isHelpPage={true}
-          onClose={() => setShowWelcomeMessage(false)}
-        />
       </TabsPrimitive.Content>
     </SettingsLayout>
   );

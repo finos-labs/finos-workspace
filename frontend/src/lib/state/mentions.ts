@@ -6,7 +6,7 @@ import { createWithEqualityFn } from "zustand/traditional";
 import type { Selector } from "~/lib/state/app";
 import type { Mention } from "~/lib/state/copilot";
 
-export type MentionsState = {
+type MentionsState = {
   optionsMap: Record<string, Mention>;
   setOptionsMap: (optionsMap: Map<string, Mention>) => void;
   getMention: (id: string) => Mention | undefined;
@@ -28,8 +28,6 @@ export const useMentionsStore = createWithEqualityFn<MentionsState>()(
   shallow,
 );
 
-export function useShallowMentionsStore<S extends MentionsState, T>(
-  selector: Selector<S, T>,
-): T {
+export function useShallowMentionsStore<T>(selector: Selector<MentionsState, T>): T {
   return useMentionsStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }

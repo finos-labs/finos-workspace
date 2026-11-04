@@ -1,14 +1,17 @@
-import type {
-  ActivityLogEntry,
-  RoleAuditLogReturn,
-  RoleT,
+import {
+  type ActivityLogEntry,
+  ROLE_RESOURCE_LABELS,
+  type RoleAuditLogReturn,
+  type RoleSettings,
+  type RoleT,
 } from "~/components/AdminRoles/types";
+import type { CopilotModelGrant, McpGrant } from "~/lib/state/copilotAccess";
 import { apiClient } from "./api";
 
 interface SuccessResponse {
   success: boolean;
 }
-interface EntityRoleResponse {
+interface EntityRoleResponse extends RoleSettings {
   uuid: string;
   name: string;
   description: string;
@@ -71,19 +74,19 @@ export async function getEntityRolePermissions(uuid: string) {
     `/admin/role-permissions/${uuid}`,
   );
 
-  // Group file permissions by category
   const filePermissions = data
     .filter((p) => p.type === "file")
     .reduce(
       (acc, curr) => {
         const key = curr.file_extension;
+        if (!key) return acc;
         if (!acc[key]) {
           acc[key] = {
-            uuid: curr.file_extension,
+            uuid: key,
             access: curr.access,
             category: curr.category,
             type: "file",
-            file_extension: curr.file_extension,
+            file_extension: key,
             widgets: [],
           };
         }
@@ -98,120 +101,122 @@ export async function getEntityRolePermissions(uuid: string) {
 
   return [...Object.values(filePermissions), ...data.filter((p) => p.type !== "file")];
 }
+type Access = "access" | "no-access";
+
+export interface EntityRolePermissionUpdate {
+  uuid: string;
+  access?: Access;
+  category: string;
+  type?: string;
+  widgets?: { widgetId: string; access?: Access }[];
+  templates?: {
+    templateId: string;
+    access?: Access;
+    prompts?: { promptId: string; access?: Access }[];
+  }[];
+}
+
+type PermissionTemplate = NonNullable<EntityRolePermissionUpdate["templates"]>[number];
+
 export async function putEntityRolePermissions(
   uuid: string,
-  permissions: EntityRolePermissions[],
+  permissions: EntityRolePermissionUpdate[],
 ) {
-  // First, handle prompt type permissions consolidation
-  const consolidatedPermissions = permissions.reduce((acc, permission) => {
-    if (permission.type === "prompt" && permission.templates) {
-      // Find existing prompt permission with same UUID and category
-      const existingPermIndex = acc.findIndex(
-        (p) =>
-          p.uuid === permission.uuid &&
-          p.type === "prompt" &&
-          p.category === permission.category,
-      );
+  const consolidatedPermissions = permissions.reduce<EntityRolePermissionUpdate[]>(
+    (acc, permission) => {
+      if (permission.type === "prompt" && permission.templates) {
+        const existing = acc.find(
+          (p) =>
+            p.uuid === permission.uuid &&
+            p.type === "prompt" &&
+            p.category === permission.category,
+        );
 
-      if (existingPermIndex === -1) {
-        // If not found, add as is
-        acc.push({
-          ...permission,
-          access: permission.access || "no-access", // Ensure access property exists
-        });
-      } else {
-        // If found, merge templates
-        const existing = acc[existingPermIndex];
-        if (existing.templates) {
-          permission.templates.forEach((newTemplate) => {
-            const existingTemplateIndex = existing.templates!.findIndex(
+        if (!existing) {
+          acc.push({
+            ...permission,
+            access: permission.access || "no-access",
+          });
+          return acc;
+        }
+
+        const existingTemplates = existing.templates;
+        if (existingTemplates) {
+          for (const newTemplate of permission.templates) {
+            const existingTemplate = existingTemplates.find(
               (t) => t.templateId === newTemplate.templateId,
             );
 
-            if (existingTemplateIndex === -1) {
-              // If template doesn't exist, add it with access property
-              existing.templates!.push({
+            if (!existingTemplate) {
+              existingTemplates.push({
                 ...newTemplate,
                 access: newTemplate.access || "no-access",
               });
-            } else {
-              // Merge prompts within template
-              const existingTemplate = existing.templates![existingTemplateIndex];
+              continue;
+            }
 
-              // Ensure access property exists on template
-              existingTemplate.access = existingTemplate.access || "no-access";
+            existingTemplate.access = existingTemplate.access || "no-access";
 
-              // Ensure both have prompts arrays before merging
-              if (!existingTemplate.prompts) existingTemplate.prompts = [];
-              if (newTemplate.prompts) {
-                // Add prompts that don't already exist
-                newTemplate.prompts.forEach((newPrompt) => {
-                  const promptExists = existingTemplate.prompts!.some(
-                    (p) => p.promptId === newPrompt.promptId,
-                  );
-
-                  if (!promptExists) {
-                    existingTemplate.prompts!.push({
-                      ...newPrompt,
-                      access: newPrompt.access || "no-access", // Ensure access property exists
-                    });
-                  }
+            const existingPrompts = existingTemplate.prompts ?? [];
+            existingTemplate.prompts = existingPrompts;
+            for (const newPrompt of newTemplate.prompts ?? []) {
+              if (!existingPrompts.some((p) => p.promptId === newPrompt.promptId)) {
+                existingPrompts.push({
+                  ...newPrompt,
+                  access: newPrompt.access || "no-access",
                 });
               }
             }
-          });
-        } else if (permission.templates) {
-          // If existing has no templates but new permission does
-          existing.templates = permission.templates.map((template) => ({
-            ...template,
-            access: template.access || "no-access",
-            prompts: template.prompts?.map((prompt) => ({
-              ...prompt,
-              access: prompt.access || "no-access",
-            })),
-          }));
+          }
+        } else {
+          existing.templates = permission.templates.map(
+            (template): PermissionTemplate => ({
+              ...template,
+              access: template.access || "no-access",
+              prompts: template.prompts?.map((prompt) => ({
+                ...prompt,
+                access: prompt.access || "no-access",
+              })),
+            }),
+          );
         }
 
-        // Ensure access property exists on the permission itself
         existing.access = existing.access || "no-access";
+        return acc;
       }
+
+      const alreadyAdded = acc.some(
+        (p) =>
+          p.uuid === permission.uuid &&
+          p.type === permission.type &&
+          p.category === permission.category,
+      );
+
+      if (!alreadyAdded) {
+        acc.push({
+          ...permission,
+          access: permission.access || "no-access",
+        });
+      }
+
       return acc;
-    }
+    },
+    [],
+  );
 
-    // For non-prompt types or those without templates
-    // Check if we already have this permission (by UUID, type and category)
-    const existingIndex = acc.findIndex(
-      (p) =>
-        p.uuid === permission.uuid &&
-        p.type === permission.type &&
-        p.category === permission.category,
-    );
-
-    if (existingIndex === -1) {
-      // If not found, add as is with access property
-      acc.push({
-        ...permission,
-        access: permission.access || "no-access",
-      });
-    }
-    // If found with same UUID/type/category, we keep the existing one
-    // (This prevents duplicates for non-prompt permissions)
-
-    return acc;
-  }, [] as EntityRolePermissions[]);
-
-  // Then handle file permissions flattening as before
-  const flattenedPermissions = consolidatedPermissions.flatMap((permission) => {
-    if (permission.type === "file" && permission.widgets) {
-      return permission.widgets.map((widget) => ({
-        uuid: widget.widgetId,
-        access: widget.access,
-        category: permission.category,
-        type: permission.type,
-      }));
-    }
-    return permission;
-  });
+  const flattenedPermissions = consolidatedPermissions.flatMap(
+    (permission): EntityRolePermissionUpdate[] => {
+      if (permission.type === "file" && permission.widgets) {
+        return permission.widgets.map((widget) => ({
+          uuid: widget.widgetId,
+          access: widget.access,
+          category: permission.category,
+          type: permission.type,
+        }));
+      }
+      return [permission];
+    },
+  );
 
   const { data } = await apiClient.put<SuccessResponse>(
     `/admin/role-permissions/${uuid}`,
@@ -225,16 +230,16 @@ export async function getEntityRoleActivityLog() {
     "admin/role-permissions-audit-logs",
   );
 
-  // transform the data to ActivityLogEntry
   const activityLog = data.map((log) => {
-    const activityType = `${log.action.charAt(0).toUpperCase()}${log.action.slice(1)} ${log.resource_type}`;
+    const resource = ROLE_RESOURCE_LABELS[log.resource_type] ?? log.resource_type;
+    const activityType = `${log.action.charAt(0).toUpperCase()}${log.action.slice(1)} ${resource}`;
     return {
       uuid: log.uuid,
       role: log.role_name,
       performedBy: log.performed_by_email,
       activityType,
-      timestamp: new Date(log.created_at).getTime(), // Convert to number timestamp
-      detailsMsg: log.details_msg ?? "", // Ensure string
+      timestamp: new Date(log.created_at).getTime(),
+      detailsMsg: log.details_msg ?? "",
       details: log.details,
     } satisfies ActivityLogEntry;
   });
@@ -242,10 +247,24 @@ export async function getEntityRoleActivityLog() {
   return activityLog;
 }
 
+export type RoleAccessList = Record<string, string>[];
+
 type UserPermissions = {
-  data_connectors: Record<string, any>[];
-  templates: Record<string, any>[];
-  prompts: Record<string, any>[];
+  data_connectors: {
+    uuid: string | null;
+    type: "backend" | "file";
+    name: string | null;
+    description?: string | null;
+    access: RoleAccessList;
+    widgets?: { widgetId: string | null; access: RoleAccessList }[];
+  }[];
+  templates: { templateId: string | null; access: RoleAccessList }[];
+  prompts: {
+    uuid: string | null;
+    prompt: string | null;
+    access: RoleAccessList;
+    templateId?: string;
+  }[];
 };
 
 type UserPermissionsResponse = UserPermissions | UserPermissions[];
@@ -253,6 +272,29 @@ type UserPermissionsResponse = UserPermissions | UserPermissions[];
 export async function getUserPermissions(userUuid: string) {
   const { data } = await apiClient.get<UserPermissionsResponse>(
     `/admin/user-permissions/${userUuid}`,
+  );
+  return data;
+}
+
+interface RoleCopilotAccess {
+  models: CopilotModelGrant[];
+  mcp: McpGrant[];
+}
+
+export async function getRoleCopilotAccess(roleUuid: string) {
+  const { data } = await apiClient.get<RoleCopilotAccess>(
+    `/admin/role/${roleUuid}/copilot-access`,
+  );
+  return data;
+}
+
+export async function putRoleCopilotAccess(
+  roleUuid: string,
+  access: RoleCopilotAccess,
+) {
+  const { data } = await apiClient.put<SuccessResponse>(
+    `/admin/role/${roleUuid}/copilot-access`,
+    access,
   );
   return data;
 }

@@ -22,13 +22,13 @@ export default function useFetchSharedResources(isSharedResource?: boolean) {
             key,
             {
               ...widget,
-              endpoint: widget.endpoint.url.replace(`${backend.url}/`, ""),
+              endpoint: widget.endpoint?.url.replace(`${backend.url}/`, ""),
             },
           ]),
         ),
         templates: backend.templates.map((template) => ({
           ...template,
-          prompts: template.prompts.map((prompt) => {
+          prompts: (template.prompts ?? []).map((prompt) => {
             if (typeof prompt === "string") return prompt;
 
             return prompt?.promptId;

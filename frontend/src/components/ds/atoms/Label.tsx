@@ -3,18 +3,12 @@ import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
 import { cn } from "../utils";
 
-/* Label */
-
 const labelVariants = cva([
-  "BB-Label body-xs-regular mb-1 inline-block text-ds-text-caption",
+  "body-xs-regular mb-1 inline-block text-ds-text-caption",
   "group-aria-disabled:cursor-not-allowed group-aria-disabled:text-general-label-disabled",
   "peer-disabled:cursor-not-allowed peer-disabled:text-general-label-disabled",
 ]);
 
-/**
- * A label styled as a form field label. Can be used outside of Form.
- * Won't be rendered if no children provided.
- */
 export const Label = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
@@ -33,18 +27,12 @@ export const Label = React.forwardRef<
 });
 Label.displayName = LabelPrimitive.Root.displayName;
 
-/* Message */
-
 interface MessageProps {
   className?: string;
   children?: React.ReactNode;
   error?: boolean;
 }
 
-/**
- * A message styled as a hint below form field. Can be used outside of Form.
- * Won't be rendered if no children provided.
- */
 export const Message = React.forwardRef<HTMLDivElement, MessageProps>(
   ({ className, error, ...props }, ref) => {
     if (!props.children) {
@@ -54,7 +42,7 @@ export const Message = React.forwardRef<HTMLDivElement, MessageProps>(
       <div
         ref={ref}
         className={cn(
-          "BB-Message body-xs-regular mt-1",
+          "body-xs-regular mt-1",
           error && "body-xs-medium text-alert-error",
           className,
         )}

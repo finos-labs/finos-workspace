@@ -10,16 +10,13 @@ import {
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
 
-export type ChatPick = Omit<Chat<HumanMessage | AIMessage>, "artifacts" | "messages">;
+type ChatPick = Omit<Chat<HumanMessage | AIMessage>, "artifacts" | "messages">;
 
 export type ChatMatch = ChatPick & { matchedMessage?: string };
 export type SearchableChat = ChatPick & { recentMessages: string[] };
 
 const fuseOptions: IFuseOptions<SearchableChat> = {
-  keys: [
-    { name: "label", weight: 3 }, // Prioritize title matches
-    "recentMessages",
-  ],
+  keys: [{ name: "label", weight: 3 }, "recentMessages"],
   includeScore: true,
   shouldSort: true,
   threshold: 0.1,
@@ -29,9 +26,6 @@ const fuseOptions: IFuseOptions<SearchableChat> = {
   ignoreLocation: true,
 };
 
-/**
- * Finds the best matching message snippet for display
- */
 function findMatchedMessageSnippet(
   messages: string[],
   searchQuery: string,
@@ -69,16 +63,13 @@ function findMatchedMessageSnippet(
   return undefined;
 }
 
-export type GroupedChats = {
+type GroupedChats = {
   today: ChatMatch[];
   yesterday: ChatMatch[];
   previous7Days: ChatMatch[];
   older: ChatMatch[];
 };
 
-/**
- * Groups chats by time periods based on lastOpened or createdAt
- */
 function groupChatsByTime(chats: ChatMatch[]): GroupedChats {
   const oneDayMs = 24 * 60 * 60 * 1000;
   const startOfToday = new Date().setHours(0, 0, 0, 0);
@@ -145,7 +136,7 @@ export function useChatSearch(deferredInput: string) {
   const filteredChats = useMemo(() => {
     if (enabled && !data) return [];
     if (!enabled) return allChats;
-    const { searchQuery, results = [] } = data || {};
+    const { searchQuery = "", results = [] } = data || {};
 
     const fuseResults = new Fuse(results, fuseOptions).search(searchQuery);
 
@@ -154,7 +145,9 @@ export function useChatSearch(deferredInput: string) {
       const matchedInTitle = result.matches?.some((m) => m.key === "label");
       if (matchedInTitle) return chat;
 
-      const matchValues = result.matches?.map((m) => m.value);
+      const matchValues = result.matches
+        ?.map((m) => m.value)
+        .filter((value): value is string => value !== undefined);
       return {
         ...chat,
         matchedMessage: findMatchedMessageSnippet(

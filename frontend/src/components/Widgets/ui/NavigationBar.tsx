@@ -1,5 +1,5 @@
 import { Reorder } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { type MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { useTabHighlight } from "~/components/AI/contexts/TabHighlightContext";
@@ -7,9 +7,14 @@ import { Button } from "~/components/ds/atoms/Button";
 import { Input } from "~/components/ds/atoms/Input";
 import { BaseDialog } from "~/components/ds/dialogs/BaseDialog";
 import { DialogFooter, DialogTitle } from "~/components/ds/dialogs/Dialog";
+import type { WidgetT } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { type InnerTab, useShallowAppStore } from "~/lib/state/app";
+import {
+  type InnerTab,
+  useIsDashboardLocked,
+  useShallowAppStore,
+} from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import {
   beautifySlug,
@@ -26,11 +31,12 @@ import {
 import Icon from "../../Icon";
 import Tooltip from "../../Tooltip";
 
-const countWidgetsPerTab = (widgets: any[]) => {
-  const count = {};
+const countWidgetsPerTab = (widgets: WidgetT[]) => {
+  const count: Record<string, number> = {};
   for (const widget of widgets) {
     if (widget.widgetId !== "navigation_bar") {
       const tabId = widget.innerTab;
+      if (tabId === undefined) continue;
       if (!count[tabId]) {
         count[tabId] = 0;
       }
@@ -54,6 +60,8 @@ type NavigationBarState = {
 export default function NavigationBar() {
   const { widget, widgetRef, activeDashboardId, updateWidget, isShared } =
     useWidgetContext();
+  const isLocked = useIsDashboardLocked(activeDashboardId);
+  const cannotEdit = isShared || isLocked;
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { lastInnerTab, widgetCount, ...appStore } = useShallowAppStore((state) => ({
@@ -70,7 +78,6 @@ export default function NavigationBar() {
     (state) => state.showWidgetControlsEllipsis,
   );
 
-  // Get highlighted tab ID from context for cross-tab widget highlighting
   const { hoveredWidgetTabId } = useTabHighlight();
 
   const currentTab = useMemo(
@@ -91,8 +98,8 @@ export default function NavigationBar() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleClose = useCallback(
-    (e: any) => {
-      const isLastTab = typeof e === "boolean" && e;
+    (arg: boolean | MouseEvent) => {
+      const isLastTab = arg === true;
       const widget = widgetRef.current;
       if (!widget?.id) return;
       if (!activeDashboardId) return;
@@ -126,7 +133,7 @@ export default function NavigationBar() {
   useEffect(() => {
     if (!state.open) {
       const tabs = Object.fromEntries(
-        widget?.storage?.tabs?.map((tab: any) => [uuidv4(), tab]) || [],
+        widget?.storage?.tabs?.map((tab) => [uuidv4(), tab] as const) || [],
       );
       const tabsInStorage = Object.fromEntries(
         Object.entries(tabs).filter(
@@ -171,7 +178,7 @@ export default function NavigationBar() {
       return;
     }
 
-    const newCurrentTabId = innerTabs[currentTab]?.newId;
+    const newCurrentTabId = currentTab ? innerTabs[currentTab]?.newId : undefined;
     const newTabs = updatedTabs.newTabs.map((tab) => ({
       id: innerTabs[tab.id]?.newId || tab.id,
       name: tab.name,
@@ -281,13 +288,15 @@ export default function NavigationBar() {
                 className="flex gap-2 items-center w-full"
               >
                 <Tooltip message="Drag to reorder">
-                  <button tabIndex={-1} className="obb-small-navbar-btn">
+                  <button tabIndex={-1} className="ws-small-navbar-btn">
                     <Icon id="drag-handle" />
                   </button>
                 </Tooltip>
                 <div className="flex-1">
                   <Input
-                    ref={(el) => (inputRef.current[tabUuid] = el)}
+                    ref={(el) => {
+                      inputRef.current[tabUuid] = el;
+                    }}
                     onChange={(value) => {
                       const valueId = slugify(value as string);
                       const updateState = { isChanged: true } as typeof state;
@@ -451,8 +460,8 @@ export default function NavigationBar() {
           </div>
         </DialogFooter>
       </BaseDialog>
-      <div className="group/widget flex overflow-auto h-full relative dark:bg-[#151518] bg-white shadow-xs rounded gap-3 text-sm p-2.5">
-        {widget?.storage?.tabs.map((tab) => {
+      <div className="group/widget flex overflow-auto h-full relative dark:bg-dark-900 bg-white shadow-xs rounded gap-3 text-sm p-2.5">
+        {widget?.storage?.tabs?.map((tab) => {
           const isCurrentTab = currentTab === tab.id;
           const isHighlighted = hoveredWidgetTabId === tab.id;
 
@@ -465,7 +474,7 @@ export default function NavigationBar() {
               className={cn(
                 "whitespace-nowrap p-1.5 text-sm rounded transition-colors duration-200",
                 {
-                  "dark:bg-[#212126] dark:text-white font-medium bg-light-50 text-brand-main":
+                  "dark:bg-dark-800 dark:text-white font-medium bg-light-50 text-brand-main":
                     isCurrentTab,
                   "text-light-600 hover:border-light-900 hover:text-light-900 dark:text-light-400 dark:hover:text-light-200":
                     !isCurrentTab,
@@ -487,12 +496,12 @@ export default function NavigationBar() {
           )}
         >
           <button
-            className={cn("obb-small-navbar-btn", {
-              "opacity-40 cursor-not-allowed": isShared,
+            className={cn("ws-small-navbar-btn", {
+              "opacity-40 cursor-not-allowed": cannotEdit,
             })}
-            disabled={isShared}
+            disabled={cannotEdit}
             onClick={() => {
-              if (!isShared) {
+              if (!cannotEdit) {
                 dispatch({ open: true });
               }
             }}
@@ -501,16 +510,16 @@ export default function NavigationBar() {
           </button>
           <Tooltip
             message={
-              isShared
+              cannotEdit
                 ? "You can't remove this widget"
                 : "This widget will be removed from the dashboard"
             }
           >
             <button
-              disabled={isShared}
+              disabled={cannotEdit}
               onClick={handleClose}
-              className={cn("obb-small-navbar-btn", {
-                "opacity-40 cursor-not-allowed": isShared,
+              className={cn("ws-small-navbar-btn", {
+                "opacity-40 cursor-not-allowed": cannotEdit,
               })}
             >
               <Icon id="cross-icon" className="" />

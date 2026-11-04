@@ -15,7 +15,7 @@ import {
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { createURLString } from "~/lib/utils/widgetParams";
+import { resolveAgentEndpoints } from "./utils";
 
 export type HolderGroup = ExternalCopilotHolder & {
   changed?: boolean;
@@ -37,6 +37,7 @@ export type AgentManagementState = {
     uuid: string;
     url: string;
     headerPairs: { key: string; value: string }[];
+    saved: string[];
   } | null;
 };
 
@@ -63,14 +64,6 @@ export function useAgentManagement() {
     editGroup: null,
   });
 
-  /**
-   * Syncs local `groups` state with the global `externalCopilotHolders` store.
-   *
-   * Uses a ref to track holder UUIDs and detect structural changes (add/remove)
-   * vs in-place updates. When holders are added/removed, fully replaces groups.
-   * When only updated in-place, merges store data while preserving any local
-   * URL edits the user has made (tracked via `changed` and `originalUrl` flags).
-   */
   const prevUuidsRef = useRef<string>("");
   useEffect(() => {
     const currentUuids = externalCopilotHolders.map((h) => h.uuid).join(",");
@@ -99,11 +92,6 @@ export function useAgentManagement() {
     }
   }, [externalCopilotHolders, dispatch]);
 
-  /**
-   * Persists a partial update (or deletion) of a holder to the backend and
-   * syncs the result into the global store. Reads fresh state from the store
-   * to avoid stale closure issues across async boundaries.
-   */
   const updateHolder = useCallback(
     async (holderUuid: string, partialHolder: Partial<HolderGroup> | "delete") => {
       const store = useCopilotStore.getState();
@@ -123,25 +111,17 @@ export function useAgentManagement() {
           ...partialHolder,
           enabled: partialHolder.enabled ?? holderToUpdate.enabled ?? true,
         };
-        holder.copilots = (holder.copilots || []).map((agent) => {
-          for (const [key, value] of Object.entries(agent?.endpoints || {})) {
-            agent.endpoints[key] = createURLString(value, holder.url);
-          }
-          return { ...agent, headers: holder.headers || {} };
-        });
-        await putCustomCopilot(holder);
-        externalHolders[idx] = holder;
+        holder.copilots = (holder.copilots || []).map((agent) => ({
+          ...agent,
+          endpoints: resolveAgentEndpoints(agent.endpoints, holder.url),
+        }));
+        externalHolders[idx] = await putCustomCopilot(holder);
         store.updateExternalCopilotHolders(externalHolders);
       }
     },
     [],
   );
 
-  /**
-   * Fetches fresh agent data for a holder and persists the result.
-   * Reads fresh holders from the store after the async fetch to avoid
-   * acting on stale closure-captured state.
-   */
   const handleSaveRefresh = useCallback(
     async (holderUuid: string, opts?: { silent?: boolean }): Promise<boolean> => {
       const silent = opts?.silent ?? false;
@@ -202,10 +182,6 @@ export function useAgentManagement() {
     [state.groups, updateHolder],
   );
 
-  /**
-   * Refreshes every holder in one pass (silently), then shows a single summary
-   * toast. Mirrors the Connections page "Refresh all" affordance.
-   */
   const handleRefreshAll = useCallback(async () => {
     const holders = useCopilotStore.getState().externalCopilotHolders;
     if (holders.length === 0) return;
@@ -275,36 +251,33 @@ export function useAgentManagement() {
   const handleEditGroup = useCallback(
     (holderUuid: string) => {
       const holder = externalCopilotHolders.find((h) => h.uuid === holderUuid);
-      const headers = holder?.headers || {};
-      const headerPairs = Object.entries(headers).map(([key, value]) => ({
-        key,
-        value,
-      }));
+      const saved = holder?.headerNames ?? [];
       dispatch({
         editGroup: {
           uuid: holderUuid,
           url: holder?.url || "",
-          headerPairs,
+          headerPairs: saved.map((key) => ({ key, value: "" })),
+          saved,
         },
       });
     },
     [externalCopilotHolders],
   );
 
-  /**
-   * Validates edited header pairs, fetches fresh agent data with the new
-   * URL/headers, and persists the update.
-   */
   const handleSaveEdit = useCallback(
-    async (editGroupData: AgentManagementState["editGroup"] & { url: string }) => {
-      if (!editGroupData) return;
-
-      const { uuid: holderUuid, headerPairs, url } = editGroupData;
+    async (editGroupData: NonNullable<AgentManagementState["editGroup"]>) => {
+      const { uuid: holderUuid, headerPairs, url, saved } = editGroupData;
       const filteredPairs = headerPairs.filter((p) => p.key.trim());
       const allKeys = filteredPairs.map((p) => p.key);
 
       if (allKeys.length !== new Set(allKeys).size) {
         toast.error("Duplicate header keys found");
+        return;
+      }
+
+      const missing = filteredPairs.find((p) => !p.value && !saved.includes(p.key));
+      if (missing) {
+        toast.error(`Enter a value for ${missing.key}`);
         return;
       }
 
@@ -317,7 +290,7 @@ export function useAgentManagement() {
       );
 
       try {
-        const copilots = await fetchAgentsData({ url, headers });
+        const copilots = await fetchAgentsData({ uuid: holderUuid, url, headers });
         await updateHolder(holderUuid, {
           url,
           headers,

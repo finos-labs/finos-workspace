@@ -1,0 +1,60 @@
+name: widget-examples
+
+x-hardened: &hardened
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+
+services:
+  backend:
+    <<: *hardened
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      args:
+        SQL_EXPLORER_VERSION: ${SQL_EXPLORER_VERSION:?set SQL_EXPLORER_VERSION to the SQL explorer package version}
+        AG_GRID_VERSION: ${AG_GRID_VERSION:?set AG_GRID_VERSION to the AgGrid package version}
+    image: widget-examples-backend:${SQL_EXPLORER_VERSION}-${AG_GRID_VERSION}
+    tmpfs: ["/tmp:size=64m,noexec,nosuid"]
+    mem_limit: 512m
+    pids_limit: 128
+    networks: [plugin-rpc, plugin-db]
+
+  examples-gateway:
+    <<: *hardened
+    image: nginx:1.31.6-alpine
+    user: "101:101"
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    tmpfs: ["/tmp:size=16m,noexec,nosuid"]
+    mem_limit: 64m
+    pids_limit: 32
+    ports:
+      - "127.0.0.1:7798:7798"
+    volumes:
+      - ./gateway.conf:/etc/nginx/nginx.conf:ro
+    networks: [workspace, plugin-rpc]
+
+  postgres:
+    image: postgres:18.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: explorer
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run setup.py first}
+      EXPLORER_PASSWORD: ${EXPLORER_PASSWORD:?run setup.py first}
+    volumes:
+      - ./postgres:/docker-entrypoint-initdb.d:ro
+      - postgres-data:/var/lib/postgresql
+    networks: [plugin-db]
+
+volumes:
+  postgres-data:
+
+networks:
+  plugin-rpc:
+    internal: true
+  plugin-db:
+    internal: true
+  workspace:
+    external: true
+    name: ${WORKSPACE_NETWORK:?set WORKSPACE_NETWORK to the FINOS Workspace stack's network}

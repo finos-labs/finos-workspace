@@ -4,7 +4,7 @@ import { typographyClassGroup } from "../plugins/typography";
 
 type AdditionalClassGroupIds = "typography";
 
-export const twMerge = extendTailwindMerge<AdditionalClassGroupIds>({
+const twMerge = extendTailwindMerge<AdditionalClassGroupIds>({
   extend: {
     classGroups: {
       typography: typographyClassGroup,

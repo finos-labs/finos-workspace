@@ -1,0 +1,34 @@
+---
+title: Switch on the search of documents
+sidebar_position: 9
+---
+
+import { EnvDefault } from "@site/src/components/Reference/config";
+
+# Switch on the search of documents
+
+The Agent cannot read a PDF or a Word document as text that it is given directly. It searches such a document: the MCP server that serves the agent's tools splits the file into passages, turns each passage into numbers with an embedding model, and finds the passages that match a question. Each hit carries its page, so that an answer can point to the page. Searching is off until you name an embedding model. This guide switches it on and checks it.
+
+## Choose an embedding model
+
+Write the model as `<provider>:<model>` and put it in `AGENT_EMBED_MODEL`, in the environment of the agent's MCP server, the service that the deployment runs next to the agent. Four providers offer embedding models: OpenAI, OpenRouter, NVIDIA and Ollama. The provider needs its key (`OPENAI_API_KEY`, `OPENROUTER_API_KEY` or `NVIDIA_API_KEY`) or, for Ollama, its address in `OLLAMA_BASE_URL`, in the same environment. The model is a choice of cost and quality, and it must be an embedding model, not a chat model. Restart the MCP server after you change the setting.
+
+Choose the model once. The server indexes a document with the model that is set when the document is added, and it embeds a question with the model that is set when the question is asked. After you change the model, a document that was added earlier no longer matches the questions, so ask people to attach their documents again.
+
+## What it turns on
+
+With `AGENT_EMBED_MODEL` set, the MCP server offers two more tools to the Agent: `list_documents`, which lists the files that a chat holds, and `query_documents`, which searches one of them. Without the setting, the server leaves both tools out, so the Agent cannot read a PDF or a Word file, and its answer says so when a user attaches one or puts a PDF widget on the dashboard. When the server starts, it logs which tools it left out and why.
+
+Users see no setting for this feature. A role grants the document tools with the rest of the server's tools, which [Choose the models and tools of a role](../administration/choose-the-models-and-tools-of-a-role.md) describes.
+
+## Limits that you can set
+
+`AGENT_INGEST_CHUNKS_PER_HOUR` limits how many passages one chat may add to the search in an hour, which is <EnvDefault name="AGENT_INGEST_CHUNKS_PER_HOUR" /> by default, so that one chat cannot make the embedding provider run up a large bill. The agent also reads a file only up to its size limits, and [Widget data for the agent](../../reference/protocols/agent-widget-data.mdx) lists them.
+
+## Share the index between replicas
+
+The MCP server keeps the documents of a chat in the shared store that `REDIS_URL` names, and in its own memory when the variable is not set. Set `REDIS_URL` to the address of the deployment's Valkey or Redis server whenever you run more than one replica of the MCP server, so that every replica finds the documents of every chat, as [Run the agent on several replicas](../../tutorials/deploy/run-the-agent-on-several-replicas.mdx) describes.
+
+## Check it
+
+Attach a PDF to a question in the Agent and ask what is on its second page. The Agent's steps show a search of the document, and its answer names the page, with a link that opens the file at that page.

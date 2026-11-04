@@ -1,7 +1,15 @@
 import clsx from "clsx";
 import dayjs from "dayjs";
-import { Fragment, memo, useCallback, useEffect, useMemo, useState } from "react";
-import { useDebounceValue, useLocalStorage } from "usehooks-ts";
+import {
+  Fragment,
+  memo,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useDebounceValue } from "usehooks-ts";
 import {
   type Message,
   type MessageGroup,
@@ -29,26 +37,14 @@ const LoadingEllipsis = memo((props: { lastGroup?: MessageGroup }) => {
     s.streamingStatus,
     s.loading,
   ]);
-  const orchestrationModeEnabled = useShallowCopilotStore(
-    (s) => s.orchestrationModeEnabled,
-  );
   const shouldShowStandalone = useMemo(() => {
-    const isLoading =
-      loading &&
-      (streamingStatus === "streaming-ready" ||
-        (orchestrationModeEnabled && streamingStatus === "streaming-started"));
+    const isLoading = loading && streamingStatus === "streaming-ready";
 
-    // Check if the last group is a step-by-step reasoning group
     const hasStepByStepInProgress =
-      lastGroup &&
-      lastGroup.role === "system" &&
-      loading &&
-      (streamingStatus === "streaming-ready" ||
-        (orchestrationModeEnabled && streamingStatus === "streaming-started"));
+      lastGroup && lastGroup.role === "system" && isLoading;
 
-    // Only show standalone loading ellipsis if not showing within step-by-step reasoning
     return isLoading && !hasStepByStepInProgress;
-  }, [loading, streamingStatus, orchestrationModeEnabled, lastGroup]);
+  }, [loading, streamingStatus, lastGroup]);
 
   return useMemo(
     () => (
@@ -77,9 +73,6 @@ export default function CopilotMessageGroupRoot() {
 
   const isLoading = loading && streamingStatus === "streaming-ready";
 
-  const [streamingData, _] = useLocalStorage("streamedData", "");
-  const hasStreamingData = streamingData !== "";
-
   const { messages, setShowWelcome } = useShallowCopilotStore((s) => ({
     messages: s.getCurrentChat().messages,
     setShowWelcome: s.setShowWelcome,
@@ -92,9 +85,9 @@ export default function CopilotMessageGroupRoot() {
 
   useEffect(() => {
     queueMicrotask(() => {
-      setShowWelcome(groupedMessages?.length === 0 && !hasStreamingData);
+      setShowWelcome(groupedMessages?.length === 0);
     });
-  }, [groupedMessages?.length === 0, !hasStreamingData]);
+  }, [groupedMessages?.length === 0]);
 
   const groupedMessagesMemo = useMemo(
     () =>
@@ -132,20 +125,20 @@ function getHighestEventType(message: Message, highestType: string): string {
   return highestType;
 }
 
-export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
-  const { group, groupIndex, isLastGroup, previousGroupRole, allGroups } = props;
+function CopilotMessageGroup(props: CopilotMessageGroupProps) {
+  const {
+    group,
+    groupIndex,
+    isLastGroup = false,
+    previousGroupRole,
+    allGroups,
+  } = props;
 
   const [streamingStatus, loading] = useShallowStreamingStore((s) => [
     s.streamingStatus,
     s.loading,
   ]);
 
-  // Get orchestration mode for gradient animation
-  const orchestrationModeEnabled = useShallowCopilotStore(
-    (s) => s.orchestrationModeEnabled,
-  );
-
-  // Check if this is a step-by-step reasoning group
   const isStepByStepGroup =
     group.role === "system" &&
     (group.groupTitle === "Step-by-step reasoning" ||
@@ -156,12 +149,13 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
   const hasMultipleMessages = group.messages.length > 1;
   const displayMessages = !hasMultipleMessages || isGroupExpanded;
 
-  // Generate unique group ID for targeting
   const groupId = `group-${groupIndex}`;
 
-  // Group event type is the highest severity of the messages in the group
   const { messagesMemo, groupEventType } = useMemo(() => {
-    const reduced = group.messages.reduce(
+    const reduced = group.messages.reduce<{
+      messagesMemo: ReactNode[];
+      groupEventType: string | null;
+    }>(
       (acc, message, messageIndex) => {
         acc.messagesMemo.push(
           <div
@@ -173,7 +167,6 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
                 key={`${messageIndex}-${message.timestamp}`}
                 {...{
                   message,
-                  isLastGroup: isLastGroup,
                   previousGroupRole: previousGroupRole,
                   showIcon: !hasMultipleMessages,
                   currentGroupId: groupId,
@@ -213,13 +206,11 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
     showDatetime(group.messages[0].timestamp, groupId);
   }, [group.messages[0].timestamp, groupId]);
 
-  // Now that we have the groupEventType we can decide if the gradient should run
   const isStepByStepInProgress =
     group.role === "system" &&
     isLastGroup &&
     loading &&
-    (streamingStatus === "streaming-ready" ||
-      (orchestrationModeEnabled && streamingStatus === "streaming-started"));
+    streamingStatus === "streaming-ready";
 
   const isSystemOrSingleAiMessage =
     group.role === "system" || (group.role === "ai" && previousGroupRole !== "system");
@@ -236,7 +227,6 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
           (group.role === "system" && previousGroupRole === "ai") ||
           (previousGroupRole === "human" && group.isError),
       })}
-      // Apply hover handling to the entire container for step-by-step reasoning
       {...(isStepByStepGroup && { onMouseEnter, onMouseLeave })}
     >
       <div className="relative">
@@ -249,8 +239,8 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
               isExpanded={isGroupExpanded}
               isExpandable={true}
               toggleDropdown={() => setIsGroupExpanded((prev) => !prev)}
-              content={group.groupTitle}
-              eventType={groupEventType}
+              content={group.groupTitle ?? ""}
+              eventType={groupEventType ?? "INFO"}
               showIcon={true}
               isStepByStepInProgress={isStepByStepInProgress}
               groupIndex={groupIndex}
@@ -295,7 +285,7 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
   );
 }
 
-export const GroupDatetime = memo((props: { groupId: string }) => {
+const GroupDatetime = memo((props: { groupId: string }) => {
   const datetimeState = useShallowCopilotStore((state) => state.datetimeState);
   const [debouncedState] = useDebounceValue(datetimeState, 50);
 
@@ -318,32 +308,30 @@ export const GroupDatetime = memo((props: { groupId: string }) => {
   }, [debouncedState?.targetGroupId, debouncedState?.timestamp, props.groupId]);
 });
 
-export const AgentName = memo(
-  (props: { senderId: string | undefined; show: boolean }) => {
-    const externalCopilotHolders = useShallowCopilotStore(
-      (copilot) => copilot.externalCopilotHolders,
-    );
+const AgentName = memo((props: { senderId: string | undefined; show: boolean }) => {
+  const externalCopilotHolders = useShallowCopilotStore(
+    (copilot) => copilot.externalCopilotHolders,
+  );
 
-    const agentName = useMemo(() => {
-      if (props.senderId === "openbb-copilot") return "OpenBB Copilot";
-      const senderName = externalCopilotHolders
-        .flatMap((holder) => holder.copilots || [])
-        .find((copilot) => copilot.id === props.senderId)?.name;
+  const agentName = useMemo(() => {
+    if (props.senderId === "default-copilot") return "Agent";
+    const senderName = externalCopilotHolders
+      .flatMap((holder) => holder.copilots || [])
+      .find((copilot) => copilot.id === props.senderId)?.name;
 
-      return senderName || props.senderId || undefined;
-    }, [externalCopilotHolders, props.senderId]);
+    return senderName || props.senderId || undefined;
+  }, [externalCopilotHolders, props.senderId]);
 
-    return useMemo(() => {
-      if (!(props.show && agentName)) return null;
-      return (
-        <div
-          className="mb-0.5 leading-3.75 z-10 pointer-events-none
+  return useMemo(() => {
+    if (!(props.show && agentName)) return null;
+    return (
+      <div
+        className="mb-0.5 leading-3.75 z-10 pointer-events-none
         text-brand-darker dark:text-brand-lighter whitespace-nowrap
         text-xs truncate text-ellipsis max-w-[70%]"
-        >
-          {agentName}
-        </div>
-      );
-    }, [props.show, agentName]);
-  },
-);
+      >
+        {agentName}
+      </div>
+    );
+  }, [props.show, agentName]);
+});

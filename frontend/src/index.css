@@ -1,23 +1,328 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@import "tw-animate-css";
 @import "./styles/tokens.css";
 
-@config "../tailwind.config.ts";
+@source "../index.html";
+@source "./**/*.{js,jsx,ts,tsx,mdx}";
 
-/*
-  The default border color has changed to `currentColor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
+@plugin "@tailwindcss/typography";
+@plugin "./components/ds/plugins/typography.ts";
 
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
+@custom-variant dark (&:is(.dark *));
+@custom-variant only-sm (@media (width <= 639px));
+
+@theme inline {
+  --color-base-0: var(--color-base-0);
+  --color-base-100: var(--color-base-100);
+  --color-main-50: var(--color-main-50);
+  --color-main-100: var(--color-main-100);
+  --color-main-200: var(--color-main-200);
+  --color-dark-50: var(--color-dark-50);
+  --color-dark-100: var(--color-dark-100);
+  --color-dark-200: var(--color-dark-200);
+  --color-dark-300: var(--color-dark-300);
+  --color-dark-400: var(--color-dark-400);
+  --color-dark-500: var(--color-dark-500);
+  --color-dark-600: var(--color-dark-600);
+  --color-dark-700: var(--color-dark-700);
+  --color-dark-750: var(--color-dark-750);
+  --color-dark-800: var(--color-dark-800);
+  --color-dark-850: var(--color-dark-850);
+  --color-dark-900: var(--color-dark-900);
+  --color-light-50: var(--color-light-50);
+  --color-light-100: var(--color-light-100);
+  --color-light-200: var(--color-light-200);
+  --color-light-300: var(--color-light-300);
+  --color-light-400: var(--color-light-400);
+  --color-light-500: var(--color-light-500);
+  --color-light-600: var(--color-light-600);
+  --color-light-700: var(--color-light-700);
+  --color-light-750: var(--color-light-750);
+  --color-light-800: var(--color-light-800);
+  --color-light-850: var(--color-light-850);
+  --color-light-900: var(--color-light-900);
+  --color-error-50: var(--color-error-50);
+  --color-error-100: var(--color-error-100);
+  --color-error-200: var(--color-error-200);
+  --color-success-50: var(--color-success-50);
+  --color-success-100: var(--color-success-100);
+  --color-success-200: var(--color-success-200);
+  --color-warning-50: var(--color-warning-50);
+  --color-warning-100: var(--color-warning-100);
+  --color-warning-200: var(--color-warning-200);
+  --color-informative-50: var(--color-informative-50);
+  --color-informative-100: var(--color-informative-100);
+  --color-informative-200: var(--color-informative-200);
+  --color-extra-grey-50: var(--color-extra-grey-50);
+  --color-extra-grey-100: var(--color-extra-grey-100);
+  --color-extra-grey-200: var(--color-extra-grey-200);
+  --color-extra-pink-50: var(--color-extra-pink-50);
+  --color-extra-pink-100: var(--color-extra-pink-100);
+  --color-extra-pink-200: var(--color-extra-pink-200);
+  --color-extra-turquoise-50: var(--color-extra-turquoise-50);
+  --color-extra-turquoise-100: var(--color-extra-turquoise-100);
+  --color-extra-turquoise-200: var(--color-extra-turquoise-200);
+  --color-extra-burgundy-50: var(--color-extra-burgundy-50);
+  --color-extra-burgundy-100: var(--color-extra-burgundy-100);
+  --color-extra-burgundy-200: var(--color-extra-burgundy-200);
+  --color-extra-coral-50: var(--color-extra-coral-50);
+  --color-extra-coral-100: var(--color-extra-coral-100);
+  --color-extra-coral-200: var(--color-extra-coral-200);
+  --color-extra-yellow-50: var(--color-extra-yellow-50);
+  --color-extra-yellow-100: var(--color-extra-yellow-100);
+  --color-extra-yellow-200: var(--color-extra-yellow-200);
+  --color-extra-orange-50: var(--color-extra-orange-50);
+  --color-extra-orange-100: var(--color-extra-orange-100);
+  --color-extra-orange-200: var(--color-extra-orange-200);
+  --color-extra-red-50: var(--color-extra-red-50);
+  --color-extra-red-100: var(--color-extra-red-100);
+  --color-extra-red-200: var(--color-extra-red-200);
+  --color-extra-purple-50: var(--color-extra-purple-50);
+  --color-extra-purple-100: var(--color-extra-purple-100);
+  --color-extra-purple-200: var(--color-extra-purple-200);
+  --color-extra-green-50: var(--color-extra-green-50);
+  --color-extra-green-100: var(--color-extra-green-100);
+  --color-extra-green-200: var(--color-extra-green-200);
+  --color-extra-blue-50: var(--color-extra-blue-50);
+  --color-extra-blue-100: var(--color-extra-blue-100);
+  --color-extra-blue-200: var(--color-extra-blue-200);
+
+  --color-brand-main: var(--brand-main);
+  --color-brand-lighter: var(--brand-lighter);
+  --color-brand-darker: var(--brand-darker);
+
+  --color-general-border-primary: var(--general-border-primary);
+  --color-general-border-secondary: var(--general-border-secondary);
+  --color-general-border-disabled: var(--general-border-disabled);
+  --color-general-bg-primary: var(--general-bg-primary);
+  --color-general-bg-primary-hover: var(--general-bg-primary-hover);
+  --color-general-bg-primary-disabled: var(--general-bg-primary-disabled);
+  --color-general-bg-secondary: var(--general-bg-secondary);
+  --color-general-bg-secondary-hover: var(--general-bg-secondary-hover);
+  --color-general-bg-secondary-disabled: var(--general-bg-secondary-disabled);
+  --color-general-label: var(--general-label);
+  --color-general-label-hover: var(--general-label-hover);
+  --color-general-label-disabled: var(--general-label-disabled);
+
+  --color-alert-success: var(--alert-success);
+  --color-alert-warning: var(--alert-warning);
+  --color-alert-error: var(--alert-error);
+  --color-alert-informative: var(--alert-informative);
+
+  --color-surface-page: var(--surface-page);
+  --color-surface-header: var(--surface-header);
+  --color-surface-divider: var(--surface-divider);
+  --color-surface-layer: var(--surface-layer);
+  --color-surface-card: var(--surface-card);
+
+  --color-btn-primary-bg: var(--btn-primary-bg);
+  --color-btn-primary-bg-hover: var(--btn-primary-bg-hover);
+  --color-btn-primary-bg-disabled: var(--btn-primary-bg-disabled);
+  --color-btn-primary-label: var(--btn-primary-label);
+  --color-btn-primary-label-disabled: var(--btn-primary-label-disabled);
+  --color-btn-secondary-bg: var(--btn-secondary-bg);
+  --color-btn-secondary-bg-hover: var(--btn-secondary-bg-hover);
+  --color-btn-secondary-bg-disabled: var(--btn-secondary-bg-disabled);
+  --color-btn-secondary-border: var(--btn-secondary-border);
+  --color-btn-outlined-border: var(--btn-outlined-border);
+  --color-btn-outlined-border-hover: var(--btn-outlined-border-hover);
+  --color-btn-outlined-border-disabled: var(--btn-outlined-border-disabled);
+  --color-btn-outlined-bg-disabled: var(--btn-outlined-bg-disabled);
+  --color-btn-outlined-label: var(--btn-outlined-label);
+  --color-btn-outlined-label-disabled: var(--btn-outlined-label-disabled);
+  --color-btn-ghost-bg-hover: var(--btn-ghost-bg-hover);
+  --color-btn-ghost-label: var(--btn-ghost-label);
+  --color-btn-ghost-label-disabled: var(--btn-ghost-label-disabled);
+  --color-btn-destructive-bg: var(--btn-destructive-bg);
+  --color-btn-destructive-bg-hover: var(--btn-destructive-bg-hover);
+  --color-btn-destructive-bg-disabled: var(--btn-destructive-bg-disabled);
+  --color-btn-destructive-label: var(--btn-destructive-label);
+  --color-btn-destructive-label-disabled: var(--btn-destructive-label-disabled);
+  --color-btn-warning-bg: var(--btn-warning-bg);
+  --color-btn-warning-bg-hover: var(--btn-warning-bg-hover);
+  --color-btn-warning-bg-disabled: var(--btn-warning-bg-disabled);
+  --color-btn-warning-label: var(--btn-warning-label);
+  --color-btn-warning-label-disabled: var(--btn-warning-label-disabled);
+
+  --color-link-color: var(--link-color);
+
+  --color-dropdown-border: var(--dropdown-border);
+  --color-dropdown-bg: var(--dropdown-bg);
+
+  --color-input-field-bg: var(--input-bg);
+  --color-input-field-bg-hover: var(--input-bg-hover);
+  --color-input-field-bg-disabled: var(--input-bg-disabled);
+
+  --color-scrollbar-track: var(--scrollbar-track);
+  --color-scrollbar-handle: var(--scrollbar-handle);
+  --color-scrollbar-handle-hover: var(--scrollbar-handle-hover);
+
+  --color-tab-bg-primary: var(--tab-bg-primary);
+  --color-tab-bg-secondary: var(--tab-bg-secondary);
+  --color-tab-group-bg: var(--tab-group-bg);
+  --color-tab-border: var(--tab-border);
+  --color-tab-action-active: var(--tab-action-active);
+  --color-tab-filled-primary-bg-active: var(--tab-filled-primary-bg-active);
+  --color-tab-filled-primary-text-active: var(--tab-filled-primary-text-active);
+  --color-tab-filled-secondary-text: var(--tab-filled-secondary-text);
+  --color-tab-filled-secondary-text-active: var(--tab-filled-secondary-text-active);
+  --color-tab-filled-secondary-bg-active: var(--tab-filled-secondary-bg-active);
+  --color-tab-filled-secondary-bg-hover: var(--tab-filled-secondary-bg-hover);
+
+  --color-tag-pink-bg: var(--tag-pink-bg);
+  --color-tag-pink-label: var(--tag-pink-label);
+  --color-tag-blue-bg: var(--tag-blue-bg);
+  --color-tag-blue-label: var(--tag-blue-label);
+  --color-tag-green-bg: var(--tag-green-bg);
+  --color-tag-green-label: var(--tag-green-label);
+  --color-tag-red-bg: var(--tag-red-bg);
+  --color-tag-red-label: var(--tag-red-label);
+  --color-tag-yellow-bg: var(--tag-yellow-bg);
+  --color-tag-yellow-label: var(--tag-yellow-label);
+  --color-tag-orange-bg: var(--tag-orange-bg);
+  --color-tag-orange-label: var(--tag-orange-label);
+  --color-tag-coral-bg: var(--tag-coral-bg);
+  --color-tag-coral-label: var(--tag-coral-label);
+  --color-tag-burgundy-bg: var(--tag-burgundy-bg);
+  --color-tag-burgundy-label: var(--tag-burgundy-label);
+  --color-tag-grey-bg: var(--tag-grey-bg);
+  --color-tag-grey-label: var(--tag-grey-label);
+  --color-tag-turquoise-bg: var(--tag-turquoise-bg);
+  --color-tag-turquoise-label: var(--tag-turquoise-label);
+  --color-tag-purple-bg: var(--tag-purple-bg);
+  --color-tag-purple-label: var(--tag-purple-label);
+  --color-tag-brand-bg: var(--tag-brand-bg);
+  --color-tag-brand-label: var(--tag-brand-label);
+
+  --color-table-header-bg: var(--table-header-bg);
+  --color-table-cell-bg: var(--table-cell-bg);
+  --color-table-cell-bg-hover: var(--table-cell-bg-hover);
+
+  --color-tooltip-bg: var(--tooltip-bg);
+
+  --color-toggle-bg: var(--toggle-bg);
+  --color-toggle-bg-disabled: var(--toggle-bg-disabled);
+
+  --color-search-widget-bg: var(--search-widget-background);
+
+  --color-ds-text-heading: var(--text-heading);
+  --color-ds-text-subtitle: var(--text-subtitle);
+  --color-ds-text-body: var(--text-body);
+  --color-ds-text-caption: var(--text-caption);
+  --color-ds-text-support: var(--text-support);
+
+  --color-copilot-mention-bg: var(--copilot-mention-bg);
+  --color-copilot-mention-label: var(--copilot-mention-label);
+  --color-copilot-mention-web-bg: var(--copilot-mention-web-bg);
+  --color-copilot-mention-web-label: var(--copilot-mention-web-label);
+
+  --color-components-chat-copilot-cards-bg: var(--components-chat-copilot-cards-bg);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --shadow-light-1: 0px 2px 10px 0px rgba(0, 0, 0, 0.1);
+  --shadow-light-2: 2px 4px 15px 0px rgba(0, 0, 0, 0.1);
+  --shadow-light-3: 0px 2px 10px 0px rgba(0, 0, 0, 0.2);
+  --shadow-dark-1: 0px 2px 10px 0px rgba(0, 0, 0, 0.4);
+  --shadow-dark-2: 2px 4px 15px 0px rgba(0, 0, 0, 0.6);
+  --shadow-dark-3: 0px 2px 10px 0px rgba(0, 0, 0, 0.8);
+  --shadow-dropdown: var(--dropdown-shadow);
+
+  --text-2xs: calc(0.625rem * var(--text-scale, 1));
+  --text-xs: calc(0.75rem * var(--text-scale, 1));
+  --text-sm: calc(0.875rem * var(--text-scale, 1));
+  --text-base: calc(1rem * var(--text-scale, 1));
+  --text-lg: calc(1.125rem * var(--text-scale, 1));
+  --text-xl: calc(1.25rem * var(--text-scale, 1));
+  --text-2xl: calc(1.5rem * var(--text-scale, 1));
+  --text-3xl: calc(1.875rem * var(--text-scale, 1));
+  --text-4xl: calc(2.25rem * var(--text-scale, 1));
+  --text-5xl: calc(3rem * var(--text-scale, 1));
+  --text-6xl: calc(3.75rem * var(--text-scale, 1));
+  --text-7xl: calc(4.5rem * var(--text-scale, 1));
+  --text-8xl: calc(6rem * var(--text-scale, 1));
+  --text-9xl: calc(8rem * var(--text-scale, 1));
+}
+
+@theme inline {
+  --animate-scale-in: scale-in 0.2s ease-in-out;
+  --animate-slide-down: slide-down 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-up: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-down-fade: slide-down-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade-in: fade-in 0.2s ease;
+
+  @keyframes scale-in {
+    0% {
+      opacity: 0;
+      transform: scale(0);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slide-down {
+    0% {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-up {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-down-fade {
+    0% {
+      opacity: 0;
+      transform: translateY(-2px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+}
+
+@utility stroke-* {
+  --stroke-width: calc(--value(number) * 1px);
+  stroke-width: var(--stroke-width);
+}
+
 @layer base {
   :root {
     --text-scale: 1;
-    --brand-main: #0088cc;
-    --brand-lighter: #33bbff;
-    --brand-darker: #006699;
-    --font-family: "Inter";
+    --brand-main: var(--color-main-100);
+    --brand-lighter: var(--color-main-50);
+    --brand-darker: var(--color-main-200);
+    --font-family: "Montserrat";
+  }
+
+  :root[data-font-size="large"] {
+    --text-scale: 1.25;
   }
 
   *,
@@ -29,34 +334,34 @@
   }
 }
 
-@utility obb-avatar-user {
+@utility ws-avatar-user {
   @apply min-w-7 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium border-2 border-white dark:border-dark-800 uppercase;
 }
 
-@utility obb-label {
+@utility ws-label {
   @apply body-xs-regular mb-1 inline-block text-general-label;
   @apply group-aria-disabled:cursor-not-allowed group-aria-disabled:text-general-label-disabled;
   @apply peer-disabled:cursor-not-allowed peer-disabled:text-general-label-disabled;
 }
 
-@utility obb-parameter {
+@utility ws-parameter {
   @apply rounded-sm border border-general-border-primary hover:border-general-border-primary hover:bg-input-field-bg-hover bg-input-field-bg text-general-label py-0.5 pl-1;
 }
 
-@utility obb-page-container {
+@utility ws-page-container {
   @apply mx-[22px] my-[10px] min-h-[96.5vh] overflow-y-auto rounded bg-general-bg-primary p-2.5 only-sm:max-h-[90vh] only-sm:min-h-[90vh];
 }
 
-@utility obb-uppercase-small-title {
+@utility ws-uppercase-small-title {
   @apply text-2xs uppercase tracking-wider text-dark-100;
 }
 
-@utility obb-tag {
+@utility ws-tag {
   @apply rounded-[12px] px-1.5 text-2xs bg-tab-bg-primary text-link-color;
 }
 
-@utility obb-small-navbar-btn {
-  @apply cursor-pointer h-5 w-5 rounded-[2px] p-0.5 text-ds-text-body disabled:opacity-40 radix-state-open:bg-general-bg-secondary disabled:cursor-not-allowed disabled:text-general-label-disabled;
+@utility ws-small-navbar-btn {
+  @apply cursor-pointer h-5 w-5 rounded-[2px] p-0.5 text-ds-text-body disabled:opacity-40 data-[state=open]:bg-general-bg-secondary disabled:cursor-not-allowed disabled:text-general-label-disabled;
 
   @media (hover: hover) {
     &:hover {
@@ -68,30 +373,30 @@
   }
 }
 
-@utility obb-icon-btn-v2 {
-  @apply cursor-pointer flex h-8 w-8 items-center justify-center rounded p-1 text-ds-text-body hover:bg-general-bg-primary-hover focus:outline-hidden disabled:text-general-label-disabled disabled:hover:bg-transparent! radix-state-open:bg-general-bg-primary-hover;
+@utility ws-icon-btn-v2 {
+  @apply cursor-pointer flex h-8 w-8 items-center justify-center rounded p-1 text-ds-text-body hover:bg-general-bg-primary-hover focus:outline-hidden disabled:text-general-label-disabled disabled:hover:bg-transparent! data-[state=open]:bg-general-bg-primary-hover;
 }
 
-@utility obb-icon-btn {
+@utility ws-icon-btn {
   @apply cursor-pointer inline-flex h-[26px] w-[26px] items-center justify-center rounded bg-general-bg-secondary text-ds-text-body hover:bg-general-bg-secondary-hover;
   & > svg {
     @apply h-[14px] w-[14px];
   }
 }
 
-@utility obb-dropdown-container {
+@utility ws-dropdown-container {
   @apply flex flex-col gap-2 rounded border border-dropdown-border bg-dropdown-bg p-2 text-xs text-ds-text-subtitle shadow-dropdown;
 }
 
-@utility obb-dropdown-item {
+@utility ws-dropdown-item {
   @apply inline-flex w-full cursor-pointer items-center justify-start gap-1.5 whitespace-nowrap rounded-[2px] p-1 transition-colors hover:bg-general-bg-secondary-hover;
 }
 
-@utility obb-dropdown-item-noclick {
+@utility ws-dropdown-item-noclick {
   @apply inline-flex w-full items-center justify-start gap-1.5 whitespace-nowrap rounded-[2px] p-1 transition-colors;
 }
 
-@utility obb-navigation-item {
+@utility ws-navigation-item {
   @apply flex h-8 cursor-pointer items-center gap-2 whitespace-nowrap rounded p-2 text-xs text-ds-text-body;
   @apply hover:bg-general-bg-secondary;
   @apply transition-all;
@@ -106,7 +411,7 @@
 }
 
 @utility active {
-  &.obb-navigation-item {
+  &.ws-navigation-item {
     @apply bg-tab-bg-primary hover:bg-tab-bg-primary text-general-label;
 
     & svg {
@@ -115,7 +420,7 @@
   }
 }
 
-@utility obb-navigation-item-active {
+@utility ws-navigation-item-active {
   @apply bg-tab-bg-primary hover:bg-tab-bg-primary text-general-label-hover;
 
   & svg {
@@ -127,28 +432,28 @@
   @apply text-link-color!;
 }
 
-@utility obb-modal-close {
+@utility ws-modal-close {
   @apply absolute right-2 top-2 rounded-[4px] text-ds-text-body focus:outline focus:outline-light-500 md:right-[46px] md:top-[40px];
 }
 
-@utility obb-modal {
+@utility ws-modal {
   @apply fixed left-1/2 top-1/2 z-50 flex w-[90%] max-w-[568px] -translate-x-1/2 -translate-y-1/2 animate-fade-in flex-col items-start overflow-auto rounded bg-general-bg-primary p-2 duration-300 focus:outline-hidden md:p-10 lg:min-w-[570px] 2xl:min-w-[800px];
   box-shadow: 10px 14px 14px 0px rgba(0, 0, 0, 0.2);
 }
 
-@utility obb-modal-overlay {
+@utility ws-modal-overlay {
   @apply fixed inset-0 z-40 bg-surface-layer backdrop-blur-xs backdrop-filter;
 }
 
-@utility obb-modal-title {
+@utility ws-modal-title {
   @apply mb-4 text-base font-semibold;
 }
 
-@utility obb-modal-description {
+@utility ws-modal-description {
   @apply mb-4 text-xs;
 }
 
-@utility obb-card {
+@utility ws-card {
   @apply overflow-hidden rounded-md border border-general-border-primary bg-surface-card text-ds-text-body;
 }
 
@@ -156,53 +461,53 @@
   @apply transition duration-150 ease-out;
 }
 
-@utility obb-btn-common {
+@utility ws-btn-common {
   @apply inline-flex h-[32px] items-center justify-center gap-2 rounded px-3 py-1 text-center text-xs no-underline! transition duration-150 ease-out md:w-fit;
   @apply cursor-pointer;
 }
 
-@utility obb-btn-secondary-v2 {
-  @apply obb-btn-common bg-btn-secondary-bg px-3 py-1;
+@utility ws-btn-secondary-v2 {
+  @apply ws-btn-common bg-btn-secondary-bg px-3 py-1;
   @apply hover:bg-btn-secondary-bg-hover;
   @apply active:bg-general-bg-secondary-hover;
   @apply focus:outline focus:outline-general-border-disabled;
   @apply disabled:bg-btn-secondary-bg-disabled disabled:text-general-label-disabled;
 }
 
-@utility obb-btn {
-  @apply obb-btn-common bg-btn-secondary-bg text-general-label hover:bg-general-bg-secondary-hover focus:outline focus:outline-light-500 active:bg-general-bg-secondary-disabled disabled:bg-general-bg-secondary-disabled disabled:text-ds-text-caption;
+@utility ws-btn {
+  @apply ws-btn-common bg-btn-secondary-bg text-general-label hover:bg-general-bg-secondary-hover focus:outline focus:outline-light-500 active:bg-general-bg-secondary-disabled disabled:bg-general-bg-secondary-disabled disabled:text-ds-text-caption;
   @apply disabled:pointer-events-none disabled:cursor-not-allowed;
 }
 
-@utility obb-btn-blue {
-  @apply obb-btn-common bg-btn-primary-bg text-btn-primary-label hover:bg-btn-primary-bg-hover focus:outline focus:outline-light-500 disabled:bg-btn-primary-bg-disabled disabled:text-btn-primary-label-disabled;
+@utility ws-btn-blue {
+  @apply ws-btn-common bg-btn-primary-bg text-btn-primary-label hover:bg-btn-primary-bg-hover focus:outline focus:outline-light-500 disabled:bg-btn-primary-bg-disabled disabled:text-btn-primary-label-disabled;
   @apply disabled:pointer-events-none disabled:cursor-not-allowed;
 }
 
-@utility obb-btn-secondary {
-  @apply obb-btn-common border border-btn-secondary-border text-general-label outline-offset-0 hover:border-general-label-hover hover:text-general-label-hover focus:outline focus:outline-light-500 active:border-general-label-hover active:bg-general-bg-secondary-hover active:text-general-label-hover disabled:border-general-label-disabled disabled:bg-transparent disabled:text-ds-text-caption;
+@utility ws-btn-secondary {
+  @apply ws-btn-common border border-btn-secondary-border text-general-label outline-offset-0 hover:border-general-label-hover hover:text-general-label-hover focus:outline focus:outline-light-500 active:border-general-label-hover active:bg-general-bg-secondary-hover active:text-general-label-hover disabled:border-general-label-disabled disabled:bg-transparent disabled:text-ds-text-caption;
 }
 
-@utility obb-btn-tertiary {
-  @apply obb-btn-common bg-general-bg-secondary text-ds-text-subtitle hover:bg-general-bg-secondary-hover hover:text-general-label-hover focus:bg-general-bg-secondary-disabled focus:outline focus:outline-light-500 active:bg-general-bg-secondary-disabled active:text-general-label-hover disabled:bg-general-bg-primary-disabled disabled:text-general-label-disabled;
+@utility ws-btn-tertiary {
+  @apply ws-btn-common bg-general-bg-secondary text-ds-text-subtitle hover:bg-general-bg-secondary-hover hover:text-general-label-hover focus:bg-general-bg-secondary-disabled focus:outline focus:outline-light-500 active:bg-general-bg-secondary-disabled active:text-general-label-hover disabled:bg-general-bg-primary-disabled disabled:text-general-label-disabled;
   @apply disabled:cursor-not-allowed disabled:hover:bg-general-bg-primary-disabled disabled:hover:text-general-label-disabled;
 }
 
-@utility obb-btn-outlined {
-  @apply obb-btn-common border border-btn-outlined-border text-btn-outlined-label hover:border-btn-outlined-border-hover hover:text-general-label-hover focus-visible:text-general-label-hover active:text-general-label disabled:text-btn-outlined-label-disabled;
+@utility ws-btn-outlined {
+  @apply ws-btn-common border border-btn-outlined-border text-btn-outlined-label hover:border-btn-outlined-border-hover hover:text-general-label-hover focus-visible:text-general-label-hover active:text-general-label disabled:text-btn-outlined-label-disabled;
   @apply disabled:cursor-not-allowed disabled:border-btn-outlined-border-disabled;
 }
 
-@utility obb-btn-ghost {
-  @apply obb-btn-common text-btn-ghost-label hover:text-general-label-hover hover:bg-btn-ghost-bg-hover focus-visible:text-general-label-hover active:text-general-label disabled:text-btn-ghost-label-disabled;
+@utility ws-btn-ghost {
+  @apply ws-btn-common text-btn-ghost-label hover:text-general-label-hover hover:bg-btn-ghost-bg-hover focus-visible:text-general-label-hover active:text-general-label disabled:text-btn-ghost-label-disabled;
   @apply disabled:cursor-not-allowed;
 }
 
-@utility obb-btn-underline {
-  @apply obb-btn-common border border-btn-outlined-border text-btn-ghost-label hover:text-general-label-hover hover:border-btn-outlined-border-hover focus-visible:text-general-label-hover active:text-general-label disabled:text-btn-ghost-label-disabled;
+@utility ws-btn-underline {
+  @apply ws-btn-common border border-btn-outlined-border text-btn-ghost-label hover:text-general-label-hover hover:border-btn-outlined-border-hover focus-visible:text-general-label-hover active:text-general-label disabled:text-btn-ghost-label-disabled;
 }
 
-@utility obb-group-tab {
+@utility ws-group-tab {
   @apply mb-12 flex w-full;
 }
 
@@ -210,51 +515,51 @@
   @apply h-12 w-full rounded-md border border-general-border-primary bg-transparent py-3 pl-4 pr-2 text-sm text-ds-text-heading focus:ring-0 disabled:border-general-border-disabled;
 }
 
-@utility obb-small-input {
+@utility ws-small-input {
   @apply h-9 w-full rounded border border-general-border-primary bg-input-field-bg px-2 py-1 text-xs focus:outline-hidden focus:ring-0;
 }
 
-@utility obb-floating-label {
+@utility ws-floating-label {
   @apply absolute left-4 top-2 z-0 origin-[0] -translate-y-8 scale-75 transform px-1 text-sm text-ds-text-caption duration-300 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:scale-100 peer-focus:-top-2 peer-focus:-translate-y-4 peer-focus:scale-75 peer-focus:px-1 peer-focus:text-ds-text-heading;
 }
 
-@utility obb-hyper-link {
+@utility ws-hyper-link {
   @apply text-link-color underline font-medium;
 }
 
-@utility obb-hyper-link-copilot {
+@utility ws-hyper-link-copilot {
   @apply text-link-color underline font-medium;
 }
 
-@utility obb-divider {
+@utility ws-divider {
   @apply h-[1px] w-full bg-surface-divider;
 }
 
-@utility obb-divider-vertical {
+@utility ws-divider-vertical {
   @apply h-full w-[1px] bg-surface-divider;
 }
 
-@utility obb-code {
+@utility ws-code {
   @apply bg-general-bg-primary border-general-border-primary/50 text-ds-text-heading rounded border p-2;
 }
 
-@utility obb-floating-actions {
+@utility ws-floating-actions {
   @apply flex p-1.5 rounded gap-1.5 items-center bg-general-bg-primary shadow-[0px_2px_10px_0px_rgba(0,0,0,0.2)];
 }
 
-@utility obb-minimal-input {
+@utility ws-minimal-input {
   @apply h-[20px] rounded border border-general-border-primary bg-input-field-bg p-1.5 text-xs text-ds-text-body focus:border-general-label focus:outline-hidden active:border-general-label;
 }
 
-@utility obb-minimal-input-full {
+@utility ws-minimal-input-full {
   @apply h-[20px] resize-none rounded border border-general-border-primary bg-input-field-bg p-1.5 text-xs text-ds-text-heading placeholder:text-ds-text-subtitle focus:border-general-label focus:outline-hidden focus:placeholder:text-ds-text-heading active:border-general-label;
 }
 
-@utility obb-minimal-input-search {
+@utility ws-minimal-input-search {
   @apply h-[25px] rounded border px-3 border-general-border-primary bg-input-field-bg text-ds-text-heading;
 }
 
-@utility obb-new-input {
+@utility ws-new-input {
   @apply h-[30px] rounded border px-3 border-general-border-primary bg-input-field-bg text-ds-text-heading focus:border-general-label active:border-general-label;
 }
 
@@ -266,12 +571,12 @@
   @apply divide-surface-divider;
 }
 
-@utility obb-toggle-group-minimal {
-  @apply obb-parameter flex h-5 w-fit gap-1 overflow-hidden rounded-sm p-0 border-l-0 border-r-0;
+@utility ws-toggle-group-minimal {
+  @apply ws-parameter flex h-5 w-fit gap-1 overflow-hidden rounded-sm p-0 border-l-0 border-r-0;
 }
 
-@utility obb-toggle-group-minimal-item {
-  @apply px-0.5 text-ds-text-heading radix-state-checked:bg-tab-bg-primary radix-state-on:bg-tab-bg-primary;
+@utility ws-toggle-group-minimal-item {
+  @apply px-0.5 text-ds-text-heading data-[state=checked]:bg-tab-bg-primary data-[state=on]:bg-tab-bg-primary;
 }
 
 @utility filter-none {
@@ -302,7 +607,6 @@
     @apply rounded border border-general-border-primary/40 bg-general-bg-secondary p-px text-xs text-ds-text-heading;
   }
 
-  /* AI code block styling */
   pre[data-ai-pre="true"] {
     background-color: rgba(107, 114, 128, 0.1) !important;
     border: 1px solid rgba(107, 114, 128, 0.4) !important;
@@ -344,27 +648,10 @@
     --card: var(--color-light-50);
     --card-foreground: var(--color-light-850);
 
-    --popover: var(--color-light-50);
-    --popover-foreground: var(--color-light-850);
-
-    --primary: var(--color-base-100);
-    --primary-foreground: var(--color-light-100);
-
-    --secondary: var(--color-light-100);
-    --secondary-foreground: var(--color-light-900);
-
-    --muted: var(--color-light-200);
-    --muted-foreground: var(--color-light-300);
-
-    --destructive: var(--color-error-200);
-    --destructive-foreground: var(--color-light-100);
-
     --accent: var(--color-light-50);
     --accent-foreground: var(--color-light-850);
 
     --border: var(--color-light-400);
-    --input: var(--color-light-400);
-    --ring: var(--color-light-300);
 
     --radius: 0.5rem;
   }
@@ -376,34 +663,12 @@
     --card: var(--color-dark-800);
     --card-foreground: var(--color-light-100);
 
-    --popover: var(--color-dark-900);
-    --popover-foreground: var(--color-light-100);
-
-    --primary: var(--color-light-100);
-    --primary-foreground: var(--color-dark-800);
-
-    --secondary: var(--color-dark-400);
-    --secondary-foreground: var(--color-dark-800);
-
-    --tertiary: var(--color-dark-900);
-    --tertiary-foreground: var(--color-light-50);
-
-    --muted: var(--color-dark-400);
-    --muted-foreground: var(--color-dark-100);
-
-    --destructive: var(--color-error-100);
-    --destructive-foreground: var(--color-light-100);
-
     --accent: var(--color-dark-700);
     --accent-foreground: var(--color-light-100);
 
     --border: var(--color-dark-400);
-    --input: var(--color-dark-400);
-    --ring: var(--color-dark-400);
   }
 }
-
-/* Components */
 
 @layer base {
   :root {
@@ -418,17 +683,11 @@
 
   body {
     margin: 0;
-    @apply bg-background text-foreground;
+    @apply bg-general-bg-primary text-light-850 dark:text-light-100;
   }
 
   hr {
     @apply m-0 border-surface-divider;
-  }
-
-  input.BB-Input[type="date"]::-webkit-inner-spin-button,
-  input.BB-Input[type="date"]::-webkit-calendar-picker-indicator {
-    opacity: 0;
-    cursor: pointer;
   }
 
   .shadow-1 {
@@ -442,29 +701,48 @@
   }
 }
 
-.plotly-plot .js-plotly-plot .plotly .cursor-crosshair {
-  cursor: none !important;
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("@fontsource-variable/montserrat/files/montserrat-latin-ext-wght-normal.woff2")
+    format("woff2-variations");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 @font-face {
-  font-family: "NotoColorEmojiLimited";
-  unicode-range: U+1F1E6-1F1FF;
-  src: url("/assets/fonts/NotoColorEmoji-flagsonly.ttf");
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 100 900;
   font-display: swap;
+  src: url("@fontsource-variable/montserrat/files/montserrat-latin-wght-normal.woff2")
+    format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
-  font-family: "Inter";
-  src: url("/assets/fonts/Inter.var.woff2") format("woff2-variations");
-  font-weight: 1 999;
+  font-family: "Montserrat";
+  font-style: italic;
+  font-weight: 100 900;
   font-display: swap;
+  src: url("@fontsource-variable/montserrat/files/montserrat-latin-ext-wght-italic.woff2")
+    format("woff2-variations");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 @font-face {
-  font-family: "Roboto";
-  src: url("/assets/fonts/Roboto-VariableFont_wdth,wght.ttf") format("truetype");
-  font-weight: 1 999;
+  font-family: "Montserrat";
+  font-style: italic;
+  font-weight: 100 900;
   font-display: swap;
+  src: url("@fontsource-variable/montserrat/files/montserrat-latin-wght-italic.woff2")
+    format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 html {
@@ -485,10 +763,6 @@ body {
   background-repeat: no-repeat;
   background-position: top 0px center;
   background-size: clamp(640px, calc(100vw * 1.6), 1440px);
-}
-
-.country-flag {
-  font-family: "NotoColorEmojiLimited" !important;
 }
 
 @media (min-width: 1500px) {
@@ -617,37 +891,12 @@ body {
   padding: 0px !important;
 }
 
-/* PLOTLY STYLES START */
-
-.modebar-group {
-  background-color: transparent !important;
-}
-
-@media screen and (max-width: 600px) {
-  .modebar-group {
-    background-color: transparent !important;
-  }
-}
-
 @media screen and (max-width: 640px) {
-  .obb-modal {
+  .ws-modal {
     animation: popup 0.3s ease-in-out;
     height: 85% !important;
     overflow: auto !important;
   }
-}
-
-.modebar-btn path {
-  fill: var(--brand-main, #00acff) !important;
-}
-.modebar-btn:hover .icon path {
-  fill: #bdbdbd !important;
-}
-.modebar-btn.active:hover .icon path {
-  fill: #bdbdbd !important;
-}
-.modebar-btn.active .icon path {
-  fill: var(--brand-main, #00acff) !important;
 }
 
 .title-container {
@@ -662,20 +911,14 @@ body {
   right: 0;
   bottom: 0;
   width: 100%;
-  /* Adjust the color to match your background */
+
   background: linear-gradient(to right, transparent, #c1c3c5b4);
   pointer-events: none;
 }
 
 .dark .title-container:hover::after {
-  background: linear-gradient(
-    to right,
-    transparent,
-    #36363f
-  ); /* Adjust the color to match your background */
+  background: linear-gradient(to right, transparent, var(--color-dark-500));
 }
-
-/* PLOTLY STYLES END */
 
 input[type="color"] {
   -webkit-appearance: none;
@@ -690,24 +933,9 @@ input[type="color"]::-webkit-color-swatch-wrapper {
   z-index: 10;
 }
 
-/* Stops flying in effect of widgets */
 .react-grid-item {
   transition: none;
 }
-
-.ProseMirror:focus {
-  outline: none;
-}
-
-.ProseMirror img {
-  height: auto;
-  max-width: 100%;
-}
-.ProseMirror img.ProseMirror-selectednode {
-  outline: 3px solid #68cef8;
-}
-
-/* SCROLLBAR */
 
 ::-webkit-scrollbar {
   width: 4px;
@@ -741,171 +969,6 @@ input[type="color"]::-webkit-color-swatch-wrapper {
   text-transform: capitalize;
 }
 
-.ag-theme-alpine {
-  --ag-font-size: 12px !important;
-  --ag-borders: none !important;
-  --ag-row-border-width: 0.5px !important;
-  --ag-header-column-resize-handle-color: #181d1f !important;
-  --ag-header-column-resize-handle-width: 1px !important;
-  --ag-header-background-color: #f6f6f6 !important;
-  --ag-cell-horizontal-padding: 7px !important;
-  --ag-border-radius: 0px !important;
-  --ag-alpine-active-color: #337dba !important;
-  --ag-control-panel-background-color: #f6f6f6 !important;
-}
-
-.ag-header-cell-resize {
-  display: none;
-}
-
-.ag-header:hover .ag-header-cell-resize {
-  display: flex;
-}
-
-.ag-tool-panel-wrapper .ag-react-container {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.hide-grid-header .ag-header {
-  display: none; /* This will hide the entire header, including the border */
-}
-
-.hide-grid-header .ag-header-cell {
-  border-top: none !important;
-}
-
-.ag-grid-stack:has([data-testid="_active-filters-banner"]) .ag-root-wrapper {
-  border-top-left-radius: 0 !important;
-  border-top-right-radius: 0 !important;
-}
-
-.ag-theme-alpine .ag-header {
-  background-color: #ebebed !important;
-}
-
-.ag-theme-alpine-dark .ag-header {
-  background-color: #36363f !important;
-}
-
-.ag-status-bar {
-  padding-left: 2px !important;
-}
-
-.ag-side-buttons {
-  overflow-y: hidden !important;
-}
-
-.ag-theme-alpine-dark .ag-status-bar {
-  background-color: #151518 !important;
-}
-
-.ag-theme-alpine .ag-row-odd {
-  background-color: #f6f6f6 !important;
-}
-
-.ag-theme-alpine .ag-row-even {
-  background-color: #fff !important;
-}
-
-.ag-theme-alpine-dark .ag-row-even {
-  background-color: #1f1e23 !important;
-}
-
-.ag-theme-alpine-dark .ag-row-odd {
-  background-color: #2a2a31 !important;
-}
-
-.ag-theme-alpine-dark {
-  --ag-font-size: 12px !important;
-  --ag-borders: none !important;
-  --ag-row-border-width: 0.5px !important;
-  --ag-header-column-resize-handle-color: white !important;
-  --ag-header-column-resize-handle-width: 1px !important;
-  --ag-header-background-color: #24242aff !important;
-  --ag-background-color: #151518ff !important;
-  --ag-cell-horizontal-padding: 7px !important;
-  --ag-border-radius: 0px !important;
-  --ag-alpine-active-color: #337dba !important;
-  --ag-control-panel-background-color: #24242aff !important;
-}
-
-.ag-popup-child {
-  z-index: 9999 !important;
-}
-
-.ag-theme-alpine-dark .ag-popup-child {
-  box-shadow: 0px 2px 10px 0px rgba(0, 0, 0, 0.4) !important;
-  border: 1px solid rgba(54, 54, 63, 1) !important;
-  border-radius: 4px !important;
-}
-
-.ag-theme-alpine .ag-popup-child {
-  border: 1px solid rgba(218, 219, 222, 1) !important;
-  box-shadow: 0px 2px 10px 0px rgba(0, 0, 0, 0.1);
-  border-radius: 4px !important;
-}
-
-.ag-chart-menu-icon {
-  width: 16px !important;
-  height: 16px !important;
-  font-size: 16px !important;
-  line-height: 16px !important;
-}
-
-.ag-paging-panel {
-  height: 30px !important;
-}
-
-.ssrm-advanced-grid-container {
-  container-type: inline-size;
-}
-
-@container (min-width: 520px) {
-  .ssrm-advanced-grid-container .ag-paging-panel {
-    padding-left: 72px !important;
-  }
-
-  .ssrm-advanced-grid-container .ssrm-advanced-footer-actions {
-    display: flex;
-  }
-}
-
-.ag-header-cell-text {
-  font-weight: 500 !important;
-}
-
-.ag-header-group-cell-with-group {
-  justify-content: center !important;
-}
-
-.ag-row {
-  border-bottom: none !important;
-}
-
-.ag-cell {
-  font-size: 12px !important;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
-}
-
-/* _ag-grid-artifact styles */
-/* Font + header bg are intentionally NOT overridden here so artifact tables
-   inherit the admin entity theme (agTheme) like dashboard widget tables do. */
-._ag-grid-artifact .ag-header-cell-comp-wrapper div {
-  align-items: center;
-}
-
-/*.dark .react-grid-item > .react-resizable-handle::after {
-  border-color: #a2a2a2 !important;
-}*/
-
-.react-resizable-hide > .react-resizable-handler {
-  display: none;
-}
-
 .react-grid-item > .react-resizable-handler {
   opacity: 0;
   touch-action: none;
@@ -921,48 +984,9 @@ input[type="color"]::-webkit-color-swatch-wrapper {
   }
 }
 
-.ag-theme-alpine .ca-row-selected {
-  background-color: #ccdeee !important;
-}
-
-.ag-theme-alpine-dark .ca-row-selected {
-  background-color: #334859 !important;
-}
-
-.ProseMirror p.is-editor-empty:first-child::before {
-  color: #adb5bd;
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-
 *:focus {
   outline: none;
 }
-
-.ag-filter-body {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-}
-.ag-filter-to {
-  margin-top: 0 !important;
-}
-.ag-filter-from {
-  width: 100% !important;
-}
-
-/*
-  .ag-filter-to::before {
-    content: "To";
-    margin-bottom: 2px;
-  }
-
-  .ag-filter-from::before {
-    content: "From";
-    margin-bottom: 2px;
-  }*/
 
 input[type="date"]::-webkit-calendar-picker-indicator {
   background-position: right;
@@ -986,47 +1010,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
-@keyframes pulse_shadow_blue {
-  0% {
-    box-shadow: 0px 0px 0px 0px var(--brand-main, #00acff);
-  }
-  100% {
-    box-shadow: 0px 0px 0px 4px rgba(from var(--brand-main, #00acff) r g b / 0.15);
-  }
-}
-
 .pulse-box-shadow {
   animation: pulse_shadow 1.3s infinite;
-}
-
-.pulse-box-shadow-blue {
-  animation: pulse_shadow_blue 1.3s infinite;
-}
-
-.sql-param-highlight {
-  background: var(--general-bg-secondary);
-  outline: 1px solid var(--brand-main);
-  outline-offset: 0;
-  border-radius: 2px;
-}
-
-.sql-param-text-hidden {
-  font-size: 0 !important;
-  letter-spacing: 0 !important;
-}
-
-.sql-param-value {
-  color: var(--brand-main);
-  background: var(--general-bg-secondary);
-  border: 1px solid transparent;
-  border-radius: 2px;
-  padding: 0 4px;
-  margin: 0 1px;
-  font-style: normal;
-}
-
-.sql-param-value--highlight {
-  border-color: var(--brand-main);
 }
 
 .roadmap ul {
@@ -1039,14 +1024,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   align-items: flex-start;
 }
 .roadmap ul li {
-  color: #a2a2a2;
+  color: var(--color-dark-50);
   display: block;
   width: 350px;
   position: relative;
   font-size: 11px;
 }
 .roadmap ul li:before {
-  background-color: #33bbff;
+  background-color: #00b5e2;
   position: absolute;
   top: 50%;
   margin-top: -12px;
@@ -1101,7 +1086,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border-color: transparent;
 }
 .roadmap ul li.planned:after {
-  background: #5a5961;
+  background: var(--color-dark-200);
   margin-left: -5.5px;
 }
 
@@ -1120,32 +1105,26 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
   scrollbar-width: 3px !important;
 
-  /* Always reserve space for scrollbar to prevent any layout shift */
   scrollbar-gutter: stable both-edges;
 
-  /* Force consistent height by always accounting for scrollbar space */
   padding-bottom: 3px !important;
   margin-bottom: -3px !important;
-  min-height: calc(1rem + 3px); /* Ensure minimum height includes scrollbar space */
+  min-height: calc(1rem + 3px);
 }
 
 .no-password-save {
-  /* Hide password save prompt in browsers */
   -webkit-text-security: disc;
   -moz-text-security: disc;
   -ms-text-security: disc;
 }
 
 .hide-scrollbars {
-  /* Hide scrollbar for Chrome, Safari and Opera */
   ::-webkit-scrollbar {
     display: none;
   }
 
-  /* Hide scrollbar for Firefox */
   scrollbar-width: none;
 
-  /* Hide scrollbar for IE and Edge */
   -ms-overflow-style: none;
 }
 
@@ -1157,7 +1136,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 .loading-ellipsis__dot {
   animation: dot ease-in-out 1s infinite;
-  background-color: #2a2a31;
+  background-color: #1a4154;
   display: inline-block;
   height: 4px;
   margin: 2px;
@@ -1194,15 +1173,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 @keyframes dot {
   0% {
-    background-color: #2a2a31;
+    background-color: #1a4154;
     transform: scale(1);
   }
   50% {
-    background-color: #1f1e23;
+    background-color: #123244;
     transform: scale(1.3);
   }
   100% {
-    background-color: #2a2a31;
+    background-color: #1a4154;
     transform: scale(1);
   }
 }
@@ -1217,138 +1196,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .edit-dark::placeholder {
-  color: #6d6e74;
+  color: #547280;
   opacity: 1;
 }
 
-@media (max-width: 639px) {
-  .onboarding-container {
-    padding: 10px;
-  }
-
-  .role-selection-container {
-    flex-direction: column;
-  }
-
-  .onboarding-svg {
-    width: 30%;
-    height: auto;
-  }
-
-  .onboarding-svg2 {
-    width: 70%;
-    height: auto;
-  }
-
-  ._mobilePadding {
-    padding-left: 0.75rem;
-  }
-}
-
-._article table {
-  border-collapse: collapse;
-  text-align: left;
-  width: 100%;
-}
-._article table tr {
-  border-bottom: 1px solid;
-}
-._article table th,
-._article table td {
-  padding: 10px 20px;
-}
-
-/* Simple CSS for flexbox table on mobile */
-@media (max-width: 768px) {
-  ._article table thead {
-    left: -9999px;
-    position: absolute;
-    visibility: hidden;
-  }
-  ._article table tr {
-    border-bottom: 0;
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    margin-bottom: 40px;
-  }
-  ._article table td {
-    border: 1px solid;
-    margin: 0 -1px -1px 0;
-    padding-top: 35px;
-    position: relative;
-    width: 50%;
-  }
-}
-
-.ag-icon.ag-icon-save.ag-chart-menu-icon {
-  display: none;
-}
-
-@media (min-width: 640px) {
-  .ag-body-viewport::-webkit-scrollbar,
-  .ag-center-cols-viewport::-webkit-scrollbar {
-    display: none !important;
-  }
-}
-
-@media (max-width: 639px) {
-  .ag-theme-alpine,
-  .ag-theme-alpine-dark {
-    --ag-font-size: 14px !important;
-    --ag-row-height: 44px !important;
-    --ag-header-height: 44px !important;
-  }
-
-  .ag-cell {
-    font-size: 14px !important;
-  }
-}
-
-.ag-chart-tooltip .ag-chart-tooltip-title {
-  font-weight: 550 !important;
-  border-radius: 3px 3px 0 0 !important;
-}
-
-.ag-chart-tooltip .ag-chart-tooltip-content {
-  border-radius: 0 0 3px 3px !important;
-}
-
-.dark .ag-chart-tooltip .ag-chart-tooltip-title {
-  color: #000 !important;
-  border: 1px solid #1f1e23 !important;
-}
-
-.dark .ag-chart-tooltip .ag-chart-tooltip-content {
-  background-color: #1f1e23 !important;
-  color: #fff !important;
-  border: 1px solid #1f1e23 !important;
-}
-
-.ag-side-bar .ag-tool-panel-wrapper .ag-tool-panel-horizontal-resize {
-  width: 2px !important;
-}
-
-.ag-ltr .ag-side-bar-right .ag-tool-panel-horizontal-resize {
-  left: 0px !important;
-}
-
-.cm-editor {
-  outline: none !important;
-  border-radius: calc(var(--radius) - 2px) !important;
-}
-
-.ag-ltr .ag-row-group-indent-1 {
-  padding-left: 10px !important;
-}
-
 .drag-over {
-  border: 2px dashed #0088cc; /* Example style for drag-over indicator */
-  background-color: rgba(0, 136, 204, 0.1); /* Slight background color change */
+  border: 2px dashed #0086bf;
+  background-color: rgba(0, 134, 191, 0.1);
   top: -5px;
 }
 
-/* CSS for extending the drop target area */
 .folder-drop-target {
   position: relative;
 }
@@ -1363,7 +1220,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background: transparent;
 }
 
-/* THIS IS NEEDED BECAUSE PROSE MAKES OVERRIDES NOTE FONT COLOR */
 ._note strong,
 ._note h1,
 ._note h2,
@@ -1374,56 +1230,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   color: inherit !important;
 }
 
-.headerWrapper {
-  display: flex;
-  overflow: hidden;
-  gap: 0.25rem;
-}
-
-.customHeaderLabel {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.customSortRemoveLabel {
-  font-size: 11px;
-}
-
-.walkthrough-active {
-  pointer-events: none;
-}
-
-.walkthrough-active .react-floater,
-.walkthrough-active .react-floater * {
-  pointer-events: auto;
-}
-
-.walkthrough-overlay {
-  pointer-events: auto;
-}
-
-/* replace docked chart close icon with chevron right to prevent conflict with our widget close icon */
-.ag-chart-docked-container .ag-icon-cross {
-  /* set a new image */
-  background: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB2aWV3Qm94PSIwIDAgMTggMTgiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgeG1sbnM6c2VyaWY9Imh0dHA6Ly93d3cuc2VyaWYuY29tLyIgc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO3N0cm9rZS1saW5lam9pbjpyb3VuZDtzdHJva2UtbWl0ZXJsaW1pdDoyOyI+CiAgICA8ZyBpZD0ibmV4dCIgdHJhbnNmb3JtPSJtYXRyaXgoMC4wMTc1NzgxLDAsMCwwLjAxNzU3ODEsMCwwKSI+CiAgICAgICAgPHBhdGggZmlsbD0iIzAzYTlmNCIgZD0iTTQxNC4wOCwyNTZMMzUzLjkyLDMxNi4xNkw1NDkuMzMzLDUxMkwzNTMuOTIsNzA3Ljg0TDQxNC4wOCw3NjhMNjcwLjA4LDUxMkw0MTQuMDgsMjU2WiIgc3R5bGU9ImZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgPC9nPgo8L3N2Zz4K");
-  /* hide the existing image-mask based icon from the provided theme */
-  color: transparent;
-  /* make the icon white */
-  filter: brightness(0);
-}
-
-.dark .ag-chart-docked-container .ag-icon-cross {
-  /* make the icon white */
-  filter: brightness(0) invert(1);
-}
-
-/* align chevron icon to the center*/
-.ag-chart-docked-container
-.ag-tabs-close-button-wrapper.ag-chart-tabbed-menu-close-button-wrapper {
-  display: flex;
-}
-
-/* Animated gradient for step-by-step reasoning */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -1453,7 +1259,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   will-change: background-position;
 }
 
-/* Spinning animation for reasoning icon */
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -1468,10 +1273,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   transform-origin: center;
 }
 
-.obb-autofill-light input:-webkit-autofill,
-.obb-autofill-light input:-webkit-autofill:hover,
-.obb-autofill-light input:-webkit-autofill:focus,
-.obb-autofill-light input:-webkit-autofill:active {
+.ws-autofill-light input:-webkit-autofill,
+.ws-autofill-light input:-webkit-autofill:hover,
+.ws-autofill-light input:-webkit-autofill:focus,
+.ws-autofill-light input:-webkit-autofill:active {
   -webkit-box-shadow: inset 0 0 0px 1000px white !important;
   -webkit-text-fill-color: #1f2937 !important;
 }
@@ -1500,37 +1305,86 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   margin-bottom: 2px !important;
 }
 
-.ag-wrapper.ag-input-wrapper.ag-checkbox-input-wrapper.ag-disabled {
-  .ag-input-field-input.ag-checkbox-input {
-    cursor: default !important;
-  }
-  cursor: default !important;
-}
-
-.ag-paging-description,
-.ag-paging-row-summary-panel {
-  white-space: nowrap; /* so we dont show the stats in multiple lines for src/components/General/Table/AgGridSSRMAdvanced.tsx https://openbb.atlassian.net/browse/AA-3871 */
-}
-
-/* vega-embed applies `.vega-embed` directly to our ref div and ships
-   `display: inline-block` + `padding-right: 38px` defaults that break
-   fit-to-container sizing inside our draggable widgets. Since our ref div
-   ends up with BOTH `.chart-vegalite` and `.vega-embed` classes, override
-   on the same element. Scoped so any other vega-embed usage stays untouched. */
-.chart-vegalite {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  overflow: hidden !important;
-  padding: 0 !important;
+.logo-stage {
   position: relative;
+  aspect-ratio: 277.167 / 139.248;
+  container-type: inline-size;
 }
-.chart-vegalite .chart-wrapper {
-  width: 100% !important;
-  height: 100% !important;
+
+.logo-depth {
+  position: absolute;
+  inset: 0;
+  perspective: 140cqi;
+  transform-style: preserve-3d;
 }
-.chart-vegalite .vega-embed-wrapper {
-  overflow: hidden !important;
-  max-width: 100% !important;
-  padding-right: 0 !important;
+
+.logo-wing,
+.logo-head {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.logo-wing {
+  transform-origin: center center;
+  transform-style: preserve-3d;
+  backface-visibility: visible;
+}
+
+.logo-head {
+  z-index: 2;
+}
+
+.logo-wing-left {
+  animation: logo-wing-left 1.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+
+.logo-wing-right {
+  animation: logo-wing-right 1.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+
+@keyframes logo-wing-left {
+  0%,
+  16%,
+  100% {
+    transform: rotateY(0deg);
+  }
+  48% {
+    transform: rotateY(28deg);
+  }
+}
+
+@keyframes logo-wing-right {
+  0%,
+  16%,
+  100% {
+    transform: rotateY(0deg);
+  }
+  48% {
+    transform: rotateY(-28deg);
+  }
+}
+
+.logo-fade {
+  animation: logo-fade 1.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+
+@keyframes logo-fade {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-wing-left,
+  .logo-wing-right,
+  .logo-fade {
+    animation: none;
+  }
 }

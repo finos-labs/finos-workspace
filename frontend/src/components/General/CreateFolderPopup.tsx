@@ -39,11 +39,13 @@ export default function CreateFolderPopup() {
         index: uuidv4(),
         data: {
           name: value,
+          widgets: [],
+          groups: [],
         },
         children: [],
       };
 
-      createFolder(newFolder, createFolderParentId);
+      createFolder(newFolder, createFolderParentId ?? undefined);
     }
 
     showNotificationWithRememberMe({
@@ -86,15 +88,15 @@ export default function CreateFolderPopup() {
             inputRef.current.value = value;
           }
         }}
-        className="obb-minimal-input-search h-[34px]! w-full my-4"
+        className="ws-minimal-input-search h-[34px]! w-full my-4"
       />
       <div className="mt-auto flex items-center justify-end gap-2.5">
-        <DialogClose className="obb-btn-secondary-v2 px-3 py-1 font-medium md:w-fit">
+        <DialogClose className="ws-btn-secondary-v2 px-3 py-1 font-medium md:w-fit">
           Cancel
         </DialogClose>
         <button
           onClick={handleSubmit}
-          className="obb-btn-tertiary h-8 px-3 py-1 font-medium md:w-fit"
+          className="ws-btn-tertiary h-8 px-3 py-1 font-medium md:w-fit"
         >
           Create
         </button>

@@ -25,7 +25,7 @@ services:
       ]
     healthcheck:
       test:
-        ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot --silent"]
+        ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -P 3306 -u root -proot --silent"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -33,35 +33,36 @@ services:
     volumes:
       - db:/var/lib/mysql
 
-  redis:
-    image: redis:alpine
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
     restart: always
-    container_name: redis
+    container_name: valkey
     ports:
       - 6379:6379
     networks:
       - local-net
     env_file:
       - ./backend/envs/.env
-    command: redis-server --save 20 1 --loglevel warning
+    command: valkey-server --save 20 1 --loglevel warning
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
     volumes:
-      - data:/redis
+      - valkey:/data
 
   fastapi:
     build:
       context: backend
       dockerfile: fastapi.Dockerfile
+    platform: ${PLATFORM:-linux/amd64}
     container_name: fastapi
     env_file:
       - ./backend/envs/.env
     environment:
       DB_HOST: mysql
-      REDIS_HOST: redis
+      REDIS_HOST: valkey
     command:
       [
         "sh",
@@ -79,20 +80,21 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
 
   rq_worker:
     build:
       context: backend
-      dockerfile: rqworker.Dockerfile
+      dockerfile: fastapi.Dockerfile
+    command: ["python", "base_workers.py"]
+    platform: ${PLATFORM:-linux/amd64}
     container_name: rq_worker
     env_file:
       - ./backend/envs/.env
     environment:
-      # Override .env values: inside Docker network, use container names not localhost
       DB_HOST: mysql
-      REDIS_HOST: redis
+      REDIS_HOST: valkey
     networks:
       - local-net
     volumes:
@@ -111,7 +113,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
 
 networks:
@@ -119,7 +121,7 @@ networks:
     driver: bridge
 
 volumes:
-  data:
+  valkey:
     driver: local
   db:
     driver: local

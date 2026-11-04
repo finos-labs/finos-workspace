@@ -13,7 +13,7 @@ interface SidebarSectionProps {
   className?: string;
   actions?: ReactNode;
   tooltipMessage?: string;
-  id?: "dev" | "library" | "tabs" | "shared-tabs";
+  id: "dev" | "library" | "tabs" | "shared-tabs";
   "data-section"?: string;
 }
 
@@ -34,7 +34,7 @@ export function SidebarSection({
 }: SidebarSectionProps) {
   const { id: activeDashboardId } = useParams();
   const isSharedDashboard = useShallowSharedAppStore(
-    (s) => s.getDashboardById(activeDashboardId) !== undefined,
+    (s) => !!activeDashboardId && s.getDashboardById(activeDashboardId) !== undefined,
   );
   const { isExpanded, toggleExpanded } = useShallowSidebarStore((state) => ({
     isExpanded: state.sectionIsExpanded(id) && !disabled,
@@ -43,8 +43,8 @@ export function SidebarSection({
 
   const onToggle = useCallback(() => toggleExpanded(id), [id, toggleExpanded]);
 
-  const overrides = useMemo(
-    () => ({ tabs: activeDashboardId && !isSharedDashboard }),
+  const overrides = useMemo<Partial<Record<SidebarSectionProps["id"], boolean>>>(
+    () => ({ tabs: !!activeDashboardId && !isSharedDashboard }),
     [activeDashboardId, isSharedDashboard],
   );
 
@@ -79,7 +79,7 @@ export function SidebarSection({
             )}
           >
             <div
-              className="obb-icon-btn-v2
+              className="ws-icon-btn-v2
               @max-[100px]:mx-auto size-6 flex-shrink-0"
             >
               <Icon
@@ -122,7 +122,7 @@ export function SidebarSection({
           initial={{ height: 0, opacity: 0 }}
           transition={{
             duration: 0.3,
-            ease: [0.87, 0, 0.13, 1], // cubic-bezier easing
+            ease: [0.87, 0, 0.13, 1],
           }}
           style={{ overflow: "hidden" }}
           className={cn({

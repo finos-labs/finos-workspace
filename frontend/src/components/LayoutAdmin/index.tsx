@@ -10,8 +10,7 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 import { Navigate, Outlet } from "react-router-dom";
 import { usePrivateRoute } from "~/hooks/usePrivateRoute";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { useAuthStore } from "~/lib/state/auth";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
+import { useShallowAccessStore } from "~/lib/state/access";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../ui/Resizable";
 import AdminSidebar from "./AdminSidebar";
@@ -24,8 +23,6 @@ import NoItems from "~/components/LayoutAuth/NoItems";
 import useSyncItems from "~/components/LayoutAuth/useSyncItems";
 import { useShallowAppStore } from "~/lib/state/app";
 
-export const MAX_DRAWER_WIDTH_PERCENT = 0.2;
-
 function useAuthKeyPresses() {
   const themeStore = useShallowThemeStore((state) => ({
     toggleTheme: state.toggleTheme,
@@ -35,7 +32,6 @@ function useAuthKeyPresses() {
   useEffect(() => {
     const handleKeypress = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.keyCode === 77) {
-        // cmd + m
         e.preventDefault();
         themeStore.toggleTheme();
         themeStore.debouncedUpdateSettings();
@@ -47,7 +43,7 @@ function useAuthKeyPresses() {
   }, [themeStore]);
 }
 
-function usePanelEvents(leftPanelRef: RefObject<ImperativePanelHandle>) {
+function usePanelEvents(leftPanelRef: RefObject<ImperativePanelHandle | null>) {
   const toggleLeftSidebar = useCallback(() => {
     if (leftPanelRef.current) {
       leftPanelRef.current.getSize() <= 4
@@ -74,23 +70,21 @@ function usePanelEvents(leftPanelRef: RefObject<ImperativePanelHandle>) {
 }
 
 function useHasAdminAccess() {
-  const admin_access = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.admin_access,
-  );
-  const { error, isLoading } = useQuery<any, AxiosError>({
+  const isAdmin = useShallowAccessStore((state) => state.access?.user_type === "Admin");
+  const { error, isLoading } = useQuery<unknown, AxiosError>({
     queryKey: ["admin", "validate-access"],
     queryFn: validateAdminAccess,
     enabled: true,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 1000 * 60 * 15, // 15 minutes
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 15,
     notifyOnChangeProps: ["error", "isLoading"],
   });
 
   return useMemo(() => {
     const forbidden = error?.response?.status === 403;
-    const output = { hasAdminAccess: admin_access && !forbidden, isLoading };
+    const output = { hasAdminAccess: isAdmin && !forbidden, isLoading };
     return output;
-  }, [error, isLoading, admin_access]);
+  }, [error, isLoading, isAdmin]);
 }
 
 export default function LayoutAdmin({ children }: { children?: ReactNode }) {
@@ -107,7 +101,6 @@ export default function LayoutAdmin({ children }: { children?: ReactNode }) {
 
   usePanelEvents(leftPanelRef);
 
-  const needsOnboarding = useAuthStore((state) => state.needsOnboarding);
   const hasItems = useShallowAppStore((state) => state.hasItems || !!state.rootItem);
 
   const { hasAdminAccess, isLoading } = useHasAdminAccess();
@@ -121,7 +114,6 @@ export default function LayoutAdmin({ children }: { children?: ReactNode }) {
   }, [hasAdminAccess, isLoading]);
 
   if (!hasItems || isLoading) return <NoItems />;
-  if (needsOnboarding) return <Navigate to="/onboarding" />;
   if (!hasAdminAccess) return <Navigate to="/app" />;
   return (
     <ResizablePanelGroup

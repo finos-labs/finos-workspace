@@ -9,6 +9,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import type { AppTemplate } from "~/components/LayoutAuth/AppCard/types";
+import type { StoredParamValue } from "~/components/types";
 import { type TabData, useShallowAppStore } from "~/lib/state/app";
 import {
   type BackendTemplate,
@@ -31,9 +32,6 @@ import {
   appMetadataObjectSchema,
   trimPrompts,
 } from "./AppDialog/schema";
-import { getSeriesType } from "./Table/Chart/utils";
-import { getStateStorage } from "./Table/hooks/useUpdateColumnState";
-import { isTruthy } from "./Table/utils";
 
 export default function ExportTemplatePopup() {
   const { exportTemplatePopup, setExportTemplatePopup } = useShallowThemeStore(
@@ -50,7 +48,7 @@ export default function ExportTemplatePopup() {
   const getDashboardById = useShallowAppStore((state) => state.getTabById);
 
   const currentDashboardData = exportTemplatePopup
-    ? getDashboardById(activeDashboardId)?.data
+    ? getDashboardById(activeDashboardId ?? "")?.data
     : null;
 
   const form = useForm<AppMetadataForm>({
@@ -200,7 +198,14 @@ function saveTemplate(templateData: BackendTemplate) {
   toast.success("App downloaded successfully!");
 }
 
-function formatDashboardDataForTemplate(
+function isEmptyState(value: unknown): boolean {
+  if (value === undefined || value === null || value === "") return true;
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === "object") return Object.keys(value).length === 0;
+  return false;
+}
+
+export function formatDashboardDataForTemplate(
   dashboardData: TabData,
   formData: AppMetadataForm,
 ) {
@@ -208,16 +213,23 @@ function formatDashboardDataForTemplate(
   const getSourceById = useBackendConnectorStore.getState().getApiSourceById;
 
   const { widgetIdMap, widgetStateMap, widgetMinimizedMap, optionEndpoints } =
-    dashboardData.widgets.reduce(
+    dashboardData.widgets.reduce<{
+      widgetIdMap: Record<string, string | undefined>;
+      widgetStateMap: Record<string, Record<string, unknown>>;
+      widgetMinimizedMap: Record<string, number | undefined>;
+      optionEndpoints: Record<string, string>;
+    }>(
       (acc, widget) => {
         acc.widgetIdMap[widget.id] = widget.widgetId;
         if (widget.isMinimized) {
           acc.widgetMinimizedMap[widget.id] = widget.originalH;
         }
-        const state = {} as TabLayout["state"];
+        const state: NonNullable<TabLayout["state"]> = {};
 
         const source = widget.sourceId ? getSourceById(widget.sourceId) : undefined;
-        const sourceWidget = getAppWidget(widget.widgetId, widget.sourceName);
+        const sourceWidget = widget.widgetId
+          ? getAppWidget(widget.widgetId, widget.sourceName)
+          : undefined;
 
         if (sourceWidget && widget.params) {
           state.paramOrder = getParamsOrder(
@@ -226,75 +238,30 @@ function formatDashboardDataForTemplate(
           );
         }
 
-        state.params = (widget?.params || [])?.reduce((paramsAcc, param) => {
-          const paramValue = widget.storage?.params?.[param.paramName];
-          // to not include default values in the template
-          if (paramValue && paramValue !== param.value) {
-            paramsAcc[param.paramName] = paramValue;
-          }
-          if (param.type === "endpoint") {
-            acc.optionEndpoints[param.groupById] = param.paramName;
-          }
-          return paramsAcc;
-        }, {});
+        state.params = (widget?.params || [])?.reduce<Record<string, StoredParamValue>>(
+          (paramsAcc, param) => {
+            const paramValue = widget.storage?.params?.[param.paramName];
+            if (paramValue !== undefined && paramValue !== param.value) {
+              paramsAcc[param.paramName] = paramValue;
+            }
+            if (param.type === "endpoint" && param.groupById !== undefined) {
+              acc.optionEndpoints[param.groupById] = param.paramName;
+            }
+            return paramsAcc;
+          },
+          {},
+        );
 
-        const ignoreKeys = [
-          "version",
-          "chartId",
-          "unlinkChart",
-          "chartThemeName",
-          "chartPalette",
-        ];
-        state.chartModel = {};
-        state.chartView = widget.storage?.chartView || {};
-        state.storage = {};
+        const storage: NonNullable<NonNullable<TabLayout["state"]>["storage"]> = {};
+        state.storage = storage;
 
-        const storedState = getStateStorage(widget);
-        const seriesType = getSeriesType(state.chartModel?.chartType);
-
-        for (const key of Object.keys(storedState?.chartModel || {})) {
-          const value = storedState?.chartModel?.[key];
-          if (!ignoreKeys.includes(key) && value) {
-            state.chartModel[key] =
-              key === "cellRange" ? { columns: value.columns } : value;
-          }
-        }
-
-        if (Object.keys(state.chartModel).length > 0) {
-          state.chartModel.chartOptions = {
-            [seriesType]: state.chartModel?.chartOptions?.[seriesType],
-          };
-        }
-
-        const wColState = widget.data?.table?.columnState || {};
-        state.filterModel = widget.data?.table?.filterModel || {};
-        state.columnState = Object.keys(wColState).reduce((columnAcc, colId) => {
-          const { sideBar, columnSizing, pagination, version, ...colState } =
-            wColState[colId] || {};
-
-          if (Object.keys(colState).some((key) => isTruthy(colState[key]))) {
-            columnAcc[colId] = colState;
-          }
-
-          return columnAcc;
-        }, {});
-
-        for (const storageKey of [
-          "timezones",
-          "text",
-          "html",
-          "rawDataView",
-          "chartNavigatorEnabled",
-          "chartMiniChartEnabled",
-          "chartBarFillEnabled",
-        ]) {
-          if (widget?.storage?.[storageKey]) {
-            state.storage[storageKey] = widget?.storage?.[storageKey];
-          }
-        }
+        if (widget.storage?.text) storage.text = widget.storage.text;
+        if (widget.storage?.html) storage.html = widget.storage.html;
+        if (widget.storage?.rawDataView)
+          storage.rawDataView = widget.storage.rawDataView;
 
         acc.widgetStateMap[widget.id] = Object.fromEntries(
-          Object.entries(state).filter(([, value]) => isTruthy(value)),
+          Object.entries(state).filter(([, value]) => !isEmptyState(value)),
         );
 
         return acc;
@@ -307,63 +274,61 @@ function formatDashboardDataForTemplate(
       },
     );
 
-  const navigationBarNames = dashboardData.widgets.reduce((acc, widget) => {
-    if (widget.widgetId === "navigation_bar") {
-      for (const tab of widget.storage.tabs) acc[tab.id] = tab.name;
-    }
-    return acc;
-  }, {});
+  const navigationBarNames = dashboardData.widgets.reduce<Record<string, string>>(
+    (acc, widget) => {
+      if (widget.widgetId === "navigation_bar") {
+        for (const tab of widget.storage?.tabs ?? []) acc[tab.id] = tab.name;
+      }
+      return acc;
+    },
+    {},
+  );
 
   const groups = dashboardData.groups.map((group) => ({
     name: group.name,
     type: group.type,
-    ...((group.type === "endpointParam" || group.type === "param") && {
-      paramName: optionEndpoints?.[group.groupById] ?? group.groupById,
-    }),
-    defaultValue: group.type === "ticker" ? group.value?.symbol : group.value,
+    paramName: optionEndpoints[group.groupById] ?? group.groupById,
+    defaultValue: group.value,
     widgetIds: dashboardData.widgets
-      .filter((widget) => {
-        if (group.type === "param" || group.type === "endpointParam")
-          return widget?.paramGroups?.[group?.groupById] === group.id;
-
-        return widget.groupId === group.id;
-      })
+      .filter((widget) => widget?.paramGroups?.[group?.groupById] === group.id)
       .map((widget) => widget.id),
   }));
 
-  const tabs = Object.entries(dashboardData.gridLayout).reduce(
-    (acc, [tabId, layouts]) => {
-      const effectiveTabId = tabId ?? "overview";
-      const tabName = navigationBarNames[effectiveTabId] || effectiveTabId;
+  const tabs = Object.entries(dashboardData.gridLayout ?? {}).reduce<
+    BackendTemplate["tabs"]
+  >((acc, [tabId, layouts]) => {
+    const effectiveTabId = tabId ?? "overview";
+    const tabName = navigationBarNames[effectiveTabId] || effectiveTabId;
 
-      acc[effectiveTabId] = {
-        id: effectiveTabId,
-        name: tabName,
-        layout: layouts
-          .filter((layout) => widgetIdMap[layout.i] !== "navigation_bar")
-          .map((layout) => {
-            const isMinimized = layout.i in widgetMinimizedMap;
-            const originalH = widgetMinimizedMap[layout.i];
-            return {
-              i: widgetIdMap[layout.i] || layout.i,
-              x: layout.x,
-              y: layout.y,
-              w: layout.w,
-              h: isMinimized && originalH ? originalH : layout.h,
-              ...(isMinimized && { minimized: true }),
-              ...(Object.keys(widgetStateMap[layout.i] || {}).length && {
-                state: widgetStateMap[layout.i],
-              }),
-              groups: groups
-                .filter((group) => group.widgetIds.includes(layout.i))
-                .map((group) => group.name),
-            };
-          }),
-      };
-      return acc;
-    },
-    {} as BackendTemplate["tabs"],
-  );
+    acc[effectiveTabId] = {
+      id: effectiveTabId,
+      name: tabName,
+      layout: layouts
+        .filter(
+          (layout): layout is typeof layout & { i: string } =>
+            layout.i !== undefined && widgetIdMap[layout.i] !== "navigation_bar",
+        )
+        .map((layout) => {
+          const isMinimized = layout.i in widgetMinimizedMap;
+          const originalH = widgetMinimizedMap[layout.i];
+          return {
+            i: widgetIdMap[layout.i] || layout.i,
+            x: layout.x ?? 0,
+            y: layout.y ?? 0,
+            w: layout.w ?? 0,
+            h: isMinimized && originalH ? originalH : (layout.h ?? 0),
+            ...(isMinimized && { minimized: true }),
+            ...(Object.keys(widgetStateMap[layout.i] || {}).length && {
+              state: widgetStateMap[layout.i],
+            }),
+            groups: groups
+              .filter((group) => group.widgetIds.includes(layout.i))
+              .map((group) => group.name),
+          };
+        }),
+    };
+    return acc;
+  }, {});
 
   const promptsList = trimPrompts(formData.prompts);
 

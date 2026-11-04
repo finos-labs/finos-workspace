@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Group, Item } from "~/lib/state/app";
 import { updateDependentEndpointParamGroups } from "~/lib/utils/app";
+import { partial } from "../../mocks";
 
 describe("updateDependentEndpointParamGroups", () => {
   beforeEach(() => {
@@ -35,7 +37,7 @@ describe("updateDependentEndpointParamGroups", () => {
 
   it("sets selected real options on a dependent multi-select group after the event group changes", async () => {
     const updateGroup = vi.fn();
-    const groups = [
+    const groups = partial<Group[]>([
       {
         id: "event-group",
         type: "endpointParam",
@@ -48,9 +50,9 @@ describe("updateDependentEndpointParamGroups", () => {
         groupById: "history_market_key-options",
         value: "KXPGATOUR|KXPGATOUR-TEXASOPEN26-SANT|KXPGATOUR-TEXASOPEN26",
       },
-    ];
+    ]);
 
-    const tab = {
+    const tab = partial<Item>({
       index: "dashboard-1",
       data: {
         groups,
@@ -93,13 +95,13 @@ describe("updateDependentEndpointParamGroups", () => {
           },
         ],
       },
-    };
+    });
 
-    await updateDependentEndpointParamGroups(tab as any, groups[0] as any, updateGroup);
+    await updateDependentEndpointParamGroups(tab, groups[0], updateGroup);
 
     expect(fetch).toHaveBeenCalledWith(
       "http://127.0.0.1:7779/options?field=market_key&event_ticker=KXPGATOUR-RBBCAN26&include_all=true",
-      { headers: {} },
+      { method: "GET", headers: {} },
     );
     expect(updateGroup).toHaveBeenCalledWith(
       "dashboard-1",
@@ -128,7 +130,7 @@ describe("updateDependentEndpointParamGroups", () => {
     } as Response);
 
     const updateGroup = vi.fn();
-    const groups = [
+    const groups = partial<Group[]>([
       {
         id: "category-group",
         type: "endpointParam",
@@ -141,8 +143,8 @@ describe("updateDependentEndpointParamGroups", () => {
         groupById: "event_ticker-options",
         value: "",
       },
-    ];
-    const tab = {
+    ]);
+    const tab = partial<Item>({
       index: "dashboard-1",
       data: {
         groups,
@@ -181,13 +183,13 @@ describe("updateDependentEndpointParamGroups", () => {
           },
         ],
       },
-    };
+    });
 
-    await updateDependentEndpointParamGroups(tab as any, groups[0] as any, updateGroup);
+    await updateDependentEndpointParamGroups(tab, groups[0], updateGroup);
 
     expect(fetch).toHaveBeenCalledWith(
       "http://127.0.0.1:7779/options?field=event_ticker&category=Sports",
-      { headers: {} },
+      { method: "GET", headers: {} },
     );
     expect(updateGroup).not.toHaveBeenCalled();
     expect(groups[1].value).toBe("");
@@ -212,7 +214,7 @@ describe("updateDependentEndpointParamGroups", () => {
       } as Response);
 
     const updateGroup = vi.fn();
-    const groups = [
+    const groups = partial<Group[]>([
       {
         id: "category-group",
         type: "endpointParam",
@@ -237,8 +239,8 @@ describe("updateDependentEndpointParamGroups", () => {
         groupById: "history_market_key-options",
         value: ["KXOLD|KXOLD-HISTORY|KXOLD"],
       },
-    ];
-    const tab = {
+    ]);
+    const tab = partial<Item>({
       index: "dashboard-1",
       data: {
         groups,
@@ -304,9 +306,9 @@ describe("updateDependentEndpointParamGroups", () => {
           },
         ],
       },
-    };
+    });
 
-    await updateDependentEndpointParamGroups(tab as any, groups[0] as any, updateGroup);
+    await updateDependentEndpointParamGroups(tab, groups[0], updateGroup);
 
     expect(updateGroup).toHaveBeenNthCalledWith(
       1,
@@ -332,7 +334,7 @@ describe("updateDependentEndpointParamGroups", () => {
     expect(fetch).toHaveBeenNthCalledWith(
       2,
       "http://127.0.0.1:7779/options?field=market_key",
-      { headers: {} },
+      { method: "GET", headers: {} },
     );
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(groups[1].value).toBe("");
@@ -355,7 +357,7 @@ describe("updateDependentEndpointParamGroups", () => {
       } as Response);
 
     const updateGroup = vi.fn();
-    const groups = [
+    const groups = partial<Group[]>([
       {
         id: "category-group",
         type: "endpointParam",
@@ -374,8 +376,8 @@ describe("updateDependentEndpointParamGroups", () => {
         groupById: "market_key-options",
         value: "KXOLD|KXOLD-MARKET|KXOLD",
       },
-    ];
-    const tab = {
+    ]);
+    const tab = partial<Item>({
       index: "dashboard-1",
       data: {
         groups,
@@ -427,9 +429,9 @@ describe("updateDependentEndpointParamGroups", () => {
           },
         ],
       },
-    };
+    });
 
-    await updateDependentEndpointParamGroups(tab as any, groups[0] as any, updateGroup);
+    await updateDependentEndpointParamGroups(tab, groups[0], updateGroup);
 
     expect(updateGroup).toHaveBeenCalledTimes(1);
     expect(updateGroup).toHaveBeenCalledWith(

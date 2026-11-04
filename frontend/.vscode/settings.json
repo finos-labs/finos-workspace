@@ -29,8 +29,6 @@
   },
   "search.exclude": {
     "**/node_modules": true,
-    "src/lib/charting_library/bundles": true,
-    "src/lib/charting_library/*js": true,
   },
   "[json]": {
     "editor.defaultFormatter": "biomejs.biome",

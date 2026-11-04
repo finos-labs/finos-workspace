@@ -11,20 +11,17 @@ const makeUser = (over: Partial<User> = {}): User => ({
   last_name: "Anderson",
   email: "alice@example.com",
   role: "",
-  billing_active: true,
-  pro_entitlements: {} as User["pro_entitlements"],
   status: "active",
   last_login: "2026-01-01T10:00:00Z",
   last_active: "2026-02-01T10:00:00Z",
   permissions_uuid: "p1",
   source: "user" as User["source"],
-  renewed: false,
   ...over,
 });
 
 describe("buildUserExportRows", () => {
   it("maps users to export records with derived values", () => {
-    const entityNameMap = new Map([["p1", "Admin Plan"]]);
+    const entityNameMap = new Map([["p1", "Admin"]]);
     const userRolesMap = new Map([["alice@example.com", ["Analyst", "Viewer"]]]);
 
     const rows = buildUserExportRows([makeUser()], entityNameMap, userRolesMap);
@@ -32,10 +29,9 @@ describe("buildUserExportRows", () => {
     expect(rows[0]).toEqual({
       Name: "Alice Anderson",
       Email: "alice@example.com",
-      Type: "Admin Plan",
+      Type: "Admin",
       Roles: "Analyst, Viewer",
       Status: "active",
-      "Billing Status": "true",
       "Last Active": "2026-02-01T10:00:00Z",
       "Last Log in": "2026-01-01T10:00:00Z",
     });
@@ -43,7 +39,7 @@ describe("buildUserExportRows", () => {
 
   it("falls back to '-'/empty for unknown type, roles and dates", () => {
     const rows = buildUserExportRows(
-      [makeUser({ last_active: null, last_login: null, billing_active: false })],
+      [makeUser({ last_active: null, last_login: null })],
       new Map(),
       new Map(),
     );
@@ -52,7 +48,6 @@ describe("buildUserExportRows", () => {
     expect(rows[0].Roles).toBe("");
     expect(rows[0]["Last Active"]).toBe("");
     expect(rows[0]["Last Log in"]).toBe("");
-    expect(rows[0]["Billing Status"]).toBe("false");
   });
 });
 

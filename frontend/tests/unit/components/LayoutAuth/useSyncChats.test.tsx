@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ChatDiff } from "~/api/auth.api";
 import { diffChatsWithRemote } from "~/components/LayoutAuth/useSyncChats";
 import type { Chat, Message } from "~/lib/state/copilot";
 
@@ -9,7 +10,7 @@ function makeMessage(overrides: Partial<Message> = {}): Message {
     role: "human",
     content: "hello",
     timestamp: 1,
-    copilotId: "openbb-copilot",
+    copilotId: "default-copilot",
     uuid: "msg-1",
     ...overrides,
   } as Message;
@@ -105,6 +106,8 @@ describe("diffChatsWithRemote", () => {
 
     const diff = diffChatsWithRemote([current], [makeChat({ messages: [] })]);
 
-    expect(diff["chat-1"].messages).toEqual({ "generated-uuid": messageWithoutUuid });
+    expect((diff["chat-1"] as ChatDiff).messages).toEqual({
+      "generated-uuid": messageWithoutUuid,
+    });
   });
 });

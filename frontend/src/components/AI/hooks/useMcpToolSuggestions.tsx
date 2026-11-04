@@ -1,5 +1,6 @@
 import Fuse from "fuse.js";
 import { useCallback, useMemo } from "react";
+import { isMcpToolAllowed, useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import {
   dedupeIframeServersByUrl,
   useShallowMcpToolsStore,
@@ -15,17 +16,11 @@ export interface McpToolSuggestion {
   toolName: string;
   toolId: string;
   description: string;
-  /** ### MCP Tool Slash Text
-   *  Formatted as `/{serverName}_{toolName}`.*/
   slashText: string;
   inputSchema?: unknown;
 }
 
 export function useMcpToolSuggestions() {
-  // `connSignature` makes this subscription react to connection-state changes
-  // (mcpConnectionRegistry), not just `servers`. Without it, a server flipping
-  // to "ready" without a `servers` mutation — e.g. an iframe-bound MCP whose
-  // tools are already in the store — left the list stale and hid its tools.
   const { servers, getMCPConnection, connSignature } = useShallowMcpToolsStore((s) => ({
     servers: s.servers,
     getMCPConnection: s.getMCPConnection,
@@ -34,11 +29,11 @@ export function useMcpToolSuggestions() {
       .join("|"),
   }));
 
+  const access = useCopilotAccessStore((s) => s.access);
+
   const mcpToolOptions = useMemo((): McpToolSuggestion[] => {
     const tools: McpToolSuggestion[] = [];
 
-    // Only include tools from servers that are enabled and connected, collapsing
-    // duplicate copies of the same iframe widget into a single entry
     const connectedServers = dedupeIframeServersByUrl(
       servers.filter((server) => {
         const connection = getMCPConnection(server.id);
@@ -50,7 +45,7 @@ export function useMcpToolSuggestions() {
       if (!server.toolsEnabled) continue;
 
       for (const tool of server.tools) {
-        if (tool.enabled) {
+        if (tool.enabled && isMcpToolAllowed(access, server.url, tool.id)) {
           tools.push({
             type: "mcpTool",
             id: `${server.id}_${tool.id}`,
@@ -60,7 +55,6 @@ export function useMcpToolSuggestions() {
             toolId: tool.id,
             description: tool.description || "",
             inputSchema: tool.inputSchema,
-            // Non-breaking space/hyphen to prevent textarea line breaks
             slashText: `/${server.name}_${tool.name}`
               .replace(/ /g, "\u00A0")
               .replace(/-/g, "\u2011"),
@@ -70,7 +64,7 @@ export function useMcpToolSuggestions() {
     }
 
     return tools;
-  }, [servers, getMCPConnection, connSignature]);
+  }, [servers, getMCPConnection, connSignature, access]);
 
   const fuse = useMemo(
     () =>
@@ -83,7 +77,6 @@ export function useMcpToolSuggestions() {
 
   const searchMcpTools = useCallback(
     (query: string): McpToolSuggestion[] => {
-      // Remove the "/" prefix
       const searchTerm = query.startsWith(MCP_TOOL_TRIGGER)
         ? query.slice(MCP_TOOL_TRIGGER.length)
         : query;
@@ -92,14 +85,8 @@ export function useMcpToolSuggestions() {
 
       return fuse
         .search(searchTerm)
-        .map((result) => {
-          // Drop results that don't partially match the query if ends with a space
-          // "RSS F" -> ["RSS Feeds"]
-          // "RSS Feeds " -> []
-          if (query.length > result.item.slashText.length) return null;
-          return result.item;
-        })
-        .filter(Boolean);
+        .filter((result) => query.length <= result.item.slashText.length)
+        .map((result) => result.item);
     },
     [mcpToolOptions, fuse],
   );

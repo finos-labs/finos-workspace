@@ -25,7 +25,7 @@ export default function RoleMembersCell({ role }: Props) {
   const handleClose = useCallback(() => {
     closeTimeoutRef.current = window.setTimeout(() => {
       setOpen(false);
-    }, 150); // Small delay to allow mouse movement between trigger and content
+    }, 150);
   }, [closeTimeoutRef]);
 
   const { formattedUsers, displayUsers, remainingCount } = useMemo(() => {
@@ -64,7 +64,7 @@ export default function RoleMembersCell({ role }: Props) {
             {displayUsers.map((user) => (
               <div
                 key={user.email}
-                className="obb-avatar-user"
+                className="ws-avatar-user"
                 style={{
                   backgroundColor: user.color,
                 }}
@@ -95,7 +95,7 @@ export default function RoleMembersCell({ role }: Props) {
                     className="flex items-center gap-2 body-xs-regular"
                   >
                     <div
-                      className="obb-avatar-user"
+                      className="ws-avatar-user"
                       style={{ backgroundColor: user.color }}
                     >
                       {user.initials}

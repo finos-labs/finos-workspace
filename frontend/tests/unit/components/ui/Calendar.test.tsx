@@ -10,16 +10,15 @@ describe("Calendar", () => {
 
   it("renders select when isSingle is true", () => {
     render(<Calendar isSingle={true} />);
-    // DayPicker will render components.Select
     expect(screen.getByTestId("day-picker")).toBeInTheDocument();
   });
 });
 
 vi.mock("react-day-picker", () => ({
-  DayPicker: ({ components }: any) => {
+  DayPicker: ({ components }: { components?: { Select?: unknown } }) => {
     return (
       <div data-testid="day-picker">
-        {components?.Select && <div data-testid="mock-select" />}
+        {components?.Select ? <div data-testid="mock-select" /> : null}
       </div>
     );
   },

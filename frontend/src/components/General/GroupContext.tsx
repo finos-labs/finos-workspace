@@ -15,7 +15,6 @@ import {
   dispatchSaveState,
   getJsonWidget,
   isTabPath,
-  uuidv4,
 } from "~/lib/utils";
 import { formatZodErrorMessage } from "~/utils/zodErrors";
 import {
@@ -24,11 +23,6 @@ import {
 } from "../DataConnectors/common/helpers";
 import useFetchSharedResources from "../LayoutAuth/Search/hooks/useFetchSharedResources";
 import type { WidgetT } from "../types";
-import SnowflakeHide from "./SnowflakeHide";
-
-export function containsAll(arr1: any[], arr2: any[]) {
-  return arr1.every((item) => arr2.includes(item));
-}
 
 export default function GroupContext(props: { children: ReactNode }) {
   const { children } = props;
@@ -63,6 +57,8 @@ function getBackendSourceWidgets(widgets: WidgetT[]) {
     .filter((widget) => widget.connectionType === "advanced-backend")
     .reduce(
       (acc, widget) => {
+        if (!widget.sourceId) return acc;
+
         if (widget.isSharedWidget) {
           acc.sharedSourceIds.add(widget.sourceId);
           return acc;
@@ -77,7 +73,7 @@ function getBackendSourceWidgets(widgets: WidgetT[]) {
 }
 
 const GroupDropdownContent = forwardRef<HTMLDivElement>((_props, _ref) => {
-  const { id: activeDashboardId } = useParams();
+  const { id: activeDashboardId = "" } = useParams();
   const isSharedDashboard = useShallowSharedAppStore(
     (s) => s.getDashboardById(activeDashboardId) !== undefined,
   );
@@ -111,16 +107,16 @@ const GroupDropdownContent = forwardRef<HTMLDivElement>((_props, _ref) => {
 
         const backendSources = Array.from(sourceIds)
           .map((sourceId) => backendConnector.getApiSourceById(sourceId))
-          .filter(Boolean);
+          .filter((source): source is Source => Boolean(source));
 
         const sharedBackendSources = Array.from(sharedSourceIds)
           .map((sourceId) => sharedResources?.backends.find((s) => s.id === sourceId))
-          .filter(Boolean)
+          .filter((source): source is NonNullable<typeof source> => Boolean(source))
           ?.map((source) => {
             const transformedBackend = {
               ...source,
               widgets: Object.fromEntries(
-                Object.entries(source.widgets).map(([id, widget]) => [
+                Object.entries(source.widgets ?? {}).map(([id, widget]) => [
                   id,
                   {
                     ...widget,
@@ -141,27 +137,21 @@ const GroupDropdownContent = forwardRef<HTMLDivElement>((_props, _ref) => {
     return () => unsub();
   }, [activeDashboardId, backendConnector.getApiSourceById, sharedResources]);
 
-  const {
-    addWidgets,
-    hasNavigationBar,
-    updateTabParams,
-    lastInnerTab,
-    hasRefreshableWidgets,
-  } = useShallowAppStore((state) => {
-    const widgets = state.getTabById(activeDashboardId)?.data?.widgets ?? [];
-    const hasNavigationBar =
-      widgets?.find((w) => w.widgetId === "navigation_bar") !== undefined;
-    const hasRefreshableWidgets =
-      widgets?.find((w) => w.widgetId !== "navigation_bar") !== undefined;
+  const { addWidgets, hasNavigationBar, updateTabParams, hasRefreshableWidgets } =
+    useShallowAppStore((state) => {
+      const widgets = state.getTabById(activeDashboardId)?.data?.widgets ?? [];
+      const hasNavigationBar =
+        widgets?.find((w) => w.widgetId === "navigation_bar") !== undefined;
+      const hasRefreshableWidgets =
+        widgets?.find((w) => w.widgetId !== "navigation_bar") !== undefined;
 
-    return {
-      addWidgets: state.addWidgets,
-      updateTabParams: state.updateTabParams,
-      lastInnerTab: state.getLastInnerTab(activeDashboardId),
-      hasNavigationBar,
-      hasRefreshableWidgets,
-    };
-  });
+      return {
+        addWidgets: state.addWidgets,
+        updateTabParams: state.updateTabParams,
+        hasNavigationBar,
+        hasRefreshableWidgets,
+      };
+    });
 
   useEffect(() => {
     if (state.success) {
@@ -220,26 +210,10 @@ const GroupDropdownContent = forwardRef<HTMLDivElement>((_props, _ref) => {
     dispatch({ success });
   }, [state.backendSources, activeDashboardId, backendConnector.updateApiSource]);
 
-  const handleAddNote = useCallback(async () => {
-    await dispatchSaveState();
-    const widgetToCreate = {
-      id: uuidv4(),
-      widgetId: "rich_note",
-      name: "New Note",
-      type: "note",
-      description: "",
-      storage: { html: "" },
-      innerTab: lastInnerTab,
-    } as const;
-
-    await addWidgets(activeDashboardId, [widgetToCreate]);
-
-    dispatchSaveState();
-  }, [activeDashboardId, addWidgets, lastInnerTab]);
-
   const handleAddNavigationBar = useCallback(async () => {
     await dispatchSaveState();
-    await addWidgets(activeDashboardId, [getJsonWidget("navigation_bar")]);
+    const navigationBar = getJsonWidget("navigation_bar");
+    if (navigationBar) await addWidgets(activeDashboardId, [navigationBar]);
     dispatchSaveState();
   }, [activeDashboardId, addWidgets]);
 
@@ -253,12 +227,12 @@ const GroupDropdownContent = forwardRef<HTMLDivElement>((_props, _ref) => {
       style={{
         boxShadow: "0px 4px 8px 0px rgba(0, 0, 0, 0.25)",
       }}
-      className="obb-dropdown-container z-9999"
+      className="ws-dropdown-container z-9999"
     >
       <ContextMenuPrimitive.Item
         className="truncate flex gap-1 items-center cursor-pointer
             whitespace-nowrap rounded-[2px] p-1 transition-colors
-            hover:bg-light-50 dark:hover:bg-[#303038] data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
+            hover:bg-light-50 dark:hover:bg-dark-600 data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
         onSelect={handleOpenWidgetsSearch}
         disabled={isSharedDashboard}
       >
@@ -266,27 +240,18 @@ const GroupDropdownContent = forwardRef<HTMLDivElement>((_props, _ref) => {
       </ContextMenuPrimitive.Item>
       <ContextMenuPrimitive.Item
         className="truncate flex gap-1 items-center cursor-pointer
-            whitespace-nowrap rounded-[2px] p-1 transition-colors
-            hover:bg-light-50 dark:hover:bg-[#303038] data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
-        onSelect={handleAddNote}
-        disabled={isSharedDashboard}
-      >
-        Add markdown note
-      </ContextMenuPrimitive.Item>
-      <ContextMenuPrimitive.Item
-        className="truncate flex gap-1 items-center cursor-pointer
               whitespace-nowrap rounded-[2px] p-1 transition-colors
-              hover:bg-light-50 dark:hover:bg-[#303038] data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
+              hover:bg-light-50 dark:hover:bg-dark-600 data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
         onSelect={handleAddNavigationBar}
         disabled={isSharedDashboard || hasNavigationBar}
       >
         Add navigation bar
       </ContextMenuPrimitive.Item>
-      <ContextMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-[#36363F]" />
+      <ContextMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-dark-500" />
       <ContextMenuPrimitive.Item
         className="truncate flex gap-1 items-center cursor-pointer
         whitespace-nowrap rounded-[2px] p-1 transition-colors
-        hover:bg-light-50 dark:hover:bg-[#303038] data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
+        hover:bg-light-50 dark:hover:bg-dark-600 data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
         onSelect={() => {
           dispatchRefreshQuery();
         }}
@@ -294,16 +259,14 @@ const GroupDropdownContent = forwardRef<HTMLDivElement>((_props, _ref) => {
       >
         Refresh data
       </ContextMenuPrimitive.Item>
-      <SnowflakeHide>
-        <ContextMenuPrimitive.Item
-          className="truncate flex gap-1 items-center cursor-pointer
-        whitespace-nowrap rounded-[2px] p-1 transition-colors hover:bg-light-50 dark:hover:bg-[#303038] data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
-          onSelect={handleRefreshBackends}
-          disabled={state.backendSources?.length === 0}
-        >
-          Refresh backend
-        </ContextMenuPrimitive.Item>
-      </SnowflakeHide>
+      <ContextMenuPrimitive.Item
+        className="truncate flex gap-1 items-center cursor-pointer
+        whitespace-nowrap rounded-[2px] p-1 transition-colors hover:bg-light-50 dark:hover:bg-dark-600 data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
+        onSelect={handleRefreshBackends}
+        disabled={state.backendSources?.length === 0}
+      >
+        Refresh backend
+      </ContextMenuPrimitive.Item>
     </ContextMenuPrimitive.Content>
   );
 });

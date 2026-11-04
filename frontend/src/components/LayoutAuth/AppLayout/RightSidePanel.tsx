@@ -4,9 +4,9 @@ import { CopilotChatErrorBoundary } from "~/components/AI";
 import CopilotChat from "~/components/AI/CopilotChat";
 import { useCopilotAvailable } from "~/components/AI/hooks/useCopilotAvailable";
 import { useStreamingStore } from "~/components/AI/hooks/useStreaming";
-import { useIsFirstRender } from "~/components/General/Table/hooks/utils";
 import { EdgeHoverZone } from "~/components/ui/EdgeHoverZone";
 import { ResizableHandle, ResizablePanel } from "~/components/ui/Resizable";
+import { useIsFirstRender } from "~/hooks/useIsFirstRender";
 import { useCallbackRef } from "~/hooks/useRefHooks";
 import { CopilotProvider } from "~/lib/contexts/CopilotChatContext";
 import { useMobile } from "~/lib/providers/MobileProvider";
@@ -21,12 +21,10 @@ function setIsDragging(isDragging = false) {
 export const RightSidePanel = forwardRef((_, _ref) => {
   const [panelsState, setPanelsState] = useLayoutPanelsState();
 
-  // Get setting for expand button visibility on collapsed panels
   const collapsedPanelExpandOnHover = useShallowThemeStore(
     (state) => state.collapsedPanelExpandOnHover,
   );
 
-  // Track edge hover state for enhanced hover detection
   const [isEdgeHovered, setIsEdgeHovered] = useState(false);
   const {
     isFullscreen,
@@ -49,16 +47,16 @@ export const RightSidePanel = forwardRef((_, _ref) => {
   const copilotAvailable = useCopilotAvailable();
 
   const rightPanelRef = useRef<ImperativePanelHandle>(null);
-  const isProgrammaticResize = useRef(null);
-  const previousSize = useRef(42); // Store the size before entering fullscreen (must be >= minSize)
+  const isProgrammaticResize = useRef<boolean | null>(null);
+  const previousSize = useRef(42);
   const isFirstRender = useIsFirstRender();
 
-  const toggleCopilot = useCallbackRef((e = null) => {
-    if (rightPanelRef.current.isExpanded() && !e) {
+  const toggleCopilot = useCallbackRef((e: unknown = null) => {
+    if (rightPanelRef.current?.isExpanded() && !e) {
       setLastPanelState(isFullscreen ? "fullscreen" : "open");
 
       setIsIntentionallyCollapsed(true);
-      rightPanelRef.current.collapse();
+      rightPanelRef.current?.collapse();
     } else {
       setIsDragging(true);
       setTimeout(setIsDragging);
@@ -67,9 +65,9 @@ export const RightSidePanel = forwardRef((_, _ref) => {
   });
 
   const expandCopilot = useCallbackRef(() => {
-    if (rightPanelRef.current.isCollapsed()) {
+    if (rightPanelRef.current?.isCollapsed()) {
       setIsIntentionallyCollapsed(false);
-      const currentSize = rightPanelRef.current?.getSize();
+      const currentSize = rightPanelRef.current.getSize();
 
       rightPanelRef.current.expand();
       if (lastPanelState === "fullscreen" && !isFullscreen) {
@@ -123,7 +121,6 @@ export const RightSidePanel = forwardRef((_, _ref) => {
 
     const currentSize = rightPanelRef.current?.getSize();
     if (isFullscreen) {
-      // Save current size if valid (>= minSize and < 90), otherwise keep existing value
       if (currentSize && currentSize >= 32 && currentSize < 90) {
         previousSize.current = currentSize;
       }
@@ -134,7 +131,6 @@ export const RightSidePanel = forwardRef((_, _ref) => {
       (isFullscreen && currentSize && currentSize < 99) ||
       !isIntentionallyCollapsed
     ) {
-      // Don't resize if panel is collapsed (prevents re-expanding after close)
       if (rightPanelRef.current?.isCollapsed()) return;
 
       isProgrammaticResize.current = true;
@@ -226,7 +222,6 @@ export const RightSidePanel = forwardRef((_, _ref) => {
     if (!copilotAvailable) return null;
     return (
       <Fragment key="right-panel-fragment">
-        {/* Enhanced edge hover zone for expanding collapsed copilot */}
         {panelsState.collapsedRight && collapsedPanelExpandOnHover && (
           <EdgeHoverZone side="right" onHoverChange={setIsEdgeHovered} />
         )}
@@ -287,17 +282,6 @@ export const MobileRightSidePanel = forwardRef((_, _ref) => {
     [],
   );
 
-  /**
-   * Hidden DOM-trigger for opening the mobile copilot drawer from non-React
-   * call sites that cannot import the Zustand store directly:
-   *   - `src/lib/utils/createTemplates.ts`
-   *   - `src/lib/state/copilotData.ts`
-   *   - `src/components/General/Table/AgGridUtils.tsx`
-   *
-   * Those callers fire `document.getElementById("expand-copilot-mobile-btn")?.click()`.
-   * Must be rendered regardless of `mobileCopilotDrawer` state so the trigger
-   * works while the drawer is closed.
-   */
   const expandButtonMemo = useMemo(
     () => (
       <button

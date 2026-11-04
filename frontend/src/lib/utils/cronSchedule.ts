@@ -1,9 +1,6 @@
-import type { UseQueryOptions } from "@tanstack/react-query";
 import { Cron } from "croner";
 import cronstrue from "cronstrue";
 
-// Floor for React Query refetch intervals: if the next cron boundary has just
-// passed within the same tick, returning 0 would cause a tight refetch loop.
 const MIN_REFETCH_INTERVAL_MS = 1000;
 
 function parseCron(expression: string): Cron | null {
@@ -37,6 +34,8 @@ export function getPreviousCronDate(expression: string, from = new Date()) {
   return parseCron(expression)?.previousRuns(1, from)[0] ?? null;
 }
 
+export const CRON_JITTER_MS = 15_000;
+
 export function getMillisecondsUntilNextCron(expression: string, from = Date.now()) {
   const nextDate = getNextCronDate(expression, new Date(from));
   if (!nextDate) return false;
@@ -44,24 +43,26 @@ export function getMillisecondsUntilNextCron(expression: string, from = Date.now
   return Math.max(nextDate.getTime() - from, MIN_REFETCH_INTERVAL_MS);
 }
 
-type RefetchIntervalFn = UseQueryOptions<any, any>["refetchInterval"];
+type IntervalQuery = { state: { dataUpdatedAt: number } };
+type RefetchIntervalFn<Q extends IntervalQuery> =
+  | number
+  | false
+  | ((query: Q) => number | false | undefined);
 
-/**
- * Normalize a widget's refetch config into a value React Query's `refetchInterval` accepts.
- * - number / false / function → passed through unchanged
- * - null / undefined → falls back to `fallback`
- * - cron string → returns a function that resolves to the ms until the next cron boundary
- *   (or `false` if the string is empty/invalid, which disables refetching)
- */
-export function resolveCronRefetchInterval(
-  refetchInterval: string | RefetchIntervalFn,
-  fallback: RefetchIntervalFn,
-): RefetchIntervalFn {
+export function resolveCronRefetchInterval<Q extends IntervalQuery>(
+  refetchInterval: string | RefetchIntervalFn<Q> | null | undefined,
+  fallback: RefetchIntervalFn<Q>,
+): RefetchIntervalFn<Q> {
   const interval = refetchInterval ?? fallback;
 
   if (typeof interval !== "string") return interval;
   if (!interval.trim()) return false;
 
-  return (query) =>
-    getMillisecondsUntilNextCron(interval, query?.state?.dataUpdatedAt || Date.now());
+  return (query) => {
+    const wait = getMillisecondsUntilNextCron(
+      interval,
+      query?.state?.dataUpdatedAt || Date.now(),
+    );
+    return wait === false ? false : wait + Math.floor(Math.random() * CRON_JITTER_MS);
+  };
 }

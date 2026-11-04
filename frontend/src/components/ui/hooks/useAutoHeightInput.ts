@@ -1,7 +1,7 @@
 import { type RefObject, useCallback, useEffect } from "react";
 
 export function useAutoHeightInput(
-  inputRef: RefObject<HTMLInputElement | HTMLTextAreaElement>,
+  inputRef: RefObject<HTMLInputElement | HTMLTextAreaElement | null>,
   options?: {
     value?: string;
     textContent?: string;
@@ -16,7 +16,6 @@ export function useAutoHeightInput(
 
     const target = inputRef.current;
 
-    // CRITICAL FIX: Skip calculation if width is 0 or unstable (during transitions)
     if (target.offsetWidth === 0) {
       return;
     }
@@ -24,25 +23,23 @@ export function useAutoHeightInput(
     let contentHeight = 0;
 
     if (textContent !== undefined) {
-      // Create a temporary div to measure the height of the content
       const tempDiv = document.createElement("div");
       tempDiv.style.visibility = "hidden";
       tempDiv.style.position = "absolute";
-      tempDiv.style.width = `${target.offsetWidth}px`; // Match the width of the textarea
-      tempDiv.style.font = window.getComputedStyle(target).font; // Match the font styles of the textarea
-      tempDiv.style.lineHeight = window.getComputedStyle(target).lineHeight; // Match the line height of the textarea
-      tempDiv.style.whiteSpace = "pre-wrap"; // Wrap text like in textarea
-      tempDiv.textContent = textContent; // Set the content to measure
+      tempDiv.style.width = `${target.offsetWidth}px`;
+      tempDiv.style.font = window.getComputedStyle(target).font;
+      tempDiv.style.lineHeight = window.getComputedStyle(target).lineHeight;
+      tempDiv.style.whiteSpace = "pre-wrap";
+      tempDiv.textContent = textContent;
 
-      document.body.appendChild(tempDiv); // Add to the body to measure
-      contentHeight = tempDiv.offsetHeight; // Get the height of the content
-      document.body.removeChild(tempDiv); // Clean
+      document.body.appendChild(tempDiv);
+      contentHeight = tempDiv.offsetHeight;
+      document.body.removeChild(tempDiv);
     }
 
-    // Set the textarea height to be at least as tall as the content
-    target.style.height = "auto"; // Reset the height to recalculate
+    target.style.height = "auto";
     const newHeight = Math.max(target.scrollHeight, contentHeight);
-    target.style.height = `${newHeight + offset}px`; // Set the new height
+    target.style.height = `${newHeight + offset}px`;
   }, [inputRef, value, textContent]);
 
   useEffect(() => {

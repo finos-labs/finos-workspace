@@ -1,154 +1,195 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildLockedConfig, RuntimeConfigSchema } from "~/lib/runtimeConfigSchema";
+import {
+  BUILD_VARIABLES,
+  configFromEnv,
+  ENV_NAMES,
+  IDENTITY_PROVIDERS,
+  RuntimeConfigSchema,
+} from "~/lib/runtimeConfigSchema";
 
-describe("buildLockedConfig", () => {
-  it("returns an empty overlay for empty / non-object input", () => {
-    expect(buildLockedConfig(undefined)).toEqual({});
-    expect(buildLockedConfig(null)).toEqual({});
-    expect(buildLockedConfig("nope")).toEqual({});
-    expect(buildLockedConfig({})).toEqual({});
-  });
+type Described = {
+  description?: string;
+  meta(): { itemValues?: string[] } | undefined;
+};
 
-  it("keeps only the fields explicitly provided", () => {
-    const locked = buildLockedConfig({
-      data: { allowHtmlJsExecution: false },
-      copilot: { showCustomKey: false },
+const fields = Object.entries(RuntimeConfigSchema.shape).flatMap(([group, schema]) =>
+  Object.entries((schema as unknown as { shape: Record<string, Described> }).shape).map(
+    ([field, node]) => ({ path: `${group}.${field}`, node }),
+  ),
+);
+
+describe("configFromEnv", () => {
+  it("is the schema's defaults when nothing is set", () => {
+    const empty = RuntimeConfigSchema.parse({
+      urls: {},
+      authentication: {},
+      authProviders: {},
+      copilot: {},
+      ui: {},
+      data: {},
+      links: {},
+      contact: {},
+      whiteLabel: {},
     });
 
-    expect(locked).toEqual({
-      data: { allowHtmlJsExecution: false },
-      copilot: { showCustomKey: false },
-    });
+    expect(configFromEnv({})).toEqual(empty);
   });
 
-  it("coerces string values through the field schema", () => {
-    const locked = buildLockedConfig({
-      data: { allowHtmlJsExecution: "false" },
-      authentication: { identityProviders: "microsoft, okta" },
-    });
+  it("leaves every deployment-specific value empty by default", () => {
+    const cfg = configFromEnv({});
 
-    expect(locked.data?.allowHtmlJsExecution).toBe(false);
-    expect(locked.authentication?.identityProviders).toEqual(["microsoft", "okta"]);
+    expect(cfg.urls).toEqual({ backend: "", ai: "" });
+    expect(cfg.authProviders).toEqual({
+      googleClientId: "",
+    });
+    expect(cfg.links.docsUrl).toBe("");
+    expect(cfg.contact.supportEmail).toBe("");
   });
 
-  it("throws on an unknown group", () => {
-    expect(() => buildLockedConfig({ bogusGroup: { foo: true } })).toThrow(
-      /Unknown group "bogusGroup"/,
+  it("keeps the product description when the white-label variables are unset", () => {
+    const cfg = configFromEnv({});
+
+    expect(cfg.whiteLabel.description).toBe(
+      "An open, self-hosted analytics workspace for financial institutions to connect data, tools, and AI agents.",
+    );
+    expect(cfg.whiteLabel.keywords).toBe(
+      "FINOS Workspace, open source financial analytics, self-hosted analytics, financial data workspace, AI agents",
     );
   });
 
-  it("throws when a known group's value is not an object of fields", () => {
-    expect(() => buildLockedConfig({ data: true })).toThrow(
-      /Group "data" in locked config must be an object/,
-    );
-    expect(() => buildLockedConfig({ ui: "dark" })).toThrow(
-      /Group "ui" in locked config must be an object/,
-    );
-    expect(() => buildLockedConfig({ copilot: [] })).toThrow(
-      /Group "copilot" in locked config must be an object/,
-    );
-  });
-
-  it("throws on an unknown field within a known group", () => {
-    expect(() =>
-      buildLockedConfig({ data: { allowHtmlJsExecution: false, notARealField: true } }),
-    ).toThrow(/Unknown field "data.notARealField"/);
-  });
-
-  it("silently ignores a top-level `_comment` key and `_`-prefixed field keys", () => {
-    const locked = buildLockedConfig({
-      _comment: "documentation only",
-      data: { allowHtmlJsExecution: false, _note: "why" },
+  it("maps the VITE_* variables onto their groups", () => {
+    const cfg = configFromEnv({
+      VITE_BACKEND_URL: "https://backend.test",
+      VITE_AI_API_URL: "https://ai.test",
+      VITE_GOOGLE_OAUTH_CLIENT_ID: "google-id",
+      VITE_DOCS_URL: "https://docs.test",
+      VITE_SUPPORT_EMAIL: "help@docs.test",
+      VITE_WL_NAME: "Acme",
     });
 
-    expect(locked).toEqual({ data: { allowHtmlJsExecution: false } });
+    expect(cfg.urls).toEqual({
+      backend: "https://backend.test",
+      ai: "https://ai.test",
+    });
+    expect(cfg.authProviders.googleClientId).toBe("google-id");
+    expect(cfg.links.docsUrl).toBe("https://docs.test");
+    expect(cfg.contact.supportEmail).toBe("help@docs.test");
+    expect(cfg.whiteLabel.name).toBe("Acme");
   });
 
-  it("throws when a provided value is invalid for its field", () => {
-    expect(() => buildLockedConfig({ ui: { defaultTheme: "neon" } })).toThrow();
+  it("coerces booleans and lists from their text form", () => {
+    const cfg = configFromEnv({
+      VITE_AI_COPILOT_ENABLED: "true",
+      VITE_UI_SHOW_CHANGELOG: "false",
+      VITE_AUTHENTICATION_IDENTITY_PROVIDERS: "Google, microsoft",
+    });
+
+    expect(cfg.copilot.enabled).toBe(true);
+    expect(cfg.ui.showChangelog).toBe(false);
+    expect(cfg.authentication.identityProviders).toEqual(["google", "microsoft"]);
+  });
+
+  it("falls back to the default for a value that is not a boolean", () => {
+    expect(configFromEnv({ VITE_UI_SHOW_CHANGELOG: "maybe" }).ui.showChangelog).toBe(
+      true,
+    );
+  });
+
+  it("rejects a theme that is not light or dark", () => {
+    expect(() => configFromEnv({ VITE_UI_DEFAULT_THEME: "neon" })).toThrow();
   });
 });
 
-describe("buildLockedConfig — strict mode", () => {
-  const allGroups = Object.keys(RuntimeConfigSchema.shape);
-  const wildcardAll = allGroups.map((g) => `${g}.*`);
-  const wildcardAllExcept = (excluded: string) =>
-    allGroups.filter((g) => g !== excluded).map((g) => `${g}.*`);
+describe("ENV_NAMES", () => {
+  const names = Object.values(ENV_NAMES).flatMap((fields) => Object.values(fields));
 
-  it("accepts a strict policy where every field is triaged", () => {
-    const uiFields = Object.keys(RuntimeConfigSchema.shape.ui.shape);
-    const locked = buildLockedConfig({
-      _strict: true,
-      _unlocked: [
-        ...wildcardAllExcept("ui"),
-        ...uiFields.filter((f) => f !== "isLite").map((f) => `ui.${f}`),
-      ],
-      ui: { isLite: true },
+  it("gives every setting its own VITE_ variable", () => {
+    expect(new Set(names).size).toBe(names.length);
+    expect(names.every((name) => name.startsWith("VITE_"))).toBe(true);
+  });
+
+  it("names exactly the settings of the schema", () => {
+    const groups = Object.keys(RuntimeConfigSchema.shape);
+    expect(Object.keys(ENV_NAMES).sort()).toEqual(groups.sort());
+    for (const [group, fields] of Object.entries(ENV_NAMES)) {
+      const shape = RuntimeConfigSchema.shape[group as keyof typeof ENV_NAMES].shape;
+      expect(Object.keys(fields).sort()).toEqual(Object.keys(shape).sort());
+    }
+  });
+
+  it("reads each setting from its variable", () => {
+    const env = Object.fromEntries(
+      Object.entries(ENV_NAMES.whiteLabel).map(([field, name]) => [
+        name,
+        `value of ${field}`,
+      ]),
+    );
+
+    const cfg = configFromEnv(env);
+
+    expect(cfg.whiteLabel.name).toBe("value of name");
+    expect(cfg.whiteLabel.favicon).toBe("value of favicon");
+    expect(cfg.whiteLabel.keywords).toBe("value of keywords");
+  });
+});
+
+describe("RuntimeConfigSchema documentation", () => {
+  it("describes every setting", () => {
+    const missing = fields
+      .filter(({ node }) => !node.description?.trim())
+      .map(({ path }) => path);
+    expect(missing).toEqual([]);
+  });
+
+  it("names the identity providers that the login page can offer", () => {
+    const providers = fields.find(
+      ({ path }) => path === "authentication.identityProviders",
+    );
+    expect(providers?.node.meta()?.itemValues).toEqual([...IDENTITY_PROVIDERS]);
+  });
+});
+
+describe("the build variables", () => {
+  const root = resolve(__dirname, "../../..");
+
+  function sourceFiles(directory: string): string[] {
+    return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) return sourceFiles(path);
+      return /\.(ts|tsx)$/.test(entry.name) ? [path] : [];
     });
+  }
 
-    expect(locked).toEqual({ ui: { isLite: true } });
+  function variablesRead(): Set<string> {
+    const files = [...sourceFiles(join(root, "src")), join(root, "vite.config.ts")];
+    const found = new Set<string>();
+    for (const file of files) {
+      const text = readFileSync(file, "utf8");
+      for (const match of text.matchAll(
+        /(?:import\.meta\.env|\benv)\.(VITE_[A-Z0-9_]+)/g,
+      )) {
+        found.add(match[1] as string);
+      }
+    }
+    return found;
+  }
+
+  it("describes each one", () => {
+    const missing = Object.entries(BUILD_VARIABLES)
+      .filter(([, variable]) => !variable.description.trim())
+      .map(([name]) => name);
+    expect(missing).toEqual([]);
   });
 
-  it("accepts a strict policy that unlocks everything and locks nothing", () => {
-    expect(buildLockedConfig({ _strict: true, _unlocked: wildcardAll })).toEqual({});
-  });
-
-  it("without _strict, _unlocked is ignored and triage is not enforced", () => {
-    const locked = buildLockedConfig({
-      _unlocked: ["ui.*"],
-      ui: { isLite: true },
-    });
-
-    expect(locked).toEqual({ ui: { isLite: true } });
-  });
-
-  it("throws on an untriaged field, naming it and both resolution paths", () => {
-    const run = () =>
-      buildLockedConfig({
-        _strict: true,
-        _unlocked: wildcardAllExcept("ui"),
-      });
-
-    expect(run).toThrow(/Field "ui\.showCompanionMode" is not triaged/);
-    expect(run).toThrow(/config-profiles\/lite\.locked\.json/);
-    expect(run).toThrow(/"_unlocked"/);
-    expect(run).toThrow(
-      /github\.com\/OpenBB-finance\/lite#changing-what-lite-locks/,
+  it("are, with the settings, every VITE_ variable that the code reads", () => {
+    const settings = Object.values(ENV_NAMES).flatMap((fields) =>
+      Object.values(fields),
     );
-  });
-
-  it("throws when a path is both locked and listed in _unlocked", () => {
-    expect(() =>
-      buildLockedConfig({
-        _strict: true,
-        _unlocked: wildcardAll,
-        ui: { isLite: true },
-      }),
-    ).toThrow(/"ui\.isLite".*locked.*"_unlocked"/);
-  });
-
-  it("throws on an unknown path in _unlocked", () => {
-    expect(() =>
-      buildLockedConfig({ _strict: true, _unlocked: [...wildcardAll, "ui.notAField"] }),
-    ).toThrow(/Unknown path "ui\.notAField" in "_unlocked"/);
-
-    expect(() =>
-      buildLockedConfig({ _strict: true, _unlocked: [...wildcardAll, "bogus.*"] }),
-    ).toThrow(/Unknown path "bogus\.\*" in "_unlocked"/);
-  });
-
-  it("throws when _strict is present but not a boolean", () => {
-    expect(() =>
-      buildLockedConfig({ _strict: "true", _unlocked: wildcardAll }),
-    ).toThrow(/_strict/);
-  });
-
-  it("throws when _unlocked is not an array of strings", () => {
-    expect(() => buildLockedConfig({ _strict: true, _unlocked: "ui.*" })).toThrow(
-      /_unlocked/,
-    );
-    expect(() => buildLockedConfig({ _strict: true, _unlocked: [42] })).toThrow(
-      /_unlocked/,
-    );
+    const known = new Set<string>([...settings, ...Object.keys(BUILD_VARIABLES)]);
+    const read = variablesRead();
+    expect([...read].filter((name) => !known.has(name))).toEqual([]);
+    expect(Object.keys(BUILD_VARIABLES).filter((name) => !read.has(name))).toEqual([]);
   });
 });

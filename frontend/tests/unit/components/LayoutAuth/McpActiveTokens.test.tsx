@@ -20,8 +20,8 @@ const { tokensRef, deleteMutate, createDialogProps } = vi.hoisted(() => ({
       created_date?: string | null;
     }>,
   },
-  deleteMutate: vi.fn(
-    (_uuid: string, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.(),
+  deleteMutate: vi.fn((_uuid: string, opts?: { onSuccess: () => void }) =>
+    opts?.onSuccess?.(),
   ),
   createDialogProps: { current: null as { open: boolean } | null },
 }));
@@ -103,14 +103,14 @@ describe("McpActiveTokens", () => {
         uuid: "t1",
         name: "Equity Research",
         token_type: "workspace_mcp",
-        token_prefix: "obb_mcp_a1b2c3",
+        token_prefix: "ws_mcp_a1b2c3",
         created_date: "2026-05-01T10:00:00.000Z",
       },
     ];
     render(<McpActiveTokens isConnected endpoint={ENDPOINT} />);
 
     expect(screen.getByText("Equity Research")).toBeInTheDocument();
-    expect(screen.getByText("obb_mcp_a1b2c3...")).toBeInTheDocument();
+    expect(screen.getByText("ws_mcp_a1b2c3...")).toBeInTheDocument();
     expect(screen.getByText("01/05/2026")).toBeInTheDocument();
   });
 
@@ -120,7 +120,7 @@ describe("McpActiveTokens", () => {
         uuid: "t1",
         name: "Equity Research",
         token_type: "workspace_mcp",
-        token_prefix: "obb_mcp_a1b2c3",
+        token_prefix: "ws_mcp_a1b2c3",
       },
     ];
     render(<McpActiveTokens isConnected endpoint={ENDPOINT} />);

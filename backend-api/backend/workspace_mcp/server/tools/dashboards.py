@@ -1,5 +1,3 @@
-"""Dashboard CRUD tool."""
-
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -18,7 +16,7 @@ from workspace_mcp.server._helpers import (
 def register(server: FastMCP, run: CommandRunner) -> None:
     @server.tool(
         description=describe_tool(
-            "Create, read, or update one Workspace dashboard.",
+            "Create, read, or update one FINOS Workspace dashboard.",
             "Dashboard deletion is not available through this MCP surface.",
             "For create, pass name and optional dashboard_id and activate.",
             "For read, pass optional dashboard_id; omitted dashboard_id targets the current dashboard.",
@@ -29,7 +27,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
         )
     )
     async def manage_dashboard(
-        operation: DashboardOperation,
+        operation: Annotated[DashboardOperation, Field(description="What to do with the dashboard.")],
         dashboard_id: Annotated[
             str | None, Field(description=DASHBOARD_ID_PARAM)
         ] = None,
@@ -47,7 +45,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ] = None,
     ) -> ToolResponse:
-        """Create, read, or update dashboard metadata and composition."""
         if operation == "create":
             if not name:
                 return invalid_request(

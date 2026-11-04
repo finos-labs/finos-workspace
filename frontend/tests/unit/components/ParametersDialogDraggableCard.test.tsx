@@ -2,23 +2,21 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ParametersDialog } from "~/components/ParametersDialogDraggableCard";
-import type { ParamDef, WidgetT } from "~/components/types";
+import type { ParamDef, WidgetContextType, WidgetT } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
-import { createTestWidget } from "../helpers";
+import { makeWidget, makeWidgetContext } from "../factories";
 
 const mockUpdateWidget = vi.fn();
 const mockSetOpen = vi.fn();
 
-const createMockWidgetContext = (widget: Partial<WidgetT> = {}) => ({
-  widget: widget as WidgetT,
-  widgetFromJSON: undefined,
-  updateWidget: mockUpdateWidget,
-  widgetRef: { current: widget as WidgetT },
-  activeDashboardId: "test-dashboard",
-  isShared: false,
-  uuid: "test-uuid",
-  getWidget: () => widget as WidgetT,
-});
+const createMockWidgetContext = (
+  widget: Partial<WidgetT> = {},
+  overrides: Partial<WidgetContextType> = {},
+) =>
+  makeWidgetContext(makeWidget(widget), {
+    updateWidget: mockUpdateWidget,
+    ...overrides,
+  });
 
 vi.mock("~/components/Widget.context", () => ({
   useWidgetContext: vi.fn(() => createMockWidgetContext()),
@@ -33,7 +31,7 @@ describe("ParametersDialog", () => {
 
   describe("Rendering", () => {
     it("should render dialog when open is true", () => {
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params: [
           { type: "text", paramName: "param1", value: "value1", label: "Parameter 1" },
@@ -48,7 +46,7 @@ describe("ParametersDialog", () => {
     });
 
     it("should not render when open is false", () => {
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params: [
           { type: "text", paramName: "param1", value: "value1", label: "Parameter 1" },
@@ -61,7 +59,6 @@ describe("ParametersDialog", () => {
         <ParametersDialog open={false} setOpen={mockSetOpen} />,
       );
 
-      // Dialog should not be visible when closed
       expect(container.querySelector('[role="dialog"]')).not.toBeInTheDocument();
     });
 
@@ -72,7 +69,7 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "param3", value: "value3", label: "Parameter 3" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -91,7 +88,7 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "my_param", value: "value1" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -104,7 +101,7 @@ describe("ParametersDialog", () => {
     });
 
     it("should render Save and Cancel buttons", () => {
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params: [
           { type: "text", paramName: "param1", value: "value1", label: "Parameter 1" },
@@ -120,7 +117,7 @@ describe("ParametersDialog", () => {
     });
 
     it("should return null when widget has no params", () => {
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params: [],
       });
@@ -162,10 +159,10 @@ describe("ParametersDialog", () => {
           label: "Param 2",
           show: false,
         },
-        { type: "text", paramName: "param3", value: "value3", label: "Param 3" }, // undefined show should default to true
+        { type: "text", paramName: "param3", value: "value3", label: "Param 3" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -176,9 +173,9 @@ describe("ParametersDialog", () => {
 
       const switches = screen.getAllByRole("switch");
       expect(switches).toHaveLength(3);
-      expect(switches[0]).toBeChecked(); // param1: show: true
-      expect(switches[1]).not.toBeChecked(); // param2: show: false
-      expect(switches[2]).toBeChecked(); // param3: undefined defaults to true
+      expect(switches[0]).toBeChecked();
+      expect(switches[1]).not.toBeChecked();
+      expect(switches[2]).toBeChecked();
     });
 
     it("should toggle parameter visibility when switch is clicked", async () => {
@@ -193,7 +190,7 @@ describe("ParametersDialog", () => {
         },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -231,7 +228,7 @@ describe("ParametersDialog", () => {
         },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -246,7 +243,7 @@ describe("ParametersDialog", () => {
 
       await waitFor(() => {
         expect(switches[0]).not.toBeChecked();
-        expect(switches[1]).toBeChecked(); // Should remain unchanged
+        expect(switches[1]).toBeChecked();
       });
     });
   });
@@ -271,7 +268,7 @@ describe("ParametersDialog", () => {
         },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -280,11 +277,9 @@ describe("ParametersDialog", () => {
 
       render(<ParametersDialog open={true} setOpen={mockSetOpen} />);
 
-      // Toggle first parameter off
       const switches = screen.getAllByRole("switch");
       await user.click(switches[0]);
 
-      // Click Save
       const saveButton = screen.getByRole("button", { name: /save/i });
       await user.click(saveButton);
 
@@ -292,15 +287,14 @@ describe("ParametersDialog", () => {
         expect(mockUpdateWidget).toHaveBeenCalledTimes(1);
       });
 
-      // Verify the update function was called with the correct params
       const updateFn = mockUpdateWidget.mock.calls[0][0];
       const updatedWidget = updateFn({ ...widget });
 
       expect(updatedWidget.params).toHaveLength(2);
-      expect(updatedWidget.params[0].show).toBe(false); // param1 was toggled off
-      expect(updatedWidget.params[1].show).toBe(true); // param2 remains on
-      expect(updatedWidget.params[0].hidden).toBe(true); // param1 was toggled off
-      expect(updatedWidget.params[1].hidden).toBe(false); // param2 remains on
+      expect(updatedWidget.params[0].show).toBe(false);
+      expect(updatedWidget.params[1].show).toBe(true);
+      expect(updatedWidget.params[0].hidden).toBe(true);
+      expect(updatedWidget.params[1].hidden).toBe(false);
     });
 
     it("should close dialog after saving", async () => {
@@ -309,7 +303,7 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "param1", value: "value1", label: "Param 1" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -339,7 +333,7 @@ describe("ParametersDialog", () => {
         },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -379,7 +373,7 @@ describe("ParametersDialog", () => {
         },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -388,11 +382,9 @@ describe("ParametersDialog", () => {
 
       render(<ParametersDialog open={true} setOpen={mockSetOpen} />);
 
-      // Toggle parameter
       const switchElement = screen.getByRole("switch");
       await user.click(switchElement);
 
-      // Click Cancel
       const cancelButton = screen.getByRole("button", { name: /cancel/i });
       await user.click(cancelButton);
 
@@ -400,7 +392,6 @@ describe("ParametersDialog", () => {
         expect(mockSetOpen).toHaveBeenCalledWith(false);
       });
 
-      // updateWidget should not have been called
       expect(mockUpdateWidget).not.toHaveBeenCalled();
     });
 
@@ -416,7 +407,7 @@ describe("ParametersDialog", () => {
         },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -429,7 +420,6 @@ describe("ParametersDialog", () => {
 
       const { rerender } = render(<TestDialog open={true} />);
 
-      // Toggle parameter
       const switchElement = screen.getByRole("switch");
       await user.click(switchElement);
 
@@ -437,17 +427,14 @@ describe("ParametersDialog", () => {
         expect(switchElement).not.toBeChecked();
       });
 
-      // Close dialog by unmounting component
       rerender(<TestDialog open={false} />);
 
       await waitFor(() => {
         expect(screen.queryByRole("switch")).not.toBeInTheDocument();
       });
 
-      // Reopen dialog
       rerender(<TestDialog open={true} />);
 
-      // Switch should be back to original state
       const reopenedSwitch = await screen.findByRole("switch");
       expect(reopenedSwitch).toBeChecked();
     });
@@ -459,13 +446,13 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "param1", value: "value1", label: "From JSON" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
       });
 
       useWidgetContextMock.mockReturnValue({
         ...createMockWidgetContext(widget),
-        widgetFromJSON: { params } as any,
+        widgetFromJSON: { params },
       });
 
       render(<ParametersDialog open={true} setOpen={mockSetOpen} />);
@@ -482,14 +469,14 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "param1", value: "value1", label: "From JSON" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params: widgetParams,
       });
 
       useWidgetContextMock.mockReturnValue({
         ...createMockWidgetContext(widget),
-        widgetFromJSON: { params: jsonParams } as any,
+        widgetFromJSON: { params: jsonParams },
       });
 
       render(<ParametersDialog open={true} setOpen={mockSetOpen} />);
@@ -506,7 +493,7 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "param2", value: "value2", label: "Param 2" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -515,10 +502,7 @@ describe("ParametersDialog", () => {
 
       render(<ParametersDialog open={true} setOpen={mockSetOpen} />);
 
-      // Each parameter row should have a drag handle button
       const dragHandles = screen.getAllByRole("button", { name: "" });
-      // We expect 2 drag handles + 2 action buttons (Save/Cancel) = 4 total buttons
-      // Filter for only the drag handles (they have tabIndex -1)
       const dragHandleButtons = dragHandles.filter(
         (button) => button.getAttribute("tabindex") === "-1",
       );

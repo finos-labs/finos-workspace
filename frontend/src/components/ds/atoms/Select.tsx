@@ -10,7 +10,7 @@ import { Label, Message } from "./Label";
 
 export const SelectTriggerVariants = cva(
   [
-    "BB-Select body-xs-regular flex w-full items-center justify-between rounded-sm border [&>span]:line-clamp-1",
+    "body-xs-regular flex w-full items-center justify-between rounded-sm border [&>span]:line-clamp-1",
     "transition",
     "border-general-border-primary text-general-label-hover data-placeholder:text-ds-text-caption bg-input-field-bg",
     "hover:enabled:text-general-label-hover",
@@ -32,7 +32,7 @@ export const SelectTriggerVariants = cva(
   },
 );
 
-export const SelectContentVariants = cva(DropdownMenuContentVariants(), {
+const SelectContentVariants = cva(DropdownMenuContentVariants(), {
   variants: {
     position: {
       popper:
@@ -48,7 +48,7 @@ const SelectGroup = SelectPrimitive.Group;
 
 const SelectValue = SelectPrimitive.Value;
 
-export interface SelectTriggerProps
+interface SelectTriggerProps
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>,
     VariantProps<typeof SelectTriggerVariants> {}
 
@@ -69,7 +69,7 @@ const SelectTrigger = React.forwardRef<
 ));
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 
-export interface SelectScrollUpButtonProps
+interface SelectScrollUpButtonProps
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton> {}
 const SelectScrollUpButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
@@ -85,7 +85,7 @@ const SelectScrollUpButton = React.forwardRef<
 ));
 SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
 
-export interface SelectScrollDownButtonProps
+interface SelectScrollDownButtonProps
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton> {}
 const SelectScrollDownButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
@@ -101,8 +101,11 @@ const SelectScrollDownButton = React.forwardRef<
 ));
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
 
-export interface SelectContentProps
-  extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>,
+interface SelectContentProps
+  extends Omit<
+      React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>,
+      "position"
+    >,
     VariantProps<typeof SelectContentVariants> {
   viewportClassName?: string;
 }
@@ -115,7 +118,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(SelectContentVariants({ position }), "space-y-0 p-0", className)}
-      position={position}
+      position={position ?? undefined}
       {...props}
     >
       <SelectScrollUpButton />
@@ -135,7 +138,7 @@ const SelectContent = React.forwardRef<
 ));
 SelectContent.displayName = SelectPrimitive.Content.displayName;
 
-export interface SelectGroupLabelProps
+interface SelectGroupLabelProps
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label> {}
 const SelectGroupLabel = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Label>,
@@ -149,7 +152,7 @@ const SelectGroupLabel = React.forwardRef<
 ));
 SelectGroupLabel.displayName = SelectPrimitive.Label.displayName;
 
-export interface SelectItemProps
+interface SelectItemProps
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> {}
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
@@ -171,22 +174,6 @@ const SelectItem = React.forwardRef<
 ));
 SelectItem.displayName = SelectPrimitive.Item.displayName;
 
-export interface SelectSeparatorProps
-  extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator> {}
-const SelectSeparator = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Separator>,
-  SelectSeparatorProps
->(({ className, ...props }, ref) => (
-  <SelectPrimitive.Separator
-    ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-muted", className)}
-    {...props}
-  />
-));
-SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
-
-// Composed Select
-
 export interface SelectOptionObject {
   label: string;
   value: string;
@@ -194,44 +181,36 @@ export interface SelectOptionObject {
 }
 export type SelectOption = SelectOptionObject | string;
 
-export interface SelectOptionGroup {
+interface SelectOptionGroup {
   label: string;
   options: CanBeImmutable<SelectOption[]>;
 }
 
-export interface SelectProps<T extends string = string>
+interface SelectProps<T extends string = string>
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>,
     VariantProps<typeof SelectTriggerVariants> {
-  // Model
   options: CanBeImmutable<SelectOption[] | SelectOptionGroup[]>;
   value?: T;
   onChange?: (value: Exclude<T, "">) => void;
-  // Trigger
   className?: string;
   placeholder?: string;
   autoFocus?: boolean;
-  // Other components
   label?: React.ReactNode;
   message?: React.ReactNode;
   error?: boolean;
-  /** Force light mode styling regardless of theme */
   forceLight?: boolean;
 }
-/** Plain select component, can be used in form or outside it */
-const Select = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Root>,
+const SelectBase = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Trigger>,
   SelectProps
 >((props, ref) => {
   const {
-    // Model
     options,
     onChange,
-    // Trigger
     className,
     placeholder,
     size,
     autoFocus,
-    // Other components
     label,
     message,
     error,
@@ -263,7 +242,7 @@ const Select = React.forwardRef<
 
   return (
     <SelectRoot onValueChange={onChange} {...rest}>
-      <div className="BB-Select group" aria-disabled={props.disabled}>
+      <div className="group" aria-disabled={props.disabled}>
         <Label id={labelId}>{label}</Label>
         <SelectTrigger
           ref={ref}
@@ -287,26 +266,21 @@ const Select = React.forwardRef<
       </SelectContent>
     </SelectRoot>
   );
-}) as <T extends string = string>(
+});
+
+SelectBase.displayName = "Select";
+
+const Select = SelectBase as <T extends string = string>(
   props: SelectProps<T> & { ref?: React.ForwardedRef<HTMLInputElement> },
 ) => React.ReactElement;
 
-// @ts-expect-error
-Select.displayName = "Select";
-
-/* Form */
-
 type FormSelectProps = Omit<SelectProps, "error">;
 
-/** Select field used inside <Form> only. */
-const FormSelect = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Root>,
-  FormSelectProps
->((props, ref) => {
+const FormSelect = React.forwardRef<HTMLInputElement, FormSelectProps>((props, ref) => {
   const { label, message, ...rest } = props;
 
   return (
-    <FormItem className="BB-FormSelect group" aria-disabled={props.disabled}>
+    <FormItem className="group" aria-disabled={props.disabled}>
       <FormLabel>{label}</FormLabel>
       <Select ref={ref} {...rest} />
       <FormMessage>{message}</FormMessage>
@@ -319,13 +293,8 @@ export {
   FormSelect,
   Select,
   SelectContent,
-  SelectGroup,
-  SelectGroupLabel,
   SelectItem,
   SelectRoot,
-  SelectScrollDownButton,
-  SelectScrollUpButton,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 };

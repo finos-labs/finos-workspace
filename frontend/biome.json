@@ -6,7 +6,7 @@
     "domains": { "react": "all" },
     "rules": {
       "suspicious": {
-        "noExplicitAny": "off",
+        "noExplicitAny": "error",
         "noArrayIndexKey": "off",
         "noPrototypeBuiltins": "off",
         "noAssignInExpressions": "off",
@@ -19,7 +19,7 @@
       },
       "style": {
         "noParameterAssign": "off",
-        "noNonNullAssertion": "off",
+        "noNonNullAssertion": "error",
         "useNamingConvention": "off",
         "noDefaultExport": "off",
         "useBlockStatements": "off",
@@ -88,14 +88,11 @@
       "src/**",
       "tests/**",
       "!node_modules",
-      "!src/lib/charting_library",
-      "!src/components/Widgets/Terminal.tsx",
-      "!src/components/Update.tsx",
       "!src/lib/utils/index.ts",
       "!src/components/ds/utils/index.ts",
       "!src/vite-env.d.ts",
-      "!dist",
-      "!.eslintrc.cjs"
+      "!tests/mocks/widgets-schema.json",
+      "!dist"
     ],
     "ignoreUnknown": true
   },

@@ -1,14 +1,20 @@
 import { act, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+type DocumentProps = {
+  children?: ReactNode;
+  onLoadSuccess?: (document: { numPages: number }) => void;
+};
+
 const { documentMock } = vi.hoisted(() => ({
-  documentMock: vi.fn(({ children }: any) => (
+  documentMock: vi.fn(({ children }: DocumentProps) => (
     <div data-testid="pdf-document">{children}</div>
   )),
 }));
 
 vi.mock("react-pdf", () => ({
-  Document: (props: any) => documentMock(props),
+  Document: (props: DocumentProps) => documentMock(props),
   Page: () => <div data-testid="pdf-page" />,
   pdfjs: {
     GlobalWorkerOptions: {},
@@ -28,7 +34,7 @@ vi.mock("~/components/Icon", () => ({
 }));
 
 vi.mock("~/components/Tooltip", () => ({
-  default: ({ children }: any) => children,
+  default: ({ children }: { children?: ReactNode }) => children,
 }));
 
 vi.mock("~/components/Widget.context", () => ({

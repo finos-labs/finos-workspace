@@ -11,14 +11,11 @@ const makeUser = (over: Partial<User>): User => ({
   last_name: "",
   email: "",
   role: "",
-  billing_active: true,
-  pro_entitlements: {} as User["pro_entitlements"],
   status: "active",
   last_login: null,
   last_active: null,
   permissions_uuid: "p",
   source: "user" as User["source"],
-  renewed: false,
   ...over,
 });
 
@@ -47,21 +44,10 @@ vi.mock("~/components/AdminRoles/adminUseQueries", () => ({
   buildUserRolesMap: () => new Map(),
 }));
 
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({
-    data: { seats: 10, used_seats: 3, expiration_date: null },
-    isLoading: false,
-  }),
-}));
-
 vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
   SettingsLayout: ({ children }: { children: ReactNode }) => (
     <TabsPrimitive.Root value="users">{children}</TabsPrimitive.Root>
   ),
-}));
-
-vi.mock("~/components/General/SnowflakeHide", () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock("~/components/AdminUsers/AdminUserDetailsDialog", () => ({
@@ -81,7 +67,6 @@ import AdminUsers from "~/routes/admin/users";
 let originalRO: typeof ResizeObserver;
 
 beforeEach(() => {
-  // jsdom has no layout; force the virtualized table to measure a viewport.
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
     width: 1000,
     height: 500,

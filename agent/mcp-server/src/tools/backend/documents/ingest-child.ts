@@ -1,0 +1,30 @@
+import { serveOnce } from "../../../../../src/lib/isolate-child.ts";
+import { chunkDocument, type DocChunk } from "./chunk.ts";
+import { extractDocument } from "./extract.ts";
+import { MAX_CHUNKS_PER_DOC } from "./limits.ts";
+import type { UploadedDocumentFormat } from "../../../../../src/protocol/types.ts";
+
+export interface IngestChildInput {
+  id: string;
+  format: UploadedDocumentFormat;
+  base64: string;
+}
+
+export interface IngestChildOutput {
+  chunks: DocChunk[];
+  totalChars: number;
+}
+
+async function readAndChunk(input: IngestChildInput): Promise<IngestChildOutput> {
+  const extracted = await extractDocument(input.format, Uint8Array.from(Buffer.from(input.base64, "base64")));
+  if (extracted.totalChars === 0) {
+    throw new Error("it has no text to search (a scanned document is only pictures of text)");
+  }
+  const chunks = chunkDocument(input.id, extracted.pages);
+  if (chunks.length > MAX_CHUNKS_PER_DOC) {
+    throw new Error(`it is too long to search: ${chunks.length} passages, and the most for one document is ${MAX_CHUNKS_PER_DOC}`);
+  }
+  return { chunks, totalChars: extracted.totalChars };
+}
+
+if (import.meta.main) await serveOnce(readAndChunk);

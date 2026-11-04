@@ -5,6 +5,7 @@ import {
   showNotification,
   showNotificationWithRememberMe,
 } from "~/lib/utils/toast";
+import { malformed, partial } from "../../mocks";
 
 vi.mock("sonner", () => ({
   toast: {
@@ -26,10 +27,11 @@ vi.mock("~/lib/state/toast", () => ({
   },
 }));
 
-// Mock DOM for ID lookup
-vi.spyOn(document, "getElementById").mockReturnValue({
-  getAttribute: vi.fn(() => "checked"),
-} as any);
+vi.spyOn(document, "getElementById").mockReturnValue(
+  partial<HTMLElement>({
+    getAttribute: vi.fn(() => "checked"),
+  }),
+);
 
 describe("toast utils", () => {
   beforeEach(() => {
@@ -47,8 +49,7 @@ describe("toast utils", () => {
     });
 
     it("should default to warning if toastType is invalid", () => {
-      // @ts-ignore
-      showNotification({ message: "Test Warning", toastType: "invalid" });
+      showNotification({ message: "Test Warning", toastType: malformed("invalid") });
       expect(toast.warning).toHaveBeenCalledWith("Test Warning", expect.any(Object));
     });
   });

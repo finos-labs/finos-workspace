@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { ExtensionOptions } from "~/lib/constants";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
 import DragFileHere from "../AI/DragFileHere";
@@ -7,14 +8,10 @@ import { Button } from "../ds/atoms/Button";
 import { useDragAndDropFiles } from "../GridLayout.hooks";
 import Icon from "../Icon";
 
-// temporary until first empty dashboard mockup cta is implemented
 const isFirstLogin = false;
 
-export default function EmptyDashboardCTA({ locked = false }: { locked?: boolean }) {
+export default function EmptyDashboardCTA() {
   const navigate = useNavigate();
-  /*const { isFirstLogin } = useAuthStore((state) => ({
-    isFirstLogin: state.isFirstLogin,
-  }));*/
   const { changeSearch, setInitialSelectedSearchTab } = useShallowThemeStore(
     (state) => ({
       changeSearch: state.changeSearch,
@@ -31,7 +28,8 @@ export default function EmptyDashboardCTA({ locked = false }: { locked?: boolean
     navigate("/app");
   }
 
-  const { getRootProps, getInputProps, isDragActive } = useDragAndDropFiles(locked);
+  const { getRootProps, getInputProps, isDragActive } = useDragAndDropFiles();
+  const mayUpload = useShallowAccessStore((s) => canAddConnections(s.access));
 
   return (
     <div
@@ -94,48 +92,49 @@ export default function EmptyDashboardCTA({ locked = false }: { locked?: boolean
               </Button>
             </div>
           </div>
-          <div className="dark:bg-[#1F1E23B8] p-2.5 h-[247px] rounded border dark:border-dark-800 bg-white border-light-300 flex flex-col">
-            <p className="body-xs-bold dark:text-white text-light-900">
-              Add your files
-            </p>
-            <p className="mt-1 body-xs-regular dark:text-light-100 text-light-800">
-              Supported formats:{" "}
-              {ExtensionOptions.map((c) => `${c.toLocaleUpperCase()}`).join(", ")}.
-            </p>
-            <div className="mt-2.5 grow rounded border dark:border-dark-600 border-light-300 p-2.5 flex flex-col gap-1 items-center justify-center">
-              <Icon
-                id="download-icon"
-                className="size-5 text-brand-main dark:text-brand-lighter"
-              />
-              <p className="body-xs-regular text-2xs dark:text-dark-100 text-dark-100">
-                <span className="font-bold">Drag and Drop</span> file(s) here or
-                anywhere inside the dashboard area
+          {mayUpload && (
+            <div className="dark:bg-[#1F1E23B8] p-2.5 h-[247px] rounded border dark:border-dark-800 bg-white border-light-300 flex flex-col">
+              <p className="body-xs-bold dark:text-white text-light-900">
+                Add your files
               </p>
-              <p className="body-xs-regular dark:text-dark-100 text-dark-100">or</p>
-              <Button
-                size="xs"
-                variant="outlined"
-                className="w-fit"
-                onClick={() => {
-                  const input = document.getElementById("dashboard-file-upload");
-                  input?.click();
-                }}
-              >
-                Browse files
-              </Button>
-              <p className="body-xs-regular text-2xs dark:text-dark-100">
-                File size limit: 25MB
+              <p className="mt-1 body-xs-regular dark:text-light-100 text-light-800">
+                Supported formats:{" "}
+                {ExtensionOptions.map((c) => `${c.toLocaleUpperCase()}`).join(", ")}.
               </p>
+              <div className="mt-2.5 grow rounded border dark:border-dark-600 border-light-300 p-2.5 flex flex-col gap-1 items-center justify-center">
+                <Icon
+                  id="download-icon"
+                  className="size-5 text-brand-main dark:text-brand-lighter"
+                />
+                <p className="body-xs-regular text-2xs dark:text-dark-100 text-dark-100">
+                  <span className="font-bold">Drag and Drop</span> file(s) here or
+                  anywhere inside the dashboard area
+                </p>
+                <p className="body-xs-regular dark:text-dark-100 text-dark-100">or</p>
+                <Button
+                  size="xs"
+                  variant="outlined"
+                  className="w-fit"
+                  onClick={() => {
+                    const input = document.getElementById("dashboard-file-upload");
+                    input?.click();
+                  }}
+                >
+                  Browse files
+                </Button>
+                <p className="body-xs-regular text-2xs dark:text-dark-100">
+                  File size limit: 25MB
+                </p>
+              </div>
             </div>
-          </div>
+          )}
           <div className="flex gap-2.5">
             <div className="dark:bg-[#1F1E23B8] p-2.5 h-[247px] rounded border dark:border-dark-800 bg-white border-light-300 flex flex-col">
               <p className="body-xs-bold dark:text-white text-light-900">
                 Add iframe widget
               </p>
               <p className="mt-1 body-xs-regular dark:text-light-100 text-light-800">
-                Add any embeddable iframe URL (e.g. Streamlit or Plotly dashboards) to
-                your workspace.
+                Add any embeddable iframe URL (e.g. a Streamlit app) to your workspace.
               </p>
               <div className="mt-2.5 grow rounded border dark:border-dark-600 border-light-300 p-2.5 flex flex-col gap-2.5 items-center justify-center">
                 <Icon
@@ -236,42 +235,44 @@ export default function EmptyDashboardCTA({ locked = false }: { locked?: boolean
             </div>
           ))}
 
-          <div className="border dark:border-dark-800 border-light-300 p-2.5 rounded col-span-2 @max-[360px]/dashboard:flex @max-[360px]/dashboard:flex-col @max-[360px]/dashboard:items-center @max-[360px]/dashboard:gap-1.5">
-            <p className="body-xs-bold mb-2.5 truncate @max-[360px]/dashboard:mb-0">
-              <span className="@max-[360px]/dashboard:hidden">Add your files</span>
-              <span className="hidden @max-[360px]/dashboard:inline">Files</span>
-            </p>
-            <p className="body-xs-regular text-2xs @max-[360px]/dashboard:hidden">
-              Supported formats:{" "}
-              {ExtensionOptions.map((c) => `${c.toLocaleUpperCase()}`).join(", ")}.
-            </p>
-            <div className="mt-2.5 border dark:border-dark-800 border-light-300 rounded p-2.5 border-dashed dark:text-dark-50 @max-[360px]/dashboard:mt-0 @max-[360px]/dashboard:border-0 @max-[360px]/dashboard:p-0">
-              <div className="flex items-center justify-center flex-col gap-2.5">
-                <Icon
-                  id="download-icon"
-                  className="size-5 @max-[360px]/dashboard:hidden"
-                />
-                <p className="body-xs-regular @max-[360px]/dashboard:hidden">
-                  <span className="font-bold">Drag and Drop</span> file(s) here or
-                  anywhere inside the dashboard area
-                </p>
-                <p className="body-xs-regular @max-[360px]/dashboard:hidden">or</p>
-                <Button
-                  size="xs"
-                  variant="outlined"
-                  onClick={() => {
-                    const input = document.getElementById("dashboard-file-upload");
-                    input?.click();
-                  }}
-                >
-                  Browse files
-                </Button>
-                <p className="body-xs-regular text-2xs dark:text-dark-100 @max-[360px]/dashboard:hidden">
-                  File size limit: 25MB
-                </p>
+          {mayUpload && (
+            <div className="border dark:border-dark-800 border-light-300 p-2.5 rounded col-span-2 @max-[360px]/dashboard:flex @max-[360px]/dashboard:flex-col @max-[360px]/dashboard:items-center @max-[360px]/dashboard:gap-1.5">
+              <p className="body-xs-bold mb-2.5 truncate @max-[360px]/dashboard:mb-0">
+                <span className="@max-[360px]/dashboard:hidden">Add your files</span>
+                <span className="hidden @max-[360px]/dashboard:inline">Files</span>
+              </p>
+              <p className="body-xs-regular text-2xs @max-[360px]/dashboard:hidden">
+                Supported formats:{" "}
+                {ExtensionOptions.map((c) => `${c.toLocaleUpperCase()}`).join(", ")}.
+              </p>
+              <div className="mt-2.5 border dark:border-dark-800 border-light-300 rounded p-2.5 border-dashed dark:text-dark-50 @max-[360px]/dashboard:mt-0 @max-[360px]/dashboard:border-0 @max-[360px]/dashboard:p-0">
+                <div className="flex items-center justify-center flex-col gap-2.5">
+                  <Icon
+                    id="download-icon"
+                    className="size-5 @max-[360px]/dashboard:hidden"
+                  />
+                  <p className="body-xs-regular @max-[360px]/dashboard:hidden">
+                    <span className="font-bold">Drag and Drop</span> file(s) here or
+                    anywhere inside the dashboard area
+                  </p>
+                  <p className="body-xs-regular @max-[360px]/dashboard:hidden">or</p>
+                  <Button
+                    size="xs"
+                    variant="outlined"
+                    onClick={() => {
+                      const input = document.getElementById("dashboard-file-upload");
+                      input?.click();
+                    }}
+                  >
+                    Browse files
+                  </Button>
+                  <p className="body-xs-regular text-2xs dark:text-dark-100 @max-[360px]/dashboard:hidden">
+                    File size limit: 25MB
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

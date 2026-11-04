@@ -51,7 +51,7 @@ async def write_to_file(local_file: BinaryIO, local_file_path: Path) -> None:
 class LocalStorage(StorageAbstract):
     @staticmethod
     async def create_presigned_url(bucket_name: str, object_name: str, expiration: int = 3600) -> None | str:
-        base_url = f"{settings.SELFURL}/pro/files/presigned"
+        base_url = f"{settings.SELFURL}/app/files/presigned"
 
         extension = object_name.rsplit(".", maxsplit=1)[-1]
         new_object_name = f"{uuid4()}.{extension}"

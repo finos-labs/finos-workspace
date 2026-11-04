@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type CreateWidgetMetadataDialogState,
+  copilotSchema,
   getReachableArtifacts,
   useCopilotStore,
 } from "~/lib/state/copilot";
+import { malformed } from "../../mocks";
 
 describe("getReachableArtifacts", () => {
   it("should return empty array when no messages are provided", () => {
@@ -122,8 +124,7 @@ describe("getReachableArtifacts", () => {
       undefined,
     ];
 
-    // @ts-ignore - Intentionally testing with invalid data
-    const result = getReachableArtifacts(messages, artifacts);
+    const result = getReachableArtifacts(malformed(messages), malformed(artifacts));
     expect(result).toHaveLength(1);
     expect(result[0].uuid).toBe("artifact-1");
   });
@@ -131,7 +132,6 @@ describe("getReachableArtifacts", () => {
 
 describe("createWidgetMetadataDialog state", () => {
   beforeEach(() => {
-    // Reset dialog state before each test
     useCopilotStore.setState({ createWidgetMetadataDialog: null });
   });
 
@@ -183,7 +183,6 @@ describe("createWidgetMetadataDialog state", () => {
   });
 
   it("should close dialog by setting state to null", () => {
-    // First open the dialog
     useCopilotStore.getState().setCreateWidgetMetadataDialog({
       mode: "create",
       initialValues: { name: "Test" },
@@ -192,21 +191,18 @@ describe("createWidgetMetadataDialog state", () => {
 
     expect(useCopilotStore.getState().createWidgetMetadataDialog).not.toBeNull();
 
-    // Close the dialog
     useCopilotStore.getState().closeCreateWidgetMetadataDialog();
 
     expect(useCopilotStore.getState().createWidgetMetadataDialog).toBeNull();
   });
 
   it("should allow updating dialog state", () => {
-    // Set initial state
     useCopilotStore.getState().setCreateWidgetMetadataDialog({
       mode: "create",
       initialValues: { name: "Initial" },
       pendingParams: {},
     });
 
-    // Update to different state
     useCopilotStore.getState().setCreateWidgetMetadataDialog({
       mode: "update",
       initialValues: { name: "Updated" },
@@ -227,7 +223,7 @@ describe("createWidgetMetadataDialog state", () => {
         description: "Full Description",
         category: "Stocks",
         subCategory: "US Markets",
-        source: "OpenBB",
+        source: "Workspace",
       },
       pendingParams: {},
     };
@@ -240,7 +236,75 @@ describe("createWidgetMetadataDialog state", () => {
       description: "Full Description",
       category: "Stocks",
       subCategory: "US Markets",
-      source: "OpenBB",
+      source: "Workspace",
+    });
+  });
+});
+
+describe("copilotSchema", () => {
+  it("has no headers of its own for an agent: they belong to the holder that the user fills in", () => {
+    const parsed = copilotSchema.parse({
+      id: "agent",
+      name: "Agent",
+      description: "An agent",
+      endpoints: { query: "https://agent.example.test/query" },
+      headers: { Authorization: "Bearer secret" },
+    });
+
+    expect(parsed).not.toHaveProperty("headers");
+  });
+
+  describe("the flags hasStreaming, hasFunctionCalling and hasDocuments", () => {
+    const parseAgent = (extra: Record<string, unknown>) =>
+      copilotSchema.parse({
+        id: "agent",
+        name: "Agent",
+        description: "An agent",
+        endpoints: { query: "https://agent.example.test/query" },
+        ...extra,
+      });
+
+    it.each([
+      true,
+      false,
+    ])("sets the feature file-upload from hasDocuments: %s", (flag) => {
+      expect(parseAgent({ hasDocuments: flag }).features).toEqual({
+        "file-upload": flag,
+      });
+    });
+
+    it.each([
+      true,
+      false,
+    ])("sets the feature streaming from hasStreaming: %s", (flag) => {
+      expect(parseAgent({ hasStreaming: flag }).features).toEqual({ streaming: flag });
+    });
+
+    it.each([
+      true,
+      false,
+    ])("sets the three widget features from hasFunctionCalling: %s", (flag) => {
+      expect(parseAgent({ hasFunctionCalling: flag }).features).toEqual({
+        "widget-dashboard-select": flag,
+        "widget-dashboard-search": flag,
+        "widget-global-search": flag,
+      });
+    });
+
+    it("replaces the entry of the same feature and keeps the other features", () => {
+      const parsed = parseAgent({
+        hasDocuments: true,
+        features: { "file-upload": false, "mcp-tools": true },
+      });
+
+      expect(parsed.features).toEqual({ "file-upload": true, "mcp-tools": true });
+    });
+
+    it("leaves the features alone when no flag is set", () => {
+      expect(parseAgent({}).features).toBeUndefined();
+      expect(parseAgent({ features: { "file-upload": true } }).features).toEqual({
+        "file-upload": true,
+      });
     });
   });
 });

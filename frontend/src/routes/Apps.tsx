@@ -3,11 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import Fuse from "fuse.js";
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useDebouncedCallback } from "use-debounce";
 import { useLocalStorage } from "usehooks-ts";
-import { deleteWidgetMetadata, getApiSources, syncUserApps } from "~/api/auth.api";
+import { getApiSources, syncUserApps } from "~/api/auth.api";
 import AppsEmptyState from "~/components/Apps/AppsEmptyState";
 import {
   isAllBackendsSelected,
@@ -21,8 +21,6 @@ import {
   createAppsFuseOptions,
   tokenizeWords,
 } from "~/components/Apps/fuseSearch";
-import { ListedAppsTab } from "~/components/Apps/ListedAppsTab";
-import { RateAppDialog } from "~/components/Apps/RateAppDialog";
 import { deleteSourceWidgets } from "~/components/DataConnectors/common/helpers";
 import { Button } from "~/components/ds/atoms/Button";
 import { Checkbox } from "~/components/ds/atoms/Checkbox";
@@ -33,7 +31,6 @@ import {
   PopoverTrigger,
 } from "~/components/ds/atoms/Popover";
 import { Select, SelectTriggerVariants } from "~/components/ds/atoms/Select";
-import { Tag } from "~/components/ds/atoms/Tag";
 import { ConfirmDialog } from "~/components/ds/dialogs/ConfirmDialog";
 import SearchResultsNotFound from "~/components/General/SearchResultsNotFound";
 import Icon from "~/components/Icon";
@@ -46,39 +43,19 @@ import type {
 } from "~/components/LayoutAuth/AppCard/types";
 import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout";
 import { TabPageFilterGroup, TabPageSearchInput } from "~/components/shared/TabPage";
-import Tooltip from "~/components/Tooltip";
 import { type UnifiedTemplate, useAllTemplates } from "~/hooks/useAllTemplates";
 
 import { useSharedTemplates } from "~/hooks/useSharedTemplates";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { inSnowflakeNativeApp } from "~/lib/constants";
-import { isLiteEnvironment, isOnPremDeployment } from "~/lib/onPremFeatureFlags";
-import { getConfig } from "~/lib/runtimeConfig";
-import {
-  useShallowBackendConnectorStore,
-  type WidgetMetadataItem,
-} from "~/lib/state/backendConnector";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
-import { useShallowThemeStore } from "~/lib/state/theme";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
+import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowUserAppsStore } from "~/lib/state/userApps";
 import { cn } from "~/lib/utils";
-
-const BETA_TAG = <Tag color="dark-blue">Beta</Tag>;
-const SHOW_MARKETPLACE =
-  getConfig().ui.showMarketplace &&
-  !inSnowflakeNativeApp &&
-  (isLiteEnvironment() || !isOnPremDeployment());
-
-const TABS = [
-  { label: "My Apps", id: "my-apps" },
-  ...(SHOW_MARKETPLACE ? [{ label: "Apps Marketplace", id: "apps-marketplace" }] : []),
-];
 
 const FILTER_OPTIONS: FilterOption[] = [
   { label: "All Apps", value: "all" },
   { label: "My Apps", value: "user" },
   { label: "Shared", value: "shared" },
-  { label: "Subscribed", value: "listed" },
 ];
 
 const sortOptions: SortOption[] = [
@@ -89,11 +66,9 @@ const sortOptions: SortOption[] = [
 ];
 
 const typeOrder: Record<string, number> = {
-  listed: 0,
-  shared: 1,
-  generated: 2,
-  user: 3,
-  openbb: 4,
+  shared: 0,
+  generated: 1,
+  user: 2,
 };
 
 const FUSE_KEYS: AppsFuseKey<UnifiedTemplate>[] = [
@@ -109,23 +84,12 @@ const FUSE_KEYS: AppsFuseKey<UnifiedTemplate>[] = [
 const fuseOptions = createAppsFuseOptions(FUSE_KEYS);
 
 export default function AppsPage() {
-  const { appSlug } = useParams<{ appSlug?: string }>();
-  const [searchParams] = useSearchParams();
-
-  // Marketplace deep-link target: either the legacy /app/marketplace/:appSlug
-  // path, or a shared ?tab=apps-marketplace&app=<slug> link. Scoping the query
-  // slug by tab keeps a future ?tab=my-apps&app=<slug> from opening this modal.
-  const marketplaceSlug =
-    appSlug ??
-    (searchParams.get("tab") === "apps-marketplace"
-      ? (searchParams.get("app") ?? undefined)
-      : undefined);
-
+  const mayAddConnections = useShallowAccessStore((s) => canAddConnections(s.access));
   return (
     <SettingsLayout
       title="Apps"
       description={
-        inSnowflakeNativeApp ? undefined : (
+        mayAddConnections && (
           <>
             Manage your Apps in the{" "}
             <Link
@@ -138,11 +102,10 @@ export default function AppsPage() {
           </>
         )
       }
-      tabs={TABS}
-      defaultTab={SHOW_MARKETPLACE && appSlug ? "apps-marketplace" : "my-apps"}
+      tabs={[]}
+      defaultTab="my-apps"
     >
       <MyAppsTab />
-      {SHOW_MARKETPLACE && <ListedAppsTab appSlug={marketplaceSlug} />}
     </SettingsLayout>
   );
 }
@@ -154,11 +117,7 @@ function MyAppsTab() {
   const inputRef = useRef<HTMLInputElement>(null);
   const backendInputRef = useRef<HTMLInputElement>(null);
 
-  // Versioned key: pre-#2012 builds persisted `selectedBackends: []` to mean
-  // "All Backends", but the tri-state filter now reads `[]` as "No Backends".
-  // Bumping the key drops that incompatible legacy value so returning users get
-  // the "all" default instead of an empty page.
-  const [options, setOptions] = useLocalStorage<AppsOptions>("apps-options-v2", {
+  const [options, setOptions] = useLocalStorage<AppsOptions>("apps-options", {
     filterBy: "all",
     sortBy: "newest",
     selectedBackends: null,
@@ -171,7 +130,6 @@ function MyAppsTab() {
     filterOptions: FILTER_OPTIONS,
     showToast: false,
     deleteConfirm: null,
-    rateApp: null,
   }));
 
   const handleSetOptions = useCallback(
@@ -187,24 +145,6 @@ function MyAppsTab() {
     apiSources: state.apiSources,
     updateApiSources: state.updateApiSources,
   }));
-
-  const { setOpenDataPlatformModalOpen } = useShallowThemeStore((state) => ({
-    setOpenDataPlatformModalOpen: state.setOpenDataPlatformModalOpen,
-  }));
-
-  const isProTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "pro",
-  );
-
-  const openDataPlatformInstallerEnabledFF = getConfig().ui.odpDownloadInstaller;
-
-  const { leftSidebarLogo, name: wlName } = getConfig().whiteLabel;
-  const isWhitelabel =
-    (leftSidebarLogo && leftSidebarLogo !== "") ||
-    (wlName && wlName !== "OpenBB Workspace");
-
-  const openDataPlatformInstallerEnabled =
-    openDataPlatformInstallerEnabledFF && !isWhitelabel && !isProTier;
 
   const { isFetching: isLoadingApiSources, refetch: refetchApiSources } = useQuery({
     queryKey: ["apiSources"],
@@ -223,7 +163,6 @@ function MyAppsTab() {
   });
   const allTemplates = useAllTemplates(isLoadingApiSources);
 
-  // Backend filter options - only show active (connected) backends
   const backendOptions = useMemo(() => {
     return apiSources
       .filter((source) => source.status === "success" || source.status === "rehydrated")
@@ -238,7 +177,6 @@ function MyAppsTab() {
     [backendOptions],
   );
 
-  // Filtered backend options based on search
   const filteredBackendOptions = useMemo(() => {
     if (!state.backendSearch.trim()) return backendOptions;
     const searchLower = state.backendSearch.toLowerCase();
@@ -247,7 +185,6 @@ function MyAppsTab() {
     );
   }, [backendOptions, state.backendSearch]);
 
-  // Handle dropdown open/close - clear search when closing
   const handleBackendDropdownChange = useCallback((backendDropdownOpen: boolean) => {
     dispatch({
       backendDropdownOpen,
@@ -255,7 +192,6 @@ function MyAppsTab() {
     });
   }, []);
 
-  // Pre-select backend from URL param (e.g., from Connections page)
   useEffect(() => {
     if (!backendParam || apiSources.length === 0) return;
     const matchedBackend = apiSources.find(
@@ -272,9 +208,6 @@ function MyAppsTab() {
   const allBackendsSelected = isAllBackendsSelected(selectedBackends, allBackendIds);
   const noneBackendsSelected = isNoneBackendsSelected(selectedBackends, allBackendIds);
 
-  // Clean up selected backends if they no longer exist. If none remain, fall
-  // back to the "all" sentinel rather than the "none" state (the user did not
-  // explicitly clear — their selection was just invalidated).
   useEffect(() => {
     if (selectedBackends === null || selectedBackends.length === 0) return;
     const validBackendIds = new Set(apiSources.map((s) => s.id));
@@ -286,7 +219,6 @@ function MyAppsTab() {
     }
   }, [apiSources, selectedBackends, handleSetOptions]);
 
-  // Backend filter display text
   const backendFilterText = useMemo(() => {
     if (selectedBackends === null) return "All Backends";
     if (selectedBackends.length === 0) return "No Backends";
@@ -311,10 +243,6 @@ function MyAppsTab() {
     [selectedBackends, allBackendIds, handleSetOptions],
   );
 
-  // Toggle the "Select All" checkbox:
-  //   - all-selected (null) -> [] so the user can pick a single backend without
-  //     manually unchecking the rest.
-  //   - none / partial -> null (back to "all").
   const handleSelectAllBackends = useCallback(() => {
     handleSetOptions({ selectedBackends: allBackendsSelected ? [] : null });
   }, [allBackendsSelected, handleSetOptions]);
@@ -358,12 +286,10 @@ function MyAppsTab() {
     return searched
       .filter((template) => {
         const { type } = template;
-        // "My Apps" filter includes "user" and "generated"; "Subscribed Apps" includes "listed" and "openbb"
         const matchesFilter =
           filterBy === "all" ||
           type === filterBy ||
-          (filterBy === "user" && type === "generated") ||
-          (filterBy === "listed" && type === "openbb");
+          (filterBy === "user" && type === "generated");
         if (!matchesFilter) return false;
 
         if (selectedBackends !== null) {
@@ -542,20 +468,6 @@ function MyAppsTab() {
           </TabPageFilterGroup>
         </div>
         <div className="flex items-center gap-2.5">
-          {openDataPlatformInstallerEnabled && (
-            <Tooltip message="Install Open Data Platform">
-              <Button
-                className="h-8 w-8"
-                variant="outlined"
-                onClick={() => setOpenDataPlatformModalOpen(true)}
-              >
-                <Icon
-                  id="data-connectors-icon"
-                  className="w-4 min-w-4 h-4 min-h-4 dark:text-light-100"
-                />
-              </Button>
-            </Tooltip>
-          )}
           <Button
             className="h-8 w-8"
             variant="secondary"
@@ -588,19 +500,7 @@ function MyAppsTab() {
                   ? "Try searching for a different app."
                   : undefined
             }
-          >
-            {openDataPlatformInstallerEnabled && (
-              <div className="flex items-center gap-2.5 mt-4">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setOpenDataPlatformModalOpen(true)}
-                >
-                  Download Installer
-                </Button>
-              </div>
-            )}
-          </SearchResultsNotFound>
+          />
         ) : (
           filteredTemplates.map((template, index) => (
             <AppCard
@@ -616,16 +516,6 @@ function MyAppsTab() {
         <DeleteConfirmDialog
           {...state.deleteConfirm}
           onClose={() => dispatch({ deleteConfirm: null })}
-          onAfterDelete={(app) => dispatch({ rateApp: app })}
-        />
-      )}
-
-      {state.rateApp && (
-        <RateAppDialog
-          app={state.rateApp}
-          isOpen
-          onClose={() => dispatch({ rateApp: null })}
-          context="unsubscribe"
         />
       )}
     </TabsPrimitive.Content>
@@ -634,28 +524,22 @@ function MyAppsTab() {
 
 type DeleteConfirmDialogProps = AppsPageState["deleteConfirm"] & {
   onClose: () => void;
-  onAfterDelete?: (app: { id: string; appName: string }) => void;
 };
 
 const DeleteConfirmDialog = memo((props: DeleteConfirmDialogProps) => {
-  const { template, type, onClose, onAfterDelete } = props;
+  const { template, type, onClose } = props;
 
-  const { source, widgetMetadata, setWidgetMetadata, deleteApiSource } =
-    useShallowBackendConnectorStore((s) => {
-      const { id, vendorApp } = template.source || {};
-      const sourceId = vendorApp?.uuid || id;
+  const { source, deleteApiSource } = useShallowBackendConnectorStore((s) => {
+    const sourceId = template.source?.id;
 
-      return {
-        source: sourceId ? s.getApiSourceById(sourceId) : null,
-        widgetMetadata: s.widgetMetadata,
-        setWidgetMetadata: s.setWidgetMetadata,
-        deleteApiSource: s.deleteApiSource,
-      };
-    });
+    return {
+      source: sourceId ? s.getApiSourceById(sourceId) : null,
+      deleteApiSource: s.deleteApiSource,
+    };
+  });
 
   const [state, dispatch] = useStateReducer({
     isDeleting: false,
-    deleteWidgetsFromStudio: false,
   });
 
   const backendAppsCount = useMemo(() => {
@@ -663,29 +547,11 @@ const DeleteConfirmDialog = memo((props: DeleteConfirmDialogProps) => {
     return source.templates?.length || 0;
   }, [source]);
 
-  const affectedWidgets = useMemo(() => {
-    if (!source) return [];
-    return widgetMetadata.filter(
-      (widget) =>
-        widget.widgetType === "widget_studio" &&
-        widget.widgetConfig.sourceId === source.id &&
-        widget.widgetConfig.sourceName === source.name,
-    );
-  }, [source, widgetMetadata]);
-
   const handleDeleteBackend = useCallback(async () => {
     if (!source) return;
 
     dispatch({ isDeleting: true });
     try {
-      if (state.deleteWidgetsFromStudio) {
-        let lastResult: WidgetMetadataItem[] = [];
-        for (const widget of affectedWidgets) {
-          lastResult = await deleteWidgetMetadata(widget.widgetId);
-        }
-        setWidgetMetadata(lastResult);
-      }
-
       deleteSourceWidgets(source);
       await deleteApiSource(source);
 
@@ -695,29 +561,13 @@ const DeleteConfirmDialog = memo((props: DeleteConfirmDialogProps) => {
           : "Backend deleted successfully",
       );
       onClose?.();
-      if (type === "listedApp" && source.vendorApp) {
-        onAfterDelete?.({
-          id: source.vendorApp.uuid,
-          appName: source.vendorApp.name,
-        });
-      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to delete backend");
     } finally {
       dispatch({ isDeleting: false });
     }
-  }, [
-    source,
-    state.deleteWidgetsFromStudio,
-    affectedWidgets,
-    setWidgetMetadata,
-    deleteApiSource,
-    backendAppsCount,
-    onClose,
-    onAfterDelete,
-    type,
-  ]);
+  }, [source, deleteApiSource, backendAppsCount, onClose]);
 
   return (
     <>
@@ -758,16 +608,15 @@ const DeleteConfirmDialog = memo((props: DeleteConfirmDialogProps) => {
 
       {template.type !== "generated" && source && (
         <ConfirmDialog
-          open={type === "backend" || type === "listedApp"}
+          open={type === "backend"}
           onClose={onClose}
-          title={type === "listedApp" ? "Disconnect from App" : "Delete Backend"}
+          title="Delete Backend"
           description={
             <span className="flex flex-col gap-3">
               <span className="block text-light-600 dark:text-dark-50">
-                Are you sure you want to{" "}
-                {type === "listedApp" ? "disconnect from" : "delete the backend"}{" "}
+                Are you sure you want to delete the backend{" "}
                 <span className="font-medium text-light-900 dark:text-light-100">
-                  {source.vendorApp?.name || source.name}
+                  {source.name}
                 </span>
                 ?
               </span>
@@ -777,8 +626,7 @@ const DeleteConfirmDialog = memo((props: DeleteConfirmDialogProps) => {
                   <span className="font-medium text-light-900 dark:text-light-100">
                     {backendAppsCount} apps
                   </span>{" "}
-                  associated with this{" "}
-                  {type === "listedApp" ? "marketplace listing" : "backend"}.
+                  associated with this backend.
                 </span>
               )}
               <span className="flex flex-col gap-2 text-amber-500 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-md border-[1.5px] border-amber-700 dark:border-amber-700">
@@ -795,42 +643,6 @@ const DeleteConfirmDialog = memo((props: DeleteConfirmDialogProps) => {
                   Widgets already added to dashboards will be disabled. This action
                   cannot be undone.
                 </span>
-
-                {affectedWidgets.length > 0 && (
-                  <span className="block space-y-3">
-                    <span className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={state.deleteWidgetsFromStudio}
-                        onCheckedChange={(deleteWidgetsFromStudio: boolean) =>
-                          dispatch({ deleteWidgetsFromStudio })
-                        }
-                      />
-                      <span className="body-xs-regular text-light-900 dark:text-light-100">
-                        Also delete associated widgets from Widget Studio (
-                        {affectedWidgets.length})
-                      </span>
-                    </span>
-
-                    {state.deleteWidgetsFromStudio && (
-                      <span className="block ml-6 space-y-1">
-                        <span className="block body-xs-regular text-light-600 dark:text-dark-50">
-                          The following widgets will be deleted:
-                        </span>
-                        <span className="block max-h-24 overflow-y-auto space-y-1">
-                          {affectedWidgets.map((widget) => (
-                            <span
-                              key={widget.widgetId}
-                              className="block body-xs-regular text-light-600 dark:text-dark-50 ml-2"
-                            >
-                              •{" "}
-                              {widget.widgetConfig?.name || `Widget ${widget.widgetId}`}
-                            </span>
-                          ))}
-                        </span>
-                      </span>
-                    )}
-                  </span>
-                )}
               </span>
             </span>
           }

@@ -9,13 +9,13 @@ import type { EntityMapItem } from "~/types/entity.type";
 describe("buildEntityNameMap", () => {
   it("maps permission-group uuid to its name", () => {
     const items = [
-      { uuid: "u1", name: "Trial" },
+      { uuid: "u1", name: "User" },
       { uuid: "u2", name: "Administrator" },
     ] as EntityMapItem[];
 
     const map = buildEntityNameMap(items);
 
-    expect(map.get("u1")).toBe("Trial");
+    expect(map.get("u1")).toBe("User");
     expect(map.get("u2")).toBe("Administrator");
     expect(map.get("missing")).toBeUndefined();
   });

@@ -84,20 +84,20 @@ describe("McpCreateTokenDialog", () => {
     render(<McpCreateTokenDialog open onClose={vi.fn()} endpoint={ENDPOINT} />);
 
     expect(
-      screen.getByText("Generate a token to connect your Workspace"),
+      screen.getByText("Generate a token to connect your FINOS Workspace"),
     ).toBeInTheDocument();
   });
 
   it("reveals the secret, the connect snippets and the warning once generated", () => {
     mutationRef.current.data = {
-      token: "obb_mcp_created123_secret",
+      token: "ws_mcp_created123_secret",
       name: "Equity Research",
     };
     render(<McpCreateTokenDialog open onClose={vi.fn()} endpoint={ENDPOINT} />);
 
-    expect(screen.getByDisplayValue("obb_mcp_created123_secret")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("ws_mcp_created123_secret")).toBeInTheDocument();
     const snippets = screen.getByTestId("connect-snippets");
-    expect(snippets).toHaveAttribute("data-token", "obb_mcp_created123_secret");
+    expect(snippets).toHaveAttribute("data-token", "ws_mcp_created123_secret");
     expect(snippets).toHaveAttribute("data-endpoint", ENDPOINT);
     expect(
       screen.getByText(
@@ -118,7 +118,7 @@ describe("McpCreateTokenDialog", () => {
 
   it("wipes the mutation state when the dialog closes, not just on reopen", () => {
     mutationRef.current.data = {
-      token: "obb_mcp_created123_secret",
+      token: "ws_mcp_created123_secret",
       name: "Equity Research",
     };
     const { rerender } = render(
@@ -130,8 +130,6 @@ describe("McpCreateTokenDialog", () => {
       <McpCreateTokenDialog open={false} onClose={vi.fn()} endpoint={ENDPOINT} />,
     );
 
-    // Closing must also reset, so the raw token does not linger in the
-    // mutation cache while the dialog is hidden.
     expect(mutationRef.current.reset).toHaveBeenCalledTimes(2);
   });
 
@@ -141,7 +139,7 @@ describe("McpCreateTokenDialog", () => {
 
     expect(screen.getAllByTestId("icon-mdi-loading").length).toBeGreaterThan(0);
     expect(
-      screen.queryByText("Generate a token to connect your Workspace"),
+      screen.queryByText("Generate a token to connect your FINOS Workspace"),
     ).not.toBeInTheDocument();
   });
 

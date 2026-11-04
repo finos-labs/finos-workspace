@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { useDropzone } from "react-dropzone";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { useDragAndDropFiles } from "~/components/GridLayout.hooks";
+import type { UserType } from "~/lib/state/access";
+import { setAccess } from "../factories";
 
 vi.mock("react-dropzone", () => ({
   useDropzone: vi.fn(),
@@ -69,24 +71,27 @@ vi.mock("~/lib/utils", () => ({
   uuidv4: () => "uuid",
 }));
 
+const tabContext = vi.hoisted(() => ({ isShared: false, locked: false }));
+
 vi.mock("~/lib/contexts/TabContext", () => ({
-  useTabContext: () => ({
-    isShared: false,
-  }),
+  useTabContext: () => tabContext,
 }));
 
 describe("useDragAndDropFiles", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    tabContext.isShared = false;
+    tabContext.locked = false;
     (useDropzone as Mock).mockReturnValue({
       getRootProps: vi.fn(),
       getInputProps: vi.fn(),
       isDragActive: false,
     });
+    setAccess({ user_type: "Developer" });
   });
 
   it("uses the DOCX MIME type in the dashboard dropzone accept config", () => {
-    renderHook(() => useDragAndDropFiles(false));
+    renderHook(() => useDragAndDropFiles());
 
     expect(useDropzone).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -96,6 +101,26 @@ describe("useDragAndDropFiles", () => {
           ],
         }),
       }),
+    );
+  });
+
+  it.each<[UserType, boolean]>([
+    ["Admin", false],
+    ["Developer", false],
+    ["User", true],
+  ])("disables dropping files on the dashboard for %s: %s", (userType, disabled) => {
+    setAccess({ user_type: userType });
+    renderHook(() => useDragAndDropFiles());
+
+    expect(useDropzone).toHaveBeenCalledWith(expect.objectContaining({ disabled }));
+  });
+
+  it("disables dropping files on a locked dashboard", () => {
+    tabContext.locked = true;
+    renderHook(() => useDragAndDropFiles());
+
+    expect(useDropzone).toHaveBeenCalledWith(
+      expect.objectContaining({ disabled: true }),
     );
   });
 });

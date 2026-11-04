@@ -1,23 +1,57 @@
 import { fireEvent, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import HtmlViewer from "~/components/Widgets/custom/HtmlViewer";
+import type { useJsonData } from "~/lib/api";
+import type { Group, Item } from "~/lib/state/app";
 import { mockConfig } from "../../../../mocks/runtimeConfig";
+import { makeItem, makeParamGroup, nthLastCall } from "../../../factories";
 import { renderWidget } from "../WidgetTestWrapper";
 
+type JsonDataResult = ReturnType<typeof useJsonData>;
+
+const jsonData = (
+  result: Partial<
+    Pick<JsonDataResult, "data" | "isLoading" | "error" | "dataUpdatedAt">
+  >,
+): JsonDataResult => result as JsonDataResult;
+
+const rawQueryValue = (options: Parameters<typeof useJsonData>[0]) =>
+  options.request?.ok
+    ? new URL(options.request.request.url).searchParams.get("raw")
+    : null;
+
 const appStoreMock = vi.hoisted(() => ({
-  getWidgetGroups: vi.fn(() => []),
-  getTabById: vi.fn(() => undefined),
+  getWidgetGroups: vi.fn<(tabId: string, widgetId: string | undefined) => Group[]>(
+    () => [],
+  ),
+  getTabById: vi.fn<(id: string) => Item | undefined>(() => undefined),
   updateGroup: vi.fn(),
 }));
 
 const sharedAppStoreMock = vi.hoisted(() => ({
-  getDashboardById: vi.fn(() => undefined),
-  getWidgetGroups: vi.fn(() => []),
+  getDashboardById: vi.fn<(id: string) => Item | undefined>(() => undefined),
+  getWidgetGroups: vi.fn<(tabId: string, widgetId: string | undefined) => Group[]>(
+    () => [],
+  ),
 }));
 
 vi.mock("~/components/DraggableCard", () => ({
-  default: ({ children, loading, error }: any) => (
-    <div data-testid="draggable-card">
+  default: ({
+    children,
+    loading,
+    error,
+    extraNavbarElements,
+    aiData,
+  }: {
+    children?: ReactNode;
+    loading?: boolean;
+    error?: boolean;
+    extraNavbarElements?: ReactNode;
+    aiData?: unknown;
+  }) => (
+    <div data-testid="draggable-card" data-ai={JSON.stringify(aiData ?? null)}>
+      {extraNavbarElements}
       {loading && <span data-testid="loading">Loading...</span>}
       {error && <span data-testid="error">Error</span>}
       {children}
@@ -35,7 +69,7 @@ vi.mock("~/lib/api", () => ({
 }));
 
 vi.mock("~/lib/state/app", () => ({
-  useShallowAppStore: (selector: any) =>
+  useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       getWidgetGroups: appStoreMock.getWidgetGroups,
       getTabById: appStoreMock.getTabById,
@@ -44,14 +78,26 @@ vi.mock("~/lib/state/app", () => ({
 }));
 
 vi.mock("~/lib/state/sharedApp", () => ({
-  useShallowSharedAppStore: (selector: any) =>
+  useShallowSharedAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       getDashboardById: sharedAppStoreMock.getDashboardById,
       getWidgetGroups: sharedAppStoreMock.getWidgetGroups,
     }),
 }));
 
-vi.mock("~/components/General/Table/NavBar/QueryParams", () => ({
+const rowsPluginMock = vi.hoisted(() => ({
+  useRowsPlugin: vi.fn<(rawType: string | undefined) => unknown>(() => null),
+}));
+
+vi.mock("~/plugins/registry", () => ({ useRowsPlugin: rowsPluginMock.useRowsPlugin }));
+
+vi.mock("~/plugins/PluginWidget", () => ({
+  PluginRowsCard: ({ viewName }: { viewName: string }) => (
+    <div data-testid="plugin-rows-card">{viewName}</div>
+  ),
+}));
+
+vi.mock("~/components/WidgetParams/QueryParams", () => ({
   useWidgetParamsPositions: () => ({
     renderRow0Params: null,
     renderBelowNavbarRows: null,
@@ -74,13 +120,14 @@ describe("HtmlViewer Widget", () => {
 describe("HtmlViewer - Loading State", () => {
   it("shows loading state", async () => {
     const { useJsonData } = vi.mocked(await import("~/lib/api"));
-    // @ts-expect-error - ignored for now
-    useJsonData.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      error: null,
-      dataUpdatedAt: Date.now(),
-    });
+    useJsonData.mockReturnValue(
+      jsonData({
+        data: undefined,
+        isLoading: true,
+        error: null,
+        dataUpdatedAt: Date.now(),
+      }),
+    );
 
     renderWidget(<HtmlViewer />, {
       widgetOverrides: {
@@ -99,16 +146,17 @@ describe("HtmlViewer - raw data query", () => {
   beforeEach(async () => {
     const { useJsonData } = vi.mocked(await import("~/lib/api"));
     useJsonData.mockClear();
-    // @ts-expect-error - partial mock
-    useJsonData.mockReturnValue({
-      data: "<div>html</div>",
-      isLoading: false,
-      error: null,
-      dataUpdatedAt: HTML_DATA_UPDATED_AT,
-    });
+    useJsonData.mockReturnValue(
+      jsonData({
+        data: "<div>html</div>",
+        isLoading: false,
+        error: null,
+        dataUpdatedAt: HTML_DATA_UPDATED_AT,
+      }),
+    );
   });
 
-  it("uses a stale raw query so entering raw view refetches the endpoint", async () => {
+  it("asks for raw=true whenever the widget declares raw, not only in the rows view", async () => {
     const { useJsonData } = vi.mocked(await import("~/lib/api"));
 
     renderWidget(<HtmlViewer />, {
@@ -120,14 +168,13 @@ describe("HtmlViewer - raw data query", () => {
       },
     });
 
-    // The second useJsonData call is the raw-data query
-    const [rawOptions, rawQueryOptions] = useJsonData.mock.calls.at(-1) ?? [];
-    expect(rawOptions.params.raw).toBe(true);
+    const [rawOptions, rawQueryOptions] = nthLastCall(useJsonData);
+    expect(rawQueryValue(rawOptions)).toBe("true");
+    expect(rawQueryOptions?.enabled).toBe(true);
     expect(rawOptions.queryKey).toBeUndefined();
-    expect(rawQueryOptions.staleTime).toBe(0);
   });
 
-  it("does not share the html run-button query key with the raw query", async () => {
+  it("keeps the run-button keys of the html and the rows apart", async () => {
     const { useJsonData } = vi.mocked(await import("~/lib/api"));
 
     renderWidget(<HtmlViewer />, {
@@ -140,16 +187,149 @@ describe("HtmlViewer - raw data query", () => {
       },
     });
 
-    const htmlOptions = useJsonData.mock.calls.at(-2)?.[0];
-    const rawOptions = useJsonData.mock.calls.at(-1)?.[0];
-    expect(htmlOptions.queryKey).toBeDefined();
-    expect(rawOptions.queryKey).toBeUndefined();
+    const htmlOptions = nthLastCall(useJsonData, 2)[0];
+    const rawOptions = nthLastCall(useJsonData)[0];
+    expect(htmlOptions.queryKey?.[0]).toBe("html");
+    expect(rawOptions.queryKey?.[0]).toBe("raw");
+    expect(rawOptions.queryKey).toContain(
+      "https://api.example.com/html?theme=dark&raw=true",
+    );
+  });
+
+  it("reads the rows at data.rawDataKey, else results, else the whole response", async () => {
+    const { useJsonData } = vi.mocked(await import("~/lib/api"));
+    const response = { results: { chart: "<p>", records: [{ month: "Jan", a: 43 }] } };
+    const rowsOf = async (rawDataKey?: string) => {
+      useJsonData.mockClear();
+      renderWidget(<HtmlViewer />, {
+        widgetOverrides: {
+          id: `html-raw-key-${rawDataKey ?? "none"}`,
+          raw: true,
+          data: { rawDataKey },
+          endpoint: { url: "https://api.example.com/html" },
+          storage: { params: {} },
+        },
+      });
+      const [rawOptions] = nthLastCall(useJsonData);
+      const resolve = vi.fn();
+      await rawOptions.responseCb?.(Response.json(response), resolve, vi.fn());
+      return resolve.mock.calls[0][0];
+    };
+    expect(await rowsOf("results.records")).toEqual([{ month: "Jan", a: 43 }]);
+    expect(await rowsOf()).toEqual(response.results);
+  });
+
+  it("gives the AI Agent the rows whenever raw is set", async () => {
+    const { useJsonData } = vi.mocked(await import("~/lib/api"));
+    const rows = [{ month: "Jan", a: 43 }];
+    useJsonData.mockImplementation((options) =>
+      jsonData({
+        data: rawQueryValue(options) === "true" ? rows : "<div>html</div>",
+        isLoading: false,
+        error: null,
+        dataUpdatedAt: HTML_DATA_UPDATED_AT,
+      }),
+    );
+
+    renderWidget(<HtmlViewer />, {
+      widgetOverrides: {
+        id: "html-raw-ai",
+        raw: true,
+        endpoint: { url: "https://api.example.com/html" },
+        storage: { params: {} },
+      },
+    });
+
+    expect(JSON.parse(screen.getByTestId("draggable-card").dataset.ai ?? "")).toEqual(
+      rows,
+    );
+  });
+
+  it("shows the rows in a table in the rows view, not the HTML", async () => {
+    const { useJsonData } = vi.mocked(await import("~/lib/api"));
+    useJsonData.mockImplementation((options) =>
+      jsonData({
+        data:
+          rawQueryValue(options) === "true"
+            ? [{ month: "Jan", a: 43 }]
+            : "<div>html</div>",
+        isLoading: false,
+        error: null,
+        dataUpdatedAt: HTML_DATA_UPDATED_AT,
+      }),
+    );
+
+    renderWidget(<HtmlViewer />, {
+      widgetOverrides: {
+        id: "html-raw-view",
+        name: "Raw Widget",
+        raw: true,
+        endpoint: { url: "https://api.example.com/html" },
+        storage: { params: {}, rawDataView: true },
+      },
+    });
+
+    const table = screen.getByTestId("raw-rows-table");
+    expect(table).toHaveTextContent("month");
+    expect(table).toHaveTextContent("Jan");
+    expect(screen.queryByTitle("Raw Widget")).not.toBeInTheDocument();
+  });
+
+  it("shows the rows with the plugin of data.rawType when the user may use it", async () => {
+    rowsPluginMock.useRowsPlugin.mockReturnValue({ vizType: "table_x" });
+
+    renderWidget(<HtmlViewer />, {
+      widgetOverrides: {
+        id: "html-raw-type",
+        raw: true,
+        data: { rawType: "table_x" },
+        endpoint: { url: "https://api.example.com/html" },
+        storage: { params: {}, rawDataView: true },
+      },
+    });
+
+    expect(rowsPluginMock.useRowsPlugin).toHaveBeenLastCalledWith("table_x");
+    expect(await screen.findByTestId("plugin-rows-card")).toHaveTextContent("HTML");
+    rowsPluginMock.useRowsPlugin.mockReturnValue(null);
+  });
+
+  it("toggles the raw data view from the navbar button", () => {
+    const updateWidget = vi.fn();
+
+    renderWidget(<HtmlViewer />, {
+      updateWidget,
+      widgetOverrides: {
+        id: "html-raw-toggle",
+        raw: true,
+        endpoint: { url: "https://api.example.com/html" },
+        storage: { params: {} },
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch to raw data view" }));
+
+    const update = updateWidget.mock.calls.at(-1)?.[0];
+    expect(update({ storage: {} }).storage.rawDataView).toBe(true);
+  });
+
+  it("has no raw data toggle when the widget does not declare raw", () => {
+    renderWidget(<HtmlViewer />, {
+      widgetOverrides: {
+        id: "html-no-raw",
+        endpoint: { url: "https://api.example.com/html" },
+        storage: { params: {} },
+      },
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Switch to raw data view" }),
+    ).not.toBeInTheDocument();
   });
 });
 
 describe("HtmlViewer - iframe params bridge", () => {
   const BRIDGE_UUID = "11111111-1111-1111-1111-111111111111";
-  const FULL_TOKEN = `openbb-html-${BRIDGE_UUID}`;
+  const FULL_TOKEN = `html-${BRIDGE_UUID}`;
 
   beforeAll(() => {
     mockConfig.data.allowHtmlJsExecution = true;
@@ -164,13 +344,14 @@ describe("HtmlViewer - iframe params bridge", () => {
   beforeEach(async () => {
     const { useJsonData } = vi.mocked(await import("~/lib/api"));
     useJsonData.mockClear();
-    // @ts-expect-error - partial mock
-    useJsonData.mockReturnValue({
-      data: "<html><body><p>hi</p></body></html>",
-      isLoading: false,
-      error: null,
-      dataUpdatedAt: Date.now(),
-    });
+    useJsonData.mockReturnValue(
+      jsonData({
+        data: "<html><body><p>hi</p></body></html>",
+        isLoading: false,
+        error: null,
+        dataUpdatedAt: Date.now(),
+      }),
+    );
     appStoreMock.getWidgetGroups.mockReturnValue([]);
     appStoreMock.getTabById.mockReturnValue(undefined);
     appStoreMock.updateGroup.mockReset();
@@ -191,12 +372,9 @@ describe("HtmlViewer - iframe params bridge", () => {
       },
     });
 
-    const [options] = useJsonData.mock.calls.at(-1) ?? [];
+    const [options] = nthLastCall(useJsonData, 2);
     expect(options.queryKey).toContain(
-      JSON.stringify({
-        use_categories: "correctional_facilities",
-        theme: "dark",
-      }),
+      "https://api.example.com/html?use_categories=correctional_facilities&theme=dark",
     );
   });
 
@@ -215,9 +393,9 @@ describe("HtmlViewer - iframe params bridge", () => {
     window.dispatchEvent(
       new MessageEvent("message", {
         data: {
-          type: "openbb:widget-params:update",
+          type: "workspace:widget-params:update",
           params: { event_ticker: "KXSB-27", limit: 40 },
-          openbbWidgetParamBridgeToken: FULL_TOKEN,
+          widgetParamBridgeToken: FULL_TOKEN,
         },
       }),
     );
@@ -249,10 +427,10 @@ describe("HtmlViewer - iframe params bridge", () => {
     window.dispatchEvent(
       new MessageEvent("message", {
         data: {
-          type: "openbb:params:update",
+          type: "workspace:params:update",
           paramName: "ticker",
           value: "AAPL",
-          openbbWidgetParamBridgeToken: FULL_TOKEN,
+          widgetParamBridgeToken: FULL_TOKEN,
         },
       }),
     );
@@ -264,51 +442,27 @@ describe("HtmlViewer - iframe params bridge", () => {
     window.removeEventListener("updateQueryParams-html-evt", handler as EventListener);
   });
 
-  it("handles params dispatched as same-origin iframe custom events", () => {
-    const updateWidget = vi.fn();
+  it("runs the widget's scripts in an opaque origin, apart from the page", () => {
     renderWidget(<HtmlViewer />, {
-      updateWidget,
       widgetOverrides: {
-        id: "html-direct",
+        id: "html-sandbox",
         endpoint: { url: "https://api.example.com/html" },
-        storage: { params: {} },
-        params: [{ paramName: "sectors" }],
       },
     });
 
-    const iframe = document.querySelector("iframe");
-    expect(iframe?.contentWindow).toBeTruthy();
-
-    fireEvent.load(iframe as HTMLIFrameElement);
-    iframe?.contentWindow?.dispatchEvent(
-      new CustomEvent("openbb:widget-params:update", {
-        detail: {
-          type: "openbb:widget-params:update",
-          params: { sectors: "utility" },
-        },
-      }),
-    );
-
-    expect(updateWidget).toHaveBeenCalledTimes(1);
-    const [updater] = updateWidget.mock.calls.at(-1) ?? [];
-    const next = updater({ storage: { params: {} } });
-    expect(next.storage.params).toEqual({ sectors: "utility" });
+    const sandbox = document.querySelector("iframe")?.getAttribute("sandbox") ?? "";
+    expect(sandbox.split(" ")).toContain("allow-scripts");
+    expect(sandbox.split(" ")).not.toContain("allow-same-origin");
   });
 
   it("updates matching dashboard param groups from nested widget params", () => {
     appStoreMock.getWidgetGroups.mockReturnValue([
-      {
-        id: "sectors-group",
-        type: "param",
-        groupById: "sectors",
-        value: "",
-      },
-      {
+      makeParamGroup({ id: "sectors-group", groupById: "sectors", value: "" }),
+      makeParamGroup({
         id: "proceeds-group",
-        type: "param",
         groupById: "uses_of_proceeds",
         value: "",
-      },
+      }),
     ]);
 
     renderWidget(<HtmlViewer />, {
@@ -324,9 +478,9 @@ describe("HtmlViewer - iframe params bridge", () => {
     window.dispatchEvent(
       new MessageEvent("message", {
         data: {
-          type: "openbb:widget-params:update",
+          type: "workspace:widget-params:update",
           params: { sectors: "education,government" },
-          openbbWidgetParamBridgeToken: FULL_TOKEN,
+          widgetParamBridgeToken: FULL_TOKEN,
         },
       }),
     );
@@ -335,34 +489,30 @@ describe("HtmlViewer - iframe params bridge", () => {
     expect(appStoreMock.updateGroup).toHaveBeenCalledWith(
       "market-dashboard",
       "sectors-group",
-      {
+      makeParamGroup({
         id: "sectors-group",
-        type: "param",
         groupById: "sectors",
         value: "education,government",
-      },
+      }),
     );
   });
 
   it("updates matching dashboard param groups even when the html widget is not linked", () => {
-    appStoreMock.getTabById.mockReturnValue({
-      data: {
-        groups: [
-          {
-            id: "proceeds-group",
-            type: "param",
-            groupById: "uses_of_proceeds",
-            value: "",
-          },
-          {
-            id: "unrelated-group",
-            type: "param",
-            groupById: "states",
-            value: "",
-          },
-        ],
-      },
-    });
+    appStoreMock.getTabById.mockReturnValue(
+      makeItem({
+        index: "market-dashboard",
+        data: {
+          groups: [
+            makeParamGroup({
+              id: "proceeds-group",
+              groupById: "uses_of_proceeds",
+              value: "",
+            }),
+            makeParamGroup({ id: "unrelated-group", groupById: "states", value: "" }),
+          ],
+        },
+      }),
+    );
 
     renderWidget(<HtmlViewer />, {
       activeDashboardId: "market-dashboard",
@@ -377,9 +527,9 @@ describe("HtmlViewer - iframe params bridge", () => {
     window.dispatchEvent(
       new MessageEvent("message", {
         data: {
-          type: "openbb:widget-params:update",
+          type: "workspace:widget-params:update",
           params: { uses_of_proceeds: "correctional_facilities" },
-          openbbWidgetParamBridgeToken: FULL_TOKEN,
+          widgetParamBridgeToken: FULL_TOKEN,
         },
       }),
     );
@@ -388,34 +538,30 @@ describe("HtmlViewer - iframe params bridge", () => {
     expect(appStoreMock.updateGroup).toHaveBeenCalledWith(
       "market-dashboard",
       "proceeds-group",
-      {
+      makeParamGroup({
         id: "proceeds-group",
-        type: "param",
         groupById: "uses_of_proceeds",
         value: "correctional_facilities",
-      },
+      }),
     );
   });
 
   it("updates groups using stored params plus the iframe changed param", () => {
-    appStoreMock.getTabById.mockReturnValue({
-      data: {
-        groups: [
-          {
-            id: "sectors-group",
-            type: "param",
-            groupById: "sectors",
-            value: "",
-          },
-          {
-            id: "proceeds-group",
-            type: "param",
-            groupById: "uses_of_proceeds",
-            value: "",
-          },
-        ],
-      },
-    });
+    appStoreMock.getTabById.mockReturnValue(
+      makeItem({
+        index: "market-dashboard",
+        data: {
+          groups: [
+            makeParamGroup({ id: "sectors-group", groupById: "sectors", value: "" }),
+            makeParamGroup({
+              id: "proceeds-group",
+              groupById: "uses_of_proceeds",
+              value: "",
+            }),
+          ],
+        },
+      }),
+    );
 
     renderWidget(<HtmlViewer />, {
       activeDashboardId: "market-dashboard",
@@ -435,9 +581,9 @@ describe("HtmlViewer - iframe params bridge", () => {
     window.dispatchEvent(
       new MessageEvent("message", {
         data: {
-          type: "openbb:widget-params:update",
+          type: "workspace:widget-params:update",
           params: { uses_of_proceeds: "police" },
-          openbbWidgetParamBridgeToken: FULL_TOKEN,
+          widgetParamBridgeToken: FULL_TOKEN,
         },
       }),
     );
@@ -446,22 +592,20 @@ describe("HtmlViewer - iframe params bridge", () => {
     expect(appStoreMock.updateGroup).toHaveBeenCalledWith(
       "market-dashboard",
       "sectors-group",
-      {
+      makeParamGroup({
         id: "sectors-group",
-        type: "param",
         groupById: "sectors",
         value: "education,government",
-      },
+      }),
     );
     expect(appStoreMock.updateGroup).toHaveBeenCalledWith(
       "market-dashboard",
       "proceeds-group",
-      {
+      makeParamGroup({
         id: "proceeds-group",
-        type: "param",
         groupById: "uses_of_proceeds",
         value: "police",
-      },
+      }),
     );
   });
 
@@ -480,9 +624,9 @@ describe("HtmlViewer - iframe params bridge", () => {
     window.dispatchEvent(
       new MessageEvent("message", {
         data: {
-          type: "openbb:widget-params:update",
+          type: "workspace:widget-params:update",
           params: { ticker: "AAPL", secret_field: "leaked" },
-          openbbWidgetParamBridgeToken: FULL_TOKEN,
+          widgetParamBridgeToken: FULL_TOKEN,
         },
       }),
     );
@@ -508,11 +652,9 @@ describe("HtmlViewer - iframe params bridge", () => {
 
     window.dispatchEvent(
       new MessageEvent("message", {
-        // Source is this top-level window, not the iframe's contentWindow,
-        // and no bridge token is included.
         source: window,
         data: {
-          type: "openbb:widget-params:update",
+          type: "workspace:widget-params:update",
           params: { ticker: "AAPL" },
         },
       }),
@@ -536,11 +678,11 @@ describe("HtmlViewer - iframe params bridge", () => {
     window.dispatchEvent(
       new MessageEvent("message", {
         data: {
-          type: "openbb-data",
+          type: "workspace-data",
           widgetId: "html-4",
           dataType: "table",
           data: [],
-          openbbWidgetParamBridgeToken: FULL_TOKEN,
+          widgetParamBridgeToken: FULL_TOKEN,
         },
       }),
     );
@@ -562,6 +704,6 @@ describe("HtmlViewer - iframe params bridge", () => {
     const srcdoc = iframe?.getAttribute("srcdoc") ?? "";
     expect(srcdoc).toMatch(/<body><script>/i);
     expect(srcdoc).toContain(BRIDGE_UUID);
-    expect(srcdoc).toContain("openbb:widget-params:update");
+    expect(srcdoc).toContain("workspace:widget-params:update");
   });
 });

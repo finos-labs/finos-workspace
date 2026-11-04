@@ -1,0 +1,59 @@
+import isEqual from "lodash.isequal";
+import { useShallow } from "zustand/react/shallow";
+import { createWithEqualityFn } from "zustand/traditional";
+import { shallow } from "zustand/vanilla/shallow";
+import type { Selector } from "./app";
+
+export type UserType = "Admin" | "Developer" | "User";
+
+export type SharingLevel = "none" | "receive" | "share";
+
+export type UserAccess = {
+  user_type: UserType | null;
+  sharing: SharingLevel;
+};
+
+export type Usage = {
+  number_copilot_calls_day_count: number;
+  number_copilot_tokens_day_count: number;
+  total_file_upload_size_gb_count: number;
+  copilot_calls_limit: number | null;
+  copilot_tokens_limit: number | null;
+  file_upload_size_limit: number | null;
+};
+
+export function canAddConnections(access: UserAccess | null): boolean {
+  return access?.user_type === "Admin" || access?.user_type === "Developer";
+}
+
+export function canShare(access: UserAccess | null): boolean {
+  return access?.sharing === "share";
+}
+
+export function canReceiveShares(access: UserAccess | null): boolean {
+  return access?.sharing === "receive" || access?.sharing === "share";
+}
+
+type AccessState = {
+  access: UserAccess | null;
+  setAccess: (access: UserAccess) => void;
+  usage: Usage | null;
+  setUsage: (usage: Partial<Usage>) => void;
+  setAccessAndUsage: (access: UserAccess, usage: Usage | null) => void;
+};
+
+export const useAccessStore = createWithEqualityFn<AccessState>()(
+  (set) => ({
+    access: null,
+    setAccess: (access) => set({ access }),
+    usage: null,
+    setUsage: (usage) =>
+      set((state) => ({ usage: { ...state.usage, ...usage } as Usage })),
+    setAccessAndUsage: (access, usage) => set({ access, usage }),
+  }),
+  shallow,
+);
+
+export function useShallowAccessStore<T>(selector: Selector<AccessState, T>): T {
+  return useAccessStore(useShallow(selector), (prev, next) => isEqual(prev, next));
+}

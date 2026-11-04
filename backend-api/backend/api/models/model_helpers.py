@@ -1,36 +1,23 @@
-"""Model helpers"""
-
 import gzip
 import json
 from datetime import UTC, datetime  # type: ignore[attr-defined]
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, HttpUrl, ValidationError
-from slugify import slugify
 from sqlalchemy import JSON, DateTime, LargeBinary, String, Text, TypeDecorator
 from sqlalchemy.dialects.mysql import (
     DATETIME as MySQL_DATETIME,
     LONGBLOB,
     MEDIUMBLOB,
+    MEDIUMTEXT,
 )
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy_utils import UUIDType
 
-from api import aes, base, database, old_aes, schemas
+from api import base, crypto, database, schemas
 
 Base = database.Base
-
-
-def get_mediumblob(dialect: str) -> MEDIUMBLOB | BYTEA | LargeBinary:
-    if dialect == "mysql":
-        return MEDIUMBLOB()
-    elif dialect == "postgresql":
-        return BYTEA()
-    elif dialect == "sqlite":
-        return LargeBinary()
-    else:
-        raise NotImplementedError(f"Unsupported dialect: {dialect}")
 
 
 class JSONType(TypeDecorator):
@@ -46,8 +33,6 @@ class JSONType(TypeDecorator):
 
 
 class AwareDateTime(TypeDecorator):
-    "A datetime that takes timezones into account"
-
     impl = DateTime
     cache_ok = True
 
@@ -92,35 +77,6 @@ class DATETIME(TypeDecorator):
         return f"{self.__class__.__name__}({params_str})"
 
 
-class GzipType(TypeDecorator):
-    impl = MEDIUMBLOB
-    cache_ok = True
-
-    def process_bind_param(self, value, _):  # noqa: PLR6301
-        if value is not None:
-            return gzip.compress(value.encode("utf-8"))
-        return None
-
-    def process_result_value(self, value, _):  # noqa: PLR6301
-        if value is not None:
-            try:
-                return gzip.decompress(value).decode("utf-8")
-            except (gzip.BadGzipFile, UnicodeDecodeError, EOFError):
-                # If decompression fails, return None
-                # This can happen if the data is not compressed or is corrupted
-                return None
-        return None
-
-    @classmethod
-    def load_dialect_impl(self, dialect):
-        if dialect.name == "postgresql":
-            return dialect.type_descriptor(BYTEA)
-        if dialect.name == "sqlite":
-            return dialect.type_descriptor(LargeBinary())
-
-        return dialect.type_descriptor(MEDIUMBLOB)
-
-
 class HttpUrlType(TypeDecorator):
     impl = Text
     cache_ok = True
@@ -150,8 +106,6 @@ def process_json_result_value(value: None | bytes) -> None | dict:  # noqa: PLR6
     try:
         decompressed = gzip.decompress(value).decode("utf-8")
     except (gzip.BadGzipFile, UnicodeDecodeError, EOFError):
-        # If decompression fails, return None
-        # This can happen if the data is not compressed or is corrupted
         return None
     return json.loads(decompressed)
 
@@ -211,8 +165,6 @@ class GzipStringType(TypeDecorator):
         try:
             return gzip.decompress(value).decode("utf-8")
         except (gzip.BadGzipFile, UnicodeDecodeError, EOFError):
-            # If decompression fails, return None
-            # This can happen if the data is not compressed or is corrupted
             return None
 
     @classmethod
@@ -225,48 +177,57 @@ class GzipStringType(TypeDecorator):
         return dialect.type_descriptor(MEDIUMBLOB)
 
 
-class EncryptedType(TypeDecorator):
+class _BoundToColumn(TypeDecorator):
     impl = Text
     cache_ok = True
 
-    def process_bind_param(self, value: None | dict | list, dialect):  # noqa: PLR6301
+    def __init__(self, context: str):
+        super().__init__()
+        self.context = context
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.context!r})"
+
+
+class EncryptedType(_BoundToColumn):
+    cache_ok = True
+
+    def process_bind_param(self, value: None | dict | list, _):
         if value is None:
             return None
+        if not isinstance(value, dict | list):
+            raise ValueError("Object in EncryptedType column must be dict or list")
+        return crypto.encrypt_json(value, self.context)
 
-        encrypted = value
-        if isinstance(value, dict):
-            encrypted = aes.base_cipher.encrypt_dict(value)
-        if isinstance(value, list):
-            encrypted = aes.base_cipher.encrypt_list(value)
-
-        if isinstance(encrypted, bytes):
-            return (
-                encrypted.decode("utf-8")
-                if dialect.name in {"postgresql", "sqlite"}
-                else encrypted
-            )
-
-        raise ValueError("Object in EncryptedType column must be dict or list")
-
-    def process_result_value(  # noqa: PLR6301
-        self, value: None | str | dict | list, dialect
-    ):
+    def process_result_value(self, value: None | str, _):
         if value is None:
             return None
+        return crypto.decrypt_json(value, self.context)
 
-        try:
-            parsed = json.loads(value)
-            if isinstance(parsed, dict | list):
-                return parsed
-        except (json.JSONDecodeError, TypeError):
-            pass
-        data = bytes(value, encoding="utf-8")
-        try:
-            result = aes.base_cipher.decrypt_dict(data)
-        # This is legacy because of the old encrpytion method, and should be removed in the future
-        except UnicodeDecodeError:
-            result = old_aes.base_cipher.decrypt_dict(data)
-        return result
+
+class EncryptedMediumType(EncryptedType):
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):  # noqa: PLR6301
+        if dialect.name == "mysql":
+            return dialect.type_descriptor(MEDIUMTEXT())
+        return dialect.type_descriptor(Text())
+
+
+class EncryptedStringType(_BoundToColumn):
+    cache_ok = True
+
+    def process_bind_param(self, value: None | str, _):
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("Object in EncryptedStringType column must be a string")
+        return crypto.encrypt_text(value, self.context)
+
+    def process_result_value(self, value: None | str, _):
+        if value is None:
+            return None
+        return crypto.decrypt_text(value, self.context)
 
 
 class PasswordType(TypeDecorator):
@@ -290,17 +251,6 @@ class PasswordType(TypeDecorator):
         elif dialect.name in {"postgresql", "sqlite"} and isinstance(value, str):
             return value.encode("utf-8")
         return value
-
-
-class SlugType(TypeDecorator):
-    impl = String(200)
-    cache_ok = True
-
-    def process_bind_param(self, value, _) -> None | str:  # noqa: PLR6301
-        if value is None:
-            return None
-        as_str = str(value)
-        return slugify(as_str)
 
 
 class BasePydanticType(TypeDecorator):
@@ -333,45 +283,16 @@ class BasePydanticType(TypeDecorator):
         return self.model(**data_dict)
 
 
-class ProEntitlementsType(BasePydanticType):
-    model = schemas.ProEntitlements
+class UserDisplaySettingsType(BasePydanticType):
+    model = schemas.UserDisplaySettings
     cache_ok = True
-    name = "ProEntitlements"
-
-
-class ProDisplaySettingsType(BasePydanticType):
-    model = schemas.ProDisplaySettings
-    cache_ok = True
-    name = "ProDisplaySettings"
-
-
-class ProZeroToHeroType(BasePydanticType):
-    model = schemas.ProZeroToHero
-    cache_ok = True
-    name = "ProZeroToHero"
-
-
-class ProKeysType(BasePydanticType):
-    model = schemas.ProKeys
-    cache_ok = True
-    name = "ProKeys"
-
-
-class ProInfoType(BasePydanticType):
-    """Deprecated. Retained only so historical alembic migrations remain importable."""
-
-    model = schemas.ProInfo
-    cache_ok = True
-    name = "ProInfo"
+    name = "UserDisplaySettings"
 
 
 class UUIDMixin:
-    "Add a UUID primary key to a table"
-
     uuid: Mapped[UUID] = mapped_column(UUIDType, primary_key=True, default=uuid4)
 
     def __eq__(self, other: object) -> bool:
-        """We check if different objects are equal by comparing their uuids"""
         if not isinstance(other, self.__class__):
             return False
         return self.uuid == other.uuid
@@ -381,8 +302,6 @@ class UUIDMixin:
 
 
 class DateMixin:
-    "Add created and updated dates to a table"
-
     created_date: Mapped[None | datetime] = mapped_column(
         AwareDateTime(), default=base.get_now
     )

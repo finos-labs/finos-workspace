@@ -9,6 +9,7 @@ import WidgetMenu, {
   type WidgetItem,
 } from "~/components/LayoutAuth/Search/WidgetMenu";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { setAccess } from "../../../factories";
 
 const mockAddWidgets = vi.fn();
 const mockGetTabById = vi.fn();
@@ -55,16 +56,6 @@ vi.mock("~/lib/state/theme", () => ({
   ),
 }));
 
-vi.mock("~/lib/state/tutorial", () => ({
-  useShallowTutorialStore: vi.fn((selector) =>
-    selector({
-      currentTutorial: null,
-      goToStep: vi.fn(),
-      currentStep: 0,
-    }),
-  ),
-}));
-
 vi.mock("~/lib/providers/MobileProvider", () => ({
   useMobile: vi.fn(() => false),
 }));
@@ -88,7 +79,10 @@ vi.mock("~/lib/state/backendConnector", () => ({
 }));
 
 vi.mock("@tanstack/react-virtual", () => ({
-  useVirtualizer: (opts: any) => ({
+  useVirtualizer: (opts: {
+    count: number;
+    getItemKey?: (index: number) => string | number;
+  }) => ({
     getVirtualItems: () =>
       Array.from({ length: opts.count }, (_, i) => ({
         key: opts.getItemKey?.(i) ?? i,
@@ -108,7 +102,7 @@ const createMockWidget = (overrides: Partial<WidgetItem> = {}): WidgetItem => ({
   category: "Equity",
   subCategory: "Charts",
   description: "A test widget",
-  source: "openbb",
+  source: "workspace",
   widgetType: "backend",
   ...overrides,
 });
@@ -217,7 +211,8 @@ describe("WidgetMenu", () => {
       expect(screen.getByTestId("results-not-found")).toBeInTheDocument();
     });
 
-    it("shows link to add external source when filtering by external", () => {
+    it("links to the Connections page to add an external source", () => {
+      setAccess({ user_type: "Developer" });
       renderWidgetMenu({
         widgets: [],
         state: { ...defaultState, selectedOption: "external" },
@@ -225,7 +220,19 @@ describe("WidgetMenu", () => {
 
       expect(
         screen.getByRole("link", { name: "Add an external source" }),
-      ).toBeInTheDocument();
+      ).toHaveAttribute("href", "/app/connections");
+    });
+
+    it("offers no external source to users who cannot add connections", () => {
+      setAccess({ user_type: "User" });
+      renderWidgetMenu({
+        widgets: [],
+        state: { ...defaultState, selectedOption: "external" },
+      });
+
+      expect(
+        screen.queryByRole("link", { name: "Add an external source" }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -380,17 +387,8 @@ describe("CreateCheckbox", () => {
 });
 
 describe("connectorTypes", () => {
-  it("contains expected connector types", () => {
-    expect(connectorTypes).toContain("backend");
-    expect(connectorTypes).toContain("file");
-    expect(connectorTypes).toContain("single");
-    expect(connectorTypes).toContain("snowflake");
-    expect(connectorTypes).toContain("database");
-    expect(connectorTypes).toContain("copilot_table");
-  });
-
-  it("has correct length", () => {
-    expect(connectorTypes).toHaveLength(6);
+  it("lists the backend and file connector types", () => {
+    expect(connectorTypes).toEqual(["backend", "file"]);
   });
 });
 

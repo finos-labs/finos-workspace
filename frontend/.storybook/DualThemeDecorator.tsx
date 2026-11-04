@@ -28,7 +28,6 @@ export const DualThemeDecorator: Decorator = (Story, context) => (
       minHeight: "100vh",
     }}
   >
-    {/* Light panel */}
     <div
       style={{
         ...panelBase,
@@ -41,7 +40,6 @@ export const DualThemeDecorator: Decorator = (Story, context) => (
       <Story {...context} />
     </div>
 
-    {/* Dark panel */}
     <div
       className="dark"
       style={{

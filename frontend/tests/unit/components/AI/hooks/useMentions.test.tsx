@@ -15,20 +15,15 @@ describe("useMentions reactivity to optionsMap", () => {
   it("re-resolves @[id:...] once optionsMap loads after reload", () => {
     const { result } = renderHook(() => useMentions());
 
-    // Cold map (e.g. right after a reload): the id token can't resolve yet.
     expect(result.current.processMentions("@[id:w1]").result).toBe("@[id:w1]");
     const before = result.current.processMentions;
 
-    // Widgets finish loading and populate the in-memory options map.
     act(() => {
       useMentionsStore
         .getState()
         .setOptionsMap(new Map([["w1", widget("w1", "MyWidget")]]));
     });
 
-    // Consumers (TextArea draft, TextStyle in chat history) memoize on the
-    // processMentions identity. It must change when the map loads, otherwise
-    // the mention stays rendered as the raw @[id:...] token until the user edits.
     expect(result.current.processMentions).not.toBe(before);
     expect(result.current.processMentions("@[id:w1]").result).toBe("@MyWidget");
   });

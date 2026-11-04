@@ -1,122 +1,145 @@
+import {
+  type AxiosError,
+  AxiosHeaders,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { apiClient } from "~/api/api";
-import type { AuthState } from "~/lib/state/auth";
+import { apiClient, setOnSessionRefused } from "~/api/api";
 
 vi.unmock("~/api/api");
 
-// Global mocks
-const mockLogout = vi.fn();
+const sessionRefused = vi.fn();
 
-const mockAuthState: AuthState = {
-  // @ts-expect-error - the user type is not fully implemented for the sake of mocking
-  user: { token: "test-token" },
-  logout: mockLogout,
+type InterceptorHandler<V> = {
+  fulfilled: (value: V) => V | Promise<V>;
+  rejected: (error: AxiosError) => unknown;
 };
 
-vi.mock("~/lib/state/auth", () => {
+const requestHandler = () =>
+  (
+    apiClient.interceptors.request as unknown as {
+      handlers: InterceptorHandler<InternalAxiosRequestConfig>[];
+    }
+  ).handlers[0];
+const responseHandler = () =>
+  (
+    apiClient.interceptors.response as unknown as {
+      handlers: InterceptorHandler<AxiosResponse>[];
+    }
+  ).handlers[0];
+
+function send(config: Partial<InternalAxiosRequestConfig>) {
+  return requestHandler().fulfilled({
+    headers: new AxiosHeaders(),
+    method: "get",
+    ...config,
+  } as InternalAxiosRequestConfig);
+}
+
+function refusal(status: number, url: string, baseURL?: string) {
   return {
-    useAuthStore: {
-      getState: vi.fn(() => mockAuthState),
-    },
-  };
-});
-
-vi.mock("axios", () => {
-  const axiosInstance = {
-    interceptors: {
-      request: {
-        use: vi.fn((fulfilled) => {
-          axiosInstance.interceptors.request.handlers.push({ fulfilled });
-        }),
-        handlers: [],
-      },
-      response: {
-        use: vi.fn((fulfilled, rejected) => {
-          axiosInstance.interceptors.response.handlers.push({ fulfilled, rejected });
-        }),
-        handlers: [],
-      },
-    },
-    get: vi.fn(),
-    post: vi.fn(),
-  };
-
-  const axiosMock = {
-    create: vi.fn(() => axiosInstance),
-    isAxiosError: vi.fn(),
-    ...axiosInstance,
-  };
-
-  return {
-    default: axiosMock,
-  };
-});
-
-const mockConsoleInfo = vi.spyOn(console, "info").mockImplementation(() => {});
+    response: { status, config: { url } },
+    config: { url, baseURL, headers: new AxiosHeaders() },
+  } as unknown as AxiosError;
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(console, "info").mockImplementation(() => {});
+  setOnSessionRefused(sessionRefused);
 });
 
-describe("apiClient", () => {
-  it("should add Authorization header if user token exists", async () => {
-    const requestConfig = await apiClient.interceptors.request.handlers[0].fulfilled({
-      headers: {},
-      method: "get",
-      url: "/test",
-    } as any);
+describe("apiClient requests", () => {
+  it("sends the session cookie and the client header to the API", async () => {
+    const config = await send({ url: "/app/session" });
 
-    expect(requestConfig.headers.Authorization).toBe("Bearer test-token");
+    expect(config.baseURL).toBe("http://localhost:3000");
+    expect(config.withCredentials).toBe(true);
+    expect(config.headers.get("X-Workspace-Client")).toBe("web");
+    expect(config.headers.has("Authorization")).toBe(false);
   });
 
-  it("strips an explicitly empty per-request Authorization header (opts out of auth)", async () => {
-    // Real AxiosHeaders (the axios module is mocked above): in production the
-    // interceptor receives the merged per-request headers as an AxiosHeaders
-    // instance. `headers: { authorization: "" }` must result in NO header on
-    // the wire — an empty Authorization header would still trigger a CORS
-    // preflight, which the marketplace host rejects.
-    const { AxiosHeaders } = await vi.importActual<typeof import("axios")>("axios");
-    const requestConfig = await apiClient.interceptors.request.handlers[0].fulfilled({
-      headers: new AxiosHeaders({ authorization: "" }),
-      method: "get",
-      url: "/marketplace/apps",
-    } as any);
+  it("sends no FINOS Workspace credential or client header to another origin", async () => {
+    const config = await send({
+      url: "https://agent.example.test/upload",
+      headers: new AxiosHeaders({ "X-Workspace-Client": "web" }),
+    });
 
-    expect(requestConfig.headers.has("Authorization")).toBe(false);
+    expect(config.withCredentials).toBe(false);
+    expect(config.headers.has("X-Workspace-Client")).toBe(false);
+    expect(config.headers.has("Authorization")).toBe(false);
   });
 
-  it("should log request details in development mode", async () => {
+  it("sends nothing to a base URL on another origin", async () => {
+    const config = await send({
+      url: "/app/user",
+      baseURL: "https://elsewhere.test",
+    });
+
+    expect(config.withCredentials).toBe(false);
+    expect(config.headers.has("X-Workspace-Client")).toBe(false);
+  });
+
+  it.each([
+    "http://localhost:3000.evil.test/app/user",
+    "http://evil.test/?next=http://localhost:3000",
+    "http://evil.test/http://localhost:3000/app/user",
+    "https://localhost:3000/app/user",
+    "http://localhost:30001/app/user",
+  ])("compares the exact origin, not a substring: %s", async (url) => {
+    const config = await send({ url });
+
+    expect(config.withCredentials).toBe(false);
+    expect(config.headers.has("X-Workspace-Client")).toBe(false);
+  });
+
+  it("logs requests in development mode", async () => {
     import.meta.env.DEV = true;
-    await apiClient.interceptors.request.handlers[0].fulfilled({
-      headers: {},
-      method: "get",
-      url: "/test",
-    } as any);
+    await send({ url: "/test" });
 
-    expect(mockConsoleInfo).toHaveBeenCalledWith("[API req]", "[Authed]", "GET /test");
+    expect(console.info).toHaveBeenCalledWith("[API req]", "GET /test");
   });
 
-  it("should log response details in development mode", async () => {
+  it("logs responses in development mode", async () => {
     import.meta.env.DEV = true;
-    const response = { status: 200, config: { url: "/test" }, data: {} };
-    // @ts-expect-error - the handlers type is not fully implemented for the sake of testing
-    await apiClient.interceptors.response.handlers[0].fulfilled(response);
-
-    expect(mockConsoleInfo).toHaveBeenCalledWith("[API res] 200 /test", {}, response);
-  });
-
-  it("should log error details and logout on 401 status", async () => {
-    import.meta.env.DEV = true;
-    const error = {
-      response: { status: 401, config: { url: "/test" } },
+    const response = {
+      status: 200,
       config: { url: "/test" },
-    };
+      data: {},
+    } as AxiosResponse;
+    await responseHandler().fulfilled(response);
 
-    await expect(
-      apiClient.interceptors.response.handlers[0].rejected(error as any),
-    ).rejects.toEqual(error);
-    expect(mockConsoleInfo).toHaveBeenCalledWith("[API err] 401 /test", error);
-    expect(mockConsoleInfo).toHaveBeenCalledTimes(1);
-    expect(mockLogout).toHaveBeenCalled();
+    expect(console.info).toHaveBeenCalledWith("[API res] 200 /test", {}, response);
+  });
+});
+
+describe("apiClient refusals", () => {
+  it("tells the auth store when the API refuses the session", async () => {
+    const error = refusal(401, "/app/dash/validate-and-sync");
+
+    await expect(responseHandler().rejected(error)).rejects.toBe(error);
+    expect(sessionRefused).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not sign out on a 401 from another origin", async () => {
+    const error = refusal(401, "https://agent.example.test/query");
+
+    await expect(responseHandler().rejected(error)).rejects.toBe(error);
+    expect(sessionRefused).not.toHaveBeenCalled();
+  });
+
+  it("does not sign out again when signing out itself is refused", async () => {
+    const error = refusal(401, "/app/logout");
+
+    await expect(responseHandler().rejected(error)).rejects.toBe(error);
+    expect(sessionRefused).not.toHaveBeenCalled();
+  });
+
+  it("does not sign out on other errors", async () => {
+    const error = refusal(403, "/app/admin");
+
+    await expect(responseHandler().rejected(error)).rejects.toBe(error);
+    expect(sessionRefused).not.toHaveBeenCalled();
   });
 });

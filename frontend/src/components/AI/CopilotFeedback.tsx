@@ -1,8 +1,8 @@
-import { usePostHog } from "posthog-js/react";
 import { useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { useGetCopilotRequestHeaders } from "~/components/AI/hooks/useGetCopilotRequestHeaders";
 import { useStateReducer } from "~/hooks/useStateReducer";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { type AIMessage, useShallowCopilotStore } from "~/lib/state/copilot";
 import { Button } from "../ds/atoms/Button";
 import { Checkbox } from "../ds/atoms/Checkbox";
@@ -15,7 +15,7 @@ type VoteType = "thumbs_up" | "thumbs_down" | null;
 
 type AIMessageFeedback = {
   voteStatus: VoteType;
-  tags?: string[];
+  tags: string[];
   user_comment?: string;
   showFeedbackModal?: boolean;
   loading?: boolean;
@@ -25,7 +25,7 @@ const FEEDBACK_OPTIONS = [
   "Not factually correct / Hallucinations / Inaccurate",
   "Didn't use the correct data (although it's available)",
   "Didn't fully follow instructions / Lazy / Incomplete",
-  "OpenBB didn't have the right data for copilot to answer correctly",
+  "FINOS Workspace didn't have the right data for the agent to answer correctly",
   "Other",
 ] as const;
 
@@ -47,8 +47,6 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
       getUserPromptForAIMessage: s.getUserPromptForAIMessage,
       selectedCopilot: s.selectedCopilot,
     }));
-
-  const posthog = usePostHog();
   const getCopilotRequestHeaders = useGetCopilotRequestHeaders();
   const feedbackInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -71,7 +69,6 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
     [message.voteStatus, dispatch],
   );
 
-  // Update the feedback submission logic in the onClick handler
   const handleFeedback = useCallback(
     async (vote: "thumbs_up" | "thumbs_down") => {
       const updatedState = {} as AIMessageFeedback;
@@ -83,10 +80,11 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
 
         updatedState.loading = false;
 
-        const agentSupportsFeedback =
-          selectedCopilot?.features?.feedback && selectedCopilot?.endpoints?.feedback;
+        const feedbackEndpoint = selectedCopilot?.features?.feedback
+          ? selectedCopilot.endpoints?.feedback
+          : undefined;
 
-        if (agentSupportsFeedback) {
+        if (feedbackEndpoint) {
           const feedbackPayload = {
             vote,
             tags: state.tags,
@@ -98,11 +96,11 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
 
           console.log(
             "[Feedback] Sending to agent:",
-            selectedCopilot.endpoints.feedback,
+            feedbackEndpoint,
             feedbackPayload,
           );
 
-          const response = await fetch(selectedCopilot.endpoints.feedback, {
+          const response = await fetchAgent(feedbackEndpoint, {
             method: "POST",
             headers: getCopilotRequestHeaders(message.traceId),
             body: JSON.stringify(feedbackPayload),
@@ -113,15 +111,6 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
           if (!response.ok) {
             throw new Error(`Agent feedback endpoint returned ${response.status}`);
           }
-        } else if (posthog) {
-          posthog.capture("ai_feedback", {
-            copilot_feedback_direction: vote,
-            copilot_feedback_group: state.tags,
-            copilot_feedback_message: state.user_comment,
-            copilot_response: message.content,
-            copilot_user_prompt: getUserPromptForAIMessage(message),
-            trace_id: message.traceId,
-          });
         }
 
         updatedState.voteStatus = vote;
@@ -144,7 +133,6 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
       }
     },
     [
-      posthog,
       state.tags,
       state.user_comment,
       message,
@@ -211,7 +199,7 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
           open={state.showFeedbackModal}
           onClose={resetFeedback}
         >
-          <DialogTitle>Unsatisfactory copilot response</DialogTitle>
+          <DialogTitle>Unsatisfactory agent response</DialogTitle>
           <div className="space-y-4">
             {FEEDBACK_OPTIONS.map((option, index) => (
               <Checkbox

@@ -2,9 +2,14 @@ import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BackendPermissionsT } from "~/api/user_roles.api";
 import { useProcessBackendWidgets } from "~/hooks/useProcessBackendWidgets";
-import type { BackendTemplate, ValidateBackend } from "~/lib/state/backendConnector";
+import type {
+  BackendTemplate,
+  Source,
+  ValidateBackend,
+} from "~/lib/state/backendConnector";
+import type { WidgetsType } from "~/utils/zodForms";
+import { type DeepPartial, malformed } from "../mocks";
 
-// Mock getApiSourceWidgets from backendConnector
 const mockGetApiSourceWidgets = vi.fn();
 vi.mock("~/lib/state/backendConnector", async () => {
   const actual = await vi.importActual("~/lib/state/backendConnector");
@@ -26,7 +31,6 @@ vi.mock("~/lib/utils/validateBackend", async () => {
   };
 });
 
-// Mock permissions store
 const mockHasAccess = vi.fn();
 const mockPermissions = {
   backends: [],
@@ -42,39 +46,27 @@ vi.mock("~/lib/state/permissions", () => ({
   ),
 }));
 
-// Mock createSourceWidget
-const mockCreateSourceWidget = vi.fn((widget, source, hasAccess) => ({
-  ...widget,
-  id: "created-widget-id",
-  sourceId: source.id,
-  sourceName: source.name,
-  isSharedWidget: source.isSharedSource,
-  disabled: !hasAccess,
-}));
+const mockCreateSourceWidget = vi.fn(
+  (widget: object, source: Source, hasAccess: boolean) => ({
+    ...widget,
+    id: "created-widget-id",
+    sourceId: source.id,
+    sourceName: source.name,
+    isSharedWidget: source.isSharedSource,
+    disabled: !hasAccess,
+  }),
+);
 vi.mock("~/components/DataConnectors/common/helpers", () => ({
-  // @ts-expect-error - ignored for now
-  createSourceWidget: (...args: unknown[]) => mockCreateSourceWidget(...args),
+  createSourceWidget: (widget: object, source: Source, hasAccess: boolean) =>
+    mockCreateSourceWidget(widget, source, hasAccess),
 }));
 
-// Mock someTruthy
-vi.mock("~/components/General/Table/utils", () => ({
-  someTruthy: (...args: unknown[]) =>
-    args.some((arg) => {
-      if (Array.isArray(arg)) return arg.length > 0;
-      if (typeof arg === "object" && arg !== null) return Object.keys(arg).length > 0;
-      return Boolean(arg);
-    }),
-}));
-
-// Mock cleanURL
 vi.mock("~/lib/utils/widgetParams", () => ({
   cleanURL: (url: string) => url?.replace(/([^:]\/)\/+/g, "$1"),
 }));
 
-// Mock getApiSourceById
 const mockGetApiSourceById = vi.fn();
 
-// Helper to create a mock BackendPermissionsT
 function createMockBackend(
   overrides: Partial<BackendPermissionsT> = {},
 ): BackendPermissionsT {
@@ -100,25 +92,23 @@ function createMockBackend(
   };
 }
 
-// Helper to create mock widgets from backend
-function createMockWidgets(): Record<string, any> {
+function createMockWidgets(): Record<string, DeepPartial<WidgetsType[string]>> {
   return {
     "widget-1": {
       widgetId: "widget-1",
       name: "Widget One",
       endpoint: "/api/widget1",
-      type: "table",
+      type: "markdown",
     },
     "widget-2": {
       widgetId: "widget-2",
       name: "Widget Two",
       endpoint: "/api/widget2",
-      type: "chart",
+      type: "html",
     },
   };
 }
 
-// Helper to create mock templates
 function createMockTemplates(): BackendTemplate[] {
   return [
     {
@@ -217,7 +207,6 @@ describe("useProcessBackendWidgets", () => {
 
       await result.current(mockBackend);
 
-      // Should not call getApiSourceWidgets when existing source is found
       expect(mockGetApiSourceWidgets).not.toHaveBeenCalled();
     });
 
@@ -252,7 +241,6 @@ describe("useProcessBackendWidgets", () => {
         errorMessage: null,
       });
 
-      // Deny access to widget-2
       mockHasAccess.mockImplementation((_sourceId, widgetId) => {
         return widgetId !== "widget-2";
       });
@@ -465,7 +453,7 @@ describe("useProcessBackendWidgets", () => {
     it("should fall back to template.prompts when backend.templates prompts is undefined", async () => {
       const mockBackend = createMockBackend({
         templates: [
-          { templateId: "template-1", access: "access", prompts: undefined as any },
+          { templateId: "template-1", access: "access", prompts: malformed(undefined) },
         ],
       });
 
@@ -488,7 +476,6 @@ describe("useProcessBackendWidgets", () => {
 
       const processed = await result.current(mockBackend);
 
-      // Should use template's prompts as fallback since backend.templates prompts is undefined
       expect(processed.templates[0].prompts).toEqual(["fallback-prompt"]);
     });
 
@@ -516,7 +503,6 @@ describe("useProcessBackendWidgets", () => {
 
       const processed = await result.current(mockBackend);
 
-      // Empty array is truthy, so no fallback occurs - this tests actual behavior
       expect(processed.templates[0].prompts).toEqual([]);
     });
 
@@ -539,7 +525,6 @@ describe("useProcessBackendWidgets", () => {
 
       const processed = await result.current(mockBackend);
 
-      // Template should be filtered out since no matching access entry
       expect(processed.templates).toHaveLength(0);
     });
   });
@@ -633,7 +618,6 @@ describe("useProcessBackendWidgets", () => {
 
         const processed = await result.current(mockBackend);
 
-        // Should handle undefined templates gracefully
         expect(processed.status).toBe("success");
       });
     });
@@ -675,7 +659,6 @@ describe("useProcessBackendWidgets", () => {
           errorMessage: null,
         });
 
-        // Only allow widget-1 and widget-3
         mockHasAccess.mockImplementation((_, widgetId) => {
           return widgetId === "widget-1" || widgetId === "widget-3";
         });
@@ -874,7 +857,6 @@ describe("useProcessBackendWidgets", () => {
 
       const processed = await result.current(mockBackend);
 
-      // Verify all expected fields are present
       expect(processed).toHaveProperty("status");
       expect(processed).toHaveProperty("id");
       expect(processed).toHaveProperty("widgets");

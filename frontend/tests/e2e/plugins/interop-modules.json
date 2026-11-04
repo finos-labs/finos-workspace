@@ -1,0 +1,92 @@
+{
+  "wheels": {
+    "wigglystuff-0.5.34": {
+      "url": "https://files.pythonhosted.org/packages/a4/9c/f53eba4c2686f8d4f934f060a2af7139552e6125c2acc5ad67702e700d60/wigglystuff-0.5.34-py3-none-any.whl",
+      "sha256": "9df23054ba5f24e2fc002ddfa914788bb016d51e4d1998a3ff24f722ef799e89"
+    },
+    "drawdata-0.5.2": {
+      "url": "https://files.pythonhosted.org/packages/64/df/f57bbf49607c0f66fd69331efae41cbc24d3d878f53d3fb0fa2d4455ec51/drawdata-0.5.2-py3-none-any.whl",
+      "sha256": "e5045ed5d2128d7ef004aac9ff2195ba46d6e0711dd7adc663104f6b954eb1cf"
+    },
+    "mopaint-0.4.1": {
+      "url": "https://files.pythonhosted.org/packages/d3/7d/3ffad76896bf702c1ddca5c94d672a7b32516d233898fa4cef1a549dc87b/mopaint-0.4.1-py3-none-any.whl",
+      "sha256": "7bfac97fa66b46d085d4d0db4515dbb676d9f999e31c357c1aa26fe9f9045822"
+    }
+  },
+  "modules": [
+    {
+      "id": "slider2d",
+      "name": "Slider2D (wigglystuff)",
+      "wheel": "wigglystuff-0.5.34",
+      "esm": "wigglystuff/static/2dslider.js",
+      "traits": {
+        "x": 0,
+        "y": 0,
+        "x_bounds": [-1, 1],
+        "y_bounds": [-1, 1],
+        "width": 400,
+        "height": 400
+      }
+    },
+    {
+      "id": "matrix",
+      "name": "Matrix (wigglystuff)",
+      "wheel": "wigglystuff-0.5.34",
+      "esm": "wigglystuff/static/matrix.js",
+      "css": "wigglystuff/static/matrix.css",
+      "traits": {
+        "matrix": [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+        "rows": 3,
+        "cols": 3,
+        "min_value": -100,
+        "max_value": 100,
+        "mirror": false,
+        "step": 1,
+        "digits": 1,
+        "row_names": [],
+        "col_names": [],
+        "static": false,
+        "flexible_cols": false
+      }
+    },
+    {
+      "id": "tangle-slider",
+      "name": "TangleSlider (wigglystuff)",
+      "wheel": "wigglystuff-0.5.34",
+      "esm": "wigglystuff/static/tangle-slider.js",
+      "traits": {
+        "amount": 0,
+        "min_value": -100,
+        "max_value": 100,
+        "step": 1,
+        "steps": [],
+        "pixels_per_step": 2,
+        "prefix": "",
+        "suffix": "",
+        "digits": 1
+      }
+    },
+    {
+      "id": "scatter",
+      "name": "ScatterWidget (drawdata)",
+      "wheel": "drawdata-0.5.2",
+      "esm": "drawdata/static/scatter_widget.js",
+      "css": "drawdata/static/scatter_widget.css",
+      "traits": {
+        "data": [],
+        "brushsize": 40,
+        "width": 800,
+        "height": 400,
+        "n_classes": 4
+      }
+    },
+    {
+      "id": "paint",
+      "name": "Paint (mopaint)",
+      "wheel": "mopaint-0.4.1",
+      "esm": "mopaint/static/draw.js",
+      "css": "mopaint/static/styles.css",
+      "traits": { "base64": "", "height": 500, "width": 889, "store_background": true }
+    }
+  ]
+}

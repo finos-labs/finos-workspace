@@ -8,7 +8,7 @@ import { cn } from "../utils";
 
 const Form = FormProvider;
 
-export type FormFieldContextValue<
+type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 > = {
@@ -57,7 +57,7 @@ const useFormField = () => {
   };
 };
 
-export type FormItemContextValue = {
+type FormItemContextValue = {
   id: string;
 };
 
@@ -65,7 +65,7 @@ const FormItemContext = React.createContext<FormItemContextValue>(
   {} as FormItemContextValue,
 );
 
-export interface FormItemProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface FormItemProps extends React.HTMLAttributes<HTMLDivElement> {}
 const FormItem = React.forwardRef<HTMLDivElement, FormItemProps>((props, ref) => {
   const { className, ...rest } = props;
   const id = React.useId();
@@ -79,9 +79,8 @@ const FormItem = React.forwardRef<HTMLDivElement, FormItemProps>((props, ref) =>
 });
 FormItem.displayName = "FormItem";
 
-export interface FormLabelProps
+interface FormLabelProps
   extends React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> {}
-/** A label form field. Use inside <Form> component only. */
 const FormLabel = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
   FormLabelProps
@@ -114,26 +113,7 @@ const FormControl = React.forwardRef<
 });
 FormControl.displayName = "FormControl";
 
-export interface FormDescriptionProps
-  extends React.HTMLAttributes<HTMLParagraphElement> {}
-const FormDescription = React.forwardRef<HTMLParagraphElement, FormDescriptionProps>(
-  ({ className, ...props }, ref) => {
-    const { formDescriptionId } = useFormField();
-
-    return (
-      <p
-        ref={ref}
-        id={formDescriptionId}
-        className={cn("text-muted-foreground text-sm", className)}
-        {...props}
-      />
-    );
-  },
-);
-FormDescription.displayName = "FormDescription";
-
-export interface FormMessageProps extends React.HTMLAttributes<HTMLParagraphElement> {}
-/** Shows validation error or children content by default. Use inside <Form> component only. */
+interface FormMessageProps extends React.HTMLAttributes<HTMLParagraphElement> {}
 const FormMessage = React.forwardRef<HTMLParagraphElement, FormMessageProps>(
   (props, ref) => {
     const { children, ...rest } = props;
@@ -149,14 +129,4 @@ const FormMessage = React.forwardRef<HTMLParagraphElement, FormMessageProps>(
 );
 FormMessage.displayName = "FormMessage";
 
-export {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  useForm,
-  useFormField,
-};
+export { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, useForm };

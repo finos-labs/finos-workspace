@@ -2,6 +2,14 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { useUserResourcePermissions } from "~/hooks/useUserResourcePermissions";
 
+type SharedPrompt = {
+  uuid: string;
+  access: string;
+  prompt: string;
+  tooltip?: string;
+  createdAt?: string;
+};
+
 export default function useSharedPrompts(isSharedResource = false) {
   const { data, refetch, error, isLoading, ...rest } = useUserResourcePermissions({
     enabled: isSharedResource,
@@ -14,11 +22,10 @@ export default function useSharedPrompts(isSharedResource = false) {
     if (isSharedResource && rest.isStale) refetch();
   }, [isSharedResource]);
 
-  const sharedPrompts = useMemo(() => {
+  const sharedPrompts = useMemo((): SharedPrompt[] => {
     if (!data) return [];
     const { backends = [], prompts = [] } = data;
 
-    // Get standalone prompts
     const standalonePrompts = prompts.map((p) => ({
       uuid: p.uuid,
       access: p.access,
@@ -27,7 +34,6 @@ export default function useSharedPrompts(isSharedResource = false) {
       createdAt: p.prompt.createdAt,
     }));
 
-    // Get prompts from templates within backends
     const templatePrompts = backends.flatMap((backend) =>
       backend.templates.flatMap((template) =>
         (template.prompts ?? []).map((p) => ({
@@ -35,8 +41,6 @@ export default function useSharedPrompts(isSharedResource = false) {
           access: p.access,
           prompt: p.promptId,
           tooltip: `${backend.name} > ${template.templateId} > ${p.promptId}`,
-          // @ts-expect-error - ignored for now
-          createdAt: template.createdAt,
         })),
       ),
     );

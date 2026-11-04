@@ -22,7 +22,7 @@ export const Default: Story = {
 
 export const WithImage: Story = {
   args: {
-    src: "https://i.pravatar.cc/150?u=openbb",
+    src: "https://i.pravatar.cc/150?u=workspace",
     alt: "User avatar",
     size: "md",
   },

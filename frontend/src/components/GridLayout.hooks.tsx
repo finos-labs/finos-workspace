@@ -1,5 +1,4 @@
 import type { AxiosRequestConfig } from "axios";
-import Papa from "papaparse";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Link, useParams } from "react-router-dom";
@@ -16,13 +15,17 @@ import {
   AI_SUPPORTED_FILE_TYPES,
   type Extension,
   ExtensionOptions,
+  getFileWidgetType,
   MAX_FILE_SIZE,
+  MULTIPLE_FILES_CONFIRMATION_COUNT,
+  UPLOAD_BATCH_BYTES,
   validExtension,
 } from "~/lib/constants";
 import { useTabContext } from "~/lib/contexts/TabContext";
 import { getConfig } from "~/lib/runtimeConfig";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useShallowAppStore } from "~/lib/state/app";
-import { useShallowAuthStore } from "~/lib/state/auth";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { uuidv4 } from "~/lib/utils";
@@ -38,13 +41,13 @@ import type { WidgetJsonT } from "./types";
 const aiCopilotAiEnhancementsFF =
   getConfig().copilot.enabled && getConfig().copilot.aiEnhancements;
 
-export function useDragAndDropFiles(locked: boolean) {
+export function useDragAndDropFiles() {
   const { id } = useParams();
   const isMobile = useIsMobile();
-  const { isShared } = useTabContext();
+  const { isShared, locked } = useTabContext();
   const { files, setFiles } = useFileContext();
 
-  const user = useShallowAuthStore((state) => state.user);
+  const mayUpload = useShallowAccessStore((s) => canAddConnections(s.access));
   const addWidget = useShallowAppStore((state) => state.addWidget);
   const aiEnhancements = useShallowThemeStore((state) => state.aiEnhancements);
 
@@ -69,7 +72,7 @@ export function useDragAndDropFiles(locked: boolean) {
       const { splitFiles } = toUpload.reduce(
         ({ splitFiles, currentTotal }, file) => {
           currentTotal += file.size;
-          if (currentTotal > 150 * 1024 * 1024) {
+          if (currentTotal > UPLOAD_BATCH_BYTES) {
             splitFiles.push([]);
             currentTotal = file.size;
           }
@@ -94,7 +97,7 @@ export function useDragAndDropFiles(locked: boolean) {
         }
 
         const res = await apiClient
-          .post<PostUploadFileResponse>("pro/files", formData, config)
+          .post<PostUploadFileResponse>("app/files", formData, config)
           .then(async ({ data: uploadedFiles }) => {
             for (const file of uploadedFiles) {
               const widgetInfo = {
@@ -115,13 +118,10 @@ export function useDragAndDropFiles(locked: boolean) {
                   const formData = new FormData();
                   formData.append("file", files[fileIndex]);
                   try {
-                    const aiResponse = await fetch(
+                    const aiResponse = await fetchAgent(
                       `${getConfig().urls.ai}/v1/generate/widget_info/file`,
                       {
                         method: "POST",
-                        headers: {
-                          Authorization: `Bearer ${user?.token}`,
-                        },
                         body: formData,
                         signal: abortController?.signal,
                       },
@@ -155,7 +155,7 @@ export function useDragAndDropFiles(locked: boolean) {
                 const { status } = await postFileWidget(
                   finalId,
                   cleanData,
-                  abortController.signal,
+                  abortController?.signal,
                 );
                 if (status !== 200) {
                   console.error("Error posting file widget metadata");
@@ -187,7 +187,7 @@ export function useDragAndDropFiles(locked: boolean) {
               const widgetToAdd = {
                 id: finalId,
                 endpoint: file.url,
-                type: "table" as const,
+                type: getFileWidgetType(file.extension),
                 external: true,
                 category: "Others",
                 subCategory: "",
@@ -196,15 +196,12 @@ export function useDragAndDropFiles(locked: boolean) {
                 description: widgetInfo.description,
                 name: widgetInfo.name,
                 gridData: { w: 20, h: file.extension === "pdf" ? 20 : 10 },
-                data: {
-                  dataKey: "",
-                  table: { enableCharts: true },
-                },
+                data: { dataKey: "" },
                 source: "",
                 connectionType: "file" as const,
               } as WidgetJsonT;
 
-              await addWidget(id, widgetToAdd);
+              if (id) await addWidget(id, widgetToAdd);
             }
 
             return { success: true };
@@ -249,7 +246,7 @@ export function useDragAndDropFiles(locked: boolean) {
         setFiles([]);
       });
     },
-    [user?.token, id, setFiles, addWidget, aiEnhancements, setStoredFiles],
+    [id, setFiles, addWidget, aiEnhancements, setStoredFiles],
   );
 
   const toastUpload = useCallback(
@@ -281,7 +278,7 @@ export function useDragAndDropFiles(locked: boolean) {
                   target="_blank"
                   rel="noopener noreferrer"
                   to="/app/widgets"
-                  className="obb-hyper-link"
+                  className="ws-hyper-link"
                 >
                   Widgets Library
                 </Link>{" "}
@@ -305,7 +302,7 @@ export function useDragAndDropFiles(locked: boolean) {
                   target="_blank"
                   rel="noopener noreferrer"
                   to="/app/widgets"
-                  className="obb-hyper-link"
+                  className="ws-hyper-link"
                 >
                   Widgets Library
                 </Link>{" "}
@@ -333,32 +330,10 @@ export function useDragAndDropFiles(locked: boolean) {
     [uploadFiles],
   );
 
-  const checkIfValid = useCallback(async (extension: Extension, file: File) => {
-    try {
-      if (extension === "csv") {
-        return new Promise<boolean>((resolve, reject) => {
-          const config = {
-            complete: () => resolve(true),
-            error: () => reject(false),
-            header: true,
-          } as Papa.ParseLocalConfig;
-
-          Papa.parse(file, config);
-        });
-      }
-      if (extension === "json") {
-        const data = await file.text();
-        JSON.parse(data);
-      }
-
-      return validExtension(extension);
-    } catch (e) {
-      console.error(e);
-      toast.error("Unknown error occurred");
-    }
-
-    return false;
-  }, []);
+  const checkIfValid = useCallback(
+    async (extension: Extension, _file: File) => validExtension(extension),
+    [],
+  );
 
   const prepareFiles = useCallback(
     async (acceptedFiles: File[]) => {
@@ -371,7 +346,7 @@ export function useDragAndDropFiles(locked: boolean) {
           existingFiles.push(file.name);
           continue;
         }
-        if (file.size > 25_000_000) {
+        if (file.size > MAX_FILE_SIZE) {
           toast.error("Invalid file(s)", {
             description: `File size must be less than 25MB: ${file.name}`,
             id: "drag-and-drop-files-invalid",
@@ -439,12 +414,6 @@ export function useDragAndDropFiles(locked: boolean) {
         ".docx",
       ],
       "text/html": [".html"],
-      "text/csv": [".csv"],
-      "application/json": [".json"],
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-      "image/png": [".png"],
-      "image/jpeg": [".jpg", ".jpeg"],
-      "image/gif": [".gif"],
     },
     onDrop: async (acceptedFiles, fileRejections) => {
       const fileToLarge = fileRejections
@@ -469,7 +438,6 @@ export function useDragAndDropFiles(locked: boolean) {
 
       const toUpload = await prepareFiles(acceptedFiles);
 
-      // check if all files are valid
       if (toUpload.length === 0) {
         return toast.error("Invalid file(s)", {
           description: fileToLarge
@@ -479,7 +447,7 @@ export function useDragAndDropFiles(locked: boolean) {
         });
       }
 
-      if (toUpload.length > 10) {
+      if (toUpload.length > MULTIPLE_FILES_CONFIRMATION_COUNT) {
         return toast.warning("Multiple files detected", {
           id: "drag-and-drop-files-folder",
           dismissible: false,
@@ -504,7 +472,7 @@ export function useDragAndDropFiles(locked: boolean) {
       return toastUpload(toUpload);
     },
     noClick: true,
-    disabled: locked || isShared || isMobile,
+    disabled: locked || isShared || isMobile || !mayUpload,
   });
 
   return { getRootProps, getInputProps, isDragActive };

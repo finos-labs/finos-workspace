@@ -1,5 +1,4 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import posthog from "posthog-js";
 import {
   forwardRef,
   memo,
@@ -16,53 +15,35 @@ import { useNavigate } from "react-router-dom";
 import DashboardPopup from "~/components/LayoutAuth/DropdownSubs/DashboardPopup";
 import FolderPopup from "~/components/LayoutAuth/DropdownSubs/FolderPopup";
 import { TOOLTIP_OPEN_DELAY_MS } from "~/lib/constants";
-import {
-  type Item,
-  type SideBarItem,
-  useAppStore,
-  useShallowAppStore,
-} from "~/lib/state/app";
-import { useBackendConnectorStore } from "~/lib/state/backendConnector";
+import { type SideBarItem, useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowSidebarStore } from "~/lib/state/sidebar";
 import { useToastStore } from "~/lib/state/toast";
 import { cn, formatDate } from "~/lib/utils";
-import { extractCustomTemplateInfo } from "~/lib/utils/createTemplates";
 import { NotificationId, showNotificationWithRememberMe } from "~/lib/utils/toast";
 import Icon from "../Icon";
 import Tooltip, { TooltipProvider } from "../Tooltip";
 
-function getItemTooltip(item: Item, collapsed: boolean) {
+function getItemTooltip(item: SideBarItem, collapsed: boolean) {
   if (!item) return "";
   if (!collapsed) {
     if (item.isFolder) return item.data?.name;
 
-    // Show extended info for dashboards
     return <TooltipContent item={item} />;
   }
-  // it should return the folder name if it's a folder
-  // and the dashboard name if it's a dashboard
-  // but they both need to include the folders path
-  // e.g., "Folder 1 / Folder 2 / Dashboard 1"
-  // or "Folder 1 / Dashboard 1"
-  // or "Dashboard 1"
-  let path = item.data?.name; // start with the current item's name
-  const items = useAppStore.getState().items;
-  // find the parent of the current item
-  let parentItem = items[item.parentId];
+  let path = item.data?.name;
+  const items = useAppStore.getState().items ?? {};
+  let parentItem = item.parentId ? items[item.parentId] : undefined;
 
-  // while there is a parent item and it's not the root folder
   while (parentItem && !parentItem.isRoot) {
-    // prepend the parent item's name to the path
     path = `${parentItem.data?.name} / ${path}`;
 
-    // find the next parent
-    parentItem = items[parentItem.parentId];
+    parentItem = parentItem.parentId ? items[parentItem.parentId] : undefined;
   }
 
   return path;
 }
 
-function TooltipContent({ item }: { item: Item }) {
+function TooltipContent({ item }: { item: SideBarItem }) {
   return (
     <div className="flex flex-col gap-0.5">
       <div>
@@ -78,30 +59,33 @@ function TooltipContent({ item }: { item: Item }) {
   );
 }
 
-function getNotificationId(isFolder: boolean, isShared: boolean): NotificationId {
-  // First we check if the item is shared
-  if (isShared) {
-    const result = isFolder ? undefined : NotificationId.DeleteDashboardShared;
-    // If the item is shared, we check if the item is marked do not show again
-    const toastDontShowAgain = useToastStore.getState().getToastDontShowAgain(result);
-    if (!toastDontShowAgain) return result;
-  }
+function getNotificationId(
+  isFolder: boolean,
+  isShared: boolean,
+): NotificationId | undefined {
+  if (isFolder) return undefined;
 
-  // We return non-shares IDs if the item is not shared, or if the shared has already
-  // been marked 'do not show again'
-  return isFolder ? undefined : NotificationId.DeleteDashboard;
+  if (
+    isShared &&
+    !useToastStore
+      .getState()
+      .getToastDontShowAgain(NotificationId.DeleteDashboardShared)
+  )
+    return NotificationId.DeleteDashboardShared;
+
+  return NotificationId.DeleteDashboard;
 }
 
 function hasActiveChild(
   item: TreeItem | SideBarItem,
-  activeItem: TreeItem["index"],
+  activeItem: TreeItem["index"] | null,
   getSideBarItem: (id: string) => SideBarItem | undefined,
 ): boolean {
   if (!item?.isFolder) return item?.index === activeItem;
 
-  const childrenSideBarItems = item.children
-    .map((childId: string) => getSideBarItem(childId))
-    .filter((child) => child !== undefined);
+  const childrenSideBarItems = (item.children ?? [])
+    .map((childId) => getSideBarItem(String(childId)))
+    .filter((child): child is SideBarItem => child !== undefined);
 
   let hasActive = false;
   while (hasActive === false) {
@@ -128,9 +112,9 @@ const SelectionDropdown = memo(
   }: {
     open: boolean;
     setOpen: (open: boolean) => void;
-    item: TreeItem<any>;
+    item: SideBarItem;
     depth: number;
-    deleteItem: (item: TreeItem<any>) => void;
+    deleteItem: (item: SideBarItem) => void;
     collapsed: boolean;
   }) => {
     return (
@@ -155,9 +139,9 @@ const SelectionDropdown = memo(
             collisionPadding={16}
             onCloseAutoFocus={(e) => e.preventDefault()}
             className={cn(
-              "z-[60] radix-side-bottom:animate-slide-down radix-side-top:animate-slide-up",
+              "z-[60] data-[side=bottom]:animate-slide-down data-[side=top]:animate-slide-up",
               "w-48",
-              "obb-dropdown-container",
+              "ws-dropdown-container",
             )}
           >
             {item.isFolder ? (
@@ -169,7 +153,7 @@ const SelectionDropdown = memo(
               />
             ) : (
               <DashboardPopup
-                item={item as TreeItem<any> & { index: string }}
+                item={item}
                 deleteItem={deleteItem}
                 depth={depth}
                 setOpen={setOpen}
@@ -184,15 +168,24 @@ const SelectionDropdown = memo(
 
 SelectionDropdown.displayName = "SelectionDropdown";
 
-export const TabItem = forwardRef<
+const TabItem = forwardRef<
   HTMLLIElement,
   {
-    item: TreeItem<any>;
+    item: TreeItem<SideBarItem["data"]>;
     depth: number;
     children: ReactNode;
     title: ReactNode;
     arrow: ReactNode;
-    context: Partial<TreeItemRenderContext<never>>;
+    context: Pick<
+      TreeItemRenderContext<never>,
+      | "toggleExpandedState"
+      | "isExpanded"
+      | "isDraggingOver"
+      | "canDropOn"
+      | "interactiveElementProps"
+      | "itemContainerWithoutChildrenProps"
+      | "itemContainerWithChildrenProps"
+    >;
   }
 >((props, _ref) => {
   const collapsed = useShallowSidebarStore((state) => !state.effectiveExpanded);
@@ -237,10 +230,10 @@ export const TabItem = forwardRef<
   }, [item.index, item.isFolder, deleteFolder, removeTab, navigate]);
 
   const deleteItem = useCallback(
-    (item: TreeItem<any>) => {
+    (item: SideBarItem) => {
       if (
         !item?.data?.hasChanges &&
-        (item.isFolder ? item.children.length === 0 : true)
+        (item.isFolder ? (item.children?.length ?? 0) === 0 : true)
       ) {
         if (item.isFolder) {
           deleteFolder(item.index as string);
@@ -251,7 +244,10 @@ export const TabItem = forwardRef<
         return;
       }
 
-      const currentId = getNotificationId(item.isFolder, itemData.isShared);
+      const currentId = getNotificationId(
+        item.isFolder ?? false,
+        itemData.isShared ?? false,
+      );
       const isShared = currentId === NotificationId.DeleteDashboardShared;
 
       showNotificationWithRememberMe({
@@ -287,29 +283,6 @@ export const TabItem = forwardRef<
     const tab = getLastInnerTab(item.index as string);
     if (item.isFolder) return context.toggleExpandedState();
 
-    if (posthog) {
-      const templateId = itemData.data?.templateId;
-      const { getApiSourceById } = useBackendConnectorStore.getState();
-      const templateInfo = extractCustomTemplateInfo(templateId);
-      const source = templateInfo.sourceId
-        ? getApiSourceById(templateInfo.sourceId)
-        : undefined;
-
-      posthog.capture("sidebar_app_opened", {
-        tab_id: item.index,
-        tab_name: itemData.data?.name,
-        template_id: templateId,
-        tab_type: itemData.data?.type,
-        app_type: source?.vendorApp
-          ? "listed"
-          : templateId?.startsWith("custom-")
-            ? "user"
-            : "openbb",
-        listed_app_id: source?.vendorApp?.uuid,
-        vendor_name: source?.vendorApp?.name,
-      });
-    }
-
     setActiveItem(item.index);
     queueMicrotask(() => navigate(`/app/${item.index}${tab && `?tab=${tab}`}`));
   }, [
@@ -325,9 +298,9 @@ export const TabItem = forwardRef<
     (e: ReactMouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      deleteItem(item);
+      deleteItem(itemData);
     },
-    [deleteItem, item],
+    [deleteItem, itemData],
   );
 
   const tooltipMessage = useMemo(
@@ -340,13 +313,13 @@ export const TabItem = forwardRef<
         key={`selection-dropdown-${item.index}`}
         open={open}
         setOpen={setOpen}
-        item={item}
+        item={itemData}
         depth={depth}
         deleteItem={deleteItem}
         collapsed={collapsed}
       />
     ),
-    [open, setOpen, item, depth, deleteItem, collapsed],
+    [open, setOpen, item.index, itemData, depth, deleteItem, collapsed],
   );
 
   const liElementRef = useRef<HTMLLIElement | null>(null);
@@ -368,17 +341,17 @@ export const TabItem = forwardRef<
         id={`tab-${item.index}`}
         aria-label={"dashboard"}
         className={cn(
-          "obb-navigation-item group relative w-full justify-between",
+          "ws-navigation-item group relative w-full justify-between",
           "@min-[100px]:title-container @max-[100px]:h-8 @max-[100px]:w-8!",
           "@max-[100px]:hover:bg-light-200 @max-[100px]:dark:hover:bg-dark-500",
           {
             "bg-general-bg-secondary": open,
-            "obb-navigation-item-active":
+            "ws-navigation-item-active":
               (isActive && !(item.isFolder && context.isExpanded)) ||
               (context.isDraggingOver && context.canDropOn && item.isFolder),
             "drag-over": context.isDraggingOver && context.canDropOn && item.isFolder,
             "folder-drop-target":
-              context.isDraggingOver && context.canDropOn && item.isFolder, // Added class for drag over state
+              context.isDraggingOver && context.canDropOn && item.isFolder,
             hidden: sidebarCollapsed && !isActive,
           },
         )}
@@ -466,9 +439,6 @@ export const TabItem = forwardRef<
 
   const tooltipMemo = useMemo(
     () => (
-      // Own provider with skipDelayDuration={0} so closing the row's dropdown
-      // never leaves us in the global skip window — the tooltip always waits the
-      // full delay instead of showing instantly after the menu closes.
       <TooltipProvider delayDuration={TOOLTIP_OPEN_DELAY_MS} skipDelayDuration={0}>
         <Tooltip
           id={`tab-${item.index}-tooltip`}

@@ -25,26 +25,19 @@ import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import type { WidgetT } from "~/components/types";
 import type { StateDispatch } from "~/hooks/useStateReducer";
-import { inSnowflakeNativeApp } from "~/lib/constants";
 import { useMobile } from "~/lib/providers/MobileProvider";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { useShallowTutorialStore } from "~/lib/state/tutorial";
 import { beautifySlug, cn, generateRandomName, getWidgetSourceInfo } from "~/lib/utils";
 import type { SearchDialogState, SearchTabId } from "./SearchDialog";
 import CopilotPromptBanner from "./useCopilotPrompt";
 
-export const connectorTypes = [
-  "backend",
-  "file",
-  "single",
-  "snowflake",
-  "database",
-  "copilot_table",
-];
-export type WidgetItem = Partial<Omit<WidgetT, "type">> & {
-  uniqueId?: string;
+export const connectorTypes = ["backend", "file"];
+export type WidgetItem = Omit<WidgetT, "type" | "id"> & {
+  id?: string;
+  uniqueId: string;
   imgUrl?: string;
   type?: string;
   extension?: string;
@@ -82,11 +75,14 @@ export const CreateCheckbox = memo(
     const handleFocus = useCallback(() => {
       document
         .getElementById(parentId)
-        .style.setProperty("background-color", isDarkMode ? "#303038" : "#CDCED0");
+        ?.style.setProperty(
+          "background-color",
+          isDarkMode ? "var(--color-dark-600)" : "var(--color-light-300)",
+        );
     }, [parentId, isDarkMode]);
 
     const handleBlur = useCallback(() => {
-      document.getElementById(parentId).style.removeProperty("background-color");
+      document.getElementById(parentId)?.style.removeProperty("background-color");
     }, [parentId]);
 
     const handleRightLabelClick = useCallback(
@@ -123,7 +119,7 @@ function initialExpandedSubCategories(
       const key = `${widget.category}-${widget.subCategory}`.toLowerCase();
 
       if (initialState[key] === undefined) {
-        initialState[key] = true; // Set to true if not already set
+        initialState[key] = true;
       }
     }
   }
@@ -363,7 +359,7 @@ const VirtualizedItemRenderer = memo(
     if (item.type === "divider") {
       return (
         <div className="pt-0.5 pb-2">
-          <div className="obb-divider" />
+          <div className="ws-divider" />
         </div>
       );
     }
@@ -495,17 +491,12 @@ const WidgetItem = memo(
 
     const handleCheckboxChange = useCallback(
       (checked: boolean) => {
-        const updatedWidget = {
-          ...widgetItem,
-          defaultAssetClass: widgetItem?.category?.toLowerCase(),
-        };
-
         if (multiSelectState?.isShiftPressed) {
           multiSelectState.onShiftClick(displayId);
           return;
         }
 
-        onWidgetChange(checked, updatedWidget);
+        onWidgetChange(checked, { ...widgetItem });
       },
       [widgetItem, onWidgetChange, multiSelectState, displayId],
     );
@@ -523,9 +514,9 @@ const WidgetItem = memo(
         onClick={handleClick}
       >
         <CreateCheckbox
-          innerRef={(el: HTMLButtonElement | null) =>
-            (itemRefs.current[currentIndex] = el)
-          }
+          innerRef={(el: HTMLButtonElement | null) => {
+            itemRefs.current[currentIndex] = el;
+          }}
           parentId={`${displayId}-${currentIndex}`}
           id={`${displayId}-${currentIndex}-checkbox`}
           checked={isSelected}
@@ -543,7 +534,7 @@ const WidgetItem = memo(
                 subCategory={widgetItem.subCategory}
                 description={widgetItem.description}
                 imgUrl={widgetItem.imgUrl}
-                source={sourceName || widgetItem.sourceDatabase}
+                source={sourceName}
               />
             }
           >
@@ -558,23 +549,19 @@ const WidgetItem = memo(
                 {widgetItem.subCategory ? ` · ${widgetItem.subCategory}` : ""}
               </span>
             )}
-            {widgetItem.widgetType !== "copilot_table" && (
-              <span className="body-xs-regular min-w-0 max-w-full truncate whitespace-nowrap text-ds-text-caption capitalize sm:max-w-none">
-                {source}
-              </span>
-            )}
-            {connectorTypes.includes(widgetItem.widgetType) && (
+            <span className="body-xs-regular min-w-0 max-w-full truncate whitespace-nowrap text-ds-text-caption capitalize sm:max-w-none">
+              {source}
+            </span>
+            {connectorTypes.includes(widgetItem.widgetType ?? "") && (
               <span
                 className={cn(
-                  "obb-tag inline-block max-w-full truncate whitespace-nowrap align-middle capitalize sm:max-w-none sm:shrink-0",
+                  "ws-tag inline-block max-w-full truncate whitespace-nowrap align-middle capitalize sm:max-w-none sm:shrink-0",
                   widgetItem.extension && "uppercase",
                 )}
               >
                 {widgetItem.widgetType === "backend"
                   ? widgetItem.sourceName
-                  : widgetItem.widgetType === "copilot_table"
-                    ? "OpenBB Workspace"
-                    : widgetItem.extension || widgetItem.widgetType}
+                  : widgetItem.extension || widgetItem.widgetType}
               </span>
             )}
           </div>
@@ -586,11 +573,11 @@ const WidgetItem = memo(
 
 type WidgetMenuProps = {
   isFiltered: boolean;
-  widgets?: WidgetItem[];
+  widgets: WidgetItem[];
   globalSearch?: string;
   globalIndexRef: MutableRefObject<number>;
-  itemRefs?: MutableRefObject<(HTMLButtonElement | null)[]>;
-  onOpenChange?: (open: boolean) => void;
+  itemRefs: MutableRefObject<(HTMLButtonElement | null)[]>;
+  onOpenChange: (open: boolean) => void;
   allCategories: string[];
   state: SearchDialogState;
   dispatch: StateDispatch<SearchDialogState>;
@@ -638,6 +625,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
   );
 
   const isMobile = useMobile((s) => s.isMobile);
+  const mayAddConnections = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const { initialSelectedSearchTab, recentlyAddedWidgets, setRecentlyAddedWidgets } =
     useShallowThemeStore((state) => ({
@@ -649,13 +637,6 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
       ) as SearchTabId,
     }));
 
-  const { currentTutorial, goToStep, currentStep } = useShallowTutorialStore(
-    (state) => ({
-      currentTutorial: state.currentTutorial,
-      goToStep: state.goToStep,
-      currentStep: state.currentStep,
-    }),
-  );
   const { id: currentDashboardId } = useParams();
   const [searchParams] = useSearchParams();
   const { addWidgets, getTabById } = useShallowAppStore((state) => ({
@@ -664,7 +645,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
   }));
 
   const lastInnerTab = useShallowAppStore((state) =>
-    state?.getLastInnerTab(currentDashboardId),
+    currentDashboardId ? state.getLastInnerTab(currentDashboardId) : undefined,
   );
   const currentTab = useMemo(
     () => searchParams.get("tab") || lastInnerTab || "",
@@ -693,7 +674,6 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
       );
       const widgetsToAdd = selectedWidgets.map((widget) => {
         widget.innerTab = currentTab;
-        // If navigation_bar is present, add innerTab: "overview" to all widgets
         if (hasNavigationBar) {
           widget.innerTab = "overview";
         }
@@ -744,21 +724,12 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
     } else {
       toast.warning("Please select at least one widget to add.");
     }
-    if (currentTutorial === "grouping") {
-      if (currentStep === 4) {
-        setTimeout(() => {
-          goToStep(5);
-        }, 500);
-      }
-    }
     onOpenChange(false);
   }, [
     state.selectedWidgets,
-    currentTutorial,
     addWidgets,
     navigate,
     currentDashboardId,
-    goToStep,
     onOpenChange,
     isMobile,
     currentTab,
@@ -771,12 +742,10 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
     return widgets.filter((widget) => widgetUniqueIds.has(widget.uniqueId));
   }, [recentlyAddedWidgets, widgets]);
 
-  // Memoize selected widget IDs for faster lookups
   const selectedWidgetIds = useMemo(() => {
     return new Set(state.selectedWidgets.map((w) => w.uniqueId));
   }, [state.selectedWidgets]);
 
-  // Refs for values used inside callbacks to prevent callback chain rebuilds on selection change
   const selectedWidgetIdsRef = useRef(selectedWidgetIds);
   selectedWidgetIdsRef.current = selectedWidgetIds;
   const anchorWidgetIdRef = useRef<string | null>(state.anchorWidgetId);
@@ -789,7 +758,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
     (checked: boolean, widgetItem: WidgetItem) => {
       let innerTab = currentTab;
       widgetItem.uniqueId = widgetItem.uniqueId.replace("-recent", "");
-      const tab = getTabById(currentDashboardId);
+      const tab = currentDashboardId ? getTabById(currentDashboardId) : undefined;
 
       if (checked && widgetItem.widgetId === "navigation_bar") {
         const navigationBarAlreadyExists = tab?.data?.widgets?.some(
@@ -821,14 +790,10 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
             ...widgetItem,
             id: uuidv4(),
             innerTab,
-            type: widgetItem.type ?? widgetItem.defaultViz,
+            type: widgetItem.type,
             data: {
               dataKey: widgetItem.dataKey,
               ...widgetItem.data,
-              table: {
-                ...widgetItem.data?.table,
-                transpose: Boolean(widgetItem.data?.table?.transpose),
-              },
             } as WidgetT["data"],
           };
 
@@ -841,24 +806,20 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
 
   const [expandedCategories, setExpandedCategories] = useLocalStorage(
     "expandedCategories",
-    uniqueCategories.reduce(
-      (acc, category) => {
-        acc[category.toLowerCase()] = true;
-        return acc;
-      },
-      {} as Record<string, boolean>,
-    ),
+    uniqueCategories.reduce<Record<string, boolean>>((acc, category) => {
+      acc[category.toLowerCase()] = true;
+      return acc;
+    }, {}),
   );
   const [expandedSubcategories, setExpandedSubcategories] = useLocalStorage(
     "expandedSubcategories",
     () => initialExpandedSubCategories({}, widgets),
   );
-  const [localExpanded, setLocalExpanded] = useState({});
+  const [localExpanded, setLocalExpanded] = useState<Record<string, boolean>>({});
   const [isRecentlyAddedExpanded, setIsRecentlyAddedExpanded] = useState(true);
   const enableLocalExpanded = state.selectedCategory !== "All" || isFiltered;
 
   useEffect(() => {
-    // Only reset local expanded state when not in filtered mode or when switching away from widgets tab
     if (!enableLocalExpanded) {
       setLocalExpanded({});
     }
@@ -866,7 +827,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
       return;
 
     setExpandedCategories((prev) =>
-      uniqueCategories.reduce((acc, category) => {
+      uniqueCategories.reduce<Record<string, boolean>>((acc, category) => {
         const key = category.toLowerCase();
         acc[key] = prev[key] ?? true;
         return acc;
@@ -916,7 +877,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
         widget.category = widget.subCategory || widget.category;
         widget.subCategory = undefined;
       }
-      const category = widget.category?.toLowerCase();
+      const category = widget.category?.toLowerCase() ?? "";
       const subCategory = widget.subCategory?.toLowerCase();
       const subCatKey = `${category}-${subCategory}`;
 
@@ -948,14 +909,10 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
               .map((w) => ({
                 ...w,
                 id: uuidv4(),
-                type: w.type ?? w.defaultViz,
+                type: w.type,
                 data: {
                   dataKey: w.dataKey,
                   ...w.data,
-                  table: {
-                    ...w.data?.table,
-                    transpose: Boolean(w.data?.table?.transpose),
-                  },
                 } as WidgetT["data"],
               }));
             return [...prev, ...toAdd];
@@ -981,14 +938,10 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
               .map((w) => ({
                 ...w,
                 id: uuidv4(),
-                type: w.type ?? w.defaultViz,
+                type: w.type,
                 data: {
                   dataKey: w.dataKey,
                   ...w.data,
-                  table: {
-                    ...w.data?.table,
-                    transpose: Boolean(w.data?.table?.transpose),
-                  },
                 } as WidgetT["data"],
               }));
             return [...prev, ...toAdd];
@@ -1003,11 +956,10 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
     [filteredRecentlyAddedWidgets, widgets, dispatch],
   );
 
-  // Build flattened virtualized items list — decoupled from selection state for O(1) selection updates
   const virtualizedItems = useMemo(() => {
     const items: VirtualizedItem[] = [];
-    let currCategory: string | null = null;
-    let currSubCategory: string | null = null;
+    let currCategory = "";
+    let currSubCategory = "";
     let isFirstCategory = true;
     let widgetIndex = 0;
 
@@ -1108,7 +1060,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
 
         items.push({
           type: "subcategory",
-          category: widgetItem.category,
+          category: widgetItem.category ?? currCategory,
           subcategory: widgetItem.subCategory,
           isExpanded: isSubcategoryExpanded,
           totalCount: childWidgets.length,
@@ -1147,13 +1099,6 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
   ]);
   virtualizedItemsRef.current = virtualizedItems;
 
-  /**
-   * Shift+click range selection: selects or deselects all widgets between the
-   * last-clicked anchor and the newly clicked widget. Direction (select vs deselect)
-   * is determined by the anchor's current selection state — if the anchor is selected
-   * the range is added, otherwise the range is removed. Widget IDs are cleaned of the
-   * "-recent" suffix so that Recently Added duplicates map to the same underlying widget.
-   */
   const handleRangeSelection = useCallback(
     (clickedWidgetId: string) => {
       const anchorId = anchorWidgetIdRef.current;
@@ -1199,8 +1144,8 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
       const currentSelectedIds = selectedWidgetIdsRef.current;
       const isAnchorSelected = currentSelectedIds.has(cleanAnchorId);
 
-      const widgetsToAdd = [];
-      const widgetIdsToRemove = [];
+      const widgetsToAdd: WidgetItem[] = [];
+      const widgetIdsToRemove: string[] = [];
 
       for (const widget of widgetsInRange) {
         const isCurrentlySelected = currentSelectedIds.has(widget.cleanId);
@@ -1211,14 +1156,10 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
               ...widget,
               uniqueId: widget.cleanId,
               id: uuidv4(),
-              type: widget.type ?? widget.defaultViz,
+              type: widget.type,
               data: {
                 dataKey: widget.dataKey,
                 ...widget.data,
-                table: {
-                  ...widget.data?.table,
-                  transpose: Boolean(widget.data?.table?.transpose),
-                },
               } as WidgetT["data"],
             });
           }
@@ -1247,24 +1188,8 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
     (checked: boolean, widgetItem: WidgetItem) => {
       dispatch({ anchorWidgetId: widgetItem.uniqueId });
       handleChange(checked, widgetItem);
-
-      if (
-        checked &&
-        currentTutorial === "grouping" &&
-        currentStep === 3 &&
-        state.selectedOption !== "external"
-      ) {
-        setTimeout(() => goToStep(4), 500);
-      }
     },
-    [
-      handleChange,
-      dispatch,
-      currentTutorial,
-      currentStep,
-      goToStep,
-      state.selectedOption,
-    ],
+    [handleChange, dispatch],
   );
 
   const multiSelectState = useMemo(
@@ -1357,7 +1282,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-2.5 text-xs h-full">
-        <div className="flex items-center justify-center bg-tab-group-bg overflow-hidden h-full rounded border border-secondary/20">
+        <div className="flex items-center justify-center bg-tab-group-bg overflow-hidden h-full rounded border border-light-100/20 dark:border-dark-400/20">
           <BrandedLoadingState message="Loading widgets..." />
         </div>
       </div>
@@ -1366,7 +1291,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
 
   return (
     <div className="flex flex-col gap-2.5 text-xs h-full">
-      <div className="flex flex-col flex-1 min-h-0 bg-tab-group-bg overflow-hidden rounded border border-secondary/20">
+      <div className="flex flex-col flex-1 min-h-0 bg-tab-group-bg overflow-hidden rounded border border-light-100/20 dark:border-dark-400/20">
         <div
           className={cn(
             "flex flex-shrink-0 gap-2 sm:justify-between p-2.5 border-b border-surface-divider",
@@ -1472,9 +1397,9 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
                     onOpenChange={onOpenChange}
                   />
                 )}
-                {state.selectedOption === "external" && !inSnowflakeNativeApp && (
+                {state.selectedOption === "external" && mayAddConnections && (
                   <Button variant="outlined" size="sm" className="mt-2">
-                    <Link to="/app/data-connectors" onClick={() => onOpenChange(false)}>
+                    <Link to="/app/connections" onClick={() => onOpenChange(false)}>
                       Add an external source
                     </Link>
                   </Button>

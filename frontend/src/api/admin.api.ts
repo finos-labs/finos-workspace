@@ -1,4 +1,5 @@
-import type { EntityThemeSettings } from "~/lib/state/tableChartThemes";
+import type { EntityThemeSettings } from "~/lib/state/entityTheme";
+import type { ThemeVariants } from "~/lib/theme/sheet";
 import type { EntityMapItem, EntitySettings } from "~/types/entity.type";
 import type { CreateUserDTO, User, UserSources } from "~/types/user.type";
 import { apiClient } from "./api";
@@ -6,12 +7,6 @@ import { apiClient } from "./api";
 interface BaseResponse {
   success: boolean;
   message?: string;
-}
-
-interface EntityInfo {
-  expiration_date: null | string;
-  used_seats: number;
-  seats: number;
 }
 
 interface App {
@@ -23,8 +18,6 @@ interface App {
   user_email: string;
   updated_date: string;
 }
-
-/* Users */
 
 export async function getUsers() {
   const { data } = await apiClient.get<User[]>("/admin/users");
@@ -53,18 +46,16 @@ export async function deleteMe() {
 
 export async function deleteUser(
   id: string,
-  source: UserSources,
+  source: UserSources | undefined,
   remove?: boolean,
 ): Promise<{ success: boolean } | undefined> {
   if (source === "user") {
     if (remove) {
-      // this endpoint removes the user from the entity
       const { data } = await apiClient.delete<BaseResponse>(
         `/admin/users/${id}/remove`,
       );
       return data;
     }
-    // this endpoint soft deletes the user
     const { data } = await apiClient.delete<BaseResponse>(`/admin/users/${id}`);
     return data;
   }
@@ -72,17 +63,18 @@ export async function deleteUser(
     const { data } = await apiClient.delete<BaseResponse>(`/admin/register/${id}`);
     return data;
   }
-  if (source === "takeover") {
-    const { data } = await apiClient.post<BaseResponse>(`/admin/users/${id}/revoke`);
-    return data;
-  }
 }
 
+export type PasswordLinkAnswer = {
+  success: boolean;
+  link: string;
+  expires_at: string;
+};
+
 export async function resetUserPassword(id: string) {
-  const { data } = await apiClient.post<{
-    success: boolean;
-    temporary_password: string;
-  }>(`/admin/reset-password/${id}`);
+  const { data } = await apiClient.post<PasswordLinkAnswer>(
+    `/admin/reset-password/${id}`,
+  );
   return data;
 }
 
@@ -91,28 +83,45 @@ export async function resetUser2FA(id: string) {
   return data;
 }
 
-export async function extendTrialUser(id: string) {
-  const { data } = await apiClient.get<BaseResponse>(`/admin/extend-trial/${id}`);
-  return data;
-}
-
 export async function createUser(user: CreateUserDTO) {
-  const { data } = await apiClient.post<{
-    success: boolean;
-    temporary_password: string;
-  }>("/admin/create-user", user);
+  const { data } = await apiClient.post<PasswordLinkAnswer>("/admin/create-user", user);
   return data;
 }
 
-/* Entities */
+export type ShareRequestUser = {
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+};
+
+export type ShareRequest = {
+  uuid: string;
+  created_date: string | null;
+  requester: ShareRequestUser;
+  item_type: "dashboard" | "app";
+  item_uuid: string;
+  item_name: string;
+  recipient: ShareRequestUser | null;
+  permissions: string | null;
+};
+
+export async function getShareRequests() {
+  const { data } = await apiClient.get<ShareRequest[]>("/admin/share-requests");
+  return data;
+}
+
+export async function decideShareRequest(
+  uuid: string,
+  decision: "approve" | "decline",
+) {
+  const { data } = await apiClient.post<BaseResponse>(
+    `/admin/share-requests/${uuid}/${decision}`,
+  );
+  return data;
+}
 
 export async function getEntity() {
   const { data } = await apiClient.get<EntitySettings>("/admin/entity");
-  return data;
-}
-
-export async function getEntityInfo() {
-  const { data } = await apiClient.get<EntityInfo>("/admin/entity-info");
   return data;
 }
 
@@ -139,5 +148,41 @@ export async function updateEntityThemeSettings(
     .catch(() => ({
       data: { success: false, message: "Failed to update theme settings" },
     }));
+  return data;
+}
+
+export interface ThemePreset extends ThemeVariants {
+  uuid: string;
+  name: string;
+}
+
+export interface ThemePresets {
+  presets: ThemePreset[];
+  active_preset: string | null;
+}
+
+export async function getThemePresets() {
+  const { data } = await apiClient.get<ThemePresets>("/admin/theme-presets");
+  return data;
+}
+
+export async function putThemePreset(preset: ThemePreset) {
+  const { uuid, ...body } = preset;
+  const { data } = await apiClient.put<ThemePreset>(
+    `/admin/theme-presets/${uuid}`,
+    body,
+  );
+  return data;
+}
+
+export async function deleteThemePreset(uuid: string) {
+  const { data } = await apiClient.delete<ThemePresets>(`/admin/theme-presets/${uuid}`);
+  return data;
+}
+
+export async function putActiveThemePreset(uuid: string | null) {
+  const { data } = await apiClient.put<ThemePresets>("/admin/theme-presets/active", {
+    uuid,
+  });
   return data;
 }

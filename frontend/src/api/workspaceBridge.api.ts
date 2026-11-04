@@ -5,7 +5,7 @@ import { invalidateMcpTokens } from "~/components/LayoutAuth/useMcpTokens";
 import { getConfig } from "~/lib/runtimeConfig";
 import { createURLString } from "~/lib/utils/widgetParams";
 
-export interface StartBridgeSessionBody {
+interface StartBridgeSessionBody {
   client_name: string;
   current_dashboard_id: string | null;
   current_tab_id: string | null;
@@ -21,14 +21,11 @@ export interface WorkspaceMcpTokenMetadata {
   last_used_at?: string | null;
 }
 
-export interface WorkspaceMcpTokenCreateResponse extends WorkspaceMcpTokenMetadata {
+interface WorkspaceMcpTokenCreateResponse extends WorkspaceMcpTokenMetadata {
   token: string;
 }
 
 export function getWorkspaceMcpEndpoint() {
-  // urls.backend is often relative (e.g. "/api") in single-origin deployments.
-  // Resolve it against the page origin so the value is a usable absolute URL —
-  // external MCP agents and the bridge websocket can't use a relative path.
   const baseUrl = createURLString(getConfig().urls.backend, window.location.origin);
 
   return createURLString("/mcp", baseUrl);
@@ -37,7 +34,7 @@ export function getWorkspaceMcpEndpoint() {
 function catchError(error: AxiosError): never {
   throw new Error(
     error?.message ||
-      `Workspace MCP request failed with status ${error?.response?.status}.`,
+      `FINOS Workspace MCP request failed with status ${error?.response?.status}.`,
   );
 }
 function parseJsonResponse<T extends AxiosResponse, U = T["data"]>(
@@ -46,7 +43,8 @@ function parseJsonResponse<T extends AxiosResponse, U = T["data"]>(
 ): U {
   if (resp.status !== successStatus) {
     throw new Error(
-      resp.statusText || `Workspace MCP request failed with status ${resp.status}.`,
+      resp.statusText ||
+        `FINOS Workspace MCP request failed with status ${resp.status}.`,
     );
   }
   return resp.data;
@@ -58,7 +56,7 @@ export async function startBridgeSession(
 ) {
   const resp = await apiClient
     .post<BrowserSessionStartResponse>(
-      "/pro/workspace-mcp/bridge/session/start",
+      "/app/workspace-mcp/bridge/session/start",
       body,
       { signal },
     )
@@ -71,7 +69,7 @@ export async function startBridgeSession(
 
 export async function listWorkspaceMcpTokens() {
   const resp = await apiClient
-    .get<WorkspaceMcpTokenMetadata[]>("/pro/workspace-mcp/tokens")
+    .get<WorkspaceMcpTokenMetadata[]>("/app/workspace-mcp/tokens")
     .catch(catchError);
 
   return parseJsonResponse(resp);
@@ -81,14 +79,14 @@ export async function createWorkspaceMcpToken(
   name: string,
 ): Promise<WorkspaceMcpTokenCreateResponse> {
   const resp = await apiClient
-    .post<WorkspaceMcpTokenCreateResponse>("/pro/workspace-mcp/tokens", { name })
+    .post<WorkspaceMcpTokenCreateResponse>("/app/workspace-mcp/tokens", { name })
     .catch(catchError);
   return parseJsonResponse(resp);
 }
 
 export async function revokeWorkspaceMcpToken(tokenUuid: string): Promise<void> {
   const resp = await apiClient
-    .delete(`/pro/workspace-mcp/tokens/${tokenUuid}`)
+    .delete(`/app/workspace-mcp/tokens/${tokenUuid}`)
     .catch(catchError);
 
   parseJsonResponse(resp, 204);

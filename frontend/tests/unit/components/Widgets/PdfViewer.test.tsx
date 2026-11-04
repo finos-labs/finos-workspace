@@ -1,20 +1,29 @@
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import PdfViewer from "~/components/Widgets/PdfViewer";
 
 vi.mock("~/components/DraggableCard", () => ({
-  default: ({ children, loading, error }: any) => (
+  default: ({
+    children,
+    loading,
+    error,
+  }: {
+    children?: ReactNode;
+    loading?: boolean;
+    error?: boolean;
+  }) => (
     <div data-testid="draggable-card" data-loading={loading} data-error={error}>
       {children}
     </div>
   ),
-  SetLoadingOnResize: ({ children }: any) => (
+  SetLoadingOnResize: ({ children }: { children?: ReactNode }) => (
     <div data-testid="set-loading-on-resize">{children}</div>
   ),
 }));
 
 vi.mock("~/hooks/useStateReducer", () => ({
-  useStateReducer: (initialState: any) => [initialState, vi.fn()],
+  useStateReducer: (initialState: object) => [initialState, vi.fn()],
 }));
 
 vi.mock("~/lib/api", () => ({
@@ -42,7 +51,7 @@ vi.mock("~/components/Widget.context", () => ({
   }),
 }));
 
-vi.mock("~/components/General/Table/NavBar/QueryParams", () => ({
+vi.mock("~/components/WidgetParams/QueryParams", () => ({
   useWidgetParamsPositions: () => ({
     renderRow0Params: null,
     renderBelowNavbarRows: null,
@@ -50,7 +59,7 @@ vi.mock("~/components/General/Table/NavBar/QueryParams", () => ({
 }));
 
 vi.mock("~/components/Widgets/Helpers/PdfViewerCore", () => ({
-  PdfViewerCore: ({ file }: any) => (
+  PdfViewerCore: ({ file }: { file?: unknown }) => (
     <div data-testid="pdf-viewer-core" data-file={file}>
       PDF Viewer Core
     </div>
@@ -87,7 +96,6 @@ describe("PdfViewer Widget", () => {
     render(<PdfViewer />);
 
     const card = screen.getByTestId("draggable-card");
-    // With our mock returning isLoading: false, this should be false
     expect(card.getAttribute("data-loading")).toBe("false");
   });
 });

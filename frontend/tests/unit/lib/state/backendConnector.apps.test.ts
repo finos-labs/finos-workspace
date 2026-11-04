@@ -1,13 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Source } from "~/lib/state/backendConnector";
 import { validateBackend } from "~/lib/utils/validateBackend";
+import { throughSourceProxy } from "../../../mocks/sourceProxy";
+import { installWidgetsSchemaFixture } from "../../../mocks/widgetsSchema";
 
-// Mock fetch globally
+installWidgetsSchemaFixture();
+
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+global.fetch = throughSourceProxy(mockFetch);
 
 describe("validateBackend - apps.json endpoint behavior", () => {
   const mockSource: Source = {
+    id: "test-backend",
     url: "https://test-backend.com",
     name: "Test Backend",
     endpointHeaders: [
@@ -25,20 +29,17 @@ describe("validateBackend - apps.json endpoint behavior", () => {
   });
 
   it("should handle jsonify({}) correctly - returns empty object, no error message, 0 apps found", async () => {
-    // Mock widgets.json response (required for validateBackend to work)
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({}),
         headers: new Headers(),
       })
-      // Mock apps.json response with empty object
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({}),
         headers: new Headers(),
       })
-      // Mock agents.json response
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve([]),
@@ -48,38 +49,34 @@ describe("validateBackend - apps.json endpoint behavior", () => {
     const result = await validateBackend(mockSource, false);
 
     expect(result.templates).toEqual([]);
-    expect(result.templateErrorMessage).toBeNull(); // FIXED: Should be null now
-    expect(result.totalFailed).toBe(0); // FIXED: Should be 0 now
+    expect(result.templateErrorMessage).toBeNull();
+    expect(result.totalFailed).toBe(0);
 
-    // Verify the fetch calls
     expect(mockFetch).toHaveBeenCalledTimes(3);
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
-      new URL("widgets.json", mockSource.url),
+      "https://test-backend.com/widgets.json",
       expect.any(Object),
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
       2,
-      new URL("apps.json", mockSource.url),
+      "https://test-backend.com/apps.json",
       expect.any(Object),
     );
   });
 
   it("should handle jsonify([]) correctly - returns empty array, no error message, 0 apps found", async () => {
-    // Mock widgets.json response
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({}),
         headers: new Headers(),
       })
-      // Mock apps.json response with empty array
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve([]),
         headers: new Headers(),
       })
-      // Mock agents.json response
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve([]),
@@ -94,20 +91,17 @@ describe("validateBackend - apps.json endpoint behavior", () => {
   });
 
   it("should handle jsonify() (undefined/null response) correctly - should not show widget errors", async () => {
-    // Mock widgets.json response
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({}),
         headers: new Headers(),
       })
-      // Mock apps.json response that returns undefined/null (simulating jsonify() with no data)
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(undefined),
         headers: new Headers(),
       })
-      // Mock agents.json response
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve([]),
@@ -117,15 +111,12 @@ describe("validateBackend - apps.json endpoint behavior", () => {
     const result = await validateBackend(mockSource, false);
 
     expect(result.templates).toEqual([]);
-    expect(result.templateErrorMessage).toBeNull(); // FIXED: Should be null now
-    expect(result.totalFailed).toBe(0); // FIXED: Should be 0 now
-    // This should NOT contain widget-related error messages
+    expect(result.templateErrorMessage).toBeNull();
+    expect(result.totalFailed).toBe(0);
     expect(result.errorMessage).toBeNull();
   });
 
   it("should handle apps.json fetch failure by trying templates.json fallback", async () => {
-    // After parallelization (apps + agents fire concurrently after widgets), call
-    // order is non-deterministic. Mock by URL pattern instead of chain order.
     mockFetch.mockImplementation((url: URL | string) => {
       const href = url.toString();
       if (href.endsWith("widgets.json")) {
@@ -162,34 +153,30 @@ describe("validateBackend - apps.json endpoint behavior", () => {
     expect(result.templateErrorMessage).toBeNull();
 
     expect(mockFetch).toHaveBeenCalledWith(
-      new URL("apps.json", mockSource.url),
+      "https://test-backend.com/apps.json",
       expect.any(Object),
     );
     expect(mockFetch).toHaveBeenCalledWith(
-      new URL("templates.json", mockSource.url),
+      "https://test-backend.com/templates.json",
       expect.any(Object),
     );
   });
 
   it("should handle both apps.json and templates.json failures", async () => {
-    // Mock widgets.json response
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({}),
         headers: new Headers(),
       })
-      // Mock apps.json failure
       .mockResolvedValueOnce({
         ok: false,
         status: 404,
       })
-      // Mock templates.json failure
       .mockResolvedValueOnce({
         ok: false,
         status: 404,
       })
-      // Mock agents.json response
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve([]),
@@ -203,26 +190,22 @@ describe("validateBackend - apps.json endpoint behavior", () => {
   });
 
   it("should handle invalid template data in apps.json response", async () => {
-    // Mock widgets.json response
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({}),
         headers: new Headers(),
       })
-      // Mock apps.json response with invalid template data
       .mockResolvedValueOnce({
         ok: true,
         json: () =>
           Promise.resolve([
             {
-              // Invalid template - missing required fields like 'name', 'description', 'tabs'
               invalidField: "invalid",
             },
           ]),
         headers: new Headers(),
       })
-      // Mock agents.json response
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve([]),
@@ -231,9 +214,9 @@ describe("validateBackend - apps.json endpoint behavior", () => {
 
     const result = await validateBackend(mockSource, false);
 
-    expect(result.templates).toEqual([]); // Should be empty due to validation failure
-    expect(result.templateErrorMessage).not.toBeNull(); // Should have validation errors
-    expect(result.templateErrorMessage).toContain("Unknown App"); // Default name for invalid templates
+    expect(result.templates).toEqual([]);
+    expect(result.templateErrorMessage).not.toBeNull();
+    expect(result.templateErrorMessage).toContain("Unknown App");
     expect(result.totalFailed).toBeGreaterThan(0);
   });
 
@@ -250,20 +233,17 @@ describe("validateBackend - apps.json endpoint behavior", () => {
       },
     };
 
-    // Mock widgets.json response
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({}),
         headers: new Headers(),
       })
-      // Mock apps.json response with valid template data
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve([validTemplate]),
         headers: new Headers(),
       })
-      // Mock agents.json response
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve([]),
@@ -293,23 +273,19 @@ describe("validateBackend - apps.json endpoint behavior", () => {
 
     const invalidTemplate = {
       name: "Invalid App",
-      // Missing required fields
     };
 
-    // Mock widgets.json response
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({}),
         headers: new Headers(),
       })
-      // Mock apps.json response with mixed template data
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve([validTemplate, invalidTemplate]),
         headers: new Headers(),
       })
-      // Mock agents.json response
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve([]),
@@ -318,7 +294,7 @@ describe("validateBackend - apps.json endpoint behavior", () => {
 
     const result = await validateBackend(mockSource, false);
 
-    expect(result.templates).toEqual([]); // Should be empty due to validation failure
+    expect(result.templates).toEqual([]);
     expect(result.templateErrorMessage).not.toBeNull();
     expect(result.templateErrorMessage).toContain("Invalid App");
     expect(result.totalFailed).toBeGreaterThan(0);
@@ -418,8 +394,7 @@ describe("validateBackend - apps.json endpoint behavior", () => {
         url: "https://mcp.example.com/sse",
       },
     ]);
-    // @ts-expect-error - mcp_servers should not exist on the resulting template
-    expect(result.templates[0].mcp_servers).toBeUndefined();
+    expect(result.templates[0]).not.toHaveProperty("mcp_servers");
   });
 
   it("should report unrecognized template keys from templates.json fallback with the correct label", async () => {

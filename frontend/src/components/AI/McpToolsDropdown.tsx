@@ -13,6 +13,7 @@ import { Checkbox } from "~/components/ds/atoms/Checkbox";
 import { PopoverContent, PopoverRoot } from "~/components/ds/atoms/Popover";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
+import { isMcpToolAllowed, useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import {
   dedupeIframeServersByUrl,
   type McpServer,
@@ -22,7 +23,7 @@ import { cn } from "~/lib/utils";
 import { MARKDOWN_SANITIZE_CONFIG } from "~/lib/utils/sanitize";
 import { DropdownMenuContentVariants } from "../ds/atoms/DropdownMenu";
 import { Input } from "../ds/atoms/Input";
-import { McpServerSourceTag } from "./McpServerSourceTag";
+import { inertImageOverride } from "./MarkdownOverrides";
 import { schemaParameters } from "./utils/mcpToolSchema";
 
 interface McpToolsDropdownProps {
@@ -32,7 +33,9 @@ interface McpToolsDropdownProps {
 }
 
 const markdownOptions = {
+  disableParsingRawHTML: true,
   overrides: {
+    ...inertImageOverride,
     h1: {
       component: (props: ComponentProps<"h1">) => (
         <h1 {...props} className="text-sm font-bold text-ds-text-heading mt-2 mb-1" />
@@ -141,7 +144,6 @@ const markdownOptions = {
   forceBlock: true,
 };
 
-// Markdown tooltip renderer component - exported for reuse
 export const ToolDescriptionMarkdown = ({ content }: { content: string }) => {
   const sanitizedContent = useMemo(
     () => DOMPurify.sanitize(content, MARKDOWN_SANITIZE_CONFIG),
@@ -173,38 +175,36 @@ export function McpToolsDropdown({
     }),
   );
 
-  // Filter servers to only show connected ones, and filter tools based on search query
+  const access = useCopilotAccessStore((state) => state.access);
+
   const filteredServers = useMemo(() => {
-    // First, filter to only connected servers, collapsing duplicate copies of
-    // the same iframe widget into a single entry
     let processedServers = dedupeIframeServersByUrl(
       servers.filter((server) => {
         const connection = getMCPConnection(server.id);
         return connection?.state === "ready" && server.enabled;
       }),
-    );
+    ).map((server) => ({
+      ...server,
+      tools: server.tools.filter((tool) =>
+        isMcpToolAllowed(access, server.url, tool.id),
+      ),
+    }));
 
-    // Apply search filter if query exists
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
 
       processedServers = processedServers.reduce(
         (acc, server) => {
-          // Check if server name matches
           const serverMatches = server.name.toLowerCase().includes(query);
 
-          // Filter tools that match the query
           const matchingTools = server.tools.filter((tool) =>
             tool.name.toLowerCase().includes(query),
           );
 
-          // Include server if either server name matches or has matching tools
           if (serverMatches || matchingTools.length > 0) {
             acc.push({
               ...server,
-              // If server name matches, show all tools; otherwise only matching tools
               tools: serverMatches ? server.tools : matchingTools,
-              // Track if this server matched by name (for UI purposes)
               matchedByName: serverMatches,
             });
           }
@@ -215,7 +215,7 @@ export function McpToolsDropdown({
     }
 
     return processedServers;
-  }, [servers, searchQuery, getMCPConnection, mcpConnectionRegistry]);
+  }, [servers, searchQuery, getMCPConnection, mcpConnectionRegistry, access]);
 
   return (
     <PopoverRoot open={open} onOpenChange={onOpenChange}>
@@ -316,17 +316,12 @@ const McpServerItem = memo((props: { server: McpServer; searchQuery: string }) =
       return { isConnected, checkboxState, displayToolCount, displayTotalToolCount };
     }, [connection, server]);
 
-  // Auto-expand servers when searching to show matching tools, collapse when clearing
   useEffect(() => {
     setIsCollapsed(searchQuery === "");
   }, [searchQuery]);
 
   return (
-    <div
-      key={server.id}
-      // Grey out entire server section if disconnected
-      className={isConnected ? "" : "opacity-50"}
-    >
+    <div key={server.id} className={isConnected ? "" : "opacity-50"}>
       <div
         className={cn("flex items-center gap-2 px-3 py-2 rounded-sm", {
           "hover:bg-general-bg-secondary-hover": isConnected,
@@ -377,7 +372,6 @@ const McpServerItem = memo((props: { server: McpServer; searchQuery: string }) =
 
         <div
           className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
-          // Always allow collapse/expand
           onClick={() => setIsCollapsed((prev) => !prev)}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
@@ -398,7 +392,6 @@ const McpServerItem = memo((props: { server: McpServer; searchQuery: string }) =
           <span className="text-xs text-ds-text-caption">
             ({displayToolCount}/{displayTotalToolCount})
           </span>
-          <McpServerSourceTag server={server} className="shrink-0" />
           <Icon
             id={isCollapsed ? "chevron-right" : "chevron-down"}
             className={cn("h-4 w-4 ml-auto text-ds-text-body", {

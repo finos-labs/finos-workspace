@@ -1,4 +1,3 @@
-import type { ColDef } from "ag-grid-community";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -15,16 +14,10 @@ import { round } from "lodash";
 import { useCallback, useEffect } from "react";
 import { v4 as uuidLibv4 } from "uuid";
 import type { CreateWidgetParams } from "~/components/AI/hooks/useCreateWidgetFromArtifact";
-import { isDate } from "~/components/General/Table/AgGridUtils";
-import { areTruthy } from "~/components/General/Table/utils";
-import type { NewWidgetT } from "~/components/types";
-import {
-  BENZINGA_NEWS_IMG_URLS,
-  butterflyTypes,
-  MAX_SKILL_SLUG_LENGTH,
-} from "../constants";
-import { useAppStore } from "../state/app";
-import { useAuthStore } from "../state/auth";
+import type { NewWidgetT, StoredParamValue } from "~/components/types";
+import { isDate } from "~/lib/utils/format";
+import { areTruthy } from "~/lib/utils/values";
+import { butterflyTypes, MAX_SKILL_SLUG_LENGTH } from "../constants";
 import type { SaveWidgetsEventT } from "../types";
 
 dayjs.extend(quarterOfYear);
@@ -42,28 +35,22 @@ export function isTabPath(pathname: string) {
   return pathname?.includes("/app/") && isUUID(pathname?.split("/app/")?.pop() || "");
 }
 
-// Initialize linkify-it instance for URL detection
 const linkify = new LinkifyIt();
 
 export function extractUrlsFromText(text: string): string[] {
   try {
-    // Use linkify-it to find URLs in text
     const matches = linkify.match(text);
 
     if (!matches) {
       return [];
     }
 
-    // Extract URLs and filter out emails (mailto: links) and @mentions
     const urls = matches
       .map((match) => match.url)
       .filter((url) => {
         if (url.endsWith(".name")) return false;
-        // Filter out mailto: links (emails)
         if (url.startsWith("mailto:")) return false;
 
-        // Check if preceded by @ (indicating email domain pattern like @gmail.com)
-        // https://openbb.atlassian.net/browse/AA-3812
         const originalText = matches.find((m) => m.url === url)?.raw || "";
         const urlIndex = text.indexOf(originalText);
         if (urlIndex > 0 && text[urlIndex - 1] === "@") {
@@ -80,17 +67,19 @@ export function extractUrlsFromText(text: string): string[] {
   }
 }
 
-export function isInputFocused(target: HTMLElement | EventTarget) {
+export function toError(thrown: unknown): Error {
+  return thrown instanceof Error ? thrown : new Error(String(thrown));
+}
+
+export function isInputFocused(target: HTMLElement | EventTarget | null) {
   return (
     target instanceof HTMLInputElement ||
     target instanceof HTMLTextAreaElement ||
-    (target instanceof HTMLDivElement &&
-      (target?.className?.includes("ProseMirror") ||
-        target?.contentEditable === "true"))
+    (target instanceof HTMLDivElement && target?.contentEditable === "true")
   );
 }
 
-export function isValidUrl(url: any) {
+export function isValidUrl(url: string) {
   const urls = extractUrlsFromText(url);
   return urls.length === 1;
 }
@@ -136,7 +125,7 @@ type CustomEvents = {
   };
   [key: `requestStaleState-${WidgetUUID}`]: { requestStaleState: boolean };
   [key: `updateWidget-${WidgetUUID}`]: NewWidgetT;
-  [key: `updateQueryParams-${WidgetUUID}`]: { [key: string]: any };
+  [key: `updateQueryParams-${WidgetUUID}`]: Record<string, StoredParamValue>;
   [key: `queryChanged-${WidgetUUID}`]: string;
   [key: `sqlParamHover-${WidgetUUID}`]: { paramName: string | null };
   [key: `sqlParamHoverPill-${WidgetUUID}`]: { paramName: string | null };
@@ -168,7 +157,7 @@ export function useEventListener<T extends EventName>(
   handler: (detail: CustomEvents[T]) => void,
 ) {
   const listener = useCallback(
-    (event: CustomEvent) => handler(event.detail),
+    (event: Event) => handler((event as CustomEvent).detail),
     [handler],
   );
   useEffect(() => {
@@ -178,9 +167,6 @@ export function useEventListener<T extends EventName>(
   }, [eventName, listener]);
 }
 
-/**
- * Dispatches an event to save local widget states to AppStore
- */
 export async function dispatchSaveState() {
   return window.dispatchEvent(
     new CustomEvent("saveWidgets", {
@@ -224,55 +210,21 @@ export function capitalize(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-export async function loaderDelayFn<T>(fn: (...args: any[]) => Promise<T> | T) {
-  const delay = Number(sessionStorage.getItem("loaderDelay") ?? 0);
-  const delayPromise = new Promise((r) => setTimeout(r, delay));
-
-  await delayPromise;
-  const res = await fn();
-
-  return res;
-}
-
-export function getRandomBenzingaImage() {
-  return BENZINGA_NEWS_IMG_URLS[
-    Math.floor(Math.random() * BENZINGA_NEWS_IMG_URLS.length)
-  ];
-}
-
-export async function actionDelayFn<T>(fn: (...args: any[]) => Promise<T> | T) {
-  const delay = Number(sessionStorage.getItem("actionDelay") ?? 0);
-  await new Promise((r) => setTimeout(r, delay));
-  return fn();
-}
-
 export function shuffle<T>(arr: T[]): T[] {
   let i = arr.length;
   if (i === 0) return arr;
   const copy = [...arr];
   while (--i) {
     const j = Math.floor(Math.random() * (i + 1));
-    const a = copy[i];
-    const b = copy[j];
-    copy[i] = b!;
-    copy[j] = a!;
+    const a = copy[i] as T;
+    const b = copy[j] as T;
+    copy[i] = b;
+    copy[j] = a;
   }
   return copy;
 }
 
-export function getFromLS(localStorageKey, key, defaultValue = {}) {
-  let ls = {};
-  if (localStorage) {
-    try {
-      ls = JSON.parse(localStorage.getItem(localStorageKey)) || defaultValue;
-    } catch (_e) {
-      ls = defaultValue;
-    }
-  }
-  return ls[key];
-}
-
-export function saveToLS(localStorageKey, key, value) {
+export function saveToLS(localStorageKey: string, key: string, value: unknown) {
   localStorage.setItem(
     localStorageKey,
     JSON.stringify({
@@ -281,128 +233,16 @@ export function saveToLS(localStorageKey, key, value) {
   );
 }
 
-const CHARTING_COLORS = [
-  "#33BBFF",
-  "#E93361",
-  "#4ADE80",
-  "#EF7D00",
-  "#005CA9",
-  "#FACCD8",
-  "#16A34A",
-  "#CCBE00",
-  "#991B1B",
-  "#F5B166",
-];
-
-export function generateRandomColor() {
-  const randomColor =
-    CHARTING_COLORS[Math.floor(Math.random() * CHARTING_COLORS.length)];
-  return randomColor;
-}
-
-const hexToRGB = (hex: string): [number, number, number] => {
-  const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-  const fullHex = hex.replace(shorthandRegex, (_, r, g, b) => r + r + g + g + b + b);
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
-  if (result) {
-    return [
-      Number.parseInt(result[1], 16),
-      Number.parseInt(result[2], 16),
-      Number.parseInt(result[3], 16),
-    ];
-  }
-  return [0, 0, 0];
-};
-
-export function getContrastColor(hexColor) {
-  // If the color is not a valid hex color, return black as default
-  if (!/^#([0-9A-F]{3}){1,2}$/i.test(hexColor)) {
-    return "#000000";
-  }
-
-  // Convert the hex color to RGB
-  let { r, g, b } = { r: 0, g: 0, b: 0 }; // linting hack
-  if (hexColor.length === 7) {
-    r = Number.parseInt(hexColor.substr(1, 2), 16);
-    g = Number.parseInt(hexColor.substr(3, 2), 16);
-    b = Number.parseInt(hexColor.substr(5, 2), 16);
-  } else {
-    r = Number.parseInt(hexColor[1] + hexColor[1], 16);
-    g = Number.parseInt(hexColor[2] + hexColor[2], 16);
-    b = Number.parseInt(hexColor[3] + hexColor[3], 16);
-  }
-
-  // Calculate the brightness of the color
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-
-  // Return white for dark colors and black for light colors
-  return brightness > 128 ? "#000000" : "#FFFFFF";
-}
-
-export function generateBackgroundColorWithContrast(
-  textColor: "white" | "black" = "black",
-  threshold = 4.5,
-  vibrancy = 0.5,
-): string {
-  const getVibrancy = (color: string): number => {
-    const getSaturation = (r: number, g: number, b: number): number => {
-      const max = Math.max(r, g, b);
-      const min = Math.min(r, g, b);
-      const delta = max - min;
-      const sum = max + min;
-      return delta === 0 ? 0 : delta / sum;
-    };
-
-    const rgb = hexToRGB(color);
-    const saturation = getSaturation(...rgb);
-    return saturation;
-  };
-
-  const getContrastRatio = (color: string): number => {
-    const rgbToLuminance = (r: number, g: number, b: number): number => {
-      const sRGB = (c: number): number => {
-        const channel = c / 255;
-        return channel <= 0.03928
-          ? channel / 12.92
-          : // biome-ignore lint: Use the '**' operator instead of 'Math.pow'
-            Math.pow((channel + 0.055) / 1.055, 2.4);
-      };
-
-      const gammaRGB = [sRGB(r), sRGB(g), sRGB(b)];
-      return 0.2126 * gammaRGB[0] + 0.7152 * gammaRGB[1] + 0.0722 * gammaRGB[2];
-    };
-
-    const textColorLuminance = rgbToLuminance(...hexToRGB(textColor));
-    const backgroundColorLuminance = rgbToLuminance(...hexToRGB(color));
-    return (
-      (Math.max(textColorLuminance, backgroundColorLuminance) + 0.05) /
-      (Math.min(textColorLuminance, backgroundColorLuminance) + 0.05)
-    );
-  };
-
-  let backgroundColor = generateRandomColor();
-  let contrastRatio = getContrastRatio(backgroundColor);
-  let colorVibrancy = getVibrancy(backgroundColor);
-
-  while (contrastRatio < threshold || colorVibrancy < vibrancy) {
-    backgroundColor = generateRandomColor();
-    contrastRatio = getContrastRatio(backgroundColor);
-    colorVibrancy = getVibrancy(backgroundColor);
-  }
-
-  return backgroundColor;
-}
-
 export const COLORS = [
-  "#00AAFF", // blue
-  "#EF6689", // pink
-  "#16A34A", // green
-  "#FB923C", // orange
-  "#CCBE00", // yellow
-  "#337DBA", // dark blue
-  "#998E00", // dark yellow
-  "#917DB0", // purple
-  "#FB923C", // orange
+  "#00B5E2",
+  "#EF6689",
+  "#16A34A",
+  "#FB923C",
+  "#CCBE00",
+  "#0086BF",
+  "#998E00",
+  "#917DB0",
+  "#FB923C",
 ];
 
 export function generateGroupingColor() {
@@ -430,9 +270,9 @@ export function isUUID(uuid: string) {
   return uuidRegex.test(uuid);
 }
 
-export function extractUUIDFromURL(url: string) {
+export function extractUUIDFromURL(url: string | undefined) {
   const uuid =
-    url.match(
+    url?.match(
       /\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\./i,
     )?.[1] || null;
   return uuid;
@@ -441,48 +281,40 @@ export function extractUUIDFromURL(url: string) {
 export function slugifyWithExtension(str: string) {
   if (!str) return "";
 
-  // Convert to string if it isn't already
   const inputStr = str.toString();
 
-  // Find the last period to separate filename from extension
   const lastDotIndex = inputStr.lastIndexOf(".");
 
-  // If there's no dot or the dot is at the beginning or end, treat the whole string as filename
   if (lastDotIndex <= 0 || lastDotIndex === inputStr.length - 1) {
-    // No extension, slugify the entire string
     return inputStr
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, "_") // Replace one or more spaces with single underscore
+      .replace(/\s+/g, "_")
       .replace(/\n/g, "_")
-      .replace(/[^a-zA-Z0-9_\u0080-\uFFFF.-]/g, "_") // Replace special characters with underscore, but keep dots for now
-      .replace(/_+/g, "_") // Replace multiple consecutive underscores with single underscore
-      .replace(/^_|_$/g, "") // Remove leading and trailing underscores
-      .replace(/\.{2,}/g, "."); // Replace multiple consecutive dots with single dot
+      .replace(/[^a-zA-Z0-9_\u0080-\uFFFF.-]/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "")
+      .replace(/\.{2,}/g, ".");
   }
 
-  // Split into filename and extension
   const filename = inputStr.substring(0, lastDotIndex);
   const extension = inputStr.substring(lastDotIndex + 1);
 
-  // Slugify the filename part
   const slugifiedFilename = filename
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, "_") // Replace one or more spaces with single underscore
+    .replace(/\s+/g, "_")
     .replace(/\n/g, "_")
-    .replace(/[^a-zA-Z0-9_\u0080-\uFFFF.-]/g, "_") // Replace special characters with underscore, but keep dots for now
-    .replace(/_+/g, "_") // Replace multiple consecutive underscores with single underscore
-    .replace(/^_|_$/g, "") // Remove leading and trailing underscores
-    .replace(/\.{2,}/g, "."); // Replace multiple consecutive dots with single dot
+    .replace(/[^a-zA-Z0-9_\u0080-\uFFFF.-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .replace(/\.{2,}/g, ".");
 
-  // Slugify the extension part (extensions should be simple)
   const slugifiedExtension = extension
     .toLowerCase()
     .trim()
-    .replace(/[^a-zA-Z0-9]/g, ""); // Only allow alphanumeric characters in extension
+    .replace(/[^a-zA-Z0-9]/g, "");
 
-  // Return the slugified filename with extension if extension is not empty
   return slugifiedExtension
     ? `${slugifiedFilename}.${slugifiedExtension}`
     : slugifiedFilename;
@@ -499,7 +331,10 @@ export function slugify(str: string, separator = "-") {
     .replace(/[^\w-]+/g, "");
 }
 
-export function beautifySlug(slug: string, toUpperCase = true): string {
+export function beautifySlug(
+  slug: string | null | undefined,
+  toUpperCase = true,
+): string {
   if (!slug) return "";
 
   try {
@@ -508,7 +343,6 @@ export function beautifySlug(slug: string, toUpperCase = true): string {
       .replace(/_/g, " ")
       .split(/(?=[A-Z][a-z])|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/)
       .reduce((acc, word) => {
-        // avoids adding space after opening parenthesis
         const addSpace = acc.endsWith("(") ? "" : " ";
         if (!toUpperCase) return `${acc}${addSpace}${word}`;
 
@@ -547,10 +381,6 @@ export function formatNumber(number: number, decimals = 3, inMillions = false): 
     return `${integerPart}${decimalPart}`;
   }
   return value;
-}
-
-export function formatNumbers(values: number[], decimals = 3): string[] {
-  return values.map((value) => formatNumber(value, decimals));
 }
 
 export function formatNumberNoMagnitude(value: number | string) {
@@ -636,7 +466,6 @@ export function formatNumberMagnitude(
   }
 
   if (inMillions && (value > 1_000 || value < -1_000)) {
-    // format number in millions
     const formatted = round(value / 1_000_000, decimals).toString();
     const parts = formatted?.toString().split(".");
     const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -652,16 +481,12 @@ export function formatNumberMagnitude(
   return formatNumberThousands(value);
 }
 
-export const numberRegex = /^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?$/;
-export const magnitudeRegex = /^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?[KMBT]$/;
+const numberRegex = /^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?$/;
+const magnitudeRegex = /^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?[KMBT]$/;
 
-export function parseValue(
-  value: string | number,
-  chartDataType: ColDef["chartDataType"] = "series",
-): number | string {
+export function parseValue(value: string | number): number | string {
   try {
-    if (isDate(value) || typeof value !== "string" || chartDataType !== "series")
-      return value;
+    if (isDate(value) || typeof value !== "string") return value;
 
     const parsedValue = value?.replace(/^[$£€¥₹]/, "")?.replace(/[,\s%]/g, "");
 
@@ -678,13 +503,18 @@ export function parseValue(
   return value;
 }
 
+function exportCanvasFont(size: number, weight?: "bold") {
+  const family = `${getComputedStyle(document.documentElement).getPropertyValue("--font-family").trim()}, sans-serif`;
+  return weight ? `${weight} ${size}px ${family}` : `${size}px ${family}`;
+}
+
 export async function generateReportImage(
   checkIfLoadingData: () => boolean,
-  element,
+  element: HTMLElement | null | undefined,
   name = "report",
   title = "Report",
   showDate = true,
-  exportType = "png",
+  exportType: "png" | "pdf" = "png",
   darkMode = true,
   onFinish?: () => void,
   onError?: () => void,
@@ -696,12 +526,10 @@ export async function generateReportImage(
   }
   await delay(1000);
 
-  const { jsPDF } =
-    exportType === "pdf" ? await import("jspdf") : { jsPDF: null as any };
+  const jsPDF = exportType === "pdf" ? (await import("jspdf")).jsPDF : undefined;
 
-  return new Promise((resolve) => {
+  return new Promise<string | null | undefined>((resolve) => {
     if (!element) return null;
-    //document.documentElement.classList.add("generating-report");
 
     const contentWidth = Math.max(
       element.scrollWidth,
@@ -721,62 +549,56 @@ export async function generateReportImage(
       .then((dataUrl) => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
 
         const image = new Image();
         image.onload = () => {
-          // Set canvas dimensions to match image dimensions with additional space for the black box
           canvas.width = image.width;
-          canvas.height = image.height + 80; // Increased box height
+          canvas.height = image.height + 80;
 
-          // Fill all the background with the specified color
           ctx.fillStyle = darkMode ? "#000000" : "rgb(246, 246, 246)";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-          // Draw the black box with the specified color
           ctx.fillStyle = "#000000";
-          ctx.fillRect(0, 0, canvas.width, 80); // Increased box height
+          ctx.fillRect(0, 0, canvas.width, 80);
 
-          // Add title text, logo, and date to the canvas
-          ctx.font = "28px Inter"; // Increased font size
+          ctx.font = exportCanvasFont(28);
           ctx.textAlign = "left";
           ctx.fillStyle = "#ffffff";
 
-          // Draw the title text with bold font weight
-          ctx.font = "bold 28px Inter"; // Increased font size
-          ctx.fillText(title, 10, 48); // Adjusted position
+          ctx.font = exportCanvasFont(28, "bold");
+          ctx.fillText(title, 10, 48);
 
-          ctx.font = "28px Inter"; // Reset font size
-          const exportString = "| Exported with OpenBB";
-          ctx.fillText(exportString, ctx.measureText(title).width + 40, 48); // Adjusted position
+          ctx.font = exportCanvasFont(28);
+          const exportString = "| Exported with FINOS Workspace";
+          ctx.fillText(exportString, ctx.measureText(title).width + 40, 48);
 
-          // Draw the logo SVG next to the title
-          const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 255 127" width="32" height="16" fill="none" xmlns:xlink="http://www.w3.org/1999/xlink">
-          <path d="M151.404 103.189v-7.937h71.733v15.874h-71.733v-7.937Zm0-63.5v-7.937h87.66v15.874h-87.66V39.69Zm95.628-23.815H135.468V127h103.596V79.374h-87.66V63.5H255V15.874h-7.968Zm-215.16 87.315v-7.937h71.733v15.874H31.873v-7.937Zm-15.936-63.5v-7.937h87.66v15.874h-87.66V39.69ZM119.532 0v15.874H0V63.5h103.596v15.874h-87.66V127h103.596V15.874h15.936V0h-15.936Z" fill="white" />
-        </svg>`;
+          const logoSvg = LOGO_SVG;
           const logoImage = new Image();
           logoImage.onload = () => {
             const titleWidth =
-              ctx.measureText(title).width + ctx.measureText(exportString).width + 60; // Adjusted width
-            const logoX = titleWidth; // Adjusted position
-            const logoY = 48 - 16; // 16 is half the logo height to center it vertically
-            ctx.drawImage(logoImage, logoX, logoY, 32, 16); // Doubled the logo size
+              ctx.measureText(title).width + ctx.measureText(exportString).width + 60;
+            const logoX = titleWidth;
+            const logoY = 48 - 16;
+            ctx.drawImage(logoImage, logoX, logoY, 32, 16);
 
             if (showDate) {
-              const currentDate = formatDate(new Date()); // Get the current date
+              const currentDate = formatDate(new Date());
               ctx.textAlign = "right";
-              ctx.fillText(currentDate, canvas.width - 10, 48); // Adjusted position
+              ctx.fillText(currentDate, canvas.width - 10, 48);
             }
 
-            // Draw the image on the canvas, considering the offset due to the black box
-            ctx.drawImage(image, 0, 80); // Increased box height
+            ctx.drawImage(image, 0, 80);
 
-            // Convert canvas to data URL
             const finalDataUrl =
               exportType === "pdf"
                 ? canvas.toDataURL("image/jpeg", 1)
                 : canvas.toDataURL();
 
-            if (exportType === "pdf") {
+            if (jsPDF) {
               const pdf = new jsPDF({
                 orientation: canvas.width > canvas.height ? "l" : "p",
                 unit: "px",
@@ -785,7 +607,6 @@ export async function generateReportImage(
               pdf.addImage(finalDataUrl, "JPEG", 0, 0, canvas.width, canvas.height);
               pdf.save(`${name}.pdf`);
             } else {
-              // Create and download the image
               const link = document.createElement("a");
               link.download = `${name}.png`;
               link.href = finalDataUrl;
@@ -807,12 +628,10 @@ export async function generateReportImage(
       })
       .finally(() => {
         onFinish?.();
-        //document.documentElement.classList.remove("generating-report");
       });
   });
 }
 
-// Export header constants
 const EXPORT_HEADER_HEIGHT = 80;
 const EXPORT_HEADER_FONT_SIZE = 28;
 const EXPORT_HEADER_TEXT_Y = 48;
@@ -824,32 +643,13 @@ const EXPORT_LOGO_Y = 32;
 const EXPORT_ELEMENT_PADDING = 16;
 const EXPORT_TITLE_LOGO_GAP = 60;
 
-// Timing constants for element polling
 const ELEMENT_POLL_INTERVAL = 100;
 const ELEMENT_MAX_WAIT = 5000;
-const ELEMENT_SETTLE_DELAY = 1000; // Allow widgets to fully render after content detected
-const ELEMENT_SETTLE_DELAY_WITH_CHART = 3000; // Longer delay for dashboards with chart/TradingView widgets
+const ELEMENT_SETTLE_DELAY = 1000;
 
-// Widget IDs that require longer settle time (charts, heavy visualizations, backend-connected widgets)
-const SLOW_WIDGET_IDS = ["charting", "price_performance", "ssrm_advanced", "omni"];
-
-// Widget types (viz types) that require longer settle time (backend-connected widgets)
-const SLOW_WIDGET_TYPES = ["ssrm_advanced", "omni"];
-
-function tabHasSlowWidget(tabId: string): boolean {
-  const widgets = useAppStore.getState().items[tabId]?.data?.widgets;
-  if (!Array.isArray(widgets)) return false;
-
-  return widgets.some(
-    (w) =>
-      w.widgetId?.startsWith("tv_") ||
-      (w.widgetId && SLOW_WIDGET_IDS.includes(w.widgetId)) ||
-      SLOW_WIDGET_TYPES.includes(w.type),
-  );
-}
-
-const OPENBB_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 255 127" width="32" height="16" fill="none" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <path d="M151.404 103.189v-7.937h71.733v15.874h-71.733v-7.937Zm0-63.5v-7.937h87.66v15.874h-87.66V39.69Zm95.628-23.815H135.468V127h103.596V79.374h-87.66V63.5H255V15.874h-7.968Zm-215.16 87.315v-7.937h71.733v15.874H31.873v-7.937Zm-15.936-63.5v-7.937h87.66v15.874h-87.66V39.69ZM119.532 0v15.874H0V63.5h103.596v15.874h-87.66V127h103.596V15.874h15.936V0h-15.936Z" fill="white" />
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 277.167 139.248" width="32" height="16" fill="none">
+  <path fill="white" d="M147.222,17.667V0h-17.333v17.595H0v52h17.444v-.056h95.111v17.306H16.889v52.278h113.111V17.667h17.222ZM112.556,121.623H34.333v-17.278h78.222v17.278ZM112.556,52.04H17.444v-16.444h95.111v16.444Z"/>
+  <path fill="white" d="M147.167,17.72v121.528h113.111v-52.278h-95.667v-17.306h95.111v.056h17.444V17.72h-130ZM242.833,104.47v17.278h-78.222v-17.278h78.222ZM259.722,52.165h-95.111v-16.444h95.111v16.444Z"/>
 </svg>`;
 
 async function captureElementWithHeader(
@@ -884,13 +684,13 @@ async function captureElementWithHeader(
       ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, canvas.width, EXPORT_HEADER_HEIGHT);
 
-      ctx.font = `bold ${EXPORT_HEADER_FONT_SIZE}px Inter`;
+      ctx.font = exportCanvasFont(EXPORT_HEADER_FONT_SIZE, "bold");
       ctx.textAlign = "left";
       ctx.fillStyle = "#ffffff";
       ctx.fillText(title, EXPORT_HEADER_PADDING_LEFT, EXPORT_HEADER_TEXT_Y);
 
-      ctx.font = `${EXPORT_HEADER_FONT_SIZE}px Inter`;
-      const exportString = "| Exported with OpenBB";
+      ctx.font = exportCanvasFont(EXPORT_HEADER_FONT_SIZE);
+      const exportString = "| Exported with FINOS Workspace";
       ctx.fillText(
         exportString,
         ctx.measureText(title).width + 40,
@@ -924,7 +724,7 @@ async function captureElementWithHeader(
         resolve(canvas);
       };
       logoImage.onerror = () => reject(new Error("Failed to load logo"));
-      logoImage.src = `data:image/svg+xml;base64,${btoa(OPENBB_LOGO_SVG)}`;
+      logoImage.src = `data:image/svg+xml;base64,${btoa(LOGO_SVG)}`;
     };
     image.onerror = () => reject(new Error("Failed to load captured image"));
     image.src = dataUrl;
@@ -944,19 +744,14 @@ function delay(ms: number): Promise<void> {
 
 export async function waitForGridLayout(
   maxWait = ELEMENT_MAX_WAIT,
-  dashboardId?: string,
-): Promise<Element | null> {
+): Promise<HTMLElement | null> {
   const start = Date.now();
   while (Date.now() - start < maxWait) {
-    const element = document.getElementsByClassName("react-grid-layout")[0];
-    // Check element exists and has rendered content (clientHeight > 0)
+    const element = document.getElementsByClassName("react-grid-layout")[0] as
+      | HTMLElement
+      | undefined;
     if (element && element.clientHeight > 0) {
-      // Use longer delay if dashboard has slow-rendering widgets (charts, TradingView)
-      const settleDelay =
-        dashboardId && tabHasSlowWidget(dashboardId)
-          ? ELEMENT_SETTLE_DELAY_WITH_CHART
-          : ELEMENT_SETTLE_DELAY;
-      await delay(settleDelay);
+      await delay(ELEMENT_SETTLE_DELAY);
       return element;
     }
     await delay(ELEMENT_POLL_INTERVAL);
@@ -976,7 +771,6 @@ export async function generateMultiTabReport(
   onProgress?: (current: number, total: number, tabName: string) => void,
   onFinish?: () => void,
   onError?: (error: Error) => void,
-  dashboardId?: string,
 ): Promise<void> {
   const originalTab = new URLSearchParams(window.location.search).get("tab");
   const canvases: { name: string; canvas: HTMLCanvasElement }[] = [];
@@ -987,7 +781,7 @@ export async function generateMultiTabReport(
       onProgress?.(i + 1, tabs.length, tab.name);
 
       switchTab(tab.id);
-      const element = await waitForGridLayout(ELEMENT_MAX_WAIT, dashboardId);
+      const element = await waitForGridLayout(ELEMENT_MAX_WAIT);
       if (!element) {
         throw new Error(`Could not find grid layout for tab: ${tab.name}`);
       }
@@ -1123,7 +917,7 @@ export async function generateFolderReport(
           );
 
           switchTab(tab.id);
-          const element = await waitForGridLayout(ELEMENT_MAX_WAIT, dashboard.id);
+          const element = await waitForGridLayout(ELEMENT_MAX_WAIT);
           if (!element) continue;
 
           let isDataLoading = checkIfLoadingData();
@@ -1172,7 +966,7 @@ export async function generateFolderReport(
           }
         }
       } else {
-        const element = await waitForGridLayout(ELEMENT_MAX_WAIT, dashboard.id);
+        const element = await waitForGridLayout(ELEMENT_MAX_WAIT);
         if (!element) continue;
 
         let isDataLoading = checkIfLoadingData();
@@ -1221,39 +1015,18 @@ export async function generateFolderReport(
     if (dashboardId) {
       navigateToDashboard(dashboardId, originalTab || undefined);
     } else {
-      // Restore original URL even if it's not a dashboard path
       window.history.replaceState({}, "", originalPath);
       window.dispatchEvent(new PopStateEvent("popstate"));
     }
   }
 }
 
-export function groupWidgetsBySearchCategory(widgets) {
-  const groupedWidgets = {};
-
-  for (const widgetKey in widgets) {
-    const widget = widgets[widgetKey];
-    const searchCategory = widget.searchCategory;
-
-    if (groupedWidgets[searchCategory]) {
-      groupedWidgets[searchCategory].push(widget);
-    } else {
-      groupedWidgets[searchCategory] = [widget];
-    }
-  }
-
-  return groupedWidgets;
-}
-
-// *didier made this function
 export function isLight(color: string) {
-  // Assuming the color is in the format #RRGGBB
   try {
     const r = Number.parseInt(color.slice(1, 3), 16) / 255;
     const g = Number.parseInt(color.slice(3, 5), 16) / 255;
     const b = Number.parseInt(color.slice(5, 7), 16) / 255;
 
-    // Calculate the relative luminance
     const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
     return luminance > 0.5;
@@ -1275,13 +1048,13 @@ export function hexToRGBString(hex: string, alpha?: number): string {
 
 export function getRandomUserListBackgroundByEmail(email: string) {
   const COLORS = [
-    "#33BBFF",
+    "#00B5E2",
     "#6D5296",
     "#22C55E",
     "#CCBE00",
     "#F97316",
     "#E93361",
-    "#006699",
+    "#005E8A",
   ];
 
   let hash = 0;
@@ -1292,12 +1065,6 @@ export function getRandomUserListBackgroundByEmail(email: string) {
   return COLORS[index];
 }
 
-/**
- * Ensures that the value is an array. If the value is a string, it will be split by commas.
- * @param value - The value to ensure as an array
- * @param defaultValue - The default value to return if the value is null or undefined (default: [])
- * @returns The value as an array
- **/
 export function ensureArray<T>(value: T | T[], defaultValue: T[] = []): T[] {
   if (value === null || value === undefined) return defaultValue;
 
@@ -1310,11 +1077,6 @@ export function ensureArray<T>(value: T | T[], defaultValue: T[] = []): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
-/**
- * Ensures that the value is a string. If the value is an array, it will be joined by commas.
- * @param value - The value to ensure as a string
- * @returns The value as a string
- **/
 export function ensureString<T>(value: T | T[]): string {
   if (Array.isArray(value)) {
     return value.join(", ");
@@ -1322,17 +1084,6 @@ export function ensureString<T>(value: T | T[]): string {
   return value?.toString() || "";
 }
 
-/**
- * Scores two arrays based on the number of matches between them and the length of the larger array
- * @param arr1 - The first array to score
- * @param arr2 - The second array to score
- * @param iterSmArray - Whether to iterate over the smaller array (default: false)
- * @returns The score and the matches between the arrays
- * @example
- * const { score, matches } = scoreArrays([1, 2, 3], [2, 3, 4]);
- * // score = 0.6666666666666666
- * // matches = [2, 3]
- **/
 export function scoreArrays<T>(
   arr1: T[],
   arr2: T[],
@@ -1341,7 +1092,7 @@ export function scoreArrays<T>(
   if (!areTruthy(arr1, arr2)) return { score: 0, matches: [] };
 
   let score = 0;
-  const matches = [];
+  const matches: T[] = [];
   const [smArray, lgArray] = [arr1, arr2].sort((a, b) =>
     iterSmArray ? b.length - a.length : a.length - b.length,
   );
@@ -1356,36 +1107,25 @@ export function scoreArrays<T>(
   return { score: score / lgArray.length, matches };
 }
 
-/**
- * Merges two objects recursively, removing any functions and merging objects.
- * @param target - The target object to merge into
- * @param source - The source object to merge from
- * @param withFunctions - Whether to include functions in the merged object (default: false)
- * @returns The merged object
- * @example
- * const target = { a: 1, b: { c: 2 } };
- * const source = { a: 2, b: { d: 3 } };
- * const merged = mergeObjects(target, source);
- * // merged = { a: 2, b: { c: 2, d: 3 } }
- *
- **/
-export function mergeObjects<T, U>(target: T, source: U, withFunctions = false): T & U {
+function mergeObjects<T, U>(target: T, source: U, withFunctions = false): T & U {
   try {
-    const sourceKeys = Object.keys(source || {});
+    const into = target as Record<string, unknown>;
+    const from = (source || {}) as Record<string, unknown>;
+    const sourceKeys = Object.keys(from);
 
-    for (const key of Object.keys(source || {})) {
+    for (const key of Object.keys(from)) {
       let removeKey = false;
-      if (typeof source[key] === "object" && !Array.isArray(source[key])) {
-        if (!target?.[key]) Object.assign(target, { [key]: {} });
+      if (typeof from[key] === "object" && !Array.isArray(from[key])) {
+        if (!into?.[key]) Object.assign(into, { [key]: {} });
 
         Object.assign(
-          target[key],
-          mergeObjects(target[key], source[key], withFunctions),
+          into[key] as object,
+          mergeObjects(into[key], from[key], withFunctions),
         );
         removeKey = true;
       }
-      if (Array.isArray(source[key])) {
-        Object.assign(target, { [key]: source[key] });
+      if (Array.isArray(from[key])) {
+        Object.assign(into, { [key]: from[key] });
         removeKey = true;
       }
 
@@ -1393,9 +1133,9 @@ export function mergeObjects<T, U>(target: T, source: U, withFunctions = false):
     }
 
     for (const key of sourceKeys) {
-      if (typeof source[key] !== "object") {
-        if (typeof source[key] !== "function" || withFunctions) {
-          Object.assign(target, { [key]: source[key] });
+      if (typeof from[key] !== "object") {
+        if (typeof from[key] !== "function" || withFunctions) {
+          Object.assign(into, { [key]: from[key] });
         }
       }
     }
@@ -1407,31 +1147,6 @@ export function mergeObjects<T, U>(target: T, source: U, withFunctions = false):
   }
 }
 
-/**
- * Filter out any functions from the source object or array
- * @param source - The source object or array
- * @example
- * const source = { a: 1, b: () => {}, c: { d: 2, e: () => {} } };
- * const result = filterFunctions(source);
- * // result = { a: 1, c: { d: 2 } }
- */
-export function filterFunctions<T>(source: T | T[]): T | T[] {
-  if (Array.isArray(source)) {
-    return source.map((item) => mergeObjects({} as T, item));
-  }
-  if (typeof source === "object") {
-    return mergeObjects({} as T, source);
-  }
-
-  return source;
-}
-
-/**
- * Formats the file size in bytes to a human-readable format
- * @param bytes - The file size in bytes
- * @param decimalCases - The number of decimal cases to display (default: 0)
- * @returns The file size in a human-readable format
- **/
 export const formatFileSize = (bytes: number, decimalCases = 0): string => {
   const units = ["B", "KB", "MB", "GB"];
   let size = bytes;
@@ -1445,19 +1160,6 @@ export const formatFileSize = (bytes: number, decimalCases = 0): string => {
   return `${size.toFixed(decimalCases)}${units[unitIndex]}`;
 };
 
-/**
- *  Get the booking URL
- *  @returns The booking URL
- */
-export function getBookingUrl(): string {
-  const { user, name } = useAuthStore.getState();
-  return `/booking?used_before=Yes&email=${user.email}&first_name=${name.first}&last_name=${name.last}&from_pro=true`;
-}
-
-/**
- * Append -2, -3, ... until the slug is unique, truncating the base so the
- * result stays within the skill slug length limit.
- */
 export function ensureUniqueSlug(
   base: string,
   isSlugUnique: (slug: string) => boolean,

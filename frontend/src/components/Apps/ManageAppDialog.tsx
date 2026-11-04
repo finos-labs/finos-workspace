@@ -1,14 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
-import { usePostHog } from "posthog-js/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useForm, useFormContext, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { getApiSources, postApiSource } from "~/api/auth.api";
-import { EndpointHeadersForm } from "~/components/DataConnectors/SingleWidget/EndpointHeadersForm";
+import { EndpointHeadersForm } from "~/components/DataConnectors/EndpointHeadersForm";
 import { Button } from "~/components/ds/atoms/Button";
 import { FormInput } from "~/components/ds/atoms/Input";
 import { FormSelect } from "~/components/ds/atoms/Select";
@@ -18,7 +17,6 @@ import { Form, FormField } from "~/components/ds/molecules/Form";
 import { Notice } from "~/components/ds/molecules/Notice";
 import Icon from "~/components/Icon";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { getConfig } from "~/lib/runtimeConfig";
 import { useAppStore } from "~/lib/state/app";
 import {
   type Source,
@@ -27,15 +25,17 @@ import {
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn, dispatchSaveState } from "~/lib/utils";
 import { createCustomTemplateTab } from "~/lib/utils/createTemplates";
+import { toError } from "~/lib/utils/utils";
 import { validateSource } from "~/lib/utils/validateBackend";
 import {
   formatBackendErrorMessage,
   formatBackendWarningMessage,
+  formatZodErrorMessage,
 } from "~/utils/zodErrors";
 import { updateWidgetEndpoints } from "../DataConnectors/common/helpers";
 import { motionElemProps } from "../ds/atoms/collapsible-motion";
 
-export const AppSchema = z.object({
+const AppSchema = z.object({
   id: z.uuid().optional(),
   name: z.string().min(1, "This field is required"),
   url: z.url().min(1, "This field is required"),
@@ -49,12 +49,9 @@ export const AppSchema = z.object({
     )
     .optional(),
   validateWidgets: z.string().default("false").optional(),
-  isOpenBBPlatform: z.boolean().default(false).optional(),
 });
 
-export type AppForm = z.infer<typeof AppSchema>;
-
-const uiShowExternalDocumentationLinksFF = getConfig().ui.showExternalDocLinks;
+type AppForm = z.infer<typeof AppSchema>;
 
 const initialState = {
   loading: false,
@@ -64,6 +61,7 @@ const initialState = {
   errorMessage: null as null | string,
   templateErrorMessage: null as null | string,
   templateWarningMessage: null as null | string,
+  uncheckedRoutes: [] as string[],
   backendToAdd: null as Partial<Source> | null,
   isLocalhost: false,
   isConnected: false,
@@ -90,7 +88,6 @@ export default function ManageAppDialog() {
     }));
 
   const navigate = useNavigate();
-  const posthog = usePostHog();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { add, name, url, modeTitle } = useMemo(() => {
@@ -117,7 +114,6 @@ export default function ManageAppDialog() {
       url: url || "",
       endpointHeaders: [],
       validateWidgets: "false",
-      isOpenBBPlatform: false,
     },
   });
 
@@ -129,20 +125,25 @@ export default function ManageAppDialog() {
       url: url || source?.url || "",
       endpointHeaders: source?.endpointHeaders || [],
       validateWidgets: "false",
-      isOpenBBPlatform: source?.isOpenBBPlatform,
     });
     dispatch({ isConnected: manageAppDialog.data?.status === "success" });
   }, [manageAppDialog.data]);
 
   const closeDialog = useCallback(() => {
-    // If editing an active backend and test failed, mark it as inactive
     const wasActive = manageAppDialog.data?.status === "success";
     const testFailed =
       state.errorMessage !== null || state.templateErrorMessage !== null;
-    const isEditMode = manageAppDialog.mode === "edit" && manageAppDialog.data?.id;
+    const editedSource = manageAppDialog.data;
+    const isEditMode = manageAppDialog.mode === "edit" && editedSource?.id;
 
-    if (isEditMode && wasActive && testFailed && state.hasTestedInSession) {
-      addApiSource({ ...manageAppDialog.data, status: "error" });
+    if (
+      editedSource &&
+      isEditMode &&
+      wasActive &&
+      testFailed &&
+      state.hasTestedInSession
+    ) {
+      addApiSource({ ...editedSource, status: "error" });
       toast.error("Backend marked as inactive", {
         description: "The connection test failed.",
       });
@@ -161,7 +162,6 @@ export default function ManageAppDialog() {
       endpointHeaders: [],
       validateWidgets: "false",
     });
-    // Reset the state when closing the dialog
     dispatch(getInitialState());
   }, [
     setManageAppDialog,
@@ -179,7 +179,11 @@ export default function ManageAppDialog() {
     (params: { name?: string; url?: string }) => {
       const { id, url, name } = { ...form.getValues(), ...params };
 
-      const generalError = checkExistingBackend({ name, url, id });
+      const generalError = checkExistingBackend({
+        name: name ?? "",
+        url: url ?? "",
+        id: id ?? "",
+      });
       for (const field of ["name", "url"] as const) {
         if (params[field] !== undefined) {
           if (!generalError?.[field]) return form.clearErrors(field);
@@ -214,22 +218,14 @@ export default function ManageAppDialog() {
           templateWarningMessage,
           totalFailed,
           templates,
-          isOpenBBPlatform,
+          uncheckedRoutes = [],
         } = await validateSource(source, validateWidgets === "true");
 
         const widgetsCount = Object.keys(widgets).length;
-        /*if (
-          (errorMessage || templateErrorMessage) &&
-          widgetsCount === 0 &&
-          templates.length === 0
-        ) {
-          throw new Error(errorMessage || templateErrorMessage);
-        }*/
 
         const appsCount = templates?.length || 0;
         const failed = totalFailed > 0 ? `, ${totalFailed} failed` : "";
 
-        // Count prompts and MCP servers across all templates
         const { promptsCount, mcpCount } = templates?.reduce(
           (acc, template) => {
             acc.promptsCount += template.prompts?.length || 0;
@@ -239,7 +235,6 @@ export default function ManageAppDialog() {
           { promptsCount: 0, mcpCount: 0 },
         ) ?? { promptsCount: 0, mcpCount: 0 };
 
-        // Create a more detailed success message
         const messageParts = [
           `${widgetsCount} ${widgetsCount === 1 ? "Widget" : "Widgets"} found${failed}`,
           `${appsCount} ${appsCount === 1 ? "App" : "Apps"} found`,
@@ -260,22 +255,23 @@ export default function ManageAppDialog() {
           errorMessage: errorMessage || null,
           templateErrorMessage: templateErrorMessage || null,
           templateWarningMessage: templateWarningMessage || null,
+          uncheckedRoutes,
           isSuccess,
           backendToAdd: {
             name,
             url: cleanUrl,
             widgets,
             endpointHeaders,
-            isOpenBBPlatform,
           },
         });
       } catch (err) {
+        const { message } = toError(err);
         newstate.errorMessage =
-          err?.message === "Failed to fetch"
+          message === "Failed to fetch"
             ? "Unknown error occurred, check your API console for more detailed error message"
-            : err.message;
+            : message;
       } finally {
-        dispatch({ loading: false, ...newstate });
+        dispatch({ ...newstate, loading: false });
       }
     },
     [],
@@ -285,13 +281,12 @@ export default function ManageAppDialog() {
     if (!(state.backendToAdd || form.formState.isDirty)) return;
     const { id, name: prevName } = manageAppDialog.data ?? {};
 
-    // Use current form values if form is dirty, otherwise use cached backendToAdd
-    // Preserve backendOpenBBPlatform when using form values
     const source = form.formState.isDirty ? form.getValues() : state.backendToAdd;
-    source.url = source.url.trim().replace(/\/+$/, "").trim();
-    source.isOpenBBPlatform = state.backendToAdd?.isOpenBBPlatform;
+    if (!source) return;
 
-    const { name, url, endpointHeaders = [], isOpenBBPlatform } = source as Source;
+    const name = source.name ?? "";
+    const url = (source.url ?? "").trim().replace(/\/+$/, "").trim();
+    const endpointHeaders = source.endpointHeaders ?? [];
     const data = { name, url, endpointHeaders };
 
     const appId = id ?? uuidv4();
@@ -326,7 +321,6 @@ export default function ManageAppDialog() {
         updateWidgetEndpoints({ ...data, widgets, id, prevName });
         dispatchSaveState();
 
-        // Show activation toast if backend was previously inactive
         const wasInactive = manageAppDialog.data?.status === "error";
         const isNowActive = !errorMessage;
         if (wasInactive && isNowActive) {
@@ -338,7 +332,6 @@ export default function ManageAppDialog() {
         return;
       }
 
-      // Create a more detailed success message
       const widgetsCount = Object.keys(widgets).length;
       const appsCount = templates?.length || 0;
       const promptsCount = templates?.reduce(
@@ -368,16 +361,6 @@ export default function ManageAppDialog() {
         });
       }
 
-      // Track backend addition in PostHog (only for new apps, not edits)
-      if (posthog && !id) {
-        posthog.capture("added_custom_backend", {
-          backend_name: name,
-          backend_url: url,
-          number_of_widgets: widgetsCount,
-          isOpenBBPlatform,
-        });
-      }
-
       setManageAppsDialogOpen(false);
       closeDialog();
     } catch (error) {
@@ -396,7 +379,6 @@ export default function ManageAppDialog() {
     form.formState.isDirty,
     form.getValues,
     postApiSource,
-    posthog,
   ]);
 
   const handleAddPair = useCallback(() => {
@@ -441,7 +423,7 @@ export default function ManageAppDialog() {
             render={({ field }) => (
               <FormInput
                 label="Name"
-                placeholder="OpenBB App"
+                placeholder="App"
                 {...field}
                 onChange={(name: string) => {
                   onFieldChange({ name });
@@ -502,6 +484,22 @@ export default function ManageAppDialog() {
                 "!text-ds-text-body",
                 "!text-ds-text-body",
               )}
+            </Notice>
+          )}
+
+          {state.uncheckedRoutes.length > 0 && (
+            <Notice
+              variant="warning"
+              title="Not every route was checked"
+              className="mt-2 w-[560px] max-w-full"
+            >
+              <ul className="list-disc pl-4">
+                {state.uncheckedRoutes.map((line) => (
+                  <li key={line}>
+                    {formatZodErrorMessage(line, "!text-ds-text-body")}
+                  </li>
+                ))}
+              </ul>
             </Notice>
           )}
 
@@ -568,7 +566,7 @@ export default function ManageAppDialog() {
                 !form.formState.isValid ||
                 state.loading ||
                 !(state.isSuccess || manageAppDialog.data?.id) ||
-                (manageAppDialog.data?.id &&
+                (!!manageAppDialog.data?.id &&
                   (form.formState.dirtyFields?.url
                     ? !state.isSuccess
                     : !(form.formState.isDirty && state.isConnected)))
@@ -591,23 +589,18 @@ export default function ManageAppDialog() {
 }
 
 export function TroubleshootMessage() {
-  const form = useFormContext<AppForm>();
-
-  const url = useWatch({ control: form.control, name: "url" });
-
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      const duration = 300; // Scroll duration
-      let startTime = null;
+      const duration = 300;
+      let startTime: number | null = null;
       const element = document.getElementById("manage-app-form");
 
       const animateScroll = (timestamp: number) => {
         if (!startTime) startTime = timestamp;
         const progress = Math.min((timestamp - startTime) / duration, 1);
 
-        // Easing function for smoother motion
         const easeOutCubic = 1 - (1 - progress) ** 3;
 
         if (element) {
@@ -656,37 +649,20 @@ export function TroubleshootMessage() {
               <span className="text-error-100/60 mt-0.5 flex-shrink-0">•</span>
               <div className="flex-1 text-left">
                 <p className="font-medium mb-1 text-ds-text-subtitle text-left">
-                  Certificate Issues
+                  Address Not Reachable
                 </p>
                 <p className="text-ds-text-body text-left">
-                  Your browser may block the connection due to certificate issues. Try
-                  opening{" "}
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline text-link-color hover:opacity-80"
-                  >
-                    {url}
-                  </a>{" "}
-                  directly in your browser first. If you see "Your connection is not
-                  private", accept the certificate to proceed.
-                </p>
-              </div>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-error-100/60 mt-0.5 flex-shrink-0">•</span>
-              <div className="flex-1 text-left">
-                <p className="font-medium mb-1 text-ds-text-subtitle text-left">
-                  CORS Configuration
-                </p>
-                <p className="text-ds-text-body text-left">
-                  Your backend may have CORS (Cross-Origin Resource Sharing)
-                  restrictions. Configure your server to allow requests from{" "}
+                  The FINOS Workspace API calls your backend, not your browser. When the
+                  API runs in a container, it reaches{" "}
                   <code className="bg-general-bg-secondary px-1 py-0.5 rounded text-[11px]">
-                    https://pro.openbb.co
+                    localhost
                   </code>{" "}
-                  by adding the appropriate CORS headers.
+                  on your computer through{" "}
+                  <code className="bg-general-bg-secondary px-1 py-0.5 rounded text-[11px]">
+                    host.docker.internal
+                  </code>
+                  , so the backend has to be running. On Linux it also has to listen on
+                  0.0.0.0 instead of 127.0.0.1.
                 </p>
               </div>
             </li>

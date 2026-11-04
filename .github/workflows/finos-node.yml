@@ -1,0 +1,191 @@
+name: finos-node
+
+on:
+  push:
+    tags:
+      - "finos-node-v*"
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  release:
+    name: Release finos-node
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read the release from the tag
+        id: release
+        run: |
+          release="${GITHUB_REF_NAME#finos-node-v}"
+          if ! grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$' <<< "$release"; then
+            echo "The tag $GITHUB_REF_NAME must be finos-node-v<Node version>-<build>, like finos-node-v26.12.1-1" >&2
+            exit 1
+          fi
+          if ! grep -qx "ARG NODE_VERSION=${release%-*}" agent/Dockerfile; then
+            echo "agent/Dockerfile does not build Node ${release%-*}" >&2
+            exit 1
+          fi
+          {
+            echo "release=$release"
+            echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/finos-node"
+            echo "tarball=finos-node-$release-linux-amd64.tar.gz"
+            echo "sbom=finos-node-$release.cdx.json"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check that the release is new
+        env:
+          IMAGE: ${{ steps.release.outputs.image }}
+          RELEASE: ${{ steps.release.outputs.release }}
+        run: |
+          if docker manifest inspect "$IMAGE:$RELEASE" > /dev/null 2>&1; then
+            echo "$IMAGE:$RELEASE is released already, and a release is not replaced" >&2
+            exit 1
+          fi
+
+      - name: Build the stage
+        run: docker build --target node --output type=local,dest=finos-node agent
+
+      - name: Push the image
+        id: push
+        env:
+          IMAGE: ${{ steps.release.outputs.image }}
+          RELEASE: ${{ steps.release.outputs.release }}
+          TARBALL: ${{ steps.release.outputs.tarball }}
+        run: |
+          tar -C finos-node -czf "$TARBALL" .
+          sha256sum "$TARBALL" > SHA256SUMS
+          tar -C finos-node -c . | docker import \
+            --change "ENV PATH=/usr/local/bin:/usr/bin:/bin" \
+            --change "LABEL org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --change "LABEL org.opencontainers.image.version=$RELEASE" \
+            - "$IMAGE:$RELEASE"
+          docker push --quiet "$IMAGE:$RELEASE"
+          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$RELEASE")
+          echo "digest=${digest#*@}" >> "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/install-syft
+
+      - name: SBOM of the image
+        env:
+          IMAGE: ${{ steps.release.outputs.image }}
+          RELEASE: ${{ steps.release.outputs.release }}
+          SBOM: ${{ steps.release.outputs.sbom }}
+          SYFT_CHECK_FOR_APP_UPDATE: "false"
+          SYFT_FILE_METADATA_SELECTION: none
+        run: syft scan "docker:$IMAGE:$RELEASE" --quiet --select-catalogers +sbom-cataloger --output "cyclonedx-json=$SBOM"
+
+      - uses: actions/attest@v4
+        with:
+          subject-name: ${{ steps.release.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          sbom-path: ${{ steps.release.outputs.sbom }}
+          push-to-registry: true
+          github-token: ${{ github.token }}
+
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ${{ steps.release.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+          github-token: ${{ github.token }}
+
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: ${{ steps.release.outputs.tarball }}
+          github-token: ${{ github.token }}
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ steps.release.outputs.image }}
+          RELEASE: ${{ steps.release.outputs.release }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+          TARBALL: ${{ steps.release.outputs.tarball }}
+          SBOM: ${{ steps.release.outputs.sbom }}
+        run: |
+          python3 - finos-node/usr/share/sbom/runtime.cdx.json > notes.md <<'EOF'
+          import json, os, sys
+          components = json.load(open(sys.argv[1]))["components"]
+          version = {c["name"]: c.get("version") for c in components}
+          licence = lambda c: " AND ".join(l["expression"] for l in c["licenses"])
+          compiled = [c for c in components
+                      if any(p["name"] == "compiled-into" and p["value"].startswith("node ") for p in c.get("properties", []))]
+          image, release, digest = os.environ["IMAGE"], os.environ["RELEASE"], os.environ["DIGEST"]
+          node = release.rsplit("-", 1)[0]
+          tarball, sbom, owner = os.environ["TARBALL"], os.environ["SBOM"], os.environ["GITHUB_REPOSITORY_OWNER"]
+          rows = "\n".join(f"| {c['name']} | {c.get('version') or '-'} | {licence(c)} |" for c in compiled)
+          print(f"""Node.js {node} base image for linux/amd64. Every component in it is under a FINOS Category A or B licence.
+
+          Node is compiled from source with clang against musl and LLVM's libc++: no glibc, no GCC runtime (libstdc++, libgcc_s). The image is built `FROM scratch` and holds only Node, the libraries it links, ICU's data and the time zones. There is no shell, package manager or npm.
+
+          ```
+          {image}:{release}@{digest}
+          ```
+
+          ### Use
+
+          ```dockerfile
+          FROM {image}:{release}@{digest}
+          COPY app /app
+          WORKDIR /app
+          CMD ["node", "index.js"]
+          ```
+
+          `node` is on `PATH` at `/usr/local/bin/node`. Install npm packages in a build stage and copy `node_modules` in.
+
+          ### Contents
+
+          | Component | Version | Licence |
+          | --- | --- | --- |
+          | Node.js | {version["node"]} | MIT |
+          | V8 and {len(compiled) - 1} more libraries compiled into Node (below) | - | {", ".join(sorted({licence(c) for c in compiled}))} |
+          | musl, with mimalloc | {version["musl"]} | MIT |
+          | LLVM libc++, libc++abi and libunwind | {version["libcxx"]} | Apache-2.0 WITH LLVM-exception AND NCSA |
+          | OpenSSL | {version["openssl3-libs"]} | Apache-2.0 |
+          | ICU, with its data | {version["icu-libs"]} | ICU |
+          | Time zones (tzdb) | {version["tzdb"]} | Public domain |
+
+          <details><summary>Compiled into Node</summary>
+
+          | Component | Version | Licence |
+          | --- | --- | --- |
+          {rows}
+
+          </details>
+
+          The image carries this list as `/usr/share/sbom/runtime.cdx.json`.
+
+          ### Hardening
+
+          PIE, full RELRO (`BIND_NOW`), non-executable stack, `-fstack-protector-strong`, `-fstack-clash-protection`.
+
+          ### Verify
+
+          ```sh
+          gh attestation verify oci://{image}:{release} --owner {owner}
+          gh attestation verify {tarball} --owner {owner}
+          sha256sum -c SHA256SUMS
+          ```
+
+          ### Files
+
+          - `{tarball}`: the image's filesystem.
+          - `SHA256SUMS`: its checksum.
+          - `{sbom}`: the image's CycloneDX SBOM.
+
+          Built from `agent/Dockerfile` (stage `node`) at {os.environ["GITHUB_SHA"]}.""")
+          EOF
+          gh release create "$GITHUB_REF_NAME" "$TARBALL" SHA256SUMS "$SBOM" --title "finos-node $RELEASE" --notes-file notes.md

@@ -5,6 +5,7 @@ import { AnimatedChevron } from "./AnimatedChevron";
 const meta = {
   title: "Atoms/AnimatedChevron",
   component: AnimatedChevron,
+  args: { isOpen: false },
   tags: ["autodocs"],
 } satisfies Meta<typeof AnimatedChevron>;
 

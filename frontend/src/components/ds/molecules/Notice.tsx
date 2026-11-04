@@ -3,7 +3,7 @@ import Icon from "~/components/Icon";
 import type { IconId } from "~/components/Icon.types";
 import { cn } from "../utils";
 
-export type NoticeVariant = "success" | "warning" | "error" | "info";
+type NoticeVariant = "success" | "warning" | "error" | "info";
 
 const VARIANT_STYLES: Record<NoticeVariant, { box: string; accent: string }> = {
   success: {
@@ -28,23 +28,14 @@ const VARIANT_ICONS: Record<NoticeVariant, IconId> = {
   info: "info-circle",
 };
 
-export interface NoticeProps {
+interface NoticeProps {
   variant: NoticeVariant;
   title: string;
-  /** Overrides the default per-variant icon. */
   icon?: IconId;
-  /** Body content. Accepts a node so callers can embed code blocks, links, etc. */
   children?: ReactNode;
   className?: string;
 }
 
-/**
- * Contextual banner (icon + title + optional body) for feedback that lives inline
- * in a form or dialog. Shares the box treatment with {@link ConnectionTestResult}
- * but adds warning/info variants and a node body. Theme-aware: a translucent accent
- * tint keeps the box subtle in both light and dark mode, with a colored icon and
- * neutral title/body text.
- */
 export function Notice({ variant, title, icon, children, className }: NoticeProps) {
   const style = VARIANT_STYLES[variant];
 

@@ -10,9 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "~/components/ds/molecules/Tabs";
 import Icon from "~/components/Icon";
 import WidgetMenu, { type WidgetItem } from "~/components/LayoutAuth/Search/WidgetMenu";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { inSnowflakeNativeApp } from "~/lib/constants";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { cn } from "~/lib/utils";
 import { useFilterWidgets } from "./hooks/useFilterWidgets";
 
 const searchTabs = [
@@ -99,7 +97,7 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
   }, [selectedOptionDebounced, setSelectedOptions]);
 
   const globalIndexRef = useRef(1);
-  const itemRefs = useRef([]);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { lastUpdated, getAllAppWidgets } = useShallowAppWidgetsStore((s) => ({
@@ -140,7 +138,7 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
 
       let nextIndex = index % itemRefs.current?.length;
 
-      let nextItem: HTMLElement = itemRefs.current?.[nextIndex];
+      let nextItem: HTMLElement | null = itemRefs.current?.[nextIndex];
 
       while (
         nextItem?.tagName !== "BUTTON" &&
@@ -164,13 +162,9 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
 
   const flatData = useMemo(() => {
     return allWidgets.map((item) => {
-      const uniqueId = [
-        "widgetId",
-        "category",
-        "sourceName",
-        "sourceId",
-        "connectionType",
-      ]
+      const uniqueId = (
+        ["widgetId", "category", "sourceName", "sourceId", "connectionType"] as const
+      )
         .map((key) => item?.[key] ?? "unknown")
         .join("-");
 
@@ -214,8 +208,9 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
     const lowerCaseCategories = new Set<string>();
     for (const widget of allWidgets) {
       const category = widget.category?.trim();
-      const lowerCaseCategory = category?.toLowerCase();
-      if (category && !lowerCaseCategories.has(lowerCaseCategory)) {
+      if (!category) continue;
+      const lowerCaseCategory = category.toLowerCase();
+      if (!lowerCaseCategories.has(lowerCaseCategory)) {
         categories.add(category);
         lowerCaseCategories.add(lowerCaseCategory);
       }
@@ -246,13 +241,11 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
 
       const targetIsInput = event.target === inputRef.current;
 
-      // Handle shift key
       if (event.key === "Shift" && !event.repeat) {
         dispatch({ isShiftPressed: true });
       }
 
       if (event.shiftKey && event.code >= "Digit1" && event.code <= "Digit5") {
-        if (inSnowflakeNativeApp) return;
         preventDefault(event);
 
         setInitialSelectedSearchTab(
@@ -273,18 +266,17 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
         return;
       }
 
-      if (itemRefs.current?.length > 0) {
-        const focusedIndex = itemRefs?.current?.indexOf(document.activeElement);
+      if (itemRefs.current.length > 0) {
+        const focusedIndex = itemRefs.current.indexOf(
+          document.activeElement as HTMLButtonElement | null,
+        );
 
         if (event.key === " ") {
-          if (itemRefs.current[focusedIndex]) {
-            const selectedElement = itemRefs.current[focusedIndex];
-            const checkbox = selectedElement.querySelector(
-              '[role="checkbox"]',
-            ) as HTMLInputElement;
-            if (checkbox) {
-              checkbox.click();
-            }
+          const selectedElement = itemRefs.current[focusedIndex];
+          const checkbox =
+            selectedElement?.querySelector<HTMLElement>('[role="checkbox"]');
+          if (checkbox) {
+            checkbox.click();
           }
         }
 
@@ -292,9 +284,7 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
           return handleHighlight(event, focusedIndex);
 
         if (event.key === "Enter" && !event.shiftKey) {
-          if (itemRefs.current[focusedIndex]) {
-            itemRefs.current[focusedIndex].click();
-          }
+          itemRefs.current[focusedIndex]?.click();
           return;
         }
       }
@@ -311,7 +301,6 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
 
   const handleOnKeyUp = useCallback(
     (event: KeyboardEvent) => {
-      // Handle shift key release - only update shift state, don't clear anchor
       if (event.key === "Shift") {
         dispatch({
           isShiftPressed: false,
@@ -335,7 +324,7 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    if (!search || inSnowflakeNativeApp) return;
+    if (!search) return;
 
     function nextTab() {
       const currentIndex = searchTabs.findIndex(
@@ -372,7 +361,7 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
     (tabId: SearchTabId) => {
       if (tabId === "widgets") return null;
 
-      if (tabId === "data" && !inSnowflakeNativeApp) {
+      if (tabId === "data") {
         return (
           <DataConnectorProvider onWidgetAdded={() => onOpenChange(false)}>
             <DataConnectionTabs showAppsSection={false} showIcons={false} />
@@ -398,37 +387,35 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
   if (isMobile) {
     return (
       <div className="flex flex-col h-full">
-        {!inSnowflakeNativeApp && (
-          <Tabs
-            className="mt-2.5 mb-4"
-            variant="filled_secondary"
-            value={initialSelectedSearchTab}
-            onValueChange={setInitialSelectedSearchTab}
-            onKeyDownCapture={(event) => {
-              const stopKeys = ["ArrowLeft", "ArrowRight"];
-              if (stopKeys.includes(event.key)) {
-                event.preventDefault();
-                event.stopPropagation();
-              }
-            }}
-          >
-            <TabsList className="grid w-full grid-cols-2">
-              {searchTabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className="inline-flex min-w-0 items-center justify-center gap-2 text-xs"
-                >
-                  <Icon
-                    id={tab.id === "widgets" ? "grid-01" : "database-01"}
-                    className="size-4 shrink-0"
-                  />
-                  <span className="truncate">{tab.title}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        )}
+        <Tabs
+          className="mt-2.5 mb-4"
+          variant="filled_secondary"
+          value={initialSelectedSearchTab}
+          onValueChange={(tab) => setInitialSelectedSearchTab(tab as SearchTabId)}
+          onKeyDownCapture={(event) => {
+            const stopKeys = ["ArrowLeft", "ArrowRight"];
+            if (stopKeys.includes(event.key)) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+          }}
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            {searchTabs.map((tab) => (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                className="inline-flex min-w-0 items-center justify-center gap-2 text-xs"
+              >
+                <Icon
+                  id={tab.id === "widgets" ? "grid-01" : "database-01"}
+                  className="size-4 shrink-0"
+                />
+                <span className="truncate">{tab.title}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
         <div className="flex-1 min-h-0 flex flex-col gap-2.5">
           <WidgetMenu
             isFiltered={deferredInput !== ""}
@@ -462,43 +449,36 @@ const SearchDialog = memo(({ isMobile }: { isMobile?: boolean }) => {
       <DialogDescription className="sr-only">
         Search for widgets or add data to your dashboard
       </DialogDescription>
-      {!inSnowflakeNativeApp && (
-        <Tabs
-          className="mt-2.5 mb-4"
-          variant="filled_secondary"
-          value={initialSelectedSearchTab}
-          onValueChange={setInitialSelectedSearchTab}
-          onKeyDownCapture={(event) => {
-            const stopKeys = ["ArrowLeft", "ArrowRight"];
-            if (stopKeys.includes(event.key)) {
-              event.preventDefault();
-              event.stopPropagation();
-            }
-          }}
-        >
-          <TabsList>
-            {searchTabs.map((tab) => (
-              <TabsTrigger
-                key={tab.id}
-                value={tab.id}
-                className="inline-flex gap-2 items-center justify-center h-6 text-xs"
-              >
-                <Icon
-                  id={tab.id === "widgets" ? "grid-01" : "database-01"}
-                  className="size-4"
-                />
-                <span>{tab.title}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      )}
-      <div
-        className={cn("flex h-full flex-col gap-2.5 overflow-y-auto", {
-          "pt-2.5": inSnowflakeNativeApp,
-          "max-h-[calc(99%-5rem)]": !inSnowflakeNativeApp,
-        })}
+      <Tabs
+        className="mt-2.5 mb-4"
+        variant="filled_secondary"
+        value={initialSelectedSearchTab}
+        onValueChange={(tab) => setInitialSelectedSearchTab(tab as SearchTabId)}
+        onKeyDownCapture={(event) => {
+          const stopKeys = ["ArrowLeft", "ArrowRight"];
+          if (stopKeys.includes(event.key)) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }}
       >
+        <TabsList>
+          {searchTabs.map((tab) => (
+            <TabsTrigger
+              key={tab.id}
+              value={tab.id}
+              className="inline-flex gap-2 items-center justify-center h-6 text-xs"
+            >
+              <Icon
+                id={tab.id === "widgets" ? "grid-01" : "database-01"}
+                className="size-4"
+              />
+              <span>{tab.title}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+      <div className="flex h-full flex-col gap-2.5 overflow-y-auto max-h-[calc(99%-5rem)]">
         <WidgetMenu
           isFiltered={deferredInput !== ""}
           globalSearch={deferredInput}

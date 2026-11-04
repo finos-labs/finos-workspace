@@ -14,6 +14,7 @@ import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { useCallbackRef, useComposeRefs } from "~/hooks/useRefHooks";
 import { COPILOT_ACCEPTED_MIME_TYPES } from "~/lib/constants";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import type { Selector } from "~/lib/state/app";
 import { type CopilotFile, useShallowCopilotStore } from "~/lib/state/copilot";
 import { cn, slugifyWithExtension } from "~/lib/utils";
@@ -41,12 +42,16 @@ export function CopilotDropzone(props: CopilotDropzoneProps) {
   const copilot = useShallowCopilotStore((s) => ({
     selectedCopilot: s.selectedCopilot,
   }));
+  const mayUpload = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const { rootRef, getRootProps, getInputProps, isDragActive } = useDropzone({
     noClick: true,
     accept: COPILOT_ACCEPTED_MIME_TYPES,
     multiple: true,
-    disabled: !copilot.selectedCopilot?.features?.["file-upload"] || queriesLeft === 0,
+    disabled:
+      !copilot.selectedCopilot?.features?.["file-upload"] ||
+      (!mayUpload && copilot.selectedCopilot?.id === "default-copilot") ||
+      queriesLeft === 0,
     onDrop: (acceptedFiles) => {
       const acceptedFilesSlugified = acceptedFiles.map((file) => {
         return new File([file], slugifyWithExtension(file.name), { type: file.type });
@@ -65,15 +70,16 @@ export function CopilotDropzone(props: CopilotDropzoneProps) {
       });
 
       setTimeout(() => {
-        messagesRef.current.scrollTop = messagesRef.current?.scrollHeight;
+        if (messagesRef.current) {
+          messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+        }
         const input = document.getElementById("file-upload") as HTMLInputElement;
-        if (input) input.value = null;
+        if (input) input.value = "";
       });
     },
   });
 
-  // This fixes flickering when dragging files
-  const composeRefs = useComposeRefs(messagesRef, rootRef);
+  const composeRefs = useComposeRefs<HTMLElement>(messagesRef, rootRef);
   const childrenMemo = useMemo(() => children, [children]);
   useCopilotSetScrollY(messagesRef);
 
@@ -155,7 +161,7 @@ interface CopilotScrollYState {
   getScrollY: (key: number) => number;
 }
 
-export const useCopilotScrollYStore = createWithEqualityFn<CopilotScrollYState>()(
+const useCopilotScrollYStore = createWithEqualityFn<CopilotScrollYState>()(
   persist(
     subscribeWithSelector((set, get) => ({
       copilotScrollY: {},
@@ -169,8 +175,8 @@ export const useCopilotScrollYStore = createWithEqualityFn<CopilotScrollYState>(
   ),
 );
 
-export function useShallowCopilotScrollYStore<S extends CopilotScrollYState, T>(
-  selector: Selector<S, T>,
+function useShallowCopilotScrollYStore<T>(
+  selector: Selector<CopilotScrollYState, T>,
 ): T {
   return useCopilotScrollYStore(useShallow(selector), (prev, next) =>
     isEqual(prev, next),

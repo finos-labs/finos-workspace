@@ -28,11 +28,12 @@ const TeX: FC<TeXProps> = ({
 
   useEffect(() => {
     setErrorElement(null);
-    if (!(content && renderElementRef.current)) return;
+    const element = renderElementRef.current;
+    if (!(content && element)) return;
 
-    renderElementRef.current.innerHTML = "";
+    element.innerHTML = "";
     try {
-      KaTeX.render(content, renderElementRef.current!, {
+      KaTeX.render(content, element, {
         displayMode: !!block,
         errorColor,
         throwOnError: !!renderError,
@@ -44,7 +45,7 @@ const TeX: FC<TeXProps> = ({
         if (renderError) {
           setErrorElement(renderError(error));
         } else {
-          renderElementRef.current!.innerHTML = error.message;
+          element.innerHTML = error.message;
         }
       } else {
         throw error;
@@ -60,8 +61,6 @@ const TeX: FC<TeXProps> = ({
   );
 };
 
-export default memo(TeX);
-
 type TeXProps = ComponentPropsWithoutRef<"div"> &
   Partial<{
     as: ElementType;
@@ -74,8 +73,4 @@ type TeXProps = ComponentPropsWithoutRef<"div"> &
 
 export const InlineMath: FC<Omit<TeXProps, "block">> = memo((props) => (
   <TeX {...props} block={false} />
-));
-
-export const BlockMath: FC<Omit<TeXProps, "block">> = memo((props) => (
-  <TeX {...props} block={true} />
 ));

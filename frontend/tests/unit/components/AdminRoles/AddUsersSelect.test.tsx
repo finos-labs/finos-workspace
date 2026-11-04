@@ -1,9 +1,8 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import AddUsersSelect from "~/components/AdminRoles/AddUsersSelect";
 
-// Mock the Radix DropdownMenu primitive so the portaled Content is rendered
-// inline once the trigger is clicked. Same pattern as DropdownMenu.test.tsx.
 vi.mock("@radix-ui/react-dropdown-menu", () => {
   const React = require("react");
   const DropdownContext = React.createContext({
@@ -12,7 +11,15 @@ vi.mock("@radix-ui/react-dropdown-menu", () => {
   });
 
   return {
-    Root: ({ children, open: openProp, onOpenChange }: any) => {
+    Root: ({
+      children,
+      open: openProp,
+      onOpenChange,
+    }: {
+      children?: ReactNode;
+      open?: boolean;
+      onOpenChange: (open: boolean) => void;
+    }) => {
       const [openLocal, setOpenLocal] = React.useState(false);
       const open = openProp ?? openLocal;
       const setOpen = (next: boolean) => {
@@ -25,7 +32,12 @@ vi.mock("@radix-ui/react-dropdown-menu", () => {
         </DropdownContext.Provider>
       );
     },
-    Trigger: ({ children, asChild, disabled, ...rest }: any) => {
+    Trigger: ({
+      children,
+      asChild,
+      disabled,
+      ...rest
+    }: ComponentProps<"button"> & { asChild?: boolean }) => {
       const { setOpen } = React.useContext(DropdownContext);
       return (
         <button
@@ -38,26 +50,32 @@ vi.mock("@radix-ui/react-dropdown-menu", () => {
         </button>
       );
     },
-    Portal: ({ children }: any) => {
+    Portal: ({ children }: { children?: ReactNode }) => {
       const { open } = React.useContext(DropdownContext);
-      return open ? <>{children}</> : null;
+      return open ? children : null;
     },
-    Content: ({ children, className }: any) => (
+    Content: ({
+      children,
+      className,
+    }: {
+      children?: ReactNode;
+      className?: string;
+    }) => (
       <div data-testid="dropdown-content" className={className}>
         {children}
       </div>
     ),
-    Group: ({ children }: any) => <div>{children}</div>,
-    Sub: ({ children }: any) => <div>{children}</div>,
-    SubTrigger: ({ children }: any) => <div>{children}</div>,
-    SubContent: ({ children }: any) => <div>{children}</div>,
-    RadioGroup: ({ children }: any) => <div>{children}</div>,
-    CheckboxItem: ({ children }: any) => <div>{children}</div>,
-    RadioItem: ({ children }: any) => <div>{children}</div>,
-    Label: ({ children }: any) => <div>{children}</div>,
+    Group: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Sub: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    SubTrigger: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    SubContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    RadioGroup: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    CheckboxItem: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    RadioItem: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Label: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     Separator: () => <hr />,
-    ItemIndicator: ({ children }: any) => <div>{children}</div>,
-    Item: ({ children }: any) => <div>{children}</div>,
+    ItemIndicator: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Item: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   };
 });
 
@@ -85,7 +103,6 @@ function setup(extra?: {
       isLoading={extra?.isLoading ?? false}
     />,
   );
-  // The trigger is the first/only top-level button before opening.
   const trigger = screen.getAllByRole("button")[0];
   return { trigger, onChange };
 }
@@ -129,14 +146,13 @@ describe("AddUsersSelect", () => {
       const onChange = vi.fn();
       setup({ value: ["bob@example.com"], onChange });
 
-      openDropdownAndSearch("al"); // matches Alice + Alex
+      openDropdownAndSearch("al");
 
       const selectAll = screen.getByLabelText("Select all");
       fireEvent.click(selectAll);
 
       expect(onChange).toHaveBeenCalledTimes(1);
       const next = onChange.mock.calls[0][0] as string[];
-      // Bob preserved, filtered (Alice + Alex) added
       expect(new Set(next)).toEqual(
         new Set(["bob@example.com", "alice@example.com", "alex@example.com"]),
       );
@@ -149,15 +165,13 @@ describe("AddUsersSelect", () => {
         onChange,
       });
 
-      openDropdownAndSearch("al"); // matches Alice + Alex (both selected)
+      openDropdownAndSearch("al");
 
       const selectAll = screen.getByLabelText("Select all");
-      // allFilteredSelected → checked=true → click toggles to false
       fireEvent.click(selectAll);
 
       expect(onChange).toHaveBeenCalledTimes(1);
       const next = onChange.mock.calls[0][0] as string[];
-      // Bob preserved, filtered (Alice + Alex) removed
       expect(next).toEqual(["bob@example.com"]);
     });
   });

@@ -1,9 +1,6 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getEntityInfo } from "~/api/admin.api";
 import {
   buildEntityNameMap,
   buildUserRolesMap,
@@ -12,7 +9,6 @@ import {
   useUsers,
 } from "~/components/AdminRoles/adminUseQueries";
 import { AdminInviteUsersDialog } from "~/components/AdminUsers/AdminInviteUsersDialog";
-import AdminUserBillingStatus from "~/components/AdminUsers/AdminUserBillingStatus";
 import AdminUserDetailsDialog from "~/components/AdminUsers/AdminUserDetailsDialog";
 import AdminUserStatus from "~/components/AdminUsers/AdminUserStatus";
 import ExportUsersDialog from "~/components/AdminUsers/ExportUsersDialog";
@@ -21,16 +17,12 @@ import { Input } from "~/components/ds/atoms/Input";
 import type { DataTableColumn, SortState } from "~/components/ds/molecules/DataTable";
 import { DataTable } from "~/components/ds/molecules/DataTable";
 import { OverflowTags } from "~/components/ds/molecules/OverflowTags";
-import SnowflakeHide from "~/components/General/SnowflakeHide";
 import Icon from "~/components/Icon";
 import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout";
 import Tooltip from "~/components/Tooltip";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { isLiteEnvironment } from "~/lib/onPremFeatureFlags";
 import { RenderNoData } from "~/routes/admin";
 import type { User } from "~/types/user.type";
-
-const isLite = isLiteEnvironment();
 
 const getUserId = (user: User) => user.uuid;
 
@@ -56,8 +48,6 @@ function userSortValue(
       return (entityNameMap.get(user.permissions_uuid) ?? "").toLowerCase();
     case "status":
       return (user.status ?? "").toLowerCase();
-    case "billing_active":
-      return user.billing_active ? 1 : 0;
     case "last_active": {
       const value = user.last_active ?? user.last_login;
       return value ? Date.parse(value) : null;
@@ -79,7 +69,6 @@ function sortUsers(
   return [...users].sort((a, b) => {
     const av = userSortValue(a, sortState.id, entityNameMap);
     const bv = userSortValue(b, sortState.id, entityNameMap);
-    // Empty dates always sort last, regardless of direction.
     if (av === null && bv === null) return 0;
     if (av === null) return 1;
     if (bv === null) return -1;
@@ -112,15 +101,7 @@ export default function AdminUsers() {
     [rolesQuery.data],
   );
 
-  const entityInfoQuery = useQuery({
-    queryKey: ["admin", "entityInfo"],
-    queryFn: getEntityInfo,
-    enabled: true,
-  });
   const users = usersQuery.data ?? undefined;
-  const navigate = useNavigate();
-  const entityInfo = entityInfoQuery.data ?? undefined;
-  const remainingSeats = entityInfo?.seats - entityInfo?.used_seats;
 
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
@@ -168,7 +149,7 @@ export default function AdminUsers() {
       {
         id: "email",
         header: "Email",
-        width: "19%",
+        width: "24%",
         minWidth: 200,
         sortable: true,
         cell: (user) => user.email || "-",
@@ -184,7 +165,7 @@ export default function AdminUsers() {
       {
         id: "roles",
         header: "Roles",
-        width: "14%",
+        width: "20%",
         minWidth: 140,
         truncate: false,
         cell: (user) => (
@@ -202,15 +183,7 @@ export default function AdminUsers() {
         truncate: false,
         cell: (user) => <AdminUserStatus value={user.status} />,
       },
-      {
-        id: "billing_active",
-        header: "Billing Status",
-        width: "11%",
-        minWidth: 130,
-        sortable: true,
-        truncate: false,
-        cell: (user) => <AdminUserBillingStatus value={user.billing_active} />,
-      },
+
       {
         id: "last_active",
         header: "Last Active",
@@ -272,7 +245,7 @@ export default function AdminUsers() {
         <button
           type="button"
           aria-label="Edit user"
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 obb-small-navbar-btn rounded flex items-center justify-center"
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
           onClick={() => dispatch({ openDetails: user })}
         >
           <Icon id="pencil-04" className="size-3.5" />
@@ -281,18 +254,6 @@ export default function AdminUsers() {
     ),
     [dispatch],
   );
-
-  const expirationDate = useMemo(() => {
-    if (entityInfo?.expiration_date) {
-      const date = new Date(entityInfo.expiration_date);
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    }
-    return "N/A";
-  }, [entityInfo?.expiration_date]);
 
   return (
     <SettingsLayout title="User Management" tabs={[]} defaultTab="users">
@@ -304,31 +265,11 @@ export default function AdminUsers() {
           <p className="text-xs text-ds-text-heading">
             <span className="text-ds-text-subtitle font-medium">Users:</span>{" "}
             <span className="text-ds-text-caption">
-              {entityInfoQuery.isLoading ? "" : (users?.length ?? 0)}
+              {usersQuery.isLoading ? "" : (users?.length ?? 0)}
             </span>
           </p>
-          {!isLite && (
-            <p className="text-xs text-ds-text-heading">
-              <span className="text-ds-text-subtitle font-medium">
-                Seats Remaining:
-              </span>{" "}
-              <span className="text-ds-text-caption">
-                {entityInfoQuery.isLoading ? "" : remainingSeats}
-              </span>
-            </p>
-          )}
-          {!isLite && (
-            <p className="text-xs text-ds-text-heading">
-              <span className="text-ds-text-subtitle font-medium">
-                Expiration Date:
-              </span>{" "}
-              <span className="text-ds-text-caption">
-                {entityInfoQuery.isLoading ? "" : expirationDate}
-              </span>
-            </p>
-          )}
         </div>
-        <div className="obb-divider my-6" />
+        <div className="ws-divider my-6" />
         <div className="flex items-center gap-[10px]">
           <Input
             size="xs"
@@ -345,15 +286,13 @@ export default function AdminUsers() {
           >
             Export users
           </Button>
-          <SnowflakeHide>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => dispatch({ openInvite: true })}
-            >
-              {isLite ? "Add users" : "Invite users"}
-            </Button>
-          </SnowflakeHide>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => dispatch({ openInvite: true })}
+          >
+            Add users
+          </Button>
         </div>
         <div className="relative flex-1 mt-6 min-h-0">
           <DataTable

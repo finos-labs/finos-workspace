@@ -9,13 +9,15 @@ import {
   useState,
 } from "react";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { BLOCKED_WIDGET_IDS } from "~/lib/constants";
 import { useTabContext } from "~/lib/contexts/TabContext";
-import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
+import {
+  SOURCE_UNAVAILABLE_MESSAGE,
+  useShallowBackendConnectorStore,
+  useWidgetSourceState,
+} from "~/lib/state/backendConnector";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowPermissionsStore } from "~/lib/state/permissions";
-import { isSSRMType } from "~/lib/utils";
 import { useEventListener } from "~/lib/utils/utils";
 import { Button } from "../ds/atoms/Button";
 import { cn } from "../ds/utils";
@@ -26,21 +28,21 @@ import useCopilotDataWidget from "../Widgets/Helpers/useCopilotDataWidget";
 import Navbar, { type NavBarProps } from "./NavBar";
 import { LoadingElement } from "./SetLoadingOnResize";
 
-export interface DraggableCardProps extends NavBarProps {
-  aiData?: any;
+interface DraggableCardProps extends NavBarProps {
+  aiData?: unknown;
   lastUpdated?: number | null;
   children: ReactNode;
   extraClassName?: string;
   rootClassName?: string;
-  error?: any;
+  error?: unknown;
   errorMessage?: string;
   widgetIdFallback?: string;
   showTitle?: boolean;
   disableRetrievalForCopilot?: boolean;
-  // If the url fails to fetch, we have it so we can display
   failingUrl?: undefined | string;
   isBlocked?: boolean;
   forceAutoHideNavbar?: boolean;
+  keepMounted?: boolean;
 }
 
 function PermissionsMask({
@@ -51,7 +53,7 @@ function PermissionsMask({
 }: {
   isSharedResource?: boolean;
   isBlocked?: boolean;
-  onAccessError?: (message: string) => void;
+  onAccessError?: (message: string | null) => void;
   onAccessCheck: (hasAccess: boolean) => void;
 }) {
   const { sourceId, widgetId, external, endpoint, sourceName } =
@@ -64,8 +66,6 @@ function PermissionsMask({
     }
     return widgetId;
   }, [widgetId, sourceName]);
-
-  const isWidgetIdBlocked = widgetId && BLOCKED_WIDGET_IDS.has(widgetId) && !external;
 
   const hasAccess = useShallowPermissionsStore((state) => state.hasAccess);
   const checkAccess = useCallback(() => {
@@ -81,8 +81,7 @@ function PermissionsMask({
   }, [sourceId, cleanedWidgetId, hasAccess, onAccessError, onAccessCheck]);
 
   useEffect(() => {
-    // Check if widget is blocked first, regardless of shared status
-    if (isBlocked || isWidgetIdBlocked) {
+    if (isBlocked) {
       onAccessCheck(false);
       onAccessError?.("This widget is deprecated and cannot be used.");
       return;
@@ -97,12 +96,11 @@ function PermissionsMask({
       return;
     }
     setTimeout(checkAccess, 500);
-  }, [isSharedResource, removedApp, isBlocked, isWidgetIdBlocked]);
+  }, [isSharedResource, removedApp, isBlocked]);
 
   if (
     removedApp ||
     isBlocked ||
-    isWidgetIdBlocked ||
     (isSharedResource &&
       sourceId &&
       cleanedWidgetId &&
@@ -133,6 +131,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
       disableRetrievalForCopilot = false,
       isBlocked = false,
       forceAutoHideNavbar = false,
+      keepMounted = false,
       ...navbarProps
     } = props;
 
@@ -141,6 +140,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
     const isLoadingBackends = useShallowBackendConnectorStore(
       (state) => state.isLoadingBackends && !!widgetRef?.current?.sourceId,
     );
+    const sourceState = useWidgetSourceState(widgetRef?.current);
 
     const isSharedWidget = widgetRef?.current?.isSharedWidget;
 
@@ -177,7 +177,6 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
       [hasOpenPopover, scheduleHide],
     );
 
-    // Watch for Radix data-state changes within navbar to detect popover/dropdown close
     useEffect(() => {
       if (!effectiveAutoHide || !navbarWrapperRef.current) return;
       const observer = new MutationObserver(() => {
@@ -212,7 +211,13 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
     useOnHoveredCitation();
 
     const name = title || widgetFromJSON?.name || widgetRef?.current?.name;
-    const isLoading = loading || isLoadingBackends;
+    const isLoading = loading || isLoadingBackends || sourceState === "pending";
+    const blockedMessage =
+      sourceState === "unavailable"
+        ? SOURCE_UNAVAILABLE_MESSAGE
+        : state.hasAccess
+          ? null
+          : state.accessError || "You don't have access to this widget";
 
     return (
       <div
@@ -224,7 +229,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
           e.stopPropagation();
         }}
         className={cn(
-          "group/widget relative z-0 flex flex-col h-full w-full rounded bg-white text-xs only-sm:text-sm shadow-xs dark:bg-[#151518]",
+          "group/widget relative z-0 flex flex-col h-full w-full rounded bg-white text-xs only-sm:text-sm shadow-xs dark:bg-dark-900",
           {
             "draggable-card": !name,
             "select-none!": !state.hasAccess,
@@ -254,7 +259,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
           className={cn(
             "transition-all duration-200 ease-out",
             effectiveAutoHide &&
-              "absolute top-0 left-0 right-0 z-10 bg-white dark:bg-[#151518] rounded-t",
+              "absolute top-0 left-0 right-0 z-10 bg-white dark:bg-dark-900 rounded-t",
             effectiveAutoHide &&
               !navbarHovered &&
               "-translate-y-full opacity-0 pointer-events-none",
@@ -271,21 +276,14 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
             disableRetrievalForCopilot={disableRetrievalForCopilot}
           />
         </div>
-        {state.hasAccess ? (
+        {!blockedMessage ? (
           <LoadingElement
             loading={isLoading}
             errorMessage={
               state.accessError || (!isLoading && error ? errorMessage : null)
             }
-            displayBlock={
-              isShared &&
-              widgetRef?.current.external &&
-              !["single", "advanced-backend", "file"].includes(
-                widgetRef?.current?.connectionType,
-              )
-            }
             failingUrl={failingUrl}
-            widgetId={widgetRef?.current?.widgetId}
+            keepMounted={keepMounted}
           >
             <div
               id={`widget-content-${widgetRef?.current?.id}`}
@@ -301,7 +299,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
         ) : (
           <SearchResultsNotFound
             icon={true}
-            firstMessage={state.accessError || "You don't have access to this widget"}
+            firstMessage={blockedMessage}
             secondMessage={null}
             extraClassName="z-10"
             iconClassName="z-10"
@@ -339,8 +337,7 @@ function useStaledDataOverlay() {
   const [addedOverlay, setAddedOverlay] = useState(false);
 
   useEventListener(`staleParams-${id}`, ({ staleParams }) => {
-    const widgetType = widgetRef?.current?.type;
-    if (!runButton || isSSRMType(widgetType) || widgetType === "omni") return;
+    if (!runButton) return;
 
     const element = document.getElementById(`widget-content-${id}`);
 

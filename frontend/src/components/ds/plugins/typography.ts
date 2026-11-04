@@ -1,16 +1,15 @@
-// @ts-expect-error - ignored for now
 import plugin from "tailwindcss/plugin";
 
 const STYLE = {
   title: {
-    fontFamily: "Inter",
+    fontFamily: "var(--font-family), sans-serif",
   },
   subtitle: {
-    fontFamily: "Inter",
+    fontFamily: "var(--font-family), sans-serif",
     textTransform: "uppercase",
     letterSpacing: "0.1em",
   },
-  body: { fontFamily: "Inter" },
+  body: { fontFamily: "var(--font-family), sans-serif" },
 } as const;
 
 const SIZE = {
@@ -99,7 +98,6 @@ const WEIGHT = {
 type Style = keyof typeof STYLE;
 type Size<T extends Style> = keyof (typeof SIZE)[T];
 type Weight = keyof typeof WEIGHT;
-// type TypographyClass = `${Style}-${Size<Style>}-${Weight}`; //? not sure I need it
 type TypographyObject = Record<string, string>;
 
 const classMap = new Map<string, TypographyObject>();
@@ -126,3 +124,5 @@ export const typographyPlugin = plugin(({ addUtilities }) => {
     });
   });
 });
+
+export default typographyPlugin;

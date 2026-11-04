@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { AddCopilotDialog } from "~/components/AI/AddCopilotDialog";
 import { AgentEditDialog } from "~/components/AI/AgentEditDialog";
 import type { HolderGroup } from "~/components/AI/hooks/useAgentManagement";
 import { useAgentManagement } from "~/components/AI/hooks/useAgentManagement";
@@ -19,10 +18,11 @@ import {
 import Tooltip from "~/components/Tooltip";
 import { getDefaultCopilot } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import { cn } from "~/lib/utils";
 
 export function AIAgentsTab() {
-  const aiCopilotOpenBBCopilotFF = getConfig().copilot.openbbCopilot;
+  const aiCopilotDefaultCopilotFF = getConfig().copilot.defaultCopilot;
   const {
     state,
     dispatch,
@@ -41,16 +41,17 @@ export function AIAgentsTab() {
     inputRef,
     setShowAddAgentsDialog,
   } = useAgentManagement();
+  const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const defaultCopilot = getDefaultCopilot();
   const searchTerm = debouncedSearch.toLowerCase().trim();
   const showDefaultCopilot =
-    aiCopilotOpenBBCopilotFF &&
+    aiCopilotDefaultCopilotFF &&
     (!searchTerm ||
       defaultCopilot.name.toLowerCase().includes(searchTerm) ||
       defaultCopilot.description.toLowerCase().includes(searchTerm));
 
-  const hasNoAgents = state.groups.length === 0 && !aiCopilotOpenBBCopilotFF;
+  const hasNoAgents = state.groups.length === 0 && !aiCopilotDefaultCopilotFF;
   const showNoResults =
     debouncedSearch && !showDefaultCopilot && filteredGroups.length === 0;
 
@@ -82,13 +83,15 @@ export function AIAgentsTab() {
                 </Button>
               </Tooltip>
             )}
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => setShowAddAgentsDialog(true)}
-            >
-              Add Agent
-            </Button>
+            {mayAdd && (
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => setShowAddAgentsDialog(true)}
+              >
+                Add Agent
+              </Button>
+            )}
           </div>
         </TabPageToolbar>
 
@@ -120,7 +123,6 @@ export function AIAgentsTab() {
           )}
         </div>
       </TabPageLayout>
-      <AddCopilotDialog />
 
       <ConfirmDialog
         open={state.groupToDelete !== null}

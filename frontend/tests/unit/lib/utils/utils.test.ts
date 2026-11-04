@@ -10,7 +10,6 @@ import {
   formatNumberMagnitude,
   formatNumberNoMagnitude,
   formatNumberThousands,
-  getContrastColor,
   hexToRGBString,
   isLight,
   isTabPath,
@@ -22,6 +21,7 @@ import {
   slugifyWithExtension,
   toFixedString,
 } from "~/lib/utils/utils";
+import { malformed } from "../../mocks";
 
 describe("slugifyWithExtension", () => {
   it("should slugify filenames with unicode characters", () => {
@@ -116,7 +116,6 @@ describe("extractUrlsFromText", () => {
     const text = "Go to www.example.com or www.google.com";
     const urls = extractUrlsFromText(text);
     expect(urls.length).toBe(2);
-    // linkify-it normalizes URLs by adding protocol
     expect(urls).toContain("http://www.example.com");
     expect(urls).toContain("http://www.google.com");
   });
@@ -140,7 +139,7 @@ describe("extractUrlsFromText", () => {
   });
 
   it("should NOT detect false positives in code with dot notation", () => {
-    const codeText = `from snowflake.snowpark.functions import col, count_distinct
+    const codeText = `from pyspark.sql.functions import col, countDistinct
 
 # Tables (use your own DB/SCHEMA if needed)
 idx = session.table("SEC_DEMO.SEC_REPORT_IDX").alias("idx")
@@ -330,7 +329,6 @@ describe("slugify", () => {
 
 describe("beautifySlug", () => {
   it("should convert underscores to spaces and capitalize first word", () => {
-    // beautifySlug capitalizes the first letter of each camelCase segment
     expect(beautifySlug("hello_world")).toBe(" Hello world");
   });
 
@@ -343,8 +341,8 @@ describe("beautifySlug", () => {
   });
 
   it("should handle null/undefined", () => {
-    expect(beautifySlug(null as any)).toBe("");
-    expect(beautifySlug(undefined as any)).toBe("");
+    expect(beautifySlug(malformed(null))).toBe("");
+    expect(beautifySlug(malformed(undefined))).toBe("");
   });
 
   it("should respect toUpperCase parameter", () => {
@@ -407,14 +405,12 @@ describe("formatNumber", () => {
 
 describe("formatNumberThousands", () => {
   it("should add commas to large numbers", () => {
-    // formatNumberThousands only adds commas when value > 1000 (not >= 1000)
     expect(formatNumberThousands(1001)).toBe("1,001");
     expect(formatNumberThousands(10000)).toBe("10,000");
     expect(formatNumberThousands(1000000)).toBe("1,000,000");
   });
 
   it("should not add commas to exactly 1000", () => {
-    // The function uses > 1000, not >= 1000
     expect(formatNumberThousands(1000)).toBe("1000");
   });
 
@@ -493,22 +489,6 @@ describe("parseValue", () => {
 
   it("should return dates unchanged", () => {
     expect(parseValue("2024-01-15")).toBe("2024-01-15");
-  });
-});
-
-describe("getContrastColor", () => {
-  it("should return white for dark colors", () => {
-    expect(getContrastColor("#000000")).toBe("#FFFFFF");
-    expect(getContrastColor("#333333")).toBe("#FFFFFF");
-  });
-
-  it("should return black for light colors", () => {
-    expect(getContrastColor("#FFFFFF")).toBe("#000000");
-    expect(getContrastColor("#EEEEEE")).toBe("#000000");
-  });
-
-  it("should return black for invalid colors", () => {
-    expect(getContrastColor("invalid")).toBe("#000000");
   });
 });
 
@@ -597,7 +577,7 @@ describe("ensureString", () => {
   });
 
   it("should handle null/undefined", () => {
-    expect(ensureString(null as any)).toBe("");
-    expect(ensureString(undefined as any)).toBe("");
+    expect(ensureString(malformed(null))).toBe("");
+    expect(ensureString(malformed(undefined))).toBe("");
   });
 });

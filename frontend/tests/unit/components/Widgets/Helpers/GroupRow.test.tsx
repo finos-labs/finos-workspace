@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { MouseEvent, ReactElement, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GroupPanelHeader, GroupRow } from "~/components/Widgets/Helpers/GroupRow";
 
@@ -8,19 +9,28 @@ vi.mock("~/components/Icon", () => ({
 }));
 
 vi.mock("~/components/SpecialTooltip", () => ({
-  default: ({ children, message }: any) => <div title={message}>{children}</div>,
+  default: ({ children, message }: { children?: ReactNode; message?: string }) => (
+    <div title={message}>{children}</div>
+  ),
 }));
 
-// Mirrors the real Popover, whose trigger uses `asChild` — the open handler is
-// merged onto the child button rather than wrapping it, so the child's own
-// stopPropagation does not prevent the popover from opening.
 vi.mock("~/components/ds/atoms/Popover", async () => {
   const { cloneElement } = await import("react");
   return {
-    Popover: ({ children, content, open, onOpenChange }: any) => (
+    Popover: ({
+      children,
+      content,
+      open,
+      onOpenChange,
+    }: {
+      children: ReactElement<{ onClick?: (e: MouseEvent) => void }>;
+      content?: ReactNode;
+      open?: boolean;
+      onOpenChange: (open: boolean) => void;
+    }) => (
       <div>
         {cloneElement(children, {
-          onClick: (e: any) => {
+          onClick: (e: MouseEvent) => {
             children.props.onClick?.(e);
             onOpenChange?.(!open);
           },
@@ -32,7 +42,7 @@ vi.mock("~/components/ds/atoms/Popover", async () => {
 });
 
 vi.mock("react-colorful", () => ({
-  HexColorPicker: ({ onChange }: any) => (
+  HexColorPicker: ({ onChange }: { onChange: (value: string) => void }) => (
     <button
       type="button"
       data-testid="hex-picker"
@@ -96,9 +106,7 @@ describe("GroupRow", () => {
     it("renders a checkbox and calls onToggleSelect on row click when selectable", async () => {
       const user = userEvent.setup();
       const onToggleSelect = vi.fn();
-      render(
-        <GroupRow {...baseProps} selectable onToggleSelect={onToggleSelect} />,
-      );
+      render(<GroupRow {...baseProps} selectable onToggleSelect={onToggleSelect} />);
 
       expect(screen.getByTestId("group-row-checkbox")).toBeInTheDocument();
 
@@ -109,9 +117,7 @@ describe("GroupRow", () => {
     it("clicking the checkbox itself still toggles the row", async () => {
       const user = userEvent.setup();
       const onToggleSelect = vi.fn();
-      render(
-        <GroupRow {...baseProps} selectable onToggleSelect={onToggleSelect} />,
-      );
+      render(<GroupRow {...baseProps} selectable onToggleSelect={onToggleSelect} />);
 
       await user.click(screen.getByTestId("group-row-checkbox"));
 
@@ -195,18 +201,6 @@ describe("GroupRow", () => {
 
       expect(screen.getByTitle("Apple Inc.")).toBeInTheDocument();
     });
-  });
-
-  it("dims the row when disabled", () => {
-    const { container } = render(<GroupRow {...baseProps} disabled />);
-
-    expect(container.firstChild).toHaveClass("opacity-50");
-  });
-
-  it("does not dim the row when enabled", () => {
-    const { container } = render(<GroupRow {...baseProps} />);
-
-    expect(container.firstChild).not.toHaveClass("opacity-50");
   });
 });
 

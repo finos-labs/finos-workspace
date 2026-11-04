@@ -1,6 +1,6 @@
 import isEqual from "lodash.isequal";
 import type React from "react";
-import { createContext, useContext, useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { subscribeWithSelector } from "zustand/middleware";
 import { createWithEqualityFn, useStoreWithEqualityFn } from "zustand/traditional";
@@ -42,8 +42,13 @@ const createMobileStore = () => {
 };
 
 type MobileStore = ReturnType<typeof createMobileStore>;
-const MobileContext = createContext<MobileStore>(null);
+const MobileContext = createContext<MobileStore | null>(null);
 
+export function useMobile(): MobileState;
+export function useMobile<T>(
+  selector: (store: MobileState) => T,
+  equalityFn?: (a: T, b: T) => boolean,
+): T;
 export function useMobile<T>(
   selector?: (store: MobileState) => T,
   equalityFn: (a: T, b: T) => boolean = (prev, next) => isEqual(prev, next),
@@ -54,28 +59,29 @@ export function useMobile<T>(
     throw new Error("useMobile must be used within a MobileProvider");
   }
 
-  return useStoreWithEqualityFn(store, selector, equalityFn);
+  return useStoreWithEqualityFn(
+    store,
+    (state) => (selector ? selector(state) : state) as T,
+    equalityFn,
+  );
 }
 
 export const MobileProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const storeRef = useRef<MobileStore>();
-  if (!storeRef.current) {
-    storeRef.current = createMobileStore();
-  }
+  const [store] = useState(createMobileStore);
 
   const isMobile = useIsMobile();
   const pathname = useLocation()?.pathname;
 
   useEffect(() => {
-    const store = storeRef.current.getState();
-    store.setIsMobile(isMobile);
+    const state = store.getState();
+    state.setIsMobile(isMobile);
     if (!isMobile) return;
 
-    if (store.mobileNavigationDrawer || store.mobileCopilotDrawer)
-      store.resetMobileDrawers();
-  }, [pathname, isMobile]);
+    if (state.mobileNavigationDrawer || state.mobileCopilotDrawer)
+      state.resetMobileDrawers();
+  }, [pathname, isMobile, store]);
 
   useEffect(() => {
     if (!isMobile) return;
@@ -94,7 +100,5 @@ export const MobileProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => vv.removeEventListener("resize", updateHeight);
   }, [isMobile]);
 
-  return (
-    <MobileContext.Provider value={storeRef.current}>{children}</MobileContext.Provider>
-  );
+  return <MobileContext.Provider value={store}>{children}</MobileContext.Provider>;
 };

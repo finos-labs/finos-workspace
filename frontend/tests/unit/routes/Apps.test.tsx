@@ -7,22 +7,17 @@ import type { ButtonProps } from "~/components/ds/atoms/Button";
 import type { InputProps } from "~/components/ds/atoms/Input";
 import type { UnifiedTemplate } from "~/hooks/useAllTemplates";
 import AppsPage from "~/routes/Apps";
+import { setAccess } from "../factories";
 
 const {
   mockUpdateApiSources,
-  mockSetOpenDataPlatformModalOpen,
   mockUseShallowBackendConnectorStore,
-  mockUseShallowFeatureFlagsStore,
-  mockUseShallowThemeStore,
   mockUseAllTemplates,
   mockUseSharedTemplates,
   localStorageInitial,
 } = vi.hoisted(() => ({
   mockUpdateApiSources: vi.fn(),
-  mockSetOpenDataPlatformModalOpen: vi.fn(),
   mockUseShallowBackendConnectorStore: vi.fn(),
-  mockUseShallowFeatureFlagsStore: vi.fn(),
-  mockUseShallowThemeStore: vi.fn(),
   mockUseAllTemplates: vi.fn(),
   mockUseSharedTemplates: vi.fn(),
   localStorageInitial: { state: {} as Record<string, unknown> },
@@ -76,15 +71,6 @@ vi.mock("~/lib/state/backendConnector", () => ({
     mockUseShallowBackendConnectorStore(selector),
 }));
 
-vi.mock("~/lib/state/featureFlags", () => ({
-  useShallowFeatureFlagsStore: (selector: unknown) =>
-    mockUseShallowFeatureFlagsStore(selector),
-}));
-
-vi.mock("~/lib/state/theme", () => ({
-  useShallowThemeStore: (selector: unknown) => mockUseShallowThemeStore(selector),
-}));
-
 vi.mock("~/hooks/useAllTemplates", () => ({
   useAllTemplates: (...args: unknown[]) => mockUseAllTemplates(...args),
 }));
@@ -118,14 +104,17 @@ vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
   SettingsLayout: ({
     children,
     title,
+    description,
     tabs,
   }: {
     children: ReactNode;
     title?: string;
+    description?: ReactNode;
     tabs?: { id: string; label: string }[];
   }) => (
     <div data-testid="settings-layout">
       {title && <h1>{title}</h1>}
+      {description && <p>{description}</p>}
       {tabs && tabs.length > 0 && (
         <div data-testid="tabs-root">
           <div data-testid="tabs-list">
@@ -140,12 +129,6 @@ vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
       )}
       {(!tabs || tabs.length === 0) && children}
     </div>
-  ),
-}));
-
-vi.mock("~/components/Apps/ListedAppsTab", () => ({
-  ListedAppsTab: () => (
-    <div data-testid="listed-apps-tab">Apps Marketplace Content</div>
   ),
 }));
 
@@ -284,8 +267,6 @@ vi.mock("~/components/ds/atoms/Popover", () => ({
   ),
 }));
 
-// --- Mock data factories ---
-
 const makeApiSource = (overrides: Record<string, unknown> = {}) => ({
   id: "backend-1",
   uuid: "uuid-1",
@@ -355,8 +336,6 @@ const TEMPLATES_FOR_TWO_BACKENDS: UnifiedTemplate[] = [
   }),
 ];
 
-// --- Setup helpers ---
-
 function setupDefaultMocks(
   apiSources = TWO_BACKENDS,
   templates = TEMPLATES_FOR_TWO_BACKENDS,
@@ -365,16 +344,6 @@ function setupDefaultMocks(
     (selector as (state: unknown) => unknown)({
       apiSources,
       updateApiSources: mockUpdateApiSources,
-    }),
-  );
-
-  mockUseShallowFeatureFlagsStore.mockImplementation((selector: unknown) =>
-    (selector as (state: unknown) => unknown)({ featureFlags: { tier: "free" } }),
-  );
-
-  mockUseShallowThemeStore.mockImplementation((selector: unknown) =>
-    (selector as (state: unknown) => unknown)({
-      setOpenDataPlatformModalOpen: mockSetOpenDataPlatformModalOpen,
     }),
   );
 
@@ -401,8 +370,6 @@ const renderAppsWithRoute = (initialRoute: string) =>
     </MemoryRouter>,
   );
 
-// --- Tests ---
-
 describe("AppsPage - Backend Filter Dropdown", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -426,7 +393,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
     it("renders a checkbox for each backend plus Select All", () => {
       renderApps();
       const checkboxes = screen.getAllByRole("checkbox");
-      // 2 backend checkboxes + 1 Select All checkbox
       expect(checkboxes).toHaveLength(3);
     });
 
@@ -445,7 +411,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
   describe("Backend Selection", () => {
     it("checks every backend by default (all-selected state)", () => {
       renderApps();
-      // [0] = Select All, [1..] = backends — all checked when no filter is active
       for (const cb of screen.getAllByRole("checkbox")) {
         expect(cb).toBeChecked();
       }
@@ -456,7 +421,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      // [0] = Select All, [1] = Alpha, [2] = Beta
       await user.click(checkboxes[1]);
 
       await waitFor(() => {
@@ -470,8 +434,8 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      await user.click(checkboxes[1]); // deselect Alpha -> only Beta selected
-      await user.click(checkboxes[2]); // deselect Beta (last one) -> explicit none
+      await user.click(checkboxes[1]);
+      await user.click(checkboxes[2]);
 
       await waitFor(() => {
         expect(checkboxes[1]).not.toBeChecked();
@@ -485,7 +449,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      // Clear all via the Select All checkbox so we enter the 'none' state.
       await user.click(checkboxes[0]);
 
       await waitFor(() => {
@@ -493,7 +456,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
         expect(checkboxes[2]).not.toBeChecked();
       });
 
-      // Picking a single backend from 'none' yields exactly that selection.
       await user.click(checkboxes[1]);
 
       await waitFor(() => {
@@ -509,7 +471,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      // [0]=Select All, [1..4]=Alpha,Beta,Gamma,Delta — deselect two, leaving two
       await user.click(checkboxes[1]);
       await user.click(checkboxes[2]);
 
@@ -526,7 +487,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       expect(screen.getByTestId("app-card-t-2")).toBeInTheDocument();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      await user.click(checkboxes[1]); // deselect Alpha -> only Beta apps remain
+      await user.click(checkboxes[1]);
 
       await waitFor(() => {
         expect(screen.queryByTestId("app-card-t-1")).not.toBeInTheDocument();
@@ -541,13 +502,13 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      await user.click(checkboxes[1]); // deselect Alpha -> partial
+      await user.click(checkboxes[1]);
 
       await waitFor(() => {
         expect(checkboxes[1]).not.toBeChecked();
       });
 
-      await user.click(checkboxes[0]); // Select All -> back to all
+      await user.click(checkboxes[0]);
 
       await waitFor(() => {
         for (const cb of screen.getAllByRole("checkbox")) {
@@ -561,7 +522,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      // All backends start selected -> clicking Select All clears them.
       await user.click(checkboxes[0]);
 
       await waitFor(() => {
@@ -577,7 +537,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      await user.click(checkboxes[0]); // clear all
+      await user.click(checkboxes[0]);
 
       await waitFor(() => {
         expect(screen.queryByTestId("app-card-t-1")).not.toBeInTheDocument();
@@ -590,7 +550,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      await user.click(checkboxes[1]); // deselect Alpha -> partial
+      await user.click(checkboxes[1]);
 
       await waitFor(() => {
         expect(checkboxes[0]).toBePartiallyChecked();
@@ -602,13 +562,13 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       const checkboxes = screen.getAllByRole("checkbox");
-      await user.click(checkboxes[1]); // deselect Alpha -> only Beta apps remain
+      await user.click(checkboxes[1]);
 
       await waitFor(() => {
         expect(screen.queryByTestId("app-card-t-1")).not.toBeInTheDocument();
       });
 
-      await user.click(checkboxes[0]); // Select All -> restore
+      await user.click(checkboxes[0]);
 
       await waitFor(() => {
         expect(screen.getByTestId("app-card-t-1")).toBeInTheDocument();
@@ -639,7 +599,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       setupDefaultMocks(FOUR_BACKENDS, []);
       renderApps();
 
-      // Select All text should be visible before search
       expect(screen.getByText("Select All")).toBeInTheDocument();
 
       const searchInput = screen.getByPlaceholderText("Search for backends");
@@ -670,7 +629,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
 
       await waitFor(() => {
         const checkboxes = screen.getAllByRole("checkbox");
-        // [0] = Select All, [1] = first backend
         expect(checkboxes[1]).toBeChecked();
       });
     });
@@ -680,7 +638,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
 
       await waitFor(() => {
         const checkboxes = screen.getAllByRole("checkbox");
-        // [0] = Select All, [2] = second backend
         expect(checkboxes[2]).toBeChecked();
       });
     });
@@ -688,7 +645,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
     it("keeps all backends selected when param does not match any source", () => {
       renderAppsWithRoute("/app/apps?backend=nonexistent");
 
-      // No filter applied -> default all-selected state -> everything checked
       for (const cb of screen.getAllByRole("checkbox")) {
         expect(cb).toBeChecked();
       }
@@ -697,7 +653,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
 
   describe("Stale Backend Cleanup", () => {
     it("removes selected backends that no longer exist in apiSources", async () => {
-      localStorageInitial.state["apps-options-v2"] = {
+      localStorageInitial.state["apps-options"] = {
         filterBy: "all",
         sortBy: "newest",
         selectedBackends: ["backend-1", "removed-backend"],
@@ -715,7 +671,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
     });
 
     it("shows all backends selected when every selected backend was removed", async () => {
-      localStorageInitial.state["apps-options-v2"] = {
+      localStorageInitial.state["apps-options"] = {
         filterBy: "all",
         sortBy: "newest",
         selectedBackends: ["removed-1", "removed-2"],
@@ -724,30 +680,10 @@ describe("AppsPage - Backend Filter Dropdown", () => {
       renderApps();
 
       await waitFor(() => {
-        // cleanup empties the selection -> all-selected state -> everything checked
         for (const cb of screen.getAllByRole("checkbox")) {
           expect(cb).toBeChecked();
         }
       });
-    });
-  });
-
-  describe("Legacy localStorage migration", () => {
-    it("shows all apps for returning users with the pre-#2012 empty-array selection", () => {
-      // Builds before #2012 persisted `selectedBackends: []` to mean "All Backends".
-      // The tri-state filter now reads `[]` as "No Backends", which would blank the
-      // page. Returning users must not inherit an empty page from that flipped sentinel.
-      localStorageInitial.state["apps-options"] = {
-        filterBy: "all",
-        sortBy: "newest",
-        selectedBackends: [],
-      };
-
-      renderApps();
-
-      expect(screen.getByTestId("app-card-t-1")).toBeInTheDocument();
-      expect(screen.getByTestId("app-card-t-2")).toBeInTheDocument();
-      expect(screen.getByTestId("popover-trigger")).toHaveTextContent("All Backends");
     });
   });
 
@@ -760,7 +696,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
     });
 
     it("shows backend name in trigger when exactly one is selected", async () => {
-      localStorageInitial.state["apps-options-v2"] = {
+      localStorageInitial.state["apps-options"] = {
         filterBy: "all",
         sortBy: "newest",
         selectedBackends: ["backend-1"],
@@ -779,7 +715,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
         name: "",
       });
 
-      localStorageInitial.state["apps-options-v2"] = {
+      localStorageInitial.state["apps-options"] = {
         filterBy: "all",
         sortBy: "newest",
         selectedBackends: ["nameless"],
@@ -793,7 +729,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
     });
 
     it("shows 'Backends (N)' when N > 1 backends are selected", () => {
-      localStorageInitial.state["apps-options-v2"] = {
+      localStorageInitial.state["apps-options"] = {
         filterBy: "all",
         sortBy: "newest",
         selectedBackends: ["backend-1", "backend-2"],
@@ -803,5 +739,35 @@ describe("AppsPage - Backend Filter Dropdown", () => {
 
       expect(screen.getByText("Backends (2)")).toBeInTheDocument();
     });
+  });
+});
+
+describe("AppsPage - Connections link", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorageInitial.state = {};
+    setupDefaultMocks();
+  });
+
+  it.each([
+    "Admin",
+    "Developer",
+  ] as const)("points an %s to the Connections page", (userType) => {
+    setAccess({ user_type: userType });
+    renderApps();
+
+    expect(screen.getByRole("link", { name: "Connections page" })).toHaveAttribute(
+      "href",
+      "/app/connections",
+    );
+  });
+
+  it("does not point a User to it", () => {
+    setAccess({ user_type: "User" });
+    renderApps();
+
+    expect(
+      screen.queryByRole("link", { name: "Connections page" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -80,7 +80,7 @@ export default function ExportFolderDialog() {
 
     function recurse(children: string[]) {
       for (const childId of children) {
-        const child = items[childId];
+        const child = items?.[childId];
         if (child?.isFolder && child?.children) {
           recurse(child.children);
         } else if (child && !child.isFolder && child.data) {

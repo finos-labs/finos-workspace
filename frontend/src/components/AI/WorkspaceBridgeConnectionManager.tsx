@@ -5,10 +5,11 @@ import { startBridgeSession } from "~/api/workspaceBridge.api";
 import { useActiveWorkspaceDashboardId } from "~/components/AI/hooks/useActiveWorkspaceDashboardId";
 import { useSyncWidgetsInCurrentDashboard } from "~/components/AI/hooks/useWidgetsInCurrentDashboard";
 import { useWorkspaceBridgeCommandHandler } from "~/components/AI/hooks/useWorkspaceBridgeCommandHandler";
-import type {
-  BrowserSessionContext,
-  ClientEvent,
-  ServerEvent,
+import {
+  BRIDGE_LIMITS,
+  type BrowserSessionContext,
+  type ClientEvent,
+  type ServerEvent,
 } from "~/components/AI/workspaceBridgeProtocol";
 import { useShallowAppStore } from "~/lib/state/app";
 import {
@@ -16,11 +17,13 @@ import {
   useWorkspaceBridgeStore,
 } from "~/lib/state/workspaceBridge";
 
-const RECONNECT_BASE_DELAY_MS = 1000;
-const MAX_RECONNECT_ATTEMPTS = 3;
-const SESSION_START_TIMEOUT_MS = 10_000;
-const HEARTBEAT_INTERVAL_MS = 15_000;
-const HEARTBEAT_TIMEOUT_MS = 32_000;
+const {
+  reconnectBaseDelayMs: RECONNECT_BASE_DELAY_MS,
+  maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS,
+  sessionStartTimeoutMs: SESSION_START_TIMEOUT_MS,
+  heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
+  heartbeatTimeoutMs: HEARTBEAT_TIMEOUT_MS,
+} = BRIDGE_LIMITS;
 const RECONNECT_TOAST_ID = "workspace-bridge-reconnecting";
 
 function getReconnectDelayMs(attempt: number) {
@@ -82,16 +85,15 @@ const WorkspaceBridgeConnection = memo(() => {
     socketRef.current = null;
     dismissReconnectToast();
 
-    // Always close: even when the socket is not currently connected the
-    // bridge may still hold a heartbeat interval and message listeners.
     socket?.close();
   }, [socketRef]);
 
   const connectSocket = useCallback(
     (websocketUrl: string) => {
       const client = socketRef.current;
+      if (!client) return;
 
-      if (client?.connected && client.connectionUrl === websocketUrl) {
+      if (client.connected && client.connectionUrl === websocketUrl) {
         client.abort();
         socketRef.current = client.init(onCommandRequest);
         return;
@@ -131,7 +133,7 @@ const WorkspaceBridgeConnection = memo(() => {
         socketRef.current?.queueReconnect(
           error instanceof Error
             ? error.message
-            : "Could not connect to the hosted Workspace MCP bridge.",
+            : "Could not connect to the hosted FINOS Workspace MCP bridge.",
         );
       }
     };
@@ -150,10 +152,6 @@ const WorkspaceBridgeConnection = memo(() => {
   }, [reconnectTick, status, currentDashboardId, currentTabId, connectSocket]);
 
   useEffect(() => {
-    // The socket dies with this component (closeSocket below), so a
-    // "connected" status on a fresh mount is stale — e.g. returning from
-    // /admin, which unmounts the workspace layout. Kick off a new handshake,
-    // mirroring what onRehydrateStorage does for full page reloads.
     const { status: mountStatus, updateStatus } = useWorkspaceBridgeStore.getState();
     if (mountStatus === "connected") updateStatus("attempting");
     return () => closeSocket();
@@ -178,21 +176,9 @@ export const WorkspaceBridgeConnectionManager = memo(() => {
 });
 WorkspaceBridgeConnectionManager.displayName = "WorkspaceBridgeConnectionManager";
 
-/**
- * Owns the hosted Workspace MCP websocket lifecycle: socket creation/reuse,
- * message dispatch, heartbeat keep-alive, and reconnect bookkeeping.
- *
- * The class lives outside React, so status changes are pushed imperatively
- * into useWorkspaceBridgeStore (updateStatus/queueReconnect) instead of via
- * hooks, and reconnects are requested by bumping a reducer tick
- * (setBumpReconnectTick) that re-runs the component's connection effect with
- * a fresh session handshake. close(true) tears down only the socket so that
- * effect can rebuild it; close() is a full teardown (listeners aborted,
- * heartbeat interval cleared).
- */
-export class WebSocketBridge {
+class WebSocketBridge {
   _ws: WebSocket | null = null;
-  _connectionString: string | URL;
+  _connectionString: string | URL | undefined;
 
   _abortController: AbortController | null = null;
   _lastSentSessionContext: BrowserSessionContext = {
@@ -225,7 +211,7 @@ export class WebSocketBridge {
     return this._ws;
   }
 
-  get connectionUrl(): string | URL {
+  get connectionUrl(): string | URL | undefined {
     return this._connectionString;
   }
 
@@ -246,7 +232,7 @@ export class WebSocketBridge {
   }
 
   get disconnecting(): boolean {
-    return this._abortController?.signal?.aborted;
+    return this._abortController?.signal?.aborted ?? false;
   }
 
   setReconnectAttempts(value: number) {
@@ -258,46 +244,44 @@ export class WebSocketBridge {
   init(onCommandRequest: (msg: ServerEvent, socket: this) => void) {
     if (!this._connectionString) return this;
 
-    // A browser WebSocket can never reopen once it starts closing, so the
-    // existing socket is only reusable while it is OPEN/CONNECTING on the
-    // same URL. Anything else (including a same-URL reconnect after a drop)
-    // must tear the old socket down and start a fresh one.
+    const existing = this._ws;
     const reusable =
-      this._ws !== null &&
-      this._ws.url === this._connectionString &&
+      existing !== null &&
+      existing.url === this._connectionString &&
       (this.connected || this.connecting);
 
-    if (!reusable) {
-      if (this._ws) {
-        this._ws.onopen = null;
-        this._ws.onclose = null;
-        this._ws.onerror = null;
+    let ws: WebSocket;
+    if (existing && reusable) {
+      ws = existing;
+    } else {
+      if (existing) {
+        existing.onopen = null;
+        existing.onclose = null;
+        existing.onerror = null;
         this.abort();
-        this._ws.close();
+        existing.close();
       }
       this._abortController = new AbortController();
-      this._ws = new WebSocket(this._connectionString);
+      ws = new WebSocket(this._connectionString);
+      this._ws = ws;
     }
     if (this._abortController?.signal?.aborted) {
       this._abortController = new AbortController();
     }
 
-    this._ws.onopen = () => {
-      // A successful open means the budget should restart from zero, so a
-      // single longer outage cannot exhaust the attempts that earlier,
-      // fully-recovered drops accumulated across the session.
+    ws.onopen = () => {
       this.setReconnectAttempts(0);
       this.pingTimeout();
     };
 
-    this._ws.onclose = () => {
+    ws.onclose = () => {
       if (this.disconnecting) return;
-      this.queueReconnect("Workspace MCP bridge connection closed.");
+      this.queueReconnect("FINOS Workspace MCP bridge connection closed.");
     };
 
-    this._ws.onerror = () => {
+    ws.onerror = () => {
       if (this.disconnecting) return;
-      this.queueReconnect("Workspace MCP bridge connection error.");
+      this.queueReconnect("FINOS Workspace MCP bridge connection error.");
     };
 
     this.onMessageSync(onCommandRequest);
@@ -320,9 +304,9 @@ export class WebSocketBridge {
     const nextAttempt = this._reconnectAttempts + 1;
     if (nextAttempt > MAX_RECONNECT_ATTEMPTS) {
       dismissReconnectToast();
-      const finalMessage = `Workspace MCP bridge connection lost. Failed to reconnect after ${MAX_RECONNECT_ATTEMPTS} attempts.`;
+      const finalMessage = `FINOS Workspace MCP bridge connection lost. Failed to reconnect after ${MAX_RECONNECT_ATTEMPTS} attempts.`;
       store.updateStatus("failed", finalMessage);
-      toast.error("Workspace MCP companion disconnected", {
+      toast.error("FINOS Workspace MCP companion disconnected", {
         description: finalMessage,
       });
       return;
@@ -332,14 +316,10 @@ export class WebSocketBridge {
     store.updateStatus("reconnecting", message);
     this.bumpReconnectTick();
 
-    // Only surface the reconnecting toast while the user is actively managing
-    // the connection in the modal. Background reconnects (e.g. after the
-    // browser wakes from sleep) recover silently; the modal shows its own
-    // inline status if it is open.
     if (!store.isModalOpen) return;
 
     const delayMs = getReconnectDelayMs(nextAttempt);
-    toast.warning("Workspace MCP companion reconnecting", {
+    toast.warning("FINOS Workspace MCP companion reconnecting", {
       id: RECONNECT_TOAST_ID,
       duration: Number.POSITIVE_INFINITY,
       description: `${message} Retrying in ${formatReconnectDelay(delayMs)} (attempt ${nextAttempt} of ${MAX_RECONNECT_ATTEMPTS}).`,
@@ -347,7 +327,7 @@ export class WebSocketBridge {
   }
 
   onMessageSync(onCommandRequest: (msg: ServerEvent, socket: this) => void): void {
-    this._ws.addEventListener(
+    this._ws?.addEventListener(
       "message",
       (e) => {
         try {
@@ -375,16 +355,16 @@ export class WebSocketBridge {
               dismissReconnectToast();
               this.updateStatus(
                 "failed",
-                event.error?.message || "Workspace MCP bridge returned an error.",
+                event.error?.message || "FINOS Workspace MCP bridge returned an error.",
               );
               return;
           }
         } catch {
-          console.error("websocket error: invalid payload", e.data);
+          console.error("websocket error: invalid payload");
           dismissReconnectToast();
           this.updateStatus(
             "failed",
-            "Workspace MCP bridge sent an invalid websocket payload.",
+            "FINOS Workspace MCP bridge sent an invalid websocket payload.",
           );
         }
       },
@@ -419,9 +399,6 @@ export class WebSocketBridge {
       if (!this.connected) return;
 
       if (Date.now() - this._lastPong > HEARTBEAT_TIMEOUT_MS) {
-        // No pong arrived within the timeout window: the socket is dead even
-        // though the OS has not surfaced a close yet (common after sleep/wake
-        // or a NAT idle timeout). Force a close so onclose drives a reconnect.
         this.close(true);
         return;
       }
@@ -431,9 +408,6 @@ export class WebSocketBridge {
   }
 
   close(reconnect = false) {
-    // The heartbeat interval is always cleared; onopen restarts it via
-    // pingTimeout() when a reconnect succeeds, so keeping it running across
-    // a reconnect would only leak a timer if the reconnect never completes.
     if (this._pingIntervalId) window.clearInterval(this._pingIntervalId);
     this._pingIntervalId = null;
     if (!reconnect) {

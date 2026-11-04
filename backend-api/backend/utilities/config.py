@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import ssl
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
@@ -11,22 +12,16 @@ from uuid import UUID
 
 import aioboto3
 import boto3
-import hubspot
-import mailchimp_marketing
-import mailchimp_transactional
 from aiobotocore.config import AioConfig
 from aiobotocore.session import AioSession
 from azure.identity import DefaultAzureCredential
-from azure.storage.blob.aio import BlobClient, BlobServiceClient
+from azure.storage.blob.aio import BlobClient
 from botocore.client import BaseClient, Config
-from botocore.session import Session
 from fastapi.encoders import jsonable_encoder
 from pydantic import (
-    BaseModel as PydanticBaseModel,
-    ConfigDict,
+    BaseModel,
     EmailStr,
     Field,
-    HttpUrl,
     field_validator,
     model_validator,
 )
@@ -35,36 +30,40 @@ from redis import Redis
 from redis.asyncio import Redis as AsyncRedis
 from redis.asyncio.cluster import RedisCluster as AsyncRedisCluster
 from redis.cluster import RedisCluster
-from sqlalchemy import AsyncAdaptedQueuePool, create_engine
-from sqlalchemy.engine.base import Engine
+from sqlalchemy import AsyncAdaptedQueuePool
 from sqlalchemy.ext.asyncio import (
-    AsyncConnection,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
 
+from api.crypto import decode_key_material
+
 _RedisCacheT = TypeVar("_RedisCacheT")
 
+MIN_SECRET_BYTES = 32
+PROMETHEUS_LISTENER_PORT = 6970
+RQ_QUEUE_NAME = "payments_queue"
+CORS_ORIGIN = re.compile(r"https?://[A-Za-z0-9.-]+(:\d{1,5})?|https?://\[[0-9A-Fa-f:.]+\](:\d{1,5})?")
 
-class BaseModel(PydanticBaseModel):
-    """BaseModel subclass that ignores Cython-compiled methods.
 
-    When this module is compiled by Cython 3, plain `def method(self): ...`
-    bodies become `cyfunction` objects on the class. Pydantic's metaclass
-    scans the class namespace for unannotated attributes and treats anything
-    that isn't a recognised callable type (FunctionType, property, etc.) as
-    a malformed field. `cyfunction` is not in its default ignore list.
+def check_origins(name: str, origins: list[str]) -> list[str]:
+    for origin in origins:
+        if not CORS_ORIGIN.fullmatch(origin):
+            raise ValueError(
+                f"{name}: {origin!r} is not an origin; give the scheme, host and port "
+                "only, as http(s)://host[:port], with no path and no *"
+            )
+    return origins
 
-    `type(lambda: None)` evaluates to FunctionType in plain Python and to
-    the cyfunction type when this file is compiled — adding whichever it
-    happens to be is a no-op in dev and the real fix in the lite build.
 
-    Project Pydantic models should inherit from this class instead of
-    pydantic.BaseModel directly.
-    """
-
-    model_config = ConfigDict(ignored_types=(type(lambda: None),))
+def check_strong_secret(name: str, value: str) -> str:
+    if len(value.encode("utf-8")) < MIN_SECRET_BYTES:
+        raise ValueError(
+            f"{name} must be at least {MIN_SECRET_BYTES} bytes; generate one with "
+            'python -c "import secrets; print(secrets.token_urlsafe(32))"'
+        )
+    return value
 
 
 def create_path(*path: str) -> str:
@@ -85,7 +84,7 @@ def get_url(self: "DatabaseSettings", access: Literal["READ", "WRITE"] = "READ")
     name = self.DB_NAME
 
     if self.DATABASE_TYPE == "postgresql":
-        return f"postgresql+psycopg2://{user}:{password}@{the_host}:{the_port}/{name}"
+        return f"postgresql+pg8000://{user}:{password}@{the_host}:{the_port}/{name}"
 
     return f"mysql+pymysql://{user}:{password}@{the_host}:{the_port}/{name}?charset=utf8mb4"
 
@@ -99,7 +98,6 @@ class DatabaseConnectArgs(BaseModel):
 DB_POOL_SIZE = {
     "mysql": {"max": 150, "default": 50, "overflow": 20},
     "postgresql": {"max": 100, "default": 50, "overflow": 10},
-    # SQLite doesn't support multiple concurrent connections
     "sqlite": {"max": 1, "default": 1, "overflow": 0},
 }
 
@@ -107,34 +105,20 @@ DB_POOL_SIZE = {
 class DatabaseEngineSettings(BaseModel):
     pool_pre_ping: bool = True
     pool_size: int = 50
-    max_overflow: int = 20  # allowed extra connections above pool_size
-    pool_timeout: int = 30  # this is in seconds
-    pool_recycle: int = 1800  # this is also in seconds
+    max_overflow: int = 20
+    pool_timeout: int = 30
+    pool_recycle: int = 1800
     echo: bool = False
     connect_args: DatabaseConnectArgs = DatabaseConnectArgs()
 
     @model_validator(mode="after")
     def _adjust_pool_size(self):
-        """Adjust pool_size and max_overflow based on DATABASE_TYPE and WORKERS to prevent connection starvation
-        or exceeding DB connection limits.
-
-        Example
-        -------
-        For MySQL with a max of 150 connections:
-            - If `WORKERS=4`
-            - Default `pool_size=50 and overflow=20` would allow up to 280 connections `(4*(50+20))`,
-            which exceeds the limit.
-            - The scale_factor would be `150/(4*70) = 0.535`, resulting in an adjusted
-            pool_size of 26 and max_overflow of 10, allowing up to 144 connections `(4*(26+10))`.
-        """
-
         limits = DB_POOL_SIZE[settings.DATABASE_TYPE]
         self.pool_size = limits["default"]
         self.max_overflow = limits["overflow"]
 
         total_connections_per_worker = limits["default"] + limits["overflow"]
         if settings.WORKERS * total_connections_per_worker > limits["max"]:
-            # Scale down pool_size and max_overflow proportionally
             scale_factor = limits["max"] / (
                 settings.WORKERS * total_connections_per_worker
             )
@@ -142,11 +126,6 @@ class DatabaseEngineSettings(BaseModel):
             self.max_overflow = max(0, int(self.max_overflow * scale_factor))
 
         return self
-
-    @staticmethod
-    def custom_timeout(_timeout: int):
-        connect_args = DatabaseConnectArgs()
-        return DatabaseEngineSettings(connect_args=connect_args)
 
     @classmethod
     def with_custom_ssl(cls, ssl_context: SSLContext | None = None):
@@ -156,18 +135,13 @@ class DatabaseEngineSettings(BaseModel):
 
 class DatabaseSessionManager:
     def __init__(self, host: str, **engine_kwargs: Any):
-        host = host.replace("pymysql", "aiomysql").replace("psycopg2", "asyncpg")
+        host = host.replace("pymysql", "aiomysql").replace("pg8000", "asyncpg")
 
         is_sqlite = host.startswith("sqlite")
         if is_sqlite:
             host = host.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
-            # A single connection serialized through pool checkout: concurrent
-            # sessions queue for it. StaticPool must not be used here — it hands
-            # the same connection to overlapping sessions, so their transactions
-            # interleave and one session's COMMIT persists another's partial writes.
             engine_kwargs["pool_size"] = 1
             engine_kwargs["max_overflow"] = 0
-            # timeout = SQLite busy_timeout (seconds): block on write-lock contention instead of erroring.
             engine_kwargs["connect_args"] = {"check_same_thread": False, "timeout": 5}
 
         self._engine = create_async_engine(
@@ -186,18 +160,6 @@ class DatabaseSessionManager:
         self._sessionmaker = None
 
     @asynccontextmanager
-    async def connect(self) -> AsyncGenerator[AsyncConnection]:
-        if self._engine is None:
-            raise Exception("DatabaseSessionManager is not initialized")
-
-        async with self._engine.begin() as connection:
-            try:
-                yield connection
-            except Exception:
-                await connection.rollback()
-                raise
-
-    @asynccontextmanager
     async def session(self) -> AsyncGenerator[AsyncSession]:
         if self._sessionmaker is None:
             raise Exception("DatabaseSessionManager is not initialized")
@@ -213,22 +175,72 @@ class DatabaseSessionManager:
 
 
 class DatabaseSettings(BaseModel):
-    READ_DB_USER: str | None = None
-    READ_DB_PASSWORD: str | None = None
-    WRITE_DB_USER: str | None = None
-    WRITE_DB_PASSWORD: str | None = None
-    DB_HOST: str | None = None
-    DB_NAME: str | None = None
-    DB_PORT: int | None = None
-    DB_PATH: str = "local.db"
-    DATABASE_TYPE: Literal["mysql", "postgresql", "sqlite"] = "mysql"
-    SSL_CA: str | None = None
-    SSL_CERT: str | None = None
-    SSL_KEY: str | None = None
+    READ_DB_USER: str | None = Field(
+        None,
+        description=(
+            "The database account for queries that only read. It may be the same account as WRITE_DB_USER. Required with "
+            "DATABASE_TYPE mysql or postgresql."
+        ),
+    )
+    READ_DB_PASSWORD: str | None = Field(
+        None,
+        description="The password of READ_DB_USER. Required with DATABASE_TYPE mysql or postgresql.",
+    )
+    WRITE_DB_USER: str | None = Field(
+        None,
+        description=(
+            "The database account for queries that write, and for the migrations that run when the API starts. Required "
+            "with DATABASE_TYPE mysql or postgresql."
+        ),
+    )
+    WRITE_DB_PASSWORD: str | None = Field(
+        None,
+        description="The password of WRITE_DB_USER. Required with DATABASE_TYPE mysql or postgresql.",
+    )
+    DB_HOST: str | None = Field(
+        None,
+        description=(
+            "The host name of the database server. Required with DATABASE_TYPE mysql or postgresql. Outside Docker, for "
+            "example with docker-compose-local-dev.yml, use localhost."
+        ),
+    )
+    DB_NAME: str | None = Field(
+        None,
+        description="The name of the database on the server. Required with DATABASE_TYPE mysql or postgresql.",
+    )
+    DB_PORT: int | None = Field(
+        None,
+        description="The port of the database server. Required with DATABASE_TYPE mysql or postgresql.",
+    )
+    DB_PATH: str = Field(
+        "local.db",
+        description="The path of the SQLite database file. It is used only with DATABASE_TYPE sqlite.",
+    )
+    DATABASE_TYPE: Literal["mysql", "postgresql", "sqlite"] = Field(
+        "mysql",
+        description="The kind of database that the API uses. With sqlite the API needs only DB_PATH.",
+    )
+    SSL_CA: str | None = Field(
+        None,
+        description=(
+            "The path of the certificate authority file with which the API verifies the database server's certificate. "
+            "Setting SSL_CA, SSL_CERT or SSL_KEY makes the connection to the database use TLS."
+        ),
+    )
+    SSL_CERT: str | None = Field(
+        None,
+        description=(
+            "The path of the client certificate that the API presents to the database. It must be set together with "
+            "SSL_KEY."
+        ),
+    )
+    SSL_KEY: str | None = Field(
+        None,
+        description="The path of the private key of SSL_CERT. It must be set together with SSL_CERT.",
+    )
 
     @model_validator(mode="after")
     def _validate_db_settings(self):
-        """Enforce that connection fields are set for MySQL/PostgreSQL."""
         if self.DATABASE_TYPE == "sqlite":
             return self
         required = [
@@ -249,18 +261,6 @@ class DatabaseSettings(BaseModel):
         return self
 
     def get_ssl_config(self) -> SSLContext | None:
-        """Build an SSLContext for the DB driver from env-configured paths.
-
-        Env vars consumed:
-            - SSL_CA: path to CA certificate file. Used to verify the server cert.
-                If unset, the system CA bundle is used.
-            - SSL_CERT: path to client certificate file (mTLS). Must be set with SSL_KEY.
-            - SSL_KEY:  path to client private key file (mTLS). Must be set with SSL_CERT.
-
-        Returns None when no SSL env vars are set (driver connects without TLS).
-        To tune other TLS knobs (verify_mode, check_hostname, ciphers, etc.),
-        configure them on the returned SSLContext at the call site.
-        """
         if not (self.SSL_CA or self.SSL_CERT or self.SSL_KEY):
             return None
         if bool(self.SSL_CERT) != bool(self.SSL_KEY):
@@ -273,25 +273,6 @@ class DatabaseSettings(BaseModel):
     def get_read_url(self) -> str:
         return get_url(self)
 
-    @staticmethod
-    def _sqlite_engine_kwargs() -> dict[str, Any]:
-        """Return engine kwargs appropriate for SQLite."""
-        return {
-            # One connection serialized via pool checkout (see
-            # DatabaseSessionManager) — never StaticPool, which shares the
-            # connection across threads and interleaves transactions.
-            "connect_args": {"check_same_thread": False, "timeout": 5},
-            "pool_size": 1,
-            "max_overflow": 0,
-        }
-
-    def get_read_engine(self, settings: DatabaseEngineSettings | None = None) -> Engine:
-        if self.DATABASE_TYPE == "sqlite":
-            return create_engine(self.get_read_url(), **self._sqlite_engine_kwargs())
-        if settings is None:
-            settings = DatabaseEngineSettings.with_custom_ssl(self.get_ssl_config())
-        return create_engine(self.get_read_url(), **settings.model_dump())
-
     def get_read_session(
         self, settings: DatabaseEngineSettings | None = None
     ) -> DatabaseSessionManager:
@@ -302,23 +283,7 @@ class DatabaseSettings(BaseModel):
     def get_write_url(self) -> str:
         return get_url(self, access="WRITE")
 
-    def get_write_engine(
-        self, settings: DatabaseEngineSettings | None = None
-    ) -> Engine:
-        if self.DATABASE_TYPE == "sqlite":
-            return create_engine(self.get_write_url(), **self._sqlite_engine_kwargs())
-        if settings is None:
-            settings = DatabaseEngineSettings.with_custom_ssl(self.get_ssl_config())
-        return create_engine(self.get_write_url(), **settings.model_dump())
-
     def get_write_session(
-        self, settings: DatabaseEngineSettings | None = None
-    ) -> DatabaseSessionManager:
-        if settings is None:
-            settings = DatabaseEngineSettings.with_custom_ssl(self.get_ssl_config())
-        return DatabaseSessionManager(self.get_write_url(), **settings.model_dump())
-
-    def get_validate_user_session(
         self, settings: DatabaseEngineSettings | None = None
     ) -> DatabaseSessionManager:
         if settings is None:
@@ -327,20 +292,85 @@ class DatabaseSettings(BaseModel):
 
 
 class RedisSettings(BaseModel):
-    REDIS_HOST: str = "redis"
-    REDIS_USER: str | None = ""
-    REDIS_PASS: str
-    REDIS_PORT: int = 6379
-    REDIS_SSL_PORT: int = 6380
-    REDIS_DB_BOT: int = 0
-    REDIS_DB_PRO: int = 1
-    REDIS_DB_SDK: int = 12
-    REDIS_SSL_CA: str | None = None
-    REDIS_SSL_CERT: str | None = None
-    REDIS_SSL_KEY: str | None = None
-    REDIS_SSL_CERT_REQ: Literal["none", "optional", "required"] | None = None
-    REDIS_CLUSTER_MODE: bool = False
-    REDIS_RQ_HASH_TAGS: bool = False
+    REDIS_HOST: str = Field(
+        "valkey",
+        description=(
+            "The host name of the Redis or Valkey server. Outside Docker, for example with docker-compose-local-dev.yml, "
+            "use localhost."
+        ),
+    )
+    REDIS_USER: str | None = Field(
+        "",
+        description="The user name for the Redis server. Leave it empty when the server has no users.",
+    )
+    REDIS_PASS: str = Field(
+        description=(
+            "The password of the Redis server. It may be empty when the server has no password, but the variable must be "
+            "set."
+        ),
+    )
+    REDIS_PORT: int = Field(6379, description="The port of the Redis server when the connection does not use TLS.")
+    REDIS_SSL_PORT: int = Field(
+        6380,
+        description=(
+            "The port of the Redis server when the connection uses TLS, which is the case when REDIS_SSL_CA, "
+            "REDIS_SSL_CERT or REDIS_SSL_KEY is set, or REDIS_SSL_CERT_REQ is none."
+        ),
+    )
+    REDIS_DB_BOT: int = Field(
+        0,
+        description=(
+            "The number of the Redis database that holds the job queues and the workers of RQ. It is ignored in cluster "
+            "mode."
+        ),
+    )
+    REDIS_DB_APP: int = Field(
+        1,
+        description=(
+            "The number of the Redis database that holds what the API keeps for a short time: agent tokens, password "
+            "reset links, sign-in nonces, MCP sign-in state, usage counts, pending uploads, signed file links, the rate "
+            "limits and the migration lock. It is ignored in cluster mode."
+        ),
+    )
+    REDIS_SSL_CA: str | None = Field(
+        None,
+        description=(
+            "The path of the certificate authority file that verifies the Redis server's certificate. Setting it turns "
+            "on TLS."
+        ),
+    )
+    REDIS_SSL_CERT: str | None = Field(
+        None,
+        description=(
+            "The path of a certificate bundle that the API trusts for the Redis server; REDIS_SSL_CA takes its place "
+            "when this is unset. Setting it turns on TLS."
+        ),
+    )
+    REDIS_SSL_KEY: str | None = Field(
+        None,
+        description="The path of the private key file for the TLS connection to Redis.",
+    )
+    REDIS_SSL_CERT_REQ: Literal["none", "optional", "required"] | None = Field(
+        None,
+        description=(
+            "Whether the API demands a valid certificate from the Redis server. With none, the connection uses TLS "
+            "without verifying the certificate."
+        ),
+    )
+    REDIS_CLUSTER_MODE: bool = Field(
+        False,
+        description=(
+            "With true, the API talks to a Redis Cluster instead of a single server. The values 1 and true turn it on, "
+            "and 0 and false turn it off."
+        ),
+    )
+    REDIS_RQ_HASH_TAGS: bool = Field(
+        False,
+        description=(
+            "With true, the job queues of RQ use hash tags in their keys, so that they work on a sharded Redis that does "
+            "not expose cluster endpoints."
+        ),
+    )
 
     __port: int | None = None
     __schema: str | None = None
@@ -381,10 +411,10 @@ class RedisSettings(BaseModel):
         return None
 
     def get_redis_url(self) -> str:
-        uri = f"{self.schema}://{self.REDIS_USER}:{self.REDIS_PASS}@{self.REDIS_HOST}:{self.port}/{self.REDIS_DB_PRO}"
+        uri = f"{self.schema}://{self.REDIS_USER}:{self.REDIS_PASS}@{self.REDIS_HOST}:{self.port}/{self.REDIS_DB_APP}"
 
         if self.REDIS_CLUSTER_MODE:
-            uri = uri.replace(f"/{self.REDIS_DB_PRO}", "")
+            uri = uri.replace(f"/{self.REDIS_DB_APP}", "")
 
         query_params = []
         if self.ssl_config:
@@ -398,12 +428,11 @@ class RedisSettings(BaseModel):
         return uri
 
     def get_redis_session(
-        self, database: Literal["bot", "pro", "sdk"]
+        self, database: Literal["bot", "app"]
     ) -> Redis | RedisCluster:
         db_options = {
             "bot": self.REDIS_DB_BOT,
-            "pro": self.REDIS_DB_PRO,
-            "sdk": self.REDIS_DB_SDK,
+            "app": self.REDIS_DB_APP,
         }
 
         kwargs = {
@@ -416,26 +445,17 @@ class RedisSettings(BaseModel):
         if self.ssl_config:
             kwargs.update(self.ssl_config)
 
-        # Check if cluster mode is enabled
         if self.REDIS_CLUSTER_MODE:
-            # RedisCluster doesn't support db parameter
             return RedisCluster(**kwargs)
 
         kwargs["db"] = db_options[database]
         return Redis(**kwargs)
 
     def get_async_redis_session(
-        self, database: Literal["bot", "pro", "sdk"]
+        self, database: Literal["app"]
     ) -> AsyncRedis | AsyncRedisCluster:
-        """Async counterpart of get_redis_session for non-blocking pub/sub and keyspace ops.
-
-        Mirrors the cluster/SSL/db branching so callers on the event loop avoid offloading
-        synchronous Redis calls to the thread pool.
-        """
         db_options = {
-            "bot": self.REDIS_DB_BOT,
-            "pro": self.REDIS_DB_PRO,
-            "sdk": self.REDIS_DB_SDK,
+            "app": self.REDIS_DB_APP,
         }
 
         kwargs = {
@@ -449,7 +469,6 @@ class RedisSettings(BaseModel):
             kwargs.update(self.ssl_config)
 
         if self.REDIS_CLUSTER_MODE:
-            # RedisCluster doesn't support db parameter
             return AsyncRedisCluster(**kwargs)
 
         kwargs["db"] = db_options[database]
@@ -483,37 +502,14 @@ class RedisSettings(BaseModel):
         update: bool = False,
         delete: bool = False,
     ) -> "_RedisCacheT":
-        """Check if key is in redis cache.
-            If data is not None, set the data in the cache and return data.
-            If data is None and key is in cache, return the data.
-            If data is None and the key is not in the cache, return None.
-
-        Parameters
-        ----------
-        redis_key : str
-            Key to check in redis cache
-        data : object, optional
-            Data to add to redis cache. The default is None.
-        expire : int, optional
-            Expiration time in seconds. The default is redis_cache_seconds().
-        redis_client : redis.Redis, optional
-            Redis client. The default is imps.redis_conn.
-        update : bool, optional
-            If True, update the redis cache. The default is False.
-
-        Returns
-        -------
-        object
-            Data from redis cache if it exists, else data
-        """
         if not isinstance(expire, timedelta) and expire is not None:
             expire = timedelta(seconds=expire)
 
-        redis_client = self.get_redis_session("pro")
+        redis_client = self.get_redis_session("app")
         redis_key = str(redis_key)
 
         if self.REDIS_CLUSTER_MODE:
-            redis_key = f"pro:{{cluster}}:{redis_key}"
+            redis_key = f"app:{{cluster}}:{redis_key}"
 
         if redis_client.get(redis_key) and not update:
             if delete:
@@ -533,20 +529,48 @@ class RedisSettings(BaseModel):
 
 
 class AWSSettings(BaseModel):
-    S3_ACCESS_KEY: str = os.environ.get("S3_ACCESS_KEY", "")
-    S3_SECRET_KEY: str = os.environ.get("S3_SECRET_KEY", "")
-    S3_BUCKET_NAME: str = os.environ.get("S3_BUCKET_NAME", "openbb-assets")
-    S3_BUCKET_BASE: HttpUrl = HttpUrl("https://openbb-assets.s3.amazonaws.com/")
-    S3_FILE_BUCKET: str = os.environ.get("S3_BUCKET", "pro-file-storage-dev")
-    S3_FILE_BUCKET_BASE: HttpUrl = HttpUrl(
-        f"https://{S3_FILE_BUCKET}.s3.amazonaws.com/"
+    S3_ACCESS_KEY: str = Field(
+        os.environ.get("S3_ACCESS_KEY", ""),
+        description=(
+            "The access key for the S3 bucket. Used with STORAGE_PROVIDER aws. When it is empty, the client looks for "
+            "credentials the way AWS clients do."
+        ),
     )
-    S3_IMAGE_BUCKET: HttpUrl = HttpUrl(f"{S3_BUCKET_BASE}profile-pictures/")
-    S3_VERIFY_SSL: bool | None = None
-    S3_ENDPOINT_URL: str | None = None
-    S3_REGION: str | None = os.environ.get("S3_REGION", None)
-    S3_SIGNATURE_VERSION: Literal["s3v4", "v4"] = os.environ.get(
-        "S3_SIGNATURE_VERSION", "s3v4"
+    S3_SECRET_KEY: str = Field(
+        os.environ.get("S3_SECRET_KEY", ""),
+        description="The secret key for the S3 bucket. Used with STORAGE_PROVIDER aws.",
+    )
+    S3_BUCKET_NAME: str | None = Field(
+        os.environ.get("S3_BUCKET_NAME"),
+        description="The name of an S3 bucket. The API does not read it: uploaded files go to S3_FILE_BUCKET.",
+    )
+    S3_FILE_BUCKET: str | None = Field(
+        os.environ.get("S3_BUCKET"),
+        description=(
+            "The S3 bucket that holds uploaded files. When it is unset, the API reads the variable S3_BUCKET instead. "
+            "Used with STORAGE_PROVIDER aws."
+        ),
+    )
+    S3_VERIFY_SSL: bool | None = Field(
+        None,
+        description=(
+            "Whether the S3 client verifies the endpoint's TLS certificate. Unset leaves the client's default, which "
+            "verifies; false turns verification off."
+        ),
+    )
+    S3_ENDPOINT_URL: str | None = Field(
+        None,
+        description=(
+            "The address of the S3 service, for an S3-compatible service other than AWS. Unset, the client uses AWS."
+        ),
+    )
+    S3_REGION: str | None = Field(
+        os.environ.get("S3_REGION", None),
+        description="The AWS region of the bucket, for example us-east-1.",
+    )
+    S3_SIGNATURE_VERSION: Literal["s3v4", "v4"] = Field(
+        os.environ.get("S3_SIGNATURE_VERSION", "s3v4"),
+        description="The signature version of requests to S3.",
     )
 
     def async_s3_client(self):
@@ -565,8 +589,8 @@ class AWSSettings(BaseModel):
     def get_s3_client(self) -> BaseClient:
         return boto3.client(
             "s3",
-            aws_access_key_id=self.S3_ACCESS_KEY,
-            aws_secret_access_key=self.S3_SECRET_KEY,
+            aws_access_key_id=self.S3_ACCESS_KEY or None,
+            aws_secret_access_key=self.S3_SECRET_KEY or None,
             region_name=self.S3_REGION,
             endpoint_url=self.S3_ENDPOINT_URL,
             verify=self.S3_VERIFY_SSL,
@@ -575,13 +599,10 @@ class AWSSettings(BaseModel):
 
     def get_async_s3_session(self) -> aioboto3.Session:
         return aioboto3.Session(
-            aws_access_key_id=self.S3_ACCESS_KEY,
-            aws_secret_access_key=self.S3_SECRET_KEY,
+            aws_access_key_id=self.S3_ACCESS_KEY or None,
+            aws_secret_access_key=self.S3_SECRET_KEY or None,
             region_name=self.S3_REGION,
         )
-
-    def get_profile_url(self, uuid: UUID) -> str:
-        return f"{self.S3_IMAGE_BUCKET}{uuid}.png"
 
     async def s3_client(self):
         session = AioSession()
@@ -592,8 +613,8 @@ class AWSSettings(BaseModel):
         try:
             async with session.create_client(
                 "s3",
-                aws_access_key_id=self.S3_ACCESS_KEY,
-                aws_secret_access_key=self.S3_SECRET_KEY,
+                aws_access_key_id=self.S3_ACCESS_KEY or None,
+                aws_secret_access_key=self.S3_SECRET_KEY or None,
                 region_name=self.S3_REGION,
                 endpoint_url=self.S3_ENDPOINT_URL,
                 config=botocore_config,
@@ -603,24 +624,29 @@ class AWSSettings(BaseModel):
         except Exception as e:
             raise e
 
-    def s3_client_sync(self) -> BaseClient:
-        session = Session()
-        return session.create_client(
-            "s3",
-            aws_access_key_id=self.S3_ACCESS_KEY,
-            aws_secret_access_key=self.S3_SECRET_KEY,
-            region_name=self.S3_REGION,
-            endpoint_url=self.S3_ENDPOINT_URL,
-            verify=self.S3_VERIFY_SSL,
-            config=Config(signature_version=self.S3_SIGNATURE_VERSION),
-        )
-
 
 class LocalStorageSettings(BaseModel):
-    FOLDER_STORAGE_PATH: str = os.environ.get("FOLDER_STORAGE_PATH", "local_storage")
-    LOCAL_STORAGE_SECRET_KEY: str = os.environ.get(
-        "LOCAL_STORAGE_SECRET_KEY", "default_secret_key"
+    FOLDER_STORAGE_PATH: str = Field(
+        os.environ.get("FOLDER_STORAGE_PATH", "local_storage"),
+        description=(
+            "The folder that holds uploaded files, relative to the API's working directory unless the path is absolute. "
+            "Used with STORAGE_PROVIDER folder."
+        ),
     )
+    LOCAL_STORAGE_SECRET_KEY: str | None = Field(
+        None,
+        description=(
+            "The secret that signs the temporary links to uploaded files. At least 32 bytes. Required with "
+            "STORAGE_PROVIDER folder."
+        ),
+    )
+
+    @field_validator("LOCAL_STORAGE_SECRET_KEY")
+    @classmethod
+    def check_storage_secret(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return check_strong_secret("LOCAL_STORAGE_SECRET_KEY", value)
 
     def get_local_file_path(self, s3_file: str) -> Path:
         path = Path(self.FOLDER_STORAGE_PATH) / s3_file
@@ -628,9 +654,6 @@ class LocalStorageSettings(BaseModel):
         return path
 
     def generate_signature(self, object_name: str, expiration: int) -> str:
-        """The signature is generated using HMAC with SHA256, using the secret key and the message containing
-        the object name and expiration time.
-        """
         import hashlib  # noqa: E117, PLC0415
         import hmac  # noqa: E117, PLC0415
 
@@ -642,7 +665,6 @@ class LocalStorageSettings(BaseModel):
     def validate_signature(
         self, object_name: str, expiration: int, signature: str
     ) -> bool:
-        """Validate the signature by comparing it to a freshly generated one."""
         import hmac  # noqa: E117, PLC0415
 
         expected_signature = self.generate_signature(object_name, expiration)
@@ -653,13 +675,27 @@ class LocalStorageSettings(BaseModel):
 
 
 class AzureSettings(BaseModel):
-    AZURE_CONNECTION_STRING: str | None = None
-    AZURE_STORAGE_CONTAINER: str = os.environ.get(
-        "AZURE_STORAGE_CONTAINER", "pro-file-storage-dev"
+    AZURE_CONNECTION_STRING: str | None = Field(
+        None,
+        description=(
+            "The connection string of the Azure storage account. Used with STORAGE_PROVIDER azure, which needs it "
+            "together with AZURE_STORAGE_ACCOUNT."
+        ),
     )
-    AZURE_STORAGE_ACCOUNT: str | None = None
-    AZURE_USE_CLI_AUTH: bool | None = (
-        AZURE_CONNECTION_STRING is None and AZURE_STORAGE_ACCOUNT
+    AZURE_STORAGE_CONTAINER: str | None = Field(
+        os.environ.get("AZURE_STORAGE_CONTAINER"),
+        description="The Azure blob container that holds uploaded files. Used with STORAGE_PROVIDER azure.",
+    )
+    AZURE_STORAGE_ACCOUNT: str | None = Field(
+        None,
+        description="The name of the Azure storage account. Used with STORAGE_PROVIDER azure.",
+    )
+    AZURE_USE_CLI_AUTH: bool | None = Field(
+        None,
+        description=(
+            "With true, the API signs in to the Azure storage account with the credentials of its environment (the Azure "
+            "default credential) instead of the connection string."
+        ),
     )
 
     __token_credential: DefaultAzureCredential | None = None
@@ -676,16 +712,6 @@ class AzureSettings(BaseModel):
                 "Azure connection string or storage account must be set in environment."
                 " (`AZURE_CONNECTION_STRING`, `AZURE_STORAGE_ACCOUNT`)"
             )
-
-    def azure_client(self) -> BlobServiceClient:
-        self.check_azure()
-        if self.AZURE_USE_CLI_AUTH:
-            return BlobServiceClient(
-                account_url=f"https://{self.AZURE_STORAGE_ACCOUNT}.blob.core.windows.net",
-                credential=self.token_credential,
-            )
-
-        return BlobServiceClient.from_connection_string(self.AZURE_CONNECTION_STRING)
 
     def azure_blob_client(self, blob: str, container: str) -> BlobClient:
         self.check_azure()
@@ -704,104 +730,90 @@ class AzureSettings(BaseModel):
 
 
 class AccessSettings(BaseModel):
-    # https://ipgeolocation.io/documentation/ip-geolocation-api.html
-    OPENBB_GEO_KEY: str | None = None
-    OPENBB_AES_KEY: str
-
-
-class MailChimpSettings(BaseModel):
-    MAILCHIMP_MARKETING: str | None = None
-    MAILCHIMP_TRANSACTIONAL: str | None = None
-    MAILCHIMP_SERVER: str | None = None
-    MAILCHIMP_AUDIENCE_ID: str | None = None
-
-    @property
-    def MAILCHIMP(self) -> bool:
-        return bool(self.MAILCHIMP_MARKETING and self.MAILCHIMP_TRANSACTIONAL)
-
-    def get_marketing_client(self) -> mailchimp_marketing.Client:
-        if not self.MAILCHIMP_MARKETING:
-            raise ValueError("Mailchimp marketing is not configured")
-        return mailchimp_marketing.Client(
-            {"api_key": self.MAILCHIMP_MARKETING, "server": self.MAILCHIMP_SERVER}
-        )
-
-    def get_transactional_client(self) -> mailchimp_transactional.Client:
-        if not self.MAILCHIMP_TRANSACTIONAL:
-            raise ValueError("Mailchimp transactional is not configured")
-        return mailchimp_transactional.Client(self.MAILCHIMP_TRANSACTIONAL)
-
-
-class HubspotSettings(BaseModel):
-    HUBSPOT: bool | None = False
-    HUBSPOT_EMAIL_TOKEN: str | None = None
-    HUBSPOT_CONTACT_TOKEN: str | None = None
-    HUBSPOT_SERVICE_TOKEN: str | None = None
-    HUBSPOT_BASE_URL: HttpUrl | None = HttpUrl("https://api.hubapi.com/")
-    HUBSPOT_CONTACTS_URL: HttpUrl | None = HttpUrl(
-        f"{HUBSPOT_BASE_URL}crm/v3/objects/contacts"
+    WORKSPACE_AES_KEY: str = Field(
+        description=(
+            "The key of the encryption at rest (AES-256-GCM), as a base64url string of at least 32 bytes: stored "
+            "provider keys, connection and MCP headers and authenticator secrets are encrypted with it. The API does not "
+            "start without it, and what is stored under it cannot be read with another key."
+        ),
     )
 
-    def __init__(self, **data: Any):
-        super().__init__(**data)
-
-        if any(
-            [
-                self.HUBSPOT_EMAIL_TOKEN,
-                self.HUBSPOT_CONTACT_TOKEN,
-                self.HUBSPOT_SERVICE_TOKEN,
-            ]
-        ):
-            self.HUBSPOT = True
-
-        if not self.HUBSPOT:
-            self.HUBSPOT_EMAIL_TOKEN = None
-            self.HUBSPOT_CONTACT_TOKEN = None
-            self.HUBSPOT_SERVICE_TOKEN = None
-            self.HUBSPOT_BASE_URL = None
-            self.HUBSPOT_CONTACTS_URL = None
-
-    def get_hubspot_email_client(self) -> hubspot.Client:
-        if not self.HUBSPOT:
-            raise ValueError("Hubspot is disabled")
-        return hubspot.Client.create(access_token=self.HUBSPOT_EMAIL_TOKEN)
-
-    def get_hubspot_contact_client(self) -> hubspot.Client:
-        if not self.HUBSPOT:
-            raise ValueError("Hubspot is disabled")
-        return hubspot.Client.create(access_token=self.HUBSPOT_CONTACT_TOKEN)
-
-
-class JiraSettings(BaseModel):
-    JIRA_BASE_URL: str | None = None
-    JIRA_USER_EMAIL: str | None = None
-    JIRA_API_TOKEN: str | None = None
-    JIRA_SERVICE_DESK_ID: str | None = None
-    JIRA_DEFAULT_REQUEST_TYPE_ID: str | None = None
-    JIRA_REQUEST_TYPE_MAPPING: dict[str, str] = Field(default_factory=dict)
-
-    def get_jira_auth(self) -> tuple[str, str]:
-        if not self.JIRA_USER_EMAIL or not self.JIRA_API_TOKEN:
-            raise ValueError("Jira credentials not fully configured")
-        return (self.JIRA_USER_EMAIL, self.JIRA_API_TOKEN)
-
-
-class FeedbackSettings(BaseModel):
-    FEEDBACK_PROVIDER: Literal["hubspot", "jira"] = "hubspot"
+    @field_validator("WORKSPACE_AES_KEY")
+    @classmethod
+    def check_aes_key(cls, value: str) -> str:
+        decode_key_material(value)
+        return value
 
 
 class PrometheusSettings(BaseModel):
-    PROMETHEUS: bool | None = False
+    PROMETHEUS: bool | None = Field(
+        False,
+        description=(
+            "With true, the API serves the Prometheus metrics of all its workers at /metrics and, without a check of "
+            f"the origin, on port {PROMETHEUS_LISTENER_PORT}, and each worker samples its event loop, thread pool and "
+            "database pools."
+        ),
+    )
+    RUNTIME_METRICS_INTERVAL: float = Field(
+        2.0,
+        description=(
+            "The number of seconds between the samples of the event loop, the thread pool and the database pools that "
+            "PROMETHEUS turns on."
+        ),
+    )
 
 
-class ProSettings(BaseModel):
-    INVITE_EXPIRATION: timedelta = timedelta(weeks=52)
-    PRO_DEVELOPER_MAPPING: UUID = UUID("22222222-2222-2222-2222-222222222222")
-    PRO_TRIAL_MAPPING: UUID = UUID("11111111-1111-1111-1111-111111111111")
-    PRO_TRIAL_USER: UUID = UUID("11111111-1111-1111-1111-111111111111")
-    PRO_TRIAL_EMAIL: EmailStr = "colin.delahunty+registertrial@openbb.finance"
-    ON_PREM_ADMIN_MAPPING: UUID | None = None
-    PROURL: str
+class NotificationSettings(BaseModel):
+    ADMIN_NOTIFIER: str = Field(
+        "api.notifications:WebhookNotifier",
+        description=(
+            "The transport of admin notifications (new entities), as an import path package.module:Class. The default "
+            "posts JSON to ADMIN_NOTIFY_WEBHOOK_URL."
+        ),
+    )
+    ADMIN_NOTIFY_WEBHOOK_URL: str | None = Field(
+        None,
+        description=(
+            "The address that the default notifier posts to. Unset, the API logs notifications instead of sending them."
+        ),
+    )
+    ADMIN_NOTIFY_WEBHOOK_SECRET: str | None = Field(
+        None,
+        description=(
+            "The secret of the X-Admin-Notification-Signature header, an HMAC-SHA256 of the body. Without it, the "
+            "notifier sends no signature."
+        ),
+    )
+    ADMIN_NOTIFY_RECIPIENT: str | None = Field(
+        None,
+        description=(
+            "The recipient that the notification payload names, for example an email address. The transport decides what "
+            "to do with it."
+        ),
+    )
+    ADMIN_NOTIFY_SENDER: str | None = Field(
+        None,
+        description=(
+            "The sender that the notification payload names, for example an email address. The transport decides what to "
+            "do with it."
+        ),
+    )
+
+
+class AppSettings(BaseModel):
+    DEFAULT_USER_MAPPING: UUID | None = Field(
+        None,
+        description=(
+            "The id of the permissions mapping that a user gets when they first sign in. The file user_create.json, "
+            "which the init step of the deployment writes, overrides it with the id that it holds."
+        ),
+    )
+    APPURL: str = Field(
+        description=(
+            "The address of the Workspace web app, which the API uses for login redirects and for the password reset "
+            "links that an administrator gives to users."
+        ),
+    )
 
     def __init__(self, **data: Any):
         super().__init__(**data)
@@ -811,130 +823,438 @@ class ProSettings(BaseModel):
 
         with suppress(Exception):
             json_data = json.loads(create_user.read_text())
-            self.PRO_DEVELOPER_MAPPING = UUID(json_data["permissions_uuid"])
-            self.PRO_TRIAL_USER = UUID(json_data["inviting_uuid"])
-            self.PRO_TRIAL_EMAIL = json_data["inviting_email"]
-            self.ON_PREM_ADMIN_MAPPING = UUID(json_data["on_prem_admin_uuid"])
+            self.DEFAULT_USER_MAPPING = UUID(json_data["permissions_uuid"])
+
+
+class DefaultMCPServer(BaseModel):
+    id: str
+    name: str
+    url: str
 
 
 class GeneralSettings(BaseModel):
-    JWT_SECRET: str = os.environ.get("JOSESECRET", None)
-    SNOWFLAKE_ACCOUNT: str = os.environ.get("SNOWFLAKE_ACCOUNT", "")
-    SNOWFLAKE_HOST: str = os.environ.get("SNOWFLAKE_HOST", "")
-    IS_WORKER_CONTAINER: bool = False
-    DISABLE_REGISTRATION: bool = False
+    JWT_SECRET: str = Field(
+        description=(
+            "The secret that signs the service tokens, including the metering token of the agent. At least 32 bytes, and "
+            "the API does not start without it. Changing it invalidates every token that it signed."
+        ),
+    )
+    IS_WORKER_CONTAINER: bool = Field(
+        False,
+        description=(
+            "True in the process that runs the RQ worker. The worker's entry point sets it itself; a Redis Cluster "
+            "compatibility patch of RQ is applied only when it is false."
+        ),
+    )
+    DISABLE_REGISTRATION: bool = Field(
+        False,
+        description=(
+            'With true, every path that creates a user answers 403 "Registration is disabled": POST /admin/register, '
+            "POST /entity/register-admin, sharing with someone who has no account, and the first sign-in of a new user "
+            "through an identity provider. Existing users can still sign in. Read once at startup."
+        ),
+    )
 
-    FRONTENDURL: str = "https://my.openbb.co"
-    SELFURL: str
-    MODE: Literal["production", "local", "test", "onprem", "lite"]
-    EMAIL_PROVIDER: str = "mailchimp"  # "hubspot" or "mailchimp"
-    OPENBB_FRONTEND_USER_AGENT: str = "colinlovedrust"
-    OKTA_DOMAIN: str | None = None
-    # These are characters that cannot be in our url
-    UNUSABLE_JSON_CHARACTERS: set[str] = {"?"}
-    # Users made before this date are bot users
-    HUB_RELEASE_DATE: datetime = datetime(2023, 4, 25)
-    MAX_DICT_LEN: int = 100_000
-    WORKERS: int = 3
-    # Per-worker address-space cap in GiB (RLIMIT_AS, applied in run.py).
-    # None = auto: 75% of the container's cgroup memory limit. 0 = disabled.
-    WORKER_ADDRESS_SPACE_LIMIT_GB: float | None = None
-    PORT: int = 8000
-    LOGURU_COLORIZE: bool = True
-    JSON_LOGS: bool = False
-    LOG_LEVEL: str = "INFO"
-    RQ_TIMEOUT: int = 10
-    DISABLE_CORS: bool = False
-    CLEAR_UNCONFIRMED_FILES_DATE: str = "2024-10-07"
-    OPENBB_AUTH_TOKEN: str | None = None
-    BACKEND_CORS_ORIGINS: list[str] | str = [
-        "http://10.5.2.231:5173",
-        "https://pro.openbb.co",
-        "https://pro.openbb.dev",
-        "https://openbb-excel-add-in.vercel.app",
-        "https://excel.openbb.co",
-        "https://excel.openbb.dev",
-        "https://admin.openbb.co",
-        "https://admin.openbb.dev",
-        "https://bofa.openbb.dev",
-    ]
-    SPECIAL_EMAILS: set[EmailStr] = {
-        "colin99delahunty@gmail.com",
-        "colindelahunty@openbb.finance",
-        "andrewkenreich@gmail.com",
-        "andrewkenreich@openbb.co",
-        "andrewkenreich@openbb.finance",
-        "juanalfonso@openbb.co",
-        "juanalfonso@openbb.finance",
-        "jamesmaslek@openbb.co",
-        "jamesmaslek@openbb.finance",
-    }
-    SUPPRESSED_API_ROUTERS: list[str] | None = Field(default_factory=list)
-    SUPPRESSED_API_ROUTES: list[str] | None = Field(default_factory=list)
-    STORAGE_PROVIDER: Literal["aws", "azure", "gcp", "folder"] = "aws"
-    ALLOWED_MCP_HOSTNAMES: list[str] = Field(default_factory=list)
-    STRIPE_WEBHOOK_SECRET: str | None = None
-    STRIPE_WEBHOOK_TOLERANCE_SECONDS: int = 300
-    # Private provisioning lambda invoked via the AWS SDK; authorized by the
-    # pod's IAM role. Set empty to skip provisioning + install email.
-    LITE_LAMBDA_FUNCTION_NAME: str = "dev-lite-onboarding"
-    # Docker tag customers pull (e.g. "0.3.1"). Bump per release; rendered into
-    # the install email so the `docker pull / run` commands stay current.
-    # This is ignored for now - I made it "latest" by default
-    OPENBB_LITE_DOCKER_TAG: str = "0.0.3"
+    FRONTENDURL: str = Field(
+        description="The address of the web app's front end. The API requires it but does not read it.",
+    )
+    SELFURL: str = Field(
+        description=(
+            "The address at which clients reach this API. It forms the links to uploaded files, and an address that "
+            "starts with https:// marks the deployment as HTTPS, so that the Workspace MCP hands out only https:// "
+            "addresses."
+        ),
+    )
+    MODE: Literal["production", "local", "test"] = Field(
+        description=(
+            "The mode of the deployment. With test, the API keeps its rate limits and the state of the Workspace MCP in "
+            "its own process instead of Redis. With local, a developer's own machine, a superuser can also develop a "
+            "new version of an approved widget plugin in place, and the API accepts a private or plain http address "
+            "from any user for a data backend, an agent or an MCP server, reaching localhost through "
+            "host.docker.internal where that name resolves; production and local are otherwise alike."
+        ),
+    )
+    RATE_LIMIT_EXEMPT_ENABLED: bool = Field(
+        False,
+        description=(
+            "With true, a request that carries a valid service token in the header X-Workspace-Authorization skips the "
+            "rate limits. For development only."
+        ),
+    )
+    GOOGLE_OAUTH_CLIENT_ID: str | None = Field(
+        None,
+        description=(
+            "The OAuth client id of the Google sign-in, the same value as the web app's. The API accepts a Google token "
+            "only when it was issued to this client; unset, every Google sign-in is refused."
+        ),
+    )
+    AZURE_CLIENT_ID: str | None = Field(
+        None,
+        description=(
+            "The application (client) id of the Microsoft Entra app registration. The API runs the Microsoft sign-in "
+            "on the server and accepts a Microsoft identity only for this client. The registration must send the "
+            "optional ID token claims email and xms_edov, because without them a Microsoft sign-in by email is refused."
+        ),
+    )
+    AZURE_CLIENT_SECRET: str | None = Field(
+        None,
+        description=(
+            "A client secret of the Microsoft Entra app registration, which the Web platform issues. The API runs the "
+            "Microsoft sign-in on the server and keeps the secret in its environment; the browser never sees it."
+        ),
+    )
+    AZURE_TENANT_ID: str | None = Field(
+        None,
+        description=(
+            "The tenant whose users may sign in: its id or domain, organizations (every work or school tenant) or "
+            "common (those and personal Microsoft accounts)."
+        ),
+    )
+    OKTA_CLIENT_ID: str | None = Field(
+        None,
+        description=(
+            "The client id of the Okta application. The API runs the Okta sign-in on the server and accepts an Okta "
+            "identity only for this client."
+        ),
+    )
+    OKTA_DOMAIN: str | None = Field(
+        None,
+        description=(
+            "The Okta issuer, for example https://example.okta.com or https://example.okta.com/oauth2/default."
+        ),
+    )
+    OKTA_CLIENT_SECRET: str | None = Field(
+        None,
+        description=(
+            "A client secret of the Okta application. The API runs the Okta sign-in on the server and keeps the secret "
+            "in its environment; the browser never sees it."
+        ),
+    )
+    AUTHENTICATION_SEND_MICROSOFT_IDTOKEN: bool = Field(
+        False,
+        description=(
+            "Whether the API sends the signed-in user's Microsoft ID token to data backends in the header "
+            "X-Microsoft-Id-Token. The API keeps the token and its refresh token encrypted and renews the token before "
+            "it expires; the browser never holds either. The provider must issue refresh tokens."
+        ),
+    )
+    AUTHENTICATION_SEND_OKTA_IDTOKEN: bool = Field(
+        False,
+        description=(
+            "Whether the API sends the signed-in user's Okta ID token to data backends in the header X-Okta-Id-Token. "
+            "The API keeps the token and its refresh token encrypted, asks Okta for the offline_access scope, renews "
+            "the token before it expires, and never gives either to the browser."
+        ),
+    )
+    MAX_DICT_LEN: int = Field(
+        100_000,
+        description=(
+            "The longest request body, counted in characters of its text, that a user's profile update may have. Longer "
+            "ones are refused with 400."
+        ),
+    )
+    WORKERS: int = Field(
+        3,
+        description=(
+            "The number of worker processes that serve requests. The pools of database connections are sized so that all "
+            "workers together stay under the limit of the database type."
+        ),
+    )
+    WORKER_ADDRESS_SPACE_LIMIT_GB: float | None = Field(
+        None,
+        description=(
+            "The most address space, in gigabytes, that each worker process may use. Unset, the limit is 75% of the "
+            "container's memory limit, and none when there is no limit. A value of 0 or less turns the limit off."
+        ),
+    )
+    PORT: int = Field(8000, description="The port on which the API listens, on every interface.")
+    LOGURU_COLORIZE: bool = Field(True, description="Whether the text log lines use colors. JSON log records have none.")
+    JSON_LOGS: bool = Field(
+        False,
+        description=(
+            "With true, the API writes each log record as one JSON object, and no text lines. Without it, the API "
+            "writes text lines."
+        ),
+    )
+    LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
+        "INFO",
+        description="The least severe level that is logged, written in capitals.",
+    )
+    RQ_TIMEOUT: int = Field(
+        10,
+        description=(
+            "The number of seconds that a job that the API puts on the RQ queue may run before the worker stops it."
+        ),
+    )
+    CLEAR_UNCONFIRMED_FILES_DATE: str = Field(
+        "2024-10-07",
+        description=(
+            "A date, written YYYY-MM-DD. On the day of the month that it names, the API queues at startup a one-off "
+            "clean-up of uploaded files that were never confirmed, under job names that carry the date, so that each "
+            "date runs once; a new date runs it again."
+        ),
+    )
+    WORKSPACE_AUTH_TOKEN: str | None = Field(
+        None,
+        description=(
+            "The deployment's service token, a JWT signed with JWT_SECRET. A request that carries a valid service token "
+            "in X-Workspace-Authorization skips rate limits when RATE_LIMIT_EXEMPT_ENABLED is on. The API checks the "
+            "signature of the token it receives; it does not read this variable, which is kept for the clients that send "
+            "the token."
+        ),
+    )
+    BACKEND_CORS_ORIGINS: list[str] | str = Field(
+        description=(
+            "The origins of the web app, exactly as browsers send them: scheme, host and port, without a path and "
+            "without *. A comma-separated list or a JSON list. Required. The session cookie is accepted only from these "
+            "origins, and browsers send it only when the API is on the same site as the page, so serve the API under the "
+            "web app's registrable domain, and over HTTPS outside localhost."
+        ),
+    )
+    BACKEND_CORS_ORIGIN_REGEX: str | None = Field(
+        None,
+        description=(
+            "A regular expression that a whole origin may match instead of being listed in BACKEND_CORS_ORIGINS. It "
+            "applies to the CORS headers and to the check of the Origin header."
+        ),
+    )
+    SPECIAL_EMAILS: set[EmailStr] = Field(
+        default_factory=set,
+        description=(
+            "Email addresses, as a JSON list, that are exempt from the check that an address has no account yet, so that "
+            "more than one account may use them."
+        ),
+    )
+    SUPPRESSED_API_ROUTERS: list[str] | None = Field(
+        default_factory=list,
+        description=(
+            "The tags of the routers that the API does not mount, as a JSON list. The tags are the ones that the API "
+            "logs at startup as the included routers; requests to the paths of a suppressed router answer 404."
+        ),
+    )
+    SUPPRESSED_API_ROUTES: list[str] | None = Field(
+        default_factory=list,
+        description=(
+            "The paths of single routes that the API removes after it mounts the routers, as a JSON list, for example "
+            '["/app/files/{file}"].'
+        ),
+    )
+    STORAGE_PROVIDER: Literal["aws", "azure", "gcp", "folder"] = Field(
+        "folder",
+        description=(
+            "Where uploaded files are kept. folder keeps them in FOLDER_STORAGE_PATH, aws in the S3 bucket "
+            "S3_FILE_BUCKET, azure in the container AZURE_STORAGE_CONTAINER and gcp in the bucket GCP_STORAGE_BUCKET."
+        ),
+    )
+    GCP_STORAGE_BUCKET: str | None = Field(
+        None,
+        description=(
+            "The Google Cloud Storage bucket that holds uploaded files, which STORAGE_PROVIDER gcp requires. The API "
+            "signs in with the Google credentials of its environment: the service account key file that "
+            "GOOGLE_APPLICATION_CREDENTIALS names, or the service account of the machine that it runs on."
+        ),
+    )
+    ALLOWED_MCP_HOSTNAMES: list[str] = Field(
+        default_factory=list,
+        description=(
+            "MCP servers on a private network, by host name exactly as their URLs name them, as a JSON list. The API "
+            "reaches the MCP servers of users only at public internet addresses, so a server whose name resolves to a "
+            "private, loopback or link-local address, such as an internal host or a Compose service, must be listed. The "
+            "servers of DEFAULT_MCP_SERVERS need not be, nor the servers of a superuser, nor any user's servers "
+            "when MODE is local."
+        ),
+    )
+    DEFAULT_MCP_SERVERS: list[DefaultMCPServer] = Field(
+        default_factory=list,
+        description=(
+            "MCP servers that every user has, as a JSON list of objects with id, name and url. The API reaches their "
+            "host and port as they are, even on a private network, and the default roles give access to all their tools."
+        ),
+    )
+
+    @field_validator("JWT_SECRET")
+    @classmethod
+    def check_jwt_secret(cls, value: str) -> str:
+        return check_strong_secret("JWT_SECRET", value)
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
+            return [i.strip() for i in v.split(",") if i.strip()]
 
         if isinstance(v, str):
             return json.loads(v)
         return v
 
-    @staticmethod
-    def get_snowflake_email(user: str, subdomain: str) -> str:
-        # If user is already an email address (federated identity), use it directly
-        if "@" in user:
-            return user
-
-        host_parts = subdomain.split("-")
-        account = "-".join(host_parts[1:])
-
-        return f"{user}@{account}.snowflakecomputing.app"
+    @field_validator("BACKEND_CORS_ORIGINS")
+    @classmethod
+    def check_cors_origins(cls, origins: list[str]) -> list[str]:
+        if not origins:
+            raise ValueError(
+                "BACKEND_CORS_ORIGINS must name the origins of the web app, "
+                'e.g. ["http://localhost:3000"]'
+            )
+        return check_origins("BACKEND_CORS_ORIGINS", origins)
 
     def is_test(self) -> bool:
         return self.MODE == "test"
-
-    def is_prod(self) -> bool:
-        return self.MODE in {"production", "onprem", "lite"}
-
-    def is_onprem(self) -> bool:
-        return self.MODE == "onprem"
-
-    def is_lite(self) -> bool:
-        return self.MODE == "lite"
 
     def set_is_worker(self, is_worker: bool) -> None:
         self.IS_WORKER_CONTAINER = is_worker
 
 
+class WidgetPluginSettings(BaseModel):
+    WIDGET_PLUGINS_DIR: str | None = Field(
+        None,
+        description=(
+            "The directory, inside the API container, that holds the widget plugin packages as <plugin-id>/<version>/. "
+            "Unset, the plugin feature is off. Mount it read-only: the API only reads it, and nothing in the app "
+            "installs or uploads plugins. Every API replica must see the same files."
+        ),
+    )
+    WIDGET_PLUGINS_PINS: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            'The digests that the API expects of plugin versions, as a JSON object from "<plugin-id>@<version>" to '
+            '"sha256-..."; `python -m scripts.plugin_check <plugin-id>/<version> --digest` prints one. A discovered '
+            "version whose digest differs is blocked."
+        ),
+    )
+    WIDGET_PLUGINS_REQUIRE_PINS: bool = Field(
+        False,
+        description=(
+            "With true, the API blocks every plugin version that has no pin in WIDGET_PLUGINS_PINS. Recommended in "
+            "production."
+        ),
+    )
+    WIDGET_PLUGINS_MAX_UNPACKED_BYTES: int = Field(
+        64 * 1024 * 1024,
+        description=(
+            "The most bytes, in total, that the files of one plugin version may have. A version over the limit is "
+            "blocked."
+        ),
+    )
+    WIDGET_PLUGINS_MAX_FILES: int = Field(
+        200,
+        description="The most files that one plugin version may have. A version over the limit is blocked.",
+    )
+    WIDGET_PLUGIN_SECRETS_DIR: str | None = Field(
+        None,
+        description=(
+            "The directory that holds the values of the secrets which plugins declare for their proxies, one file per "
+            "secret at <dir>/<plugin-id>/<secret-name>; a mounted Docker or Kubernetes secret works. A value found here "
+            "wins over one that a superuser enters in the admin area, and makes that field read-only. Mount it "
+            "read-only."
+        ),
+    )
+    WIDGET_PLUGIN_PROXY_MAX_BYTES: int = Field(
+        5 * 1024 * 1024,
+        description=(
+            "The most bytes that a response to a plugin proxy call may have, whatever the plugin's manifest declares."
+        ),
+    )
+    WIDGET_PLUGIN_PROXY_TIMEOUT_MS: int = Field(
+        30_000,
+        description=(
+            "The longest time, in milliseconds, that a plugin proxy call may take, whatever the plugin's manifest "
+            "declares."
+        ),
+    )
+    WIDGET_PLUGIN_PROXY_CONCURRENCY: int = Field(
+        8,
+        description="How many proxy calls of one plugin may run at once in each API process.",
+    )
+    WIDGET_PLUGIN_PROXY_RATE_PER_USER: str = Field(
+        "60/minute",
+        description=(
+            "The rate limit of the proxy calls that one user may make, written <number>/<second|minute|hour|day>."
+        ),
+    )
+    WIDGET_PLUGIN_PROXY_RATE_PER_PLUGIN: str = Field(
+        "600/minute",
+        description=(
+            "The rate limit of the proxy calls that one plugin may receive from all users together, written "
+            "<number>/<second|minute|hour|day>."
+        ),
+    )
+    WIDGET_PLUGIN_PROXY_CA_FILE: str | None = Field(
+        None,
+        description=(
+            "The path of a certificate authority file that the proxies trust besides the system's, for upstreams whose "
+            "certificates a private authority signs."
+        ),
+    )
+    WIDGET_PLUGIN_BACKENDS: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "The plugin backends that you run, as a JSON object from a plugin id to the internal address of its backend: "
+            "http(s) on the private network, or unix:<socket path>. Each backend is built from a package's backend/ "
+            "directory and runs as its own restricted container. The API calls a backend only while it reports the "
+            "digest of the approved version."
+        ),
+    )
+    WIDGET_PLUGIN_BACKEND_MAX_BYTES: int = Field(
+        5 * 1024 * 1024,
+        description=(
+            "The most bytes that a response of a plugin backend may have, whatever the plugin's manifest declares."
+        ),
+    )
+    WIDGET_PLUGIN_BACKEND_TIMEOUT_MS: int = Field(
+        30_000,
+        description=(
+            "The longest time, in milliseconds, that a call to a plugin backend may take, whatever the plugin's manifest "
+            "declares."
+        ),
+    )
+    WIDGET_PLUGIN_BACKEND_CONCURRENCY: int = Field(
+        8,
+        description="How many calls to the backend of one plugin may run at once in each API process.",
+    )
+    WIDGET_PLUGIN_BACKEND_RATE_PER_USER: str = Field(
+        "60/minute",
+        description=(
+            "The rate limit of the backend calls that one user may make, written <number>/<second|minute|hour|day>."
+        ),
+    )
+    WIDGET_PLUGIN_BACKEND_RATE_PER_PLUGIN: str = Field(
+        "600/minute",
+        description=(
+            "The rate limit of the calls that one plugin backend may receive from all users together, written "
+            "<number>/<second|minute|hour|day>."
+        ),
+    )
+    WIDGET_PLUGIN_BACKEND_BREAKER_FAILURES: int = Field(
+        5,
+        description=(
+            "How many calls to a plugin backend must fail in a row before the API pauses its calls to that backend."
+        ),
+    )
+    WIDGET_PLUGIN_BACKEND_BREAKER_SECONDS: int = Field(
+        30,
+        description="How many seconds the API pauses its calls to a plugin backend after too many failures in a row.",
+    )
+    WIDGET_PLUGIN_BACKEND_IDENTITY_SECONDS: int = Field(
+        60,
+        description=(
+            "How many seconds the API trusts the answer of a plugin backend to its identity check before it asks again."
+        ),
+    )
+
+
 class Settings(
     BaseSettings,
+    WidgetPluginSettings,
     AccessSettings,
     GeneralSettings,
-    ProSettings,
+    AppSettings,
     DatabaseSettings,
     RedisSettings,
     AWSSettings,
     AzureSettings,
     LocalStorageSettings,
-    HubspotSettings,
-    JiraSettings,
-    FeedbackSettings,
-    MailChimpSettings,
     PrometheusSettings,
+    NotificationSettings,
 ):
     model_config = SettingsConfigDict(
         env_file=create_path("envs", ".env"),
@@ -942,7 +1262,19 @@ class Settings(
         extra="ignore",
     )
 
-    def get_file_bucket(self) -> str:
+    @model_validator(mode="after")
+    def check_folder_storage_secret(self) -> "Settings":
+        if self.STORAGE_PROVIDER == "folder" and self.LOCAL_STORAGE_SECRET_KEY is None:
+            raise ValueError("LOCAL_STORAGE_SECRET_KEY is required when STORAGE_PROVIDER=folder")
+        return self
+
+    @model_validator(mode="after")
+    def check_gcp_bucket(self) -> "Settings":
+        if self.STORAGE_PROVIDER == "gcp" and not self.GCP_STORAGE_BUCKET:
+            raise ValueError("GCP_STORAGE_BUCKET is required when STORAGE_PROVIDER=gcp")
+        return self
+
+    def get_file_bucket(self) -> str | None:
         if self.STORAGE_PROVIDER == "aws":
             return self.S3_FILE_BUCKET
 
@@ -952,16 +1284,14 @@ class Settings(
         if self.STORAGE_PROVIDER == "folder":
             return "local_storage"
 
-        return "pro-file-storage-dev"
+        return self.GCP_STORAGE_BUCKET
 
     def setup_logging(self):
-        """Set up logging for the application."""
         from .log_helpers import setup_logging  # noqa: F401, PLC0415
 
         setup_logging(self)
 
     def is_https_deployment(self) -> bool:
-        """Determine if the current deployment is an HTTPS deployment."""
         return self.SELFURL.startswith("https://")
 
 

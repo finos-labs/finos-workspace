@@ -1,0 +1,45 @@
+{
+  "name": "finos-workspace-docs",
+  "private": true,
+  "license": "Apache-2.0",
+  "version": "1.0.0",
+  "scripts": {
+    "reference": "bash scripts/reference.sh",
+    "generate": "node --disable-warning=ExperimentalWarning scripts/generate.mts",
+    "prestart": "npm run generate",
+    "start": "DOCUSAURUS_GENERATED_FILES_DIR_NAME=.docusaurus-dev docusaurus start --port 3100",
+    "prebuild": "npm run generate && node -e \"require('node:fs').rmSync('.docusaurus', {recursive: true, force: true})\"",
+    "build": "docusaurus build",
+    "postbuild": "node --disable-warning=ExperimentalWarning scripts/check-toc.mts",
+    "serve": "docusaurus serve --port 3100",
+    "test": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/**/*.test.ts\"",
+    "typecheck": "npm run generate && tsc --noEmit"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/plugin-content-docs": "3.10.2",
+    "@docusaurus/theme-classic": "3.10.2",
+    "@docusaurus/theme-common": "3.10.2",
+    "@easyops-cn/docusaurus-search-local": "0.55.3",
+    "parse5": "7.3.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.10.2",
+    "@docusaurus/types": "3.10.2",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "postcss": "8.5.31",
+    "typescript": "7.0.2"
+  },
+  "overrides": {
+    "encoding-sniffer": "1.0.2",
+    "serialize-javascript": "7.1.4",
+    "tinypool": "2.2.0",
+    "uuid": "14.0.3"
+  },
+  "engines": {
+    "node": "26.12.1"
+  }
+}

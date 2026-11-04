@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import CopilotHumanMessage from "~/components/AI/CopilotHumanMessage";
 import {
   StreamingStatus,
@@ -34,7 +34,6 @@ vi.mock("~/components/AI/hooks/useStreaming", () => ({
   useShallowStreamingStore: vi.fn(),
   StreamingStatus: {
     READY: { streamingStatus: "streaming-ready" },
-    STARTED: { streamingStatus: "streaming-started" },
     STOPPED: { streamingStatus: "streaming-stopped" },
   },
 }));
@@ -44,7 +43,15 @@ vi.mock("~/hooks/useRefHooks", () => ({
 }));
 
 vi.mock("~/components/AI/TextArea", () => ({
-  default: ({ prompt, setPrompt, handleSubmit }: any) => (
+  default: ({
+    prompt,
+    setPrompt,
+    handleSubmit,
+  }: {
+    prompt: string;
+    setPrompt: (prompt: string) => void;
+    handleSubmit: (prompt: string) => void;
+  }) => (
     <textarea
       data-testid="edit-text-area"
       value={prompt}
@@ -70,7 +77,6 @@ vi.mock("dayjs", () => {
   const dayjsMock = (_timestamp?: number) => ({
     format: (_formatStr: string) => "Jan 15, 2024 • 2:30 PM",
   });
-  // utils.ts calls dayjs.extend(plugin) at module load
   dayjsMock.extend = vi.fn();
   return { default: dayjsMock };
 });
@@ -89,7 +95,7 @@ describe("CopilotHumanMessage", () => {
   const baseMessage: HumanMessage = {
     role: "human",
     content: "Hello, this is a test message",
-    copilotId: "openbb-copilot",
+    copilotId: "default-copilot",
     timestamp: 1705330200000,
   };
 
@@ -154,8 +160,6 @@ describe("CopilotHumanMessage", () => {
       expect(messageBubble).toBeInTheDocument();
     });
 
-    // The parent list is `items-start`, so the wrapper must claim the full width
-    // or the bubble's ml-auto/max-w-[80%] resolve against a shrink-wrapped box.
     it("wraps the bubble in a full-width container", () => {
       const { container } = render(<CopilotHumanMessage message={baseMessage} />);
 
@@ -438,7 +442,6 @@ describe("CopilotHumanMessage", () => {
 
       render(<CopilotHumanMessage message={multilineMessage} />);
 
-      // The text content exists in the rendered component
       const textElement = screen.getByTestId("text-style");
       expect(textElement.textContent).toContain("Line 1");
       expect(textElement.textContent).toContain("Line 2");

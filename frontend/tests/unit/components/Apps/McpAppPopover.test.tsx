@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { McpAppPopover } from "~/components/Apps/McpAppPopover";
 import type { McpConnection, McpServer } from "~/lib/state/mcpTools";
+import { setAccess } from "../../factories";
 
 vi.mock("react-router-dom", () => ({
   useNavigate: () => vi.fn(),
@@ -27,16 +28,25 @@ vi.mock("~/components/ds/atoms/Button", () => ({
 vi.mock("~/components/Apps/McpTokenModal", () => ({
   McpTokenModal: ({
     isOpen,
+    hasSavedToken,
     onSave,
+    onRemove,
   }: {
     isOpen: boolean;
+    hasSavedToken?: boolean;
     onSave: (token: string) => void;
+    onRemove?: () => void;
   }) =>
     isOpen ? (
-      <div data-testid="mcp-token-modal">
+      <div data-testid="mcp-token-modal" data-saved={String(!!hasSavedToken)}>
         <button type="button" onClick={() => onSave("tok-123")}>
           save-token
         </button>
+        {onRemove && (
+          <button type="button" onClick={onRemove}>
+            remove-token
+          </button>
+        )}
       </div>
     ) : null,
 }));
@@ -65,7 +75,7 @@ const server = (overrides: Partial<McpServer> = {}): McpServer => ({
   url: "https://example.com/mcp",
   enabled: true,
   tools: [],
-  vendorAppUuid: "app-1",
+  sourceId: "src-1",
   ...overrides,
 });
 
@@ -79,14 +89,30 @@ beforeEach(() => {
     addServer: mockAddServer,
     updateServer: mockUpdateServer,
   };
+  setAccess({ user_type: "Developer" });
 });
 
 describe("McpAppPopover", () => {
+  it("does not offer Add MCP Server to a User, who cannot add connections", () => {
+    setAccess({ user_type: "User" });
+    render(
+      <McpAppPopover
+        sourceId="src-1"
+        mcpServer={{ name: "OAuth MCP", url: "https://oauth.example.com/mcp" }}
+        isSubscribed={true}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Add MCP Server" }),
+    ).not.toBeInTheDocument();
+    expect(mockAddServer).not.toHaveBeenCalled();
+  });
+
   it("adds an OAuth server immediately without opening a modal", () => {
     render(
       <McpAppPopover
-        vendorAppUuid="app-1"
-        vendorName="Acme"
+        sourceId="src-1"
         mcpServer={{ name: "OAuth MCP", url: "https://oauth.example.com/mcp" }}
         isSubscribed={true}
       />,
@@ -99,10 +125,9 @@ describe("McpAppPopover", () => {
       expect.objectContaining({
         name: "OAuth MCP",
         url: "https://oauth.example.com/mcp",
-        vendorAppUuid: "app-1",
+        sourceId: "src-1",
       }),
     );
-    // OAuth path never carries a token authType nor custom headers.
     const added = mockAddServer.mock.calls[0][0];
     expect(added.authType).toBeUndefined();
     expect(added.customHeaders).toBeUndefined();
@@ -112,8 +137,7 @@ describe("McpAppPopover", () => {
   it("opens the token modal instead of adding immediately for a token server", () => {
     render(
       <McpAppPopover
-        vendorAppUuid="app-1"
-        vendorName="Acme"
+        sourceId="src-1"
         mcpServer={{
           name: "Demo Token MCP",
           url: "https://example.com/mcp",
@@ -141,9 +165,13 @@ describe("McpAppPopover", () => {
     );
   });
 
-  it("edits the token of an already-added failed token server via updateServer", () => {
+  it("replaces the saved token of an already-added failed token server", () => {
     mockMcpState.servers = [
-      server({ authType: "token", customHeaders: { Authorization: "Bearer old" } }),
+      server({
+        authType: "token",
+        customHeaderNames: ["Authorization"],
+        hasToken: true,
+      }),
     ];
     mockGetMCPConnection.mockReturnValue({
       state: "failed",
@@ -153,8 +181,7 @@ describe("McpAppPopover", () => {
 
     render(
       <McpAppPopover
-        vendorAppUuid="app-1"
-        vendorName="Acme"
+        sourceId="src-1"
         mcpServer={{
           name: "Demo Token MCP",
           url: "https://example.com/mcp",
@@ -164,16 +191,53 @@ describe("McpAppPopover", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit token" }));
+    fireEvent.click(screen.getByRole("button", { name: "Replace token" }));
+    expect(screen.getByTestId("mcp-token-modal")).toHaveAttribute("data-saved", "true");
     fireEvent.click(screen.getByRole("button", { name: "save-token" }));
 
     expect(mockAddServer).not.toHaveBeenCalled();
-    // `enabled` is part of the payload because auto-registration leaves
-    // token-auth servers disabled until a token exists.
+    expect(mockUpdateServer).toHaveBeenCalledWith(
+      "srv-1",
+      {
+        customHeaders: { Authorization: "Bearer tok-123" },
+        authType: "token",
+        enabled: true,
+      },
+      true,
+    );
+  });
+
+  it("removes the saved token and turns the server off", () => {
+    mockMcpState.servers = [
+      server({
+        authType: "token",
+        customHeaderNames: ["Authorization"],
+        hasToken: true,
+      }),
+    ];
+    mockGetMCPConnection.mockReturnValue({
+      state: "ready",
+      tools: [],
+    } as unknown as McpConnection);
+
+    render(
+      <McpAppPopover
+        sourceId="src-1"
+        mcpServer={{
+          name: "Demo Token MCP",
+          url: "https://example.com/mcp",
+          authType: "token",
+        }}
+        isSubscribed={true}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace token" }));
+    fireEvent.click(screen.getByRole("button", { name: "remove-token" }));
+
     expect(mockUpdateServer).toHaveBeenCalledWith("srv-1", {
-      customHeaders: { Authorization: "Bearer tok-123" },
-      authType: "token",
-      enabled: true,
+      customHeaders: { Authorization: null },
+      enabled: false,
     });
   });
 });

@@ -2,6 +2,7 @@ import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useManageNavigationBar } from "~/components/AI/hooks/useManageNavigationBar";
 import type { InnerTab } from "~/lib/state/app";
+import type { ManageNavigationBarInputArgumentsT } from "~/lib/utils/ai";
 
 const {
   mockUpdateInnerTabs,
@@ -29,6 +30,7 @@ vi.mock("~/lib/utils", async (importOriginal) => {
 });
 
 vi.mock("~/lib/state/app", () => ({
+  DASHBOARD_LOCKED_MESSAGE: "Locked.",
   useAppStore: { getState: () => mockGetAppState() },
 }));
 
@@ -42,6 +44,41 @@ const navBar = {
   widgetId: "navigation_bar",
   storage: { tabs: navBarTabs },
 };
+
+describe("useManageNavigationBar on a locked dashboard", () => {
+  const removeWidget = vi.fn();
+  const addWidgets = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetAppState.mockReturnValue({
+      items: { "dash-1": { data: { widgets: [navBar], locked: true } } },
+      updateInnerTabs: mockUpdateInnerTabs,
+      addWidgets,
+      removeWidget,
+    });
+  });
+
+  const operations: ManageNavigationBarInputArgumentsT[] = [
+    { operation: "create", tabs: [{ name: "Overview" }] },
+    { operation: "add_tabs", tabs: [{ name: "News" }] },
+    { operation: "remove_tabs", tabs: [{ name: "Charts" }] },
+    { operation: "rename_tabs", rename_map: { Charts: "Data" } },
+  ];
+
+  it.each(operations)("refuses to $operation and says why", async (args) => {
+    const { result } = renderHook(() => useManageNavigationBar());
+
+    const response = await result.current(args);
+
+    expect(response).toEqual([
+      { status: "error", message: "Dashboard 'dash-1' is locked. Locked." },
+    ]);
+    expect(mockUpdateInnerTabs).not.toHaveBeenCalled();
+    expect(addWidgets).not.toHaveBeenCalled();
+    expect(removeWidget).not.toHaveBeenCalled();
+  });
+});
 
 describe("useManageNavigationBar rename_tabs", () => {
   beforeEach(() => {
@@ -64,8 +101,6 @@ describe("useManageNavigationBar rename_tabs", () => {
 
     expect(response[0].status).toBe("success");
 
-    // The nav bar's stored tabs must keep their original ids — held
-    // references (widget.innerTab, current_tab_id, URLs) depend on them.
     const updateCall = mockTriggerCustomEvent.mock.calls.find(
       ([eventName]) => eventName === "updateWidget-navbar-uuid",
     );
@@ -86,8 +121,6 @@ describe("useManageNavigationBar rename_tabs", () => {
       rename_map: { Charts: "Data" },
     });
 
-    // A `newId` here drives the grid-layout/currentTab migration in the app
-    // store — the mechanism that spawned phantom tabs with the stale id.
     expect(mockUpdateInnerTabs).toHaveBeenCalledWith("dash-1", {
       overview: { id: "overview", name: "Overview" },
       charts: { id: "charts", name: "Data" },

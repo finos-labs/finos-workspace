@@ -2,27 +2,22 @@ import { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import type { Widget, WidgetT } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
-import SOURCES from "~/lib/sources.json";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { extractColumns, getJsonWidget, useWidgetDataSource } from "~/lib/utils";
 import { handleWidgetMetadata } from "~/utils/dataConnectorsHelpers";
 
 export function createCopilotDataWidget(params: {
   title?: string;
-  widget: WidgetT | null;
-  widgetFromJSON?: Partial<Widget>;
+  widget: WidgetT | null | undefined;
+  widgetFromJSON?: Partial<Widget> | null;
   widgetSource?: string[];
-  additionalMetadata?: Record<string, any>;
+  additionalMetadata?: Record<string, unknown>;
 }) {
-  const {
-    title,
-    widget,
-    widgetFromJSON = getJsonWidget(widget),
-    widgetSource,
-    additionalMetadata,
-  } = params;
+  const { title, widget, widgetSource, additionalMetadata } = params;
+  const widgetFromJSON =
+    params.widgetFromJSON ?? (widget ? getJsonWidget(widget) : undefined);
 
-  const widgetMetadata = handleWidgetMetadata(widget);
+  const widgetMetadata = widget ? handleWidgetMetadata(widget) : undefined;
 
   const name = title || widget?.name || widgetFromJSON?.name;
   const description = widget?.description || widgetFromJSON?.description;
@@ -49,11 +44,11 @@ function useCopilotDataWidget({
   additionalMetadata,
   captureExecutedParams = true,
 }: {
-  aiData: any;
+  aiData: unknown;
   title?: string;
   aiEnabled: boolean;
-  lastUpdated?: number;
-  additionalMetadata?: Record<string, any>;
+  lastUpdated?: number | null;
+  additionalMetadata?: Record<string, unknown>;
   captureExecutedParams?: boolean;
 }) {
   const { id: currentDashboardId = "" } = useParams();
@@ -106,7 +101,6 @@ function useCopilotDataWidget({
       metadata: {
         ...(metadata || {}),
         params: executedParamsSnapshot,
-        ...(SOURCES?.[source]?.name ? { source: SOURCES[source].name } : {}),
         ...(lastUpdated ? { lastUpdated } : {}),
         ...(fileType ? { fileType } : {}),
         ...(columns ? { columns } : {}),

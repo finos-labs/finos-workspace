@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import CopilotSystemMessage from "~/components/AI/CopilotSystemMessage";
 import type { ArtifactT, SystemMessage, SystemSSEContent } from "~/lib/state/copilot";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
+import { malformed } from "../../mocks";
 
 vi.mock("~/lib/state/copilot", () => ({
   useShallowCopilotStore: vi.fn(),
@@ -12,7 +13,7 @@ vi.mock("~/components/AI", () => ({
   Artifact: ({ artifact }: { artifact: ArtifactT }) => (
     <div data-testid="artifact">{artifact.name}</div>
   ),
-  Table: ({ content }: { content: Record<string, any> }) => (
+  Table: ({ content }: { content: Record<string, unknown> }) => (
     <div data-testid="table">{JSON.stringify(content)}</div>
   ),
 }));
@@ -51,7 +52,10 @@ vi.mock("markdown-to-jsx", () => ({
 
 vi.mock("~/components/AI/MarkdownOverrides", () => ({
   CodeComponent: ({ children }: { children: string }) => <code>{children}</code>,
-  PreCodeComponent: ({ children }: { children: React.ReactNode }) => <pre>{children}</pre>,
+  PreCodeComponent: ({ children }: { children: React.ReactNode }) => (
+    <pre>{children}</pre>
+  ),
+  inertImageOverride: {},
   renderRule: vi.fn(),
 }));
 
@@ -61,7 +65,7 @@ describe("CopilotSystemMessage", () => {
 
   const createSystemMessage = (
     content: Partial<SystemSSEContent>,
-    overrides: Partial<SystemMessage> = {}
+    overrides: Partial<SystemMessage> = {},
   ): SystemMessage => ({
     role: "system",
     content: {
@@ -69,7 +73,7 @@ describe("CopilotSystemMessage", () => {
       message: "Test message",
       ...content,
     },
-    copilotId: "openbb-copilot",
+    copilotId: "default-copilot",
     timestamp: 1705330200000,
     ...overrides,
   });
@@ -87,7 +91,10 @@ describe("CopilotSystemMessage", () => {
 
   describe("basic rendering", () => {
     it("renders system message with INFO event type", () => {
-      const message = createSystemMessage({ eventType: "INFO", message: "Processing request" });
+      const message = createSystemMessage({
+        eventType: "INFO",
+        message: "Processing request",
+      });
 
       render(<CopilotSystemMessage message={message} showIcon={true} />);
 
@@ -97,7 +104,10 @@ describe("CopilotSystemMessage", () => {
     });
 
     it("renders system message with WARNING event type", () => {
-      const message = createSystemMessage({ eventType: "WARNING", message: "Rate limit warning" });
+      const message = createSystemMessage({
+        eventType: "WARNING",
+        message: "Rate limit warning",
+      });
 
       render(<CopilotSystemMessage message={message} showIcon={true} />);
 
@@ -105,7 +115,10 @@ describe("CopilotSystemMessage", () => {
     });
 
     it("renders system message with ERROR event type", () => {
-      const message = createSystemMessage({ eventType: "ERROR", message: "Request failed" });
+      const message = createSystemMessage({
+        eventType: "ERROR",
+        message: "Request failed",
+      });
 
       render(<CopilotSystemMessage message={message} showIcon={true} />);
 
@@ -115,7 +128,9 @@ describe("CopilotSystemMessage", () => {
     it("returns null when message content is empty", () => {
       const message = createSystemMessage({ message: "" });
 
-      const { container } = render(<CopilotSystemMessage message={message} showIcon={true} />);
+      const { container } = render(
+        <CopilotSystemMessage message={message} showIcon={true} />,
+      );
 
       expect(container.firstChild).toBeNull();
     });
@@ -124,11 +139,13 @@ describe("CopilotSystemMessage", () => {
       const message: SystemMessage = {
         role: "system",
         content: {} as SystemSSEContent,
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: 1705330200000,
       };
 
-      const { container } = render(<CopilotSystemMessage message={message} showIcon={true} />);
+      const { container } = render(
+        <CopilotSystemMessage message={message} showIcon={true} />,
+      );
 
       expect(container.firstChild).toBeNull();
     });
@@ -283,8 +300,7 @@ describe("CopilotSystemMessage", () => {
     it("renders mixed details correctly", async () => {
       const message = createSystemMessage({
         message: "Message",
-        // @ts-expect-error - ignored for now
-        details: ["String detail", { tableData: "value" }],
+        details: malformed(["String detail", { tableData: "value" }]),
       });
 
       render(<CopilotSystemMessage message={message} showIcon={true} />);
@@ -300,7 +316,7 @@ describe("CopilotSystemMessage", () => {
     it("skips null details", async () => {
       const message = createSystemMessage({
         message: "Message",
-        details: [null as any, "Valid detail"],
+        details: malformed([null, "Valid detail"]),
       });
 
       render(<CopilotSystemMessage message={message} showIcon={true} />);
@@ -337,7 +353,7 @@ describe("CopilotSystemMessage", () => {
         message: "Message",
         artifacts: [
           { uuid: "1", name: "Artifact 1", type: "text", content: "content1" },
-          { uuid: "2", name: "Artifact 2", type: "table", content: [] },
+          { uuid: "2", name: "Artifact 2", type: "html", content: "<p>2</p>" },
         ],
       });
 
@@ -362,7 +378,7 @@ describe("CopilotSystemMessage", () => {
           showIcon={true}
           currentGroupId="group-1"
           isPartOfStepByStepGroup={false}
-        />
+        />,
       );
 
       const wrapper = container.querySelector(".flex.flex-col.w-full");
@@ -381,7 +397,7 @@ describe("CopilotSystemMessage", () => {
           showIcon={true}
           currentGroupId="group-1"
           isPartOfStepByStepGroup={false}
-        />
+        />,
       );
 
       const wrapper = container.querySelector(".flex.flex-col.w-full");
@@ -400,7 +416,7 @@ describe("CopilotSystemMessage", () => {
           showIcon={true}
           currentGroupId="group-1"
           isPartOfStepByStepGroup={true}
-        />
+        />,
       );
 
       const wrapper = container.querySelector(".flex.flex-col.w-full");
@@ -419,7 +435,7 @@ describe("CopilotSystemMessage", () => {
           showIcon={true}
           currentGroupId="group-1"
           isPartOfStepByStepGroup={true}
-        />
+        />,
       );
 
       const wrapper = container.querySelector(".flex.flex-col.w-full");
@@ -434,7 +450,9 @@ describe("CopilotSystemMessage", () => {
     it("applies flex column layout to container", () => {
       const message = createSystemMessage({ message: "Test" });
 
-      const { container } = render(<CopilotSystemMessage message={message} showIcon={true} />);
+      const { container } = render(
+        <CopilotSystemMessage message={message} showIcon={true} />,
+      );
 
       const wrapper = container.querySelector(".flex.flex-col");
       expect(wrapper).toBeInTheDocument();
@@ -443,7 +461,9 @@ describe("CopilotSystemMessage", () => {
     it("applies rounded corners and group class", () => {
       const message = createSystemMessage({ message: "Test" });
 
-      const { container } = render(<CopilotSystemMessage message={message} showIcon={true} />);
+      const { container } = render(
+        <CopilotSystemMessage message={message} showIcon={true} />,
+      );
 
       const wrapper = container.querySelector(".rounded.group");
       expect(wrapper).toBeInTheDocument();
@@ -455,7 +475,9 @@ describe("CopilotSystemMessage", () => {
         details: ["Detail"],
       });
 
-      const { container } = render(<CopilotSystemMessage message={message} showIcon={true} />);
+      const { container } = render(
+        <CopilotSystemMessage message={message} showIcon={true} />,
+      );
 
       fireEvent.click(screen.getByTestId("message-title"));
 

@@ -2,32 +2,24 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "~/components/ds/atoms/Button";
 import Icon from "~/components/Icon";
-import { type ListedAppMcpServer, mcpServerUsesTokenAuth } from "~/types/listedApps";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
+import { type AppMcpServer, mcpServerUsesTokenAuth } from "~/types/appMcpServer";
 import { McpTokenModal } from "./McpTokenModal";
 import { useMcpServerConnection } from "./useMcpServerConnection";
 
 interface McpAppPopoverProps {
-  /** Marketplace app id; mutually-exclusive with sourceId */
-  vendorAppUuid?: string;
-  /** Custom backend source id; mutually-exclusive with vendorAppUuid */
   sourceId?: string;
-  /** Display name. Falls back to the MCP server name when omitted. */
-  vendorName?: string;
-  mcpServer: ListedAppMcpServer;
+  mcpServer: AppMcpServer;
   isSubscribed: boolean;
-  /**
-   * When the parent owns the token entry point (e.g. the app details modal
-   * surfaces it beside the API key action), suppress this popover's own
-   * add/edit-token buttons and modal so the flow isn't duplicated.
-   */
   tokenActionExternal?: boolean;
 }
 
 export const McpAppPopover = memo((props: McpAppPopoverProps) => {
-  const { vendorAppUuid, sourceId, vendorName, mcpServer, isSubscribed } = props;
+  const { sourceId, mcpServer, isSubscribed } = props;
   const tokenActionExternal = props.tokenActionExternal ?? false;
   const navigate = useNavigate();
-  const displayName = vendorName || mcpServer.name;
+  const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
+  const displayName = mcpServer.name;
   const isTokenAuth = mcpServerUsesTokenAuth(mcpServer);
   const [tokenModalOpen, setTokenModalOpen] = useState(false);
 
@@ -35,12 +27,13 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
     existingServer,
     connectionError,
     toolCount,
-    currentToken,
+    hasToken,
     isConnected,
     isFailed,
     connect: handleAdd,
     saveToken: handleTokenSave,
-  } = useMcpServerConnection(mcpServer, { vendorAppUuid, sourceId, vendorName });
+    removeToken: handleTokenRemove,
+  } = useMcpServerConnection(mcpServer, { sourceId });
 
   const openTokenModal = useCallback(() => setTokenModalOpen(true), []);
 
@@ -52,8 +45,7 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
 
   const { title, description, action } = useMemo(() => {
     if (isTokenAuth) {
-      const tokenLabel = currentToken ? "Edit token" : "Add token";
-      // When the parent owns the token entry point, this popover is status-only.
+      const tokenLabel = hasToken ? "Replace token" : "Add token";
       const tokenButton = tokenActionExternal ? null : (
         <Button variant="ghost" size="xs" onClick={openTokenModal}>
           {tokenLabel}
@@ -77,11 +69,12 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
           title: `${displayName} MCP server`,
           description:
             mcpServer.description || `Add ${mcpServer.name} to enable tools.`,
-          action: tokenActionExternal ? null : (
-            <Button variant="primary" size="xs" onClick={openTokenModal}>
-              Add MCP Server
-            </Button>
-          ),
+          action:
+            tokenActionExternal || !mayAdd ? null : (
+              <Button variant="primary" size="xs" onClick={openTokenModal}>
+                Add MCP Server
+              </Button>
+            ),
         };
       }
 
@@ -93,7 +86,7 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
             `Couldn't connect to ${mcpServer.name}. Check that your token is valid and not expired.`,
           action: tokenActionExternal ? null : (
             <Button variant="primary" size="xs" onClick={openTokenModal}>
-              Edit token
+              {tokenLabel}
             </Button>
           ),
         };
@@ -104,7 +97,7 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
           title: `${displayName} MCP added`,
           description:
             mcpServer.description ||
-            `OpenBB Copilot has access to ${toolCount} ${displayName} tool${toolCount === 1 ? "" : "s"}.`,
+            `Agent has access to ${toolCount} ${displayName} tool${toolCount === 1 ? "" : "s"}.`,
           action: (
             <div className="flex items-center gap-1.5">
               {tokenButton}
@@ -135,7 +128,7 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
         title: `${displayName} MCP added`,
         description:
           mcpServer.description ||
-          `OpenBB Copilot has access to ${toolCount} ${displayName} tool${toolCount === 1 ? "" : "s"}.`,
+          `Agent has access to ${toolCount} ${displayName} tool${toolCount === 1 ? "" : "s"}.`,
         action: (
           <Button variant="secondary" size="xs" onClick={handleManage}>
             Manage MCP Server
@@ -172,21 +165,22 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
     return {
       title: `${displayName} MCP server`,
       description: mcpServer.description || `Add ${mcpServer.name} to enable tools.`,
-      action: (
+      action: mayAdd ? (
         <Button variant="primary" size="xs" onClick={handleAdd}>
           Add MCP Server
         </Button>
-      ),
+      ) : null,
     };
   }, [
     isTokenAuth,
-    currentToken,
+    hasToken,
     connectionError,
     existingServer,
     isConnected,
     isFailed,
     isSubscribed,
     tokenActionExternal,
+    mayAdd,
     displayName,
     mcpServer.description,
     mcpServer.name,
@@ -212,9 +206,9 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
           isOpen={tokenModalOpen}
           onClose={() => setTokenModalOpen(false)}
           serverName={mcpServer.name}
-          vendorName={vendorName}
-          currentToken={currentToken}
+          hasSavedToken={hasToken}
           onSave={handleTokenSave}
+          onRemove={handleTokenRemove}
           error={isFailed ? connectionError : undefined}
         />
       )}

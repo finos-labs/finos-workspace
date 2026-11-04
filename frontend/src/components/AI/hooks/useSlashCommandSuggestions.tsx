@@ -2,13 +2,8 @@ import DOMPurify from "dompurify";
 import Markdown from "markdown-to-jsx";
 import { memo, type ReactNode, useCallback, useMemo } from "react";
 import { highlightSelection } from "~/components/AI/hooks/useCopilotAddToContext";
-import {
-  type SemanticViewSuggestion,
-  SV_TRIGGER,
-  useSemanticViewSuggestions,
-} from "~/components/AI/hooks/useSemanticViewSuggestions";
+import { InertMarkdownOptions } from "~/components/AI/MarkdownOverrides";
 import Tooltip from "~/components/Tooltip";
-import { inSnowflakeNativeApp } from "~/lib/constants";
 import { cn } from "~/lib/utils";
 import { MARKDOWN_SANITIZE_CONFIG, sanitizeMarkdown } from "~/lib/utils/sanitize";
 import { type McpToolSuggestion, useMcpToolSuggestions } from "./useMcpToolSuggestions";
@@ -18,29 +13,19 @@ import {
   useSkillSuggestions,
 } from "./useSkillSuggestions";
 
-export type SlashCommandItem<
-  T = SkillSuggestion | McpToolSuggestion | SemanticViewSuggestion,
-> = {
-  /** The text that will be inserted into the prompt when this item is selected. */
+export type SlashCommandItem<T = SkillSuggestion | McpToolSuggestion> = {
   slashText: string;
 } & T;
 
 export type SlashCommandItems = {
   skills: SlashCommandItem<SkillSuggestion>[];
   mcpTools: SlashCommandItem<McpToolSuggestion>[];
-  semanticViews: SlashCommandItem<SemanticViewSuggestion>[];
   hasSuggestions: boolean;
 };
 
 const DEFAULT_SKILL_CAP = 5;
-const DEFAULT_SV_CAP = 5;
 const DEFAULT_MCP_TOOL_CAP = 10;
 
-/**
- * Shared prose styling for tooltip descriptions. Forces long unbroken tokens
- * (slash-delimited tool names, JSON schemas) to wrap inside the constrained
- * tooltip instead of overflowing it.
- */
 const SUGGESTION_PROSE_CLASSES = `min-w-0 max-w-full whitespace-normal wrap-anywhere
   text-xs text-ds-text-body leading-relaxed
   prose prose-sm dark:prose-invert prose-p:my-1 prose-headings:my-2
@@ -52,33 +37,26 @@ const getFinalOutput = (output: SlashCommandItems, limit = false) => {
   if (limit) {
     output.skills = output.skills.slice(0, DEFAULT_SKILL_CAP);
     output.mcpTools = output.mcpTools.slice(0, DEFAULT_MCP_TOOL_CAP);
-    output.semanticViews = output.semanticViews.slice(0, DEFAULT_SV_CAP);
   }
-  output.hasSuggestions =
-    output.skills.length > 0 ||
-    output.mcpTools.length > 0 ||
-    output.semanticViews.length > 0;
+  output.hasSuggestions = output.skills.length > 0 || output.mcpTools.length > 0;
   return output;
 };
 
 export function useSlashCommandSuggestions() {
   const { searchSkills, hasSkills } = useSkillSuggestions();
   const { searchMcpTools, hasMcpTools } = useMcpToolSuggestions();
-  const { searchSemanticViews, hasSemanticViews } = useSemanticViewSuggestions();
 
-  const showMcpTools = hasMcpTools && !inSnowflakeNativeApp;
+  const showMcpTools = hasMcpTools;
 
   const searchSlashCommands = useCallback(
     (query: string): SlashCommandItems => {
       const stripped = query.startsWith("/") ? query.slice(1) : query;
-      const output = {
+      const output: SlashCommandItems = {
         skills: [],
         mcpTools: [],
-        semanticViews: [],
         hasSuggestions: false,
       };
       try {
-        // `/skill:...` → only skills (backward compat), space closes dropdown
         if (query.startsWith(SKILL_TRIGGER)) {
           if (!hasSkills) return output;
           const skillQuery = query.slice(SKILL_TRIGGER.length);
@@ -86,47 +64,25 @@ export function useSlashCommandSuggestions() {
           output.skills = searchSkills(query);
           return getFinalOutput(output);
         }
-        const searchQuery = { skill: stripped, semanticView: stripped };
 
-        // User is typing toward `/skill:` — show all skills (don't filter them out)
-        const skillTriggerNoSlash = SKILL_TRIGGER.slice(1); // "skill:"
-        // User is typing toward `/sv:` — show all semantic views (don't filter them out)
-        const svTriggerNoSlash = SV_TRIGGER.slice(1); // "sv:"
-        const triggersToCheck = [
-          ["skill", skillTriggerNoSlash],
-          ["semanticView", svTriggerNoSlash],
-        ] as const;
+        const skillTriggerNoSlash = SKILL_TRIGGER.slice(1);
+        const skillQuery =
+          stripped.length > 0 && skillTriggerNoSlash.startsWith(stripped)
+            ? ""
+            : stripped;
 
-        for (const [key, trigger] of triggersToCheck) {
-          if (stripped.length > 0 && trigger.startsWith(stripped))
-            searchQuery[key] = "";
-        }
-
-        output.skills = hasSkills ? searchSkills(searchQuery.skill) : [];
+        output.skills = hasSkills ? searchSkills(skillQuery) : [];
         output.mcpTools = showMcpTools ? searchMcpTools(stripped) : [];
-        output.semanticViews = hasSemanticViews
-          ? searchSemanticViews(searchQuery.semanticView)
-          : [];
 
         return getFinalOutput(output, stripped.length === 0);
       } finally {
         queueMicrotask(() => highlightSelection(0, true));
       }
     },
-    [
-      searchSkills,
-      searchMcpTools,
-      searchSemanticViews,
-      hasSkills,
-      showMcpTools,
-      hasSemanticViews,
-    ],
+    [searchSkills, searchMcpTools, hasSkills, showMcpTools],
   );
 
-  const hasItems = useMemo(
-    () => hasSkills || showMcpTools || hasSemanticViews,
-    [hasSkills, showMcpTools, hasSemanticViews],
-  );
+  const hasItems = useMemo(() => hasSkills || showMcpTools, [hasSkills, showMcpTools]);
 
   return { searchSlashCommands, hasItems };
 }
@@ -147,7 +103,9 @@ export const SlashSuggestionItem = memo<SlashCommandSuggestionsProps>((props) =>
       output.label = `/skill:${item.slug}`;
       output.description = (
         <div className={cn(SUGGESTION_PROSE_CLASSES, "prose-pre:my-1")}>
-          <Markdown>{sanitizeMarkdown(item.content || item.description)}</Markdown>
+          <Markdown options={InertMarkdownOptions}>
+            {sanitizeMarkdown(item.content || item.description)}
+          </Markdown>
         </div>
       );
     } else if (item.type === "mcpTool") {
@@ -156,7 +114,7 @@ export const SlashSuggestionItem = memo<SlashCommandSuggestionsProps>((props) =>
         <>
           {item.description && (
             <div className={cn(SUGGESTION_PROSE_CLASSES, "prose-pre:my-1")}>
-              <Markdown>
+              <Markdown options={InertMarkdownOptions}>
                 {DOMPurify.sanitize(item.description, MARKDOWN_SANITIZE_CONFIG)}
               </Markdown>
             </div>
@@ -170,7 +128,7 @@ export const SlashSuggestionItem = memo<SlashCommandSuggestionsProps>((props) =>
                 Input Schema
               </div>
               <div className={cn(SUGGESTION_PROSE_CLASSES, "prose-pre:my-0")}>
-                <Markdown>
+                <Markdown options={InertMarkdownOptions}>
                   {DOMPurify.sanitize(
                     `\`\`\`json\n${JSON.stringify(item.inputSchema, null, 2)}\n\`\`\``,
                     MARKDOWN_SANITIZE_CONFIG,
@@ -180,19 +138,6 @@ export const SlashSuggestionItem = memo<SlashCommandSuggestionsProps>((props) =>
             </div>
           )}
         </>
-      );
-    } else if (item.type === "semanticView") {
-      output.label = `/sv:${item.viewName}`;
-      output.description = (
-        <div className={cn(SUGGESTION_PROSE_CLASSES, "prose-pre:my-1")}>
-          {item.comment ? (
-            <Markdown>{sanitizeMarkdown(item.comment)}</Markdown>
-          ) : (
-            <div>
-              {item.database}.{item.schema}
-            </div>
-          )}
-        </div>
       );
     }
 
@@ -231,16 +176,6 @@ export const SlashSuggestionItem = memo<SlashCommandSuggestionsProps>((props) =>
             <span className="text-ds-text-caption truncate">{item.description}</span>
           </>
         );
-
-      case "semanticView":
-        return (
-          <>
-            <span className="text-link-color truncate">/sv:{item.viewName}</span>
-            <span className="text-ds-text-caption truncate">
-              {item.comment ? `${item.comment}` : `${item.database}.${item.schema}`}
-            </span>
-          </>
-        );
     }
   }, [item]);
 
@@ -260,7 +195,6 @@ export const SlashSuggestionItem = memo<SlashCommandSuggestionsProps>((props) =>
         onClick={() => onSelect(item)}
         onMouseEnter={(e) => {
           e.stopPropagation();
-          // Update selection index for keyboard navigation
           highlightSelection(index, true);
         }}
       >

@@ -1,10 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
+import type { WidgetT } from "~/components/types";
+import type { AppState, Items } from "~/lib/state/app";
+import type { BackendTemplate, Source } from "~/lib/state/backendConnector";
 import {
   createCustomTemplateTab,
   extractCustomTemplateInfo,
-  ONBOARDING_STORED_FILES,
-  OPENBB_ONBOARDING_WIDGETS,
 } from "~/lib/utils/createTemplates";
+import { partial } from "../../mocks";
+
+type AddTabMock = ReturnType<typeof vi.fn<AppState["addTab"]>>;
+
+function createdTab(addTab: AddTabMock) {
+  const tab = addTab.mock.calls[0][0];
+  return {
+    ...tab,
+    data: {
+      ...tab.data,
+      widgets: tab.data.widgets ?? [],
+      gridLayout: tab.data.gridLayout ?? {},
+    },
+  };
+}
 
 vi.mock("~/api/auth.api", () => ({
   getExternalCopilotHolders: vi.fn().mockResolvedValue([]),
@@ -30,19 +46,19 @@ vi.mock("~/lib/state/theme", () => ({
   },
 }));
 
-vi.mock("~/lib/api/sdkComponents", () => ({
-  fetchQuerySymbols: vi.fn().mockResolvedValue({ results: [] }),
-}));
-
 describe("createTemplates utility functions", () => {
   describe("createCustomTemplateTab", () => {
-    const source = { id: "source-1", name: "Source" } as any;
-    const template = { name: "My App", description: "Desc", tabs: {} } as any;
+    const source = partial<Source>({ id: "source-1", name: "Source" });
+    const template = partial<BackendTemplate>({
+      name: "My App",
+      description: "Desc",
+      tabs: {},
+    });
 
     it("redirects to an existing untouched app dashboard instead of creating another one", async () => {
-      const addTab = vi.fn();
+      const addTab = vi.fn<AppState["addTab"]>();
       const navigate = vi.fn();
-      const items = {
+      const items = partial<Items>({
         existing: {
           index: "existing",
           data: {
@@ -54,7 +70,7 @@ describe("createTemplates utility functions", () => {
             widgets: [{ id: "widget-1" }],
           },
         },
-      } as any;
+      });
 
       const id = await createCustomTemplateTab({
         addTab,
@@ -70,9 +86,9 @@ describe("createTemplates utility functions", () => {
     });
 
     it("uses source uuid when source id is unavailable", async () => {
-      const addTab = vi.fn();
+      const addTab = vi.fn<AppState["addTab"]>();
       const navigate = vi.fn();
-      const items = {
+      const items = partial<Items>({
         existing: {
           index: "existing",
           data: {
@@ -83,14 +99,14 @@ describe("createTemplates utility functions", () => {
             widgets: [{ id: "widget-1" }],
           },
         },
-      } as any;
+      });
 
       const id = await createCustomTemplateTab({
         addTab,
         navigate,
         items,
         template,
-        source: { uuid: "source-uuid", name: "Source" } as any,
+        source: partial<Source>({ uuid: "source-uuid", name: "Source" }),
       });
 
       expect(id).toBe("existing");
@@ -99,9 +115,9 @@ describe("createTemplates utility functions", () => {
     });
 
     it("does not reuse a dashboard when the user changed its name", async () => {
-      const addTab = vi.fn();
+      const addTab = vi.fn<AppState["addTab"]>();
       const navigate = vi.fn();
-      const items = {
+      const items = partial<Items>({
         existing: {
           index: "existing",
           data: {
@@ -119,7 +135,7 @@ describe("createTemplates utility functions", () => {
             widgets: [],
           },
         },
-      } as any;
+      });
 
       const id = await createCustomTemplateTab({
         addTab,
@@ -145,9 +161,9 @@ describe("createTemplates utility functions", () => {
     });
 
     it("does not reuse a dashboard with recorded changes", async () => {
-      const addTab = vi.fn();
+      const addTab = vi.fn<AppState["addTab"]>();
       const navigate = vi.fn();
-      const items = {
+      const items = partial<Items>({
         existing: {
           index: "existing",
           data: {
@@ -165,7 +181,7 @@ describe("createTemplates utility functions", () => {
             widgets: [],
           },
         },
-      } as any;
+      });
 
       const id = await createCustomTemplateTab({
         addTab,
@@ -182,9 +198,9 @@ describe("createTemplates utility functions", () => {
     });
 
     it("marks newly created app widgets so startup sync writes do not count as user changes", async () => {
-      const addTab = vi.fn();
+      const addTab = vi.fn<AppState["addTab"]>();
       const navigate = vi.fn();
-      const appTemplate = {
+      const appTemplate = partial<BackendTemplate>({
         name: "My App",
         description: "Desc",
         tabs: {
@@ -193,7 +209,7 @@ describe("createTemplates utility functions", () => {
             name: "Overview",
             layout: [
               {
-                i: "ticker_information",
+                i: "iframe",
                 x: 0,
                 y: 0,
                 w: 12,
@@ -203,25 +219,25 @@ describe("createTemplates utility functions", () => {
             ],
           },
         },
-      } as any;
+      });
 
       await createCustomTemplateTab({
         addTab,
         navigate,
-        items: {} as any,
+        items: {},
         template: appTemplate,
         source,
       });
 
-      const createdTab = addTab.mock.calls[0][0];
-      const widgetIds = createdTab.data.widgets.map((widget) => widget.id);
+      const tab = createdTab(addTab);
+      const widgetIds = tab.data.widgets.map((widget) => widget.id);
 
-      expect(createdTab.data.numberOfChanges).toBeUndefined();
+      expect(tab.data.numberOfChanges).toBeUndefined();
     });
 
     it("restores minimized state from the `minimized` flag in apps.json layout", async () => {
-      const addTab = vi.fn();
-      const minimizedTemplate = {
+      const addTab = vi.fn<AppState["addTab"]>();
+      const minimizedTemplate = partial<BackendTemplate>({
         name: "Min App",
         description: "Desc",
         tabs: {
@@ -230,7 +246,7 @@ describe("createTemplates utility functions", () => {
             name: "Overview",
             layout: [
               {
-                i: "ticker_information",
+                i: "iframe",
                 x: 0,
                 y: 0,
                 w: 20,
@@ -241,16 +257,16 @@ describe("createTemplates utility functions", () => {
             ],
           },
         },
-      } as any;
+      });
 
       await createCustomTemplateTab({
         addTab,
-        items: {} as any,
+        items: {},
         template: minimizedTemplate,
         source,
       });
 
-      const tab = addTab.mock.calls[0][0];
+      const tab = createdTab(addTab);
       const widget = tab.data.widgets[0];
       const gridEntry = tab.data.gridLayout.overview[0];
 
@@ -261,76 +277,76 @@ describe("createTemplates utility functions", () => {
     });
 
     it("keeps backward-compat with legacy minimized layouts where h === 1", async () => {
-      const addTab = vi.fn();
-      const legacyTemplate = {
+      const addTab = vi.fn<AppState["addTab"]>();
+      const legacyTemplate = partial<BackendTemplate>({
         name: "Legacy",
         description: "Desc",
         tabs: {
           overview: {
             id: "overview",
             name: "Overview",
-            layout: [{ i: "ticker_information", x: 0, y: 0, w: 20, h: 1, groups: [] }],
+            layout: [{ i: "iframe", x: 0, y: 0, w: 20, h: 1, groups: [] }],
           },
         },
-      } as any;
+      });
 
       await createCustomTemplateTab({
         addTab,
-        items: {} as any,
+        items: {},
         template: legacyTemplate,
         source,
       });
 
-      const tab = addTab.mock.calls[0][0];
+      const tab = createdTab(addTab);
       expect(tab.data.widgets[0].isMinimized).toBe(true);
       expect(tab.data.gridLayout.overview[0].h).toBe(1.4);
     });
 
     it("does not mark non-minimized widgets as minimized", async () => {
-      const addTab = vi.fn();
-      const normalTemplate = {
+      const addTab = vi.fn<AppState["addTab"]>();
+      const normalTemplate = partial<BackendTemplate>({
         name: "Normal",
         description: "Desc",
         tabs: {
           overview: {
             id: "overview",
             name: "Overview",
-            layout: [{ i: "ticker_information", x: 0, y: 0, w: 20, h: 12, groups: [] }],
+            layout: [{ i: "iframe", x: 0, y: 0, w: 20, h: 12, groups: [] }],
           },
         },
-      } as any;
+      });
 
       await createCustomTemplateTab({
         addTab,
-        items: {} as any,
+        items: {},
         template: normalTemplate,
         source,
       });
 
-      const tab = addTab.mock.calls[0][0];
+      const tab = createdTab(addTab);
       expect(tab.data.widgets[0].isMinimized).toBe(false);
       expect(tab.data.gridLayout.overview[0].h).toBe(12);
     });
 
     it("resolves each widget against its own source when resolveWidgetSource is provided", async () => {
-      const addTab = vi.fn();
-      const sourceA = {
+      const addTab = vi.fn<AppState["addTab"]>();
+      const sourceA = partial<Source>({
         id: "a",
         uuid: "a",
         name: "Backend A",
         url: "https://a.test",
         endpointHeaders: [{ key: "x", value: "from-a", location: "headers" }],
         widgets: { price: { name: "Price", endpoint: "/price" } },
-      } as any;
-      const sourceB = {
+      });
+      const sourceB = partial<Source>({
         id: "b",
         uuid: "b",
         name: "Backend B",
         url: "https://b.test",
         endpointHeaders: [{ key: "x", value: "from-b", location: "headers" }],
-        widgets: { news: { name: "News", endpoint: "/news" } },
-      } as any;
-      const multiOriginTemplate = {
+        widgets: { headlines: { name: "Headlines", endpoint: "/headlines" } },
+      });
+      const multiOriginTemplate = partial<BackendTemplate>({
         name: "Multi",
         description: "Desc",
         tabs: {
@@ -339,41 +355,44 @@ describe("createTemplates utility functions", () => {
             name: "Overview",
             layout: [
               { i: "price", x: 0, y: 0, w: 20, h: 8, groups: [] },
-              { i: "news", x: 20, y: 0, w: 20, h: 8, groups: [] },
+              { i: "headlines", x: 20, y: 0, w: 20, h: 8, groups: [] },
             ],
           },
         },
-      } as any;
+      });
 
       const resolveWidgetSource = (widgetId: string) =>
-        widgetId === "price" ? sourceA : widgetId === "news" ? sourceB : undefined;
+        widgetId === "price" ? sourceA : widgetId === "headlines" ? sourceB : undefined;
 
       await createCustomTemplateTab({
         addTab,
-        items: {} as any,
+        items: {},
         template: multiOriginTemplate,
-        source: { uuid: "rep", name: "rep", url: "", endpointHeaders: null } as any,
+        source: partial<Source>({
+          uuid: "rep",
+          name: "rep",
+          url: "",
+          endpointHeaders: null,
+        }),
         resolveWidgetSource,
       });
 
-      const widgets = addTab.mock.calls[0][0].data.widgets;
+      const widgets = createdTab(addTab).data.widgets;
       const price = widgets.find((widget) => widget.widgetId === "price");
-      const news = widgets.find((widget) => widget.widgetId === "news");
+      const headlines = widgets.find((widget) => widget.widgetId === "headlines");
 
-      expect(price.sourceName).toBe("Backend A");
-      expect(price.endpointHeaders).toEqual([
-        { key: "x", value: "from-a", location: "headers" },
-      ]);
-      expect(news.sourceName).toBe("Backend B");
-      expect(news.endpointHeaders).toEqual([
-        { key: "x", value: "from-b", location: "headers" },
-      ]);
+      expect(price?.sourceName).toBe("Backend A");
+      expect(price?.sourceId).toBe("a");
+      expect(headlines?.sourceName).toBe("Backend B");
+      expect(headlines?.sourceId).toBe("b");
+      expect(price).not.toHaveProperty("endpointHeaders");
+      expect(headlines).not.toHaveProperty("endpointHeaders");
     });
 
     it("ignores an existing untouched dashboard when dashboardBehavior is 'new'", async () => {
-      const addTab = vi.fn();
+      const addTab = vi.fn<AppState["addTab"]>();
       const navigate = vi.fn();
-      const items = {
+      const items = partial<Items>({
         existing: {
           index: "existing",
           data: {
@@ -385,7 +404,7 @@ describe("createTemplates utility functions", () => {
             widgets: [{ id: "widget-1" }],
           },
         },
-      } as any;
+      });
 
       const id = await createCustomTemplateTab({
         addTab,
@@ -402,9 +421,9 @@ describe("createTemplates utility functions", () => {
     });
 
     it("targets the current dashboard for dashboardBehavior 'current', even when it has widgets and an untouched dashboard exists", async () => {
-      const addTab = vi.fn();
+      const addTab = vi.fn<AppState["addTab"]>();
       const navigate = vi.fn();
-      const items = {
+      const items = partial<Items>({
         existing: {
           index: "existing",
           data: {
@@ -419,7 +438,7 @@ describe("createTemplates utility functions", () => {
           index: "current",
           data: { name: "Current", widgets: [{ id: "existing-widget" }] },
         },
-      } as any;
+      });
 
       const id = await createCustomTemplateTab({
         addTab,
@@ -439,9 +458,60 @@ describe("createTemplates utility functions", () => {
       );
     });
 
+    it("locks the dashboard of an app that does not allow customization", async () => {
+      const addTab = vi.fn<AppState["addTab"]>();
+
+      await createCustomTemplateTab({
+        addTab,
+        items: {},
+        template: { ...template, allowCustomization: false },
+        source,
+      });
+
+      expect(createdTab(addTab).data.locked).toBe(true);
+    });
+
+    it.each([
+      ["allows customization", { allowCustomization: true }],
+      ["does not say", {}],
+    ])("leaves the dashboard of an app that %s unlocked", async (_, flag) => {
+      const addTab = vi.fn<AppState["addTab"]>();
+
+      await createCustomTemplateTab({
+        addTab,
+        items: {},
+        template: { ...template, ...flag },
+        source,
+      });
+
+      expect(createdTab(addTab).data.locked).toBeUndefined();
+    });
+
+    it("does not build the app inside a locked current dashboard", async () => {
+      const addTab = vi.fn<AppState["addTab"]>();
+      const items = partial<Items>({
+        current: {
+          index: "current",
+          data: { name: "Current", locked: true, widgets: [{ id: "existing-widget" }] },
+        },
+      });
+
+      const id = await createCustomTemplateTab({
+        addTab,
+        items,
+        template,
+        source,
+        currentDashboard: "current",
+        dashboardBehavior: "current",
+      });
+
+      expect(id).not.toBe("current");
+      expect(addTab).toHaveBeenCalledWith(expect.objectContaining({ index: id }), true);
+    });
+
     it("throws when a widget cannot be resolved and a resolver is provided", async () => {
-      const addTab = vi.fn();
-      const appTemplate = {
+      const addTab = vi.fn<AppState["addTab"]>();
+      const appTemplate = partial<BackendTemplate>({
         name: "My App",
         description: "Desc",
         tabs: {
@@ -460,14 +530,19 @@ describe("createTemplates utility functions", () => {
             ],
           },
         },
-      } as any;
+      });
 
       await expect(
         createCustomTemplateTab({
           addTab,
-          items: {} as any,
+          items: {},
           template: appTemplate,
-          source: { uuid: "rep", name: "rep", url: "", endpointHeaders: null } as any,
+          source: partial<Source>({
+            uuid: "rep",
+            name: "rep",
+            url: "",
+            endpointHeaders: null,
+          }),
           resolveWidgetSource: () => undefined,
         }),
       ).rejects.toThrow(/unavailable/);
@@ -476,42 +551,42 @@ describe("createTemplates utility functions", () => {
     });
 
     it("prefers resolveWidget over the bundled widget registry", async () => {
-      const addTab = vi.fn();
-      const appTemplate = {
+      const addTab = vi.fn<AppState["addTab"]>();
+      const appTemplate = partial<BackendTemplate>({
         name: "My App",
         description: "Desc",
         tabs: {
           overview: {
             id: "overview",
             name: "Overview",
-            layout: [{ i: "ticker_information", x: 0, y: 0, w: 12, h: 8, groups: [] }],
+            layout: [{ i: "region_summary", x: 0, y: 0, w: 12, h: 8, groups: [] }],
           },
         },
-      } as any;
+      });
 
       await createCustomTemplateTab({
         addTab,
-        items: {} as any,
+        items: {},
         template: appTemplate,
         source,
         resolveWidget: (widgetId) =>
-          widgetId === "ticker_information"
-            ? ({
-                widgetId: "ticker_information",
+          widgetId === "region_summary"
+            ? partial<WidgetT>({
+                widgetId: "region_summary",
                 name: "Resolved Widget",
                 params: [],
-              } as any)
+              })
             : undefined,
       });
 
-      const widgets = addTab.mock.calls[0][0].data.widgets;
-      const widget = widgets.find((w: any) => w.widgetId === "ticker_information");
+      const widgets = createdTab(addTab).data.widgets;
+      const widget = widgets.find((w) => w.widgetId === "region_summary");
       expect(widget?.name).toBe("Resolved Widget");
     });
 
-    it("resolves a ticker param into mainTicker on the widget data", async () => {
-      const addTab = vi.fn();
-      const appTemplate = {
+    it("puts a layout item's state params in the widget's storage", async () => {
+      const addTab = vi.fn<AppState["addTab"]>();
+      const appTemplate = partial<BackendTemplate>({
         name: "My App",
         description: "Desc",
         tabs: {
@@ -520,35 +595,35 @@ describe("createTemplates utility functions", () => {
             name: "Overview",
             layout: [
               {
-                i: "ticker_information",
+                i: "region_summary",
                 x: 0,
                 y: 0,
                 w: 12,
                 h: 8,
                 groups: [],
-                state: { params: { symbol: "aapl" } },
+                state: { params: { region: "north" } },
               },
             ],
           },
         },
-      } as any;
+      });
 
       await createCustomTemplateTab({
         addTab,
-        items: {} as any,
+        items: {},
         template: appTemplate,
         source,
         resolveWidget: () =>
-          ({
-            widgetId: "ticker_information",
-            name: "Ticker Info",
-            params: [{ paramName: "symbol", type: "ticker" }],
-          }) as any,
+          partial<WidgetT>({
+            widgetId: "region_summary",
+            name: "Region Summary",
+            params: [{ paramName: "region", type: "text" }],
+          }),
       });
 
-      const widgets = addTab.mock.calls[0][0].data.widgets;
-      const widget = widgets.find((w: any) => w.widgetId === "ticker_information");
-      expect(widget?.data?.mainTicker?.symbol).toBe("AAPL");
+      const widgets = createdTab(addTab).data.widgets;
+      const widget = widgets.find((w) => w.widgetId === "region_summary");
+      expect(widget?.storage?.params?.region).toBe("north");
     });
   });
 
@@ -641,27 +716,6 @@ describe("createTemplates utility functions", () => {
         expect(result.sourceId).toBeNull();
         expect(result.templateName).toBeNull();
       });
-
-      it("should return null values for 'charting' template ID", () => {
-        const result = extractCustomTemplateInfo("charting");
-
-        expect(result.sourceId).toBeNull();
-        expect(result.templateName).toBeNull();
-      });
-
-      it("should return null values for 'etf' template ID", () => {
-        const result = extractCustomTemplateInfo("etf");
-
-        expect(result.sourceId).toBeNull();
-        expect(result.templateName).toBeNull();
-      });
-
-      it("should return null values for 'onboarding' template ID", () => {
-        const result = extractCustomTemplateInfo("onboarding");
-
-        expect(result.sourceId).toBeNull();
-        expect(result.templateName).toBeNull();
-      });
     });
 
     describe("edge cases", () => {
@@ -701,84 +755,13 @@ describe("createTemplates utility functions", () => {
       });
 
       it("should return null for template ID with empty template name", () => {
-        // The regex requires at least one character after the final hyphen for templateName
         const templateId = "custom-550e8400-e29b-41d4-a716-446655440000-";
 
         const result = extractCustomTemplateInfo(templateId);
 
-        // Returns null because .+ requires at least one character for templateName
         expect(result.sourceId).toBeNull();
         expect(result.templateName).toBeNull();
       });
-    });
-  });
-
-  describe("ONBOARDING_STORED_FILES constant", () => {
-    it("should have the expected file key", () => {
-      expect(ONBOARDING_STORED_FILES).toHaveProperty(
-        "file-c0ebd61e-39fa-4382-b82f-4374ea96a30f",
-      );
-    });
-
-    it("should have urlDev property for each file", () => {
-      for (const key of Object.keys(ONBOARDING_STORED_FILES)) {
-        expect(ONBOARDING_STORED_FILES[key]).toHaveProperty("urlDev");
-        expect(typeof ONBOARDING_STORED_FILES[key].urlDev).toBe("string");
-      }
-    });
-
-    it("should have urlProd property for each file", () => {
-      for (const key of Object.keys(ONBOARDING_STORED_FILES)) {
-        expect(ONBOARDING_STORED_FILES[key]).toHaveProperty("urlProd");
-        expect(typeof ONBOARDING_STORED_FILES[key].urlProd).toBe("string");
-      }
-    });
-
-    it("should have valid dev URLs", () => {
-      const file = ONBOARDING_STORED_FILES["file-c0ebd61e-39fa-4382-b82f-4374ea96a30f"];
-      expect(file.urlDev).toMatch(/^https:\/\/backend\.openbb\.dev/);
-    });
-
-    it("should have valid prod URLs", () => {
-      const file = ONBOARDING_STORED_FILES["file-c0ebd61e-39fa-4382-b82f-4374ea96a30f"];
-      expect(file.urlProd).toMatch(/^https:\/\/backend\.openbb\.co/);
-    });
-
-    it("should have PDF file URLs", () => {
-      const file = ONBOARDING_STORED_FILES["file-c0ebd61e-39fa-4382-b82f-4374ea96a30f"];
-      expect(file.urlDev).toMatch(/\.pdf$/);
-      expect(file.urlProd).toMatch(/\.pdf$/);
-    });
-  });
-
-  describe("OPENBB_ONBOARDING_WIDGETS constant", () => {
-    it("should be an array", () => {
-      expect(Array.isArray(OPENBB_ONBOARDING_WIDGETS)).toBe(true);
-    });
-
-    it("should have unique widgetIds", () => {
-      const widgetIds = OPENBB_ONBOARDING_WIDGETS.map((w) => w.widgetId);
-      const uniqueIds = new Set(widgetIds);
-      expect(uniqueIds.size).toBe(widgetIds.length);
-    });
-
-    it("should have name property for each widget", () => {
-      for (const widget of OPENBB_ONBOARDING_WIDGETS) {
-        expect(widget).toHaveProperty("name");
-      }
-    });
-
-    it("should have widgetId property for each widget", () => {
-      for (const widget of OPENBB_ONBOARDING_WIDGETS) {
-        expect(widget).toHaveProperty("widgetId");
-        expect(typeof widget.widgetId).toBe("string");
-      }
-    });
-
-    it("should have non-empty widgetIds", () => {
-      for (const widget of OPENBB_ONBOARDING_WIDGETS) {
-        expect(widget.widgetId.length).toBeGreaterThan(0);
-      }
     });
   });
 });

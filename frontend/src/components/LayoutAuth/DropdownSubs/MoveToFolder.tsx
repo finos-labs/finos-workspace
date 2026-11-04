@@ -9,7 +9,7 @@ export default function MoveToFolder({
   itemData,
 }: {
   label: string;
-  color: string;
+  color?: string;
   depth: number;
   itemData: Item;
 }) {
@@ -36,7 +36,7 @@ export default function MoveToFolder({
             onClick={() => {
               moveFolderToFolder(itemData.index, folder.index, "");
             }}
-            className="obb-dropdown-item truncate"
+            className="ws-dropdown-item truncate"
           >
             {folder.data.name}
           </DropdownMenuPrimitive.Item>

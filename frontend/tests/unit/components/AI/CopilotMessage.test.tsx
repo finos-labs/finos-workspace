@@ -1,7 +1,13 @@
 import { render, screen } from "@testing-library/react";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import CopilotMessage from "~/components/AI/CopilotMessage";
-import type { AIMessage, HumanMessage, Message, SystemMessage } from "~/lib/state/copilot";
+import type {
+  AIMessage,
+  HumanMessage,
+  Message,
+  SystemMessage,
+} from "~/lib/state/copilot";
+import { makeMessageGroup } from "../../factories";
 
 vi.mock("~/components/AI", () => ({
   CopilotAIMessage: ({ message }: { message: AIMessage }) => (
@@ -34,7 +40,7 @@ describe("CopilotMessage", () => {
       const humanMessage: HumanMessage = {
         role: "human",
         content: "Hello, how are you?",
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: Date.now(),
       };
 
@@ -48,7 +54,7 @@ describe("CopilotMessage", () => {
       const aiMessage: AIMessage = {
         role: "ai",
         content: "I am doing well, thank you!",
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: Date.now(),
       };
 
@@ -65,7 +71,7 @@ describe("CopilotMessage", () => {
           eventType: "INFO",
           message: "Processing your request...",
         },
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: Date.now(),
       };
 
@@ -79,11 +85,13 @@ describe("CopilotMessage", () => {
       const unknownMessage = {
         role: "unknown",
         content: "This should not render",
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: Date.now(),
       } as unknown as Message;
 
-      const { container } = render(<CopilotMessage {...baseProps} message={unknownMessage} />);
+      const { container } = render(
+        <CopilotMessage {...baseProps} message={unknownMessage} />,
+      );
 
       expect(screen.queryByTestId("human-message")).not.toBeInTheDocument();
       expect(screen.queryByTestId("ai-message")).not.toBeInTheDocument();
@@ -97,11 +105,13 @@ describe("CopilotMessage", () => {
       const humanMessage: HumanMessage = {
         role: "human",
         content: "Test message",
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: Date.now(),
       };
 
-      const { container } = render(<CopilotMessage {...baseProps} message={humanMessage} />);
+      const { container } = render(
+        <CopilotMessage {...baseProps} message={humanMessage} />,
+      );
 
       const messageContent = container.querySelector("._message-content");
       expect(messageContent).toBeInTheDocument();
@@ -111,11 +121,13 @@ describe("CopilotMessage", () => {
       const aiMessage: AIMessage = {
         role: "ai",
         content: "AI response",
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: Date.now(),
       };
 
-      const { container } = render(<CopilotMessage {...baseProps} message={aiMessage} />);
+      const { container } = render(
+        <CopilotMessage {...baseProps} message={aiMessage} />,
+      );
 
       const flexContainer = container.querySelector(".flex.flex-col.gap-3\\.5");
       expect(flexContainer).toBeInTheDocument();
@@ -127,11 +139,11 @@ describe("CopilotMessage", () => {
       const aiMessage: AIMessage = {
         role: "ai",
         content: "Response",
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: Date.now(),
       };
 
-      render(<CopilotMessage {...baseProps} message={aiMessage} isLastGroup={true} />);
+      render(<CopilotMessage {...baseProps} message={aiMessage} />);
 
       expect(screen.getByTestId("ai-message")).toBeInTheDocument();
     });
@@ -143,7 +155,7 @@ describe("CopilotMessage", () => {
           eventType: "WARNING",
           message: "Warning message",
         },
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: Date.now(),
       };
 
@@ -153,7 +165,7 @@ describe("CopilotMessage", () => {
           message={systemMessage}
           showIcon={false}
           currentGroupId="custom-group-id"
-        />
+        />,
       );
 
       expect(screen.getByTestId("system-message")).toBeInTheDocument();
@@ -163,11 +175,11 @@ describe("CopilotMessage", () => {
       const aiMessage: AIMessage = {
         role: "ai",
         content: "Response",
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: Date.now(),
       };
 
-      const allGroups = [{ id: "group-1" }, { id: "group-2" }];
+      const allGroups = [makeMessageGroup(), makeMessageGroup()];
 
       render(
         <CopilotMessage
@@ -175,7 +187,7 @@ describe("CopilotMessage", () => {
           message={aiMessage}
           allGroups={allGroups}
           groupIndex={1}
-        />
+        />,
       );
 
       expect(screen.getByTestId("ai-message")).toBeInTheDocument();
@@ -188,7 +200,7 @@ describe("CopilotMessage", () => {
           eventType: "INFO",
           message: "Step-by-step info",
         },
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: Date.now(),
       };
 
@@ -197,7 +209,7 @@ describe("CopilotMessage", () => {
           {...baseProps}
           message={systemMessage}
           isPartOfStepByStepGroup={true}
-        />
+        />,
       );
 
       expect(screen.getByTestId("system-message")).toBeInTheDocument();
@@ -209,11 +221,13 @@ describe("CopilotMessage", () => {
       const initialMessage: HumanMessage = {
         role: "human",
         content: "Initial content",
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: Date.now(),
       };
 
-      const { rerender } = render(<CopilotMessage {...baseProps} message={initialMessage} />);
+      const { rerender } = render(
+        <CopilotMessage {...baseProps} message={initialMessage} />,
+      );
 
       expect(screen.getByText("Initial content")).toBeInTheDocument();
 
@@ -231,17 +245,17 @@ describe("CopilotMessage", () => {
       const aiMessage: AIMessage = {
         role: "ai",
         content: "AI content",
-        copilotId: "openbb-copilot",
+        copilotId: "default-copilot",
         timestamp: Date.now(),
       };
 
       const { rerender } = render(
-        <CopilotMessage {...baseProps} message={aiMessage} isLastGroup={false} />
+        <CopilotMessage {...baseProps} message={aiMessage} />,
       );
 
       expect(screen.getByTestId("ai-message")).toBeInTheDocument();
 
-      rerender(<CopilotMessage {...baseProps} message={aiMessage} isLastGroup={true} />);
+      rerender(<CopilotMessage {...baseProps} message={aiMessage} />);
 
       expect(screen.getByTestId("ai-message")).toBeInTheDocument();
     });

@@ -8,7 +8,7 @@ import { cn } from "../utils";
 
 const avatarVariants = cva(
   [
-    "BB-Avatar relative flex aspect-square shrink-0 overflow-hidden rounded-full",
+    "relative flex aspect-square shrink-0 overflow-hidden rounded-full",
     "bg-orange-700 text-white",
   ],
   {
@@ -27,12 +27,10 @@ const avatarVariants = cva(
   },
 );
 
-/* Radix parts */
-
 interface AvatarRootProps
   extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>,
     VariantProps<typeof avatarVariants> {}
-export const AvatarRoot = React.forwardRef<
+const AvatarRoot = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
   AvatarRootProps
 >(({ className, size, ...props }, ref) => (
@@ -46,7 +44,7 @@ AvatarRoot.displayName = AvatarPrimitive.Root.displayName;
 
 interface AvatarImageProps
   extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image> {}
-export const AvatarImage = React.forwardRef<
+const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
   AvatarImageProps
 >(({ className, ...props }, ref) => (
@@ -62,14 +60,14 @@ interface AvatarFallbackProps
   extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback> {
   icon?: IconId;
 }
-export const AvatarFallback = React.forwardRef<
+const AvatarFallback = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Fallback>,
   AvatarFallbackProps
 >(({ className, children, icon = "person-icon", ...props }, ref) => (
   <AvatarPrimitive.Fallback
     ref={ref}
     className={cn(
-      "BB-AvatarFallback flex h-full w-full items-center justify-center rounded-full",
+      "flex h-full w-full items-center justify-center rounded-full",
       className,
     )}
     {...props}
@@ -79,14 +77,11 @@ export const AvatarFallback = React.forwardRef<
 ));
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
 
-/* Composed molecule */
-
-export interface AvatarProps extends AvatarRootProps {
+interface AvatarProps extends AvatarRootProps {
   src?: string;
   alt?: string;
   icon?: IconId;
   fallback?: React.ReactNode;
-  /** Delay in milliseconds to show the fallback */
   delayMs?: number;
 }
 

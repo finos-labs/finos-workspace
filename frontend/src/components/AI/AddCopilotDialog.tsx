@@ -1,21 +1,21 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import posthog from "posthog-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
 import {
   type CustomCopilot,
-  fetchAgentsData,
   hasCopilotConflict,
   putCustomCopilot,
+  tryAgentsData,
 } from "~/api/auth.api";
-import { convertHeadersToRecord } from "~/lib/api";
+
 import { AGENT_ENABLED_FEATURES, ALL_AI_FEATURES } from "~/lib/constants";
+import { docsUrl } from "~/lib/docsUrl";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { createURLString, uuidv4 } from "~/lib/utils";
-import { EndpointHeadersForm } from "../DataConnectors/SingleWidget";
+import { EndpointHeadersForm } from "../DataConnectors/EndpointHeadersForm";
 import { Button } from "../ds/atoms/Button";
 import { Input } from "../ds/atoms/Input";
 import { BaseDialog } from "../ds/dialogs/BaseDialog";
@@ -24,7 +24,6 @@ import { ConnectionTestResult } from "../ds/molecules/ConnectionTestResult";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -79,7 +78,6 @@ export function AddCopilotDialog() {
   const [isTesting, setIsTesting] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
-  // Holder validated by the last successful test, reused on Add to avoid re-fetching.
   const testedHolderRef = useRef<CustomCopilot | null>(null);
 
   const resetTest = useCallback(() => {
@@ -97,7 +95,6 @@ export function AddCopilotDialog() {
     }
   }, [showAddAgentsDialog, form, resetTest]);
 
-  // A successful test only stays valid for the exact url/headers it ran against.
   useEffect(() => {
     const subscription = form.watch((_, { name }) => {
       if (name === "url" || name?.startsWith("endpointHeaders")) {
@@ -135,7 +132,7 @@ export function AddCopilotDialog() {
       return;
     }
 
-    const endpointHeaders = (values.endpointHeaders || [])
+    const headers = (values.endpointHeaders || [])
       .filter((header) => header.key && header.value)
       .reduce(
         (acc, header) => {
@@ -144,7 +141,6 @@ export function AddCopilotDialog() {
         },
         {} as Record<string, string>,
       );
-    const { headers } = convertHeadersToRecord(endpointHeaders);
 
     setIsTesting(true);
     resetTest();
@@ -156,7 +152,7 @@ export function AddCopilotDialog() {
         enabled: true,
         copilots: [],
       };
-      const copilots = await fetchAgentsData(candidate);
+      const copilots = await tryAgentsData(candidate);
       candidate.copilots = copilots;
       testedHolderRef.current = candidate;
       setTestResult({
@@ -186,18 +182,13 @@ export function AddCopilotDialog() {
         return;
       }
 
-      await putCustomCopilot(newHolder);
-      setExternalCopilotHolders([...externalCopilotHolders, newHolder]);
+      const saved = await putCustomCopilot(newHolder);
+      testedHolderRef.current = null;
+      setExternalCopilotHolders([...externalCopilotHolders, saved]);
 
       const selectedCopilot = newHolder.copilots[0];
       setSelectedCopilot(selectedCopilot);
-      if (posthog) {
-        posthog.capture("added_custom_copilot", {
-          copilot_name: selectedCopilot.name,
-        });
-      }
 
-      // Show success toast including enabled features summary
       try {
         const features = selectedCopilot?.features || {};
         const enabledFeatureKeys = Object.entries(features)
@@ -220,7 +211,6 @@ export function AddCopilotDialog() {
         toast.success("AI Agent successfully added");
       }
 
-      // Warn about unexpected feature types/names (integrator guidance)
       try {
         const invalidStringKeys: string[] = [];
         const invalidBooleanCustomKeys: string[] = [];
@@ -230,10 +220,7 @@ export function AddCopilotDialog() {
           for (const [k, v] of Object.entries(feats)) {
             if (typeof v === "string" && !AGENT_ENABLED_FEATURES.has(k)) {
               invalidStringKeys.push(k);
-            }
-            // If it's not one of our recognized boolean features,
-            // warn integrators to use object metadata
-            else if (typeof v === "boolean" && !ALL_AI_FEATURES.has(k)) {
+            } else if (typeof v === "boolean" && !ALL_AI_FEATURES.has(k)) {
               invalidBooleanCustomKeys.push(k);
             }
           }
@@ -257,9 +244,10 @@ export function AddCopilotDialog() {
             parts.push(messages.join(" "));
           }
 
-          parts.push(
-            "See docs: https://docs.openbb.co/workspace/developers/json-specs/agents-json-reference`",
+          const agentsDocs = docsUrl(
+            "workspace/developers/json-specs/agents-json-reference",
           );
+          if (agentsDocs) parts.push(`See docs: ${agentsDocs}`);
           toast.warning("Custom feature not recognized", {
             description: parts.join(" \n"),
           });
@@ -287,7 +275,7 @@ export function AddCopilotDialog() {
       <DialogHeader>
         <DialogTitle>Add Agent</DialogTitle>
         <DialogDescription>
-          Build your own agent and add it to the OpenBB Workspace.
+          Build your own agent and add it to the FINOS Workspace.
         </DialogDescription>
       </DialogHeader>
       <Form {...form}>
@@ -301,18 +289,6 @@ export function AddCopilotDialog() {
                 <FormControl>
                   <Input placeholder="https://example.com" {...field} />
                 </FormControl>
-                <FormDescription className="text-2xs">
-                  Check{" "}
-                  <a
-                    href="https://github.com/OpenBB-finance/copilot-for-terminal-pro"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline font-bold hover:text-light-300"
-                  >
-                    this
-                  </a>{" "}
-                  open source repository with an example for more details.
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

@@ -1,17 +1,14 @@
-"""Alembic migration fixture."""
-
 import os
 
 import pytest
 from alembic import command
 from alembic.config import Config
 
-from .base import _seed_pro_entities
+from .base import _seed_entities
 
 
 @pytest.fixture(scope="session")
 def apply_migrations(db_containers):
-    """Apply all migrations to the test database once per session."""
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     alembic_cfg_path = os.path.join(base_dir, "alembic.ini")
 
@@ -27,6 +24,6 @@ def apply_migrations(db_containers):
     finally:
         os.chdir(cwd)
 
-    _seed_pro_entities()
+    _seed_entities()
 
     yield

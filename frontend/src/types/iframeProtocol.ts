@@ -1,102 +1,194 @@
 import { z } from "zod";
 
-// --------------- Zod schemas ---------------
-
-export const OpenBBWidgetManifestSchema = z.object({
-  widgetId: z.string(),
-  name: z.string(),
-  description: z.string().optional(),
-  category: z.string().optional(),
-  dataType: z.enum(["table", "markdown"]),
+const WorkspaceWidgetManifestSchema = z.object({
+  widgetId: z.string().describe("The id that the page gives the widget"),
+  name: z.string().describe("The name that the Agent and the dashboard show"),
+  description: z.string().optional().describe("What the widget shows"),
+  category: z
+    .string()
+    .optional()
+    .describe("The group that the catalog lists the widget under"),
+  dataType: z
+    .enum(["table", "markdown"])
+    .describe("The kind of data that the widget answers with"),
 });
 
-export const OpenBBParamDefSchema = z.object({
-  paramName: z.string(),
-  label: z.string().optional(),
-  type: z.enum(["text", "number", "date", "boolean"]),
-  description: z.string().optional(),
-  value: z.string().optional(),
-  options: z.array(z.object({ label: z.string(), value: z.string() })).optional(),
-  min: z.number().optional(),
-  max: z.number().optional(),
-  step: z.number().optional(),
+const WorkspaceParamDefSchema = z.object({
+  paramName: z.string().describe("The name of the parameter"),
+  label: z.string().optional().describe("The label of the control"),
+  type: z.enum(["text", "number", "date", "boolean"]).describe("The kind of control"),
+  description: z.string().optional().describe("Help shown on hover"),
+  value: z.string().optional().describe("The default value, as a string"),
+  options: z
+    .array(
+      z.object({
+        label: z.string().describe("The name that the choice shows"),
+        value: z.string().describe("The value of the choice"),
+      }),
+    )
+    .optional()
+    .describe("The choices of a dropdown"),
+  min: z.number().optional().describe("The lowest value of a number"),
+  max: z.number().optional().describe("The highest value of a number"),
+  step: z.number().optional().describe("The step of a number"),
 });
 
-export const OpenBBConnectMessageSchema = z.object({
-  type: z.literal("openbb-connect"),
-  widgets: z.array(OpenBBWidgetManifestSchema),
-  params: z.array(OpenBBParamDefSchema).optional(),
+export const WorkspaceConnectMessageSchema = z.object({
+  type: z.literal("workspace-connect"),
+  widgets: z
+    .array(WorkspaceWidgetManifestSchema)
+    .describe("The widgets that the page can supply"),
+  params: z
+    .array(WorkspaceParamDefSchema)
+    .optional()
+    .describe("The parameters that the page understands"),
 });
 
-export const OpenBBDataMessageSchema = z.object({
-  type: z.literal("openbb-data"),
-  widgetId: z.string(),
-  dataType: z.enum(["table", "markdown"]),
-  data: z.union([z.array(z.record(z.unknown())), z.string()]),
-  columns: z.array(z.string()).optional(),
+export const WorkspaceDataMessageSchema = z.object({
+  type: z.literal("workspace-data"),
+  widgetId: z.string().describe("The id of the widget that the data belongs to"),
+  dataType: z
+    .enum(["table", "markdown"])
+    .describe("The kind of data: `table` or `markdown`"),
+  data: z
+    .union([z.array(z.record(z.string(), z.unknown())), z.string()])
+    .describe("For `table`, an array of row objects. For `markdown`, a string"),
+  columns: z
+    .array(z.string())
+    .optional()
+    .describe("The names of the columns of a table"),
 });
 
-export const OpenBBErrorMessageSchema = z.object({
-  type: z.literal("openbb-error"),
-  widgetId: z.string(),
-  error: z.string(),
+export const WorkspaceErrorMessageSchema = z.object({
+  type: z.literal("workspace-error"),
+  widgetId: z.string().describe("The id of the widget that cannot answer"),
+  error: z.string().describe("The message that the request fails with"),
 });
 
-const OpenBBWidgetParamPrimitiveSchema = z.union([
+const WorkspaceWidgetParamPrimitiveSchema = z.union([
   z.string(),
   z.number(),
   z.boolean(),
   z.null(),
 ]);
 
-export const OpenBBWidgetParamValueSchema = z.union([
-  OpenBBWidgetParamPrimitiveSchema,
-  z.array(OpenBBWidgetParamPrimitiveSchema),
+const WorkspaceWidgetParamValueSchema = z.union([
+  WorkspaceWidgetParamPrimitiveSchema,
+  z.array(WorkspaceWidgetParamPrimitiveSchema),
 ]);
 
 export const WIDGET_PARAM_MESSAGE_TYPES = [
-  "openbb:widget-params:update",
-  "openbb:params:update",
+  "workspace:widget-params:update",
+  "workspace:params:update",
 ] as const;
 
-export type WidgetParamMessageType = (typeof WIDGET_PARAM_MESSAGE_TYPES)[number];
+type WidgetParamMessageType = (typeof WIDGET_PARAM_MESSAGE_TYPES)[number];
 
-export const OpenBBWidgetParamsUpdateMessageSchema = z.object({
+export const WorkspaceWidgetParamsUpdateMessageSchema = z.object({
   type: z.enum(WIDGET_PARAM_MESSAGE_TYPES),
-  params: z.record(OpenBBWidgetParamValueSchema).optional(),
-  paramName: z.string().optional(),
-  value: OpenBBWidgetParamValueSchema.optional(),
+  params: z
+    .record(z.string(), WorkspaceWidgetParamValueSchema)
+    .optional()
+    .describe("The new values, by parameter name"),
+  paramName: z
+    .string()
+    .optional()
+    .describe("The name of one parameter, together with `value`"),
+  value: WorkspaceWidgetParamValueSchema.optional().describe(
+    "The new value of the parameter that `paramName` names",
+  ),
 });
 
-// --------------- TypeScript types (inferred from schemas) ---------------
+export const WorkspaceRequestMessageSchema = z.object({
+  type: z.literal("workspace-request"),
+  widgetId: z
+    .string()
+    .nullable()
+    .describe("The id of the widget whose data the page should send"),
+});
 
-export type OpenBBWidgetManifest = z.infer<typeof OpenBBWidgetManifestSchema>;
-export type OpenBBParamDef = z.infer<typeof OpenBBParamDefSchema>;
-export type OpenBBConnectMessage = z.infer<typeof OpenBBConnectMessageSchema>;
-export type OpenBBDataMessage = z.infer<typeof OpenBBDataMessageSchema>;
-export type OpenBBErrorMessage = z.infer<typeof OpenBBErrorMessageSchema>;
-export type OpenBBWidgetParamValue = z.infer<typeof OpenBBWidgetParamValueSchema>;
-export type OpenBBWidgetParamsUpdateMessage = z.infer<
-  typeof OpenBBWidgetParamsUpdateMessageSchema
+export const WorkspaceParamsUpdateMessageSchema = z.object({
+  type: z.literal("workspace-params-update"),
+  params: z
+    .record(z.string(), z.string())
+    .describe(
+      "Every current parameter value, including `theme`, which is `light` or `dark`",
+    ),
+});
+
+export const WorkspaceAuthMessageSchema = z.object({
+  type: z.literal("workspace-auth"),
+  headers: z
+    .record(z.string(), z.string())
+    .describe(
+      "The headers that FINOS Workspace passes to the page, by header name. The only one is `X-Workspace-User`, the signed-in user's email address",
+    ),
+});
+
+export interface IframeMessageDoc {
+  direction: "page" | "host";
+  schema: z.ZodType;
+  meaning: string;
+}
+
+export const IFRAME_MESSAGES: IframeMessageDoc[] = [
+  {
+    direction: "page",
+    schema: WorkspaceConnectMessageSchema,
+    meaning:
+      "The page announces the widgets that it supplies and the parameters that it understands",
+  },
+  {
+    direction: "page",
+    schema: WorkspaceDataMessageSchema,
+    meaning: "The page answers a `workspace-request`",
+  },
+  {
+    direction: "page",
+    schema: WorkspaceErrorMessageSchema,
+    meaning:
+      "The page cannot answer a `workspace-request`, and the request fails with the message",
+  },
+  {
+    direction: "page",
+    schema: WorkspaceWidgetParamsUpdateMessageSchema,
+    meaning:
+      "The page changes parameter values. A message that has both `params` and `paramName` applies both",
+  },
+  {
+    direction: "host",
+    schema: WorkspaceRequestMessageSchema,
+    meaning:
+      "FINOS Workspace asks the page for the data of one widget, and the page should answer with `workspace-data` or `workspace-error`",
+  },
+  {
+    direction: "host",
+    schema: WorkspaceParamsUpdateMessageSchema,
+    meaning:
+      "A parameter value changed, so the page should update what it shows. FINOS Workspace also sends the message after the handshake, when the user changes a control, when a parameter that the widget shares in a group changes, and when the site's theme changes",
+  },
+  {
+    direction: "host",
+    schema: WorkspaceAuthMessageSchema,
+    meaning:
+      "The signed-in user's email address, in the header `X-Workspace-User`, which the page can attach to its own requests. FINOS Workspace sends it once after each `workspace-connect`, only when the deployment turns on `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER`, and only to a window whose origin equals the origin of the iframe's address",
+  },
+];
+
+export type WorkspaceWidgetManifest = z.infer<typeof WorkspaceWidgetManifestSchema>;
+export type WorkspaceParamDef = z.infer<typeof WorkspaceParamDefSchema>;
+
+export type WorkspaceDataMessage = z.infer<typeof WorkspaceDataMessageSchema>;
+
+export type WorkspaceWidgetParamValue = z.infer<typeof WorkspaceWidgetParamValueSchema>;
+
+export type WorkspaceParamsUpdateMessage = z.infer<
+  typeof WorkspaceParamsUpdateMessageSchema
 >;
 
-// These outgoing message types don't need validation schemas
-export interface OpenBBParamsUpdateMessage {
-  type: "openbb-params-update";
-  params: Record<string, string>;
-}
+export type WorkspaceAuthMessage = z.infer<typeof WorkspaceAuthMessageSchema>;
 
-export interface OpenBBAuthMessage {
-  type: "openbb-auth";
-  headers: Record<string, string>;
-}
-
-export interface OpenBBRequestMessage {
-  type: "openbb-request";
-  widgetId: string | null;
-}
-
-// --------------- Shared parsing helpers ---------------
+export type WorkspaceRequestMessage = z.infer<typeof WorkspaceRequestMessageSchema>;
 
 export function isWidgetParamMessageType(
   value: unknown,
@@ -107,22 +199,13 @@ export function isWidgetParamMessageType(
   );
 }
 
-/**
- * Parses an `openbb:widget-params:update` / `openbb:params:update` postMessage
- * payload into a flat `{ paramName: value }` record.
- *
- * Returns `null` (silently) when the message is not a params-update type, so
- * callers can route every incoming message through this without spamming
- * warnings. Returns `null` (with a warning) only when the type matches but the
- * shape fails Zod validation.
- */
 export function parseIframeParamsMessage(
   data: unknown,
-): Record<string, OpenBBWidgetParamValue> | null {
+): Record<string, WorkspaceWidgetParamValue> | null {
   if (!data || typeof data !== "object") return null;
   if (!isWidgetParamMessageType((data as { type?: unknown }).type)) return null;
 
-  const parsed = OpenBBWidgetParamsUpdateMessageSchema.safeParse(data);
+  const parsed = WorkspaceWidgetParamsUpdateMessageSchema.safeParse(data);
   if (!parsed.success) {
     console.warn(
       "[iframe-protocol] invalid widget params update message.",
@@ -131,7 +214,7 @@ export function parseIframeParamsMessage(
     return null;
   }
 
-  const result: Record<string, OpenBBWidgetParamValue> = {};
+  const result: Record<string, WorkspaceWidgetParamValue> = {};
   const msg = parsed.data;
 
   if (msg.params) {
@@ -147,12 +230,9 @@ export function parseIframeParamsMessage(
   return result;
 }
 
-/**
- * Renders a parsed `OpenBBWidgetParamValue` to the string form used by the
- * outbound `openbb-params-update` message and the iframe query-string. Arrays
- * are joined by `,`; `null`/`undefined` collapse to `""`.
- */
-export function stringifyParamValue(value: OpenBBWidgetParamValue | undefined): string {
+export function stringifyParamValue(
+  value: WorkspaceWidgetParamValue | undefined,
+): string {
   if (value === undefined || value === null) return "";
   if (Array.isArray(value)) {
     return value

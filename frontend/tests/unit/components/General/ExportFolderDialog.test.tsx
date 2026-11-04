@@ -1,11 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import ExportFolderDialog from "~/components/General/ExportFolderDialog";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { generateFolderReport } from "~/lib/utils";
 
-// Mock the necessary hooks and modules
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: vi.fn(),
 }));
@@ -170,21 +169,18 @@ describe("ExportFolderDialog", () => {
     it("extracts dashboards correctly from folder children", () => {
       render(<ExportFolderDialog />);
 
-      // Should show both dashboards
       expect(screen.getByText(/2 dashboards/)).toBeInTheDocument();
     });
 
     it("extracts tabs correctly from gridLayout and navigation_bar widget", () => {
       render(<ExportFolderDialog />);
 
-      // Switch to all-tabs mode to see the total tabs count
       const scopeSelect = screen.getByRole("combobox", { name: /export scope/i });
       fireEvent.click(scopeSelect);
 
       const allTabsOption = screen.getByText("All tabs");
       fireEvent.click(allTabsOption);
 
-      // Dashboard 1 has 2 tabs, Dashboard 2 has 1 tab = 3 total
       expect(screen.getByText(/3 tabs total/)).toBeInTheDocument();
     });
 
@@ -207,7 +203,6 @@ describe("ExportFolderDialog", () => {
 
       render(<ExportFolderDialog />);
 
-      // Should find dashboard inside nested folder
       expect(screen.getByText(/1 dashboard/)).toBeInTheDocument();
     });
   });
@@ -368,7 +363,7 @@ describe("ExportFolderDialog", () => {
           onProgress,
         ) => {
           onProgress?.(1, 2, "Dashboard 1", 1, 2, "Tab 1");
-          return new Promise(() => {}); // Never resolve to keep progress visible
+          return new Promise(() => {});
         },
       );
 
@@ -401,7 +396,6 @@ describe("ExportFolderDialog", () => {
 
       render(<ExportFolderDialog />);
 
-      // Select all-tabs mode
       const scopeSelect = screen.getByRole("combobox", { name: /export scope/i });
       fireEvent.click(scopeSelect);
       const allTabsOption = screen.getByText("All tabs");
@@ -418,7 +412,6 @@ describe("ExportFolderDialog", () => {
 
   describe("tab sorting", () => {
     it("sorts tabs by stored order from navigation_bar", () => {
-      // Dashboard with tabs in different order in gridLayout vs navigation_bar
       (useShallowAppStore as Mock).mockReturnValue({
         "folder-1": mockFolder,
         "dash-1": {
@@ -449,7 +442,6 @@ describe("ExportFolderDialog", () => {
 
       render(<ExportFolderDialog />);
 
-      // Verify the dashboard count is correct (tabs are sorted internally)
       expect(screen.getByText(/1 dashboard/)).toBeInTheDocument();
     });
   });

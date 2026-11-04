@@ -1,8 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { WidgetT } from "~/components/types";
-
-// --- Mocks ---
+import type { Group, WidgetT } from "~/components/types";
 
 vi.mock("react-router-dom", () => ({
   useParams: () => ({ id: "dashboard-123" }),
@@ -11,25 +9,29 @@ vi.mock("react-router-dom", () => ({
 
 const mockGetLastInnerTab = vi.fn().mockReturnValue("");
 const mockGetSideBarItem = vi.fn();
+const mockGetWidgetGroups = vi.fn().mockReturnValue([]);
+const mockGetTabById = vi.fn().mockReturnValue(undefined);
 
 vi.mock("~/lib/state/app", () => ({
   useAppStore: {
     getState: () => ({
       getSideBarItem: mockGetSideBarItem,
+      getWidgetGroups: mockGetWidgetGroups,
       items: new Proxy({} as Record<string, unknown>, {
         get: (_target, key: string) => mockGetSideBarItem(key),
       }),
     }),
   },
-  useShallowAppStore: (selector: (state: any) => any) =>
+  useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       getLastInnerTab: mockGetLastInnerTab,
       getSideBarItem: mockGetSideBarItem,
+      getTabById: mockGetTabById,
     }),
 }));
 
 vi.mock("~/lib/state/auth", () => ({
-  useShallowAuthStore: (selector: (state: any) => any) =>
+  useShallowAuthStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ lastVisitedPage: "/app" }),
   useAuthStore: () => ({ getState: () => ({}) }),
 }));
@@ -41,7 +43,7 @@ const mockGetWidgetsInCurrentDashboard = vi.fn().mockReturnValue([]);
 const mockSetCopilotWidgets = vi.fn();
 
 vi.mock("~/lib/state/copilotData", () => ({
-  useShallowCopilotDataStore: (selector: (state: any) => any) =>
+  useShallowCopilotDataStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       selectedWidgetIDs: [],
       getDashboardWidgetData: mockGetDashboardWidgetData,
@@ -61,12 +63,12 @@ const copilotTestState = vi.hoisted(() => ({
     "widget-dashboard-search": false,
     "file-upload": false,
   } as Record<string, boolean>,
-  messages: undefined as any[] | undefined,
-  files: [] as any[],
+  messages: undefined as Message[] | undefined,
+  files: [] as CopilotFile[],
 }));
 
 vi.mock("~/lib/state/copilot", () => ({
-  useShallowCopilotStore: (selector: (state: any) => any) =>
+  useShallowCopilotStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       selectedCopilot: {
         id: "copilot-1",
@@ -87,7 +89,7 @@ vi.mock("~/components/AI/hooks/useWidgetsInCurrentDashboard", () => ({
 }));
 
 vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
-  useShallowAppWidgetsStore: (selector: (state: any) => any) =>
+  useShallowAppWidgetsStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       lastUpdated: 0,
       getAppWidget: vi.fn().mockReturnValue(null),
@@ -96,7 +98,7 @@ vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
 }));
 
 vi.mock("~/components/AI/hooks/useStreaming", () => ({
-  useShallowStreamingStore: (selector: (state: any) => any) =>
+  useShallowStreamingStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ files: copilotTestState.files }),
 }));
 
@@ -122,24 +124,28 @@ const { mockGetWidgetInfo, mockCreateParamDefs, mockCurrentDateModifier } = vi.h
 vi.mock("~/lib/utils", () => ({
   createParamDefs: mockCreateParamDefs,
   currentDateModifier: mockCurrentDateModifier,
+  getEndpointParamName: vi.fn(),
   getJsonWidget: vi.fn(),
   getWidgetDataSource: vi.fn().mockReturnValue("unknown"),
   getWidgetInfo: mockGetWidgetInfo,
 }));
 
-// Import after mocks
 import {
   createCopilotWidget,
   useGetCopilotWidgets,
 } from "~/components/AI/hooks/useGetCopilotWidgets";
+import {
+  registerIframeWidget,
+  unregisterIframeWidget,
+} from "~/lib/iframeWidgetRegistry";
+import type { CopilotFile, HumanMessage, Message } from "~/lib/state/copilot";
 
-// Helper to create mock widgets
 function createWidget(overrides: Partial<WidgetT> & { id: string }): WidgetT {
   return {
     name: "Test Widget",
     description: "",
-    widgetId: "chart",
-    type: "chart",
+    widgetId: "html",
+    type: "html",
     params: [],
     storage: {},
     data: {},
@@ -181,13 +187,13 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
       }),
       createWidget({
         id: "w-1",
-        widgetId: "chart",
+        widgetId: "html",
         name: "AAPL Chart",
         innerTab: "overview",
       }),
       createWidget({
         id: "w-2",
-        widgetId: "chart",
+        widgetId: "html",
         name: "MSFT Chart",
         innerTab: "detailed-charts",
       }),
@@ -232,11 +238,10 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
       }),
       createWidget({
         id: "w-1",
-        widgetId: "chart",
+        widgetId: "html",
         name: "AAPL Chart",
         innerTab: "overview",
       }),
-      // No widgets assigned to "empty-tab"
     ];
 
     mockGetWidgetsInCurrentDashboard.mockReturnValue(widgets);
@@ -258,7 +263,6 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
   });
 
   it("should use slug as fallback for tabs not in navigation_bar", () => {
-    // Dashboard with a nav bar that doesn't list all tabs (edge case)
     const widgets = [
       createWidget({
         id: "nav-1",
@@ -269,7 +273,7 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
       }),
       createWidget({
         id: "w-1",
-        widgetId: "chart",
+        widgetId: "html",
         name: "Orphan Widget",
         innerTab: "unknown-tab",
       }),
@@ -329,7 +333,7 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
       }),
       createWidget({
         id: "w-1",
-        widgetId: "chart",
+        widgetId: "html",
         name: "Widget",
         innerTab: "some-tab",
       }),
@@ -345,7 +349,6 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
     const setCopilotCall = mockSetCopilotWidgets.mock.calls[0]?.[0];
     const dashboardInfo = setCopilotCall?.workspaceState?.current_dashboard_info;
 
-    // Should still work without nav bar tabs, falling back to slug
     expect(dashboardInfo).not.toBeNull();
     const tab = dashboardInfo.tabs.find(
       (t: { tab_id: string }) => t.tab_id === "some-tab",
@@ -357,12 +360,12 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
     const widgets = [
       createWidget({
         id: "w-1",
-        widgetId: "chart",
+        widgetId: "html",
         name: "Widget A",
       }),
       createWidget({
         id: "w-2",
-        widgetId: "chart",
+        widgetId: "html",
         name: "Widget B",
       }),
     ];
@@ -379,7 +382,6 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
     const dashboardInfo = setCopilotCall?.workspaceState?.current_dashboard_info;
 
     expect(dashboardInfo).not.toBeNull();
-    // All widgets should be under __no_tab__
     const noTab = dashboardInfo.tabs.find(
       (t: { tab_id: string }) => t.tab_id === "__no_tab__",
     );
@@ -399,7 +401,7 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
       }),
       createWidget({
         id: "w-1",
-        widgetId: "chart",
+        widgetId: "html",
         name: "Chart",
         innerTab: "overview",
       }),
@@ -418,7 +420,6 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
     const overviewTab = dashboardInfo.tabs.find(
       (t: { tab_id: string }) => t.tab_id === "overview",
     );
-    // Only the chart widget, not the nav bar itself
     expect(overviewTab.widgets).toHaveLength(1);
     expect(overviewTab.widgets[0].name).toBe("Chart");
   });
@@ -433,7 +434,7 @@ describe("useGetCopilotWidgets - temporary file widgets", () => {
     url: `https://files.test/${uuid}.pdf`,
   });
 
-  const humanMessage = (files: ReturnType<typeof uploadedFile>[]) => ({
+  const humanMessage = (files: ReturnType<typeof uploadedFile>[]): HumanMessage => ({
     role: "human",
     content: "summarize this",
     copilotId: "copilot-1",
@@ -471,7 +472,7 @@ describe("useGetCopilotWidgets - temporary file widgets", () => {
 
     expect(temporaryWidgets).toHaveLength(1);
     expect(temporaryWidgets[0]).toMatchObject({
-      origin: "OpenBB Hub",
+      origin: "the backend",
       widget_id: "file-uuid-1",
       name: "dailyreport.pdf",
       metadata: { extension: "pdf" },
@@ -533,7 +534,7 @@ describe("createCopilotWidget - runtime state", () => {
 
     const widget = createWidget({
       id: "test-widget",
-      widgetId: "chart",
+      widgetId: "html",
       params: [{ paramName: "query", type: "text", value: "default query" }],
     });
 
@@ -573,7 +574,7 @@ describe("createCopilotWidget - runtime state", () => {
 
     const widget = createWidget({
       id: "test-widget",
-      widgetId: "chart",
+      widgetId: "html",
       params: [{ paramName: "ticker", type: "text", value: "AAPL" }],
     });
 
@@ -608,7 +609,7 @@ describe("createCopilotWidget - runtime state", () => {
 
     const widget = createWidget({
       id: "test-widget",
-      widgetId: "chart",
+      widgetId: "html",
       params: [{ paramName: "query", type: "text", value: "default" }],
     });
 
@@ -622,18 +623,145 @@ describe("createCopilotWidget - runtime state", () => {
   });
 });
 
-/**
- * The agent payload and `workspace_state` are built from the same dashboard but
- * by two independent paths: widgets go through the reduce in `useGetCopilotWidgets`,
- * while `current_dashboard_info` is built from `getDashboardInfo(currentDashboardId)`.
- *
- * When the two disagree, the agent's system prompt advertises `[uuid: ...]` tags
- * for widgets that `get_widget_data` cannot resolve, and the model — which the
- * prompt explicitly instructs to copy those uuids — issues an unresolvable fetch.
- * Observed live 2026-08-19: widget payload of 0/1/1/1/9/9 across six consecutive
- * requests on one unchanged dashboard, with "I couldn't find the requested
- * widgets." on the thin ones.
- */
+describe("createCopilotWidget - grouped parameters", () => {
+  const symbolGroup = (value: unknown): Group =>
+    ({
+      type: "param",
+      id: "g-1",
+      name: "Symbol",
+      color: "#fff",
+      groupById: "symbol",
+      value,
+    }) as Group;
+
+  const iframeWidget = () =>
+    createWidget({
+      id: "asset-info",
+      widgetId: "asset_info",
+      type: "iframe",
+      params: [
+        { paramName: "symbol", type: "text", value: "AAPL" },
+        { paramName: "theme", type: "text", value: "dark" },
+      ],
+    });
+
+  const currentValueOf = (
+    result: ReturnType<typeof createCopilotWidget>,
+    name: string,
+  ) => result?.params?.find((p: { name: string }) => p.name === name)?.current_value;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetWidgetInfo.mockReturnValue({ name: "Asset Info", description: "Info" });
+    mockCreateParamDefs.mockReturnValue([
+      { paramName: "symbol", type: "text", value: "AAPL" },
+      { paramName: "theme", type: "text", value: "dark" },
+    ]);
+  });
+
+  it("advertises the value of the group, whatever the widget stored", () => {
+    const stored = { params: { symbol: "AAPL", theme: "dark" } };
+
+    const result = createCopilotWidget(
+      "asset-info",
+      iframeWidget(),
+      stored,
+      undefined,
+      [symbolGroup("MSFT")],
+    );
+
+    expect(currentValueOf(result, "symbol")).toBe("MSFT");
+    expect(currentValueOf(result, "theme")).toBe("dark");
+  });
+
+  it("advertises what the widget stored when it is in no group", () => {
+    const stored = { params: { symbol: "TSLA", theme: "dark" } };
+
+    expect(
+      currentValueOf(
+        createCopilotWidget("asset-info", iframeWidget(), stored),
+        "symbol",
+      ),
+    ).toBe("TSLA");
+    expect(
+      currentValueOf(
+        createCopilotWidget("asset-info", iframeWidget(), stored, undefined, []),
+        "symbol",
+      ),
+    ).toBe("TSLA");
+  });
+
+  it("advertises what the widget stored while the group has no value yet", () => {
+    const stored = { params: { symbol: "TSLA" } };
+
+    const result = createCopilotWidget(
+      "asset-info",
+      iframeWidget(),
+      stored,
+      undefined,
+      [symbolGroup(null)],
+    );
+
+    expect(currentValueOf(result, "symbol")).toBe("TSLA");
+  });
+
+  it("does not let a group of another parameter change this one", () => {
+    const stored = { params: { symbol: "TSLA", theme: "dark" } };
+    const otherGroup = {
+      ...symbolGroup("light"),
+      id: "g-2",
+      groupById: "theme",
+    } as Group;
+
+    const result = createCopilotWidget(
+      "asset-info",
+      iframeWidget(),
+      stored,
+      undefined,
+      [otherGroup],
+    );
+
+    expect(currentValueOf(result, "symbol")).toBe("TSLA");
+    expect(currentValueOf(result, "theme")).toBe("light");
+  });
+
+  it("keeps a value that the user typed and has not run, over the group's", () => {
+    const result = createCopilotWidget(
+      "asset-info",
+      iframeWidget(),
+      { params: { symbol: "AAPL" } },
+      { copilotDraftParams: { symbol: "NVDA" } },
+      [symbolGroup("MSFT")],
+    );
+
+    expect(currentValueOf(result, "symbol")).toBe("NVDA");
+  });
+
+  it("says what the widget is, so that an iframe widget can be told from the others", () => {
+    expect(createCopilotWidget("asset-info", iframeWidget(), {})?.widget_type).toBe(
+      "iframe",
+    );
+    const table = createWidget({
+      id: "t",
+      widgetId: "t",
+      type: "table" as WidgetT["type"],
+    });
+    expect(createCopilotWidget("t", table, {})?.widget_type).toBe("table");
+  });
+
+  it("says a plugin's own widget is one, so that the agent does not look for data in it", () => {
+    const component = createWidget({
+      id: "p",
+      widgetId: "plugin:sql-explorer:explorer",
+      type: "custom" as WidgetT["type"],
+      plugin: { id: "sql-explorer", widget: "explorer" },
+    });
+    expect(
+      createCopilotWidget("plugin:sql-explorer:explorer", component, {})?.widget_type,
+    ).toBe("plugin");
+  });
+});
+
 describe("useGetCopilotWidgets - agent payload vs. advertised dashboard state", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -654,7 +782,6 @@ describe("useGetCopilotWidgets - agent payload vs. advertised dashboard state", 
     }));
   });
 
-  /** Three widgets on the current "event" tab, one on a background "market" tab. */
   function setupDashboard(cachedData: Record<string, unknown>) {
     mockGetLastInnerTab.mockReturnValue("event");
     mockGetWidgetsInCurrentDashboard.mockReturnValue([
@@ -691,18 +818,13 @@ describe("useGetCopilotWidgets - agent payload vs. advertised dashboard state", 
     };
   }
 
-  // The inversion: an off-tab widget with no cached data gets a synthesized
-  // entry and survives; the SAME widget on the visible tab does not, and is
-  // dropped by the `if (!widgetData) return acc;` guard.
   it("does not drop a current-tab widget just because its data has not cached yet", () => {
     const { sentToAgent } = setupDashboard({
-      // Only the metrics widget has rendered data so far — the usual state for
-      // the first request after a tab switch or page load.
       "w-metrics": { metadata: {}, title: "Selected Event Metrics", innerTab: "event" },
     });
 
-    expect(sentToAgent).toContain("w-tape"); // off-tab, no data — kept
-    expect(sentToAgent).toContain("w-price"); // on-tab, no data — dropped today
+    expect(sentToAgent).toContain("w-tape");
+    expect(sentToAgent).toContain("w-price");
   });
 
   it("never advertises a widget uuid the agent cannot fetch", () => {
@@ -728,18 +850,97 @@ describe("useGetCopilotWidgets - agent payload vs. advertised dashboard state", 
   });
 });
 
-/**
- * `dashboardWidgets` is the CURRENT-TAB slice (it feeds text suggestions);
- * `allDashboardWidgets` is the whole dashboard and is what reaches the agent.
- *
- * Tab membership must be read from the raw widget. `widgetData` is either a real
- * entry from `dashboardWidgetsData` (carries innerTab) or a placeholder from
- * `createCopilotDataWidget` (does not), so reading it off `widgetData` makes
- * `!widgetData.innerTab` true for every placeholder and files not-yet-loaded
- * off-tab widgets under the current tab. #1551 fixed this; #1488 merged 77
- * minutes later off an older branch and carried the previous line back — this
- * test exists so the next stale branch fails loudly.
- */
+describe("useGetCopilotWidgets - an iframe widget whose page has published entries", () => {
+  const WIDGET_UUID = "0b6f6a0e-5c1d-4a52-9d1e-3b0c9f6a1e11";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetWidgetInfo.mockReturnValue({
+      name: "TradingView Chart",
+      description: "A chart",
+      source: "ODP",
+      category: "Test",
+      subCategory: "Test",
+    });
+    mockGetLastInnerTab.mockReturnValue("");
+    mockGetSideBarItem.mockImplementation(() => ({
+      data: {
+        name: "Dashboard",
+        widgets: mockGetWidgetsInCurrentDashboard(),
+        currentTab: "",
+        gridLayout: {},
+      },
+    }));
+    mockGetWidgetsInCurrentDashboard.mockReturnValue([
+      createWidget({
+        id: WIDGET_UUID,
+        name: "TradingView Chart",
+        widgetId: "tv",
+        type: "iframe",
+      }),
+    ]);
+    mockGetDashboardWidgetsData.mockReturnValue({
+      [WIDGET_UUID]: { metadata: {}, title: "TradingView Chart" },
+    });
+  });
+
+  afterEach(() => unregisterIframeWidget(WIDGET_UUID));
+
+  const sent = () => mockSetCopilotWidgets.mock.calls[0]?.[0];
+
+  it("sends the widget itself, by its own uuid, once the page has published entries", () => {
+    registerIframeWidget(WIDGET_UUID, {
+      requestWidgetData: vi.fn(),
+      sendRefresh: vi.fn(),
+      manifest: [
+        { widgetId: "tvc_made_up_by_the_page", name: "Chart", dataType: "table" },
+      ],
+    });
+
+    renderHook(() => useGetCopilotWidgets());
+
+    const toAgent = (sent()?.allDashboardWidgets ?? []) as {
+      uuid: string;
+      widget_type?: string;
+    }[];
+    expect(toAgent.find((w) => w.uuid === WIDGET_UUID)).toMatchObject({
+      uuid: WIDGET_UUID,
+      widget_type: "iframe",
+    });
+    expect(toAgent.map((w) => w.uuid)).toContain(
+      `${WIDGET_UUID}::iframe::tvc_made_up_by_the_page`,
+    );
+  });
+
+  it("sends the same widget before the page has published anything", () => {
+    renderHook(() => useGetCopilotWidgets());
+
+    const toAgent = (sent()?.allDashboardWidgets ?? []) as {
+      uuid: string;
+      widget_type?: string;
+    }[];
+    expect(toAgent.map((w) => w.uuid)).toEqual([WIDGET_UUID]);
+    expect(toAgent[0].widget_type).toBe("iframe");
+  });
+
+  it("keeps the widget out of the current-tab slice, which holds what the page published", () => {
+    registerIframeWidget(WIDGET_UUID, {
+      requestWidgetData: vi.fn(),
+      sendRefresh: vi.fn(),
+      manifest: [
+        { widgetId: "tvc_made_up_by_the_page", name: "Chart", dataType: "table" },
+      ],
+    });
+
+    renderHook(() => useGetCopilotWidgets());
+
+    const slice = ((sent()?.dashboardWidgets ?? []) as { uuid: string }[]).map(
+      (w) => w.uuid,
+    );
+    expect(slice).toEqual([`${WIDGET_UUID}::iframe::tvc_made_up_by_the_page`]);
+  });
+});
+
 describe("useGetCopilotWidgets - current-tab slice uses raw widget tab membership", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -776,8 +977,6 @@ describe("useGetCopilotWidgets - current-tab slice uses raw widget tab membershi
       createWidget({ id: "w-price", name: "Event Price History", innerTab: "event" }),
       createWidget({ id: "w-tape", name: "Trade Tape", innerTab: "market" }),
     ]);
-    // Neither has loaded, so both get a placeholder — and a placeholder has no
-    // innerTab of its own.
     mockGetDashboardWidgetsData.mockReturnValue({});
 
     renderHook(() => useGetCopilotWidgets());
@@ -789,10 +988,8 @@ describe("useGetCopilotWidgets - current-tab slice uses raw widget tab membershi
       (w: { uuid: string }) => w.uuid,
     );
 
-    // Both reach the agent...
     expect(wholeDashboard).toContain("w-price");
     expect(wholeDashboard).toContain("w-tape");
-    // ...but only the current tab's widget is in the current-tab slice.
     expect(currentTabSlice).toContain("w-price");
     expect(currentTabSlice).not.toContain("w-tape");
   });

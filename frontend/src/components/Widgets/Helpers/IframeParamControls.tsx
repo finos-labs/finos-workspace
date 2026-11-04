@@ -1,12 +1,12 @@
 import { memo } from "react";
-import DebouncedInput from "~/components/General/Table/DebouncedInput";
 import { AdvancedSelect } from "~/components/NewAdvancedSelect";
 import { ToggleSelect } from "~/components/ToggleSelect";
+import DebouncedInput from "~/components/ui/DebouncedInput";
 import { SingleDatePicker } from "~/components/ui/SingleDatePicker";
-import type { OpenBBParamDef } from "~/types/iframeProtocol";
+import type { WorkspaceParamDef } from "~/types/iframeProtocol";
 
 interface IframeParamControlsProps {
-  paramDefs: OpenBBParamDef[];
+  paramDefs: WorkspaceParamDef[];
   values: Record<string, string>;
   onChange: (paramName: string, value: string) => void;
 }
@@ -34,7 +34,7 @@ const IframeParamControl = memo(
     value,
     onChange,
   }: {
-    param: OpenBBParamDef;
+    param: WorkspaceParamDef;
     value: string;
     onChange: (value: string) => void;
   }) => {
@@ -42,7 +42,7 @@ const IframeParamControl = memo(
 
     if (param.type === "boolean") {
       return (
-        <div className="obb-parameter flex items-center h-[20px]">
+        <div className="ws-parameter flex items-center h-[20px]">
           <ToggleSelect
             key={`toggle-${param.paramName}`}
             className="w-fit min-w-[96px]"
@@ -61,7 +61,7 @@ const IframeParamControl = memo(
 
     if (param.type === "date") {
       return (
-        <div className="obb-parameter flex items-center h-[20px] pr-0.5">
+        <div className="ws-parameter flex items-center h-[20px] pr-0.5">
           <SingleDatePicker
             key={`datepicker-${param.paramName}`}
             triggerClassName=""
@@ -95,15 +95,15 @@ const IframeParamControl = memo(
     }
 
     return (
-      <div className="obb-parameter flex items-center h-[20px]">
+      <div className="ws-parameter flex items-center h-[20px]">
         <DebouncedInput
           key={`input-${param.paramName}`}
           type={param.type === "number" ? "number" : "text"}
-          className="obb-minimal-input bg-transparent dark:bg-transparent px-0 h-[18.8px]! border-none!"
+          className="ws-minimal-input bg-transparent dark:bg-transparent px-0 h-[18.8px]! border-none!"
           placeholder={param.label ?? param.paramName}
           value={value}
           debounce={1250}
-          onChange={onChange}
+          onChange={(next) => onChange(String(next))}
           sizeToContent
           toolTipProps={{
             message: toolTipMessage,

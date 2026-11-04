@@ -1,42 +1,20 @@
-import type { Extension } from "~/lib/constants";
 import { useAppStore } from "~/lib/state/app";
+import { convertToReadableLabel } from "~/lib/utils/format";
 import { NotificationId, showNotificationWithRememberMe } from "~/lib/utils/toast";
-import { convertToReadableLabel } from "../General/Table/AgGridUtils";
-import type { WidgetT } from "../types";
-import type { MoveToOnSelectProps } from "./types";
+import type { ExportFns, MoveToOnSelectProps } from "./types";
 
-export function getExportFns(
-  exportFns?: {
-    csvFunction?: (title: string) => void;
-    excelFunction?: (title: string) => void;
-    pngFunction?: (title: string) => void;
-    pdfFunction?: (title: string) => void;
-    txtFunction?: (title: string) => void;
-  },
-  widgetType?: WidgetT["type"],
-  extension?: Extension,
-) {
+export function getExportFns(exportFns?: ExportFns) {
   const exportFunctions = [
     { value: "CSV", fn: exportFns?.csvFunction },
-    { value: "XLSX", fn: exportFns?.excelFunction },
-    { value: extension ? extension : "PNG", fn: exportFns?.pngFunction },
+    { value: "PNG", fn: exportFns?.pngFunction },
     { value: "PDF", fn: exportFns?.pdfFunction },
     { value: "TXT", fn: exportFns?.txtFunction },
   ];
 
-  // Filter out undefined functions
-  const availableExportFunctions = exportFunctions.filter(({ fn }) => fn !== undefined);
-
-  // For Plotly widgets (identified by widget type "chart"), only show PNG export
-  const isPlotlyWidget = widgetType === "chart";
-  if (isPlotlyWidget) {
-    return availableExportFunctions.filter(({ value }) => value === "PNG");
-  }
-
-  return availableExportFunctions;
+  return exportFunctions.filter(({ fn }) => fn !== undefined && fn !== null);
 }
 
-export async function ScrollToWidget() {
+async function ScrollToWidget() {
   const element =
     document.getElementsByClassName("react-grid-layout")?.[0].lastElementChild;
   element?.scrollIntoView();

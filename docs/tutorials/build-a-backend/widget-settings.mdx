@@ -1,0 +1,119 @@
+---
+title: Widget settings
+sidebar_position: 5
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# Widget settings
+
+Fields of a widget decide when FINOS Workspace fetches its data. The five widgets below show the time of their last fetch, so you can watch each setting work. They share one route shape:
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```python title="python/main.py"
+def settings_widget(name: str) -> PlainTextResponse:
+    return markdown(f"**{name}**\n\nFetched at {fetched_at()} UTC.")
+
+
+@app.get("/setting_stale_time")
+def setting_stale_time() -> PlainTextResponse:
+    return settings_widget("Stale time: one minute")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```ts title="typescript/main.ts"
+
+
+"/setting_stale_time": () => settingsWidget("Stale time: one minute")
+```
+
+</TabItem>
+</Tabs>
+
+
+## The settings
+
+- `staleTime`: how many milliseconds a response is reused before the widget fetches again.
+- `refetchInterval`: fetch again every so many milliseconds, or on a five-field cron schedule.
+- `dataUpdateDisplay`: a cron schedule that tells the user when the data changes. It fetches nothing.
+- `runButton`: the widget fetches only when the user selects Run.
+
+```json title="widgets.json"
+{
+  "setting_stale_time": {
+    "name": "Stale time",
+    "description": "Reuses a response for one minute before it fetches again",
+    "category": "Reference backend",
+    "subCategory": "Widget settings",
+    "type": "markdown",
+    "endpoint": "setting_stale_time",
+    "gridData": {
+      "w": 20,
+      "h": 6
+    },
+    "source": "Invented sample data",
+    "staleTime": 60000
+  },
+  "setting_refetch_interval": {
+    "name": "Refetch interval",
+    "description": "Fetches again every 15 seconds",
+    "category": "Reference backend",
+    "subCategory": "Widget settings",
+    "type": "markdown",
+    "endpoint": "setting_refetch_interval",
+    "gridData": {
+      "w": 20,
+      "h": 6
+    },
+    "source": "Invented sample data",
+    "refetchInterval": 15000
+  },
+  "setting_cron_refetch": {
+    "name": "Refetch on a schedule",
+    "description": "Fetches again every five minutes, on a cron schedule",
+    "category": "Reference backend",
+    "subCategory": "Widget settings",
+    "type": "markdown",
+    "endpoint": "setting_cron_refetch",
+    "gridData": {
+      "w": 20,
+      "h": 6
+    },
+    "source": "Invented sample data",
+    "refetchInterval": "*/5 * * * *"
+  },
+  "setting_data_update_display": {
+    "name": "Data update display",
+    "description": "Tells the user that the data changes at 9:00 on weekdays",
+    "category": "Reference backend",
+    "subCategory": "Widget settings",
+    "type": "markdown",
+    "endpoint": "setting_data_update_display",
+    "gridData": {
+      "w": 20,
+      "h": 6
+    },
+    "source": "Invented sample data",
+    "dataUpdateDisplay": "0 9 * * 1-5"
+  },
+  "setting_run_button": {
+    "name": "Run button",
+    "description": "Fetches only when the user selects Run",
+    "category": "Reference backend",
+    "subCategory": "Widget settings",
+    "type": "markdown",
+    "endpoint": "setting_run_button",
+    "gridData": {
+      "w": 20,
+      "h": 6
+    },
+    "source": "Invented sample data",
+    "runButton": true
+  }
+}
+```

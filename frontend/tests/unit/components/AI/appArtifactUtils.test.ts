@@ -1,20 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   buildAppArtifactSource,
-  buildWidgetMetadataResolver,
   buildWidgetSourceResolver,
   shouldAutoOpenAppArtifact,
 } from "~/components/AI/appArtifactUtils";
 import type { Item } from "~/lib/state/app";
-import type { Source, WidgetMetadataItem } from "~/lib/state/backendConnector";
-import type { AppArtifactT, AppArtifactWidgetRef, Copilot } from "~/lib/state/copilot";
-
-vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
-  createWidgetStudioWidget: (widget: WidgetMetadataItem) => ({
-    widgetId: widget.widgetId,
-    name: widget.name,
-  }),
-}));
+import type { Source } from "~/lib/state/backendConnector";
+import type { AppArtifactT, AppArtifactWidgetRef } from "~/lib/state/copilot";
 
 function makeSource(name: string, widgetIds: string[]): Source {
   return {
@@ -24,7 +16,7 @@ function makeSource(name: string, widgetIds: string[]): Source {
     url: `https://${name}.example.com`,
     endpointHeaders: null,
     widgets: Object.fromEntries(
-      widgetIds.map((id) => [id, { name: id, sdkFunc: "" }]),
+      widgetIds.map((id) => [id, { name: id }]),
     ) as Source["widgets"],
   };
 }
@@ -74,12 +66,12 @@ describe("buildWidgetSourceResolver", () => {
   it("returns undefined for built-in widgets no backend exposes", () => {
     const sources = [makeSource("Backend A", ["price"])];
     const refs: AppArtifactWidgetRef[] = [
-      { i: "rich_note", origin: "OpenBB Workspace", widget_id: "rich_note" },
+      { i: "iframe", origin: "Workspace", widget_id: "iframe" },
     ];
 
     const resolve = buildWidgetSourceResolver(refs, sources);
 
-    expect(resolve("rich_note")).toBeUndefined();
+    expect(resolve("iframe")).toBeUndefined();
   });
 
   it("dedupes repeated widget ids to a single resolved source", () => {
@@ -113,71 +105,20 @@ describe("buildAppArtifactSource", () => {
   });
 });
 
-describe("buildWidgetMetadataResolver", () => {
-  const widgetMetadata = [
-    { widgetId: "abc", widgetType: "widget_studio", name: "Custom Studio" },
-    { widgetId: "def", widgetType: "endpoint", name: "Not Studio" },
-  ] as unknown as WidgetMetadataItem[];
-
-  it("resolves a widget_studio widget by its prefixed id", () => {
-    const resolve = buildWidgetMetadataResolver(widgetMetadata);
-    expect(resolve("widget_studio-abc")).toMatchObject({ widgetId: "abc" });
-  });
-
-  it("returns undefined for non-studio, unknown, or unprefixed ids", () => {
-    const resolve = buildWidgetMetadataResolver(widgetMetadata);
-    expect(resolve("widget_studio-def")).toBeUndefined();
-    expect(resolve("widget_studio-zzz")).toBeUndefined();
-    expect(resolve("abc")).toBeUndefined();
-  });
-});
-
 describe("shouldAutoOpenAppArtifact", () => {
-  const features = { "generative-ui": true } as Copilot["features"];
   const emptyDashboard = { data: { widgets: [] } } as unknown as Item;
 
-  it("returns true on an empty dashboard with generative UI enabled", () => {
+  it("returns true on an empty dashboard", () => {
     expect(
       shouldAutoOpenAppArtifact({
-        generativeUiEnabled: true,
-        features,
         currentDashboardItem: emptyDashboard,
       }),
     ).toBe(true);
   });
 
-  it("returns false when generative UI is globally disabled", () => {
-    expect(
-      shouldAutoOpenAppArtifact({
-        generativeUiEnabled: false,
-        features,
-        currentDashboardItem: emptyDashboard,
-      }),
-    ).toBe(false);
-  });
-
-  it("returns false when the agent lacks the generative-ui feature", () => {
-    expect(
-      shouldAutoOpenAppArtifact({
-        generativeUiEnabled: true,
-        features: { "generative-ui": false } as Copilot["features"],
-        currentDashboardItem: emptyDashboard,
-      }),
-    ).toBe(false);
-    expect(
-      shouldAutoOpenAppArtifact({
-        generativeUiEnabled: true,
-        features: undefined,
-        currentDashboardItem: emptyDashboard,
-      }),
-    ).toBe(false);
-  });
-
   it("returns false when the dashboard already has widgets", () => {
     expect(
       shouldAutoOpenAppArtifact({
-        generativeUiEnabled: true,
-        features,
         currentDashboardItem: {
           data: { widgets: [{ id: "w" }] },
         } as unknown as Item,
@@ -188,8 +129,6 @@ describe("shouldAutoOpenAppArtifact", () => {
   it("returns false for a folder or a missing dashboard", () => {
     expect(
       shouldAutoOpenAppArtifact({
-        generativeUiEnabled: true,
-        features,
         currentDashboardItem: {
           isFolder: true,
           data: { widgets: [] },
@@ -198,8 +137,6 @@ describe("shouldAutoOpenAppArtifact", () => {
     ).toBe(false);
     expect(
       shouldAutoOpenAppArtifact({
-        generativeUiEnabled: true,
-        features,
         currentDashboardItem: null,
       }),
     ).toBe(false);

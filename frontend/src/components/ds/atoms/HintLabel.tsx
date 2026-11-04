@@ -2,7 +2,7 @@ import React, { type ReactNode } from "react";
 import Tooltip from "~/components/Tooltip";
 import { cn } from "../utils";
 
-export interface HintLabelProps {
+interface HintLabelProps {
   children: ReactNode;
   tooltip: string | ReactNode;
   disabled?: boolean;
@@ -13,10 +13,6 @@ export interface HintLabelProps {
   className?: string;
 }
 
-/**
- * A label with a dotted underline that signals hoverable tooltip content.
- * Use for settings/feature labels where the name alone isn't self-explanatory.
- */
 export const HintLabel = React.forwardRef<HTMLSpanElement, HintLabelProps>(
   (
     {

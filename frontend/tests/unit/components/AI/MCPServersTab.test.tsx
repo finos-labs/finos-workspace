@@ -6,8 +6,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MCPServersTab } from "~/components/AI/MCPServersTab";
 import type { ButtonProps } from "~/components/ds/atoms/Button";
 import type { InputProps } from "~/components/ds/atoms/Input";
+import type { McpConnection } from "~/lib/state/mcpTools";
+import { setAccess } from "../../factories";
+import { required } from "../../mocks";
 
-// Mock framer-motion so AnimatePresence exit animations complete synchronously in jsdom
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: ReactNode }) => <>{children}</>,
   motion: {
@@ -21,8 +23,6 @@ vi.mock("framer-motion", () => ({
     }) => <div className={className}>{children}</div>,
   },
 }));
-
-// --- Hoisted mocks ---
 
 const {
   mockUseShallowMcpToolsStore,
@@ -41,8 +41,6 @@ const {
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
 }));
-
-// --- Module mocks ---
 
 vi.mock("usehooks-ts", () => {
   const { useState: useStateReal } = require("react");
@@ -79,7 +77,6 @@ vi.mock("~/components/McpServerModal", () => ({
     onClose: () => void;
     existingServerId?: string | null;
   }) => {
-    // Track that the modal was opened with certain props
     if (open) mockManageMcpServerOpen({ open, existingServerId });
     return open ? (
       <div data-testid="manage-mcp-server-modal">
@@ -141,8 +138,6 @@ vi.mock("~/components/ds/atoms/Input", () => ({
   )),
 }));
 
-// --- Mock data ---
-
 const makeTool = (
   overrides: Partial<{
     id: string;
@@ -199,57 +194,40 @@ const MOCK_SERVERS = [
   }),
 ];
 
-const makeConnectionReady = (
-  tools?: Array<{ name: string; description?: string }>,
-) => ({
+const makeConnection = (overrides: Partial<McpConnection> = {}): McpConnection => ({
   state: "ready",
-  tools: tools ?? [],
-  callTool: vi.fn(),
-  error: undefined,
-  disconnect: vi.fn(),
-  retry: vi.fn(),
-  clearStorage: vi.fn(),
-});
-
-const makeConnectionFailed = () => ({
-  state: "failed",
-  tools: [],
-  callTool: undefined,
-  error: new Error("Connection failed"),
-  disconnect: vi.fn(),
-  retry: vi.fn(),
-  clearStorage: vi.fn(),
-});
-
-const makeConnectionPending = (state = "connecting") => ({
-  state,
   tools: [],
   callTool: undefined,
   error: undefined,
   disconnect: vi.fn(),
   retry: vi.fn(),
   clearStorage: vi.fn(),
+  ...overrides,
 });
 
-const makeConnectionDisconnected = () => ({
-  state: "disconnected",
-  tools: [],
-  callTool: undefined,
-  error: undefined,
-  disconnect: vi.fn(),
-  retry: vi.fn(),
-  clearStorage: vi.fn(),
-});
+const makeConnectionReady = (tools?: Array<{ name: string; description?: string }>) =>
+  makeConnection({
+    tools: (tools ?? []).map((tool) => ({
+      ...tool,
+      inputSchema: { type: "object" as const },
+    })),
+    callTool: vi.fn(),
+  });
 
-// --- Setup helpers ---
+const makeConnectionFailed = () =>
+  makeConnection({ state: "failed", error: "Connection failed" });
+
+const makeConnectionPending = (state: McpConnection["state"] = "connecting") =>
+  makeConnection({ state });
+
+const makeConnectionDisconnected = () => makeConnection({ state: "disconnected" });
 
 function setupStore(
   servers = MOCK_SERVERS,
-  connectionOverrides: Record<string, ReturnType<typeof makeConnectionReady>> = {},
+  connectionOverrides: Record<string, McpConnection> = {},
 ) {
   mockGetMCPConnection.mockImplementation((serverId: string) => {
     if (connectionOverrides[serverId]) return connectionOverrides[serverId];
-    // Default: enabled servers are "ready", disabled are "disconnected"
     const server = servers.find((s) => s.id === serverId);
     if (server?.enabled) {
       return makeConnectionReady(
@@ -277,12 +255,11 @@ const renderMCPServersTab = () => {
   );
 };
 
-// --- Tests ---
-
 describe("MCPServersTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupStore();
+    setAccess({ user_type: "Developer" });
   });
 
   describe("Empty state", () => {
@@ -301,9 +278,7 @@ describe("MCPServersTab", () => {
     it("renders server cards with name and tool count", async () => {
       await renderMCPServersTab();
 
-      // Alpha Server has 2 connection tools (ready state returns them)
       expect(screen.getByText(/Alpha Server/)).toBeInTheDocument();
-      // Beta Server has 1 tool from server.tools (disconnected, no connectionTools)
       expect(screen.getByText(/Beta Server/)).toBeInTheDocument();
     });
 
@@ -316,7 +291,6 @@ describe("MCPServersTab", () => {
       });
       await renderMCPServersTab();
 
-      // connectionTools.length = 2 for server-1
       expect(screen.getByText("Alpha Server")).toBeInTheDocument();
       expect(screen.getByText("(2)")).toBeInTheDocument();
     });
@@ -327,7 +301,6 @@ describe("MCPServersTab", () => {
       });
       await renderMCPServersTab();
 
-      // server-2 has 1 tool in server.tools, connectionTools is empty
       expect(screen.getByText("Beta Server")).toBeInTheDocument();
       expect(screen.getByText("(1)")).toBeInTheDocument();
     });
@@ -416,13 +389,28 @@ describe("MCPServersTab", () => {
       expect(screen.getByTestId("manage-mcp-server-modal")).toBeInTheDocument();
       expect(screen.getByTestId("modal-existing-server-id")).toHaveTextContent("none");
     });
+
+    it("offers 'Add Server' to an Admin", async () => {
+      setAccess({ user_type: "Admin" });
+      await renderMCPServersTab();
+
+      expect(screen.getByRole("button", { name: "Add Server" })).toBeInTheDocument();
+    });
+
+    it("does not offer 'Add Server' to a User, who cannot add connections", async () => {
+      setAccess({ user_type: "User" });
+      await renderMCPServersTab();
+
+      expect(
+        screen.queryByRole("button", { name: "Add Server" }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("Server card expand/collapse", () => {
     it("does not show tools section by default", async () => {
       await renderMCPServersTab();
 
-      // Tools should not be visible when collapsed
       expect(screen.queryByText("get_stocks")).not.toBeInTheDocument();
     });
 
@@ -436,11 +424,9 @@ describe("MCPServersTab", () => {
       });
       await renderMCPServersTab();
 
-      // Click the server name area to expand
       const serverNameArea = screen.getByText("Alpha Server");
       await user.click(serverNameArea);
 
-      // Tools should now be visible
       expect(screen.getByText("get_stocks")).toBeInTheDocument();
       expect(screen.getByText("get_crypto")).toBeInTheDocument();
     });
@@ -455,11 +441,9 @@ describe("MCPServersTab", () => {
       await renderMCPServersTab();
 
       const serverNameArea = screen.getByText(/Alpha Server/);
-      // Expand
       await user.click(serverNameArea);
       expect(screen.getByText("get_stocks")).toBeInTheDocument();
 
-      // Collapse
       await user.click(serverNameArea);
       expect(screen.queryByText("get_stocks")).not.toBeInTheDocument();
     });
@@ -474,7 +458,6 @@ describe("MCPServersTab", () => {
       const serverNameArea = screen.getByText(/Beta Server/);
       await user.click(serverNameArea);
 
-      // Shows cached tools from server.tools even when disconnected
       expect(screen.getByText("analyze_data")).toBeInTheDocument();
     });
 
@@ -496,14 +479,11 @@ describe("MCPServersTab", () => {
       const serverNameArea = screen.getByText(/Empty Server/);
       await user.click(serverNameArea);
 
-      // Server cannot be expanded (no chevron, no tools section)
-      // The click does nothing since canExpand is false
       expect(screen.queryByText("No tools available")).not.toBeInTheDocument();
     });
 
     it("shows 'Discovering tools...' when connected but no tools yet", async () => {
       const user = userEvent.setup();
-      // Server is enabled and connected (pending state counts as connected), but no tools in connectionTools
       setupStore(
         [
           makeServer({
@@ -551,7 +531,6 @@ describe("MCPServersTab", () => {
 
     it("calls updateServer with toggled enabled when clicking Connect", async () => {
       const user = userEvent.setup();
-      // server-2 is disabled, so it shows "Connect"
       setupStore(MOCK_SERVERS, {
         "server-2": makeConnectionDisconnected(),
       });
@@ -560,7 +539,6 @@ describe("MCPServersTab", () => {
       const connectButtons = screen.getAllByRole("button", {
         name: "Connect",
       });
-      // Click the Connect button for the disabled server
       await user.click(connectButtons[0]);
 
       expect(mockUpdateServer).toHaveBeenCalledWith("server-2", {
@@ -635,10 +613,8 @@ describe("MCPServersTab", () => {
       });
       await renderMCPServersTab();
 
-      // Expand server card
       await user.click(screen.getByText(/Alpha Server/));
 
-      // Click tool to expand description
       await user.click(screen.getByText("get_stocks"));
 
       expect(screen.getByText("Fetches stock data")).toBeInTheDocument();
@@ -654,11 +630,9 @@ describe("MCPServersTab", () => {
       await renderMCPServersTab();
 
       await user.click(screen.getByText(/Alpha Server/));
-      // Expand tool
       await user.click(screen.getByText("get_stocks"));
       expect(screen.getByText("Fetches stock data")).toBeInTheDocument();
 
-      // Collapse tool
       await user.click(screen.getByText("get_stocks"));
       expect(screen.queryByText("Fetches stock data")).not.toBeInTheDocument();
     });
@@ -673,9 +647,6 @@ describe("MCPServersTab", () => {
       await user.click(screen.getByText(/Alpha Server/));
       await user.click(screen.getByText("no_desc_tool"));
 
-      // The description div should not render at all
-      // The separator + description block only shows if isExpanded && tool.description
-      // With no description, even when expanded, no description content should appear
       const toolItems = screen.queryByText("undefined");
       expect(toolItems).not.toBeInTheDocument();
     });
@@ -701,9 +672,8 @@ describe("MCPServersTab", () => {
       await renderMCPServersTab();
 
       const editButtons = screen.getAllByTitle("Edit");
-      // Click edit on the first server
       const editBtn = editButtons[0].querySelector("button");
-      await user.click(editBtn!);
+      await user.click(required(editBtn));
 
       expect(screen.getByTestId("manage-mcp-server-modal")).toBeInTheDocument();
       expect(screen.getByTestId("modal-existing-server-id")).toHaveTextContent(
@@ -717,7 +687,7 @@ describe("MCPServersTab", () => {
 
       const deleteButtons = screen.getAllByTitle("Delete");
       const deleteBtn = deleteButtons[0].querySelector("button");
-      await user.click(deleteBtn!);
+      await user.click(required(deleteBtn));
 
       expect(mockRemoveServer).toHaveBeenCalledWith("server-1");
     });
@@ -728,7 +698,7 @@ describe("MCPServersTab", () => {
 
       const deleteButtons = screen.getAllByTitle("Delete");
       const deleteBtn = deleteButtons[1].querySelector("button");
-      await user.click(deleteBtn!);
+      await user.click(required(deleteBtn));
 
       expect(mockRemoveServer).toHaveBeenCalledWith("server-2");
     });
@@ -739,7 +709,7 @@ describe("MCPServersTab", () => {
 
       const deleteButtons = screen.getAllByTitle("Delete");
       const deleteBtn = deleteButtons[0].querySelector("button");
-      await user.click(deleteBtn!);
+      await user.click(required(deleteBtn));
 
       expect(mockToastSuccess).toHaveBeenCalledWith(
         "Alpha Server deleted successfully",
@@ -755,7 +725,6 @@ describe("MCPServersTab", () => {
       );
       await renderMCPServersTab();
 
-      // The status dot should use the semantic success token
       const statusDots = document.querySelectorAll(".bg-alert-success");
       expect(statusDots.length).toBeGreaterThanOrEqual(1);
     });
@@ -785,7 +754,6 @@ describe("MCPServersTab", () => {
       );
       await renderMCPServersTab();
 
-      // Pending state renders a spinner div with animate-spin instead of a status dot
       const spinners = document.querySelectorAll(".animate-spin");
       expect(spinners.length).toBeGreaterThanOrEqual(1);
     });
@@ -804,13 +772,17 @@ describe("MCPServersTab", () => {
       );
       await renderMCPServersTab();
 
-      // Disabled servers get the muted semantic token
       const statusDots = document.querySelectorAll(".bg-general-border-primary");
       expect(statusDots.length).toBeGreaterThanOrEqual(1);
     });
 
     it("shows spinner for all pending connection states", async () => {
-      const pendingStates = ["loading", "connecting", "discovering", "authenticating"];
+      const pendingStates = [
+        "loading",
+        "connecting",
+        "discovering",
+        "authenticating",
+      ] as const;
 
       for (const state of pendingStates) {
         vi.clearAllMocks();
@@ -832,13 +804,11 @@ describe("MCPServersTab", () => {
       const user = userEvent.setup();
       await renderMCPServersTab();
 
-      // Open add server modal
       const addButton = screen.getByRole("button", { name: "Add Server" });
       await user.click(addButton);
 
       expect(screen.getByTestId("manage-mcp-server-modal")).toBeInTheDocument();
 
-      // Close modal
       const closeBtn = screen.getByTestId("modal-close-btn");
       await user.click(closeBtn);
 
@@ -849,14 +819,12 @@ describe("MCPServersTab", () => {
       const user = userEvent.setup();
       await renderMCPServersTab();
 
-      // Open edit modal
       const editButtons = screen.getAllByTitle("Edit");
       const editBtn = editButtons[0].querySelector("button");
-      await user.click(editBtn!);
+      await user.click(required(editBtn));
 
       expect(screen.getByTestId("manage-mcp-server-modal")).toBeInTheDocument();
 
-      // Close modal
       const closeBtn = screen.getByTestId("modal-close-btn");
       await user.click(closeBtn);
 

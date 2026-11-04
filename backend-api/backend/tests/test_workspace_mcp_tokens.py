@@ -12,7 +12,7 @@ def test_personal_access_token_model_is_importable():
 @pytest.mark.asyncio
 async def test_create_list_and_revoke_workspace_mcp_token(auth_client):
     create_response = await auth_client.post(
-        "/pro/workspace-mcp/tokens",
+        "/app/workspace-mcp/tokens",
         json={"name": "Claude Desktop"},
     )
 
@@ -21,11 +21,11 @@ async def test_create_list_and_revoke_workspace_mcp_token(auth_client):
     assert UUID(created["uuid"])
     assert created["name"] == "Claude Desktop"
     assert created["token_type"] == "workspace_mcp"
-    assert created["token"].startswith("obb_mcp_")
+    assert created["token"].startswith("ws_mcp_")
     assert created["token_prefix"] == created["token"][:20]
     assert "token_hash" not in created
 
-    list_response = await auth_client.get("/pro/workspace-mcp/tokens")
+    list_response = await auth_client.get("/app/workspace-mcp/tokens")
 
     assert list_response.status_code == 200
     tokens = list_response.json()
@@ -37,12 +37,12 @@ async def test_create_list_and_revoke_workspace_mcp_token(auth_client):
     assert "token_hash" not in tokens[0]
 
     revoke_response = await auth_client.delete(
-        f"/pro/workspace-mcp/tokens/{created['uuid']}"
+        f"/app/workspace-mcp/tokens/{created['uuid']}"
     )
 
     assert revoke_response.status_code == 204
 
-    list_after_revoke = await auth_client.get("/pro/workspace-mcp/tokens")
+    list_after_revoke = await auth_client.get("/app/workspace-mcp/tokens")
 
     assert list_after_revoke.status_code == 200
     assert list_after_revoke.json() == []

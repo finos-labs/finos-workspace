@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import type { BackendPermissionsT } from "~/api/user_roles.api";
 import { createSourceWidget } from "~/components/DataConnectors/common/helpers";
-import { someTruthy } from "~/components/General/Table/utils";
 import type { WidgetT } from "~/components/types";
 import {
   type Source,
@@ -10,16 +9,15 @@ import {
 } from "~/lib/state/backendConnector";
 import { useShallowPermissionsStore } from "~/lib/state/permissions";
 import { getApiSourceWidgets } from "~/lib/utils/validateBackend";
+import { someTruthy } from "~/lib/utils/values";
 import { cleanURL } from "~/lib/utils/widgetParams";
 import type { ProcessedTemplate, SharedPromptT } from "./useSharedTemplates";
 
-export interface ProcessedBackendT<
-  T = boolean,
-  P extends string | SharedPromptT = SharedPromptT,
-> extends Omit<BackendPermissionsT, "widgets" | "templates"> {
+export interface ProcessedBackendT<P extends string | SharedPromptT = SharedPromptT>
+  extends Omit<BackendPermissionsT, "widgets" | "templates"> {
   status?: "error" | "success";
   id?: string;
-  widgets: T extends true ? Source["widgets"] : Record<string, WidgetT>;
+  widgets: Record<string, WidgetT>;
   validatedUrl?: string;
   templates: ProcessedTemplate<P>[];
   isSharedSource?: boolean;
@@ -33,11 +31,9 @@ export function useProcessBackendWidgets() {
   );
 
   const processBackendWidgets = useCallback(
-    async (backend: BackendPermissionsT): Promise<ProcessedBackendT> => {
+    async (backendPermissions: BackendPermissionsT): Promise<ProcessedBackendT> => {
+      const backend = { ...backendPermissions, id: backendPermissions.uuid };
       try {
-        // @ts-expect-error
-        backend.id = backend.uuid;
-
         if (!someTruthy(backend.templates, backend.widgets)) {
           return {
             ...backend,
@@ -56,7 +52,6 @@ export function useProcessBackendWidgets() {
         const validatedUrl = cleanURL(backend.url);
         let validated: Partial<ValidateBackend> | undefined;
 
-        // avoids unnecessary API calls if the backend is owned by the user
         const existing = getApiSourceById(backend.uuid);
         if (existing) {
           validated = {
@@ -84,10 +79,8 @@ export function useProcessBackendWidgets() {
 
         const newWidgets = {} as ProcessedBackendT["widgets"];
 
-        // Add widgetId to widgets and check permissions
-        for (const [key, widget] of Object.entries(widgets)) {
+        for (const [key, widget] of Object.entries(widgets ?? {})) {
           widget.widgetId = widget.widgetId || key;
-          // Disable widgets that the user does not have access to
           newWidgets[key] = createSourceWidget(
             widget,
             source,
@@ -95,7 +88,6 @@ export function useProcessBackendWidgets() {
           );
         }
 
-        // Filter out templates that the user doesn't have access to
         const filteredTemplates = templates
           ?.filter((template) => {
             return (
@@ -104,7 +96,6 @@ export function useProcessBackendWidgets() {
             );
           })
           .map((template) => {
-            // Preserve the original prompts structure from backend.templates
             const backendTemplate = backend.templates.find(
               (t) => t.templateId === template.name,
             );
@@ -120,7 +111,7 @@ export function useProcessBackendWidgets() {
           status: "success",
           widgets: newWidgets,
           validatedUrl,
-          templates: filteredTemplates,
+          templates: filteredTemplates ?? [],
           isSharedSource: true,
         };
       } catch (err) {

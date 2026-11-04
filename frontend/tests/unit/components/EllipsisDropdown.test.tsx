@@ -1,23 +1,27 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import EllipsisDropdownMenu from "~/components/EllipsisDropdown";
 import type { EllipsisDropdownMenuProps } from "~/components/MoveToDropDown/types";
 
-vi.mock("~/components/Widget.context", () => ({
-  useWidgetContext: vi.fn(() => ({
-    widgetRef: {
-      current: {
-        id: "test-widget",
-        widgetId: "test-widget",
-        name: "Test Widget",
-        type: "table",
-      },
+const widgetContext = vi.hoisted(() => ({
+  widgetRef: {
+    current: {
+      id: "test-widget",
+      widgetId: "test-widget",
+      name: "Test Widget",
+      type: "table",
     },
-    activeDashboardId: "dashboard-1",
-    isShared: false,
-  })),
+  },
+  activeDashboardId: "dashboard-1",
+  isShared: false,
 }));
+
+vi.mock("~/components/Widget.context", () => ({
+  useWidgetContext: vi.fn(() => widgetContext),
+}));
+
+const dashboard = vi.hoisted(() => ({ locked: false }));
 
 vi.mock("~/lib/state/app", () => ({
   useAppStore: {
@@ -26,33 +30,15 @@ vi.mock("~/lib/state/app", () => ({
       duplicateWidget: vi.fn(),
     }),
   },
+  useIsDashboardLocked: () => dashboard.locked,
 }));
 
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: vi.fn(() => vi.fn()),
 }));
 
-vi.mock("~/lib/state/featureFlags", () => ({
-  useShallowFeatureFlagsStore: vi.fn(() => true),
-}));
-
-vi.mock("~/components/General/Table/Chart/hooks/useChartOptions", () => ({
-  useChartBarFillQuickAction: vi.fn(() => null),
-  useChartQuickActions: vi.fn(() => []),
-}));
-
-vi.mock("posthog-js/react", () => ({
-  usePostHog: vi.fn(() => ({
-    capture: vi.fn(),
-  })),
-}));
-
 vi.mock("~/components/MoveToDropDown", () => ({
   MoveToTabsDropdownMenu: () => <div data-testid="move-to-tabs">Move</div>,
-}));
-
-vi.mock("~/components/General/FeatureLock", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 describe("EllipsisDropdownMenu", () => {
@@ -61,11 +47,41 @@ describe("EllipsisDropdownMenu", () => {
     settings: {},
   };
 
+  afterEach(() => {
+    dashboard.locked = false;
+  });
+
   it("renders the ellipsis trigger button", () => {
     render(<EllipsisDropdownMenu {...defaultProps} />);
 
     const trigger = screen.getByRole("button");
     expect(trigger).toBeInTheDocument();
+  });
+
+  describe("Duplicate menu item", () => {
+    const openMenu = async () => {
+      render(
+        <EllipsisDropdownMenu {...defaultProps} settings={{ showDuplicate: true }} />,
+      );
+      await userEvent.setup().click(screen.getByRole("button"));
+    };
+
+    it("is available on an unlocked dashboard", async () => {
+      await openMenu();
+
+      expect(screen.getByRole("menuitem", { name: "Duplicate" })).not.toHaveAttribute(
+        "data-disabled",
+      );
+    });
+
+    it("is disabled on a locked dashboard", async () => {
+      dashboard.locked = true;
+      await openMenu();
+
+      expect(screen.getByRole("menuitem", { name: "Duplicate" })).toHaveAttribute(
+        "data-disabled",
+      );
+    });
   });
 
   describe("Minimize menu item", () => {
@@ -164,6 +180,19 @@ describe("EllipsisDropdownMenu", () => {
       await user.click(trigger);
 
       expect(screen.queryByText("Minimize")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Export", () => {
+    const openMenu = async (settings: EllipsisDropdownMenuProps["settings"]) => {
+      render(<EllipsisDropdownMenu {...defaultProps} settings={settings} />);
+      await userEvent.setup().click(screen.getByRole("button"));
+    };
+
+    it("offers Export to every user", async () => {
+      await openMenu({ showExport: true });
+
+      expect(screen.getByText("Export")).toBeInTheDocument();
     });
   });
 });

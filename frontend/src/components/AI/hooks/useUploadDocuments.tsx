@@ -1,19 +1,19 @@
 import { useMutation } from "@tanstack/react-query";
-import type { AxiosResponse } from "axios";
-import posthog from "posthog-js";
 import { toast } from "sonner";
 import { apiClient } from "~/api/api";
 import type { PostUploadFileResponse } from "~/api/auth.api";
-import { AI_SUPPORTED_FILE_TYPES } from "~/lib/constants";
+import {
+  AI_SUPPORTED_FILE_TYPES,
+  MAX_FILE_SIZE,
+  UPLOAD_BATCH_BYTES,
+} from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import { type CopilotFile, useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
 import { useShallowStreamingStore } from "./useStreaming";
-
-type ResponseT = AxiosResponse<PostUploadFileResponse>;
-
-const MEGABYTE = 1024 * 1024;
 
 export function updateFileStatus<T extends CopilotFile>(
   prevFiles: T[],
@@ -35,12 +35,9 @@ const aiCopilotAiEnhancementsFF =
 async function getDescriptionsMap(
   uploadedFiles: PostUploadFileResponse,
   files: File[],
-  token: string,
   aiEnhancements = false,
 ): Promise<Map<string, { name: string; description: string }>> {
-  // Map stored_file_uuid to description
   const descriptionsMap = new Map<string, { name: string; description: string }>();
-  // Generate descriptions for AI supported files
   await Promise.all(
     uploadedFiles.map(async (uploadedFile) => {
       if (
@@ -57,13 +54,9 @@ async function getDescriptionsMap(
           const formData = new FormData();
           formData.append("file", file);
           try {
-            const aiResponse = await fetch(
+            const aiResponse = await fetchAgent(
               `${getConfig().urls.ai}/v1/generate/widget_info/file`,
-              {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-                body: formData,
-              },
+              { method: "POST", body: formData },
             );
             if (aiResponse.ok) {
               const data = await aiResponse.json();
@@ -81,18 +74,42 @@ async function getDescriptionsMap(
   return descriptionsMap;
 }
 
+async function uploadToAgent(
+  formData: FormData,
+  uploadUrl: string,
+  toWorkspace: boolean,
+  agentHeaders: Record<string, string>,
+): Promise<PostUploadFileResponse> {
+  if (toWorkspace) {
+    const { data } = await apiClient.post<PostUploadFileResponse>(uploadUrl, formData, {
+      headers: { "content-type": "multipart/form-data" },
+    });
+    return data;
+  }
+
+  const response = await fetchAgent(uploadUrl, {
+    method: "POST",
+    headers: agentHeaders,
+    body: formData,
+  });
+  if (!response.ok) {
+    throw new Error(`The agent refused the upload (HTTP ${response.status}).`);
+  }
+  return await response.json();
+}
+
 export function useUploadDocuments() {
   const dispatch = useShallowStreamingStore((s) => s.dispatch);
-  const user = useShallowAuthStore((s) => s.user);
+  const signedIn = useShallowAuthStore((s) => s.user !== null);
   const selectedCopilot = useShallowCopilotStore((s) => s.selectedCopilot);
   const aiEnhancements = useShallowThemeStore((state) => state.aiEnhancements);
+  const getCopilotRequestHeaders = useGetCopilotRequestHeaders();
 
-  const { mutateAsync: uploadDocuments } = useMutation<ResponseT, Error, File[]>({
+  const { mutateAsync: uploadDocuments } = useMutation<void, Error, File[]>({
     mutationFn: async (filesToUpload: File[]) => {
-      // Need to split files into chunks of 150MB or less
       const { fileChunks } = filesToUpload.reduce(
         ({ fileChunks, chunkSize }, file) => {
-          if (file.size > 25 * MEGABYTE) {
+          if (file.size > MAX_FILE_SIZE) {
             dispatch({
               files: (prevFiles) => prevFiles.filter((f) => f.name !== file.name),
             });
@@ -110,47 +127,43 @@ export function useUploadDocuments() {
             return { fileChunks, chunkSize };
           }
           chunkSize += file.size;
-          if (chunkSize > 150 * MEGABYTE) fileChunks.push([]);
+          if (chunkSize > UPLOAD_BATCH_BYTES) fileChunks.push([]);
           fileChunks[fileChunks.length - 1].push(file);
           return { fileChunks, chunkSize };
         },
         { fileChunks: [[] as File[]], chunkSize: 0 },
       );
 
+      if (!(signedIn && selectedCopilot)) {
+        throw new Error("Sign in and select an agent to upload documents.");
+      }
+
+      const toWorkspace = selectedCopilot.id === "default-copilot";
+      const { "Content-Type": _json, ...agentHeaders } = getCopilotRequestHeaders();
+
       for (const files of fileChunks) {
         const formData = new FormData();
         for (const file of files) {
           formData.append("files", file);
-          if (posthog) {
-            posthog.capture("added_file_to_copilot", {
-              file_name: file.name,
-              file_size: file.size,
-            });
-          }
         }
 
-        const response = await apiClient.post<PostUploadFileResponse>(
-          selectedCopilot?.id === "openbb-copilot"
-            ? "pro/files"
-            : selectedCopilot.endpoints.upload_docs,
+        const uploadUrl = toWorkspace
+          ? "app/files"
+          : selectedCopilot.endpoints.upload_docs;
+        if (!uploadUrl)
+          throw new Error("The selected agent does not accept documents.");
+
+        const uploadedFiles = await uploadToAgent(
           formData,
-          {
-            headers: {
-              "content-type": "multipart/form-data",
-              Authorization:
-                selectedCopilot?.id === "openbb-copilot"
-                  ? `Bearer ${user.token}`
-                  : undefined,
-            },
-          },
+          uploadUrl,
+          toWorkspace,
+          agentHeaders,
         );
 
-        if (response?.data?.length) {
-          const uploadedFiles = response.data;
+        if (uploadedFiles?.length) {
           const descriptionsMap = await getDescriptionsMap(
             uploadedFiles,
             files,
-            user.token,
             aiEnhancements,
           );
           dispatch({
@@ -159,14 +172,14 @@ export function useUploadDocuments() {
                 const uploadedFile = uploadedFiles.find(
                   (file) => file.original_file_name === prevFile.name,
                 );
-                const fileInfo = descriptionsMap.get(uploadedFile?.stored_file_uuid);
                 if (uploadedFile) {
+                  const fileInfo = descriptionsMap.get(uploadedFile.stored_file_uuid);
                   return {
                     ...prevFile,
                     status: uploadedFile.failed ? "failed" : "uploaded",
                     stored_file_uuid: uploadedFile.stored_file_uuid,
                     url: uploadedFile.url,
-                    description: fileInfo.description,
+                    description: fileInfo?.description ?? prevFile.description,
                     name: uploadedFile.original_file_name,
                   };
                 }
@@ -176,7 +189,7 @@ export function useUploadDocuments() {
 
           continue;
         }
-        return response;
+        return;
       }
     },
 

@@ -32,7 +32,7 @@ function isMultiSelect(selected: unknown): selected is ValueType[] {
 export type TSelectValues = {
   label: string;
   value: ValueType;
-  extraInfo?: { description: string; rightOfDescription: string };
+  extraInfo?: { description?: string; rightOfDescription?: string };
 };
 
 type AdvancedSelectProps<SelectedType = ValueType | ValueType[]> = {
@@ -184,9 +184,9 @@ const Row = memo(
 
     return (
       <div
-        ref={(el) =>
-          (refs.current[index] = { ...(refs.current[index] || {}), div: el })
-        }
+        ref={(el) => {
+          refs.current[index] = { ...(refs.current[index] || {}), div: el };
+        }}
         onClick={() => {
           if (DISABLE_VALUES.includes(item.value)) return;
           handleSetSelected({ ...item, selected: !isSelected });
@@ -194,12 +194,12 @@ const Row = memo(
         }}
         className="w-full whitespace-nowrap p-1 rounded
           cursor-pointer text-left text-xs text-light-900 hover:bg-[#CCDEEE]
-          dark:text-white dark:hover:bg-[#36363F] flex justify-between items-center gap-2"
+          dark:text-white dark:hover:bg-dark-500 flex justify-between items-center gap-2"
       >
         <span
-          ref={(el) =>
-            (refs.current[index] = { ...(refs.current[index] || {}), span: el })
-          }
+          ref={(el) => {
+            refs.current[index] = { ...(refs.current[index] || {}), span: el };
+          }}
           className={cn({ "inline-flex gap-2 items-center": showExtraInfo })}
         >
           {item.label}
@@ -212,7 +212,7 @@ const Row = memo(
         )}
         {showExtraInfo && item.extraInfo && (
           <span className="uppercase tracking-wide flex gap-1">
-            <span className="text-light-500 dark:text-[#8A8A90]">
+            <span className="text-light-500 dark:text-dark-50">
               {item.extraInfo.description}
             </span>
             <span className="text-light-900 dark:text-white">
@@ -239,7 +239,7 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
       forceExtraInfo = false,
       listWidth = "100%",
       popupWidth,
-      className = "obb-parameter",
+      className = "ws-parameter",
       onOpenChange: onOpenChangeProp,
     } = props;
 
@@ -249,10 +249,15 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
 
     const isMulti = useMemo(() => isMultiSelect(selected), [selected]);
 
-    const [state, dispatch] = useStateReducer({
+    const [state, dispatch] = useStateReducer<{
+      input: string;
+      selected: ValueType | ValueType[] | undefined;
+      pending: number | null;
+      open: boolean;
+    }>({
       input: "",
       selected,
-      pending: null as number | null,
+      pending: null,
       open: false,
     });
 
@@ -303,8 +308,6 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
         return;
       }
 
-      // Option refreshes should not publish a cleared value. Dependent endpoint
-      // params are reset by the group cascade logic, not by dropdown loading.
       if (valueSet.isSubsetOf(currentValues)) return;
       valuesRef.current = values;
       elementRefs.current = {};
@@ -312,7 +315,7 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
 
     useEffect(() => {
       if (state.pending) {
-        debouncedonSelect(state.selected);
+        debouncedonSelect(state.selected ?? "");
         if (!isMulti) dispatch({ open: false });
       }
     }, [state.pending]);
@@ -320,9 +323,8 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
     const { filterValues, hasExtra } = useMemo(() => {
       let newValues = values.map((v) => ({
         ...v,
-        selected: isMulti
-          ? // @ts-ignore
-            selected.includes(v.value)
+        selected: Array.isArray(selected)
+          ? selected.includes(v.value)
           : selected === v.value,
       }));
 
@@ -358,13 +360,11 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
     const localSelected = state.pending ? state.selected : selected;
 
     const selectedLabel = useMemo(() => {
-      if (!isMulti) {
+      if (!Array.isArray(localSelected)) {
         const selectedValue = values.find((v) => v.value === localSelected);
         return selectedValue?.label || label;
       }
 
-      // For multi-select, show count or all selected labels
-      // @ts-expect-error
       const selectedValues = values.filter((v) => localSelected.includes(v.value));
       if (selectedValues.length > 1) return `${label} (${selectedValues.length})`;
 
@@ -428,7 +428,7 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
               width: popupWidth ? `${popupWidth}px` : "fit-content",
             }}
             className={cn(
-              "obb-dropdown-container",
+              "ws-dropdown-container",
               "z-60 inline-flex h-full flex-col items-start justify-start gap-4 rounded",
               "max-h-[400px] overflow-y-auto overflow-x-hidden",
               contentClassName,

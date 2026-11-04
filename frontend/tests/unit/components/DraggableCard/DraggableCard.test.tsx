@@ -1,11 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DraggableCard from "~/components/DraggableCard/DraggableCard";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useTabContext } from "~/lib/contexts/TabContext";
+import { useBackendConnectorStore } from "~/lib/state/backendConnector";
+import { partial } from "../../mocks";
 
-// Mock the necessary hooks and components
 vi.mock("~/components/Widget.context", () => ({
   useWidgetContext: vi.fn(),
 }));
@@ -33,9 +34,12 @@ vi.mock("~/lib/state/copilotData", () => ({
 }));
 
 vi.mock("~/lib/state/permissions", () => ({
-  useShallowPermissionsStore: vi.fn(() => ({
-    hasAccess: vi.fn(() => true),
-  })),
+  useShallowPermissionsStore: vi.fn((selector: (state: unknown) => unknown) =>
+    selector({
+      hasAccess: () => true,
+      permissions: { backends: [], files: [], prompts: [] },
+    }),
+  ),
 }));
 
 vi.mock("~/components/LayoutAuth/Search/hooks/useFetchSharedResources", () => ({
@@ -55,15 +59,16 @@ vi.mock("~/components/DraggableCard/SetLoadingOnResize", () => ({
 }));
 
 describe("DraggableCard", () => {
-  const mockUseWidgetContext = useWidgetContext as any;
-  const mockUseTabContext = useTabContext as any;
+  const mockUseWidgetContext = vi.mocked(useWidgetContext);
+  const mockUseTabContext = vi.mocked(useTabContext);
 
   beforeEach(() => {
-    mockUseTabContext.mockReturnValue({
-      isShared: false,
-    });
+    mockUseTabContext.mockReturnValue(
+      partial({
+        isShared: false,
+      }),
+    );
 
-    // Reset the useStateReducer mock to default state
     vi.mocked(useStateReducer).mockReturnValue([
       { accessError: null, hasAccess: true },
       vi.fn(),
@@ -71,23 +76,25 @@ describe("DraggableCard", () => {
   });
 
   it("renders normally when widget ID is not blocked", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "widget-123",
-          widgetId: "widget-123",
-          name: "Test Widget",
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "widget-123",
+            widgetId: "widget-123",
+            name: "Test Widget",
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "widget-123",
-        external: false,
-        endpoint: { url: "https://example.com" },
-        sourceName: "Test Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "widget-123",
+          external: false,
+          endpoint: { url: "https://example.com" },
+          sourceName: "Test Source",
+        },
+      }),
+    );
 
     render(
       <DraggableCard title="Test Widget">
@@ -100,25 +107,26 @@ describe("DraggableCard", () => {
   });
 
   it("shows error message when widget is blocked", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "blocked-widget",
-          widgetId: "blocked-widget",
-          name: "Blocked Widget",
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "blocked-widget",
+            widgetId: "blocked-widget",
+            name: "Blocked Widget",
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "blocked-widget",
-        external: false,
-        endpoint: { url: "https://example.com" },
-        sourceName: "Test Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "blocked-widget",
+          external: false,
+          endpoint: { url: "https://example.com" },
+          sourceName: "Test Source",
+        },
+      }),
+    );
 
-    // Mock the state reducer to simulate blocked access
     vi.mocked(useStateReducer).mockReturnValue([
       {
         accessError: "This widget is currently blocked from loading.",
@@ -141,23 +149,25 @@ describe("DraggableCard", () => {
   });
 
   it("renders normally when widget is not blocked", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "widget-123",
-          widgetId: "widget-123",
-          name: "Normal Widget",
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "widget-123",
+            widgetId: "widget-123",
+            name: "Normal Widget",
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "widget-123",
-        external: false,
-        endpoint: { url: "https://example.com" },
-        sourceName: "Test Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "widget-123",
+          external: false,
+          endpoint: { url: "https://example.com" },
+          sourceName: "Test Source",
+        },
+      }),
+    );
 
     render(
       <DraggableCard title="Normal Widget" isBlocked={false}>
@@ -172,26 +182,27 @@ describe("DraggableCard", () => {
   });
 
   it("shows error message when widget is blocked even if it's a shared resource", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "blocked-shared-widget",
-          widgetId: "blocked-shared-widget",
-          name: "Blocked Shared Widget",
-          isSharedWidget: true,
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "blocked-shared-widget",
+            widgetId: "blocked-shared-widget",
+            name: "Blocked Shared Widget",
+            isSharedWidget: true,
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "blocked-shared-widget",
-        external: false,
-        endpoint: { url: "https://example.com" },
-        sourceName: "Test Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "blocked-shared-widget",
+          external: false,
+          endpoint: { url: "https://example.com" },
+          sourceName: "Test Source",
+        },
+      }),
+    );
 
-    // Mock the state reducer to simulate blocked access
     vi.mocked(useStateReducer).mockReturnValue([
       {
         accessError: "This widget is deprecated and cannot be used.",
@@ -214,25 +225,26 @@ describe("DraggableCard", () => {
   });
 
   it("shows error message when widget ID is in blocked list", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "price-target-analyst",
-          widgetId: "price-target-analyst",
-          name: "Price Target Analyst Widget",
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "price-target-analyst",
+            widgetId: "price-target-analyst",
+            name: "Price Target Analyst Widget",
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "price-target-analyst",
-        external: false,
-        endpoint: { url: "https://example.com" },
-        sourceName: "Test Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "price-target-analyst",
+          external: false,
+          endpoint: { url: "https://example.com" },
+          sourceName: "Test Source",
+        },
+      }),
+    );
 
-    // Mock the state reducer to simulate blocked access
     vi.mocked(useStateReducer).mockReturnValue([
       {
         accessError: "This widget is deprecated and cannot be used.",
@@ -255,23 +267,25 @@ describe("DraggableCard", () => {
   });
 
   it("renders normally when widget ID is not in blocked list", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "widget-not-blocked",
-          widgetId: "widget-not-blocked",
-          name: "Normal Widget",
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "widget-not-blocked",
+            widgetId: "widget-not-blocked",
+            name: "Normal Widget",
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "widget-not-blocked",
-        external: false,
-        endpoint: { url: "https://example.com" },
-        sourceName: "Test Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "widget-not-blocked",
+          external: false,
+          endpoint: { url: "https://example.com" },
+          sourceName: "Test Source",
+        },
+      }),
+    );
 
     render(
       <DraggableCard title="Normal Widget">
@@ -286,23 +300,25 @@ describe("DraggableCard", () => {
   });
 
   it("renders normally when external widget has blocked ID", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "yield_curve",
-          widgetId: "yield_curve",
-          name: "External Yield Curve Widget",
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "yield_curve",
+            widgetId: "yield_curve",
+            name: "External Yield Curve Widget",
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "yield_curve", // This is in BLOCKED_WIDGET_IDS
-        external: true, // But it's external, so should not be blocked
-        endpoint: { url: "https://external-api.com" },
-        sourceName: "External Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "yield_curve",
+          external: true,
+          endpoint: { url: "https://external-api.com" },
+          sourceName: "External Source",
+        },
+      }),
+    );
 
     render(
       <DraggableCard title="External Yield Curve Widget">
@@ -310,15 +326,71 @@ describe("DraggableCard", () => {
       </DraggableCard>,
     );
 
-    // The widget should NOT be blocked, so we should NOT see the error message
     expect(
       screen.queryByText("This widget is deprecated and cannot be used."),
     ).not.toBeInTheDocument();
 
-    // We should NOT see the results-not-found component
     expect(screen.queryByTestId("results-not-found")).not.toBeInTheDocument();
 
-    // We should see the navbar
     expect(screen.getByTestId("navbar")).toBeInTheDocument();
+  });
+
+  describe("a widget whose data backend is not the viewer's", () => {
+    const widgetFromSomeoneElse = () =>
+      mockUseWidgetContext.mockReturnValue(
+        partial({
+          widgetRef: {
+            current: {
+              id: "widget-shared",
+              widgetId: "prices",
+              name: "Prices",
+              sourceId: "owners-backend",
+              connectionType: "advanced-backend",
+            },
+          },
+          widgetFromJSON: null,
+          widget: { sourceId: "owners-backend", widgetId: "prices" },
+        }),
+      );
+
+    afterEach(() => {
+      cleanup();
+      useBackendConnectorStore.setState({ apiSources: [], sourcesLoaded: false });
+    });
+
+    it("says the data connection is not available instead of rendering the widget", () => {
+      useBackendConnectorStore.setState({ apiSources: [], sourcesLoaded: true });
+      widgetFromSomeoneElse();
+
+      render(
+        <DraggableCard title="Prices">
+          <div data-testid="widget-content">Widget Content</div>
+        </DraggableCard>,
+      );
+
+      expect(
+        screen.getByText("This data connection is not available to you"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("widget-content")).not.toBeInTheDocument();
+    });
+
+    it("renders the widget once the backend is among the viewer's own", () => {
+      useBackendConnectorStore.setState({
+        apiSources: [partial({ id: "owners-backend", name: "Mine", url: "https://x" })],
+        sourcesLoaded: true,
+      });
+      widgetFromSomeoneElse();
+
+      render(
+        <DraggableCard title="Prices">
+          <div data-testid="widget-content">Widget Content</div>
+        </DraggableCard>,
+      );
+
+      expect(screen.getByTestId("widget-content")).toBeInTheDocument();
+      expect(
+        screen.queryByText("This data connection is not available to you"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

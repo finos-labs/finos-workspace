@@ -1,7 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Textarea } from "~/components/ds/atoms/TextArea";
+import { required } from "../../../mocks";
 
 describe("Textarea", () => {
   it("renders correctly", () => {
@@ -23,8 +25,8 @@ describe("Textarea", () => {
 
   it("applies error state", () => {
     const { container } = render(<Textarea error={true} />);
-    const textarea = container.querySelector("[class*='BB-Textarea group']");
-    expect(textarea).toHaveClass("border-alert-error!");
+    const wrapper = container.querySelector("textarea")?.parentElement?.parentElement;
+    expect(wrapper).toHaveClass("border-alert-error!");
   });
 
   it("renders CopyButton when copiable is true and value exists", () => {
@@ -33,12 +35,9 @@ describe("Textarea", () => {
   });
 
   it("adjusts height automatically when autoheight is true", () => {
-    // We can't easily test scrollHeight/height in JSDOM, but we can verify it doesn't crash
-    // and correctly applies logic in useEffect if we mock scrollHeight
     const { container } = render(<Textarea autoheight={true} />);
-    const textarea = container.querySelector("textarea")!;
+    const textarea = required(container.querySelector("textarea"));
 
-    // Manually trigger effect by rerendering (standard behavior)
     expect(textarea.style.height).toBeDefined();
   });
 });
@@ -48,12 +47,12 @@ vi.mock("~/components/ds/atoms/CopyButton", () => ({
 }));
 
 vi.mock("../molecules/Form", () => ({
-  FormControl: ({ children }: any) => <div>{children}</div>,
-  FormItem: ({ children }: any) => <div>{children}</div>,
-  FormLabel: ({ children }: any) => <label>{children}</label>,
-  FormMessage: ({ children }: any) => <div>{children}</div>,
+  FormControl: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  FormItem: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  FormLabel: ({ children }: { children?: ReactNode }) => <label>{children}</label>,
+  FormMessage: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("../utils", () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));

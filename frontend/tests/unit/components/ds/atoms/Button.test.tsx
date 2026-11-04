@@ -3,13 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Button } from "~/components/ds/atoms/Button";
 
-/**
- * Reproduces how Chrome/Edge auto-translation mutates the live DOM: each text
- * node is replaced in-place by a <font> wrapper that re-parents the original
- * text node. After this, React still tracks the original text node but its
- * parent is the injected <font>, so React's later removeChild on the button
- * throws `NotFoundError: The node to be removed is not a child of this node`.
- */
 function simulateBrowserTranslation(root: HTMLElement) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const textNodes: Text[] = [];
@@ -65,10 +58,6 @@ describe("Button", () => {
 });
 
 describe("Button - browser translation safety", () => {
-  // Mirrors the real-world crash: an icon + text button (e.g. the Skills tab
-  // bulk-delete button) whose text child is removed on rerender while the page
-  // is auto-translated. If Button keeps text in a stable element wrapper, the
-  // node React removes is one it still owns and reconciliation survives.
   function IconTextButton({ showLabel }: { showLabel: boolean }) {
     return (
       <Button>
@@ -81,18 +70,11 @@ describe("Button - browser translation safety", () => {
   it("survives a translated text child being removed on rerender", () => {
     const { container, rerender } = render(<IconTextButton showLabel={true} />);
 
-    // Browser translation re-parents the "Delete skill" text node into a <font>.
     simulateBrowserTranslation(container);
 
-    // React must now remove that text node. With a bare text child it targets a
-    // node it no longer owns and throws NotFoundError (removeChild). A stable
-    // wrapper element keeps the removal on a node React still owns.
     expect(() => rerender(<IconTextButton showLabel={false} />)).not.toThrow();
   });
 
-  // A label split into adjacent fragments where the trailing one toggles away,
-  // e.g. `Delete skill{plural ? "s" : null}`. These stay as separate text nodes,
-  // so removing one must not crash either.
   function PluralButton({ plural }: { plural: boolean }) {
     return (
       <Button>

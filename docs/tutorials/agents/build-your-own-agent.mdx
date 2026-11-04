@@ -1,0 +1,231 @@
+---
+title: Build your own agent
+sidebar_position: 1
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# Build your own agent
+
+In about 15 minutes you write an agent, add it to FINOS Workspace, and ask it a question. The agent has no model: it repeats your question. [Let your agent read the dashboard](let-your-agent-read-the-dashboard.mdx) gives it the dashboard.
+
+An agent is a web server with two routes. `GET /agents.json` tells FINOS Workspace who the agent is and where to send questions, in the format that [agents.json](../../reference/schemas/agents-json.mdx) lists. `POST /v1/query` receives a question and answers with a stream of events, as [Agent query protocol](../../reference/protocols/agent-query.mdx) describes. You add the agent under AI Library, and the FINOS Workspace API makes every call to it, so the agent needs no CORS settings for the web app.
+
+You need:
+
+- A FINOS Workspace that runs, and an account of type Admin or Developer. A User cannot add agents.
+- Python 3.10 or later, or Node.js 22.18 or later. Use whichever language you prefer.
+
+## 1. Write the agent
+
+Create an empty directory and put this program in it:
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+Create a virtual environment, and install the two packages that the program uses in it:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install fastapi uvicorn
+```
+
+On Windows, activate the environment with `.venv\Scripts\activate` instead. Save the program as `main.py`:
+
+```python title="main.py"
+import json
+
+from fastapi import FastAPI, Request
+from fastapi.responses import StreamingResponse
+
+app = FastAPI()
+
+AGENTS = {
+    "echo_agent": {
+        "name": "Echo agent",
+        "description": "Repeats your question",
+        "endpoints": {"query": "/v1/query"},
+        "features": {"streaming": True},
+    }
+}
+
+
+def sse(name: str, data: dict) -> str:
+    return f"event: {name}\ndata: {json.dumps(data, separators=(",", ":"))}\n\n"
+
+
+def answer(question: str):
+    words = f'You asked: "{question}".'.split(" ")
+    for index, word in enumerate(words):
+        yield sse("copilotMessageChunk", {"delta": word if index == len(words) - 1 else f"{word} "})
+
+
+@app.get("/agents.json")
+def agents() -> dict:
+    return AGENTS
+
+
+@app.post("/v1/query")
+async def query(request: Request):
+    body = await request.json()
+    question = body["messages"][-1]["content"]
+    return StreamingResponse(answer(question), media_type="text/event-stream")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+The program uses only the modules that Node.js includes, so there is nothing to install. Save it as `main.ts`:
+
+```ts title="main.ts"
+import { createServer } from "node:http";
+
+const PORT = Number(process.env.PORT ?? 6060);
+
+const AGENTS = {
+  echo_agent: {
+    name: "Echo agent",
+    description: "Repeats your question",
+    endpoints: { query: "/v1/query" },
+    features: { streaming: true },
+  },
+};
+
+const sse = (name: string, data: object): string => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
+
+function* answer(question: string) {
+  const words = `You asked: "${question}".`.split(" ");
+  for (const [index, word] of words.entries()) {
+    yield sse("copilotMessageChunk", { delta: index === words.length - 1 ? word : `${word} ` });
+  }
+}
+
+createServer(async (request, response) => {
+  const url = new URL(request.url ?? "/", `http://localhost:${PORT}`);
+  if (request.method === "GET" && url.pathname === "/agents.json") {
+    return response.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(AGENTS));
+  }
+  if (request.method === "POST" && url.pathname === "/v1/query") {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const question = body.messages[body.messages.length - 1].content;
+    response.writeHead(200, { "Content-Type": "text/event-stream" });
+    for (const event of answer(question)) response.write(event);
+    return response.end();
+  }
+  response.writeHead(404, { "Content-Type": "application/json" }).end(JSON.stringify({ detail: "Not Found" }));
+}).listen(PORT, () => console.log(`Agent on http://localhost:${PORT}`));
+```
+
+</TabItem>
+</Tabs>
+
+The program has three parts:
+
+- **The descriptor.** `AGENTS` is the answer to `GET /agents.json`. The key of the object, `echo_agent`, is the id of the agent. `endpoints.query` is the address that receives the questions. A relative address is resolved against the address of `agents.json`. `features.streaming` tells the web app that the agent answers with a stream of events.
+- **The answer.** The web app posts the conversation as `messages`, and the last message is the question. A message has a `role`: `human` for the user, `ai` for an earlier answer of the agent, and `tool` for a result that the browser fetched for the agent. [Messages](../../reference/protocols/agent-query.mdx#messages) describes them. The agent answers with `Content-Type: text/event-stream`. Each event is two lines and an empty line: the name of the event, and its data as JSON. The event `copilotMessageChunk` carries a piece of the answer in `delta`, and the web app appends the pieces in the order that they arrive.
+- **Who calls the agent.** The FINOS Workspace API reads `agents.json` and makes every call to the agent, queries and tool round trips included, so the agent needs no CORS settings for the web app. [Sending a question](../../reference/protocols/agent-query.mdx#sending-a-question) lists every header of the request.
+
+An agent can send six events. This one sends only `copilotMessageChunk`, and the next guide uses the others. [The response](../../reference/protocols/agent-query.mdx#the-response) lists the fields of each event.
+
+| Event | What the web app does with it |
+|---|---|
+| [`copilotMessageChunk`](../../reference/protocols/agent-query.mdx#the-answer) | Appends the text in `delta` to the answer. |
+| [`copilotStatusUpdate`](../../reference/protocols/agent-query.mdx#status-updates) | Adds a step to the steps that the panel shows. |
+| [`copilotMessageArtifact`](../../reference/protocols/agent-query.mdx#artifacts) | Shows a table, an HTML document or an app in the answer. |
+| [`copilotCitationCollection`](../../reference/protocols/agent-query.mdx#citations) | Shows the sources of the answer under it. |
+| [`copilotPromptSuggestions`](../../reference/protocols/agent-query.mdx#the-response) | Offers follow-up questions. |
+| [`copilotFunctionCall`](../../reference/protocols/agent-query.mdx#function-calls) | Ends the answer and asks the browser to do something, such as to fetch the data of a widget. |
+
+## 2. Start the agent
+
+<Tabs groupId="language" queryString>
+<TabItem value="python" label="Python">
+
+```bash
+uvicorn main:app --port 6060
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```bash
+node main.ts
+```
+
+</TabItem>
+</Tabs>
+
+If another service of your machine already uses port 6060, set `PORT` to a free one before you start the agent.
+
+Check the agent from a second terminal. First, the descriptor:
+
+```bash
+curl http://localhost:6060/agents.json
+```
+
+It answers with the object that the program defines:
+
+```json
+{"echo_agent":{"name":"Echo agent","description":"Repeats your question","endpoints":{"query":"/v1/query"},"features":{"streaming":true}}}
+```
+
+Then a question. The option `-N` shows the events as they arrive:
+
+```bash
+curl -N -X POST http://localhost:6060/v1/query \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"human","content":"Hello"}]}'
+```
+
+The answer is a stream of events, one for each word:
+
+```
+event: copilotMessageChunk
+data: {"delta":"You "}
+
+event: copilotMessageChunk
+data: {"delta":"asked: "}
+
+event: copilotMessageChunk
+data: {"delta":"\"Hello\"."}
+```
+
+Leave the agent running.
+
+## 3. Add the agent to FINOS Workspace
+
+1. Select **AI** in the sidebar, and then the tab **AI Agents**.
+2. Select **Add Agent**. The dialog **Add Agent** opens.
+3. In **URL**, type `http://localhost:6060`.
+4. Select **Test**. The dialog finds the agent and says "1 agent found".
+5. Select **Add**. A message says "AI Agent successfully added" and lists the features that the agent switched on.
+
+The tab **AI Agents** now shows your agent, and the Agent panel uses it. The button **+ Add Authentication** adds a header that FINOS Workspace sends with every request to the agent, such as an `Authorization` header. When your agent checks such a header, name it in the allowed headers of the agent as well.
+
+If the test fails, the dialog says why:
+
+| Message | Cause |
+|---|---|
+| the data connection could not be reached | The API could not reach the address: the agent does not run there, or the API has no route to it. |
+| A valid /agents.json was not found. | The agent answers `GET /agents.json` with the status 404. |
+| Unauthorized access to the agent URL. | The agent answers with the status 401. |
+| Invalid response from the agent server. Expected valid JSON in /agents.json. | The answer is not JSON. |
+| Invalid agents schema from the server. Please validate your /agents.json format. | The JSON does not fit the format that [agents.json](../../reference/schemas/agents-json.mdx) lists. |
+
+## 4. Ask a question
+
+1. Open the Agent panel on the right side of the web app. [Ask the Agent about a dashboard](../../features/agent/ask-the-agent-about-a-dashboard.md) describes the panel.
+2. Check that the panel uses your agent. If it names another agent, select the name of the agent in the panel, which opens the list **AI Agents**, and choose **Echo agent**.
+3. Select the box that says "Ask a question...", type `Hello` and press Enter.
+
+The answer appears in the panel: `You asked: "Hello".`
+
+If the panel shows an error instead, check that the agent is still running and that the API can reach it: on this stack, an address on `localhost` reaches your machine through `host.docker.internal`, and on Linux the agent has to listen on `0.0.0.0`.
+
+## Next
+
+The agent so far knows nothing about your dashboard. [Let your agent read the dashboard](let-your-agent-read-the-dashboard.mdx) changes that. For every field that the web app sends with a question, and every event that an agent can answer with, read [Agent query protocol](../../reference/protocols/agent-query.mdx).

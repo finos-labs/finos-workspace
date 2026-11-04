@@ -28,7 +28,7 @@ const metadataSchema = z.object({
   source: z.string().optional(),
 });
 
-export type MetadataForm = z.infer<typeof metadataSchema>;
+type MetadataForm = z.infer<typeof metadataSchema>;
 
 export function CreateWidgetMetadataDialog() {
   const [isLoading, setIsLoading] = useState(false);
@@ -139,7 +139,7 @@ export function CreateWidgetMetadataDialog() {
   const title = isCreateMode ? "Create widget" : "Edit widget metadata";
   const description = isCreateMode
     ? "Enter the metadata for your new widget."
-    : "By editing the metadata, you will help OpenBB Copilot better understand your widget.";
+    : "By editing the metadata, you will help the agent better understand your widget.";
 
   return (
     <BaseDialog open={!!dialogState} onClose={closeDialog}>
@@ -161,7 +161,7 @@ export function CreateWidgetMetadataDialog() {
                   label={
                     <p>
                       Description
-                      <span className="text-[#5A5961] italic"> (optional)</span>
+                      <span className="text-dark-200 italic"> (optional)</span>
                     </p>
                   }
                   {...field}
@@ -176,7 +176,7 @@ export function CreateWidgetMetadataDialog() {
                   label={
                     <p>
                       Category
-                      <span className="text-[#5A5961] italic"> (optional)</span>
+                      <span className="text-dark-200 italic"> (optional)</span>
                     </p>
                   }
                   options={CATEGORY_OPTIONS}
@@ -192,7 +192,7 @@ export function CreateWidgetMetadataDialog() {
                   label={
                     <p>
                       Sub Category
-                      <span className="text-[#5A5961] italic"> (optional)</span>
+                      <span className="text-dark-200 italic"> (optional)</span>
                     </p>
                   }
                   {...field}
@@ -206,7 +206,7 @@ export function CreateWidgetMetadataDialog() {
                 <FormInput
                   label={
                     <p>
-                      Source<span className="text-[#5A5961] italic"> (optional)</span>
+                      Source<span className="text-dark-200 italic"> (optional)</span>
                     </p>
                   }
                   {...field}

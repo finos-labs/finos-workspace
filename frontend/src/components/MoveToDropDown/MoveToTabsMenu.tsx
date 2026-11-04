@@ -2,12 +2,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import {
-  type Item,
-  type MoveToTabs,
-  useAppStore,
-  useShallowAppStore,
-} from "~/lib/state/app";
+import { type MoveToTabs, useAppStore, useShallowAppStore } from "~/lib/state/app";
 import {
   beautifySlug,
   cn,
@@ -17,16 +12,17 @@ import {
 } from "~/lib/utils";
 import Icon from "../Icon";
 import { useWidgetContext } from "../Widget.context";
-import type { InnerTabsMenuProps } from "./types";
+import type { InnerTabsMenuProps, MoveTarget } from "./types";
 import { AddWidgetOnSelect } from "./utils";
 
-export const TabDropdownMenu = (props: Omit<InnerTabsMenuProps, "gridLayout">) => {
+const TabDropdownMenu = (props: Omit<InnerTabsMenuProps, "gridLayout">) => {
   const { uniqueKey, tab } = props;
   const { widget, activeDashboardId, isShared } = useWidgetContext();
   const navigate = useNavigate();
 
   const gridLayout = getInnerTabsGridLayout(tab?.data?.gridLayout);
   const isCurrentDashboard = tab?.index === activeDashboardId;
+  const cannotCopyHere = isShared || tab?.data?.locked === true;
 
   if (Object.keys(gridLayout).length > 1) {
     return <InnerTabsMenu {...{ uniqueKey, tab }} gridLayout={gridLayout} />;
@@ -35,9 +31,9 @@ export const TabDropdownMenu = (props: Omit<InnerTabsMenuProps, "gridLayout">) =
   return (
     <DropdownMenu.Item
       key={uniqueKey}
-      className={cn("obb-dropdown-item", {
-        "opacity-30": isShared,
-        "bg-light-50 dark:bg-[#303038]": isCurrentDashboard,
+      className={cn("ws-dropdown-item", {
+        "opacity-30": cannotCopyHere,
+        "bg-light-50 dark:bg-dark-600": isCurrentDashboard,
       })}
       onSelect={async () => {
         await dispatchSaveState();
@@ -46,7 +42,7 @@ export const TabDropdownMenu = (props: Omit<InnerTabsMenuProps, "gridLayout">) =
 
         await AddWidgetOnSelect({ widget: w, tab, activeDashboardId, navigate });
       }}
-      disabled={isShared}
+      disabled={cannotCopyHere}
     >
       <span className="truncate grow">{tab?.data.name}</span>
     </DropdownMenu.Item>
@@ -60,6 +56,7 @@ const InnerTabsMenu = (props: InnerTabsMenuProps) => {
   const { widget, activeDashboardId, isShared } = useWidgetContext();
   const key = `${uniqueKey}-inner-tab`;
   const isCurrentDashboard = tab?.index === activeDashboardId;
+  const cannotCopyHere = isShared || tab?.data?.locked === true;
 
   const navigate = useNavigate();
   const tabsInStorage = useShallowAppStore((s) => {
@@ -79,8 +76,8 @@ const InnerTabsMenu = (props: InnerTabsMenuProps) => {
     <DropdownMenu.Sub>
       <DropdownMenu.SubTrigger
         key={`${key}-trigger`}
-        className={cn("obb-dropdown-item", {
-          "bg-light-50 dark:bg-[#303038]": isCurrentDashboard,
+        className={cn("ws-dropdown-item", {
+          "bg-light-50 dark:bg-dark-600": isCurrentDashboard,
         })}
       >
         <span className="truncate grow">
@@ -90,15 +87,15 @@ const InnerTabsMenu = (props: InnerTabsMenuProps) => {
       </DropdownMenu.SubTrigger>
       <DropdownMenu.SubContent
         key={`${key}-content`}
-        className="obb-dropdown-container z-50 w-[172px] overflow-y-auto max-h-[70vh]!"
+        className="ws-dropdown-container z-50 w-[172px] overflow-y-auto max-h-[70vh]!"
         style={{ boxShadow: "0px 4px 8px 0px rgba(0, 0, 0, 0.25)" }}
       >
         {Object.keys(gridLayout ?? {}).map((innerTab) => (
           <DropdownMenu.Item
             key={`${key}-${innerTab}-item`}
-            className={cn("obb-dropdown-item truncate", {
-              "opacity-30": isShared,
-              "bg-light-50 dark:bg-[#303038]":
+            className={cn("ws-dropdown-item truncate", {
+              "opacity-30": cannotCopyHere,
+              "bg-light-50 dark:bg-dark-600":
                 isCurrentDashboard && innerTab === widget.innerTab,
             })}
             onSelect={async () => {
@@ -107,7 +104,7 @@ const InnerTabsMenu = (props: InnerTabsMenuProps) => {
               const w = { ...widget, innerTab };
               await AddWidgetOnSelect({ widget: w, tab, activeDashboardId, navigate });
             }}
-            disabled={isShared}
+            disabled={cannotCopyHere}
           >
             {tabsInStorage?.[innerTab]?.name || beautifySlug(innerTab)}
           </DropdownMenu.Item>
@@ -134,17 +131,17 @@ const NewDashMenuItem = (props: { tab?: MoveToTabs; separator?: boolean }) => {
       )}
       <DropdownMenu.Item
         key={`new-dashboard-${widget?.id}`}
-        className="obb-dropdown-item"
+        className="ws-dropdown-item"
         onSelect={async () => {
           const id = uuidv4();
           const name = generateRandomName();
           await dispatchSaveState();
 
-          const newTab = {
+          const newTab: MoveTarget = {
             index: id,
             parentId: tab?.index,
-            data: { name, type: "custom", groups: [], widgets: [], currentTab: "" },
-          } as Item;
+            data: { name, type: "custom", groups: [], currentTab: "" },
+          };
 
           useAppStore.getState().addTab(newTab);
 
@@ -171,7 +168,7 @@ const FolderSubmenu = ({ tab }: { tab: MoveToTabs }) => {
     <DropdownMenu.Sub>
       <DropdownMenu.SubTrigger
         key={`${moveToKey}-trigger`}
-        className="obb-dropdown-item"
+        className="ws-dropdown-item"
       >
         <Icon id="folder-open" />
         <span className="truncate grow">{tab?.data.name}</span>
@@ -179,7 +176,7 @@ const FolderSubmenu = ({ tab }: { tab: MoveToTabs }) => {
       </DropdownMenu.SubTrigger>
       <DropdownMenu.SubContent
         key={`move-to-tab-${tab.index}-content`}
-        className="obb-dropdown-container z-50 w-[172px] overflow-y-auto max-h-[70vh]!"
+        className="ws-dropdown-container z-50 w-[172px] overflow-y-auto max-h-[70vh]!"
       >
         {tab.children?.map((child) =>
           child.isFolder ? (
@@ -188,11 +185,11 @@ const FolderSubmenu = ({ tab }: { tab: MoveToTabs }) => {
             <TabDropdownMenu
               uniqueKey={`${moveToKey}-${child.index}-tab`}
               key={`${moveToKey}-${child.index}-root`}
-              tab={child as Item}
+              tab={child}
             />
           ),
         )}
-        <NewDashMenuItem tab={tab} separator={tab.children.length !== 0} />
+        <NewDashMenuItem tab={tab} separator={(tab.children?.length ?? 0) !== 0} />
       </DropdownMenu.SubContent>
     </DropdownMenu.Sub>
   );
@@ -209,7 +206,7 @@ const MoveToTabsDropdownMenu = forwardRef<HTMLElement, {}>((_, _ref) => {
     <DropdownMenu.Sub>
       <DropdownMenu.SubTrigger
         key="move-to-tab-trigger"
-        className={cn("obb-dropdown-item", {
+        className={cn("ws-dropdown-item", {
           "opacity-30": isShared,
         })}
         disabled={isShared}
@@ -220,7 +217,7 @@ const MoveToTabsDropdownMenu = forwardRef<HTMLElement, {}>((_, _ref) => {
       </DropdownMenu.SubTrigger>
       <DropdownMenu.SubContent
         key="move-to-tab-content"
-        className="obb-dropdown-container z-50 w-[172px] overflow-y-auto max-h-[70vh]!"
+        className="ws-dropdown-container z-50 w-[172px] overflow-y-auto max-h-[70vh]!"
       >
         {moveToTabs.map((tab) =>
           tab.isFolder ? (
@@ -229,7 +226,7 @@ const MoveToTabsDropdownMenu = forwardRef<HTMLElement, {}>((_, _ref) => {
             <TabDropdownMenu
               uniqueKey={`move-to-tab-${tab.index}`}
               key={tab.index}
-              tab={tab as Item}
+              tab={tab}
             />
           ),
         )}

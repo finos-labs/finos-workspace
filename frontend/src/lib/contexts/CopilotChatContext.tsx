@@ -10,13 +10,15 @@ import { useGetCopilotWidgets } from "~/components/AI/hooks/useGetCopilotWidgets
 import { useInitMentions } from "~/components/AI/hooks/useMentions";
 import type { HandleSubmitParams } from "~/components/AI/hooks/useStreaming";
 
-export type CopilotContextType = {
-  handleSubmitRef?: MutableRefObject<(params?: HandleSubmitParams) => void>;
-  stopSubmitRef?: MutableRefObject<() => void>;
+type CopilotContextType = {
+  handleSubmitRef: MutableRefObject<
+    ((params?: HandleSubmitParams) => void) | undefined
+  >;
+  stopSubmitRef: MutableRefObject<(() => void) | undefined>;
   commandRef: MutableRefObject<string>;
 };
 
-export const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
+const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
 export const useCopilotContext = () => {
   const context = useContext(CopilotContext);
@@ -27,9 +29,9 @@ export const useCopilotContext = () => {
 };
 
 export function CopilotProvider({ children }: { children: ReactNode }) {
-  const commandRef = useRef(localStorage.getItem("command") || ""); // Load 'command' from local storage
-  const handleSubmitRef = useRef<(params?: HandleSubmitParams) => void>();
-  const stopSubmitRef = useRef<() => void>();
+  const commandRef = useRef(localStorage.getItem("command") || "");
+  const handleSubmitRef = useRef<(params?: HandleSubmitParams) => void>(undefined);
+  const stopSubmitRef = useRef<() => void>(undefined);
 
   useGetCopilotWidgets();
   useInitMentions();

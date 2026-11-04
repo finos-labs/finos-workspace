@@ -1,20 +1,21 @@
 import { useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { isTruthyRecord } from "~/components/General/Table/utils";
-import type { ParamDef, WidgetT } from "~/components/types";
+import type { Group, ParamDef, StoredParamValue, WidgetT } from "~/components/types";
 import { createCopilotDataWidget } from "~/components/Widgets/Helpers/useCopilotDataWidget";
-import { BLOCKED_WIDGET_IDS } from "~/lib/constants";
+import { getGroupParamName } from "~/components/Widgets/Helpers/useParamGroupBindings";
 import { getIframeWidget } from "~/lib/iframeWidgetRegistry";
-import { useShallowAppStore } from "~/lib/state/app";
+import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
+import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import {
-  type Source,
-  useShallowBackendConnectorStore,
-} from "~/lib/state/backendConnector";
-import { type CopilotWidget, useShallowCopilotStore } from "~/lib/state/copilot";
+  type Copilot,
+  type CopilotWidget,
+  useShallowCopilotStore,
+} from "~/lib/state/copilot";
 import {
   type CopilotWidgetRuntimeState,
   useShallowCopilotDataStore,
+  type WidgetDataMetadata,
 } from "~/lib/state/copilotData";
 import {
   createParamDefs,
@@ -23,6 +24,7 @@ import {
   getWidgetDataSource,
   getWidgetInfo,
 } from "~/lib/utils";
+import { isTruthyRecord } from "~/lib/utils/values";
 import { type DashboardInfoT, getDashboardInfo } from "~/lib/utils/workspaceDashboard";
 import type { WorkspaceStateT } from "./useAiFetchRequestInit";
 import { useShallowAppWidgetsStore } from "./useGetAppWidgets";
@@ -34,19 +36,13 @@ import {
 } from "./useWidgetsInCurrentDashboard";
 import { getWidgetOrigin } from "./utils";
 
-const toFeatureKeys = (features: any): Record<string, boolean> => {
-  if (!features || typeof features !== "object") return {};
-  try {
-    return Object.fromEntries(
-      Object.entries(features).map(([k, v]) => [
-        k,
-        typeof v === "boolean" ? v : typeof v === "object",
-      ]),
-    );
-  } catch {
-    return {};
-  }
-};
+const toFeatureKeys = (features: Copilot["features"]): Record<string, boolean> =>
+  Object.fromEntries(
+    Object.entries(features ?? {}).map(([k, v]) => [
+      k,
+      typeof v === "boolean" ? v : true,
+    ]),
+  );
 
 export function useGetCopilotWidgets() {
   const { id: currentDashboardId = "" } = useParams();
@@ -62,6 +58,10 @@ export function useGetCopilotWidgets() {
 
   const getSideBarItem = useShallowAppStore((state) => state.getSideBarItem);
 
+  const dashboardGroups = useShallowAppStore(
+    (state) => state.getTabById(currentDashboardId)?.data?.groups,
+  );
+
   const lastVisitedPage = useShallowAuthStore((state) => state.lastVisitedPage);
 
   const files = useShallowStreamingStore((state) => state.files);
@@ -71,7 +71,6 @@ export function useGetCopilotWidgets() {
     [lastInnerTab, searchParams.get("tab")],
   );
 
-  // Determine current page context
   const pageContext = useMemo(() => {
     if (currentDashboardId) return "dashboard";
     const pathName = lastVisitedPage?.replace(/(\/app\/).*?|(\/)/, "");
@@ -88,8 +87,6 @@ export function useGetCopilotWidgets() {
     }
   }, [lastVisitedPage, currentDashboardId]);
 
-  // widgets are the selected widgets when adding to copilot
-  // getDashboardWidgetData contain all the widgets with data filled in a dashboard
   const {
     selectedWidgetIDs: selectedWidgetUUIDs,
     getDashboardWidgetData,
@@ -148,14 +145,14 @@ export function useGetCopilotWidgets() {
         const dashboardWidgetData = getDashboardWidgetData(uuid);
         if (!dashboardWidgetData) return null;
 
-        // Check if this is a tab widget (pseudo-widget)
-        if (dashboardWidgetData?.metadata?.widgetId?.startsWith?.("tab_")) {
-          // For tab widgets, we need to populate the tabWidgets metadata properly
+        const metadataWidgetId = dashboardWidgetData.metadata?.widgetId;
+        if (
+          typeof metadataWidgetId === "string" &&
+          metadataWidgetId.startsWith("tab_")
+        ) {
           const metadata = dashboardWidgetData.metadata || {};
           const widgetIds = (metadata.widgetIds || []) as string[];
 
-          // Get the actual dashboard widgets for this tab
-          // Convert dashboard widgets to CopilotWidget format
           const tabWidgets = widgetIds
             .map((widgetId: string) => {
               const widget = getDashboardWidgetByUuid(widgetId);
@@ -165,51 +162,49 @@ export function useGetCopilotWidgets() {
                 widget,
                 dashboardWidgetData.metadata ?? {},
                 getWidgetRuntimeState(widget.id),
+                useAppStore.getState().getWidgetGroups(currentDashboardId, widget.id),
               );
             })
             .filter(Boolean);
 
-          // TODO: This should use the createCopilotWidget function
           return {
-            origin: "OpenBB Workspace",
-            widget_id: dashboardWidgetData.metadata.widgetId,
+            origin: "Workspace",
+            widget_id: metadataWidgetId,
             uuid: uuid,
             name:
-              dashboardWidgetData.title || dashboardWidgetData.metadata.name || "Tab",
+              dashboardWidgetData.title ||
+              (typeof metadata.name === "string" ? metadata.name : "") ||
+              "Tab",
             description:
               dashboardWidgetData.description || "Tab containing multiple widgets",
             params: [],
             metadata: {
-              ...dashboardWidgetData.metadata,
+              ...metadata,
               tabWidgets: tabWidgets,
             },
           };
         }
 
-        // For regular widgets, use the existing logic
         const widget = getDashboardWidgetByUuid(uuid);
         if (!widget) return null;
-        // Skip navigation_bar widgets as they shouldn't be available for @ mentions
         if (widget?.widgetId === "navigation_bar") return null;
-        // Skip widgets without proper identification
         if (!(widget?.widgetId || widget?.id)) return null;
         return createCopilotWidget(
           uuid,
           widget,
           dashboardWidgetData.metadata ?? {},
           getWidgetRuntimeState(uuid),
+          useAppStore.getState().getWidgetGroups(currentDashboardId, uuid),
         );
       })
       .filter(Boolean) as CopilotWidget[];
 
-    // Find temporary text mention tabs that aren't in selectedWidgetIDs
     const temporaryTabs = currentSelectedWidgets.filter(
       (widget) =>
         widget?.widget_id?.startsWith("tab_") &&
-        !selectedWidgetUUIDs.includes(widget.uuid),
+        !(widget.uuid && selectedWidgetUUIDs.includes(widget.uuid)),
     );
 
-    // Merge persistent widgets with temporary tabs
     return [...persistentWidgets, ...temporaryTabs];
   }, [
     selectedCopilot,
@@ -220,6 +215,8 @@ export function useGetCopilotWidgets() {
     getDashboardWidgetByUuid,
     getWidgetRuntimeState,
     currentSelectedWidgets,
+    currentDashboardId,
+    dashboardGroups,
   ]);
 
   const workspaceAgents = useMemo(() => {
@@ -233,7 +230,6 @@ export function useGetCopilotWidgets() {
             id: agent.id,
             name: agent.name,
             description: agent.description,
-            // Convert record of booleans/objects into a list of feature keys
             features: toFeatureKeys(agent.features),
           };
           if (
@@ -243,7 +239,7 @@ export function useGetCopilotWidgets() {
             return data;
         });
       })
-      .filter(Boolean) as NonNullable<WorkspaceStateT["agents"]>; // Filter out any undefined values
+      .filter(Boolean) as NonNullable<WorkspaceStateT["agents"]>;
   }, [
     externalCopilotHolders,
     agentOrchestrationMap,
@@ -277,24 +273,6 @@ export function useGetCopilotWidgets() {
 
       let widgetData = dashboardWidgetsData[uuid];
 
-      let schema: Source["schemas"][string] | undefined;
-      if (w?.sourceId && w?.schemaName) {
-        const apiSource = getApiSourceById(w.sourceId);
-        schema = apiSource?.schemas?.[w?.schemaName];
-      }
-
-      // If widget is not in the copilot data, create a basic entry.
-      //
-      // Deliberately NOT skipped for the current tab. The `|| w.innerTab ===
-      // innerTab` short-circuit that used to live here assumed a visible widget
-      // always has data by now, so synthesizing one would be wasted work. That
-      // holds in steady state and fails during load: until a current-tab widget
-      // populates `dashboardWidgetsData`, it has no entry, and the
-      // `if (!widgetData) return acc;` below then drops it from the payload
-      // entirely — while the SAME widget on a background tab survives, because
-      // it got a placeholder. The agent's `workspace_state` is built separately
-      // and still advertises the dropped widget's uuid, so the model asks for a
-      // widget the payload cannot resolve.
       if (!widgetData) {
         widgetData = createCopilotDataWidget({
           widget: w,
@@ -302,26 +280,15 @@ export function useGetCopilotWidgets() {
         });
       }
 
-      if (schema) {
-        widgetData = {
-          ...widgetData,
-          metadata: { ...widgetData?.metadata, schema },
-        };
-      }
-
       if (
         w?.disableRetrievalForCopilot ||
         !(w?.widgetId || w?.id) ||
-        (BLOCKED_WIDGET_IDS.has(w.widgetId) && !w.external) ||
         w?.widgetId === "navigation_bar"
       )
         return acc;
 
-      // Get widget data if available, otherwise use empty metadata
       if (!widgetData) return acc;
 
-      // Built-in widgets will have the most updated widget params schema
-      // Stored widgets will have the schema from when they were created
       const builtInWidget = w?.widgetId ? getAppWidget(w?.widgetId) : null;
       const finalWidget = { ...w, ...(builtInWidget?.params ?? {}) } as WidgetT;
       const copilotWidget = createCopilotWidget(
@@ -329,18 +296,18 @@ export function useGetCopilotWidgets() {
         finalWidget,
         widgetData?.metadata ?? {},
         getWidgetRuntimeState(uuid),
+        useAppStore.getState().getWidgetGroups(currentDashboardId, uuid),
       );
 
       if (!copilotWidget) return acc;
 
-      // Expand iframe sub-widgets: if the parent has a bridge with a manifest,
-      // create synthetic CopilotWidgets for each sub-widget instead of the parent.
       const bridge = getIframeWidget(uuid);
       if (bridge && bridge.manifest.length > 0) {
+        acc.allDashboardWidgets.push(copilotWidget);
         for (const entry of bridge.manifest) {
           const compositeId = `${uuid}::iframe::${entry.widgetId}`;
           const subWidget: CopilotWidget = {
-            origin: "OpenBB Workspace",
+            origin: "Workspace",
             widget_id: compositeId,
             uuid: compositeId,
             name: entry.name,
@@ -393,13 +360,12 @@ export function useGetCopilotWidgets() {
     workspaceAgents,
     getApiSourceById,
     getWidgetRuntimeState,
+    dashboardGroups,
   ]);
 
   const temporaryWidgets = useMemo((): CopilotWidget[] => {
     if (!selectedCopilot?.features?.["file-upload"]) return [];
 
-    // Files still in the composer, plus files already sent with a message in this chat,
-    // so an attachment stays available for the rest of the conversation.
     const messageFiles =
       chatMessages?.flatMap((message) =>
         message.role === "human" ? (message.files ?? []) : [],
@@ -414,7 +380,7 @@ export function useGetCopilotWidgets() {
       seen.add(uuid);
 
       widgets.push({
-        origin: "OpenBB Hub",
+        origin: "the backend",
         widget_id: `file-${uuid}`,
         name: file.name,
         description: file.description,
@@ -432,11 +398,6 @@ export function useGetCopilotWidgets() {
       .filter((w) => !w.disableRetrievalForCopilot)
       .map((w) => {
         const metadata = w.metadata || {};
-        if (w?.sourceId && w?.schemaName) {
-          const apiSource = getApiSourceById(w.sourceId);
-          metadata.schema = apiSource?.schemas?.[w?.schemaName];
-        }
-
         return createCopilotWidget(undefined, w, metadata);
       })
       .filter(Boolean) as CopilotWidget[];
@@ -457,12 +418,12 @@ export function useGetCopilotWidgets() {
 }
 
 const getOptionsParams = (
-  optionsParams: Record<string, string>,
+  optionsParams: Record<string, string | number | boolean>,
   widgetParams: ParamDef[],
 ): Record<string, string>[] => {
   return Object.entries(optionsParams)
     .map(([key, value]) => {
-      if (value?.toString()?.startsWith("$")) {
+      if (typeof value === "string" && value.startsWith("$")) {
         const queryKey = value.slice(1);
         const param = widgetParams.find((p) => p.paramName === queryKey);
         if (param) {
@@ -478,14 +439,27 @@ const getOptionsParams = (
     .filter(Boolean) as Record<string, string>[];
 };
 
+function groupedParamValues(
+  groups: readonly Group[],
+  paramDefs: ParamDef[],
+): Record<string, StoredParamValue> {
+  const values: Record<string, StoredParamValue> = {};
+  for (const group of groups) {
+    if (group.value === null || group.value === undefined) continue;
+    const paramName = getGroupParamName(group, paramDefs);
+    if (paramName) values[paramName] = group.value;
+  }
+  return values;
+}
+
 export function createCopilotWidget(
   uuid: string | undefined,
   widget: WidgetT,
-  metadata?: Record<string, any>,
+  metadata?: WidgetDataMetadata,
   runtimeState?: CopilotWidgetRuntimeState,
+  groups: readonly Group[] = [],
 ): CopilotWidget | null {
   try {
-    // Early validation - ensure widget has basic required properties
     if (!widget) throw new Error("Widget is null or undefined");
     if (!(widget.widgetId || widget.id || uuid)) {
       throw new Error(
@@ -495,9 +469,7 @@ export function createCopilotWidget(
 
     const origin = getWidgetOrigin(widget);
     if (!origin) throw new Error(`Widget origin not found: ${widget}`);
-    // For some reason the widgetId doesn't contain a uuid for widgets from the workspace
-    // such as rich notes
-    const widgetId = origin === "OpenBB Workspace" && uuid ? uuid : widget.widgetId;
+    const widgetId = origin === "Workspace" && uuid ? uuid : widget.widgetId;
     if (!widgetId)
       throw new Error(
         `Widget id not found: id -> ${widget.id}, widgetId -> ${widget.widgetId}, uuid -> ${uuid}`,
@@ -514,9 +486,14 @@ export function createCopilotWidget(
     } = metadata ?? {};
 
     const { copilotDraftParams, copilotExecutedParams } = runtimeState || {};
-    const runtimeDraftParams = isTruthyRecord(copilotDraftParams) && copilotDraftParams;
-    const runtimeExecutedParams =
-      isTruthyRecord(copilotExecutedParams) && copilotExecutedParams;
+    const runtimeDraftParams = isTruthyRecord(copilotDraftParams)
+      ? copilotDraftParams
+      : undefined;
+    const runtimeExecutedParams = isTruthyRecord(copilotExecutedParams)
+      ? copilotExecutedParams
+      : undefined;
+
+    const groupedParams = groupedParamValues(groups, defaultParams);
 
     const widgetInfo = getWidgetInfo(widget);
     const source = Array.isArray(widgetInfo.source)
@@ -524,12 +501,13 @@ export function createCopilotWidget(
       : widgetInfo.source;
 
     const params = defaultParams
-      // Temporarily remove form params from copilot
       .filter((param: ParamDef) => param.type !== "form")
       .map((param: ParamDef) => {
         const defaultValue = param.value;
         const currentParamValue =
-          runtimeDraftParams?.[param.paramName] ?? currentParams?.[param.paramName];
+          runtimeDraftParams?.[param.paramName] ??
+          groupedParams[param.paramName] ??
+          currentParams?.[param.paramName];
         const executedParamValue = runtimeExecutedParams?.[param.paramName];
         const currentOptionsValue = currentOptions?.[param.paramName];
         const output = {
@@ -548,11 +526,10 @@ export function createCopilotWidget(
             executedParamValue && param.type === "date"
               ? currentDateModifier(executedParamValue as string)
               : executedParamValue,
-          options: (currentOptionsValue ?? param.options ?? []).map(
-            (option: { label: string; value: string }) =>
-              typeof option.value === "string"
-                ? option.value
-                : JSON.stringify(option.value),
+          options: (currentOptionsValue ?? param.options ?? []).map((option) =>
+            typeof option.value === "string"
+              ? option.value
+              : JSON.stringify(option.value),
           ),
           get_options:
             param.type === "endpoint" ? Boolean(param.optionsEndpoint) : undefined,
@@ -574,6 +551,7 @@ export function createCopilotWidget(
       uuid: uuid,
       name: widgetName,
       description: widget.description ?? "",
+      widget_type: widget.plugin ? "plugin" : widget.type,
       source: source,
       category: widgetInfo.category,
       sub_category: widgetInfo.subCategory,

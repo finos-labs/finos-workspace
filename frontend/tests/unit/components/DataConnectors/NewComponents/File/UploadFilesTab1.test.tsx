@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
 import { render } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { useDropzone } from "react-dropzone";
-import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import UploadFilesTab1 from "~/components/DataConnectors/NewComponents/File/UploadFilesTab1";
 
 vi.mock("react-dropzone", () => ({
@@ -65,9 +65,8 @@ vi.mock("~/lib/state/auth", () => ({
 }));
 
 vi.mock("~/lib/state/theme", () => ({
-  useShallowThemeStore: (
-    selector: (state: { aiEnhancements: boolean }) => unknown,
-  ) => selector({ aiEnhancements: false }),
+  useShallowThemeStore: (selector: (state: { aiEnhancements: boolean }) => unknown) =>
+    selector({ aiEnhancements: false }),
 }));
 
 vi.mock("~/lib/utils", () => ({
@@ -101,8 +100,9 @@ describe("UploadFilesTab1", () => {
     expect(useDropzone).toHaveBeenCalledWith(
       expect.objectContaining({
         accept: expect.objectContaining({
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            [".docx"],
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+            ".docx",
+          ],
         }),
       }),
     );

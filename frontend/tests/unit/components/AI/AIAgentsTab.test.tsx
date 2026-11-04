@@ -6,8 +6,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AIAgentsTab } from "~/components/AI/AIAgentsTab";
 import type { ButtonProps } from "~/components/ds/atoms/Button";
 import type { InputProps } from "~/components/ds/atoms/Input";
+import { setAccess } from "../../factories";
+import { required } from "../../mocks";
 
-// Mock framer-motion so AnimatePresence exit animations complete synchronously in jsdom
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: ReactNode }) => <>{children}</>,
   motion: {
@@ -21,8 +22,6 @@ vi.mock("framer-motion", () => ({
     }) => <div className={className}>{children}</div>,
   },
 }));
-
-// --- Hoisted mocks ---
 
 const {
   mockFetchAgentsData,
@@ -52,10 +51,8 @@ const {
   mockSetSelectedCopilot: vi.fn(),
   mockUseShallowCopilotStore: vi.fn(),
   mockUseShallowThemeStore: vi.fn(),
-  mockRuntimeConfig: { copilot: { openbbCopilot: true } },
+  mockRuntimeConfig: { copilot: { defaultCopilot: true } },
 }));
-
-// --- Module mocks ---
 
 vi.mock("~/api/auth.api", () => ({
   fetchAgentsData: (...args: unknown[]) => mockFetchAgentsData(...args),
@@ -129,16 +126,16 @@ vi.mock("~/lib/constants", async (importOriginal) => {
   return {
     ...actual,
     DEFAULT_COPILOT: {
-      id: "openbb-copilot",
-      name: "OpenBB Copilot",
+      id: "default-copilot",
+      name: "Copilot",
       description: "Default copilot",
       endpoints: {},
     },
     getDefaultCopilot: () => ({
-      id: "openbb-copilot",
-      name: "OpenBB Copilot",
-      description: "OpenBB Copilot is the default agent for OpenBB Workspace.",
-      image: "/assets/images/openbb.png",
+      id: "default-copilot",
+      name: "Copilot",
+      description: "Copilot is the default agent for FINOS Workspace.",
+      image: "/assets/images/brand.png",
     }),
   };
 });
@@ -300,8 +297,6 @@ vi.mock("~/components/ds/dialogs/Dialog", () => ({
   ),
 }));
 
-// --- Mock data factories ---
-
 interface CopilotMock {
   id: string;
   name: string;
@@ -309,14 +304,14 @@ interface CopilotMock {
   holderUuid?: string;
   image?: string;
   endpoints: Record<string, string>;
-  headers?: Record<string, string>;
   features?: Record<string, boolean>;
 }
 
 interface ExternalCopilotHolderMock {
   uuid: string;
   url: string;
-  headers: Record<string, string>;
+  headers?: Record<string, string>;
+  headerNames?: string[];
   copilots?: CopilotMock[];
   status?: "success" | "error";
   enabled?: boolean;
@@ -330,7 +325,6 @@ function makeCopilot(overrides: Partial<CopilotMock> = {}): CopilotMock {
     holderUuid: "holder-1",
     image: "",
     endpoints: { query: "/api/query" },
-    headers: {},
     features: {},
     ...overrides,
   };
@@ -342,7 +336,7 @@ function makeHolder(
   return {
     uuid: "holder-1",
     url: "https://agents.example.com",
-    headers: {},
+    headerNames: [],
     copilots: [makeCopilot()],
     status: "success",
     enabled: true,
@@ -378,7 +372,7 @@ const TWO_HOLDERS = [
 const HOLDER_WITH_AUTH = makeHolder({
   uuid: "holder-auth",
   url: "https://auth-agents.example.com",
-  headers: { Authorization: "Bearer token123", "X-Custom": "custom-value" },
+  headerNames: ["Authorization", "X-Custom"],
   copilots: [
     makeCopilot({
       id: "agent-auth",
@@ -388,8 +382,6 @@ const HOLDER_WITH_AUTH = makeHolder({
     }),
   ],
 });
-
-// --- Setup helpers ---
 
 function setupDefaultMocks(
   externalCopilotHolders: ExternalCopilotHolderMock[] = SINGLE_HOLDER,
@@ -425,17 +417,21 @@ const renderAIAgentsTab = () =>
     </BrowserRouter>,
   );
 
-// --- Tests ---
-
 describe("AIAgentsTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRuntimeConfig.copilot.openbbCopilot = true;
+    mockRuntimeConfig.copilot.defaultCopilot = true;
     mockFetchAgentsData.mockResolvedValue([]);
     mockHasCopilotConflict.mockReturnValue(false);
-    mockPutCustomCopilot.mockResolvedValue({});
+    mockPutCustomCopilot.mockImplementation(
+      async ({ headers, ...saved }: ExternalCopilotHolderMock) => ({
+        ...saved,
+        headerNames: headers ? Object.keys(headers) : (saved.headerNames ?? []),
+      }),
+    );
     mockRemoveCustomCopilot.mockResolvedValue({});
     setupDefaultMocks();
+    setAccess({ user_type: "Developer" });
   });
 
   describe("Rendering", () => {
@@ -449,9 +445,9 @@ describe("AIAgentsTab", () => {
       expect(screen.getByRole("button", { name: "Add Agent" })).toBeInTheDocument();
     });
 
-    it("renders the AddCopilotDialog component", () => {
+    it("does not mount AddCopilotDialog in this tab", () => {
       renderAIAgentsTab();
-      expect(screen.getByTestId("add-copilot-dialog")).toBeInTheDocument();
+      expect(screen.queryByTestId("add-copilot-dialog")).not.toBeInTheDocument();
     });
 
     it("renders all agent cards as flat cards when holders exist", () => {
@@ -483,16 +479,16 @@ describe("AIAgentsTab", () => {
   });
 
   describe("Empty State", () => {
-    it("shows OpenBB Copilot section instead of empty state when no holders exist and flag is true", () => {
+    it("shows Copilot section instead of empty state when no holders exist and flag is true", () => {
       setupEmptyMocks();
       renderAIAgentsTab();
 
       expect(screen.queryByText("No AI Agent added")).not.toBeInTheDocument();
-      expect(screen.getAllByText("OpenBB Copilot").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Copilot").length).toBeGreaterThanOrEqual(1);
     });
 
-    it("shows empty state when no holders exist and openbbCopilot flag is false", () => {
-      mockRuntimeConfig.copilot.openbbCopilot = false;
+    it("shows empty state when no holders exist and defaultCopilot flag is false", () => {
+      mockRuntimeConfig.copilot.defaultCopilot = false;
       setupEmptyMocks();
       renderAIAgentsTab();
 
@@ -500,7 +496,7 @@ describe("AIAgentsTab", () => {
       expect(
         screen.getByText("You haven't added any AI Agent yet."),
       ).toBeInTheDocument();
-      expect(screen.queryByText("OpenBB Copilot")).not.toBeInTheDocument();
+      expect(screen.queryByText("Copilot")).not.toBeInTheDocument();
     });
   });
 
@@ -511,6 +507,15 @@ describe("AIAgentsTab", () => {
 
       await user.click(screen.getByRole("button", { name: "Add Agent" }));
       expect(mockSetShowAddAgentsDialog).toHaveBeenCalledWith(true);
+    });
+
+    it("is not offered to a User, who cannot add connections", () => {
+      setAccess({ user_type: "User" });
+      renderAIAgentsTab();
+
+      expect(
+        screen.queryByRole("button", { name: "Add Agent" }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -555,11 +560,8 @@ describe("AIAgentsTab", () => {
       await user.type(searchInput, "other-agents.example");
 
       await waitFor(() => {
-        // The holder whose URL doesn't match and has no matching agents should be gone
         expect(screen.queryByText("Alpha Agent")).not.toBeInTheDocument();
         expect(screen.queryByText("Beta Agent")).not.toBeInTheDocument();
-        // The holder with matching URL survives but its copilots are filtered by name/description,
-        // so individual agent cards won't show — but the holder group is still rendered
         expect(screen.queryByText("No results found")).not.toBeInTheDocument();
       });
     });
@@ -583,7 +585,6 @@ describe("AIAgentsTab", () => {
       setupDefaultMocks(TWO_HOLDERS);
       renderAIAgentsTab();
 
-      // 3 agents total (2 in holder-1, 1 in holder-2) = 3 edit buttons
       const editButtons = screen.getAllByTitle("Edit Settings");
       expect(editButtons).toHaveLength(3);
     });
@@ -592,7 +593,6 @@ describe("AIAgentsTab", () => {
       setupDefaultMocks(TWO_HOLDERS);
       renderAIAgentsTab();
 
-      // 3 agents total = 3 delete buttons
       const deleteButtons = screen.getAllByTitle("Delete");
       expect(deleteButtons).toHaveLength(3);
     });
@@ -657,7 +657,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const deleteWrapper = screen.getByTitle("Delete");
-      const deleteButton = deleteWrapper.querySelector("button")!;
+      const deleteButton = required(deleteWrapper.querySelector("button"));
       await user.click(deleteButton);
 
       await waitFor(() => {
@@ -676,7 +676,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const deleteWrapper = screen.getByTitle("Delete");
-      const deleteButton = deleteWrapper.querySelector("button")!;
+      const deleteButton = required(deleteWrapper.querySelector("button"));
       await user.click(deleteButton);
 
       await waitFor(() => {
@@ -695,7 +695,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const deleteWrapper = screen.getByTitle("Delete");
-      const deleteButton = deleteWrapper.querySelector("button")!;
+      const deleteButton = required(deleteWrapper.querySelector("button"));
       await user.click(deleteButton);
 
       await waitFor(() => {
@@ -714,7 +714,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const deleteWrapper = screen.getByTitle("Delete");
-      const deleteButton = deleteWrapper.querySelector("button")!;
+      const deleteButton = required(deleteWrapper.querySelector("button"));
       await user.click(deleteButton);
 
       await waitFor(() => {
@@ -736,7 +736,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const deleteWrapper = screen.getByTitle("Delete");
-      const deleteButton = deleteWrapper.querySelector("button")!;
+      const deleteButton = required(deleteWrapper.querySelector("button"));
       await user.click(deleteButton);
 
       await waitFor(() => {
@@ -758,7 +758,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const deleteWrapper = screen.getByTitle("Delete");
-      const deleteButton = deleteWrapper.querySelector("button")!;
+      const deleteButton = required(deleteWrapper.querySelector("button"));
       await user.click(deleteButton);
 
       await waitFor(() => {
@@ -769,7 +769,7 @@ describe("AIAgentsTab", () => {
 
       await waitFor(() => {
         expect(mockSetSelectedCopilot).toHaveBeenCalledWith(
-          expect.objectContaining({ id: "openbb-copilot" }),
+          expect.objectContaining({ id: "default-copilot" }),
         );
       });
     });
@@ -781,7 +781,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -796,7 +796,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -814,7 +814,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -834,7 +834,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -859,7 +859,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -870,7 +870,7 @@ describe("AIAgentsTab", () => {
       const initialCount = initialKeyLabels.length;
 
       const removeButtons = screen.getAllByTestId("icon-circled-cross-icon");
-      await user.click(removeButtons[0].closest("button")!);
+      await user.click(required(removeButtons[0].closest("button")));
 
       await waitFor(() => {
         const updatedKeyLabels = screen.getAllByText("Key");
@@ -885,14 +885,13 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
         expect(screen.getByTestId("base-dialog")).toBeInTheDocument();
       });
 
-      // Click Test first (required before Update is enabled)
       const testButton = screen.getByRole("button", { name: "Test" });
       await user.click(testButton);
 
@@ -915,7 +914,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -938,22 +937,19 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
         expect(screen.getByTestId("base-dialog")).toBeInTheDocument();
       });
 
-      // Add a duplicate key pair
       const addButton = screen.getByRole("button", { name: /Add Authentication/i });
       await user.click(addButton);
 
-      // Type the same key as the existing one
       const keyInputs = screen.getAllByPlaceholderText("Authorization");
       await user.type(keyInputs[keyInputs.length - 1], "Authorization");
 
-      // Test first
       const testButton = screen.getByRole("button", { name: "Test" });
       await user.click(testButton);
 
@@ -974,7 +970,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -1010,7 +1006,6 @@ describe("AIAgentsTab", () => {
       setupDefaultMocks(TWO_HOLDERS);
       renderAIAgentsTab();
 
-      // 3 agents total across 2 holders = 3 sets of buttons
       const deleteButtons = screen.getAllByTitle("Delete");
       expect(deleteButtons).toHaveLength(3);
 
@@ -1036,7 +1031,9 @@ describe("AIAgentsTab", () => {
       mockFetchAgentsData.mockResolvedValue([makeCopilot()]);
       renderAIAgentsTab();
 
-      const refreshAll = screen.getByTitle("Refresh agents").querySelector("button")!;
+      const refreshAll = required(
+        screen.getByTitle("Refresh agents").querySelector("button"),
+      );
       await user.click(refreshAll);
 
       await waitFor(() => {
@@ -1050,7 +1047,9 @@ describe("AIAgentsTab", () => {
       mockFetchAgentsData.mockResolvedValue([makeCopilot()]);
       renderAIAgentsTab();
 
-      const cardRefresh = screen.getAllByTitle("Refresh")[0].querySelector("button")!;
+      const cardRefresh = required(
+        screen.getAllByTitle("Refresh")[0].querySelector("button"),
+      );
       await user.click(cardRefresh);
 
       await waitFor(() => {
@@ -1063,11 +1062,11 @@ describe("AIAgentsTab", () => {
     });
   });
 
-  describe("Default Agent Section (OpenBB Copilot)", () => {
+  describe("Default Agent Section (Copilot)", () => {
     it("renders the default copilot card with name and Default tag", () => {
       renderAIAgentsTab();
 
-      expect(screen.getAllByText("OpenBB Copilot").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Copilot").length).toBeGreaterThanOrEqual(1);
       expect(screen.getByTestId("tag-grey")).toHaveTextContent("Default");
     });
 
@@ -1075,7 +1074,7 @@ describe("AIAgentsTab", () => {
       setupDefaultMocks(SINGLE_HOLDER);
       renderAIAgentsTab();
 
-      expect(screen.getAllByText("OpenBB Copilot").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Copilot").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("Test Agent").length).toBeGreaterThanOrEqual(1);
     });
 
@@ -1092,7 +1091,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       expect(
-        screen.getByText("OpenBB Copilot is the default agent for OpenBB Workspace."),
+        screen.getByText("Copilot is the default agent for FINOS Workspace."),
       ).toBeInTheDocument();
     });
 
@@ -1107,7 +1106,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const badge = screen.getByTestId("tag-grey");
-      const title = screen.getAllByText("OpenBB Copilot")[0];
+      const title = screen.getAllByText("Copilot")[0];
       expect(badge.parentElement).toBe(title.parentElement);
     });
   });

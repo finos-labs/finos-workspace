@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { BrowserRouter } from "react-router-dom";
-import { type Mock, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 import { DataConnectorProvider } from "~/components/DataConnectors/Providers/DataConnectorProvider";
 import GroupContext from "~/components/General/GroupContext";
 import { useShallowAppStore } from "~/lib/state/app";
@@ -42,7 +42,7 @@ vi.mock("~/lib/state/backendConnector", () => ({
 vi.mock(
   "~/components/DataConnectors/Providers/DataConnectorProvider",
   async (importOriginal) => {
-    const actual = await importOriginal<any>();
+    const actual = await importOriginal<Record<string, unknown>>();
     return {
       ...actual,
       useDataConnectorContext: () => ({
@@ -76,7 +76,7 @@ vi.mock("~/lib/state/sharedApp", () => ({
 }));
 
 vi.mock("~/lib/utils", async (importOriginal) => {
-  const actual = await importOriginal<any>();
+  const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,
     isTabPath: vi.fn().mockReturnValue(true),
@@ -181,7 +181,7 @@ describe("GroupContext Component", () => {
     expect(screen.getByText("Test Content")).toBeInTheDocument();
   });
 
-  it("handles 'Add markdown note' click", async () => {
+  it("does not offer to add a markdown note", async () => {
     render(
       <BrowserRouter>
         <DataConnectorProvider>
@@ -192,18 +192,13 @@ describe("GroupContext Component", () => {
       </BrowserRouter>,
     );
 
-    // Simulate right-click on the "Test Content"
     await userEvent.pointer({
       target: screen.getByText("Test Content"),
       keys: "[MouseRight]",
     });
 
-    // Now find and click the "Add markdown note" option
-    await userEvent.click(await screen.findByText("Add markdown note"));
-
-    await waitFor(() => {
-      expect(mockAddWidgets).toHaveBeenCalled();
-    });
+    expect(await screen.findByText("Add widgets")).toBeInTheDocument();
+    expect(screen.queryByText("Add markdown note")).not.toBeInTheDocument();
   });
 
   it("handles 'Add widgets' click", async () => {
@@ -263,6 +258,4 @@ describe("GroupContext Component", () => {
 
     expect(screen.queryByText("Export Template")).not.toBeInTheDocument();
   });
-
-  // TODO: Add tests for Refresh Backend and Export Template - I dont know how to get backendSources to be > 0
 });

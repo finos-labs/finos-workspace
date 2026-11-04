@@ -5,6 +5,7 @@ import {
   getGroupParamName,
   useParamGroupBindings,
 } from "~/components/Widgets/Helpers/useParamGroupBindings";
+import { malformed } from "../../../mocks";
 
 const mocked = vi.hoisted(() => ({
   widget: { id: "widget-1", params: [] as ParamDef[] },
@@ -14,13 +15,13 @@ const mocked = vi.hoisted(() => ({
 
 const appStoreMock = vi.hoisted(() => ({
   getWidgetGroups: vi.fn((..._args) => [] as Group[]),
-  getTabById: vi.fn(() => undefined as any),
+  getTabById: vi.fn(() => malformed(undefined)),
   updateGroup: vi.fn(),
 }));
 
 const sharedAppStoreMock = vi.hoisted(() => ({
   getWidgetGroups: vi.fn((..._args) => [] as Group[]),
-  getDashboardById: vi.fn(() => undefined as any),
+  getDashboardById: vi.fn(() => malformed(undefined)),
 }));
 
 vi.mock("~/components/Widget.context", () => ({
@@ -34,7 +35,7 @@ vi.mock("~/components/Widget.context", () => ({
 }));
 
 vi.mock("~/lib/state/app", () => ({
-  useShallowAppStore: (selector: any) =>
+  useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       getWidgetGroups: vi.fn((...args) => {
         const [tabId] = args;
@@ -81,16 +82,6 @@ const endpointGroup = (overrides: Partial<Group> = {}): Group =>
     ...overrides,
   }) as Group;
 
-const tickerGroup = (): Group =>
-  ({
-    type: "ticker",
-    id: "g-ticker",
-    name: "Ticker",
-    color: "#fff",
-    groupById: "ticker",
-    value: { symbol: "AAPL", id: "AAPL" },
-  }) as Group;
-
 beforeEach(() => {
   mocked.isShared = false;
   mocked.activeDashboardId = "dash-1";
@@ -114,10 +105,6 @@ describe("getGroupParamName", () => {
   it("returns groupById for plain param groups", () => {
     expect(getGroupParamName(paramGroup(), [])).toBe("sector");
   });
-
-  it("returns undefined for ticker groups", () => {
-    expect(getGroupParamName(tickerGroup(), [endpointParamDef])).toBeUndefined();
-  });
 });
 
 describe("useParamGroupBindings", () => {
@@ -130,14 +117,6 @@ describe("useParamGroupBindings", () => {
       ["sector", expect.objectContaining({ id: "g-param" })],
       ["symbol", expect.objectContaining({ id: "g-endpoint" })],
     ]);
-  });
-
-  it("ignores ticker groups", () => {
-    appStoreMock.getWidgetGroups.mockReturnValue([tickerGroup()]);
-
-    const { result } = renderHook(() => useParamGroupBindings());
-
-    expect(result.current.bindings).toEqual([]);
   });
 
   it("reads shared groups when the widget context is shared", () => {

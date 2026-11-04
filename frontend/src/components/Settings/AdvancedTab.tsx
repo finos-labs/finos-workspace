@@ -5,7 +5,6 @@ import { deleteMe } from "~/api/admin.api";
 import { deleteAllDashboards } from "~/api/dashboard.api";
 import AdminDeleteUserDialog from "~/components/AdminUsers/AdminDeleteUserDialog";
 import { Button } from "~/components/ds/atoms/Button";
-import SnowflakeHide from "~/components/General/SnowflakeHide";
 import { useAuthStore } from "~/lib/state/auth";
 
 export default function AdvancedTab() {
@@ -74,30 +73,28 @@ export default function AdvancedTab() {
             </Button>
           </div>
 
-          <SnowflakeHide>
-            <div className="flex flex-col gap-5">
-              <hr className="border-surface-divider" />
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <p className="body-sm-medium text-ds-text-heading">Delete Account</p>
-                  <p className="body-xs-regular text-ds-text-body">
-                    By selecting this option, you will permanently delete your account
-                    and all of its contents from the OpenBB Workspace.
-                    <br />
-                    This action is not reversible, so please continue with caution.
-                  </p>
-                </div>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  className="w-fit"
-                  onClick={openDeleteAccountDialog}
-                >
-                  Delete Account
-                </Button>
+          <div className="flex flex-col gap-5">
+            <hr className="border-surface-divider" />
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <p className="body-sm-medium text-ds-text-heading">Delete Account</p>
+                <p className="body-xs-regular text-ds-text-body">
+                  By selecting this option, you will permanently delete your account and
+                  all of its contents from the FINOS Workspace.
+                  <br />
+                  This action is not reversible, so please continue with caution.
+                </p>
               </div>
+              <Button
+                variant="danger"
+                size="sm"
+                className="w-fit"
+                onClick={openDeleteAccountDialog}
+              >
+                Delete Account
+              </Button>
             </div>
-          </SnowflakeHide>
+          </div>
         </div>
       </div>
 

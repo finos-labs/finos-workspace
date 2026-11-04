@@ -76,7 +76,6 @@ const BackendPromptsSection = memo(function BackendPromptsSection({
 }) {
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Scroll to the specific backend section when defaultExpandedBackendId is provided
   useEffect(() => {
     if (defaultExpandedBackendId && sectionRefs.current[defaultExpandedBackendId]) {
       setTimeout(() => {
@@ -119,7 +118,7 @@ const BackendPromptsSection = memo(function BackendPromptsSection({
             <div
               key={source.id}
               ref={(el) => {
-                sectionRefs.current[source.id] = el;
+                if (source.id) sectionRefs.current[source.id] = el;
               }}
             >
               <LibrarySection
@@ -224,7 +223,7 @@ const SharedPromptsSection = memo(function SharedPromptsSection({
   onOpenChange,
   onDuplicate,
 }: {
-  prompts: Array<{ id: string; prompt: string; widgets: string[]; createdAt: string }>;
+  prompts: Array<{ id: string; prompt: string; widgets: string[]; createdAt?: string }>;
   open: boolean;
   onOpenChange: () => void;
   onDuplicate: (prompt: string) => void;

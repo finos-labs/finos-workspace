@@ -116,7 +116,7 @@ export default function TOTPEnterForm({
             size="sm"
             disabled={loading || !form.formState.isValid}
             loading={loading}
-            className="obb-btn-tertiary h-8 px-3 py-1 font-medium md:w-fit"
+            className="ws-btn-tertiary h-8 px-3 py-1 font-medium md:w-fit"
           >
             Submit
           </Button>

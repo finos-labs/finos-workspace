@@ -6,7 +6,6 @@ import type { DateRange } from "react-day-picker";
 import { getEntityRoleActivityLog } from "~/api/entity_roles.api";
 import type { DataTableColumn } from "~/components/ds/molecules/DataTable";
 import { DataTable } from "~/components/ds/molecules/DataTable";
-import BrandedLoadingState from "~/components/General/BrandedLoadingState";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { Button } from "../ds/atoms/Button";
 import { Input } from "../ds/atoms/Input";
@@ -22,15 +21,16 @@ const MarkdownContent = lazy(() =>
   })),
 );
 
-const convertToMarkdown = (obj, level = 0) => {
+const convertToMarkdown = (obj: unknown, level = 0): string => {
   if (typeof obj !== "object" || obj === null) {
     return `${JSON.stringify(obj)}\n`;
   }
 
+  const record = obj as Record<string, unknown>;
   let markdown = "";
-  for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      const value = obj[key];
+  for (const key in record) {
+    if (Object.hasOwn(record, key)) {
+      const value = record[key];
       const indent = "  ".repeat(level);
 
       if (Array.isArray(value)) {
@@ -213,7 +213,14 @@ export function ActivityLogPage() {
     [],
   );
 
-  if (isLoading) return <LoadingActivityLog />;
+  if (isLoading) {
+    return (
+      <TabsPrimitive.Content
+        value="activity-log"
+        className="p-6 text-sm only-sm:h-screen"
+      />
+    );
+  }
   if (error) return <ErrorActivityLog />;
 
   return (
@@ -266,7 +273,6 @@ export function ActivityLogPage() {
         getRowId={(entry) => entry.uuid}
       />
 
-      {/* Pagination Controls */}
       <div className="mt-4 flex items-center justify-between">
         <div className="text-sm text-ds-text-caption">
           Showing {Math.min(filteredActivityLog.length, state.itemsPerPage)} of{" "}
@@ -308,21 +314,11 @@ const getActivityTypeStyle = (type: string) => {
   if (type.includes("user")) {
     return "bg-tag-blue-bg text-tag-blue-label";
   }
+  if (type.includes("widget plugin")) {
+    return "bg-tag-green-bg text-tag-green-label";
+  }
   return "";
 };
-
-function LoadingActivityLog() {
-  return (
-    <TabsPrimitive.Content
-      value="activity-log"
-      className="p-6 text-sm only-sm:h-screen"
-    >
-      <div className="flex h-full items-center justify-center py-20">
-        <BrandedLoadingState />
-      </div>
-    </TabsPrimitive.Content>
-  );
-}
 
 function ErrorActivityLog() {
   return (

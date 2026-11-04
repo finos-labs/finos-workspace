@@ -3,27 +3,24 @@ import { AxiosError } from "axios";
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { getUser2FA, putUser2FA } from "~/api/auth.api";
+import { getErrorResponse } from "~/api/errors";
 import { Checkbox } from "~/components/Forms/Checkbox";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
-import { useShallowAuthStore } from "~/lib/state/auth";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { NotificationId, showNotificationWithRememberMe } from "~/lib/utils/toast";
 import TOTPSetDialog from "../Auth/TOTPSetDialog";
 import { Button } from "../ds/atoms/Button";
-import { BaseDialog, type BaseDialogProps } from "../ds/dialogs/BaseDialog";
+import { BaseDialog, type ClosableDialogProps } from "../ds/dialogs/BaseDialog";
 import { DialogClose, DialogFooter, DialogTitle } from "../ds/dialogs/Dialog";
-import FeatureLock from "../General/FeatureLock";
 
-interface Props extends BaseDialogProps {
-  onConfirm: (token?: string) => void;
+interface Props extends ClosableDialogProps {
+  onConfirm: (setUp: boolean) => void;
   checked: boolean;
 }
 
 const User2FADialog = (props: Props) => {
   const { open, onClose, onConfirm, checked } = props;
-  const userToken = useShallowAuthStore((state) => state.user?.token);
 
   const handleSubmit = useCallback(async () => {
     try {
@@ -31,13 +28,7 @@ const User2FADialog = (props: Props) => {
 
       if (result.success) {
         onClose();
-
-        // If user is enabling 2FA, pass the user's token to onConfirm
-        if (checked && userToken) {
-          onConfirm(userToken);
-        } else {
-          onConfirm();
-        }
+        onConfirm(checked);
 
         showNotificationWithRememberMe({
           id: NotificationId.Account2FAToggled,
@@ -46,14 +37,14 @@ const User2FADialog = (props: Props) => {
         });
       }
     } catch (error) {
-      console.error(error.response?.data);
+      console.error(getErrorResponse(error).data);
       if (error instanceof AxiosError) {
         toast.error("Error enabling 2FA", {
           description: error.response?.data?.detail || error.message,
         });
       }
     }
-  }, [onClose, onConfirm, checked, userToken]);
+  }, [onClose, onConfirm, checked]);
 
   return (
     <BaseDialog
@@ -129,7 +120,7 @@ type SecurityTabState = {
   isOpen: boolean;
   is2FAEnabled: boolean;
   is2FAEntityRequired: boolean;
-  totpQRCode: string | null;
+  showQR: boolean;
 };
 
 function update2FAState(dispatch: StateDispatch<SecurityTabState>) {
@@ -146,12 +137,8 @@ const SecurityTab = () => {
     isOpen: false,
     is2FAEnabled: false,
     is2FAEntityRequired: false,
-    totpQRCode: null,
+    showQR: false,
   });
-
-  const isProTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "pro",
-  );
 
   useEffect(() => {
     update2FAState(dispatch);
@@ -159,9 +146,8 @@ const SecurityTab = () => {
 
   const handleTOTPCancel = useCallback(async () => {
     try {
-      // Turn off 2FA since user cancelled the setup
       await putUser2FA({ two_factor_auth: false });
-      dispatch({ totpQRCode: null, is2FAEnabled: false });
+      dispatch({ showQR: false, is2FAEnabled: false });
 
       showNotificationWithRememberMe({
         id: NotificationId.Account2FAToggled,
@@ -169,7 +155,7 @@ const SecurityTab = () => {
         toastType: "info",
       });
     } catch (error) {
-      console.error(error.response?.data);
+      console.error(getErrorResponse(error).data);
       if (error instanceof AxiosError) {
         toast.error("Error cancelling 2FA setup", {
           description: error.response?.data?.detail || error.message,
@@ -186,18 +172,18 @@ const SecurityTab = () => {
           dispatch({ isOpen: false });
           update2FAState(dispatch);
         }}
-        onConfirm={(token) => {
+        onConfirm={(setUp) => {
           dispatch((prev) => ({
             ...prev,
             is2FAEnabled: !prev.is2FAEnabled,
-            totpQRCode: token ?? prev.totpQRCode,
+            showQR: setUp || prev.showQR,
           }));
         }}
         checked={!state.is2FAEnabled}
       />
       <TOTPSetDialog
-        open={state.totpQRCode}
-        setOpen={(totpQRCode: string | null) => dispatch({ totpQRCode })}
+        open={state.showQR}
+        setOpen={(showQR) => dispatch({ showQR })}
         onCancel={handleTOTPCancel}
         fromSettings={true}
       />
@@ -221,15 +207,13 @@ const SecurityTab = () => {
           </p>
 
           <div className="flex flex-col gap-3">
-            <FeatureLock isLocked={!isProTier}>
-              <div className="flex items-center gap-3">
-                <TwoFactorToggle
-                  is2FAEnabled={state.is2FAEnabled}
-                  setIsDialogOpen={(isOpen) => dispatch({ isOpen })}
-                  is2FAEntityRequired={state.is2FAEntityRequired}
-                />
-              </div>
-            </FeatureLock>
+            <div className="flex items-center gap-3">
+              <TwoFactorToggle
+                is2FAEnabled={state.is2FAEnabled}
+                setIsDialogOpen={(isOpen) => dispatch({ isOpen })}
+                is2FAEntityRequired={state.is2FAEntityRequired}
+              />
+            </div>
           </div>
         </div>
       </Content>

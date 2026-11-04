@@ -1,11 +1,20 @@
 import Markdown from "markdown-to-jsx";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
-import { type SystemMessage, useShallowCopilotStore } from "~/lib/state/copilot";
+import {
+  type DetailT,
+  type SystemMessage,
+  useShallowCopilotStore,
+} from "~/lib/state/copilot";
+import { someTruthy } from "~/lib/utils/values";
 import { cn } from "../ds/utils";
-import { someTruthy } from "../General/Table/utils";
 import { Artifact, Table } from ".";
 import CopilotMessageTitle from "./CopilotMessageTitle";
-import { CodeComponent, PreCodeComponent, renderRule } from "./MarkdownOverrides";
+import {
+  CodeComponent,
+  inertImageOverride,
+  PreCodeComponent,
+  renderRule,
+} from "./MarkdownOverrides";
 import { escapeMarkdownUnderscores } from "./utils/markdown";
 
 type CopilotSystemMessageProps = {
@@ -19,6 +28,7 @@ const markdownOptions = {
   renderRule,
   disableParsingRawHTML: true,
   overrides: {
+    ...inertImageOverride,
     a: {
       component: ({ children }: { children: ReactNode }) => (
         <span className="text-inherit">{children}</span>
@@ -40,15 +50,12 @@ export default function CopilotSystemMessage(props: CopilotSystemMessageProps) {
   const [isMessageExpanded, setIsMessageExpanded] = useState(false);
 
   const handleMouseEnter = useCallback(() => {
-    // Only handle hover if not part of a step-by-step group (parent handles it)
     if (currentGroupId && !isPartOfStepByStepGroup) {
-      // For system messages, show datetime above the current group
       showDatetime(message.timestamp, currentGroupId);
     }
   }, [message.timestamp, currentGroupId, isPartOfStepByStepGroup]);
 
   const handleMouseLeave = useCallback(() => {
-    // Only handle hover if not part of a step-by-step group (parent handles it)
     if (!isPartOfStepByStepGroup) hideDatetime();
   }, [isPartOfStepByStepGroup]);
 
@@ -63,10 +70,11 @@ export default function CopilotSystemMessage(props: CopilotSystemMessageProps) {
 
   if (!messageContent) return null;
 
+  const detailList: (string | DetailT)[] = details ?? [];
+
   return (
     <div
       className="flex flex-col w-full rounded group relative"
-      // Only add hover handlers if not part of a step-by-step group
       {...(!isPartOfStepByStepGroup && {
         onMouseEnter: handleMouseEnter,
         onMouseLeave: handleMouseLeave,
@@ -87,7 +95,7 @@ export default function CopilotSystemMessage(props: CopilotSystemMessageProps) {
           dark:prose-invert border-[0px] rounded border-dark-600 overflow-auto"
         >
           <div className="flex flex-col gap-1 ml-4 bg-light-50 dark:bg-dark-800 rounded overflow-x-auto">
-            {details?.map((detail: string | Record<string, any>, index: number) => {
+            {detailList.map((detail, index) => {
               if (!detail) return null;
               if (typeof detail === "string") {
                 const hasCodeBlock = detail.includes("```");

@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { reducerAction, useStateReducer } from "~/hooks/useStateReducer";
+import { malformed } from "../mocks";
 
 describe("reducerAction", () => {
   describe("function actions", () => {
@@ -107,7 +108,7 @@ describe("reducerAction", () => {
       const state = { name: "test", value: 123 };
       const action = { name: null };
 
-      const result = reducerAction(state, action as any);
+      const result = reducerAction(state, malformed(action));
 
       expect(result.name).toBeNull();
       expect(result.value).toBe(123);
@@ -117,7 +118,7 @@ describe("reducerAction", () => {
       const state = { name: "test", value: 123 };
       const action = { name: undefined };
 
-      const result = reducerAction(state, action as any);
+      const result = reducerAction(state, action);
 
       expect(result.name).toBeUndefined();
     });
@@ -152,9 +153,7 @@ describe("useStateReducer", () => {
   });
 
   it("should dispatch object action to update state", () => {
-    const { result } = renderHook(() =>
-      useStateReducer({ count: 0, name: "test" }),
-    );
+    const { result } = renderHook(() => useStateReducer({ count: 0, name: "test" }));
 
     act(() => {
       result.current[1]({ count: 5 });
@@ -165,9 +164,7 @@ describe("useStateReducer", () => {
   });
 
   it("should dispatch function action to update state", () => {
-    const { result } = renderHook(() =>
-      useStateReducer({ count: 0, name: "test" }),
-    );
+    const { result } = renderHook(() => useStateReducer({ count: 0, name: "test" }));
 
     act(() => {
       result.current[1]((prev) => ({ ...prev, count: prev.count + 10 }));
@@ -177,9 +174,7 @@ describe("useStateReducer", () => {
   });
 
   it("should dispatch multiple updates", () => {
-    const { result } = renderHook(() =>
-      useStateReducer({ count: 0 }),
-    );
+    const { result } = renderHook(() => useStateReducer({ count: 0 }));
 
     act(() => {
       result.current[1]({ count: 1 });
@@ -196,26 +191,18 @@ describe("useStateReducer", () => {
 
   it("should work with initializer function", () => {
     const { result } = renderHook(() =>
-      useStateReducer(
-        { baseCount: 5 } as any,
-        // @ts-expect-error - ignored for now
-        (arg: { baseCount: number }) => ({
-          count: arg.baseCount * 2,
-          name: "initialized",
-        }),
-      ),
+      useStateReducer<{ count: number; name: string }>({ count: 5 }, (arg) => ({
+        count: arg.count * 2,
+        name: "initialized",
+      })),
     );
 
-    // @ts-expect-error - ignored for now
     expect(result.current[0].count).toBe(10);
-    // @ts-expect-error - ignored for now
     expect(result.current[0].name).toBe("initialized");
   });
 
   it("should maintain stable dispatch reference", () => {
-    const { result, rerender } = renderHook(() =>
-      useStateReducer({ count: 0 }),
-    );
+    const { result, rerender } = renderHook(() => useStateReducer({ count: 0 }));
 
     const firstDispatch = result.current[1];
 

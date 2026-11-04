@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ForwardedRef, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   Dialog,
@@ -38,7 +39,15 @@ vi.mock("@radix-ui/react-dialog", () => {
   const DialogContext = React.createContext({ open: false, setOpen: () => {} });
 
   return {
-    Root: ({ children, open: controlledOpen, onOpenChange }: any) => {
+    Root: ({
+      children,
+      open: controlledOpen,
+      onOpenChange,
+    }: {
+      children?: ReactNode;
+      open?: boolean;
+      onOpenChange: (open: boolean) => void;
+    }) => {
       const [internalOpen, setInternalOpen] = React.useState(false);
       const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
       const setOpen = onOpenChange || setInternalOpen;
@@ -48,25 +57,36 @@ vi.mock("@radix-ui/react-dialog", () => {
         </DialogContext.Provider>
       );
     },
-    Trigger: ({ children }: any) => {
+    Trigger: ({ children }: { children?: ReactNode }) => {
       const { setOpen } = React.useContext(DialogContext);
       return <div onClick={() => setOpen(true)}>{children}</div>;
     },
-    Portal: ({ children }: any) => {
+    Portal: ({ children }: { children?: ReactNode }) => {
       const { open } = React.useContext(DialogContext);
       return open ? children : null;
     },
-    Content: React.forwardRef(({ children, className }: any, ref: any) => (
-      <div ref={ref} className={className}>
-        {children}
-      </div>
-    )),
-    Overlay: ({ className }: any) => <div className={className} />,
-    Title: ({ children, className }: any) => <h2 className={className}>{children}</h2>,
-    Description: ({ children, className }: any) => (
-      <p className={className}>{children}</p>
+    Content: React.forwardRef(
+      (
+        { children, className }: { children?: ReactNode; className?: string },
+        ref: ForwardedRef<HTMLDivElement>,
+      ) => (
+        <div ref={ref} className={className}>
+          {children}
+        </div>
+      ),
     ),
-    Close: ({ children, className }: any) => (
+    Overlay: ({ className }: { className?: string }) => <div className={className} />,
+    Title: ({ children, className }: { children?: ReactNode; className?: string }) => (
+      <h2 className={className}>{children}</h2>
+    ),
+    Description: ({
+      children,
+      className,
+    }: {
+      children?: ReactNode;
+      className?: string;
+    }) => <p className={className}>{children}</p>,
+    Close: ({ children, className }: { children?: ReactNode; className?: string }) => (
       <span className={className}>{children}</span>
     ),
   };
@@ -77,7 +97,15 @@ vi.mock("~/components/Icon", () => ({
 }));
 
 vi.mock("../atoms/Button", () => ({
-  Button: ({ children, onClick, className }: any) => (
+  Button: ({
+    children,
+    onClick,
+    className,
+  }: {
+    children?: ReactNode;
+    onClick: () => void;
+    className?: string;
+  }) => (
     <button onClick={onClick} className={className}>
       {children}
     </button>
@@ -85,5 +113,5 @@ vi.mock("../atoms/Button", () => ({
 }));
 
 vi.mock("../utils", () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));

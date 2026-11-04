@@ -4,6 +4,7 @@ import { Select } from "./Select";
 const meta = {
   title: "Atoms/Select",
   component: Select,
+  args: { options: [] },
   tags: ["autodocs"],
   argTypes: {
     size: {

@@ -1,35 +1,26 @@
 import axios, { type AxiosError } from "axios";
 import { getConfig } from "~/lib/runtimeConfig";
-import { useAuthStore } from "~/lib/state/auth";
+import { isApiUrl, WORKSPACE_CLIENT, WORKSPACE_CLIENT_HEADER } from "~/lib/utils/fetch";
 
 export const apiClient = axios.create({});
 
+let onSessionRefused = () => {};
+export function setOnSessionRefused(handler: () => void) {
+  onSessionRefused = handler;
+}
+
 apiClient.interceptors.request.use((config) => {
-  // Dynamically resolve baseURL from runtime config on each request
   if (!config.baseURL) {
     config.baseURL = getConfig().urls.backend;
   }
-  const { user } = useAuthStore.getState();
-  const token = user?.token;
+
+  const toApi = isApiUrl(apiClient.getUri(config));
+  config.withCredentials = toApi;
+  if (toApi) config.headers.set(WORKSPACE_CLIENT_HEADER, WORKSPACE_CLIENT);
+  else config.headers.delete(WORKSPACE_CLIENT_HEADER);
 
   if (import.meta.env.DEV)
-    console.info(
-      "[API req]",
-      token ? "[Authed]" : "",
-      `${config.method?.toUpperCase()} ${config.url}`,
-    );
-
-  // A request that pre-sets its own Authorization header keeps it. An
-  // explicitly EMPTY one (`headers: { authorization: "" }`) opts out of auth
-  // entirely: the header is removed rather than sent empty, so cross-origin
-  // requests (e.g. the lite marketplace listing) stay CORS-simple — any
-  // Authorization header, even "", would trigger a preflight the host rejects.
-  const presetAuth = config.headers.has?.("Authorization");
-  if (presetAuth && !config.headers.get("Authorization")) {
-    config.headers.delete("Authorization");
-  } else if (token && !presetAuth) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+    console.info("[API req]", `${config.method?.toUpperCase()} ${config.url}`);
 
   return config;
 });
@@ -46,19 +37,19 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
-    const { response } = error;
-    const { logout, user } = useAuthStore.getState();
+    const { response, config } = error;
     const status = response?.status || error?.status || "unknown";
 
     if (error?.code !== "ERR_CANCELED" && import.meta.env.DEV)
-      console.info(`[API err] ${status} ${error?.config?.url}`, error);
+      console.info(`[API err] ${status} ${config?.url}`, error);
 
     if (
       response?.status === 401 &&
-      user?.token &&
-      !error.config.url?.includes("/pro/logout")
+      config &&
+      isApiUrl(apiClient.getUri(config)) &&
+      !config.url?.includes("/app/logout")
     ) {
-      logout();
+      onSessionRefused();
     }
 
     return Promise.reject(error);

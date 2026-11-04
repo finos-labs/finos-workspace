@@ -1,26 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import { strokeWidthPlugin } from "~/components/ds/plugins/stroke";
 import {
   typographyClassGroup,
   typographyPlugin,
 } from "~/components/ds/plugins/typography";
+import { partial } from "../../../mocks";
+
+type PluginApi = Parameters<typeof typographyPlugin.handler>[0];
 
 describe("DS Plugins", () => {
-  describe("strokeWidthPlugin", () => {
-    it("matches stroke utilities", () => {
-      const matchUtilities = vi.fn();
-      const theme = vi.fn();
-      // @ts-ignore
-      strokeWidthPlugin.handler({ matchUtilities, theme });
-      expect(matchUtilities).toHaveBeenCalled();
-    });
-  });
-
   describe("typographyPlugin", () => {
     it("adds typography utilities", () => {
       const addUtilities = vi.fn();
-      // @ts-ignore
-      typographyPlugin.handler({ addUtilities });
+      typographyPlugin.handler(partial<PluginApi>({ addUtilities }));
       expect(addUtilities).toHaveBeenCalled();
 
       const firstClass = `.${typographyClassGroup[0]}`;

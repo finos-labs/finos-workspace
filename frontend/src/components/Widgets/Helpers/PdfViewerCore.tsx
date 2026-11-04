@@ -10,7 +10,6 @@ import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { useWidgetContext } from "~/components/Widget.context";
 
-// Initialize PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export type Highlight = {
@@ -20,7 +19,7 @@ export type Highlight = {
   height: number;
 };
 
-export interface PdfViewerCoreProps {
+interface PdfViewerCoreProps {
   file: string | { data: Uint8Array } | null;
   currentPage: number;
   currentScale: number;
@@ -44,7 +43,7 @@ export type QuoteBoundingBox = {
   x1: number;
 };
 
-export const LoadingElement = () => (
+const LoadingElement = () => (
   <div className="flex h-full w-full items-center justify-center">
     <BrandedLogo className="mt-32" />
   </div>
@@ -70,9 +69,11 @@ export function PdfViewerCore({
   const onPageRenderSuccess = useCallback(
     (page: pdfjs.PDFPageProxy) => {
       const originalViewport = page.getViewport({ scale: 1 });
-      const xScale = canvasRef.current.clientWidth / originalViewport.width;
-      const yScale = canvasRef.current.clientHeight / originalViewport.height;
-      props.setPageScale({
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const xScale = canvas.clientWidth / originalViewport.width;
+      const yScale = canvas.clientHeight / originalViewport.height;
+      props.setPageScale?.({
         x: xScale,
         y: yScale,
       });
@@ -96,8 +97,6 @@ export function PdfViewerCore({
     ({ numPages }: { numPages: number }) => {
       setNumPages(numPages);
       props.onLoadSuccess?.({ numPages });
-      // Preserve the current (persisted) page across document (re)loads, only
-      // clamping it into range when it falls outside the document length.
       const clampedPage = Math.min(Math.max(currentPage, 1), numPages);
       if (clampedPage !== currentPage) onPageChange(clampedPage);
     },
@@ -188,7 +187,7 @@ export function PdfViewerCore({
                   )}
 
                   {showPageNavigation && showZoomControls && (
-                    <div className="obb-divider-vertical mx-3 min-h-[20px] shrink-0" />
+                    <div className="ws-divider-vertical mx-3 min-h-[20px] shrink-0" />
                   )}
 
                   {showZoomControls && (
@@ -272,8 +271,7 @@ export function PdfViewerCore({
   );
 }
 
-// Helper function to search PDF text
-export function usePdfTextSearch(
+function usePdfTextSearch(
   file: string | { data: Uint8Array } | null,
   searchString: string,
 ) {
@@ -293,7 +291,6 @@ export function usePdfTextSearch(
     if (typeof file === "string") {
       loadingTask = pdfjs.getDocument({ url: file });
     } else {
-      // create a copy of the Uint8Array to prevent detachment
       const dataCopy = new Uint8Array(file.data);
       loadingTask = pdfjs.getDocument({ data: dataCopy });
     }
@@ -305,8 +302,9 @@ export function usePdfTextSearch(
         const pagePromises = Array.from({ length: pageCount }, (_, pageNumber) => {
           return docData.getPage(pageNumber + 1).then((pageData) => {
             return pageData.getTextContent().then((textContent) => {
-              // @ts-expect-error
-              return textContent.items.map(({ str }) => str).join(" ");
+              return textContent.items
+                .map((item) => ("str" in item ? item.str : ""))
+                .join(" ");
             });
           });
         });
@@ -320,7 +318,6 @@ export function usePdfTextSearch(
       });
 
     return () => {
-      // prevent memory leaks
       loadingTask.destroy();
     };
   }, [file]);
@@ -358,7 +355,7 @@ function Search({
   const results = usePdfTextSearch(file, debounceQuery);
   const [isSearchResultVisible, setIsSearchResultVisible] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

@@ -4,9 +4,9 @@ import React, { useMemo } from "react";
 import Icon from "~/components/Icon";
 import { cn } from "../utils";
 
-export const buttonVariants = cva(
+const buttonVariants = cva(
   [
-    "BB-Button inline-flex items-center justify-center gap-2 ring-offset-background",
+    "inline-flex items-center justify-center gap-2 ring-offset-general-bg-primary",
     "focus-visible:outline-hidden focus-visible:ring-2",
     "disabled:pointer-events-none disabled:[&_svg]:opacity-50",
     "transition",
@@ -61,7 +61,7 @@ export const buttonVariants = cva(
         ],
       },
       size: {
-        xs: "body-xs-medium h-6 rounded-sm px-2 [&_.BB-Icon]:size-3",
+        xs: "body-xs-medium h-6 rounded-sm px-2",
         sm: "body-xs-medium h-8 rounded-sm px-3",
         md: "body-sm-medium h-10 rounded-md px-4",
         lg: "body-md-medium h-12 rounded-md px-5",
@@ -82,7 +82,6 @@ export const buttonVariants = cva(
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
-  /** Apply props and styles to child component  */
   asChild?: boolean;
   loading?: boolean;
   loadingChildren?: React.ReactNode;
@@ -102,18 +101,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>((props, r
     ...rest
   } = props;
 
-  // Memoize the loading icon to prevent unnecessary re-renders
   const loadingIcon = useMemo(
     () => <Icon id="mdi-loading" className="size-4 min-w-4 flex-0 animate-spin" />,
     [],
   );
 
-  // Create a stable content structure to prevent DOM reconciliation issues.
-  // Bare text children are wrapped in <span> elements so browser auto-translation
-  // (which swaps text nodes for <font> wrappers) can't desync React's DOM
-  // bookkeeping and crash reconciliation with `removeChild` NotFoundError.
-  // Consecutive text is grouped into a single span so the flex `gap` only spaces
-  // real items (e.g. icon <-> label), never fragments of one label.
   const content = useMemo(() => {
     if (loading) {
       if (loadingChildren === null) {
@@ -127,13 +119,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>((props, r
       );
     }
 
-    // Slot requires a single element child; never wrap when delegating to it.
     if (asChild) return children;
 
-    // Only multi-child buttons hit the crash: bare text sitting beside an icon
-    // (or split into fragments) is what React removes/reorders after a translator
-    // re-parents the text node. A lone text child is left untouched so the common
-    // <button>Label</button> DOM contract (and text-based test queries) is kept.
     const childArray = React.Children.toArray(children);
     if (childArray.length < 2) return children;
 
@@ -141,8 +128,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>((props, r
     let textRun = "";
     const flushText = () => {
       if (textRun.length > 0) {
-        // Join consecutive fragments into one text node so React only ever
-        // updates its value (never removes an inner node a translator moved).
         nodes.push(<span key={`text-${nodes.length}`}>{textRun}</span>);
         textRun = "";
       }
@@ -169,11 +154,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>((props, r
     <Comp
       className={cn(buttonVariants({ variant, size, icon }), className, {
         notranslate: loading,
-        "pointer-events-none": loading, // Prevent interaction during loading
+        "pointer-events-none": loading,
       })}
       ref={ref}
       disabled={disabled || loading}
-      // Add data attribute to help with external tool detection
       data-loading={loading}
       {...rest}
     >

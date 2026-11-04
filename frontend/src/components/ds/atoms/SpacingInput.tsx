@@ -4,7 +4,7 @@ import { cn } from "../utils";
 
 type InputValue = string | number;
 
-interface SpacingInputProps extends InputProps {
+interface SpacingInputProps extends Omit<InputProps, "value" | "onChange"> {
   value?: string | number;
   onChange: (value: string) => void;
   units?: SelectOption[];

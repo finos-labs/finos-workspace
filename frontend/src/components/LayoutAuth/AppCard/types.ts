@@ -2,9 +2,7 @@ import type { ReactNode } from "react";
 import type { SelectedBackends } from "~/components/Apps/backendSelection";
 import type { UnifiedTemplate } from "~/hooks/useAllTemplates";
 
-export interface AppTemplate extends UnifiedTemplate {
-  isDevelopment?: boolean;
-}
+export type AppTemplate = UnifiedTemplate;
 
 export type SortOption = {
   label: string;
@@ -13,19 +11,18 @@ export type SortOption = {
 
 export type FilterOption = {
   label: string;
-  value: "all" | "shared" | "user" | "listed" | "openbb";
+  value: "all" | "shared" | "user";
 };
 
 export type AppsOptions = {
   filterBy: FilterOption["value"];
   sortBy: SortOption["value"];
-  // null = "all selected" sentinel; [] = explicit none; [...ids] = filter set.
   selectedBackends: SelectedBackends;
 };
 
-export type DeleteConfirm = {
+type DeleteConfirm = {
   template: UnifiedTemplate;
-  type: "app" | "backend" | "listedApp";
+  type: "app" | "backend";
 };
 
 export type AppsPageState = {
@@ -33,13 +30,11 @@ export type AppsPageState = {
   filterOptions: FilterOption[];
   showToast: boolean;
   deleteConfirm: DeleteConfirm | null;
-  rateApp: { id: string; appName: string } | null;
   backendDropdownOpen: boolean;
   backendSearch: string;
 };
 
 export interface AppCardProps {
-  fromMarketplace?: boolean;
   template: AppTemplate;
   setDeleteConfirm?: (deleteConfirm: DeleteConfirm) => void;
   bottomLeft?: ReactNode;
@@ -52,6 +47,5 @@ export interface AppCardDropdownItem {
   label: string;
   onClick: () => void;
   disabled?: boolean;
-  locked?: boolean;
   color?: string;
 }

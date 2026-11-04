@@ -1,6 +1,12 @@
 import { z } from "zod";
 import type { FormInputParamDef, ParamDef } from "~/components/types";
-import { AG_CHART_TYPES } from "../constants";
+import { PLUGIN_ID_PATTERN } from "~/plugins/types";
+import {
+  EditorLanguages,
+  HTTP_METHODS,
+  PARAM_LOCATIONS,
+  VIZ_TYPE_PATTERN,
+} from "./widgetsContract";
 
 function unionErrorMap(message: string) {
   return {
@@ -13,14 +19,6 @@ function unionErrorMap(message: string) {
     },
   } as { error: z.core.$ZodErrorMap };
 }
-
-export const ChartTypeSchema = z
-  .enum(
-    ["columnLineCombo", "areaColumnCombo", "customCombo", ...AG_CHART_TYPES],
-    unionErrorMap("Invalid chart type"),
-  )
-  .default("line")
-  .meta({ id: "ChartType" });
 
 export const _GridDataSchema = z.object({
   x: z.number(),
@@ -38,394 +36,28 @@ export const _GridDataSchema = z.object({
 
 export const StorageSchema = z.looseObject({}).default({});
 
-export const CronExpressionSchema = z.string().trim().min(1);
-export const RefetchIntervalSchema = z.union([
+const CronExpressionSchema = z.string().trim().min(1);
+const RefetchIntervalSchema = z.union([
   z.number().min(1000),
   z.literal(false),
   CronExpressionSchema,
 ]);
 
-export const TickerSchema = z.object({
-  id: z.string(),
-  symbol: z.string(),
-  category: z.enum(
-    ["crypto", "equity", "forex", "index", "futures", "derivative", "etf", "country"],
-    unionErrorMap("Invalid input"),
-  ),
-  color: z.string().nullish(),
-  type: z.string().nullish(),
-  name: z.string().nullish(),
-  exchange: z.string().nullish(),
-  currency: z.string().nullish(),
-  industry: z.string().nullish(),
-  sector: z.string().nullish(),
-  country: z.string().nullish(),
-  cik: z.string().nullish(),
-  isin: z.string().nullish(),
-  cusip: z.string().nullish(),
-  has_options: z.boolean().nullish(),
-});
-
-export const ChartViewOptionsSchema = z.object({
-  enabled: z.boolean().default(false).optional(),
-  chartType: ChartTypeSchema.optional(),
-  ignoreCellRange: z.boolean().optional(),
-  cellRangeCols: z
-    .record(ChartTypeSchema.optional(), z.array(z.string()).nullish())
-    .optional(),
-  chartSettingsOpen: z.boolean().default(false).optional(),
-  xLabel: z.string().optional(),
-  yLabel: z.string().optional(),
-});
-
-export const ChartModelSchema = z.looseObject({
-  modelType: z.enum(["range", "pivot"]).optional(),
-  chartType: ChartTypeSchema.optional(),
-  chartOptions: z.record(z.string(), z.any()).optional(),
-  cellRange: z
-    .looseObject({
-      columns: z.array(z.string()).optional(),
-    })
-    .optional(),
-  suppressChartRanges: z.boolean().optional(),
-});
-
-export const ColorOptionsSchema = z.object({
-  condition: z.enum(["eq", "ne", "gt", "lt", "gte", "lte", "between"]).optional(),
-  color: z.union([
-    z.enum(["green", "red", "blue"]),
-    z
-      .templateLiteral(["#", z.string()])
-      .refine((v) => /^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(v), {
-        message: "Invalid hex color code",
-      }),
-  ]),
-  fill: z.boolean().default(false).optional(),
-});
-
-export const ColorBaseSchema = ColorOptionsSchema.extend({
-  condition: z.enum(["eq", "ne", "gt", "lt", "gte", "lte", "contains", "notContains"]),
-  value: z.union([z.string(), z.number()]),
-});
-
-export const ColorBetweenSchema = ColorOptionsSchema.extend({
-  condition: z.literal("between"),
-  range: z.object({ min: z.number(), max: z.number() }),
-});
-
-export const ColorRuleSchema = z
-  .discriminatedUnion("condition", [ColorBaseSchema, ColorBetweenSchema])
-  .meta({ id: "ColorRule" });
-
-export const RenderFnTypes = [
-  "greenRed",
-  "titleCase",
-  "hoverCard",
-  "cellOnClick",
-  "columnColor",
-  "showCellChange",
-] as const;
-
-export type RenderFn = (typeof RenderFnTypes)[number];
-
-export const RenderFnSchema = z.enum(RenderFnTypes).optional();
-
-const RenderFnParamsBaseSchema = z
-  .looseObject({
-    actionType: z
-      // "openUrl", "openModal", "openWidget" not implemented yet
-      .enum(["groupBy", "sendToAgent"])
-      .nullish(),
-    groupByParamName: z.string().nullish(),
-    groupBy: z
-      .object({
-        forceUpdate: z.boolean().optional(),
-        paramName: z
-          .string()
-          .min(1, "`groupBy.paramName` is required when actionType is groupBy"),
-        valueField: z.string().optional(),
-      })
-      .optional(),
-    hoverCard: z
-      .object({
-        cellField: z.string().optional().default("value"),
-        title: z.string().optional(),
-        markdown: z.string().optional(),
-      })
-      .nullish(),
-    sendToAgent: z
-      .object({
-        markdown: z.string().optional(),
-        agentId: z.string().nullish(),
-      })
-      .nullish(),
-    colorRules: z.array(ColorRuleSchema).nullish(),
-    colorValueKey: z.string().nullish(),
-  })
-  .nullish();
-
-const RenderFnParamsSchema = z.preprocess(
-  (val: z.output<typeof RenderFnParamsBaseSchema>, ctx) => {
-    if (!val) return undefined;
-
-    if (val?.actionType === "groupBy") {
-      if (typeof val.groupByParamName === "string") {
-        const { groupByParamName, groupBy, ...rest } = val;
-        return {
-          ...rest,
-          groupBy: {
-            ...(groupBy ?? {}),
-            paramName: groupByParamName,
-          },
-        };
-      }
-
-      if (!val.groupBy || typeof val.groupBy?.paramName !== "string") {
-        ctx.addIssue({
-          code: "custom",
-          message: "`groupBy.paramName` is required when actionType is `groupBy`",
-        });
-      }
-    }
-
-    if (val?.actionType === "sendToAgent") {
-      if (!val.sendToAgent || typeof val.sendToAgent?.markdown !== "string") {
-        ctx.addIssue({
-          code: "custom",
-          message:
-            "`sendToAgent.markdown` is required when actionType is `sendToAgent`",
-        });
-      }
-    }
-
-    return val;
-  },
-  RenderFnParamsBaseSchema,
-);
-
-export const FormatterFnSchema = z
-  .enum(["int", "none", "percent", "normalized", "normalizedPercent", "dateToYear"])
-  .nullish();
-
-export const TableColumnDefsSchema = z.array(
-  z.object({
-    field: z.string(),
-    enableCellChangeWs: z.boolean().default(true).nullish(),
-    headerName: z.string(),
-    chartDataType: z.enum(["category", "series", "time", "excluded"]).optional(),
-    cellDataType: z
-      .enum(["text", "number", "boolean", "date", "dateString", "object"])
-      .optional(),
-    prefix: z.string().optional(),
-    suffix: z.string().optional(),
-    formatterFn: FormatterFnSchema,
-    decimalPlaces: z.number().min(0).max(6).optional(),
-    renderFn: z
-      .preprocess((val) => {
-        if (typeof val === "string") {
-          return val.split(",").map((v) => v.trim());
-        }
-
-        return Array.isArray(val) ? val?.map((v) => v?.trim()) : val;
-      }, z.array(RenderFnSchema).optional())
-      .nullish(),
-    renderFnParams: RenderFnParamsSchema.nullish(),
-    // Sparkline configuration
-    sparkline: z
-      .object({
-        type: z.enum(["line", "area", "bar"]),
-        dataField: z.string().optional(),
-        options: z
-          .object({
-            stroke: z.string().optional(),
-            strokeWidth: z.number().optional(),
-            fill: z.string().optional(),
-            fillOpacity: z.number().optional(),
-            min: z.number().optional(),
-            max: z.number().optional(),
-            direction: z.enum(["vertical", "horizontal"]).optional(),
-            xKey: z.string().optional(),
-            yKey: z.string().optional(),
-            tooltip: z
-              .object({
-                enabled: z.boolean().optional(),
-                renderer: z.string().optional(),
-              })
-              .optional(),
-            axis: z
-              .object({
-                type: z.enum(["number", "category", "time"]).optional(),
-                stroke: z.string().optional(),
-                strokeWidth: z.number().optional(),
-                paddingInner: z.number().optional(),
-                paddingOuter: z.number().optional(),
-              })
-              .optional(),
-            markers: z
-              .object({
-                enabled: z.boolean().optional(),
-                shape: z
-                  .enum(["circle", "diamond", "square", "plus", "cross", "triangle"])
-                  .optional(),
-                size: z.number().optional(),
-                fill: z.string().optional(),
-                stroke: z.string().optional(),
-                strokeWidth: z.number().optional(),
-                highlightSize: z.number().optional(),
-              })
-              .optional(),
-            highlightStyle: z
-              .object({
-                fill: z.string().optional(),
-                stroke: z.string().optional(),
-                strokeWidth: z.number().optional(),
-              })
-              .optional(),
-            // Points of interest configuration
-            pointsOfInterest: z
-              .object({
-                firstLast: z
-                  .object({
-                    size: z.number().optional(),
-                    fill: z.string().optional(),
-                    stroke: z.string().optional(),
-                    strokeWidth: z.number().optional(),
-                  })
-                  .optional(),
-                minimum: z
-                  .object({
-                    size: z.number().optional(),
-                    fill: z.string().optional(),
-                    stroke: z.string().optional(),
-                    strokeWidth: z.number().optional(),
-                  })
-                  .optional(),
-                maximum: z
-                  .object({
-                    size: z.number().optional(),
-                    fill: z.string().optional(),
-                    stroke: z.string().optional(),
-                    strokeWidth: z.number().optional(),
-                  })
-                  .optional(),
-                positiveNegative: z
-                  .object({
-                    positive: z
-                      .object({
-                        size: z.number().optional(),
-                        fill: z.string().optional(),
-                        stroke: z.string().optional(),
-                        strokeWidth: z.number().optional(),
-                      })
-                      .optional(),
-                    negative: z
-                      .object({
-                        size: z.number().optional(),
-                        fill: z.string().optional(),
-                        stroke: z.string().optional(),
-                        strokeWidth: z.number().optional(),
-                      })
-                      .optional(),
-                  })
-                  .optional(),
-                highlighted: z
-                  .object({
-                    size: z.number().optional(),
-                    fill: z.string().optional(),
-                    stroke: z.string().optional(),
-                    strokeWidth: z.number().optional(),
-                  })
-                  .optional(),
-              })
-              .optional(),
-            // Custom formatter function for styling bars/columns based on values
-            customFormatter: z.string(),
-            label: z
-              .object({
-                enabled: z.boolean().optional(),
-                fontWeight: z.string().optional(),
-                fontStyle: z.string().optional(),
-                fontSize: z.number().optional(),
-                fontFamily: z.string().optional(),
-                color: z.string().optional(),
-                placement: z
-                  .enum([
-                    "inside",
-                    "outside",
-                    "inside-center",
-                    "inside-end",
-                    "outside-center",
-                    "outside-end",
-                  ])
-                  .optional(),
-              })
-              .optional(),
-            padding: z
-              .object({
-                top: z.number().optional(),
-                right: z.number().optional(),
-                bottom: z.number().optional(),
-                left: z.number().optional(),
-              })
-              .optional(),
-          })
-          .optional(),
-      })
-      .optional(),
-    width: z.number().nullish(),
-    maxWidth: z.number().nullish(),
-    minWidth: z.number().nullish(),
-    hide: z.boolean().nullish(),
-    headerTooltip: z.string().nullish(),
-    rowGroup: z.boolean().nullish(),
-    aggFunc: z.string().nullish(),
-    pinned: z.union([z.literal("left"), z.literal("right"), z.boolean()]).nullish(),
-    align: z.enum(["left", "center", "right"]).optional(),
-  }),
-);
-
-export const DataSchema = z.looseObject({}).optional();
-
-export const TableSchema = z
-  .object({
-    showAll: z.boolean().nullish(),
-    chartView: ChartViewOptionsSchema.optional(),
-    columnsDefs: TableColumnDefsSchema.optional(),
-    columnState: DataSchema.optional(),
-    filterModel: DataSchema.optional(),
-    transpose: z.boolean().optional(),
-    enableAdvanced: z.boolean().optional(),
-    enableFormulas: z.boolean().optional(),
-    formatterFn: FormatterFnSchema,
-  })
-  .optional();
-
-export const EditorLanguages = [
-  "sql",
-  "javascript",
-  "python",
-  "json",
-  "html",
-  "css",
-  "markdown",
-  "xml",
-  "text",
-] as const;
 export type EditorLanguage = (typeof EditorLanguages)[number];
 
 const ParamDefSchemaBase = z
   .object({
     paramName: z.string().min(1, "This field is required"),
     label: z.string().optional(),
-    value: z.any().nullish(),
-    description: z.any().optional(),
+    value: z.unknown().nullish(),
+    description: z.unknown().optional(),
     multiple: z.boolean().default(false).optional(),
     row: z.number().optional(),
     type: z
       .enum(
-        ["text", "date", "ticker", "number", "boolean", "endpoint", "button", "tabs"],
+        ["text", "date", "number", "boolean", "endpoint", "button", "tabs"],
         unionErrorMap(
-          "Supported types are text, date, ticker, number, boolean, endpoint, tabs",
+          "Supported types are text, date, number, boolean, endpoint, tabs",
         ),
       )
       .default("text")
@@ -434,7 +66,7 @@ const ParamDefSchemaBase = z
     hidden: z.boolean().optional().default(false),
     style: z
       .object({
-        popupWidth: z.number().min(100).max(1000).optional(), // value in px for <AdvancedSelect /> popup width
+        popupWidth: z.number().min(100).max(1000).optional(),
       })
       .optional(),
     options: z
@@ -443,6 +75,12 @@ const ParamDefSchemaBase = z
           .object({
             label: z.string(),
             value: z.union([z.string(), z.number(), z.boolean(), z.null()]).nullish(),
+            extraInfo: z
+              .object({
+                description: z.string().optional(),
+                rightOfDescription: z.string().optional(),
+              })
+              .optional(),
           })
           .optional(),
       )
@@ -451,7 +89,7 @@ const ParamDefSchemaBase = z
     multiSelect: z.boolean().default(false).optional(),
     roles: z.array(z.string()).optional(),
     placeholder: z.string().optional(),
-    query: z.string().optional(),
+    in: z.enum(PARAM_LOCATIONS).optional(),
   })
   .partial({
     options: true,
@@ -464,9 +102,16 @@ const ParamDefSchemaBase = z
     multiSelect: true,
     show: true,
     hidden: true,
-    query: true,
   })
   .meta({ id: "ParamDef" });
+
+const OptionsLookup = {
+  optionsEndpoint: z.string().optional(),
+  optionsMethod: z.enum(HTTP_METHODS).optional(),
+  optionsParams: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+    .optional(),
+};
 
 const ParamValueSchema = z.discriminatedUnion("type", [
   ParamDefSchemaBase.extend({
@@ -486,10 +131,6 @@ const ParamValueSchema = z.discriminatedUnion("type", [
       )
       .optional(),
   }).meta({ id: "TabsParamDef" }),
-  ParamDefSchemaBase.extend({
-    type: z.literal("ticker"),
-    value: z.string().nullish(),
-  }).meta({ id: "TickerParamDef" }),
   ParamDefSchemaBase.extend({
     type: z.literal("date"),
     value: z.string().nullish(),
@@ -512,11 +153,9 @@ const ParamValueSchema = z.discriminatedUnion("type", [
   }).meta({ id: "BooleanParamDef" }),
   ParamDefSchemaBase.extend({
     type: z.literal("endpoint"),
-    value: z.any().nullish(),
-    optionsEndpoint: z.string().optional(),
-    optionsParams: z.record(z.string(), z.any()).optional(),
+    value: z.unknown().nullish(),
+    ...OptionsLookup,
     groupById: z.string().optional(),
-    query: z.string().optional(),
   }).meta({ id: "EndpointParamDef" }),
   ParamDefSchemaBase.extend({
     paramName: z.string().optional(),
@@ -534,6 +173,7 @@ const ParamValueSchema = z.discriminatedUnion("type", [
               ),
             )
             .optional(),
+          ...OptionsLookup,
         }),
       )
       .optional(),
@@ -565,10 +205,11 @@ const ParamDefSchemaArray = z.array(ParamDefSchema).refine(
   },
 );
 
-const toParamType = { date: "date" } as const;
+const toParamType: Record<string, ParamDef["type"]> = { date: "date" };
 
 export function newParamDef<T extends ParamDef | FormInputParamDef>(paramDef: T): T {
   const { type, value, show } = paramDef;
+  const declaredType: string | undefined = type;
   let options = paramDef.options ?? [];
 
   if (type === "boolean" && !options.length) {
@@ -578,15 +219,15 @@ export function newParamDef<T extends ParamDef | FormInputParamDef>(paramDef: T)
     ];
   }
 
-  const parseValue = (v: any) => {
-    if (!v) return undefined;
+  const parseValue = (v: unknown) => {
+    if (v === undefined || v === null || v === "") return undefined;
     if (type === "number" && typeof v === "string") {
       for (const fnc of [Number.parseFloat, Number.parseInt]) {
         const num = fnc(v);
         if (!Number.isNaN(num)) return num;
       }
     }
-    if (type === "text") return v?.toString();
+    if (type === "text") return String(v);
     return v;
   };
 
@@ -596,17 +237,18 @@ export function newParamDef<T extends ParamDef | FormInputParamDef>(paramDef: T)
     ...paramDef,
     value: parsedValue ?? null,
     label: paramDef.label ?? paramDef.paramName,
-    type: type ?? toParamType?.[paramDef.paramName] ?? "text",
+    type: declaredType ?? toParamType[paramDef.paramName] ?? "text",
     show: typeof show === "boolean" ? show : true,
     options,
   };
 }
 
-export function isParamDef(p: any): p is ParamDef {
-  return typeof p === "object" && (p?.type === "form" || p?.paramName);
+function isParamDef(p: unknown): p is ParamDef {
+  if (typeof p !== "object" || p === null) return false;
+  return ("type" in p && p.type === "form") || ("paramName" in p && !!p.paramName);
 }
 
-export function isParamDefArray(params: any): params is ParamDef[] {
+function isParamDefArray(params: unknown): params is ParamDef[] {
   return Array.isArray(params) && params.every((p) => isParamDef(p));
 }
 
@@ -639,134 +281,267 @@ export const ParamsSchema = z
   .default([]);
 
 export const WidgetVizTypes = [
-  "advanced_charting",
-  "chart",
-  "chart-highcharts",
-  "chart-vegalite",
-  "file_viewer",
   "html",
   "iframe",
-  "live_grid",
   "markdown",
-  "metric",
-  "multi_file_viewer",
   "newsfeed",
-  "note",
-  "rich_note",
-  "omni",
   "pdf",
-  "table",
-  "ssrm_table",
-  "ssrm_advanced",
-  "youtube",
 ] as const;
 
-const supportedTypesError = WidgetVizTypes.filter(
-  (v) => !["file_viewer", "iframe"].includes(v),
-)
+const supportedTypesError = WidgetVizTypes.filter((v) => v !== "iframe")
   .map((v) => `\`${v}\``)
   .join(", ");
 
-export type WidgetVizType = (typeof WidgetVizTypes)[number] | "custom";
+type PluginVizType = string & { readonly __pluginVizType?: never };
+type BuiltInVizType = (typeof WidgetVizTypes)[number];
+export type WidgetVizType = BuiltInVizType | "custom" | PluginVizType;
 
 export const widgetTypesSchema = z
-  .preprocess(
-    (val) => (val === "note" ? "rich_note" : val),
-    z
-      .enum(
-        WidgetVizTypes,
-        unionErrorMap(`Supported types are ${supportedTypesError}.`),
-      )
-      .nullish(),
+  .string()
+  .regex(
+    VIZ_TYPE_PATTERN,
+    `A widget type is a lowercase name. Built-in types are ${supportedTypesError}; widget plugins add others.`,
   )
+  .nullish()
   .meta({ id: "WidgetType" });
 
-export const WidgetStateSchema = z
+const WidgetStateSchema = z
   .looseObject({
-    paramOrder: z.array(z.string()).optional(),
-    params: z.record(z.string(), z.any()).optional(),
-    chartView: ChartViewOptionsSchema.optional(),
-    chartModel: ChartModelSchema.optional(),
-    columnState: DataSchema,
-    filterModel: DataSchema,
+    paramOrder: z
+      .array(z.string())
+      .optional()
+      .describe(
+        "The names of the widget's parameters in the order in which the widget's header shows them",
+      ),
+    params: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe(
+        "The values of the widget's parameters by parameter name; a parameter that is missing keeps the value from widgets.json",
+      ),
     storage: z
       .looseObject({
-        text: z.string().optional(),
-        html: z.string().optional(),
+        text: z.string().optional().describe("The text of a markdown widget"),
+        html: z.string().optional().describe("The page of an HTML widget"),
+        plugin: z
+          .strictObject({
+            config: z
+              .record(z.string(), z.unknown())
+              .optional()
+              .describe(
+                "The configuration of a plugin widget, which has to satisfy the settings that the plugin declares",
+              ),
+          })
+          .optional()
+          .describe("The state of a plugin widget"),
       })
-      .optional(),
+      .optional()
+      .describe(
+        "The content that the widget keeps: text, a page or a plugin's configuration",
+      ),
   })
+  .describe("What a widget starts with: the values of its parameters and its content")
   .meta({ id: "WidgetState" });
 
-export const TemplateLayoutItemSchema = z
+const TemplateLayoutItemSchema = z
   .looseObject({
-    i: z.string(),
-    x: z.number(),
-    y: z.number(),
-    w: z.number(),
-    h: z.number(),
-    minW: z.number().optional(),
-    minH: z.number().optional(),
-    maxW: z.number().optional(),
-    maxH: z.number().optional(),
-    moved: z.boolean().optional(),
-    static: z.boolean().optional(),
-    isDraggable: z.boolean().optional(),
+    i: z
+      .string()
+      .describe(
+        "The widget that this item places: its key in the backend's widgets.json. The id navigation_bar places no widget and makes the dashboard show its tabs in a Navigation Bar widget",
+      ),
+    x: z
+      .number()
+      .describe(
+        "The column of the widget's left edge, counted from 0 on a grid of 40 columns",
+      ),
+    y: z.number().describe("The row of the widget's top edge, counted from 0"),
+    w: z.number().describe("The widget's width in columns"),
+    h: z
+      .number()
+      .describe(
+        "The widget's height in rows; a height of 1 shows the widget minimized",
+      ),
+    minW: z
+      .number()
+      .optional()
+      .describe("The smallest width in columns that a user can resize the widget to"),
+    minH: z
+      .number()
+      .optional()
+      .describe("The smallest height in rows that a user can resize the widget to"),
+    maxW: z
+      .number()
+      .optional()
+      .describe("The largest width in columns that a user can resize the widget to"),
+    maxH: z
+      .number()
+      .optional()
+      .describe("The largest height in rows that a user can resize the widget to"),
+    moved: z
+      .boolean()
+      .optional()
+      .describe(
+        "A flag of the grid library that places the widgets: the item has moved",
+      ),
+    static: z
+      .boolean()
+      .optional()
+      .describe("A flag of the grid library: a static item cannot be moved or resized"),
+    isDraggable: z
+      .boolean()
+      .optional()
+      .describe(
+        "A flag of the grid library: false stops a user from dragging the widget",
+      ),
     state: WidgetStateSchema.optional(),
-    groups: z.array(z.string()).optional(),
+    groups: z
+      .array(z.string())
+      .optional()
+      .describe(
+        "The names of the groups, from the app's groups, that the widget belongs to",
+      ),
   })
+  .describe("One widget of a tab: where it sits, how big it is and what it starts with")
   .meta({ id: "Layout" });
 
 const templateShapeDefinition = {
-  templateId: z.string().optional(),
+  templateId: z
+    .string()
+    .optional()
+    .describe(
+      "The id of the app, which roles use to grant access to it; without it the web app falls back to the generated id",
+    ),
   id: z
     .string()
     .regex(/^custom-.+/)
-    .optional(),
-  name: z.string(),
-  description: z.string().optional(),
-  selected_agent: z.string().optional(),
-  img: z.string().optional(),
-  img_dark: z.string().optional(),
-  img_light: z.string().optional(),
-  authentication: z.string().optional(),
+    .optional()
+    .describe(
+      "Another way to give the app's id when templateId is missing; it starts with custom-",
+    ),
+  name: z
+    .string()
+    .describe(
+      "The name on the app's card, which is also the name of the dashboards that users create from it",
+    ),
+  description: z
+    .string()
+    .optional()
+    .describe("The text under the name on the app's card"),
+  selected_agent: z
+    .string()
+    .optional()
+    .describe(
+      "The id or the name of an agent that the user has connected: when a user opens the app, the Copilot selects this agent and its panel opens",
+    ),
+  img: z
+    .string()
+    .optional()
+    .describe(
+      "The address of the picture on the app's card, which may be relative to the backend; the card shows it in both themes unless img_dark or img_light overrides it",
+    ),
+  img_dark: z
+    .string()
+    .optional()
+    .describe(
+      "The address of the picture that the card shows in the dark theme instead of img",
+    ),
+  img_light: z
+    .string()
+    .optional()
+    .describe(
+      "The address of the picture that the card shows in the light theme instead of img",
+    ),
+  authentication: z
+    .string()
+    .optional()
+    .describe("Accepted for compatibility; the web app does not read it"),
   tabs: z
     .record(
       z.string(),
       z.object({
-        id: z.string(),
-        name: z.string(),
-        layout: z.array(TemplateLayoutItemSchema),
+        id: z.string().describe("The id of the tab, the same as its key"),
+        name: z
+          .string()
+          .describe("The name that the tab shows in the Navigation Bar widget"),
+        layout: z.array(TemplateLayoutItemSchema).describe("The widgets of the tab"),
       }),
+    )
+    .describe(
+      "The tabs of the app by tab id. A dashboard that a user creates from the app has one tab for each entry, and it shows a Navigation Bar widget when the app has more than one",
     )
     .meta({ id: "Tabs" }),
   groups: z
     .array(
       z
         .object({
-          name: z.string(),
-          paramName: z.string().optional(),
-          type: z.string(),
-          widgetIds: z.array(z.string()).optional(),
-          defaultValue: z.any().nullish(),
+          name: z
+            .string()
+            .describe(
+              "The name that the groups lists of the layout items use to put a widget in the group",
+            ),
+          paramName: z
+            .string()
+            .optional()
+            .describe(
+              "The name of the parameter that the group links, for a group of the type param or endpointParam",
+            ),
+          type: z
+            .enum(["param", "endpointParam"])
+            .describe("The kind of the group: param or endpointParam"),
+          widgetIds: z
+            .array(z.string())
+            .optional()
+            .describe(
+              "The widgets that belong to the group, by their key in widgets.json, as an alternative to naming the group in each layout item",
+            ),
+          defaultValue: z
+            .unknown()
+            .nullish()
+            .describe(
+              "The value that the group starts with; for a date, the text $currentDate, optionally with a modifier, stands for today",
+            ),
         })
+        .describe("A set of widgets that share the value of one parameter")
         .meta({ id: "Group" }),
     )
     .default([])
-    .optional(),
-  prompts: z.array(z.string()).optional(),
+    .optional()
+    .describe("The groups that link a parameter across the widgets of the app"),
+  prompts: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "The questions that the Copilot suggests when somebody uses a dashboard that was created from the app",
+    ),
   mcpServers: z
     .array(
       z.object({
-        name: z.string(),
-        description: z.string().optional(),
-        url: z.url(),
-        authType: z.enum(["oauth", "token"]).optional(),
+        name: z
+          .string()
+          .describe(
+            "The name of the MCP server, which a widget's mcp_tool names in mcp_server; apps of one backend may repeat a name only for the same url",
+          ),
+        description: z.string().optional().describe("What the server offers"),
+        url: z.url().describe("The address of the server's MCP endpoint"),
+        authType: z
+          .enum(["oauth", "token"])
+          .optional()
+          .describe(
+            "How the server signs a user in: oauth, or token for a server that needs the Authorization header of the backend's connection",
+          ),
       }),
     )
-    .optional(),
-  // Included in the schema so unrecognized-keys detection does not flag it as unknown.
-  allowCustomization: z.boolean().optional(),
+    .optional()
+    .describe(
+      "The MCP servers that the app uses. When a user connects the backend, Workspace adds each server to the user's MCP servers",
+    ),
+  allowCustomization: z
+    .boolean()
+    .optional()
+    .describe(
+      "Whether users can change the widgets of a dashboard created from the app; when false, the dashboard is locked: users cannot add, remove, duplicate or move its widgets, but can still change parameters and resize widgets",
+    ),
 };
 
 export const backendTemplateSchema = z
@@ -782,8 +557,8 @@ export const backendTemplateSchema = z
               ...layout,
               groups:
                 layout.groups ??
-                val.groups
-                  .filter((g) => g.widgetIds.includes(layout.i))
+                (val.groups ?? [])
+                  .filter((g) => g.widgetIds?.includes(layout.i))
                   .map((g) => g.name),
             })),
           },
@@ -797,18 +572,15 @@ export const templateSpecificationSchema = z.array(
   z.object(templateShapeDefinition).meta({ id: "AppsJson" }),
 );
 
-// Derived from the Zod schema shape so it stays in sync automatically
 export const KNOWN_TEMPLATE_KEYS = new Set(Object.keys(templateShapeDefinition));
 
 export const WidgetSchemaBase = z.object({
   id: z.string(),
   widgetId: z.string(),
   type: widgetTypesSchema.optional(),
-  fileEndpoint: z.string().optional(),
   name: z.string().optional(),
   showTitle: z.boolean().default(true).nullish(),
   description: z.string().optional(),
-  groupId: z.string().nullish(),
   groupById: z.string().nullish(),
   innerTab: z.string().optional(),
   disableRetrievalForCopilot: z.boolean().optional(),
@@ -823,25 +595,24 @@ export const WidgetSchemaBase = z.object({
   refetchInterval: RefetchIntervalSchema.nullish(),
   dataUpdateDisplay: CronExpressionSchema.optional(),
   runButton: z.boolean().optional(),
-  /** @deprecated Use `language` field in params array instead for omni/ssrm_advanced widgets */
-  inputType: z.string().optional(),
-  copilotParseAs: z
-    .union([z.literal("structured"), z.literal("unstructured")])
-    .optional(),
   raw: z.boolean().optional(),
+  requires_auth: z.boolean().optional(),
   exportable: z.boolean().default(true).optional(),
 });
 
 export const InternalWidgetSchema = WidgetSchemaBase.extend({
+  plugin: z
+    .strictObject({
+      id: z.string().regex(PLUGIN_ID_PATTERN),
+      widget: z.string().max(48),
+    })
+    .optional(),
   data: z
     .object({
-      mainTicker: TickerSchema.optional(),
-      secondaryTickers: z.array(TickerSchema).optional(),
       html: z.string().optional(),
-      table: DataSchema,
     })
     .optional()
-    .default({ table: {} }),
+    .default({}),
   refetchInterval: z
     .union([z.number().min(1000), z.literal(false), CronExpressionSchema])
     .optional()
@@ -851,77 +622,43 @@ export const InternalWidgetSchema = WidgetSchemaBase.extend({
 export const ExternalWidgetSchema = WidgetSchemaBase.extend({
   category: z.string().nullish(),
   subCategory: z.string().nullish(),
-  connectionType: z
-    .enum([
-      "single",
-      "advanced-backend",
-      "file",
-      "database",
-      "snowflake",
-      "widgetMetadata",
-    ])
-    .nullish(),
+  connectionType: z.enum(["advanced-backend", "file", "widgetMetadata"]).nullish(),
   endpoint: z
     .object({
       url: z.string(),
       method: z.enum(["GET", "POST"]),
-      headers: z.record(z.string(), z.string()).optional(),
-      query: z.record(z.string(), z.string()).optional(),
     })
     .optional(),
-  wsEndpoint: z.string().optional(),
-  data: z.preprocess(
-    (val: any) => {
-      if (val?.wsRowIdColumn && !val?.wsRowIdColumns) {
-        const { wsRowIdColumn, ...rest } = val;
-        rest.wsRowIdColumns =
-          typeof wsRowIdColumn === "string" ? [wsRowIdColumn] : wsRowIdColumn;
-
-        return rest;
-      }
-      return val;
-    },
-    z
-      .looseObject({
-        wsRowIdColumns: z.array(z.string()).optional(),
-        table: TableSchema.optional(),
-        mainTicker: TickerSchema.optional(),
-      })
-      .optional()
-      .default({ table: {} }),
-  ),
+  data: z.looseObject({}).optional().default({}),
   source: z.union([z.array(z.string()), z.string()]).nullish(),
   sourceId: z.string().nullish(),
   sourceName: z.string().nullish(),
-  sourceDatabase: z.string().optional(),
-  schemaName: z.string().optional(),
   isSharedWidget: z.boolean().nullish(),
-})
-  .transform((val) => {
-    if ((val.runButton && !val.refetchInterval) || val.refetchInterval === false) {
-      val.staleTime = Number.POSITIVE_INFINITY;
-      val.refetchInterval = false;
-    } else if (!val.runButton && val.refetchInterval === undefined) {
-      val.refetchInterval = 1000 * 60 * 15;
-    }
-    return val;
-  })
-  .refine(
-    // make sure multi_file_viewer has "fileSelector" in roles
-    (data) => {
-      if (data.type === "multi_file_viewer") {
-        return data.params?.some(
-          (param) => param.type === "endpoint" && param.roles?.includes("fileSelector"),
-        );
-      }
-      return true;
-    },
-    {
-      path: ["params"],
-      message: `Endpoint param with \`{ roles: ["fileSelector"] }\` required for \`multi_file_viewer\`.`,
-    },
-  );
+}).transform((val) => {
+  if ((val.runButton && !val.refetchInterval) || val.refetchInterval === false) {
+    val.staleTime = Number.POSITIVE_INFINITY;
+    val.refetchInterval = false;
+  } else if (!val.runButton && val.refetchInterval === undefined) {
+    val.refetchInterval = 1000 * 60 * 15;
+  }
+  return val;
+});
 
-export function isWidgetVizType(type: string): type is WidgetVizType {
-  return WidgetVizTypes.includes(type as any);
+export function isBuiltInVizType(
+  type: string | null | undefined,
+): type is BuiltInVizType {
+  return WidgetVizTypes.some((vizType) => vizType === type);
+}
+
+export function isWellFormedVizType(
+  type: string | null | undefined,
+): type is WidgetVizType {
+  return typeof type === "string" && VIZ_TYPE_PATTERN.test(type);
+}
+
+export function isRenderableVizType(
+  type: string | null | undefined,
+  pluginTypes: ReadonlySet<string> = new Set(),
+): type is WidgetVizType {
+  return isBuiltInVizType(type) || (typeof type === "string" && pluginTypes.has(type));
 }

@@ -15,10 +15,8 @@ describe("getUnresolvedMentionLabel", () => {
   });
 
   it("does not invent a name out of a widget id", () => {
-    // `portfolio_industries_custom_obb` is an API id, not the widget's title
-    // ("Portfolio Exposure by Industry"), so beautifying it would mislead.
     for (const id of [
-      "widget_id=portfolio_industries_custom_obb&uuid=abc-123",
+      "widget_id=portfolio_industries_custom&uuid=abc-123",
       "eia_steo_table",
       "uuid=abc-123",
     ]) {
@@ -37,9 +35,9 @@ describe("getUnresolvedMentionLabel", () => {
   });
 
   it("does not treat a key ending in inner_tab as the tab slug", () => {
-    expect(getUnresolvedMentionLabel("@[id:widget_id=x&not_inner_tab=oil-prices]")).toBe(
-      UNRESOLVED_MENTION_FALLBACK_LABEL,
-    );
+    expect(
+      getUnresolvedMentionLabel("@[id:widget_id=x&not_inner_tab=oil-prices]"),
+    ).toBe(UNRESOLVED_MENTION_FALLBACK_LABEL);
   });
 });
 
@@ -56,6 +54,8 @@ describe("findUnresolvedMentions", () => {
   });
 
   it("ignores resolved mentions and unrelated bracket text", () => {
-    expect(findUnresolvedMentions("hi @Foo see [a link](x) and @[notanid]").size).toBe(0);
+    expect(findUnresolvedMentions("hi @Foo see [a link](x) and @[notanid]").size).toBe(
+      0,
+    );
   });
 });

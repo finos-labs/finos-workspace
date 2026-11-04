@@ -44,7 +44,7 @@ export default function PlusMenu({ isMobile = false }: { isMobile: boolean }) {
   ];
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
-      <PopoverPrimitive.Trigger className="obb-icon-btn-v2 size-6">
+      <PopoverPrimitive.Trigger className="ws-icon-btn-v2 size-6">
         <Icon id="plus-icon" className="mx-auto size-4" />
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
@@ -53,9 +53,9 @@ export default function PlusMenu({ isMobile = false }: { isMobile: boolean }) {
           sideOffset={5}
           align={isMobile ? "end" : "start"}
           className={clsx(
-            "radix-side-top:animate-slide-up radix-side-bottom:animate-slide-down",
+            "data-[side=top]:animate-slide-up data-[side=bottom]:animate-slide-down",
             "z-60 w-fit min-w-[186px] text-xs",
-            "obb-dropdown-container",
+            "ws-dropdown-container",
           )}
         >
           {OPTIONS.map((item) => (
@@ -65,7 +65,7 @@ export default function PlusMenu({ isMobile = false }: { isMobile: boolean }) {
                 item.onClick();
                 setOpen(false);
               }}
-              className={clsx("obb-dropdown-item justify-between")}
+              className={clsx("ws-dropdown-item justify-between")}
             >
               {item.label}
               <span>

@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document outlines the testing strategy, conventions, and best practices for the OpenBB Workspace project.
+This document outlines the testing strategy, conventions, and best practices for the FINOS Workspace project.
 
 ## Table of Contents
 
@@ -60,8 +60,8 @@ tests/
 │   ├── lib/utils/           # Utility function tests
 │   └── routes/              # Route/page component tests
 ├── e2e/                     # End-to-end tests (Playwright)
-│   ├── helpers.ts           # Shared E2E utilities
-│   ├── mock_data/           # E2E mock data
+│   ├── helpers.ts           # Shared E2E utilities (the account, signing in)
+│   ├── global.setup.ts      # Signs in once and saves the session
 │   └── *.spec.ts            # E2E test files
 └── mocks/                   # MSW mock handlers
     ├── handlers.ts          # API request handlers
@@ -101,59 +101,93 @@ src/api/auth.api.ts
 
 ```bash
 # Run all unit tests
-bun run test:unit
+npm run test:unit
 
 # Run in watch mode (development)
-bunx vitest tests/unit
+npx vitest tests/unit
 
 # Run specific test file
-bunx vitest run tests/unit/components/General/Avatar.test.tsx
+npx vitest run tests/unit/components/General/Avatar.test.tsx
 
 # Run tests matching pattern
-bunx vitest run -t "Avatar"
+npx vitest run -t "Avatar"
 
 # Run with coverage report
-bun run test:unit -- --coverage
+npm run test:unit -- --coverage
 ```
 
 ### Integration Tests
 
 ```bash
-bun run test:integration
+npm run test:integration
 ```
 
 ### E2E Tests
 
+The tests run against a running stack over HTTPS, as a deployment serves it, and sign in as an
+account that exists there. The session cookie is Secure, and WebKit does not count
+http://localhost as secure. Start the whole stack from the repository root with
+`docker-compose.e2e.yml`, which puts a TLS front before the web app, the API and the agent with a
+certificate from a certificate authority made for the purpose, and name the administrator it
+created: the address in `backend-api/backend/scripts/cfgs/config.toml`, and the password you set
+for it:
+
 ```bash
+# from the repository root, once
+frontend/tests/e2e/make-tls.sh frontend/tests/e2e/tls/certs localhost
+docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
+docker compose run --rm init python -m scripts.init_users --new-password <the administrator's email>
+export E2E_USER_EMAIL=<the administrator's email>
+export E2E_USER_PASSWORD=<their password>
+# The browsers ignore the unknown authority (playwright.config.ts); the tests' own servers that
+# call the API trust it through Node
+export NODE_EXTRA_CA_CERTS="$PWD/frontend/tests/e2e/tls/certs/ca.pem"
+# E2E_BASE_URL defaults to https://localhost:3000, E2E_API_URL to https://localhost:8000
+
 # Run all E2E tests
-bun run test:e2e
+npm run test:e2e
 
 # Run with UI (interactive mode)
-bunx playwright test tests/e2e --ui
+npx playwright test tests/e2e --ui
 
 # Run specific test file
-bunx playwright test tests/e2e/auth.spec.ts
+npx playwright test tests/e2e/auth.spec.ts
 
 # Generate test code
-bunx playwright codegen tests/e2e
+npx playwright codegen tests/e2e
 ```
 
-> **Local Development**: Uncomment `export const proUrl = "http://localhost:1420";` in `/tests/e2e/helpers.ts` when running E2E tests locally.
+The `setup` project signs in once and keeps the session in `playwright/.auth/user.json`; the
+other projects start from it. `.github/workflows/e2e.yml` runs the same tests in CI against a
+stack of its own, over HTTPS, with an administrator whose password the run sets.
+
+Every spec runs in the `chromium` project; the widget plugin specs (`plugin*.spec.ts`) also run
+in `firefox` and `webkit`, since a plugin's frame, policy and workers are where the engines
+differ (`npx playwright install chromium firefox webkit`), and so does
+`dashboard-persistence.spec.ts`, since WebKit cancels a request made as the page goes away. The
+plugin specs need the plugins directory the
+API reads, named on this machine by `E2E_PLUGINS_DIR` (see `.github/workflows/e2e.yml` for the
+compose override). `plugin-interop.spec.ts` runs public Anywidget modules fetched from PyPI at
+pinned versions, so it runs only with `E2E_INTEROP=1`, and nightly in
+`.github/workflows/plugin-interop.yml`.
 
 ### Storybook Accessibility Tests
 
-We use `@storybook/test-runner` and `axe-playwright` to run accessibility (WCAG) checks against our UI components using Storybook.
+Every story of the design system is also an accessibility test. Storybook's Vitest addon renders
+each story in Chromium through Vitest's browser mode, and the accessibility addon checks it with axe
+against WCAG 2 A and AA. A story fails when axe finds a violation. The check skips elements marked
+`data-a11y-ignore`, disabled elements and elements with `aria-disabled="true"`, as
+`.storybook/preview.ts` sets it, and a story can change that through its own `a11y` parameter.
 
 ```bash
-# 1. Build the static Storybook (requires significant memory, hence NODE_OPTIONS)
-bun run build-storybook
+# Once, for the browser the tests run in
+npx playwright install chromium
 
-# 2. Start a local server for the static build
-bunx http-server storybook-static -p 6006 -s &
-
-# 3. Run the accessibility tests
-bunx test-storybook --url http://127.0.0.1:6006
+npm run test-storybook
 ```
+
+`.storybook/vitest.config.ts` runs the stories that `.storybook/main.ts` lists, with the app's Vite
+configuration.
 
 ---
 
@@ -381,7 +415,7 @@ import {
   mockValidateResponse,
   mockDashboardData,
   mockUsage,
-  mockFeatureFlags,
+  mockAccess,
 } from "~/tests/mocks/handlers";
 ```
 
@@ -391,7 +425,7 @@ import {
 | `mockValidateResponse` | Token validation response |
 | `mockDashboardData` | Dashboard sync response (owned/shared) |
 | `mockUsage` | Usage limits and current usage |
-| `mockFeatureFlags` | Feature tier and enabled features |
+| `mockAccess` | What the user's roles let them do (`GET /app/access`) |
 
 ### Handler Organization
 
@@ -399,22 +433,23 @@ The `handlers.ts` file is organized by API domain:
 
 ```typescript
 // ============ Auth Endpoints ============
-http.post(`${BASE_URL}/pro/login`, ...)
-http.get(`${BASE_URL}/pro/validate`, ...)
-http.post(`${BASE_URL}/pro/logout`, ...)
+http.post(`${BASE_URL}/app/login`, ...)
+http.get(`${BASE_URL}/app/validate`, ...)
+http.post(`${BASE_URL}/app/logout`, ...)
 
 // ============ Dashboard Endpoints ============
-http.get(`${BASE_URL}/pro/dash/sync`, ...)
-http.post(`${BASE_URL}/pro/dash/sync`, ...)
+http.get(`${BASE_URL}/app/dash/sync`, ...)
+http.post(`${BASE_URL}/app/dash/sync`, ...)
 
-// ============ Usage & Tier Endpoints ============
-http.get(`${BASE_URL}/pro/usage`, ...)
+// ============ Usage & Access Endpoints ============
+http.get(`${BASE_URL}/app/usage`, ...)
+http.get(`${BASE_URL}/app/access`, ...)
 
 // ============ Data Connector Endpoints ============
-http.get(`${BASE_URL}/pro/data-connectors/api-source`, ...)
+http.get(`${BASE_URL}/app/data-connectors/api-source`, ...)
 
 // ============ Copilot Endpoints ============
-http.get(`${BASE_URL}/pro/copilot-chats`, ...)
+http.post(`${BASE_URL}/app/copilot-chats`, ...)
 
 // ============ Passthrough Handlers ============
 http.all("https://test-backend.com/*", () => passthrough())
@@ -444,7 +479,7 @@ server.use(customHandler);
 **1. Conditional responses based on request body:**
 
 ```typescript
-http.post(`${BASE_URL}/pro/login`, async ({ request }) => {
+http.post(`${BASE_URL}/app/login`, async ({ request }) => {
   const body = await request.json();
 
   if (body.email === "invalid@example.com") {
@@ -462,7 +497,7 @@ http.post(`${BASE_URL}/pro/login`, async ({ request }) => {
 **2. Conditional responses based on auth header:**
 
 ```typescript
-http.get(`${BASE_URL}/pro/validate`, ({ request }) => {
+http.get(`${BASE_URL}/app/validate`, ({ request }) => {
   const authHeader = request.headers.get("Authorization");
 
   if (!authHeader || authHeader === "Bearer invalid-token") {
@@ -476,7 +511,7 @@ http.get(`${BASE_URL}/pro/validate`, ({ request }) => {
 **3. Dynamic route parameters:**
 
 ```typescript
-http.get(`${BASE_URL}/pro/files/:fileUuid/presigned-url`, ({ params }) => {
+http.get(`${BASE_URL}/app/files/:fileUuid/presigned-url`, ({ params }) => {
   const { fileUuid } = params;
   return HttpResponse.json({
     pre_signed_url: `https://storage.example.com/${fileUuid}`,
@@ -499,10 +534,10 @@ http.all("http://localhost/*", () => passthrough()),
 import { createMockHandler, createErrorHandler } from "~/tests/mocks/handlers";
 
 // Quick success response
-const handler = createMockHandler("get", "/pro/data", { items: [] });
+const handler = createMockHandler("get", "/app/data", { items: [] });
 
 // Quick error response
-const errorHandler = createErrorHandler("get", "/pro/data", "Server error", 500);
+const errorHandler = createErrorHandler("get", "/app/data", "Server error", 500);
 ```
 
 ### Overriding Handlers in Tests
@@ -516,7 +551,7 @@ describe("MyComponent", () => {
   it("handles API error", async () => {
     // Override default handler for this test only
     server.use(
-      http.get(`${BASE_URL}/pro/usage`, () => {
+      http.get(`${BASE_URL}/app/usage`, () => {
         return HttpResponse.json({ detail: "Rate limited" }, { status: 429 });
       })
     );
@@ -532,7 +567,7 @@ describe("MyComponent", () => {
 When adding new API endpoints:
 
 1. Add the handler to the appropriate section in `handlers.ts`
-2. Follow the existing naming pattern: `http.{method}(\`${BASE_URL}/pro/{endpoint}\`, ...)`
+2. Follow the existing naming pattern: `http.{method}(\`${BASE_URL}/app/{endpoint}\`, ...)`
 3. Include error scenarios for common cases (401, 404, 500)
 4. Add mock data constants if needed for reuse
 5. Document any special behavior in comments

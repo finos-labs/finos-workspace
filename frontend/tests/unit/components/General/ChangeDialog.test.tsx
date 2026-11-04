@@ -3,7 +3,6 @@ import ReactDOM from "react-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChangelogDialog from "~/components/General/ChangelogDialog";
 
-// Mock IntersectionObserver
 class IntersectionObserverMock {
   root: Element | null = null;
   rootMargin = "0px";
@@ -16,8 +15,7 @@ class IntersectionObserverMock {
 
 global.IntersectionObserver = IntersectionObserverMock;
 
-// Mock the markdown import
-vi.mock("~/../CHANGELOG.md", () => ({
+vi.mock("~/../CHANGELOG.md?import", () => ({
   markdown: `
 # Changelog
 
@@ -35,12 +33,10 @@ vi.mock("~/../CHANGELOG.md", () => ({
   `,
 }));
 
-// Mock createPortal for dialog rendering
 vi.spyOn(ReactDOM, "createPortal").mockImplementation((element) => {
   return element as React.ReactPortal;
 });
 
-// Mock the parseMarkdown function
 vi.mock("./Changelog", () => ({
   parseMarkdown: () => [
     {
@@ -56,7 +52,7 @@ vi.mock("./Changelog", () => ({
       content: "Change 1\nChange 2",
     },
   ],
-  Changelog: ({ chunks }: { chunks: any[] }) => (
+  Changelog: ({ chunks }: { chunks: { slug: string; content: string }[] }) => (
     <div data-testid="changelog-content">
       {chunks.map((chunk) => (
         <div key={chunk.slug}>{chunk.content}</div>
@@ -65,15 +61,13 @@ vi.mock("./Changelog", () => ({
   ),
 }));
 
-vi.mock("~/lib/utils", async (importOriginal) => {
+vi.mock("~/lib/utils", async (_importOriginal) => {
   return {
     slugify: vi.fn().mockReturnValue("slugified-string"),
-    getWidgetsWithSupportedAssetClass: vi.fn().mockReturnValue([]),
     cn: vi.fn(),
   };
 });
 
-// Add mock for ScrollSpy component
 vi.mock("~/components/General/ScrollSpy", () => ({
   default: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="scroll-spy">{children}</div>
@@ -120,9 +114,7 @@ describe("ChangelogDialog", () => {
   it("has accessible description", () => {
     render(<ChangelogDialog open={true} onClose={vi.fn()} />);
 
-    const description = screen.getByText(
-      "View the changelog for the OpenBB Workspace.",
-    );
+    const description = screen.getByText("View the changelog for the FINOS Workspace.");
     expect(description).toHaveClass("sr-only");
   });
 
@@ -132,7 +124,6 @@ describe("ChangelogDialog", () => {
     const versionTrigger = screen.getAllByTestId("scroll-trigger")[0];
     fireEvent.click(versionTrigger);
 
-    // Manually set the attribute to simulate the behavior
     versionTrigger.setAttribute("data-scrollspy-active", "true");
 
     await waitFor(() => {

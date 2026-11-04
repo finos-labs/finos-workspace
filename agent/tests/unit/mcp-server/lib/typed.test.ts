@@ -1,0 +1,79 @@
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import {
+  textItem,
+  artifactItem,
+  webCitationItem,
+  documentCitationItem,
+  sqliteTableItem,
+  errorItem,
+  modelContextItem,
+} from "../../../../mcp-server/src/lib/typed.ts";
+
+describe("typed.ts — helpers", () => {
+  it("textItem wraps content in a plain text item (no $agent_kind)", () => {
+    const item = textItem("hello");
+    expect(item.type).toBe("text");
+    expect(item.text).toBe("hello");
+    expect(JSON.parse(JSON.stringify({ rt: item.text })).rt).toBe("hello");
+    expect(() => JSON.parse(item.text)).toThrow();
+  });
+
+  it("artifactItem JSON-encodes the artifact under $agent_kind", () => {
+    const a = { type: "table", uuid: "u", name: "n", description: "d", content: [] };
+    const item = artifactItem(a);
+    expect(JSON.parse(item.text)).toEqual({ $agent_kind: "artifact", artifact: a });
+  });
+
+  it("webCitationItem includes id only when supplied", () => {
+    const without = JSON.parse(webCitationItem({ url: "https://x", title: "X" }).text);
+    expect(without).toEqual({
+      $agent_kind: "citation",
+      citation: { type: "web", url: "https://x", title: "X" },
+    });
+    expect("id" in without.citation).toBe(false);
+
+    const withId = JSON.parse(webCitationItem({ url: "https://x", title: "X", id: "fixed" }).text);
+    expect(withId.citation.id).toBe("fixed");
+  });
+
+  it("documentCitationItem includes page and id only when supplied", () => {
+    const minimal = JSON.parse(documentCitationItem({ uri: "doc://a", title: "A" }).text);
+    expect(minimal.citation).toEqual({ type: "document", uri: "doc://a", title: "A" });
+    expect("page" in minimal.citation).toBe(false);
+    expect("id" in minimal.citation).toBe(false);
+
+    const full = JSON.parse(
+      documentCitationItem({ uri: "doc://a", title: "A", page: 4, id: "d-1" }).text,
+    );
+    expect(full.citation).toEqual({
+      type: "document",
+      uri: "doc://a",
+      title: "A",
+      page: 4,
+      id: "d-1",
+    });
+  });
+
+  it("sqliteTableItem encodes name + rows under $agent_kind", () => {
+    const item = sqliteTableItem("Prices", [{ a: 1 }]);
+    expect(JSON.parse(item.text)).toEqual({
+      $agent_kind: "sqlite_table",
+      name: "Prices",
+      rows: [{ a: 1 }],
+    });
+  });
+
+  it("errorItem defaults retryable to false", () => {
+    const def = JSON.parse(errorItem({ code: "C", message: "m" }).text);
+    expect(def).toEqual({ $agent_kind: "error", error: { code: "C", message: "m", retryable: false } });
+
+    const ret = JSON.parse(errorItem({ code: "C", message: "m", retryable: true }).text);
+    expect(ret.error.retryable).toBe(true);
+  });
+
+  it("modelContextItem encodes summary", () => {
+    const item = modelContextItem("use this only");
+    expect(JSON.parse(item.text)).toEqual({ $agent_kind: "model_context", summary: "use this only" });
+  });
+});

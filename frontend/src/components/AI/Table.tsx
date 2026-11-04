@@ -4,13 +4,18 @@ import type { ReactNode } from "react";
 import { isValidUrl } from "~/lib/utils";
 
 import "./tritanopia-dark.css";
-import { CodeComponent, PreCodeComponent, renderRule } from "./MarkdownOverrides";
+import {
+  CodeComponent,
+  inertImageOverride,
+  PreCodeComponent,
+  renderRule,
+} from "./MarkdownOverrides";
 
 export default function Table({
   content,
   disableAutoLink,
 }: {
-  content: Record<string, string | number>;
+  content: Record<string, unknown>;
   disableAutoLink?: boolean;
 }) {
   return (
@@ -47,7 +52,10 @@ export default function Table({
             >
               <td className="w-[20%] font-bold px-2 py-2">{key}</td>
               <td className="px-2 py-2">
-                {formatValue(value?.toString(), disableAutoLink)}
+                {formatValue(
+                  value == null ? undefined : String(value),
+                  disableAutoLink,
+                )}
               </td>
             </tr>
           );
@@ -57,7 +65,9 @@ export default function Table({
   );
 }
 
-function isValidJSON(json: any) {
+type JsonObject = Record<string, unknown>;
+
+function isValidJSON(json: unknown): JsonObject | false {
   if (typeof json === "string") {
     try {
       json = JSON.parse(json);
@@ -66,14 +76,14 @@ function isValidJSON(json: any) {
     }
   }
 
-  if (typeof json === "object") {
-    return json;
+  if (typeof json === "object" && json !== null) {
+    return json as JsonObject;
   }
 
   return false;
 }
 
-function jsonTable(json: any, disableAutoLink = false, depth = 0) {
+function jsonTable(json: JsonObject, disableAutoLink = false, depth = 0): ReactNode[] {
   return Object.entries(json)
     .flatMap(([key, value], index) => {
       const newJson = isValidJSON(value);
@@ -102,7 +112,6 @@ function jsonTable(json: any, disableAutoLink = false, depth = 0) {
 }
 
 function formatValue(text = "", disableAutoLink = false, depth = 0) {
-  // Check if text contains markdown code blocks
   if (text.includes("```")) {
     return (
       <Markdown
@@ -110,6 +119,7 @@ function formatValue(text = "", disableAutoLink = false, depth = 0) {
           renderRule,
           disableParsingRawHTML: true,
           overrides: {
+            ...inertImageOverride,
             a: {
               component: ({ children }: { children: ReactNode }) => (
                 <span className="text-inherit">{children}</span>
@@ -134,7 +144,7 @@ function formatValue(text = "", disableAutoLink = false, depth = 0) {
         isValidUrl(word) ? (
           <span key={`${index}-${depth}-value`}>
             <a
-              href={word.replace(/[?.]$/, "")} // Extract the link and remove punctuation
+              href={word.replace(/[?.]$/, "")}
               className="rounded py-[0.5px] text-alert-informative"
               target="_blank"
               rel="noopener noreferrer"

@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { getApiSources, removeCustomCopilot } from "~/api/auth.api";
 import type { BackendPermissionsT } from "~/api/user_roles.api";
@@ -29,10 +29,11 @@ import Icon from "~/components/Icon";
 import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout";
 import { TabPageFilterGroup, TabPageSearchInput } from "~/components/shared/TabPage";
 import Tooltip from "~/components/Tooltip";
-import { useUserSubscriptions } from "~/hooks/useListedApps";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import {
   type Source,
+  useBackendConnectorStore,
   useShallowBackendConnectorStore,
 } from "~/lib/state/backendConnector";
 import {
@@ -243,8 +244,6 @@ function isConnected(connection: ConnectionRow): boolean {
   return connection.status === "success";
 }
 
-// "pending" sources are still being validated by the worker; "rehydrated" ones
-// were restored from cache and are awaiting revalidation.
 function isValidating(connection: ConnectionRow): boolean {
   return connection.status === "pending" || connection.status === "rehydrated";
 }
@@ -333,7 +332,7 @@ type ConnectionRowActionsProps = {
   connection: ConnectionRow;
   onEdit: (source: Source) => void;
   onDelete: (connection: ConnectionRow) => void;
-  onRefresh: (connectionId: string) => Promise<any>;
+  onRefresh: (connectionId: string) => Promise<unknown>;
 };
 
 const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
@@ -341,7 +340,6 @@ const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const canRefresh = !!connection.backend;
-  const disableEdit = !!connection.backend?.vendorAppUuid;
 
   const handleRefresh = useCallback(async () => {
     if (!connection.backend?.id) return;
@@ -370,7 +368,7 @@ const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
         <Tooltip position="top" message="Refresh backend">
           <button
             className={cn(
-              "opacity-0 group-hover:opacity-100 transition-opacity duration-300 obb-small-navbar-btn rounded flex items-center justify-center",
+              "opacity-0 group-hover:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center",
               { "opacity-100": isRefreshing },
             )}
             onClick={handleRefresh}
@@ -385,20 +383,14 @@ const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
       )}
 
       {connection.canEdit && (
-        <Tooltip
-          message={
-            disableEdit ? "Marketplace backends can't be edited" : "Edit backend"
-          }
-          position="top"
-        >
+        <Tooltip message="Edit backend" position="top">
           <button
             className={cn(
               "opacity-0 group-hover:opacity-100 transition-opacity",
-              "duration-300 obb-small-navbar-btn",
+              "duration-300 ws-small-navbar-btn",
               "rounded flex items-center justify-center",
-              disableEdit && "group-hover:opacity-40 cursor-not-allowed",
             )}
-            onClick={disableEdit ? undefined : handleEdit}
+            onClick={handleEdit}
           >
             <Icon id="edit" className="size-3.5" />
           </button>
@@ -408,7 +400,7 @@ const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
       {!connection.isShared && (
         <Tooltip position="top" message="Delete connection">
           <button
-            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 obb-small-navbar-btn rounded flex items-center justify-center"
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
             onClick={handleDelete}
           >
             <Icon id="trash-04" className="size-3.5" />
@@ -622,11 +614,16 @@ const initialState: ConnectionsState = {
 };
 
 export default function ConnectionsPage() {
+  const access = useShallowAccessStore((s) => s.access);
+  if (!access) return null;
+  if (!canAddConnections(access)) return <Navigate to="/app" replace={true} />;
+  return <Connections />;
+}
+
+function Connections() {
   const [state, dispatch] = useStateReducer(initialState);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Deep-link target from a backend card's "Go to connection" action: scroll to
-  // and flash the matching row (see ConnectionRowComponent).
   const [searchParams, setSearchParams] = useSearchParams();
   const connectionId = searchParams.get("connectionId");
 
@@ -640,8 +637,6 @@ export default function ConnectionsPage() {
       { replace: true },
     );
   }, [setSearchParams]);
-
-  useUserSubscriptions();
 
   const { apiSources, updateApiSources, deleteApiSource } =
     useShallowBackendConnectorStore((s) => ({
@@ -684,7 +679,6 @@ export default function ConnectionsPage() {
       const hostname = getHostname(backend.url);
       myBackendHostnames.add(hostname);
       const matchedAgents = agentsByHostname.get(hostname) || [];
-      // Use agents from backend.agents (fetched from agents.json), fall back to hostname-matched agents
       const agentCount =
         backend.agents?.length ??
         matchedAgents.reduce((acc, h) => acc + (h.copilots?.length || 0), 0);
@@ -715,7 +709,10 @@ export default function ConnectionsPage() {
       agentsByHostname.delete(hostname);
     }
 
+    const listedIds = new Set(apiSources.map((backend) => backend.uuid ?? backend.id));
+
     for (const sharedBackend of permissions.backends) {
+      if (listedIds.has(sharedBackend.uuid)) continue;
       const hostname = getHostname(sharedBackend.url);
       const promptCount = (sharedBackend.templates || []).reduce(
         (acc, t) => acc + (t.prompts?.length || 0),
@@ -772,10 +769,6 @@ export default function ConnectionsPage() {
     return { connectionRows, agentOnlyRows };
   }, [apiSources, externalCopilotHolders, permissions.backends]);
 
-  /**
-   * Checks connectivity status for agent-only connections (those without a backend).
-   * Performs a simple HTTP GET to each agent URL to determine if it's reachable.
-   */
   const agentQueries = useQueries({
     queries: Object.entries(agentOnlyRows).map(([hostname, url]) => ({
       queryKey: ["agentStatus", hostname, url],
@@ -788,6 +781,7 @@ export default function ConnectionsPage() {
         }
       },
       enabled: true,
+      staleTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
     })),
   });
@@ -812,6 +806,7 @@ export default function ConnectionsPage() {
   const handleRefresh = useCallback(async () => {
     dispatch({ isRefreshing: true });
     try {
+      useBackendConnectorStore.getState().forgetValidation();
       const agentsRefresh = agentQueries.map(async (q) => await q.refetch());
       await refetch();
       await Promise.all(agentsRefresh);
@@ -823,12 +818,6 @@ export default function ConnectionsPage() {
     }
   }, [refetch, agentQueries]);
 
-  /**
-   * Deletes a single connection after user confirmation.
-   * Handles both backend deletion (via API) and associated agent holders.
-   * For "mixed" connections, deletes both the backend and all linked agents.
-   * Updates local state after successful API calls to keep UI in sync.
-   */
   const handleConfirmDelete = useCallback(async () => {
     const { connectionToDelete } = state;
     if (!connectionToDelete) return;
@@ -863,12 +852,6 @@ export default function ConnectionsPage() {
     setExternalCopilotHolders,
   ]);
 
-  /**
-   * Bulk deletes all selected connections after user confirmation.
-   * Processes backends and agent holders separately to handle mixed connection types.
-   * Backends are deleted via API first, then associated agent holders are removed.
-   * Clears selection state after successful deletion.
-   */
   const handleConfirmDeleteSelected = useCallback(async () => {
     dispatch({ isDeleting: true });
     try {
@@ -879,6 +862,7 @@ export default function ConnectionsPage() {
       const backendsToDelete = connectionsToDelete.filter((c) => c.backend);
       await Promise.all(
         backendsToDelete.map(async (connection) => {
+          if (!connection.backend) return;
           deleteSourceWidgets(connection.backend);
           await deleteApiSource(connection.backend);
         }),
@@ -953,9 +937,6 @@ export default function ConnectionsPage() {
     return { connections, hasConnections, noResults };
   }, [connectionRows, state.search, state.filterBy, state.sortBy, agentOnlyStatuses]);
 
-  // In addition to highlighting the row, open the edit modal for the
-  // deep-linked connection when its backend is editable (skips marketplace /
-  // entity backends, which can't be edited).
   const openedEditFor = useRef<string | null>(null);
   useEffect(() => {
     if (!connectionId) {
@@ -964,7 +945,7 @@ export default function ConnectionsPage() {
     }
     if (openedEditFor.current === connectionId) return;
     const target = connectionRows.find((c) => c.id === connectionId);
-    if (target?.backend && target.canEdit && !target.backend.vendorAppUuid) {
+    if (target?.backend && target.canEdit) {
       openedEditFor.current = connectionId;
       setManageAppDialog({ isOpen: true, mode: "edit", data: target.backend });
     }
@@ -1122,13 +1103,14 @@ export default function ConnectionsPage() {
   );
 }
 
-const StatusOrder = { success: 0, rehydrated: 1, pending: 1, error: 2 };
+const StatusOrder = { success: 0, rehydrated: 1, pending: 1, error: 2 } as const;
 
 function sortConnections(connections: ConnectionRow[], sortBy: SortOption["value"]) {
   connections.sort((a, b) => {
     switch (sortBy) {
       case "last-activity": {
-        const statusDiff = StatusOrder[a.status] - StatusOrder[b.status];
+        const statusDiff =
+          StatusOrder[a.status ?? "pending"] - StatusOrder[b.status ?? "pending"];
         if (statusDiff !== 0) return statusDiff;
         const aDate = new Date(a.updatedDate || a.createdDate || 0).getTime();
         const bDate = new Date(b.updatedDate || b.createdDate || 0).getTime();

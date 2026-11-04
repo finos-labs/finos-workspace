@@ -8,11 +8,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from workspace_mcp.server import SERVER_INSTRUCTIONS, create_mcp_server
+from workspace_mcp.server import LIVE_RESOURCE_TAG, SERVER_INSTRUCTIONS, create_mcp_server
 from workspace_mcp.state import BridgeSessionManager
 
 FIXTURE_NOTE = (
-    "Generated from the canonical Workspace MCP sidecar surface. Update this "
+    "Generated from the canonical FINOS Workspace MCP sidecar surface. Update this "
     "fixture only when the MCP contract changes intentionally."
 )
 
@@ -71,6 +71,8 @@ async def _collect_workspace_mcp_surface() -> dict[str, Any]:
                 "tags": sorted(getattr(resource, "tags", []) or []),
             }
         )
+        if LIVE_RESOURCE_TAG in (getattr(resource, "tags", None) or set()):
+            continue
         result = await server.read_resource(uri)
         resource_bodies[uri] = [
             {"mime_type": content.mime_type, "content": content.content}
@@ -115,7 +117,7 @@ def fixture_payload() -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Export the Workspace MCP surface parity fixture.",
+        description="Export the FINOS Workspace MCP surface parity fixture.",
     )
     parser.add_argument(
         "-o",

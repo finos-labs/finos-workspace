@@ -2,7 +2,7 @@ import { useAppStore } from "~/lib/state/app";
 
 const NO_TAB_ID = "__no_tab__";
 
-export type DashboardLayoutEntryT = {
+type DashboardLayoutEntryT = {
   widget_uuid: string;
   x: number;
   y: number;
@@ -14,19 +14,19 @@ export type DashboardLayoutEntryT = {
   max_h?: number;
 };
 
-export type DashboardTabWidgetInfoT = {
+type DashboardTabWidgetInfoT = {
   widget_uuid: string;
   name: string | undefined;
 };
 
-export type DashboardTabInfoT = {
+type DashboardTabInfoT = {
   tab_id: string;
   tab_name: string;
   widgets: DashboardTabWidgetInfoT[];
   layout: DashboardLayoutEntryT[];
 };
 
-export type DashboardGroupInfoT = {
+type DashboardGroupInfoT = {
   group_id: string;
   name: string;
   type: string;
@@ -103,19 +103,17 @@ export function getDashboardInfo(
   const ensureTab = (tabId: string | null | undefined) => {
     const storedTabId = normalizeStoredTabId(tabId);
     const serializedTabId = serializeDashboardTabId(storedTabId);
-    if (!tabsById.has(serializedTabId)) {
-      tabsById.set(serializedTabId, {
+    let tab = tabsById.get(serializedTabId);
+    if (!tab) {
+      tab = {
         tab_id: serializedTabId,
         tab_name: getTabDisplayName(serializedTabId, storedTabId, slugToName),
         widgets: [],
         layout: [],
-      });
+      };
+      tabsById.set(serializedTabId, tab);
     }
-    return {
-      storedTabId,
-      serializedTabId,
-      tab: tabsById.get(serializedTabId)!,
-    };
+    return { storedTabId, serializedTabId, tab };
   };
 
   for (const tab of navBarTabs) {
@@ -142,7 +140,11 @@ export function getDashboardInfo(
   for (const [tabId, entries] of Object.entries(gridLayout)) {
     const { tab } = ensureTab(tabId);
     tab.layout = entries
-      .filter((entry) => widgetsById.get(entry.i)?.widgetId !== "navigation_bar")
+      .filter(
+        (entry): entry is typeof entry & { i: string } =>
+          entry.i !== undefined &&
+          widgetsById.get(entry.i)?.widgetId !== "navigation_bar",
+      )
       .map((entry) => ({
         widget_uuid: entry.i,
         x: entry.x ?? 0,
@@ -175,11 +177,7 @@ export function getDashboardInfo(
     type: g.type,
     ...(g.type === "endpointParam" && g.groupById ? { group_by_id: g.groupById } : {}),
     widget_uuids: widgets
-      .filter(
-        (widget) =>
-          widget.groupId === g.id ||
-          Object.values(widget.paramGroups || {}).includes(g.id),
-      )
+      .filter((widget) => Object.values(widget.paramGroups || {}).includes(g.id))
       .map((widget) => widget.id),
   }));
 

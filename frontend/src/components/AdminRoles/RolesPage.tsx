@@ -5,16 +5,17 @@ import { toast } from "sonner";
 import { deleteEntityRole } from "~/api/entity_roles.api";
 import type { DataTableColumn } from "~/components/ds/molecules/DataTable";
 import { DataTable } from "~/components/ds/molecules/DataTable";
-import BrandedLoadingState from "~/components/General/BrandedLoadingState";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { Button } from "../ds/atoms/Button";
 import { Input } from "../ds/atoms/Input";
 import { ConfirmDialog } from "../ds/dialogs/ConfirmDialog";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
+import RoleCopilotAccessDialog from "./RoleCopilotAccessDialog";
 import { RoleDialog } from "./RoleDialog";
 import RoleMembersCell from "./RoleMembersCell";
 import RolePermissionsDialog from "./RolePermissionsDialog";
+import RolePluginAccessDialog from "./RolePluginAccessDialog";
 import type { RoleT } from "./types";
 
 interface RolesPageProps {
@@ -25,17 +26,31 @@ interface RolesPageProps {
 
 const getRoleId = (role: RoleT) => role.name;
 
+type RolesPageState = {
+  open: boolean;
+  searchTerm: string;
+  editingRole: RoleT | undefined;
+  deleteConfirmOpen: boolean;
+  RoleToDelete: RoleT | undefined;
+  permOpen: boolean;
+  permRole: RoleT | null;
+  copilotAccessRole: RoleT | null;
+  pluginAccessRole: RoleT | null;
+};
+
 export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
   const queryClient = useQueryClient();
 
-  const [state, dispatch] = useStateReducer({
+  const [state, dispatch] = useStateReducer<RolesPageState>({
     open: false,
     searchTerm: "",
     editingRole: undefined,
     deleteConfirmOpen: false,
     RoleToDelete: undefined,
     permOpen: false,
-    permRole: null as RoleT | null,
+    permRole: null,
+    copilotAccessRole: null,
+    pluginAccessRole: null,
   });
 
   const deleteMutation = useMutation({
@@ -66,6 +81,16 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
 
   const handleEditPermissions = useCallback(
     (role: RoleT) => dispatch({ permRole: role, permOpen: true }),
+    [],
+  );
+
+  const handleEditCopilotAccess = useCallback(
+    (role: RoleT) => dispatch({ copilotAccessRole: role }),
+    [],
+  );
+
+  const handleEditPluginAccess = useCallback(
+    (role: RoleT) => dispatch({ pluginAccessRole: role }),
     [],
   );
 
@@ -130,15 +155,32 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
       <>
         <Tooltip position="top" message="Edit permissions">
           <button
-            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 obb-small-navbar-btn rounded flex items-center justify-center"
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
             onClick={() => handleEditPermissions(role)}
           >
             <Icon id="key-icon" className="size-3.5" />
           </button>
         </Tooltip>
+        <Tooltip position="top" message="Agent models and tools">
+          <button
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
+            onClick={() => handleEditCopilotAccess(role)}
+          >
+            <Icon id="sparkles-icon" className="size-3.5" />
+          </button>
+        </Tooltip>
+        <Tooltip position="top" message="Widget plugins">
+          <button
+            aria-label="Widget plugins"
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
+            onClick={() => handleEditPluginAccess(role)}
+          >
+            <Icon id="cube-01" className="size-3.5" />
+          </button>
+        </Tooltip>
         <Tooltip position="top" message="Edit role">
           <button
-            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 obb-small-navbar-btn rounded flex items-center justify-center"
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
             onClick={() => handleEdit(role)}
           >
             <Icon id="edit" className="size-3.5" />
@@ -146,7 +188,7 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
         </Tooltip>
         <Tooltip position="top" message="Delete role">
           <button
-            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 obb-small-navbar-btn rounded flex items-center justify-center"
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
             onClick={() => handleDelete(role)}
           >
             <Icon id="trash-04" className="size-3.5" />
@@ -154,16 +196,18 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
         </Tooltip>
       </>
     ),
-    [handleEditPermissions, handleEdit, handleDelete],
+    [
+      handleEditPermissions,
+      handleEditCopilotAccess,
+      handleEditPluginAccess,
+      handleEdit,
+      handleDelete,
+    ],
   );
 
   if (isLoading) {
     return (
-      <TabsPrimitive.Content value="roles" className="p-6 text-sm only-sm:h-screen">
-        <div className="flex h-full items-center justify-center py-20">
-          <BrandedLoadingState />
-        </div>
-      </TabsPrimitive.Content>
+      <TabsPrimitive.Content value="roles" className="p-6 text-sm only-sm:h-screen" />
     );
   }
 
@@ -246,6 +290,18 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
         onClose={() => dispatch({ permOpen: false })}
         roles={roles}
         initialRoleUuid={state.permRole?.uuid ?? ""}
+      />
+
+      <RoleCopilotAccessDialog
+        open={!!state.copilotAccessRole}
+        onClose={() => dispatch({ copilotAccessRole: null })}
+        role={state.copilotAccessRole}
+      />
+
+      <RolePluginAccessDialog
+        open={!!state.pluginAccessRole}
+        onClose={() => dispatch({ pluginAccessRole: null })}
+        role={state.pluginAccessRole}
       />
 
       <ConfirmDialog

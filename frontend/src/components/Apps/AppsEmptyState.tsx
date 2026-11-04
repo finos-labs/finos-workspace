@@ -1,6 +1,7 @@
 import { cn } from "~/components/ds/utils";
 import Icon from "~/components/Icon";
 import type { IconId } from "~/components/Icon.types";
+import { canShare, useShallowAccessStore } from "~/lib/state/access";
 
 interface FeatureCardProps {
   title: string;
@@ -18,7 +19,7 @@ function FeatureCard({
   iconId,
 }: FeatureCardProps) {
   return (
-    <div className="flex flex-col rounded overflow-hidden bg-white dark:bg-dark-900 max-w-[280px]">
+    <div className="flex flex-col w-[280px] rounded overflow-hidden bg-white dark:bg-dark-900">
       <div className="relative bg-dark-800 aspect-[16/10]">
         <img
           src={imageSrc}
@@ -51,13 +52,14 @@ function FeatureCard({
 }
 
 export default function AppsEmptyState() {
+  const mayShare = useShallowAccessStore((state) => canShare(state.access));
   return (
     <div className="flex flex-col items-center justify-center py-10 px-4">
       <p className="body-xs-regular text-light-500 dark:text-light-400 text-center mb-10">
         Your Apps page is empty. Add a new App and start using it.
       </p>
 
-      <div className="flex flex-wrap gap-4 w-full max-w-2xl justify-center items-center">
+      <div className="flex flex-wrap gap-4 w-full max-w-2xl justify-center items-stretch">
         <FeatureCard
           title="Save a Dashboard as an App"
           description="Create an app template from one of your dashboards. This will save your widgets, layout, and groupings as a new app."
@@ -65,13 +67,15 @@ export default function AppsEmptyState() {
           imageAlt="Save dashboard as app preview"
           iconId="layout"
         />
-        <FeatureCard
-          title="Share Apps"
-          description="Any App you create can be shared with other users across the OpenBB Workspace."
-          imageSrc="/assets/images/apps/share.png"
-          imageAlt="Share apps preview"
-          iconId="share-07"
-        />
+        {mayShare && (
+          <FeatureCard
+            title="Share Apps"
+            description="Any App you create can be shared with other users across the FINOS Workspace."
+            imageSrc="/assets/images/apps/share.png"
+            imageAlt="Share apps preview"
+            iconId="share-07"
+          />
+        )}
       </div>
     </div>
   );

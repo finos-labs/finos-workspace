@@ -7,24 +7,27 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { Layout } from "react-grid-layout";
-import { useShallowAppStore, type Widget } from "~/lib/state/app";
+import type { LayoutItem } from "react-grid-layout";
+import { useIsDashboardLocked, useShallowAppStore, type Widget } from "~/lib/state/app";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 
-export type TabProviderProps = {
+export type GridItem = LayoutItem & { mobileH?: number };
+
+type TabProviderProps = {
   currentTab: string;
-  tabId: string;
-  layouts: Layout[];
+  tabId?: string;
+  layouts: GridItem[];
   isShared?: boolean;
-  setLayouts?: (layouts: Layout[]) => void;
+  setLayouts?: (layouts: GridItem[]) => void;
   children: ReactNode;
 };
 
 type TabContextType = Omit<TabProviderProps, "children"> & {
-  getWidget: (widgetId: string) => Widget | null;
+  getWidget: (widgetId: string) => Widget | undefined;
+  locked: boolean;
 };
 
-export const TabContext = createContext<TabContextType | null>(null);
+const TabContext = createContext<TabContextType | null>(null);
 
 export function useTabContext() {
   const context = useContext(TabContext);
@@ -37,6 +40,7 @@ export function useTabContext() {
 export function TabProvider(props: TabProviderProps) {
   const { children, currentTab, tabId, layouts, isShared } = props;
   const [internalLayouts, setInternalLayouts] = useState(layouts);
+  const locked = useIsDashboardLocked(tabId);
 
   const getSharedWidgetById = useShallowSharedAppStore((state) => state.getWidgetById);
   const { getWidgetById, updateTabData } = useShallowAppStore((state) => ({
@@ -45,7 +49,7 @@ export function TabProvider(props: TabProviderProps) {
   }));
 
   const setLayoutsCb = useCallback(
-    (layouts: Layout[]) => {
+    (layouts: LayoutItem[]) => {
       if (props.setLayouts) {
         props.setLayouts(layouts);
 
@@ -76,10 +80,11 @@ export function TabProvider(props: TabProviderProps) {
       tabId,
       layouts: internalLayouts,
       isShared,
+      locked,
       setLayouts: setLayoutsCb,
       getWidget,
     }),
-    [currentTab, tabId, internalLayouts, isShared, setLayoutsCb, getWidget],
+    [currentTab, tabId, internalLayouts, isShared, locked, setLayoutsCb, getWidget],
   );
 
   const childrenMemo = useMemo(() => children, [children]);

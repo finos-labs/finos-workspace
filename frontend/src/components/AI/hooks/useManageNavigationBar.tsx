@@ -2,12 +2,11 @@ import { useCallback } from "react";
 import { useParams } from "react-router-dom";
 import type { WidgetT } from "~/components/types";
 import type { InnerTab, InnerTabsT } from "~/lib/state/app";
-import { useAppStore } from "~/lib/state/app";
+import { DASHBOARD_LOCKED_MESSAGE, useAppStore } from "~/lib/state/app";
 import type { CopilotCommandResultT } from "~/lib/state/copilot";
 import { getJsonWidget, slugify, triggerCustomEvent } from "~/lib/utils";
 import type { ManageNavigationBarInputArgumentsT } from "~/lib/utils/ai";
 
-/** Match a tab by slug or case-insensitive name. */
 export function findTabMatch(
   tabs: { id: string; name: string }[],
   rawName: string,
@@ -23,12 +22,14 @@ type NavBarContext = {
   existingNavBar: WidgetT | undefined;
 };
 
+type NavBarCheck = { error: CopilotCommandResultT[] } | { navBar: WidgetT };
+
 type DashboardCommandOptions = {
   dashboardId?: string | null;
 };
 
 function handleCreateNavBar(
-  args: { tabs?: { name?: string }[] },
+  args: { tabs: { name: string }[] },
   ctx: NavBarContext,
 ): CopilotCommandResultT[] | null {
   if (ctx.existingNavBar) {
@@ -67,69 +68,80 @@ function handleCreateNavBar(
 }
 
 function handleAddTabs(
-  args: { tabs?: { name?: string }[] },
+  args: { tabs: { name: string }[] },
   ctx: NavBarContext,
-): CopilotCommandResultT[] | null {
-  if (!ctx.existingNavBar) {
-    return [
-      {
-        status: "error",
-        message: "No navigation bar found. Use 'create' to create one first.",
-      },
-    ];
+): NavBarCheck {
+  const { existingNavBar: navBar } = ctx;
+  if (!navBar) {
+    return {
+      error: [
+        {
+          status: "error",
+          message: "No navigation bar found. Use 'create' to create one first.",
+        },
+      ],
+    };
   }
   if (args.tabs.length === 0) {
-    return [{ status: "error", message: "No tabs specified to add." }];
+    return { error: [{ status: "error", message: "No tabs specified to add." }] };
   }
 
-  const existingTabs: InnerTab[] = ctx.existingNavBar.storage?.tabs || [];
+  const existingTabs: InnerTab[] = navBar.storage?.tabs || [];
   const existingIds = new Set(existingTabs.map((t) => t.id));
 
   for (const t of args.tabs) {
     const id = slugify(t.name);
     if (existingIds.has(id)) {
-      return [{ status: "error", message: `Tab "${t.name}" already exists.` }];
+      return {
+        error: [{ status: "error", message: `Tab "${t.name}" already exists.` }],
+      };
     }
     existingIds.add(id);
   }
 
-  return null;
+  return { navBar };
 }
 
 function handleRemoveTabs(
-  args: { tabs?: { name?: string }[] },
+  args: { tabs: { name: string }[] },
   ctx: NavBarContext,
-): CopilotCommandResultT[] | null {
-  if (!ctx.existingNavBar) {
-    return [
-      {
-        status: "error",
-        message: "No navigation bar found on this dashboard.",
-      },
-    ];
+): NavBarCheck {
+  const { existingNavBar: navBar } = ctx;
+  if (!navBar) {
+    return {
+      error: [
+        {
+          status: "error",
+          message: "No navigation bar found on this dashboard.",
+        },
+      ],
+    };
   }
   if (args.tabs.length === 0) {
-    return [{ status: "error", message: "No tabs specified to remove." }];
+    return { error: [{ status: "error", message: "No tabs specified to remove." }] };
   }
-  return null;
+  return { navBar };
 }
 
 function handleRenameTabs(
-  args: { rename_map?: Record<string, string> },
+  args: { rename_map: Record<string, string> },
   ctx: NavBarContext,
-): CopilotCommandResultT[] | null {
-  if (!ctx.existingNavBar) {
-    return [
-      {
-        status: "error",
-        message: "No navigation bar found on this dashboard.",
-      },
-    ];
+): NavBarCheck {
+  const { existingNavBar: navBar } = ctx;
+  if (!navBar) {
+    return {
+      error: [
+        {
+          status: "error",
+          message: "No navigation bar found on this dashboard.",
+        },
+      ],
+    };
   }
   if (Object.keys(args.rename_map).length === 0) {
-    return [{ status: "error", message: "No rename_map provided." }];
+    return { error: [{ status: "error", message: "No rename_map provided." }] };
   }
-  return null;
+  return { navBar };
 }
 
 export function useManageNavigationBar() {
@@ -145,6 +157,15 @@ export function useManageNavigationBar() {
       const tab = appState.items?.[dashboardId];
       if (!tab) {
         return [{ status: "error", message: "Dashboard not found" }];
+      }
+
+      if (tab.data?.locked) {
+        return [
+          {
+            status: "error",
+            message: `Dashboard '${dashboardId}' is locked. ${DASHBOARD_LOCKED_MESSAGE}`,
+          },
+        ];
       }
 
       const widgets = tab.data?.widgets || [];
@@ -196,10 +217,10 @@ export function useManageNavigationBar() {
         }
 
         case "add_tabs": {
-          const error = handleAddTabs(args, ctx);
-          if (error) return error;
+          const checked = handleAddTabs(args, ctx);
+          if ("error" in checked) return checked.error;
 
-          const navBar = existingNavBar!;
+          const { navBar } = checked;
           const existingTabs: InnerTab[] = navBar.storage?.tabs || [];
           const newTabs: InnerTab[] = args.tabs.map((t) => ({
             id: slugify(t.name),
@@ -229,10 +250,10 @@ export function useManageNavigationBar() {
         }
 
         case "remove_tabs": {
-          const error = handleRemoveTabs(args, ctx);
-          if (error) return error;
+          const checked = handleRemoveTabs(args, ctx);
+          if ("error" in checked) return checked.error;
 
-          const navBar = existingNavBar!;
+          const { navBar } = checked;
           const existingTabs: InnerTab[] = navBar.storage?.tabs || [];
 
           const matchedIds = new Set<string>();
@@ -301,10 +322,10 @@ export function useManageNavigationBar() {
         }
 
         case "rename_tabs": {
-          const error = handleRenameTabs(args, ctx);
-          if (error) return error;
+          const checked = handleRenameTabs(args, ctx);
+          if ("error" in checked) return checked.error;
 
-          const navBar = existingNavBar!;
+          const { navBar } = checked;
           const existingTabs: InnerTab[] = navBar.storage?.tabs || [];
           const innerTabs: InnerTabsT = {};
 
@@ -313,10 +334,6 @@ export function useManageNavigationBar() {
             renameLookup[oldName.toLowerCase()] = newName;
           }
 
-          // Tab ids are stable identifiers: a rename only changes the display
-          // name. Regenerating the id from the new name breaks every held
-          // reference (widget.innerTab, current_tab_id, URLs) and lets the
-          // stale id rematerialize as an empty phantom tab.
           const matchedOldNames = new Set<string>();
           for (const t of existingTabs) {
             const newName = renameLookup[t.name.toLowerCase()];
@@ -338,8 +355,6 @@ export function useManageNavigationBar() {
             ];
           }
 
-          // Names stay unique so name-based matching (findTabMatch, future
-          // renames) remains unambiguous.
           const finalNames = new Set<string>();
           for (const t of Object.values(innerTabs)) {
             const nameKey = t.name.toLowerCase();
@@ -386,8 +401,7 @@ export function useManageNavigationBar() {
           return [
             {
               status: "error",
-              // @ts-expect-error -- Ignore --
-              message: `Unknown operation: ${args.operation}`,
+              message: `Unknown operation: ${(args as { operation?: unknown }).operation}`,
             },
           ];
       }

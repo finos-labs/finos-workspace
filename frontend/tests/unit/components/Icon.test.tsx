@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-// Unmock Icon to test the actual implementation (global vitest.setup.ts mocks it)
 vi.unmock("~/components/Icon");
 
 import Icon from "~/components/Icon";

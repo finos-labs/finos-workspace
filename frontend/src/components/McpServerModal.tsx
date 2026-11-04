@@ -12,19 +12,21 @@ import {
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
+import { docsUrl } from "~/lib/docsUrl";
 import {
   type McpConnection,
   type McpServer,
   PENDING_CONNECTION_STATES,
   useShallowMcpToolsStore,
 } from "~/lib/state/mcpTools";
-import { EndpointHeadersForm } from "./DataConnectors/SingleWidget";
-import { Checkbox } from "./ds/atoms/Checkbox";
+import { EndpointHeadersForm } from "./DataConnectors/EndpointHeadersForm";
 import { FormInput, Input } from "./ds/atoms/Input";
 import { Form, FormField, useForm } from "./ds/molecules/Form";
 import SettingsMenu from "./ds/molecules/SettingsMenu";
 import { cn } from "./ds/utils";
 import SearchResultsNotFound from "./General/SearchResultsNotFound";
+
+const mcpToolsDocsHref = docsUrl("workspace/analysts/ai-features/mcp-tools");
 
 const ConnectionTools = memo(
   ({ serverId, searchTerm }: { serverId: string; searchTerm?: string }) => {
@@ -114,7 +116,6 @@ function getStatusProperties(state: McpConnection["state"]) {
       case "discovering":
       case "connecting":
       case "authenticating":
-      case "pending_auth":
         return "bg-alert-warning";
       case "disconnected":
         return "bg-light-400 dark:bg-dark-300";
@@ -145,7 +146,6 @@ function getStatusProperties(state: McpConnection["state"]) {
       case "failed":
         return "Connection failed";
       case "authenticating":
-      case "pending_auth":
         return "Authentication required";
       case "disconnected":
         return "Disconnected";
@@ -257,7 +257,7 @@ const McpServerConnection = memo(
       <div className="flex items-center gap-2">
         <Tooltip message="Edit">
           <button
-            className="obb-small-navbar-btn rounded flex items-center justify-center size-6"
+            className="ws-small-navbar-btn rounded flex items-center justify-center size-6"
             onClick={() => dispatch({ editServerId: serverId })}
           >
             <Icon id="pencil-02" className="size-4" />
@@ -265,7 +265,7 @@ const McpServerConnection = memo(
         </Tooltip>
         <Tooltip message="Delete">
           <button
-            className="obb-small-navbar-btn rounded flex items-center justify-center size-6"
+            className="ws-small-navbar-btn rounded flex items-center justify-center size-6"
             onClick={() => server?.id && onRemove(server.id)}
           >
             <Icon id="trash-04" className="size-4" />
@@ -280,15 +280,15 @@ const McpServerConnection = memo(
               >
                 <Tooltip message="Delete">
                   <button
-                    className="obb-small-navbar-btn rounded flex items-center justify-center size-5"
-                    onClick={() => onRemove(server.id)}
+                    className="ws-small-navbar-btn rounded flex items-center justify-center size-5"
+                    onClick={() => onRemove(serverId)}
                   >
                     <Icon id="trash-04" className="size-4" />
                   </button>
                 </Tooltip>
                 <Tooltip message="Edit">
                   <button
-                    className="obb-small-navbar-btn rounded flex items-center justify-center size-5"
+                    className="ws-small-navbar-btn rounded flex items-center justify-center size-5"
                     onClick={() => dispatch({ editServerId: serverId })}
                   >
                     <Icon id="pencil-02" className="size-4" />
@@ -365,7 +365,6 @@ const mcpServerSchema = z.object({
   name: z.string().min(1, "Server name is required"),
   url: z.url("Invalid URL format").min(1, "URL is required"),
   clientName: z.string().optional(),
-  isLocal: z.boolean().optional(),
   customHeaders: z
     .array(
       z.object({
@@ -374,10 +373,10 @@ const mcpServerSchema = z.object({
       }),
     )
     .default([]),
+  removedHeaders: z.array(z.string()).default([]),
 });
 
 export type McpServerSchema = z.infer<typeof mcpServerSchema>;
-export type NewMcpServer = McpServerSchema;
 
 export const McpServerModal = memo(({ onClose }: Omit<McpServerModalProps, "open">) => {
   const servers = useShallowMcpToolsStore((state) => state.servers);
@@ -468,14 +467,16 @@ export const McpServerModal = memo(({ onClose }: Omit<McpServerModalProps, "open
                 secondMessage={
                   <>
                     You haven't added any MCP server URLs yet.{" "}
-                    <a
-                      href="https://docs.openbb.co/workspace/analysts/ai-features/mcp-tools"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="obb-hyper-link"
-                    >
-                      Read the MCP tools guide
-                    </a>
+                    {mcpToolsDocsHref && (
+                      <a
+                        href={mcpToolsDocsHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ws-hyper-link"
+                      >
+                        Read the MCP tools guide
+                      </a>
+                    )}
                   </>
                 }
                 extraClassName="flex-1 flex flex-col gap-2 bg-general-bg-secondary rounded py-2.5"
@@ -494,7 +495,7 @@ export const McpServerModal = memo(({ onClose }: Omit<McpServerModalProps, "open
       <ManageMcpServer
         open={state.addingServer}
         onClose={() => dispatch({ addingServer: false, editServerId: null })}
-        existingServerId={state.editServerId}
+        existingServerId={state.editServerId ?? undefined}
       />
     </>
   );
@@ -504,7 +505,13 @@ interface ManageMcpServerProps extends McpServerModalProps {
   existingServerId?: string;
 }
 
-const initialState = { name: "", url: "", clientName: "", customHeaders: [] };
+const initialState = {
+  name: "",
+  url: "",
+  clientName: "",
+  customHeaders: [],
+  removedHeaders: [],
+};
 
 export function ManageMcpServer(props: ManageMcpServerProps) {
   const { onClose, existingServerId } = props;
@@ -528,28 +535,35 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
       name: serverToEdit?.name || "",
       url: serverToEdit?.url || "",
       clientName: serverToEdit?.clientName || "",
-      isLocal: serverToEdit?.isLocal,
       customHeaders: [],
+      removedHeaders: [],
     },
   });
+  const removedHeaders = form.watch("removedHeaders") ?? [];
+  const savedHeaderNames = (serverToEdit?.customHeaderNames ?? []).filter(
+    (name) => !removedHeaders.includes(name),
+  );
 
   const handleSave = useCallback(
     (server: McpServerSchema) => {
-      const newServerData = {
+      const newServerData: Pick<
+        McpServer,
+        "name" | "url" | "clientName" | "customHeaders"
+      > = {
         name: server.name.trim(),
-        clientName: server.clientName.trim(),
-        isLocal: server.isLocal,
+        clientName: (server.clientName ?? "").trim(),
         url: server.url.trim(),
         customHeaders: undefined,
-      } as McpServer;
+      };
 
-      if (server.customHeaders?.length > 0) {
-        const headersObject: Record<string, string> = {};
-        for (const header of server.customHeaders) {
-          if (header.key.trim() && header.value.trim()) {
-            headersObject[header.key.trim()] = header.value.trim();
-          }
+      const headersObject: Record<string, string | null> = {};
+      for (const name of server.removedHeaders) headersObject[name] = null;
+      for (const header of server.customHeaders) {
+        if (header.key.trim() && header.value.trim()) {
+          headersObject[header.key.trim()] = header.value.trim();
         }
+      }
+      if (Object.keys(headersObject).length > 0) {
         newServerData.customHeaders = headersObject;
       }
       try {
@@ -580,10 +594,8 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
         name: serverToEdit.name,
         url: serverToEdit.url,
         clientName: serverToEdit.clientName || "",
-        isLocal: serverToEdit.isLocal,
-        customHeaders: Object.entries(serverToEdit.customHeaders || {}).map(
-          ([key, value]) => ({ key, value }),
-        ),
+        customHeaders: [],
+        removedHeaders: [],
       });
     } else {
       form.reset(initialState);
@@ -612,7 +624,7 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
         <DialogDescription>
           {existingServerId
             ? "Update your MCP server details. Supports streamable HTTP only (stdio and SSE are not supported)."
-            : "Connect OpenBB Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported)."}
+            : "Connect FINOS Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported)."}
         </DialogDescription>
       </DialogHeader>
 
@@ -633,11 +645,10 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
                 label="URL"
                 placeholder="Remote MCP server URL"
                 {...field}
-                onBlur={(e) =>
-                  form.setValue("url", e.target.value.trim(), {
-                    shouldValidate: e.target.value.trim() !== "",
-                  })
-                }
+                onBlur={(e) => {
+                  const url = e.target.value.trim();
+                  form.setValue("url", url, { shouldValidate: url !== "" });
+                }}
               />
             )}
           />
@@ -647,40 +658,37 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
             render={({ field, fieldState }) => (
               <FormInput
                 label="Client Name (Optional)"
-                placeholder="OpenBB Workspace"
+                placeholder="FINOS Workspace"
                 {...field}
                 message={fieldState.error?.message}
               />
             )}
           />
-          <FormField
-            name="isLocal"
-            control={form.control}
-            render={({ field }) => (
-              <div className="flex items-center gap-1.5 body-xs-regular">
-                <Checkbox
-                  label={<span className="whitespace-nowrap">Local Server</span>}
-                  className="text-ds-text-body whitespace-nowrap [&_label]:-mt-1"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-                <Tooltip
-                  message="Enable this if the MCP server is running on localhost or within the same network."
-                  className="max-w-[300px] break-words"
-                  position="top"
-                >
-                  <span>
-                    <Icon
-                      id="help-outline-circle"
-                      className="inline text-ds-text-caption"
-                    />
-                  </span>
-                </Tooltip>
-              </div>
-            )}
-          />
-
           <div className="overflow-y-auto max-h-[200px] pr-1">
+            {savedHeaderNames.map((name) => (
+              <div
+                key={name}
+                className="flex items-center gap-2 body-xs-regular text-ds-text-body mb-2"
+              >
+                <span className="flex-1 truncate">
+                  {name}: saved. Add it again below to replace its value.
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${name}`}
+                  onClick={() =>
+                    form.setValue("removedHeaders", [...removedHeaders, name], {
+                      shouldDirty: true,
+                    })
+                  }
+                >
+                  <Icon
+                    id="circled-cross-icon"
+                    className="h-4 w-4 text-light-600 dark:text-light-300"
+                  />
+                </button>
+              </div>
+            ))}
             <EndpointHeadersForm name="customHeaders" />
           </div>
         </form>
@@ -700,7 +708,7 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
             disabled={
               !(form.formState.isValid || existingServerId) ||
               form.formState.isSubmitting ||
-              (existingServerId && !form.formState.isDirty)
+              (!!existingServerId && !form.formState.isDirty)
             }
             size="sm"
           >

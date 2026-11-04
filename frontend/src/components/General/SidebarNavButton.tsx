@@ -14,12 +14,9 @@ export default function SidebarNavButton(props: Props) {
     <NavLink
       {...rest}
       title={title}
-      className={cn(
-        "obb-navigation-item @max-[100px]:h-8 @max-[100px]:w-8!",
-        className,
-      )}
+      className={cn("ws-navigation-item @max-[100px]:h-8 @max-[100px]:w-8!", className)}
     >
-      <Icon id={icon} className="h-4 min-w-[16px]" />
+      {icon && <Icon id={icon} className="h-4 min-w-[16px]" />}
       <span className="flex-1 truncate @max-[100px]:hidden">{title}</span>
     </NavLink>
   );

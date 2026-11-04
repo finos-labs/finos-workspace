@@ -93,18 +93,16 @@ const ResizableHandle = memo(
     );
     const isCollapsed = collapsed ?? collapsedState;
 
-    // Get fullscreen state for AI chat priority
     const { isFullscreen } = useShallowCopilotStore((state) => ({
       isFullscreen: state.isFullscreen,
     }));
 
-    // Get setting for expand button visibility on collapsed panels
     const collapsedPanelExpandOnHover = useShallowThemeStore(
       (state) => state.collapsedPanelExpandOnHover,
     );
 
     const [isDragging, setIsDragging] = useState(false);
-    const draggingTimeoutRef = useRef<NodeJS.Timeout>(null);
+    const draggingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const drag = useMemo(
       () => (
@@ -116,14 +114,13 @@ const ResizableHandle = memo(
             }
           }}
           className={cn("z-50 flex h-5 w-5 items-center justify-center rounded-sm", {
-            "border border-[#c1c3c5b4] dark:border-[#5a5a5ab4] hidden group-hover:flex":
+            "border border-[#c1c3c5b4] dark:border-dark-200/70 hidden group-hover:flex":
               !isCollapsed ||
               (isCollapsed && collapsedPanelExpandOnHover && !edgeHovered),
             "!flex": (!collapsed && isDragging) || (isCollapsed && edgeHovered),
             "h-[40px] w-[40px] absolute cursor-pointer": isCollapsed,
             "bg-brand-main text-light-100 pr-4": isCollapsed && type === "right",
             "bg-brand-main text-light-100 pl-4": isCollapsed && type === "left",
-            // Hide left sidebar drag handle visually when AI chat is maximized, but keep resize functional
             "opacity-0": type === "left" && isFullscreen && !isCollapsed,
           })}
         >
@@ -165,7 +162,7 @@ const ResizableHandle = memo(
         className={cn(
           "group pointer-events-auto relative flex items-center justify-center",
           "bg-transparent after:absolute after:inset-y-0 after:left-1/2 after:w-1",
-          "after:-translate-x-1/2 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+          "after:-translate-x-1/2 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-light-300 dark:focus-visible:ring-dark-400",
           "focus-visible:ring-offset-1 data-[panel-group-direction=vertical]:h-px",
           "data-[panel-group-direction=vertical]:w-full data-[panel-group-direction=vertical]:after:left-0",
           "data-[panel-group-direction=vertical]:after:h-1 data-[panel-group-direction=vertical]:after:w-full",
@@ -179,16 +176,11 @@ const ResizableHandle = memo(
               (isCollapsed && !edgeHovered),
             "hover:bg-brand-lighter dark:hover:bg-brand-lighter":
               !isDragging && (type === "right" || type === "left"),
-            // Highlight bar when edge hover zone is active
             "bg-brand-lighter dark:bg-brand-lighter": edgeHovered && isCollapsed,
-            // add some styles when dragging to the bar
             "bg-brand-darker dark:bg-brand-darker": isDragging,
             "w-px": withHandle,
-            // Ensure resize handle is above EdgeHoverZone (z-40) when collapsed
             "z-50": isCollapsed,
-            // Hide left sidebar resize handle visually when AI chat is maximized, but keep resize functional
             "after:opacity-0": type === "left" && isFullscreen,
-            // hide right side because we only need left side on full screen
             "w-0": type === "right" && isFullscreen,
           },
         )}
@@ -202,7 +194,7 @@ const ResizableHandle = memo(
               isCollapsed
                 ? type === "left"
                   ? "Click to expand sidebar"
-                  : "Click to expand Copilot"
+                  : "Click to expand Agent"
                 : "Drag to resize"
             }
             position={type === "left" ? "right" : "left"}

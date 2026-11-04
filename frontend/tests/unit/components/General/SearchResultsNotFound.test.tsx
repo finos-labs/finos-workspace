@@ -28,9 +28,10 @@ describe("SearchResultsNotFound Component", () => {
       <SearchResultsNotFound firstMessage="Unauthorized. Please go to https://google.com to get an api key." />,
     );
 
-    expect(
-      screen.getByRole("link", { name: "https://google.com" }),
-    ).toHaveAttribute("href", "https://google.com");
+    expect(screen.getByRole("link", { name: "https://google.com" })).toHaveAttribute(
+      "href",
+      "https://google.com",
+    );
   });
 
   it("renders with custom second message", () => {

@@ -1,42 +1,46 @@
-import type { Item } from "~/lib/state/app";
+import type { MoveToTabs } from "~/lib/state/app";
 import type { DraggableState } from "../DraggableCard";
 import type { ExtraActionT } from "../DraggableCard/NavBar";
 import type { Widget } from "../types";
 
+export type MoveTarget = Omit<MoveToTabs, "children">;
+
 export type InnerTabsMenuProps = {
   uniqueKey: string;
-  tab: Item;
-  gridLayout: Item["data"]["gridLayout"];
+  tab: MoveTarget;
+  gridLayout: MoveTarget["data"]["gridLayout"];
 };
 
 export type MoveToOnSelectProps = {
   widget: Widget;
-  tab: Item;
+  tab: MoveTarget;
   activeDashboardId: string;
   navigate: (path: string) => void;
 };
 
+type ExportFn = ((title: string) => void) | null;
+
+export type ExportFns = Partial<
+  Record<"csvFunction" | "pngFunction" | "pdfFunction" | "txtFunction", ExportFn>
+>;
+
+export type EllipsisSettings = {
+  showSettings?: boolean;
+  showParameters?: boolean;
+  showShare?: boolean;
+  showDuplicate?: boolean;
+  showExport?: boolean;
+  showMaximize?: boolean;
+  showMove?: boolean;
+  showMetadata?: boolean;
+  showMinimize?: boolean;
+};
+
 export type EllipsisDropdownMenuProps = {
-  dispatch?: (value: Partial<DraggableState>) => void;
-  settings?: {
-    showSettings?: boolean;
-    showFunctions?: boolean;
-    showParameters?: boolean;
-    showShare?: boolean;
-    showDuplicate?: boolean;
-    showExport?: boolean;
-    showMaximize?: boolean;
-    showMove?: boolean;
-    showMetadata?: boolean;
-    showCopyToClipboard?: boolean;
-    showMinimize?: boolean;
-  };
-  exportFns?: {
-    csvFunction?: (title: string) => void;
-    excelFunction?: (title: string) => void;
-    pngFunction?: (title: string) => void;
-    pdfFunction?: (title: string) => void;
-  };
+  dispatch: (value: Partial<DraggableState>) => void;
+  settings?: EllipsisSettings;
+  exportFns?: ExportFns;
+  onExport?: () => void;
   extraSettings?: ExtraActionT[];
   isMinimized?: boolean;
   onMinimizeToggle?: () => void;

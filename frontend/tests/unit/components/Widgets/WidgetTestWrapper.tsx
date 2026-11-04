@@ -3,23 +3,16 @@ import { render } from "@testing-library/react";
 import type React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
+import type { WidgetContextType, WidgetT } from "~/components/types";
 import { WidgetContext } from "~/components/Widget.context";
+import { makeWidget, makeWidgetContext } from "../../factories";
+import { type DeepPartial, partial } from "../../mocks";
 
-export const createMockWidget = (overrides = {}) => ({
-  uuid: "test-uuid",
-  name: "Test Widget",
-  type: "custom",
-  widgetId: "test-widget-id",
-  storage: {
-    params: {},
-  },
-  data: {
-    table: {
-      columnsDefs: [],
-    },
-  },
-  ...overrides,
-});
+const createMockWidget = (overrides: DeepPartial<WidgetT> = {}): WidgetT =>
+  partial<WidgetT>({
+    ...makeWidget({ id: "test-uuid", widgetId: "test-widget-id" }),
+    ...overrides,
+  });
 
 export const WidgetTestWrapper = ({
   children,
@@ -29,10 +22,10 @@ export const WidgetTestWrapper = ({
   updateWidget = vi.fn(),
 }: {
   children: React.ReactNode;
-  widgetOverrides?: any;
+  widgetOverrides?: DeepPartial<WidgetT>;
   activeDashboardId?: string;
   isShared?: boolean;
-  updateWidget?: any;
+  updateWidget?: WidgetContextType["updateWidget"];
 }) => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -49,18 +42,14 @@ export const WidgetTestWrapper = ({
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         <WidgetContext.Provider
-          value={
-            {
-              widget,
-              widgetRef: { current: widget },
-              widgetFromJSON: widget,
-              activeDashboardId,
-              isShared,
-              uuid: widget.uuid,
-              updateWidget,
-              getWidget,
-            } as any
-          }
+          value={makeWidgetContext(widget, {
+            widgetFromJSON: widget,
+            activeDashboardId,
+            isShared,
+            uuid: widget.id,
+            updateWidget,
+            getWidget,
+          })}
         >
           {children}
         </WidgetContext.Provider>
@@ -72,10 +61,10 @@ export const WidgetTestWrapper = ({
 export const renderWidget = (
   ui: React.ReactElement,
   options: {
-    widgetOverrides?: any;
+    widgetOverrides?: DeepPartial<WidgetT>;
     activeDashboardId?: string;
     isShared?: boolean;
-    updateWidget?: any;
+    updateWidget?: WidgetContextType["updateWidget"];
   } = {},
 ) => {
   return render(<WidgetTestWrapper {...options}>{ui}</WidgetTestWrapper>);

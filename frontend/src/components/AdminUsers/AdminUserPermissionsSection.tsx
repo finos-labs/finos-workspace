@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { getUserPermissions } from "~/api/entity_roles.api";
+import { getUserPermissions, type RoleAccessList } from "~/api/entity_roles.api";
 import type { DataTableColumn } from "~/components/ds/molecules/DataTable";
 import { DataTable } from "~/components/ds/molecules/DataTable";
 import { Tag } from "../ds/atoms/Tag";
@@ -8,6 +8,7 @@ import { HoverPopover } from "../HoverPopover";
 
 interface AdminUserPermissionsSectionProps {
   userUuid: string;
+  invited?: boolean;
 }
 
 interface RolePermissionRow {
@@ -20,16 +21,13 @@ interface RolePermissionRow {
   hasAnyAccess: boolean;
 }
 
-type AccessList = Record<string, string>[] | undefined;
-
-// Returns the access value ("access" / "denied" / ...) a role has for a resource.
-function accessFor(access: AccessList, roleId: string): string | null {
+function accessFor(access: RoleAccessList | undefined, roleId: string): string | null {
   if (!access) return null;
   const entry = access.find((item) => Object.keys(item).includes(roleId));
   return entry ? entry[roleId] : null;
 }
 
-const isGranted = (access: AccessList, roleId: string) =>
+const isGranted = (access: RoleAccessList | undefined, roleId: string) =>
   accessFor(access, roleId) === "access";
 
 function PermissionCountCell({ label, items }: { label: string; items: string[] }) {
@@ -71,19 +69,18 @@ const COUNT_COLUMN = {
   truncate: false,
 } as const;
 
-// Surrounding border per row. `<tr>` borders are ignored in border-separate, so
-// the border lives on the cells: top/bottom on all, left/right on the end cells.
 const BORDERED_ROW =
   "[&>td]:border-y [&>td]:border-general-border-secondary " +
   "[&>td:first-child]:border-l [&>td:last-child]:border-r";
 
 export default function AdminUserPermissionsSection({
   userUuid,
+  invited = false,
 }: AdminUserPermissionsSectionProps) {
   const userPermissionsQuery = useQuery({
     queryKey: ["admin", "userPermissions", userUuid],
     queryFn: () => getUserPermissions(userUuid),
-    enabled: true,
+    enabled: !invited,
   });
 
   const rows = useMemo<RolePermissionRow[]>(() => {
@@ -93,7 +90,7 @@ export default function AdminUserPermissionsSection({
     if (!data) return [];
 
     const roleIds = new Set<string>();
-    const collect = (access: AccessList) => {
+    const collect = (access: RoleAccessList | undefined) => {
       for (const item of access ?? [])
         for (const key of Object.keys(item)) roleIds.add(key);
     };
@@ -111,7 +108,7 @@ export default function AdminUserPermissionsSection({
 
       for (const template of data.templates ?? []) {
         if (isGranted(template.access, roleId)) {
-          apps.push(template.templateId ?? template.name ?? "Unknown");
+          apps.push(template.templateId ?? "Unknown");
         }
       }
       for (const connector of data.data_connectors ?? []) {
@@ -127,7 +124,6 @@ export default function AdminUserPermissionsSection({
         }
       }
 
-      // "AI Agents" has no field in the current permissions payload yet.
       const agents: string[] = [];
 
       return {
@@ -146,8 +142,6 @@ export default function AdminUserPermissionsSection({
     () => [
       {
         id: "role",
-        // Fill so the role column absorbs the dialog's slack while the count
-        // columns stay fixed; keeps the table filling the (wide) dialog.
         width: "fill",
         minWidth: 150,
         header: "Role",

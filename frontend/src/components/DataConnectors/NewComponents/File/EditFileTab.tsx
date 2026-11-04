@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -9,16 +9,13 @@ import { FormInput } from "~/components/ds/atoms/Input";
 import { FormSelect } from "~/components/ds/atoms/Select";
 import { FormTextarea } from "~/components/ds/atoms/TextArea";
 import { FormField } from "~/components/ds/molecules/Form";
-import { countItemsPerKey } from "~/components/General/Table/utils";
 import Icon from "~/components/Icon";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { fetchWithToken } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { cn, dispatchSaveState } from "~/lib/utils";
 import { CATEGORY_OPTIONS } from "../../common/helpers";
 import { useDataConnectorContext } from "../../Providers/DataConnectorContext";
-import { getExtension, getLabel } from "./UploadFilesTab1";
 
 const fileSchema = z.object({
   name: z.string().min(1, "This field is required"),
@@ -38,7 +35,6 @@ export default function EditFileTab() {
   const { setStoredFiles, storedFiles } = useBackendConnectorStore();
   const [state, dispatch] = useStateReducer({
     isExtraSettingsOpen: mode === "edit",
-    selectOptions: [] as { path: string; count: number | string }[],
     loading: false,
   });
 
@@ -55,12 +51,12 @@ export default function EditFileTab() {
   const form = useForm<FileForm>({
     resolver: zodResolver(fileSchema),
     defaultValues: {
-      category: currentFile?.category,
-      subCategory: currentFile?.subCategory,
-      description: currentFile?.description,
+      category: currentFile?.category ?? undefined,
+      subCategory: currentFile?.subCategory ?? undefined,
+      description: currentFile?.description ?? undefined,
       name: currentFile?.name,
       source: currentFile?.source || "",
-      dataKey: currentFile?.dataKey,
+      dataKey: currentFile?.dataKey ?? undefined,
     },
   });
 
@@ -74,13 +70,13 @@ export default function EditFileTab() {
         updateWidget(dashId, {
           ...widget,
           name,
-          description,
-          category,
-          subCategory,
+          description: description ?? undefined,
+          category: category ?? undefined,
+          subCategory: subCategory ?? undefined,
           source: source ? [source] : [],
           data: {
             ...(widget.data || {}),
-            dataKey,
+            dataKey: dataKey ?? undefined,
           },
           endpoint: { url, method: "GET" },
         });
@@ -134,35 +130,6 @@ export default function EditFileTab() {
     },
     [id, currentFile, setStoredFiles],
   );
-
-  const getKeys = useCallback(async (parsed: any) => {
-    if (Array.isArray(parsed)) {
-      return;
-    }
-    const counts = countItemsPerKey(parsed);
-
-    if (Object.values(counts).every((item) => item.count === 1)) return;
-
-    counts.sort((a, b) => b.count - a.count);
-    dispatch({ selectOptions: [{ path: "None", count: "" }, ...counts] });
-  }, []);
-
-  useEffect(() => {
-    // we populate the data key options
-    if (currentFile?.url) {
-      const extension = getExtension(currentFile?.url);
-      if (extension === "json") {
-        fetchWithToken(currentFile?.url)
-          .then(async (response) => {
-            const data = await response.json();
-            getKeys(data);
-          })
-          .catch((error) => {
-            console.error("Error fetching file: ", error);
-          });
-      }
-    }
-  }, [currentFile?.url, getKeys]);
 
   const onClick = useCallback(
     () => dispatch({ isExtraSettingsOpen: (prev) => !prev }),
@@ -241,34 +208,8 @@ export default function EditFileTab() {
                         />
                       )}
                     />
-                    {state.selectOptions.length > 0 && (
-                      <>
-                        <div className="my-2" />
-                        <FormField
-                          name="dataKey"
-                          control={form.control}
-                          render={({ field }) => (
-                            <FormSelect
-                              className="border-2 dark:border-[#46464F]"
-                              label={
-                                <p className="text-light-600 dark:text-light-300">
-                                  Data Key (optional)
-                                </p>
-                              }
-                              options={state.selectOptions.map((item) => ({
-                                label: getLabel(item.path, item.count),
-                                value: item.path,
-                              }))}
-                              {...field}
-                            />
-                          )}
-                        />
-                      </>
-                    )}
                   </div>
                   <div className="w-full col-span-2 md:col-span-1 md:w-3/5 overflow-hidden max-h-[215px]">
-                    {/* This thing behaves really weird - need to revisit - this helps
-                    for now */}
                     <FormField
                       name="description"
                       control={form.control}

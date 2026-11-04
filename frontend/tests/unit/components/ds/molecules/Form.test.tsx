@@ -7,7 +7,6 @@ import { z } from "zod";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -38,7 +37,6 @@ function TestForm() {
               <FormControl>
                 <input {...field} placeholder="Enter username" />
               </FormControl>
-              <FormDescription>Min 3 characters</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -54,7 +52,6 @@ describe("Form Molecule", () => {
     render(<TestForm />);
     expect(screen.getByText("Username")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Enter username")).toBeInTheDocument();
-    expect(screen.getByText("Min 3 characters")).toBeInTheDocument();
   });
 
   it("shows validation error message on invalid submit", async () => {
@@ -76,11 +73,9 @@ describe("Form Molecule", () => {
 
     const input = screen.getByPlaceholderText("Enter username");
 
-    // Initial state
     expect(input).toHaveAttribute("aria-describedby");
     expect(input).toHaveAttribute("aria-invalid", "false");
 
-    // After error
     await user.type(input, "ab");
     await user.click(screen.getByText("Submit"));
 

@@ -1,24 +1,26 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
-import { beforeEach, describe, expect, it } from "vitest";
-import { useJsonData } from "~/lib/api";
-import { useAuthStore } from "~/lib/state/auth";
+import { describe, expect, it } from "vitest";
+import { fetchBackend, useJsonData } from "~/lib/api";
+import { type BuiltRequest, plainRequest } from "~/lib/utils/widgetRequest";
 import { HttpResponse, http, server, setupMSW } from "../../mocks/msw-utils";
 import "../../mocks/runtimeConfig";
 
-// Matches mockConfig.urls.backend from tests/mocks/runtimeConfig
 const BACKEND_URL = "http://localhost:3000";
-const TEST_TOKEN = "test-token";
 const CSV_BODY = "a,b\n1,2";
 
-function fileHandler(origin: string) {
-  return http.get(`${origin}/pro/files/:fileName`, ({ request }) => {
-    if (request.headers.get("Authorization") !== `Bearer ${TEST_TOKEN}`) {
-      return HttpResponse.json(
-        { detail: "Not authenticated", status: 401 },
-        { status: 401 },
-      );
+type Seen = { client: string | null; credentials: string | null; auth: string | null };
+
+function apiHandler(url: string, seen: Seen[]) {
+  return http.all(url, ({ request }) => {
+    seen.push({
+      client: request.headers.get("X-Workspace-Client"),
+      credentials: request.credentials,
+      auth: request.headers.get("Authorization"),
+    });
+    if (request.headers.get("X-Workspace-Client") !== "web") {
+      return HttpResponse.json({ detail: "Not authenticated" }, { status: 401 });
     }
     return HttpResponse.text(CSV_BODY);
   });
@@ -31,24 +33,18 @@ function createWrapper() {
   );
 }
 
-describe("useJsonData bearer token on stored file URLs", () => {
+describe("useJsonData and the FINOS Workspace session", () => {
   setupMSW();
 
-  beforeEach(() => {
-    useAuthStore.setState({ user: { token: TEST_TOKEN } } as never);
-  });
-
-  it.each([
-    "https://payments.openbb.co",
-    "https://payments.openbb.dev",
-  ])("authenticates legacy %s file URLs even when the configured backend differs", async (legacyOrigin) => {
-    server.use(fileHandler(legacyOrigin));
+  it("sends the session cookie and the client header with a GET of the API's files", async () => {
+    const seen: Seen[] = [];
+    server.use(apiHandler(`${BACKEND_URL}/app/files/:fileName`, seen));
 
     const { result } = renderHook(
       () =>
         useJsonData(
           {
-            url: `${legacyOrigin}/pro/files/f97d5f4b-ec11-4bcc-b4a7-afce535f8118.csv`,
+            request: plainRequest(`${BACKEND_URL}/app/files/some-file.csv`, undefined),
             asText: true,
           },
           { retry: false },
@@ -58,61 +54,114 @@ describe("useJsonData bearer token on stored file URLs", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBe(CSV_BODY);
+    expect(seen).toEqual([{ client: "web", credentials: "include", auth: null }]);
   });
 
-  it("still authenticates URLs on the configured backend origin", async () => {
-    server.use(fileHandler(BACKEND_URL));
-
-    const { result } = renderHook(
-      () =>
-        useJsonData(
-          { url: `${BACKEND_URL}/pro/files/some-file.csv`, asText: true },
-          { retry: false },
-        ),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toBe(CSV_BODY);
-  });
-
-  it("does not send the token to non-file paths on the legacy origin", async () => {
-    let authHeader: string | null = "unset";
-    server.use(
-      http.get("https://payments.openbb.co/pro/widgets", ({ request }) => {
-        authHeader = request.headers.get("Authorization");
-        return HttpResponse.json({ ok: true });
-      }),
-    );
-
-    const { result } = renderHook(
-      () =>
-        useJsonData(
-          { url: "https://payments.openbb.co/pro/widgets" },
-          { retry: false },
-        ),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(authHeader).toBeNull();
-  });
-
-  it("does not send the token to external hosts", async () => {
-    let authHeader: string | null = "unset";
+  it("sends no FINOS Workspace credential to other hosts", async () => {
+    const seen: Seen[] = [];
     server.use(
       http.get("https://example.com/data", ({ request }) => {
-        authHeader = request.headers.get("Authorization");
+        seen.push({
+          client: request.headers.get("X-Workspace-Client"),
+          credentials: request.credentials,
+          auth: request.headers.get("Authorization"),
+        });
         return HttpResponse.json({ ok: true });
       }),
     );
 
     const { result } = renderHook(
-      () => useJsonData({ url: "https://example.com/data" }, { retry: false }),
+      () =>
+        useJsonData(
+          { request: plainRequest("https://example.com/data", undefined) },
+          { retry: false },
+        ),
       { wrapper: createWrapper() },
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(authHeader).toBeNull();
+    expect(seen).toEqual([{ client: null, credentials: "omit", auth: null }]);
+  });
+
+  it("sends no FINOS Workspace credential to a host that only contains the API's URL", async () => {
+    const seen: Seen[] = [];
+    server.use(
+      http.get("https://example.com/data", ({ request }) => {
+        seen.push({
+          client: request.headers.get("X-Workspace-Client"),
+          credentials: request.credentials,
+          auth: request.headers.get("Authorization"),
+        });
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    const { result } = renderHook(
+      () =>
+        useJsonData(
+          {
+            request: plainRequest(
+              "https://example.com/data?next=http://localhost:3000/app",
+              undefined,
+            ),
+          },
+          { retry: false },
+        ),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(seen).toEqual([{ client: null, credentials: "omit", auth: null }]);
+  });
+
+  it.each([
+    ["GET", `${BACKEND_URL}/app/dash/validate-and-sync`],
+    ["POST", `${BACKEND_URL}/app/logout`],
+    ["POST", `${BACKEND_URL}/app/files/some-file.csv`],
+  ] as const)("never sends the session with a widget's %s to %s", async (method, url) => {
+    const seen: Seen[] = [];
+    server.use(apiHandler(url, seen));
+
+    const request: BuiltRequest = {
+      ok: true,
+      request: { url, method, paramHeaders: {} },
+    };
+    const { result } = renderHook(() => useJsonData({ request }, { retry: false }), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(seen).toEqual([{ client: null, credentials: "omit", auth: null }]);
+  });
+});
+
+describe("fetchBackend", () => {
+  setupMSW();
+
+  it("calls the API with the session cookie and the client header", async () => {
+    const seen: Seen[] = [];
+    server.use(apiHandler(`${BACKEND_URL}/app/mcp-proxy`, seen));
+
+    const response = await fetchBackend(`${BACKEND_URL}/app/mcp-proxy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+
+    expect(response.status).toBe(200);
+    expect(seen).toEqual([{ client: "web", credentials: "include", auth: null }]);
+  });
+
+  it.each([
+    "https://example.com/app/mcp-proxy",
+    "http://localhost:3000.evil.test/app/mcp-proxy",
+  ])("refuses to call anything but the API: %s", async (url) => {
+    const seen: Seen[] = [];
+    server.use(apiHandler(url, seen));
+
+    await expect(fetchBackend(url)).rejects.toThrow(
+      "only calls the FINOS Workspace API",
+    );
+    expect(seen).toEqual([]);
   });
 });

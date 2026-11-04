@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   RadioGroup,
@@ -58,19 +59,48 @@ vi.mock("@radix-ui/react-radio-group", () => {
   });
 
   return {
-    Root: ({ children, value, onValueChange, className, disabled }: any) => (
+    Root: ({
+      children,
+      value,
+      onValueChange,
+      className,
+      disabled,
+    }: {
+      children?: ReactNode;
+      value?: string;
+      onValueChange: (value: string) => void;
+      className?: string;
+      disabled?: boolean;
+    }) => (
       <RadioContext.Provider value={{ value, onValueChange, disabled: !!disabled }}>
         <div role="radiogroup" className={className}>
           {children}
         </div>
       </RadioContext.Provider>
     ),
-    Item: ({ children, value, id, className, disabled: itemDisabled }: any) => {
-      const { onValueChange, disabled: rootDisabled } = React.useContext(RadioContext);
+    Item: ({
+      children,
+      value,
+      id,
+      className,
+      disabled: itemDisabled,
+    }: {
+      children?: ReactNode;
+      value?: string;
+      id?: string;
+      className?: string;
+      disabled?: boolean;
+    }) => {
+      const {
+        value: selected,
+        onValueChange,
+        disabled: rootDisabled,
+      } = React.useContext(RadioContext);
       const disabled = rootDisabled || itemDisabled;
       return (
         <button
           role="radio"
+          aria-checked={selected === value}
           id={id}
           className={className}
           disabled={disabled}
@@ -80,7 +110,7 @@ vi.mock("@radix-ui/react-radio-group", () => {
         </button>
       );
     },
-    Indicator: ({ children }: any) => <div>{children}</div>,
+    Indicator: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   };
 });
 
@@ -89,5 +119,5 @@ vi.mock("~/components/Icon", () => ({
 }));
 
 vi.mock("../utils", () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));

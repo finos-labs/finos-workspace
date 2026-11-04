@@ -5,36 +5,32 @@ import { useShallowAuthStore } from "~/lib/state/auth";
 
 export function usePrivateRoute(shouldValidate = true) {
   const navigate = useNavigate();
-  const { user, logout, needsOnboarding } = useShallowAuthStore((state) => ({
+  const { user, logout, restoreSession } = useShallowAuthStore((state) => ({
     user: state.user,
     logout: state.logout,
-    needsOnboarding: state.needsOnboarding,
+    restoreSession: state.restoreSession,
   }));
 
   useEffect(() => {
     if (!user) {
-      console.info("🚫 User is not logged in, redirecting to auth page");
-      logout();
-      return;
+      let active = true;
+      restoreSession().then((signedIn) => {
+        if (active && !signedIn) navigate("/login", { replace: true });
+      });
+      return () => {
+        active = false;
+      };
     }
 
     if (shouldValidate) {
-      console.info("🔐 User is logged in, checking token validity");
       validateUser()
         .then((data) => {
-          if (!data.success) {
-            console.info("🚫 Token is invalid, redirecting to auth page");
-            if (needsOnboarding) {
-              navigate("/onboarding");
-            } else {
-              logout();
-            }
-          }
+          if (!data.success) logout();
         })
         .catch((err) => {
-          console.error("🚫 Token validation failed, redirecting to auth page", err);
+          console.error("Session validation failed, signing out", err);
           logout();
         });
     }
-  }, [user, shouldValidate, logout, needsOnboarding, navigate]);
+  }, [user, shouldValidate, logout, restoreSession, navigate]);
 }

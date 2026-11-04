@@ -1,15 +1,7 @@
-import {
-  type ComponentProps,
-  type MutableRefObject,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-} from "react";
+import { type MutableRefObject, memo, useCallback, useEffect, useMemo } from "react";
 import {
   ControlledTreeEnvironment,
-  type DraggingPositionBetweenItems,
-  type DraggingPositionItem,
+  type DraggingPosition,
   Tree,
   type TreeItem,
   type TreeItemIndex,
@@ -30,7 +22,15 @@ import { Button } from "../ds/atoms/Button";
 import ChevronRightIcon from "../Icons/ChevronRight";
 import TabItem from "./TabItem";
 
-function RenderItemsContainer({ children, containerProps }) {
+type RenderItemProps = Parameters<NonNullable<TreeRenderProps["renderItem"]>>[0];
+type RenderItemArrowProps = Parameters<
+  NonNullable<TreeRenderProps["renderItemArrow"]>
+>[0];
+type RenderItemsContainerProps = Parameters<
+  NonNullable<TreeRenderProps["renderItemsContainer"]>
+>[0];
+
+function RenderItemsContainer({ children, containerProps }: RenderItemsContainerProps) {
   return useMemo(
     () => (
       <ul
@@ -44,10 +44,7 @@ function RenderItemsContainer({ children, containerProps }) {
   );
 }
 
-function renderItemArrow({
-  item,
-  context,
-}: ComponentProps<TreeRenderProps["renderItemArrow"]>) {
+function renderItemArrow({ item, context }: RenderItemArrowProps) {
   return item.isFolder ? (
     <span {...context.arrowProps} className="ml-0.5 mr-8">
       <ChevronRightIcon
@@ -59,7 +56,7 @@ function renderItemArrow({
   ) : null;
 }
 
-const RenderItem = (props: ComponentProps<TreeRenderProps["renderItem"]>) => {
+const RenderItem = (props: RenderItemProps) => {
   const { context, info, children, ...rest } = props;
   const childrenMemo = useMemo(() => children, [children]);
   const contextMemo = useMemo(
@@ -101,9 +98,7 @@ function recursiveChildrenIds(item: string, items: SideBarItems): string[] {
   return children.flatMap((child) => recursiveChildrenIds(child, items));
 }
 
-export function useTabsItems(
-  tabsRef: MutableRefObject<HTMLDivElement | null | undefined>,
-) {
+function useTabsItems(tabsRef: MutableRefObject<HTMLDivElement | null | undefined>) {
   const id = useParams()?.id;
   const tabId = useMemo(() => id, [id]);
 
@@ -183,7 +178,6 @@ export function useTabsItems(
 
         scrollIntoView(newFocusedItemId);
         const innerTab = getLastInnerTab(newFocusedItemId);
-        // Navigate to the new item
         navigate(`/app/${newFocusedItemId}${innerTab && `?tab=${innerTab}`}`);
       }
     },
@@ -193,7 +187,7 @@ export function useTabsItems(
   useEffect(() => {
     tabId && queueMicrotask(() => setTimeout(() => scrollIntoView(tabId, false), 300));
     if (sideBarStore.isActive) return;
-    sideBarStore.setActiveItem(tabId);
+    sideBarStore.setActiveItem(tabId ?? null);
   }, [tabId]);
 
   useEffect(() => {
@@ -223,10 +217,8 @@ export function useTabsItems(
 
       const item = currentItems[tabId];
       if (item) {
-        // Find all parent IDs
         const parentIds = findParents(tabId, currentItems);
         if (parentIds.some((parentId) => !expandedItemsRef.current.includes(parentId)))
-          // Ensure all parents are expanded
           sideBarStore.setExpandedItems((prevExpandedItems) =>
             Array.from(new Set([...prevExpandedItems, ...parentIds])),
           );
@@ -259,32 +251,23 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
 
   const sidebarExpanded = useShallowSidebarStore((state) => state.expandedMyDashboards);
 
-  const currentItems = useMemo(
-    () =>
-      items as Record<
-        TreeItemIndex,
-        TreeItem & { isRoot?: boolean; parentId?: TreeItemIndex }
-      >,
-    [Object.values(items)],
-  );
+  const currentItems = items;
 
   const currentItemsRef = useCreateRef(currentItems);
   const expandedItemsRef = useCreateRef(expandedItems);
 
   const handleOnDrop = useCallback(
-    (
-      treeItems: (TreeItem & { parentId: TreeItemIndex })[],
-      target: DraggingPositionItem | DraggingPositionBetweenItems,
-    ) => {
+    (droppedItems: TreeItem[], target: DraggingPosition) => {
       const currentItems = currentItemsRef.current;
-      const newItems = { ...currentItems };
+      const newItems: SideBarItems = { ...currentItems };
 
       const expandedItems = expandedItemsRef.current;
-      for (const item of treeItems) {
-        const parent = currentItems[item.parentId];
+      for (const droppedItem of droppedItems) {
+        const item = currentItems[droppedItem.index];
+        const parent = item?.parentId ? currentItems[item.parentId] : undefined;
 
-        if (!parent) {
-          throw Error(`Could not find parent of item "${item.index}"`);
+        if (!(item && parent)) {
+          throw Error(`Could not find parent of item "${droppedItem.index}"`);
         }
 
         if (!parent.children) {
@@ -292,16 +275,13 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
             `Parent "${parent.index}" of item "${item.index}" did not have any children`,
           );
         }
-        // @ts-expect-error
         if (target.targetType === "item" || target.targetType === "root") {
           if (!newItems[target.targetItem]?.isFolder) {
             return;
           }
           if (target.targetItem === parent.index) {
-            // Trying to drop inside itself
             return;
           }
-          // trying to drop on another item
           newItems[parent.index] = {
             ...parent,
             children: parent.children.filter((child) => child !== item.index),
@@ -314,7 +294,7 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
 
           newItems[item.index] = {
             ...item,
-            parentId: target.targetItem,
+            parentId: String(target.targetItem),
           };
 
           if (
@@ -325,19 +305,16 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
               Array.from(new Set([...prevExpandedItems, target.targetItem])),
             );
         } else {
-          // trying to drop between items
           const newParent = currentItems[target.parentItem];
           const newParentChildren = [...(newParent.children ?? [])].filter(
             (child) => child !== item.index,
           );
 
           if (target.parentItem === item.index) {
-            // Trying to drop inside itself
             return;
           }
 
           if (target.parentItem === parent.index) {
-            // Trying to drop on another item
             const isOldItemPriorToNewItem =
               ((newParent.children ?? []).indexOf(item.index) ??
                 Number.POSITIVE_INFINITY) < target.childIndex;
@@ -352,7 +329,6 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
               children: newParentChildren,
             };
           } else {
-            // Trying to drop on another item in another folder
             newParentChildren.splice(target.childIndex, 0, item.index);
 
             newItems[parent.index] = {
@@ -372,7 +348,7 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
           }
         }
       }
-      updateItems(newItems as any);
+      updateItems(newItems);
     },
     [currentItemsRef, expandedItemsRef],
   );
@@ -392,7 +368,6 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
 
   const onCollapseItem = useCallback(
     (item: TreeItem) => {
-      // Don't collapse if the current active tab is inside this folder
       const currentTabId = sideBarStore.getActiveItem();
       if (currentTabId && item.isFolder) {
         const childrenIds = recursiveChildrenIds(
@@ -420,7 +395,7 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
 
   const getItemTitle = useCallback((item: TreeItem) => item.data.name, []);
   const renderItem = useCallback(
-    (props: ComponentProps<TreeRenderProps["renderItem"]>) => (
+    (props: RenderItemProps) => (
       <RenderItem key={`${props.item.index}-render`} {...props} />
     ),
     [],
@@ -442,7 +417,9 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
   );
 
   const viewState = useMemo(
-    () => ({ sidebar: { focusedItem, expandedItems, selectedItems } }),
+    () => ({
+      sidebar: { focusedItem: focusedItem ?? undefined, expandedItems, selectedItems },
+    }),
     [expandedItems, selectedItems],
   );
 

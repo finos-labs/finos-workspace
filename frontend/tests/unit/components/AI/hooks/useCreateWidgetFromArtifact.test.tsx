@@ -1,13 +1,16 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { apiClient } from "~/api/api";
 import {
   type CreateWidgetParams,
   useCreateWidgetFromArtifact,
 } from "~/components/AI/hooks/useCreateWidgetFromArtifact";
 import { useCopilotStore } from "~/lib/state/copilot";
+import { usePluginRegistryStore } from "~/plugins/registry";
+import { PluginListingSchema } from "~/plugins/types";
+import { required } from "../../../mocks";
 
-// Mock sonner toast
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -17,7 +20,6 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock react-router-dom
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", () => ({
   useParams: () => ({ id: "dashboard-123" }),
@@ -25,25 +27,16 @@ vi.mock("react-router-dom", () => ({
   useSearchParams: () => [new URLSearchParams()],
 }));
 
-// Mock PostHog
-vi.mock("posthog-js/react", () => ({
-  usePostHog: () => ({
-    capture: vi.fn(),
-  }),
-}));
-
-// Mock API
 const mockCreateMetaDataWidget = vi.fn();
 vi.mock("~/api/auth.api", () => ({
   createMetaDataWidget: (...args: unknown[]) => mockCreateMetaDataWidget(...args),
 }));
 
-// Mock app store
 const mockAddWidget = vi.fn();
 const mockAddTab = vi.fn();
 const mockGetLastInnerTab = vi.fn().mockReturnValue("");
 vi.mock("~/lib/state/app", () => ({
-  useShallowAppStore: (selector: (state: any) => any) =>
+  useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       addWidget: mockAddWidget,
       addTab: mockAddTab,
@@ -51,35 +44,26 @@ vi.mock("~/lib/state/app", () => ({
     }),
 }));
 
-// Mock auth store
-vi.mock("~/lib/state/auth", () => ({
-  useShallowAuthStore: (selector: (state: any) => any) =>
-    selector({
-      user: { token: "test-token" },
-    }),
-  useAuthStore: () => ({ getState: () => ({}) }),
-}));
-
-// Mock theme store
 vi.mock("~/lib/state/theme", () => ({
-  useShallowThemeStore: (selector: (state: any) => any) =>
+  useShallowThemeStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ aiEnhancements: true }),
 }));
 
-// Mock copilotData store
 vi.mock("~/lib/state/copilotData", () => ({
-  useShallowCopilotDataStore: (selector: (state: any) => any) =>
+  useShallowCopilotDataStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       copilotWidgets: { selectedWidgets: [] },
     }),
 }));
 
-// Mock fetch for AI widget info
 global.fetch = vi.fn();
 
 describe("useCreateWidgetFromArtifact", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { token: "agent-token", expires_in: 1800 },
+    });
     mockCreateMetaDataWidget.mockResolvedValue("new-widget-id");
     mockAddWidget.mockResolvedValue(undefined);
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -95,14 +79,14 @@ describe("useCreateWidgetFromArtifact", () => {
 
       await act(async () => {
         result.current.createWidget({
-          widgetType: "table",
-          content: [{ col1: "data" }],
+          widgetType: "html",
+          content: "<p>data</p>",
           metadata: null,
         });
       });
 
       expect(toast.loading).toHaveBeenCalledWith(
-        "Creating table widget...",
+        "Creating html widget...",
         expect.objectContaining({
           cancel: expect.objectContaining({
             label: "Edit metadata",
@@ -116,8 +100,8 @@ describe("useCreateWidgetFromArtifact", () => {
 
       await act(async () => {
         await result.current.createWidget({
-          widgetType: "table",
-          content: [{ col1: "data" }],
+          widgetType: "html",
+          content: "<p>data</p>",
           metadata: null,
         });
       });
@@ -134,6 +118,65 @@ describe("useCreateWidgetFromArtifact", () => {
       });
     });
 
+    it("adds a plugin artifact as a full-width plugin widget that holds its data, without asking the agent for a name", async () => {
+      usePluginRegistryStore.getState().setListing(
+        PluginListingSchema.parse({
+          enabled: true,
+          etag: "1",
+          plugins: [
+            {
+              id: "chart-kit",
+              version: "1.0.0",
+              name: "Chart kit",
+              digest: `sha256-${"A".repeat(43)}`,
+              entry: { module: "entry.js", styles: [] },
+              files: { "entry.js": { size: 10, sha256: "a".repeat(64) } },
+              csp: {},
+              widgets: [
+                {
+                  id: "bars",
+                  name: "Bars",
+                  permissions: ["core:data:read"],
+                  grid: { w: 20, h: 10 },
+                  artifact: { description: "Bars", data: { type: "object" } },
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      const { result } = renderHook(() => useCreateWidgetFromArtifact());
+
+      await act(async () => {
+        await result.current.createWidget({
+          widgetType: "plugin",
+          content: "",
+          pluginArtifact: {
+            plugin: { id: "chart-kit", widget: "bars" },
+            data: { rows: [{ x: "a", y: 1 }] },
+            config: { color: "red" },
+          },
+          metadata: { name: "Sales bars", description: "Sales by month" },
+        });
+      });
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockAddWidget).toHaveBeenCalledWith(
+        "dashboard-123",
+        expect.objectContaining({
+          name: "Sales bars",
+          description: "Sales by month",
+          widgetId: "plugin:chart-kit:bars",
+          connectionType: "plugin",
+          plugin: { id: "chart-kit", widget: "bars" },
+          gridData: { w: 40, h: 12 },
+          storage: {
+            plugin: { data: { rows: [{ x: "a", y: 1 }] }, config: { color: "red" } },
+          },
+        }),
+      );
+    });
+
     it("shows error toast when creation fails", async () => {
       mockAddWidget.mockRejectedValue(new Error("Failed to add widget"));
 
@@ -141,8 +184,8 @@ describe("useCreateWidgetFromArtifact", () => {
 
       await act(async () => {
         await result.current.createWidget({
-          widgetType: "table",
-          content: [{ col1: "data" }],
+          widgetType: "html",
+          content: "<p>data</p>",
           metadata: null,
         });
       });
@@ -166,8 +209,8 @@ describe("useCreateWidgetFromArtifact", () => {
 
       await act(async () => {
         await result.current.createWidget({
-          widgetType: "table",
-          content: [{ col1: "data" }],
+          widgetType: "html",
+          content: "<p>data</p>",
           metadata: null,
         });
       });
@@ -197,6 +240,66 @@ describe("useCreateWidgetFromArtifact", () => {
     });
   });
 
+  describe("a text artifact", () => {
+    it("is added as a markdown widget holding the text, without saving metadata", async () => {
+      const { result } = renderHook(() => useCreateWidgetFromArtifact());
+
+      await act(async () => {
+        await result.current.createWidget({
+          widgetType: "text",
+          content: "# Title\n\nSome text. <citation>ref</citation>",
+          metadata: null,
+        });
+      });
+
+      expect(mockCreateMetaDataWidget).not.toHaveBeenCalled();
+      expect(mockAddWidget).toHaveBeenCalledTimes(1);
+      const [dashboardId, widget] = mockAddWidget.mock.calls[0];
+      expect(dashboardId).toBe("dashboard-123");
+      expect(widget).toEqual(
+        expect.objectContaining({
+          widgetId: "markdown",
+          type: "custom",
+          name: "AI Title",
+          description: "AI Description",
+          storage: { text: "# Title\n\nSome text" },
+        }),
+      );
+      expect(widget.connectionType).toBeUndefined();
+    });
+
+    it("has no metadata to edit afterwards", async () => {
+      const { result } = renderHook(() => useCreateWidgetFromArtifact());
+
+      await act(async () => {
+        await result.current.createWidget({
+          widgetType: "text",
+          content: "Test content",
+          metadata: { name: "Summary", description: "A summary" },
+        });
+      });
+
+      await waitFor(() => expect(toast.success).toHaveBeenCalled());
+      const options = (toast.success as ReturnType<typeof vi.fn>).mock.calls[0][1];
+      expect(options.cancel).toBeUndefined();
+    });
+
+    it("has no metadata to edit when created with metadata from the dialog", async () => {
+      const { result } = renderHook(() => useCreateWidgetFromArtifact());
+
+      await act(async () => {
+        await result.current.createWidgetWithMetadata(
+          { widgetType: "text", content: "Test content" },
+          { name: "Summary", description: "A summary" },
+        );
+      });
+
+      await waitFor(() => expect(toast.success).toHaveBeenCalled());
+      const options = (toast.success as ReturnType<typeof vi.fn>).mock.calls[0][1];
+      expect(options.cancel).toBeUndefined();
+    });
+  });
+
   describe("Edit metadata button on loading toast", () => {
     it("opens dialog when Edit metadata is clicked on loading toast", async () => {
       let cancelCallback: (() => void) | undefined;
@@ -211,24 +314,21 @@ describe("useCreateWidgetFromArtifact", () => {
       const { result } = renderHook(() => useCreateWidgetFromArtifact());
 
       const params: CreateWidgetParams = {
-        widgetType: "table",
-        content: [{ col1: "data" }],
+        widgetType: "html",
+        content: "<p>data</p>",
         metadata: null,
       };
 
-      // Start widget creation but don't await - we want to click cancel during loading
       act(() => {
         result.current.createWidget(params);
       });
 
-      // Simulate clicking Edit metadata
       if (cancelCallback) {
         act(() => {
-          cancelCallback!();
+          required(cancelCallback)();
         });
       }
 
-      // Dialog should be opened in create mode
       await waitFor(() => {
         const dialogState = useCopilotStore.getState().createWidgetMetadataDialog;
         expect(dialogState).not.toBeNull();
@@ -236,7 +336,6 @@ describe("useCreateWidgetFromArtifact", () => {
         expect(dialogState?.pendingParams).toBeDefined();
       });
 
-      // Toast should be dismissed
       expect(toast.dismiss).toHaveBeenCalledWith("toast-id");
     });
   });
@@ -259,20 +358,18 @@ describe("useCreateWidgetFromArtifact", () => {
 
       await act(async () => {
         await result.current.createWidget({
-          widgetType: "table",
-          content: [{ col1: "data" }],
+          widgetType: "html",
+          content: "<p>data</p>",
           metadata: null,
         });
       });
 
-      // Simulate clicking Edit metadata on success toast
       if (cancelCallback) {
         act(() => {
-          cancelCallback!();
+          required(cancelCallback)();
         });
       }
 
-      // Dialog should be opened in update mode
       await waitFor(() => {
         const dialogState = useCopilotStore.getState().createWidgetMetadataDialog;
         expect(dialogState).not.toBeNull();
@@ -290,8 +387,8 @@ describe("useCreateWidgetFromArtifact", () => {
       await act(async () => {
         await result.current.createWidgetWithMetadata(
           {
-            widgetType: "table",
-            content: [{ col1: "data" }],
+            widgetType: "html",
+            content: "<p>data</p>",
             metadata: null,
           },
           {
@@ -330,8 +427,8 @@ describe("useCreateWidgetFromArtifact", () => {
       await act(async () => {
         await result.current.createWidgetWithMetadata(
           {
-            widgetType: "table",
-            content: [{ col1: "data" }],
+            widgetType: "html",
+            content: "<p>data</p>",
             metadata: null,
           },
           {
@@ -341,14 +438,12 @@ describe("useCreateWidgetFromArtifact", () => {
         );
       });
 
-      // Simulate clicking Edit metadata on success toast
       if (cancelCallback) {
         act(() => {
-          cancelCallback!();
+          required(cancelCallback)();
         });
       }
 
-      // Dialog should be opened in update mode
       await waitFor(() => {
         const dialogState = useCopilotStore.getState().createWidgetMetadataDialog;
         expect(dialogState).not.toBeNull();
@@ -364,8 +459,8 @@ describe("useCreateWidgetFromArtifact", () => {
       await act(async () => {
         await result.current.createWidgetWithMetadata(
           {
-            widgetType: "table",
-            content: [{ col1: "data" }],
+            widgetType: "html",
+            content: "<p>data</p>",
             metadata: null,
           },
           { name: "Test", description: "Test" },
@@ -385,8 +480,8 @@ describe("useCreateWidgetFromArtifact", () => {
         try {
           await result.current.createWidgetWithMetadata(
             {
-              widgetType: "table",
-              content: [{ col1: "data" }],
+              widgetType: "html",
+              content: "<p>data</p>",
               metadata: null,
             },
             { name: "Test", description: "Test" },
@@ -396,7 +491,7 @@ describe("useCreateWidgetFromArtifact", () => {
         }
       });
 
-      expect(thrownError?.message).toBe("Creation failed");
+      expect((thrownError as Error | null)?.message).toBe("Creation failed");
       expect(toast.error).toHaveBeenCalledWith(
         "Failed to create widget",
         expect.objectContaining({
@@ -408,7 +503,6 @@ describe("useCreateWidgetFromArtifact", () => {
 
   describe("AbortController behavior", () => {
     it("does not show error toast when request is aborted", async () => {
-      // Make fetch hang so we can abort it
       (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
         () =>
           new Promise((_, reject) => {
@@ -427,26 +521,22 @@ describe("useCreateWidgetFromArtifact", () => {
 
       const { result } = renderHook(() => useCreateWidgetFromArtifact());
 
-      // Start widget creation
       act(() => {
         result.current.createWidget({
-          widgetType: "table",
-          content: [{ col1: "data" }],
+          widgetType: "html",
+          content: "<p>data</p>",
           metadata: null,
         });
       });
 
-      // Abort immediately
       if (cancelCallback) {
         act(() => {
-          cancelCallback!();
+          required(cancelCallback)();
         });
       }
 
-      // Wait a bit for any potential error handling
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Error toast should NOT be called because it was aborted
       expect(toast.error).not.toHaveBeenCalled();
     });
   });

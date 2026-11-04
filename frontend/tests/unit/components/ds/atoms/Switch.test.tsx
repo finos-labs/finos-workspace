@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Switch } from "~/components/ds/atoms/Switch";
 
@@ -36,7 +37,14 @@ vi.mock("@radix-ui/react-switch", () => {
       className,
       id,
       disabled,
-    }: any) => {
+    }: {
+      children?: ReactNode;
+      onCheckedChange?: (checked: boolean) => void;
+      checked?: boolean;
+      className?: string;
+      id?: string;
+      disabled?: boolean;
+    }) => {
       const [internalChecked, setInternalChecked] = React.useState(false);
       const checked =
         controlledChecked !== undefined ? controlledChecked : internalChecked;
@@ -57,10 +65,10 @@ vi.mock("@radix-ui/react-switch", () => {
         </button>
       );
     },
-    Thumb: ({ className }: any) => <div className={className} />,
+    Thumb: ({ className }: { className?: string }) => <div className={className} />,
   };
 });
 
 vi.mock("../utils", () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));

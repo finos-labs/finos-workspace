@@ -8,7 +8,6 @@ describe("widgetHighlight utils - Additional Tests", () => {
     document.head.innerHTML = "";
     vi.useFakeTimers();
 
-    // Mock requestAnimationFrame
     vi.stubGlobal(
       "requestAnimationFrame",
       vi.fn((cb) => setTimeout(cb, 16)),
@@ -33,13 +32,9 @@ describe("widgetHighlight utils - Additional Tests", () => {
         layoutDelay: 100,
       });
 
-      // Advance past layout delay
       await vi.advanceTimersByTimeAsync(100);
-      // Advance for RAF checks
       await vi.advanceTimersByTimeAsync(100);
-      // Advance for scroll completion fallback
       await vi.advanceTimersByTimeAsync(1100);
-      // Advance for highlight cleanup
       await vi.advanceTimersByTimeAsync(1500);
 
       await promise;
@@ -59,10 +54,8 @@ describe("widgetHighlight utils - Additional Tests", () => {
         layoutDelay: 500,
       });
 
-      // Should not have been called yet before delay
       expect(element.scrollIntoView).not.toHaveBeenCalled();
 
-      // Advance past layout delay
       await vi.advanceTimersByTimeAsync(600);
       await vi.advanceTimersByTimeAsync(1200);
       await vi.advanceTimersByTimeAsync(1500);
@@ -83,19 +76,15 @@ describe("widgetHighlight utils - Additional Tests", () => {
 
       const promise = scrollToAndHighlightWidget(widgetId);
 
-      // Advance to get past element lookup and scroll
       await vi.advanceTimersByTimeAsync(100);
       await vi.advanceTimersByTimeAsync(1100);
 
-      // Check highlight is added
       expect(element.classList.contains("widget-highlight")).toBe(true);
 
-      // Advance to cleanup
       await vi.advanceTimersByTimeAsync(1500);
 
       await promise;
 
-      // After cleanup, highlight class should be removed
       expect(element.classList.contains("widget-highlight")).toBe(false);
     });
   });
@@ -104,7 +93,6 @@ describe("widgetHighlight utils - Additional Tests", () => {
     it("should handle errors gracefully", async () => {
       const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      // Create element that throws on scrollIntoView
       const widgetId = "error-widget";
       const element = document.createElement("div");
       element.id = widgetId;
@@ -136,12 +124,10 @@ describe("widgetHighlight utils - Additional Tests", () => {
 
       const promise = scrollToAndHighlightWidget("nonexistent-widget");
 
-      // Advance through multiple RAF cycles (10 attempts)
       for (let i = 0; i < 15; i++) {
         await vi.advanceTimersByTimeAsync(20);
       }
 
-      // Advance for fallback timeout
       await vi.advanceTimersByTimeAsync(1100);
 
       await promise;

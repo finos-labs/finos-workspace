@@ -28,10 +28,6 @@ vi.mock("sonner", () => ({
   },
 }));
 
-vi.mock("~/lib/runtimeConfig", () => ({
-  getConfig: () => ({ whiteLabel: { mainColor: "#0088CC" } }),
-}));
-
 vi.mock("~/lib/utils", () => ({
   cn: (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" "),
@@ -76,96 +72,90 @@ vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
 }));
 
 import { useShallowAppWidgetsStore } from "~/components/AI/hooks/useGetAppWidgets";
+import type { WidgetT } from "~/components/types";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
+import { partial, stubStoreState } from "../../mocks";
 
-const dashboardWidget = {
+const dashboardWidget = partial<WidgetT>({
   id: "widget-1",
   name: "Portfolio Exposure by Industry",
-  type: "table",
-  widgetId: "portfolio_industries_custom_obb",
+  type: "custom",
+  widgetId: "portfolio_industries_custom",
   sourceName: "Portfolio Risk",
   external: true,
   storage: { params: { portfolio: "Client 1" } },
   params: [{ paramName: "portfolio", type: "text", value: "Client 1" }],
-} as any;
+});
 
-const widgetDefinition = {
+const widgetDefinition = partial<WidgetT>({
   id: "portfolio-def",
   name: "Portfolio Exposure by Industry",
-  type: "table",
-  widgetId: "portfolio_industries_custom_obb",
+  type: "custom",
+  widgetId: "portfolio_industries_custom",
   sourceName: "Portfolio Risk",
   external: true,
   storage: { params: {} },
   params: [{ paramName: "portfolio", type: "text", value: "Client 1" }],
-} as any;
+});
 
-const iframeWidget = {
+const iframeWidget = partial<WidgetT>({
   id: "iframe-widget-1",
   name: "Portfolio Iframe",
   type: "iframe",
   widgetId: "iframe",
-  sourceName: "OpenBB Workspace",
+  sourceName: "Workspace",
   storage: { iframeParams: { symbol: "AAPL" } },
   params: [],
-} as any;
+});
 
 describe("Citation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     routeParams.id = "dashboard-1";
 
-    vi.mocked(useShallowCopilotStore).mockImplementation((selector: any) =>
-      selector({
-        setHoveredCitationWidgetId: vi.fn(),
-        isFullscreen: false,
-        toggleFullscreen: vi.fn(),
-        getCurrentChatArtifact: vi.fn(),
-      }),
-    );
+    stubStoreState(useShallowCopilotStore, {
+      setHoveredCitationWidgetId: vi.fn(),
+      isFullscreen: false,
+      toggleFullscreen: vi.fn(),
+      getCurrentChatArtifact: vi.fn(),
+    });
 
-    vi.mocked(useShallowCopilotDataStore).mockImplementation((selector: any) =>
-      selector({
-        getWidgetRuntimeState: vi.fn(),
-        getWidgetsInCurrentDashboard: (uuid?: string) => {
-          if (uuid) {
-            if (uuid === iframeWidget.id) return iframeWidget;
-            return uuid === dashboardWidget.id ? dashboardWidget : null;
-          }
-          return [dashboardWidget, iframeWidget];
+    stubStoreState(useShallowCopilotDataStore, {
+      getWidgetRuntimeState: vi.fn(),
+      getWidgetsInCurrentDashboard: (uuid?: string) => {
+        if (uuid) {
+          if (uuid === iframeWidget.id) return iframeWidget;
+          return uuid === dashboardWidget.id ? dashboardWidget : undefined;
+        }
+        return [dashboardWidget, iframeWidget];
+      },
+      signaturesMap: {
+        [dashboardWidget.id]: {
+          origin: "Portfolio Risk",
+          widgetId: "portfolio_industries_custom",
+          args: { portfolio: "Client 1" },
         },
-        signaturesMap: {
-          [dashboardWidget.id]: {
-            origin: "Portfolio Risk",
-            widgetId: "portfolio_industries_custom_obb",
-            args: { portfolio: "Client 1" },
-          },
-          [iframeWidget.id]: {
-            origin: "OpenBB Workspace",
-            widgetId: "iframe-widget-1",
-            args: {},
-          },
+        [iframeWidget.id]: {
+          origin: "Workspace",
+          widgetId: "iframe-widget-1",
+          args: {},
         },
-        getWidgetFromSignature: vi.fn(() => null),
-        widgetsLastUpdated: 1,
-      }),
-    );
+      },
+      getWidgetFromSignature: vi.fn(() => null),
+      widgetsLastUpdated: 1,
+    });
 
-    vi.mocked(useShallowAppStore).mockImplementation((selector: any) =>
-      selector({
-        getWidgetsByAttribute: vi.fn(() => ({})),
-        addWidget: vi.fn(),
-        getLastInnerTab: vi.fn(() => ""),
-      }),
-    );
+    stubStoreState(useShallowAppStore, {
+      getWidgetsByAttribute: vi.fn(() => ({})),
+      addWidget: vi.fn(),
+      getLastInnerTab: vi.fn(() => ""),
+    });
 
-    vi.mocked(useShallowAppWidgetsStore).mockImplementation((selector: any) =>
-      selector({
-        getAppWidget: vi.fn(() => widgetDefinition),
-      }),
-    );
+    stubStoreState(useShallowAppWidgetsStore, {
+      getAppWidget: vi.fn(() => widgetDefinition),
+    });
   });
 
   it("shows add widget to dashboard when widget uuid matches but input args differ", () => {
@@ -179,7 +169,7 @@ describe("Citation", () => {
             type: "widget",
             uuid: dashboardWidget.id,
             origin: "Portfolio Risk",
-            widget_id: "portfolio_industries_custom_obb",
+            widget_id: "portfolio_industries_custom",
             name: "Portfolio Exposure by Industry",
             metadata: {
               widget_uuid: dashboardWidget.id,
@@ -210,7 +200,7 @@ describe("Citation", () => {
             type: "widget",
             uuid: dashboardWidget.id,
             origin: "Portfolio Risk",
-            widget_id: "portfolio_industries_custom_obb",
+            widget_id: "portfolio_industries_custom",
             name: "Portfolio Exposure by Industry",
             metadata: {
               widget_uuid: dashboardWidget.id,
@@ -240,7 +230,7 @@ describe("Citation", () => {
             type: "widget",
             uuid: dashboardWidget.id,
             origin: "Portfolio Risk",
-            widget_id: "portfolio_industries_custom_obb",
+            widget_id: "portfolio_industries_custom",
             name: "Portfolio Exposure by Industry",
             metadata: {
               widget_uuid: dashboardWidget.id,
@@ -253,7 +243,6 @@ describe("Citation", () => {
     );
 
     expect(screen.getByText("Open a dashboard to add this widget")).toBeInTheDocument();
-    // The reason is a caption, not a dead CTA the user could try to press.
     expect(
       screen.queryByRole("button", { name: "Open a dashboard to add this widget" }),
     ).toBeNull();
@@ -269,7 +258,7 @@ describe("Citation", () => {
           source_info: {
             type: "widget",
             uuid: iframeWidget.id,
-            origin: "OpenBB Workspace",
+            origin: "Workspace",
             widget_id: iframeWidget.id,
             name: "Portfolio Iframe",
             metadata: {

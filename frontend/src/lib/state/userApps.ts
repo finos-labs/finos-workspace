@@ -5,12 +5,12 @@ import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
 import { deleteUserApp, postUserApp } from "~/api/auth.api";
-import { patchSnowflakeWidgetsEndpoint } from "~/components/DataConnectors/common/helpers";
+import { withoutEndpointCredentials } from "~/lib/utils/endpointCredentials";
 import { createIndexedDBStorage } from "~/lib/utils/indexDB";
 import { duplicateTabItem } from "../utils";
 import type { Item, TabData, Widget } from "./app";
 
-export interface UserAppData {
+interface UserAppData {
   uuid?: string;
   name: string;
   description: string;
@@ -49,7 +49,24 @@ export type UserAppsSync = {
   shared?: Record<string, UserAppReturn>;
 };
 
-export interface UserAppsState {
+function withoutAppCredentials(apps: Record<string, UserAppReturn>) {
+  return Object.fromEntries(
+    Object.entries(apps).map(([id, app]) => [
+      id,
+      app.content?.widgets
+        ? {
+            ...app,
+            content: {
+              ...app.content,
+              widgets: app.content.widgets.map(withoutEndpointCredentials),
+            },
+          }
+        : app,
+    ]),
+  );
+}
+
+interface UserAppsState {
   skipSyncUserApps: boolean;
   userApps: { [id: string]: UserAppReturn };
   sharedUserApps: { [id: string]: UserAppReturn };
@@ -144,32 +161,15 @@ export const useUserAppsStore = createWithEqualityFn<UserAppsState>()(
         },
 
         getAllUserApps: () => {
-          const locationHref =
-            typeof window !== "undefined" ? new URL(window.location.href) : undefined;
           return Object.entries(get().userApps).map(([uuid, app]) => {
             const { content, ...rest } = app;
-
-            if (content.widgets) {
-              content.widgets = patchSnowflakeWidgetsEndpoint(
-                content.widgets,
-                locationHref,
-              );
-            }
 
             return { uuid, ...content, ...rest };
           });
         },
         getAllSharedUserApps: () => {
-          const locationHref =
-            typeof window !== "undefined" ? new URL(window.location.href) : undefined;
           return Object.entries(get().sharedUserApps).map(([uuid, app]) => {
             const { content, ...rest } = app;
-            if (content.widgets) {
-              content.widgets = patchSnowflakeWidgetsEndpoint(
-                content.widgets,
-                locationHref,
-              );
-            }
 
             return { uuid, ...content, ...rest, isShared: true };
           });
@@ -192,8 +192,8 @@ export const useUserAppsStore = createWithEqualityFn<UserAppsState>()(
         name: "user-apps-storage",
         storage: createIndexedDBStorage(),
         partialize: (state) => ({
-          userApps: state.userApps,
-          sharedUserApps: state.sharedUserApps,
+          userApps: withoutAppCredentials(state.userApps),
+          sharedUserApps: withoutAppCredentials(state.sharedUserApps),
         }),
       },
     ),

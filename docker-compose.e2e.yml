@@ -1,0 +1,62 @@
+services:
+  tls:
+    image: nginx:1.31.8-alpine
+    restart: unless-stopped
+    volumes:
+      - ./frontend/tests/e2e/tls/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/tests/e2e/tls/certs:/etc/nginx/certs:ro
+    ports:
+      - "3000:3000"
+      - "8000:8000"
+      - "7777:7777"
+    depends_on:
+      - web
+      - api
+      - agent
+    networks:
+      - workspace
+
+  web:
+    ports: !reset []
+    environment:
+      BACKEND_URL: ${API_URL:-https://localhost:8000}
+      AI_API_URL: ${AI_API_URL:-https://localhost:7777}
+
+  api:
+    ports: !reset []
+    environment:
+      APPURL: ${WEB_URL:-https://localhost:3000}
+      FRONTENDURL: ${WEB_URL:-https://localhost:3000}
+      SELFURL: ${API_URL:-https://localhost:8000}
+      BACKEND_CORS_ORIGINS: '["${WEB_URL:-https://localhost:3000}"]'
+
+  agent-mcp:
+    environment:
+      WORKSPACE_ORIGIN: ${WEB_URL:-https://localhost:3000}
+      WORKSPACE_PUBLIC_URL: ${API_URL:-https://localhost:8000}
+
+  stub-model:
+    build: ./agent/tests/stub-model
+    image: workspace-stub-model:local
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - workspace
+
+  agent:
+    ports: !reset []
+    environment:
+      WORKSPACE_ORIGIN: ${WEB_URL:-https://localhost:3000}
+      WORKSPACE_PUBLIC_URL: ${API_URL:-https://localhost:8000}
+      AGENT_CORS_ORIGINS: ${WEB_URL:-https://localhost:3000}
+      DEFAULT_MODEL: ollama:stub
+      OLLAMA_BASE_URL: http://stub-model:11434/api
+      AGENT_EMBED_MODEL: ""
+    depends_on:
+      stub-model:
+        condition: service_healthy

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ComponentProps } from "react";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import BottomTabBar from "~/components/LayoutAuth/Mobile/BottomTabBar";
 
 const mockNavigate = vi.fn();
@@ -40,11 +41,13 @@ vi.mock("~/lib/state/theme", () => ({
 }));
 
 vi.mock("~/components/Icon", () => ({
-  default: ({ id, ...props }: any) => <span data-testid={`icon-${id}`} {...props} />,
+  default: ({ id, ...props }: { id: string } & ComponentProps<"span">) => (
+    <span data-testid={`icon-${id}`} {...props} />
+  ),
 }));
 
 vi.mock("~/lib/utils", () => ({
-  cn: vi.fn((...args: any[]) => args.filter(Boolean).join(" ")),
+  cn: vi.fn((...args: unknown[]) => args.filter(Boolean).join(" ")),
   beautifySlug: vi.fn((s: string) => s),
 }));
 
@@ -60,7 +63,7 @@ describe("BottomTabBar", () => {
     expect(screen.getByText("Menu")).toBeInTheDocument();
     expect(screen.getByText("Apps")).toBeInTheDocument();
     expect(screen.getByText("Search")).toBeInTheDocument();
-    expect(screen.getByText("Copilot")).toBeInTheDocument();
+    expect(screen.getByText("Agent")).toBeInTheDocument();
   });
 
   it("renders as a nav element", () => {
@@ -100,7 +103,7 @@ describe("BottomTabBar", () => {
     const user = userEvent.setup();
     render(<BottomTabBar />);
 
-    await user.click(screen.getByText("Copilot"));
+    await user.click(screen.getByText("Agent"));
 
     expect(mockSetMobileCopilotDrawer).toHaveBeenCalledWith(true);
   });
@@ -113,10 +116,7 @@ describe("BottomTabBar", () => {
     const cnMock = cn as Mock;
     const calls = cnMock.mock.calls;
 
-    // Find the call for the Apps button (isActive: true when pathname === "/app")
-    const activeCall = calls.find(
-      (args) => args.includes("text-tab-action-active"),
-    );
+    const activeCall = calls.find((args) => args.includes("text-tab-action-active"));
     expect(activeCall).toBeDefined();
   });
 
@@ -130,7 +130,6 @@ describe("BottomTabBar", () => {
       args.includes("text-ds-text-caption"),
     );
 
-    // Menu, Search, Copilot are all inactive — 3 calls with caption class
     expect(captionCalls.length).toBe(3);
   });
 
@@ -147,7 +146,7 @@ describe("BottomTabBar", () => {
     mockCopilotAvailable = false;
     render(<BottomTabBar />);
 
-    expect(screen.queryByText("Copilot")).not.toBeInTheDocument();
+    expect(screen.queryByText("Agent")).not.toBeInTheDocument();
     expect(screen.getByText("Menu")).toBeInTheDocument();
     expect(screen.getByText("Apps")).toBeInTheDocument();
     expect(screen.getByText("Search")).toBeInTheDocument();
@@ -164,7 +163,6 @@ describe("BottomTabBar - inactive Apps tab when not on /app", () => {
     const reactRouterDom = await import("react-router-dom");
     const { cn } = await import("~/lib/utils");
 
-    // Override useLocation to return a different pathname
     const spy = vi.spyOn(reactRouterDom, "useLocation").mockReturnValue({
       pathname: "/some-other-path",
       search: "",

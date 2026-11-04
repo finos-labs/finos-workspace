@@ -4,17 +4,15 @@ import { Outlet } from "react-router-dom";
 import { Toaster } from "sonner";
 import { useGlobalTitleManager } from "~/hooks/useTitle";
 import { useThemeStore } from "~/lib/state/theme";
-import FloatingThemePreview from "../FloatingThemePreview";
 import CloseCircleIcon from "../Icons/CloseCircle";
 import WarningIcon from "../Icons/Warning";
 
-export function RootLayout() {
+function RootLayout() {
   const { theme } = useThemeStore();
   useGlobalTitleManager();
   return useMemo(
     () => (
       <>
-        <FloatingThemePreview />
         <Toaster
           position="top-right"
           closeButton={true}
@@ -40,13 +38,13 @@ export function RootLayout() {
                 "flex flex-wrap pointer-events-auto! rounded p-4 w-[var(--width)] h-[var(--height)] border-2 shadow-[0px_2px_10px_0px_rgba(0,0,0,0.1)] text-black text-xs items-start! gap-x-2! gap-y-1! [&>[data-content]+[data-button]]:ml-auto [&_label]:text-light-800 [&_label]:dark:text-light-800",
               success:
                 "bg-[#CCF7DC] border-[#2DAC5C1A] [&_.toast-action-btn]:text-white [&_.toast-action-btn]:bg-[#2DAC5C] [&_.toast-action-btn:hover]:bg-[#238B50] [&_.toast-cancel-btn]:text-[#15803D]! [&_.toast-cancel-btn]:border-[#15803D] [&_.toast-cancel-btn:hover]:text-[#0F5F32] [&_.toast-cancel-btn:hover]:border-[#0F5F32]",
-              info: "bg-[#C8E7FF] border-[#C8E7FF] [&_.toast-action-btn]:text-white [&_.toast-action-btn]:bg-[#0088CC] [&_.toast-action-btn:hover]:bg-[#006AA3] [&_.toast-cancel-btn]:text-[#006699]! [&_.toast-cancel-btn]:border-[#006699] [&_.toast-cancel-btn:hover]:text-[#004D73] [&_.toast-cancel-btn:hover]:border-[#004D73]",
+              info: "bg-[#C8E7FF] border-[#C8E7FF] [&_.toast-action-btn]:text-white [&_.toast-action-btn]:bg-[#0086BF] [&_.toast-action-btn:hover]:bg-[#006494] [&_.toast-cancel-btn]:text-[#005E8A]! [&_.toast-cancel-btn]:border-[#005E8A] [&_.toast-cancel-btn:hover]:text-[#00486E] [&_.toast-cancel-btn:hover]:border-[#00486E]",
               warning:
                 "bg-[#FFD4A4] border-[#F18A1A1A] [&_.toast-action-btn]:text-white [&_.toast-action-btn]:bg-[#F18A1A] [&_.toast-action-btn:hover]:bg-[#D67514] [&_.toast-cancel-btn]:text-[#BA6509]! [&_.toast-cancel-btn]:border-[#BA6509] [&_.toast-cancel-btn:hover]:text-[#994F07] [&_.toast-cancel-btn:hover]:border-[#994F07] [&_a]:text-light-700! [&_a]:underline! hover:[&_a]:text-light-800!",
               error:
                 "bg-[#FFC5C5] border-[#E03C3C1A] [&_.toast-action-btn]:text-white [&_.toast-action-btn]:bg-[#E03C3C] [&_.toast-action-btn:hover]:bg-[#C32F2F] [&_.toast-cancel-btn]:text-[#B91C1C]! [&_.toast-cancel-btn]:border-[#B91C1C] [&_.toast-cancel-btn:hover]:text-[#991515] [&_.toast-cancel-btn:hover]:border-[#991515]",
               loading:
-                "bg-[#C8E7FF] border-[#C8E7FF] [&_.toast-action-btn]:text-white [&_.toast-action-btn]:bg-[#0088CC] [&_.toast-action-btn:hover]:bg-[#006AA3] [&_.toast-cancel-btn]:text-[#006699]! [&_.toast-cancel-btn]:border-[#006699] [&_.toast-cancel-btn:hover]:text-[#004D73] [&_.toast-cancel-btn:hover]:border-[#004D73]",
+                "bg-[#C8E7FF] border-[#C8E7FF] [&_.toast-action-btn]:text-white [&_.toast-action-btn]:bg-[#0086BF] [&_.toast-action-btn:hover]:bg-[#006494] [&_.toast-cancel-btn]:text-[#005E8A]! [&_.toast-cancel-btn]:border-[#005E8A] [&_.toast-cancel-btn:hover]:text-[#00486E] [&_.toast-cancel-btn:hover]:border-[#00486E]",
             },
           }}
           icons={{

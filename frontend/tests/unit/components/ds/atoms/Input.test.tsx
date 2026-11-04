@@ -1,7 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Input } from "~/components/ds/atoms/Input";
+import { required } from "../../../mocks";
 
 describe("Input", () => {
   it("renders with label and placeholder", () => {
@@ -18,7 +20,7 @@ describe("Input", () => {
     const input = screen.getByRole("textbox");
     await user.type(input, "hello");
 
-    expect(onChange).toHaveBeenCalledWith("h"); // Called for each character usually
+    expect(onChange).toHaveBeenCalledWith("h");
     expect(input).toHaveValue("hello");
   });
 
@@ -28,7 +30,7 @@ describe("Input", () => {
     render(<Input value="something" clearable={true} onChange={onChange} />);
 
     const buttons = screen.queryAllByRole("button");
-    const clearButton = buttons[buttons.length - 1]; // Clear button is typically the last
+    const clearButton = buttons[buttons.length - 1];
     await user.click(clearButton);
 
     expect(onChange).toHaveBeenCalledWith("");
@@ -38,11 +40,9 @@ describe("Input", () => {
     const user = userEvent.setup();
     const { container } = render(<Input type="password" value="secret" />);
 
-    const input = container.querySelector("input")!;
+    const input = required(container.querySelector("input"));
     expect(input).toHaveAttribute("type", "password");
 
-    // Use queryAllByRole and select the correct button, or a more specific query
-    // Assuming the reveal button is the first (or only) button if clearable is false
     const revealButton = screen.queryAllByRole("button")[0];
     await user.click(revealButton);
     expect(input).toHaveAttribute("type", "text");
@@ -65,22 +65,23 @@ describe("Input", () => {
 });
 
 vi.mock("~/components/Icon", () => ({
-  default: ({ id }: any) => <div data-testid={`icon-${id}`} />,
+  default: ({ id }: { id?: string }) => <div data-testid={`icon-${id}`} />,
 }));
 
 vi.mock("./CopyButton", () => ({
-  CopyButton: ({ text }: any) => <button data-testid="copy-button">Copy {text}</button>,
+  CopyButton: ({ text }: { text?: string }) => (
+    <button data-testid="copy-button">Copy {text}</button>
+  ),
 }));
 
-// Mock molecules to avoid complex dependencies in unit test
 vi.mock("../molecules/Form", () => ({
-  FormControl: ({ children }: any) => <div>{children}</div>,
-  FormItem: ({ children }: any) => <div>{children}</div>,
-  FormLabel: ({ children }: any) => <label>{children}</label>,
-  FormMessage: ({ children }: any) => <div>{children}</div>,
+  FormControl: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  FormItem: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  FormLabel: ({ children }: { children?: ReactNode }) => <label>{children}</label>,
+  FormMessage: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("./Label", () => ({
-  Label: ({ children }: any) => <div>{children}</div>,
-  Message: ({ children }: any) => <div>{children}</div>,
+  Label: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Message: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));

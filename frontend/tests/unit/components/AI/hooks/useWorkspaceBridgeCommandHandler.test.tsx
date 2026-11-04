@@ -57,6 +57,7 @@ const sharedTemplate = {
   name: "Shared Org App",
   templateId: "shared-org-app",
   description: "Shared with the org",
+  allowCustomization: false,
   tabs: {},
   prompts: [],
   source: sharedBackendSource,
@@ -91,11 +92,11 @@ const sharedSavedApp = {
   createdBy: "teammate@example.com",
 };
 
-const backendNameToWidget: Record<string, any[]> = {
-  "OpenBB Workspace": [
+const backendNameToWidget: Record<string, DeepPartial<WidgetT>[]> = {
+  Workspace: [
     {
       widgetId: "price_history",
-      sourceName: "OpenBB Workspace",
+      sourceName: "Workspace",
       name: "Price History",
       description: "Historical prices",
       category: "Equity",
@@ -104,31 +105,34 @@ const backendNameToWidget: Record<string, any[]> = {
       gridData: { w: 20, h: 10, minW: 12, minH: 4 },
     },
   ],
-  "OpenBB Sandbox": [
+  "My Custom Backend": [
     {
       widgetId: "company_filings",
+      sourceName: "My Custom Backend",
       name: "Company Filings",
       description: "SEC filings",
       category: "Equity",
       subCategory: "Fundamental",
+      external: true,
+      mcp_tool: {
+        mcp_server: "Filings",
+        tool_id: "search_filings",
+        args: { q: "$query" },
+      },
     },
     {
-      widgetId: "pyth_price_feeds",
-      sourceName: "OpenBB Workspace",
-      name: "Live Watchlist",
+      widgetId: "live_prices",
+      sourceName: "My Custom Backend",
+      name: "Live Prices",
       params: [
         {
           paramName: "symbols",
           type: "endpoint",
-          optionsEndpoint: "https://sdk.openbb.dev/udf/pyth-symbols",
+          optionsEndpoint: "https://backend.example.com/udf/symbols",
           multiSelect: true,
         },
       ],
-    },
-    {
-      widgetId: "watchlist",
-      sourceName: "OpenBB Workspace",
-      name: "Watchlist",
+      external: true,
     },
   ],
 };
@@ -162,9 +166,6 @@ vi.mock("~/components/AI/hooks/useAiFetchRequestInit", () => ({
 }));
 
 vi.mock("~/api/workspace.api", async (importOriginal) => ({
-  // Keep the real pure helpers (computeWidgetParamUpdates, getWidgetDefinitionOrThrow,
-  // ...) so dry-run paths run the same rules as the mutation paths; only the
-  // store-mutating entry points are mocked.
   ...(await importOriginal<typeof import("~/api/workspace.api")>()),
   readWidget: (...args: unknown[]) => mockReadWidget(...args),
   createWidget: (...args: unknown[]) => mockCreateWidget(...args),
@@ -237,6 +238,12 @@ vi.mock("~/lib/state/app", () => ({
 }));
 
 import { useWorkspaceBridgeCommandHandler } from "~/components/AI/hooks/useWorkspaceBridgeCommandHandler";
+import type { WidgetT } from "~/components/types";
+import {
+  installWidgetsSchemaFixture,
+  widgetsSchema,
+} from "../../../../mocks/widgetsSchema";
+import type { DeepPartial } from "../../../mocks";
 
 describe("useWorkspaceBridgeCommandHandler", () => {
   beforeEach(() => {
@@ -266,7 +273,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     mockAddGenerativeWidget.mockResolvedValue([
       {
         status: "success",
-        message: "Widget 'Bridge Chart' created successfully",
+        message: "Widget 'Bridge Report' created successfully",
         widget_uuid: "generated-widget-1",
       },
     ]);
@@ -346,9 +353,12 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         },
       },
       getTabWidgetById: (dashboardId: string, widgetUuid: string) =>
-        appStoreState.items?.[dashboardId]?.data?.widgets?.find(
-          (widget: { id: string }) => widget.id === widgetUuid,
-        ),
+        (
+          appStoreState.items as Record<
+            string,
+            { data?: { widgets?: { id: string }[] } }
+          >
+        )[dashboardId]?.data?.widgets?.find((widget) => widget.id === widgetUuid),
       getWidgetGridData: (dashboardId: string, widgetUuid: string) => {
         const gridLayout =
           (
@@ -377,7 +387,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         command: "get_widget_data",
         data_sources: [
           {
-            origin: "OpenBB Workspace",
+            origin: "Workspace",
             widget_id: "price_history",
             inputArgs: { symbol: "AAPL" },
             widgetUuid: "widget-instance-1",
@@ -388,11 +398,10 @@ describe("useWorkspaceBridgeCommandHandler", () => {
 
     expect(mockGetWidgetData).toHaveBeenCalledWith([
       {
-        origin: "OpenBB Workspace",
+        origin: "Workspace",
         id: "price_history",
         input_args: { symbol: "AAPL" },
         widget_uuid: "widget-instance-1",
-        ssm_request: null,
       },
     ]);
     expect(response).toMatchObject({
@@ -410,11 +419,10 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         command: "get_widget_data",
         data_sources: [
           {
-            origin: "OpenBB Workspace",
+            origin: "Workspace",
             id: "price_history",
             input_args: { symbol: "AAPL" },
             widget_uuid: null,
-            ssm_request: null,
           },
         ],
       });
@@ -422,15 +430,12 @@ describe("useWorkspaceBridgeCommandHandler", () => {
 
     expect(mockGetWidgetData).toHaveBeenCalledWith([
       {
-        origin: "OpenBB Workspace",
+        origin: "Workspace",
         id: "price_history",
         input_args: { symbol: "AAPL" },
         widget_uuid: null,
-        ssm_request: null,
       },
     ]);
-    // The bridge un-stringifies JSON content so MCP callers receive structured
-    // rows rather than a JSON string inside items[].content.
     expect(response).toMatchObject({
       ok: true,
       command: "get_widget_data",
@@ -448,11 +453,10 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         command: "get_widget_data",
         data_sources: [
           {
-            origin: "OpenBB Workspace",
+            origin: "Workspace",
             id: "note",
             input_args: {},
             widget_uuid: null,
-            ssm_request: null,
           },
         ],
       });
@@ -549,9 +553,9 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         command: "get_params_options",
         param_options_queries: [
           {
-            origin: "OpenBB Sandbox",
+            origin: "My Custom Backend",
             widget_id: "market_overview",
-            optionsEndpointInputArgs: { provider: "fmp" },
+            optionsEndpointInputArgs: { provider: "example" },
             paramName: "symbol",
           },
         ],
@@ -560,9 +564,9 @@ describe("useWorkspaceBridgeCommandHandler", () => {
 
     expect(mockGetParamOptions).toHaveBeenCalledWith([
       {
-        origin: "OpenBB Sandbox",
+        origin: "My Custom Backend",
         id: "market_overview",
-        options_endpoint_input_args: { provider: "fmp" },
+        options_endpoint_input_args: { provider: "example" },
         param: "symbol",
       },
     ]);
@@ -581,9 +585,9 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         command: "get_params_options",
         param_options_queries: [
           {
-            origin: "OpenBB Sandbox",
+            origin: "My Custom Backend",
             id: "market_overview",
-            options_endpoint_input_args: { provider: "fmp" },
+            options_endpoint_input_args: { provider: "example" },
             param: "symbol",
           },
         ],
@@ -592,9 +596,9 @@ describe("useWorkspaceBridgeCommandHandler", () => {
 
     expect(mockGetParamOptions).toHaveBeenCalledWith([
       {
-        origin: "OpenBB Sandbox",
+        origin: "My Custom Backend",
         id: "market_overview",
-        options_endpoint_input_args: { provider: "fmp" },
+        options_endpoint_input_args: { provider: "example" },
         param: "symbol",
       },
     ]);
@@ -982,47 +986,14 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     expect(response?.error?.message).toContain("__no_tab__");
   });
 
-  it("omits unsupported plain-create widgets from the available catalog", async () => {
-    const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
-
-    let response: Awaited<ReturnType<typeof result.current>> | undefined;
-    await act(async () => {
-      response = await result.current({
-        command: "list_available_widgets",
-      } as never);
-    });
-
-    expect(response).toMatchObject({
-      ok: true,
-      command: "list_available_widgets",
-      data: {
-        widgets: expect.arrayContaining([
-          expect.objectContaining({ widget_id: "price_history" }),
-          expect.objectContaining({
-            origin: "OpenBB Sandbox",
-            backend_name: "OpenBB Sandbox",
-            widget_id: "company_filings",
-          }),
-        ]),
-      },
-    });
-    expect(response?.data).not.toEqual(
-      expect.objectContaining({
-        widgets: expect.arrayContaining([
-          expect.objectContaining({ widget_id: "watchlist" }),
-        ]),
-      }),
-    );
-  });
-
-  it("loads schemas for built-in Sandbox widgets using the listed origin", async () => {
+  it("loads schemas for backend widgets using the listed origin", async () => {
     const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
 
     let response: Awaited<ReturnType<typeof result.current>> | undefined;
     await act(async () => {
       response = await result.current({
         command: "get_widget_schema",
-        origin: "OpenBB Sandbox",
+        origin: "My Custom Backend",
         widget_id: "company_filings",
       } as never);
     });
@@ -1032,8 +1003,8 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       command: "get_widget_schema",
       data: {
         widget: expect.objectContaining({
-          origin: "OpenBB Sandbox",
-          backend_name: "OpenBB Sandbox",
+          origin: "My Custom Backend",
+          backend_name: "My Custom Backend",
           widget_id: "company_filings",
         }),
       },
@@ -1047,7 +1018,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     await act(async () => {
       response = await result.current({
         command: "get_widget_schema",
-        origin: "OpenBB Workspace",
+        origin: "Workspace",
         widget_id: "missing_widget",
       } as never);
     });
@@ -1058,7 +1029,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       error: {
         code: "command_failed",
         message:
-          "Widget 'missing_widget' from origin 'OpenBB Workspace' was not found. Call list_available_widgets to get valid origin/widget_id pairs.",
+          "Widget 'missing_widget' from origin 'Workspace' was not found. Call list_available_widgets to get valid origin/widget_id pairs.",
       },
     });
   });
@@ -1070,7 +1041,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     await act(async () => {
       response = await result.current({
         command: "get_widget_schema",
-        origin: "OpenBB Workspace",
+        origin: "Workspace",
         widget_id: "price_history",
       } as never);
     });
@@ -1087,6 +1058,91 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     });
   });
 
+  it("names a widget's MCP link in the catalog and the widget schema", async () => {
+    const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
+    const link = {
+      mcp_server: "Filings",
+      tool_id: "search_filings",
+      args: { q: "$query" },
+    };
+
+    let listed: Awaited<ReturnType<typeof result.current>> | undefined;
+    let schema: Awaited<ReturnType<typeof result.current>> | undefined;
+    await act(async () => {
+      listed = await result.current({
+        command: "list_available_widgets",
+        origin: "My Custom Backend",
+      } as never);
+      schema = await result.current({
+        command: "get_widget_schema",
+        origin: "My Custom Backend",
+        widget_id: "company_filings",
+      } as never);
+    });
+
+    const widgets = (listed?.data as { widgets: Record<string, unknown>[] }).widgets;
+    expect(widgets.find((w) => w.widget_id === "company_filings")?.mcp_tool).toEqual(
+      link,
+    );
+    expect(widgets.find((w) => w.widget_id === "live_prices")).not.toHaveProperty(
+      "mcp_tool",
+    );
+    expect((schema?.data as { widget: { mcp_tool: unknown } }).widget.mcp_tool).toEqual(
+      link,
+    );
+  });
+
+  it("returns the widgets.json schema backends are validated against", async () => {
+    installWidgetsSchemaFixture();
+    const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
+
+    let response: Awaited<ReturnType<typeof result.current>> | undefined;
+    await act(async () => {
+      response = await result.current({ command: "get_widgets_schema" } as never);
+    });
+
+    expect(response).toMatchObject({
+      ok: true,
+      command: "get_widgets_schema",
+      data: { schema: widgetsSchema },
+    });
+  });
+
+  it("returns the method, each param's place and the closed data_args and ui_args schemas", async () => {
+    const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
+
+    let response: Awaited<ReturnType<typeof result.current>> | undefined;
+    await act(async () => {
+      response = await result.current({
+        command: "get_widget_schema",
+        origin: "My Custom Backend",
+        widget_id: "live_prices",
+      } as never);
+    });
+
+    const widget = (response?.data as { widget: Record<string, unknown> }).widget;
+    expect(widget.method).toBe("GET");
+    expect(widget.params).toEqual([expect.objectContaining({ in: "query" })]);
+    expect(widget.data_args_schema).toEqual({
+      type: "object",
+      additionalProperties: false,
+      description: expect.any(String),
+      properties: {
+        symbols: {
+          type: ["array", "string"],
+          items: { type: ["string", "number", "boolean"] },
+        },
+      },
+    });
+    expect(widget.ui_args_schema).toMatchObject({
+      type: "object",
+      additionalProperties: false,
+    });
+    expect(
+      Object.keys((widget.ui_args_schema as { properties: object }).properties),
+    ).toEqual(["name", "description", "source", "innerTab", "gridData"]);
+  });
+
   it("marks option-backed params as lookup-required in widget schema responses", async () => {
     const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
 
@@ -1094,8 +1150,8 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     await act(async () => {
       response = await result.current({
         command: "get_widget_schema",
-        origin: "OpenBB Workspace",
-        widget_id: "pyth_price_feeds",
+        origin: "My Custom Backend",
+        widget_id: "live_prices",
       } as never);
     });
 
@@ -1104,40 +1160,15 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       command: "get_widget_schema",
       data: {
         widget: expect.objectContaining({
-          widget_id: "pyth_price_feeds",
+          widget_id: "live_prices",
           params: [
             expect.objectContaining({
               param_name: "symbols",
               requires_options_lookup: true,
-              options_lookup_endpoint: "https://sdk.openbb.dev/udf/pyth-symbols",
+              options_lookup_endpoint: "https://backend.example.com/udf/symbols",
             }),
           ],
         }),
-      },
-    });
-  });
-
-  it("rejects unsupported plain-create widgets explicitly", async () => {
-    const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
-
-    let response: Awaited<ReturnType<typeof result.current>> | undefined;
-    await act(async () => {
-      response = await result.current({
-        command: "create_widget",
-        dashboard_id: "dashboard-1",
-        backend_name: "OpenBB Workspace",
-        widget_id: "watchlist",
-      } as never);
-    });
-
-    expect(mockCreateWidget).not.toHaveBeenCalled();
-    expect(response).toMatchObject({
-      ok: false,
-      command: "create_widget",
-      error: {
-        code: "invalid_request",
-        message:
-          "create_widget does not support 'watchlist'. watchlist still injects default watchlist data instead of honoring a deterministic symbol list.",
       },
     });
   });
@@ -1150,11 +1181,11 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       response = await result.current({
         command: "create_widget",
         dashboard_id: "dashboard-1",
-        backend_name: "OpenBB Workspace",
+        backend_name: "Workspace",
         widget_id: "price_history",
         config: {
           data_args: { symbol: "MSFT", bogus_param: "x" },
-          ui_args: { name: "Renamed", custom_thing: 1 },
+          ui_args: { name: "Renamed" },
         },
       });
     });
@@ -1170,13 +1201,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         inner_tab: null,
       },
     });
-    expect(response?.warnings).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining("bogus_param"),
-        expect.stringContaining("custom_thing"),
-      ]),
-    );
-    // the dropped-key warning must list the declared params for recovery
+    expect(response?.warnings).toEqual([expect.stringContaining("bogus_param")]);
     expect(
       response?.warnings?.find((warning) => warning.includes("bogus_param")),
     ).toContain("symbol");
@@ -1190,7 +1215,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       response = await result.current({
         command: "create_widget",
         dashboard_id: "dashboard-1",
-        backend_name: "OpenBB Workspace",
+        backend_name: "Workspace",
         widget_id: "price_history",
         config: {
           data_args: { symbol: "MSFT" },
@@ -1321,7 +1346,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       response = await result.current({
         command: "create_widget",
         dashboard_id: "dashboard-1",
-        backend_name: "OpenBB Workspace",
+        backend_name: "Workspace",
         widget_id: "price_history",
         dry_run: true,
         config: { data_args: { symbol: "NVDA" } },
@@ -1349,7 +1374,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       response = await result.current({
         command: "create_widget",
         dashboard_id: "dashboard-1",
-        backend_name: "OpenBB Workspace",
+        backend_name: "Workspace",
         widget_id: "price_history",
         dry_run: true,
         config: { data_args: { symbol: "NVDA", bogus_param: "x" } },
@@ -1367,7 +1392,6 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     });
     const data = response?.data as { warnings: string[] };
     expect(data.warnings).toEqual([expect.stringContaining("bogus_param")]);
-    // the dropped-key warning must list the declared params for recovery
     expect(data.warnings[0]).toContain("symbol");
   });
 
@@ -1379,7 +1403,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       response = await result.current({
         command: "create_widget",
         dashboard_id: "dashboard-1",
-        backend_name: "OpenBB Workspace",
+        backend_name: "Workspace",
         widget_id: "nonexistent_widget",
         dry_run: true,
         config: { data_args: { symbol: "NVDA" } },
@@ -1393,7 +1417,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       error: {
         code: "command_failed",
         message:
-          "Widget 'nonexistent_widget' not found in 'OpenBB Workspace'. Call list_available_widgets to get valid origin/widget_id pairs.",
+          "Widget 'nonexistent_widget' not found in 'Workspace'. Call list_available_widgets to get valid origin/widget_id pairs.",
       },
     });
   });
@@ -1420,8 +1444,6 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         valid: true,
         dashboard_id: "dashboard-1",
         widget_uuid: "widget-instance-1",
-        // existing storage.params { symbol: "AAPL" } merged with the computed
-        // update — without writing.
         effective_params: { symbol: "TSLA" },
         warnings: [],
       },
@@ -1505,7 +1527,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     });
   });
 
-  it("ignores a non-string innerTab from external callers instead of failing", async () => {
+  it("refuses ui_args the widget's ui_args_schema does not define, creating nothing", async () => {
     const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
 
     let response: Awaited<ReturnType<typeof result.current>> | undefined;
@@ -1513,23 +1535,47 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       response = await result.current({
         command: "create_widget",
         dashboard_id: "dashboard-1",
-        backend_name: "OpenBB Workspace",
+        backend_name: "Workspace",
         widget_id: "price_history",
         config: {
-          ui_args: { innerTab: 42 },
+          ui_args: { innerTab: 42, custom_thing: 1 },
         },
       });
     });
 
-    expect(mockCreateWidget).toHaveBeenCalledWith(
-      "dashboard-1",
-      "OpenBB Workspace",
-      "price_history",
-      { dataArgs: undefined, uiArgs: { innerTab: 42 } },
+    expect(mockCreateWidget).not.toHaveBeenCalled();
+    expect(response).toMatchObject({
+      ok: false,
+      command: "create_widget",
+      error: { code: "invalid_request" },
+    });
+    expect(response?.message).toBe(
+      "ui_args were not applied: `ui_args.custom_thing` is not a key this widget accepts; `ui_args.innerTab` must be string. Call get_widget_schema for the widget's ui_args_schema.",
     );
+  });
+
+  it("reports refused ui_args in a dry run as invalid", async () => {
+    const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
+
+    let response: Awaited<ReturnType<typeof result.current>> | undefined;
+    await act(async () => {
+      response = await result.current({
+        command: "create_widget",
+        dashboard_id: "dashboard-1",
+        backend_name: "Workspace",
+        widget_id: "price_history",
+        dry_run: true,
+        config: { ui_args: { custom_thing: 1 } },
+      });
+    });
+
+    expect(mockCreateWidget).not.toHaveBeenCalled();
     expect(response).toMatchObject({
       ok: true,
-      command: "create_widget",
+      data: {
+        valid: false,
+        problems: ["`ui_args.custom_thing` is not a key this widget accepts"],
+      },
     });
   });
 
@@ -1747,7 +1793,10 @@ describe("useWorkspaceBridgeCommandHandler", () => {
 
   it("returns a bridge error when generative-widget creation fails", async () => {
     mockAddGenerativeWidget.mockResolvedValue([
-      { status: "error", message: "Failed to add the generative widget to the target dashboard." },
+      {
+        status: "error",
+        message: "Failed to add the generative widget to the target dashboard.",
+      },
     ]);
 
     const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
@@ -1757,29 +1806,19 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       response = await result.current({
         command: "add_generative_widget",
         dashboard_id: "dashboard-3",
-        widget_type: "chart",
-        data: [{ date: "2024-01-01", value: 1 }],
-        name: "Bridge Chart",
+        widget_type: "html",
+        data: "<p>Report</p>",
+        name: "Bridge Report",
         description: null,
-        chart_params: {
-          chartType: "line",
-          xKey: "date",
-          yKey: ["value"],
-        },
       });
     });
 
     expect(mockAddGenerativeWidget).toHaveBeenCalledWith(
       {
-        widget_type: "chart",
-        data: [{ date: "2024-01-01", value: 1 }],
-        name: "Bridge Chart",
+        widget_type: "html",
+        data: "<p>Report</p>",
+        name: "Bridge Report",
         description: null,
-        chart_params: {
-          chartType: "line",
-          xKey: "date",
-          yKey: ["value"],
-        },
       },
       { dashboardId: "dashboard-3" },
     );
@@ -1801,9 +1840,9 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       response = await result.current({
         command: "add_generative_widget",
         dashboard_id: "dashboard-3",
-        widget_type: "chart",
-        data: "invalid",
-        name: "Bridge Chart",
+        widget_type: "html",
+        data: [],
+        name: "Bridge Report",
       } as never);
     });
 
@@ -1816,7 +1855,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       },
     });
     expect(response?.error?.message).toContain(
-      "chart_params keys must be camelCase: chartType, xKey, yKey (yKey is an array of strings).",
+      "add_generative_widget arguments are invalid",
     );
   });
 
@@ -1829,14 +1868,14 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         command: "execute_agent_tool",
         server_id: "context7",
         tool_name: "context7_get-library-docs",
-        parameters: { library: "/openbb/docs" },
+        parameters: { library: "/docs" },
       });
     });
 
     expect(mockExecuteAgentTool).toHaveBeenCalledWith(
       "context7",
       "context7_get-library-docs",
-      { library: "/openbb/docs" },
+      { library: "/docs" },
     );
     expect(response).toMatchObject({
       ok: true,
@@ -1873,6 +1912,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
             backend_id: "backend-1",
             backend_name: "My Custom Backend",
             is_shared: false,
+            allow_customization: true,
           }),
           expect.objectContaining({
             name: "Shared Org App",
@@ -1881,6 +1921,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
             backend_name: "Org Shared Backend",
             is_shared: true,
             created_by: "teammate@example.com",
+            allow_customization: false,
           }),
           expect.objectContaining({
             name: "My Saved App",

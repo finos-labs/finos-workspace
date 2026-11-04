@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
+import {
+  type BackendTemplate,
+  type Source,
+  useBackendConnectorStore,
+} from "~/lib/state/backendConnector";
 import { getStorage } from "~/lib/utils/indexDB";
+import type { WidgetsType } from "~/utils/zodForms";
+import { partial } from "../../mocks";
 
 vi.mock("sonner", () => ({
   toast: { warning: vi.fn(), success: vi.fn(), error: vi.fn() },
@@ -32,7 +38,6 @@ describe("backendConnector partialize", () => {
       apiSources: [],
       isLoadingBackends: false,
       widgetMetadata: [],
-      singleWidgets: [],
       storedFiles: [],
       queuedRefreshIds: [],
     });
@@ -47,8 +52,8 @@ describe("backendConnector partialize", () => {
     const successSource = makeSource({
       id: "ok",
       status: "success",
-      widgets: { foo: { name: "Foo Widget" } } as any,
-      templates: [{ name: "T1" }] as any,
+      widgets: partial<WidgetsType>({ foo: { name: "Foo Widget" } }),
+      templates: partial<BackendTemplate[]>([{ name: "T1" }]),
     });
 
     useBackendConnectorStore.setState({ apiSources: [successSource] });
@@ -64,8 +69,8 @@ describe("backendConnector partialize", () => {
     const source = makeSource({
       id: "ok",
       status: "success",
-      widgets: {} as any,
-      templates: [] as any,
+      widgets: partial({}),
+      templates: partial([]),
     });
 
     useBackendConnectorStore.setState({ apiSources: [source] });
@@ -114,5 +119,37 @@ describe("backendConnector partialize", () => {
     const persisted = await readPersisted();
     expect(persisted?.apiSources.map((s) => s.id)).toEqual(["ok", "ok2"]);
     expect(persisted?.apiSources.every((s) => s.status === "rehydrated")).toBe(true);
+  });
+
+  it("never persists a source's credentials or their copies on its widgets", async () => {
+    const endpointHeaders: Source["endpointHeaders"] = [
+      {
+        key: "Authorization",
+        value: "Bearer data-backend-secret",
+        location: "headers",
+      },
+      { key: "apikey", value: "query-secret", location: "query" },
+    ];
+    useBackendConnectorStore.setState({
+      apiSources: [
+        makeSource({
+          id: "ok",
+          status: "success",
+          endpointHeaders,
+          widgets: partial<WidgetsType>({
+            foo: { name: "Foo Widget", endpointHeaders },
+          }),
+        }),
+      ],
+    });
+
+    const raw = await getStorage(STORAGE_KEY);
+    expect(raw).not.toContain("data-backend-secret");
+    expect(raw).not.toContain("query-secret");
+    const persisted = await readPersisted();
+    expect(persisted?.apiSources[0].widgets).toEqual({ foo: { name: "Foo Widget" } });
+    expect(useBackendConnectorStore.getState().apiSources[0].endpointHeaders).toEqual(
+      endpointHeaders,
+    );
   });
 });

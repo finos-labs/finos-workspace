@@ -2,12 +2,8 @@ import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
 import { cn } from "../utils";
 
-/* Tag */
-
 const tagVariants = cva(
-  [
-    "BB-Tag body-xs-regular inline-flex items-center justify-center rounded-full px-1.5",
-  ],
+  ["body-xs-regular inline-flex items-center justify-center rounded-full px-1.5"],
   {
     variants: {
       color: {
@@ -29,7 +25,7 @@ const tagVariants = cva(
   },
 );
 
-export type SpanProps = Omit<React.HTMLAttributes<HTMLSpanElement>, "color">;
+type SpanProps = Omit<React.HTMLAttributes<HTMLSpanElement>, "color">;
 export interface TagProps extends SpanProps, VariantProps<typeof tagVariants> {}
 
 export const Tag = React.forwardRef<HTMLSpanElement, TagProps>(

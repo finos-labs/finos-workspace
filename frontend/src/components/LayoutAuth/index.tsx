@@ -1,5 +1,4 @@
 import { type UseQueryOptions, useQueries } from "@tanstack/react-query";
-import { usePostHog } from "posthog-js/react";
 import {
   memo,
   type ReactNode,
@@ -16,17 +15,12 @@ import {
 } from "react-router-dom";
 import useAuthKeyPresses from "~/hooks/useAuthKeyPresses";
 import { usePrivateRoute } from "~/hooks/usePrivateRoute";
-import { TickersProvider } from "~/lib/contexts/CachedTickers";
 import { MobileProvider, useMobile } from "~/lib/providers/MobileProvider";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import {
-  cleanupWalkthroughPosthogProperties,
-  useShallowWalkthroughStore,
-} from "~/lib/state/walkthrough";
 import { isTabPath } from "~/lib/utils/utils";
 import { FileProvider } from "../DataConnectors/FileProvider";
 import { DataConnectorProvider } from "../DataConnectors/Providers/DataConnectorProvider";
@@ -41,7 +35,7 @@ import OuterComponents from "./OuterComponents";
 import useSyncChats from "./useSyncChats";
 import useSyncItems from "./useSyncItems";
 
-export function App({ children }: { children?: ReactNode }) {
+function App({ children }: { children?: ReactNode }) {
   return useMemo(
     () => (
       <DataConnectorProvider>
@@ -66,7 +60,7 @@ function useQueuedRefresh() {
   );
 
   useQueries({
-    queries: queuedRefreshIds.map(
+    queries: (queuedRefreshIds ?? []).map(
       (sourceId) =>
         ({
           queryKey: ["refreshBackend", sourceId],
@@ -79,31 +73,11 @@ function useQueuedRefresh() {
   });
 }
 
-function useLogUser() {
+function useLayoutHooks() {
   usePrivateRoute(false);
   useAuthKeyPresses();
   UNSAFE_useScrollRestoration();
   useSyncChats();
-  const posthog = usePostHog();
-
-  const { user, identified, setIdentified } = useShallowAuthStore((s) => ({
-    user: s.user,
-    identified: s.identified,
-    setIdentified: s.setIdentified,
-  }));
-
-  useEffect(() => {
-    if (user && posthog && !identified) {
-      posthog.identify(user.uuid, {
-        name: user.username,
-        email: user.email,
-        userAgent: window?.navigator?.userAgent,
-        dimensionX: window?.screen?.width,
-        dimensionY: window?.screen?.height,
-      });
-      if (setIdentified) setIdentified(true);
-    }
-  }, [user]);
 }
 
 function useLastVisitedPage() {
@@ -128,11 +102,9 @@ function useLastVisitedPage() {
     updateLastVisitedPage(pathname);
     updateSettings();
 
-    // Auto-close copilot when navigating away from dashboard context while maximized
     const currentIsDashboardPage = isTabPath(pathname);
     const previousWasDashboardPage = isTabPath(previousPathRef.current);
 
-    // Close if maximized and navigating between different pages, but keep open when going TO a dashboard
     if (
       isFullscreen &&
       previousPathRef.current &&
@@ -141,18 +113,15 @@ function useLastVisitedPage() {
       const shouldClose = !currentIsDashboardPage;
 
       if (shouldClose) {
-        // User navigated away from dashboard context while copilot is maximized
         setIsIntentionallyCollapsed(true);
         toggleFullscreen();
       }
     }
 
-    // Update previous path reference for next navigation
     previousPathRef.current = pathname;
   }, [location.pathname, previousPathRef]);
 
   useLayoutEffect(() => {
-    // Scroll to top of center panel when the route changes
     const workarea = document.getElementById("workarea");
     workarea?.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [location.pathname]);
@@ -160,19 +129,7 @@ function useLastVisitedPage() {
 
 function useLoad() {
   useLastVisitedPage();
-
-  const isWalkthroughActive = useShallowWalkthroughStore(
-    (state) => state.currentWalkthrough !== null,
-  );
-  useEffect(() => {
-    if (!isWalkthroughActive) cleanupWalkthroughPosthogProperties();
-    const element = document.getElementById("app-layout");
-    if (element) {
-      element.classList.toggle("walkthrough-active", isWalkthroughActive);
-    }
-  }, [isWalkthroughActive]);
-
-  useLogUser();
+  useLayoutHooks();
   useSyncItems();
   useQueuedRefresh();
 }
@@ -185,17 +142,15 @@ const LayoutMobile = (props: LayoutProps) => {
   const { children } = props;
 
   return (
-    <TickersProvider>
-      <div className="flex flex-col bg-surface-page h-dvh" id="app-layout">
-        <div className="relative flex-1 overflow-y-auto pb-14">
-          <OuterComponents />
-          <MobileLeftSidePanel />
-          <MobileCenterPanel>{children}</MobileCenterPanel>
-          <MobileRightSidePanel />
-        </div>
-        <BottomTabBar />
+    <div className="flex flex-col bg-surface-page h-dvh" id="app-layout">
+      <div className="relative flex-1 overflow-y-auto pb-14">
+        <OuterComponents />
+        <MobileLeftSidePanel />
+        <MobileCenterPanel>{children}</MobileCenterPanel>
+        <MobileRightSidePanel />
       </div>
-    </TickersProvider>
+      <BottomTabBar />
+    </div>
   );
 };
 
@@ -212,20 +167,18 @@ const LayoutDesktop = memo((props: LayoutProps) => {
 
   return useMemo(
     () => (
-      <TickersProvider key="tickers-provider">
-        <div className="flex bg-surface-page" id="app-layout" key="app-layout">
-          <OuterComponents key="outer-components" />
-          <ResizablePanelGroup
-            key="resizable-panel-group"
-            direction="horizontal"
-            id="group"
-            autoSaveId="persistence-1"
-          >
-            <LeftSidePanel key="left-panel" />
-            {combinedPanelMemo}
-          </ResizablePanelGroup>
-        </div>
-      </TickersProvider>
+      <div className="flex bg-surface-page" id="app-layout" key="app-layout">
+        <OuterComponents key="outer-components" />
+        <ResizablePanelGroup
+          key="resizable-panel-group"
+          direction="horizontal"
+          id="group"
+          autoSaveId="persistence-1"
+        >
+          <LeftSidePanel key="left-panel" />
+          {combinedPanelMemo}
+        </ResizablePanelGroup>
+      </div>
     ),
     [combinedPanelMemo],
   );
@@ -247,6 +200,6 @@ const LayoutAuthRoot = (props: { children?: ReactNode }) => {
   }, [childrenMemo, hasItems, isMobile]);
 };
 
-export const LayoutAuth = memo(LayoutAuthRoot);
+const LayoutAuth = memo(LayoutAuthRoot);
 
 export default memo(App);
