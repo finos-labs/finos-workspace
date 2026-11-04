@@ -396,14 +396,8 @@ def register(
                 "effective_params in the response matches your intent; a "
                 "plugin widget's settings come back as effective_ui_args.config."
             ),
-            (
-                "Config changes only: for placement (x, y, w, h, tab_id) use "
-                "update_widget_layout."
-            ),
-            (
-                "Pass dry_run=true to validate and preview effective_params "
-                "without changing the workspace."
-            ),
+            ("Config changes only: for placement (x, y, w, h, tab_id) use update_widget_layout."),
+            ("Pass dry_run=true to validate and preview effective_params without changing the workspace."),
         )
     )
     async def update_widget(
