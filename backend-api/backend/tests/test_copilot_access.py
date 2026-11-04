@@ -1,5 +1,6 @@
 import os
 import sys
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 BACKEND_DIR = os.path.dirname(
@@ -20,7 +21,9 @@ from scripts.create_metering_token import create_metering_token
 from tests.fixtures.base import (
     _ADMIN_USER,
     _AUTH_USER,
+    settings,
 )
+from utilities.config import DefaultMCPServer
 from tests.fixtures.organization import MEMBER_UUID
 
 ADMIN_ENTITY = _ADMIN_USER["entity_uuid"]
@@ -686,3 +689,80 @@ class TestBackendsGrantTheServersTheyDeclare:
         for servers in (["ftp://tunnel.example.com/mcp"], ["https://user:pass@tunnel.example.com/mcp"]):
             response = await auth_client.put(f"{SOURCES}/{source}/mcp-servers", json={"servers": servers})
             assert response.status_code == 422
+
+
+def _own_servers(*urls):
+    servers = [{"id": f"own-{i}", "name": f"Own {i}", "url": url, "enabled": True} for i, url in enumerate(urls)]
+    return {"servers": servers}
+
+
+class TestUsersOwnServersAreTheirs:
+    @pytest.mark.asyncio
+    async def test_a_developers_own_server_grants_all_its_tools(self, organization, auth_client):
+        await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
+
+        saved = await auth_client.post("/app/mcp-servers", json=_own_servers("https://Tunnel.example.com/mcp/"))
+        assert saved.status_code == 200
+
+        access = (await auth_client.get("/app/copilot/access")).json()
+        assert _servers(access) == {(TUNNEL_URL, "*")}
+        result = await _authorize(auth_client, tools=[{"url": TUNNEL_URL, "tool_name": "search_markets"}])
+        assert result.json()["denied_tools"] == []
+
+    @pytest.mark.asyncio
+    async def test_the_proxy_lets_the_owner_call_its_tools(self, organization, auth_client, db_session):
+        await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
+        await auth_client.post("/app/mcp-servers", json=_own_servers(TUNNEL_URL))
+
+        call = MCPProxyRequest(
+            server_url=TUNNEL_URL,
+            url=TUNNEL_URL,
+            method="POST",
+            body={"method": "tools/call", "params": {"name": "search_markets"}},
+        )
+        await check_mcp_tool_calls(db_session, MEMBER_UUID, call)
+
+    @pytest.mark.asyncio
+    async def test_removing_the_server_removes_the_grant(self, organization, auth_client):
+        await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
+        await auth_client.post("/app/mcp-servers", json=_own_servers(TUNNEL_URL, MCP_URL))
+
+        await auth_client.post("/app/mcp-servers", json=_own_servers(MCP_URL))
+
+        access = (await auth_client.get("/app/copilot/access")).json()
+        assert _servers(access) == {(MCP_URL, "*")}
+
+    @pytest.mark.asyncio
+    async def test_a_user_who_may_not_add_connections_gets_no_grant(self, organization, auth_client):
+        organization.db.add(
+            models.MCPServers(user_uuid=MEMBER_UUID, servers=_own_servers(TUNNEL_URL)["servers"])
+        )
+        await organization.db.commit()
+
+        access = (await auth_client.get("/app/copilot/access")).json()
+        assert access["mcp"] == []
+        result = await _authorize(auth_client, tools=[{"url": TUNNEL_URL, "tool_name": "search_markets"}])
+        assert result.json()["denied_tools"] == [{"url": TUNNEL_URL, "tool_name": "search_markets"}]
+
+    @pytest.mark.asyncio
+    async def test_a_saved_default_server_keeps_the_roles_limits(self, organization, auth_client, admin_client):
+        await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
+        role = await organization.role(MEMBER_UUID)
+        await admin_client.put(f"/admin/role/{role}/copilot-access", json=_grants(mcp=[(OTHER_MCP_URL, "search")]))
+
+        default = DefaultMCPServer(id="tools", name="Tools", url=OTHER_MCP_URL)
+        with patch.object(settings, "DEFAULT_MCP_SERVERS", [default]):
+            await auth_client.post("/app/mcp-servers", json=_own_servers(OTHER_MCP_URL, TUNNEL_URL))
+            access = (await auth_client.get("/app/copilot/access")).json()
+
+        assert _servers(access) == {(OTHER_MCP_URL, "search"), (TUNNEL_URL, "*")}
+
+    @pytest.mark.asyncio
+    async def test_another_users_server_grants_nothing(self, organization, auth_client):
+        other = await organization.add_user(models.DEVELOPER_TYPE)
+        organization.db.add(models.MCPServers(user_uuid=other.uuid, servers=_own_servers(TUNNEL_URL)["servers"]))
+        await organization.db.commit()
+        await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
+
+        access = (await auth_client.get("/app/copilot/access")).json()
+        assert access["mcp"] == []

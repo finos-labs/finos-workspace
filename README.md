@@ -197,8 +197,9 @@ The FINOS Workspace owns the users, their roles and their usage limits, and the 
 Every request to the agent (apart from `/agents.json`, `/status` and `/ready`) carries the user's session token, and the API says whose
 it is. For each question the agent then asks the API, with the token it trusts only the operator and the agent to hold:
 
-- **the model and the tools.** What the user's roles grant (Admin → Roles, a role's Copilot access) is what the agent allows. A model the
-  roles do not grant is refused in the chat; a tool they do not grant is left out. Without a grant there is no access.
+- **the model and the tools.** What the user's roles grant (Admin → Roles, a role's Copilot access) is what the agent allows, together
+  with every tool of the MCP servers that the user's backends declare and that the user added themselves. A model the roles do not
+  grant is refused in the chat; a tool without a grant is left out. Without a grant there is no access.
 - **the daily limit.** The first request of a turn is counted against the user's daily limit of questions, and the tokens it
   used are added to their daily tokens; when a limit is reached the chat says so in the API's words. Setting the limits is the
   admin's job, on the user's roles.

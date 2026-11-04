@@ -658,7 +658,7 @@ class DashboardCompleteWithContext(DashboardComplete):
     )
     copilot_access: "CopilotAccess | None" = Field(
         None,
-        description="The Copilot models, MCP tools and capabilities that the user's roles grant.",
+        description="The Copilot models, MCP tools and capabilities that the user may use.",
     )
 
 
