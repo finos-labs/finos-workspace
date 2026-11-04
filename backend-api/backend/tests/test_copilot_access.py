@@ -82,18 +82,14 @@ class TestNothingWithoutAGrant:
 
 class TestAdminAssignsAccess:
     @pytest.mark.asyncio
-    async def test_admin_sets_and_reads_a_roles_grants(
-        self, organization, admin_client
-    ):
+    async def test_admin_sets_and_reads_a_roles_grants(self, organization, admin_client):
         role = await organization.role()
         grants = _grants(
             models_=[("default-copilot", "fast"), ("default-copilot", "smart")],
             mcp=[("https://MCP.example.com/mcp/", "*"), (OTHER_MCP_URL, "search")],
         )
 
-        response = await admin_client.put(
-            f"/admin/role/{role}/copilot-access", json=grants
-        )
+        response = await admin_client.put(f"/admin/role/{role}/copilot-access", json=grants)
         assert response.status_code == 200
 
         stored = (await admin_client.get(f"/admin/role/{role}/copilot-access")).json()
@@ -110,9 +106,7 @@ class TestAdminAssignsAccess:
     async def test_putting_replaces_the_grants(self, organization, admin_client):
         role = await organization.role()
         path = f"/admin/role/{role}/copilot-access"
-        await admin_client.put(
-            path, json=_grants(models_=[("a", "one")], mcp=[(MCP_URL, "*")])
-        )
+        await admin_client.put(path, json=_grants(models_=[("a", "one")], mcp=[(MCP_URL, "*")]))
 
         await admin_client.put(path, json=_grants(models_=[("a", "two")]))
 
@@ -134,15 +128,11 @@ class TestAdminAssignsAccess:
     async def test_only_admins_set_grants(self, organization, auth_client):
         role = await organization.role()
 
-        response = await auth_client.put(
-            f"/admin/role/{role}/copilot-access", json=_grants(models_=[("a", "m")])
-        )
+        response = await auth_client.put(f"/admin/role/{role}/copilot-access", json=_grants(models_=[("a", "m")]))
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
-    async def test_admins_only_set_grants_of_their_own_roles(
-        self, organization, admin_client
-    ):
+    async def test_admins_only_set_grants_of_their_own_roles(self, organization, admin_client):
         outside = await organization.role(entity_uuid=_AUTH_USER["entity_uuid"])
 
         path = f"/admin/role/{outside}/copilot-access"
@@ -153,9 +143,7 @@ class TestAdminAssignsAccess:
 
 class TestUsersGetWhatTheirRolesGrant:
     @pytest.mark.asyncio
-    async def test_models_are_limited_to_the_granted_ones(
-        self, organization, admin_client, auth_client
-    ):
+    async def test_models_are_limited_to_the_granted_ones(self, organization, admin_client, auth_client):
         role = await organization.role(MEMBER_UUID)
         await admin_client.put(
             f"/admin/role/{role}/copilot-access",
@@ -184,9 +172,7 @@ class TestUsersGetWhatTheirRolesGrant:
         assert other_agent.json()["allowed"] is False
 
     @pytest.mark.asyncio
-    async def test_a_request_without_a_model_needs_a_grant_for_its_agent(
-        self, organization, admin_client, auth_client
-    ):
+    async def test_a_request_without_a_model_needs_a_grant_for_its_agent(self, organization, admin_client, auth_client):
         role = await organization.role(MEMBER_UUID)
         await admin_client.put(
             f"/admin/role/{role}/copilot-access",
@@ -210,9 +196,7 @@ class TestUsersGetWhatTheirRolesGrant:
         }
 
     @pytest.mark.asyncio
-    async def test_tools_are_limited_to_the_granted_servers_and_tools(
-        self, organization, admin_client, auth_client
-    ):
+    async def test_tools_are_limited_to_the_granted_servers_and_tools(self, organization, admin_client, auth_client):
         role = await organization.role(MEMBER_UUID)
         await admin_client.put(
             f"/admin/role/{role}/copilot-access",
@@ -258,28 +242,18 @@ class TestUsersGetWhatTheirRolesGrant:
     async def test_roles_add_up(self, organization, admin_client, auth_client):
         first = await organization.role(MEMBER_UUID)
         second = await organization.role(MEMBER_UUID)
-        await admin_client.put(
-            f"/admin/role/{first}/copilot-access", json=_grants(models_=[("a", "fast")])
-        )
-        await admin_client.put(
-            f"/admin/role/{second}/copilot-access", json=_grants(models_=[("a", "smart")])
-        )
+        await admin_client.put(f"/admin/role/{first}/copilot-access", json=_grants(models_=[("a", "fast")]))
+        await admin_client.put(f"/admin/role/{second}/copilot-access", json=_grants(models_=[("a", "smart")]))
 
         for model in ("fast", "smart"):
             result = await _authorize(auth_client, agent_id="a", model=model)
             assert result.json()["allowed"] is True
-        assert (
-            await _authorize(auth_client, agent_id="a", model="huge")
-        ).json()["allowed"] is False
+        assert (await _authorize(auth_client, agent_id="a", model="huge")).json()["allowed"] is False
 
     @pytest.mark.asyncio
-    async def test_grants_of_other_users_roles_give_nothing(
-        self, organization, admin_client, auth_client
-    ):
+    async def test_grants_of_other_users_roles_give_nothing(self, organization, admin_client, auth_client):
         role = await organization.role()
-        await admin_client.put(
-            f"/admin/role/{role}/copilot-access", json=_grants(models_=[("a", "fast")])
-        )
+        await admin_client.put(f"/admin/role/{role}/copilot-access", json=_grants(models_=[("a", "fast")]))
 
         access = (await auth_client.get("/app/copilot/access")).json()
         assert access["models"] == []
@@ -287,13 +261,9 @@ class TestUsersGetWhatTheirRolesGrant:
         assert result.json()["allowed"] is False
 
     @pytest.mark.asyncio
-    async def test_deleted_roles_grant_nothing(
-        self, organization, admin_client, auth_client
-    ):
+    async def test_deleted_roles_grant_nothing(self, organization, admin_client, auth_client):
         role = await organization.role(MEMBER_UUID)
-        await admin_client.put(
-            f"/admin/role/{role}/copilot-access", json=_grants(models_=[("a", "fast")])
-        )
+        await admin_client.put(f"/admin/role/{role}/copilot-access", json=_grants(models_=[("a", "fast")]))
         assert (await _authorize(auth_client, agent_id="a")).json()["allowed"] is True
         assert (await admin_client.delete(f"/admin/role/{role}")).status_code == 200
 
@@ -304,9 +274,7 @@ class TestUsersGetWhatTheirRolesGrant:
 
 class TestSync:
     @pytest.mark.asyncio
-    async def test_the_sync_carries_what_the_user_may_use(
-        self, organization, admin_client, auth_client
-    ):
+    async def test_the_sync_carries_what_the_user_may_use(self, organization, admin_client, auth_client):
         role = await organization.role(MEMBER_UUID)
         await admin_client.put(
             f"/admin/role/{role}/copilot-access",
@@ -326,15 +294,11 @@ class TestSync:
 class TestEnforcement:
     @pytest.mark.asyncio
     async def test_users_cannot_authorize_themselves(self, organization, auth_client):
-        response = await auth_client.post(
-            "/app/copilot/authorize", json={"agent_id": "a", "model": "m"}
-        )
+        response = await auth_client.post("/app/copilot/authorize", json={"agent_id": "a", "model": "m"})
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_the_proxy_refuses_tool_calls_that_are_not_granted(
-        self, organization, admin_client, auth_client
-    ):
+    async def test_the_proxy_refuses_tool_calls_that_are_not_granted(self, organization, admin_client, auth_client):
         role = await organization.role(MEMBER_UUID)
         await admin_client.put(
             f"/admin/role/{role}/copilot-access",
@@ -373,9 +337,7 @@ class TestEnforcement:
         assert batch.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_the_proxy_refuses_every_tool_call_without_a_grant(
-        self, organization, db_session
-    ):
+    async def test_the_proxy_refuses_every_tool_call_without_a_grant(self, organization, db_session):
         call = MCPProxyRequest(
             server_url=MCP_URL,
             url=MCP_URL,
@@ -420,9 +382,7 @@ class TestEnforcement:
 class TestWebToolsOfTheCopilot:
     @pytest.mark.asyncio
     async def test_a_new_role_allows_both(self, organization, admin_client, auth_client):
-        response = await admin_client.post(
-            "/admin/role", json={"name": "Web tools", "description": ""}
-        )
+        response = await admin_client.post("/admin/role", json={"name": "Web tools", "description": ""})
         assert response.status_code == 200
         roles = (await admin_client.get("/admin/role")).json()
         role = next(r for r in roles if r["name"] == "Web tools")
@@ -435,9 +395,7 @@ class TestWebToolsOfTheCopilot:
         assert access["disabled_capabilities"] == []
 
     @pytest.mark.asyncio
-    async def test_an_admin_switches_one_off_on_a_role_and_the_other_stays(
-        self, organization, admin_client, auth_client
-    ):
+    async def test_an_admin_switches_one_off_on_a_role_and_the_other_stays(self, organization, admin_client, auth_client):
         role = await organization.role(MEMBER_UUID)
         await admin_client.put(
             f"/admin/role/{role}/copilot-access",
@@ -451,19 +409,13 @@ class TestWebToolsOfTheCopilot:
         access = (await auth_client.get("/app/copilot/access")).json()
         assert access["disabled_capabilities"] == ["SEARCH_WEB"]
 
-        result = (
-            await _authorize(
-                auth_client, agent_id="a", tools=[WEB_SEARCH, FETCH_PAGE, OTHER_TOOL]
-            )
-        ).json()
+        result = (await _authorize(auth_client, agent_id="a", tools=[WEB_SEARCH, FETCH_PAGE, OTHER_TOOL])).json()
         assert result["allowed"] is False
         assert result["denied_tools"] == [WEB_SEARCH]
         assert result["disabled_capabilities"] == ["SEARCH_WEB"]
 
         await admin_client.patch(f"/admin/role/{role}", json={"search_web": True})
-        result = (
-            await _authorize(auth_client, agent_id="a", tools=[WEB_SEARCH, FETCH_PAGE])
-        ).json()
+        result = (await _authorize(auth_client, agent_id="a", tools=[WEB_SEARCH, FETCH_PAGE])).json()
         assert result["allowed"] is True
         assert result["disabled_capabilities"] == []
 
@@ -478,9 +430,7 @@ class TestWebToolsOfTheCopilot:
         assert access["disabled_capabilities"] == ["FETCH_FROM_WEB"]
 
     @pytest.mark.asyncio
-    async def test_a_patch_of_something_else_leaves_them_as_they_are(
-        self, organization, admin_client
-    ):
+    async def test_a_patch_of_something_else_leaves_them_as_they_are(self, organization, admin_client):
         role = await organization.role(fetch_from_web=False)
         await admin_client.patch(f"/admin/role/{role}", json={"copilot_calls_day": 5})
         stored = (await admin_client.get(f"/admin/role/{role}")).json()
@@ -498,9 +448,7 @@ class TestWebToolsOfTheCopilot:
         )
         elsewhere = {"url": OTHER_MCP_URL, "tool_name": "web_search"}
 
-        result = (
-            await _authorize(auth_client, tools=[WEB_SEARCH, elsewhere, OTHER_TOOL])
-        ).json()
+        result = (await _authorize(auth_client, tools=[WEB_SEARCH, elsewhere, OTHER_TOOL])).json()
         assert result["denied_tools"] == [WEB_SEARCH, elsewhere]
 
     @pytest.mark.asyncio
@@ -517,9 +465,7 @@ class TestWebToolsOfTheCopilot:
         assert result["disabled_capabilities"] == []
 
     @pytest.mark.asyncio
-    async def test_the_proxy_refuses_a_call_of_a_tool_that_is_switched_off(
-        self, organization, admin_client, db_session
-    ):
+    async def test_the_proxy_refuses_a_call_of_a_tool_that_is_switched_off(self, organization, admin_client, db_session):
         role = await organization.role(MEMBER_UUID, fetch_from_web=False)
         await admin_client.put(
             f"/admin/role/{role}/copilot-access",
@@ -543,9 +489,7 @@ class TestWebToolsOfTheCopilot:
         await check_mcp_tool_calls(db_session, MEMBER_UUID, call("execute_sql"))
 
     @pytest.mark.asyncio
-    async def test_a_user_cannot_switch_it_back_on_themselves(
-        self, organization, auth_client
-    ):
+    async def test_a_user_cannot_switch_it_back_on_themselves(self, organization, auth_client):
         role = await organization.role(MEMBER_UUID, search_web=False)
         response = await auth_client.patch(f"/admin/role/{role}", json={"search_web": True})
         assert response.status_code == 403
@@ -594,9 +538,7 @@ class TestBackendsGrantTheServersTheyDeclare:
     async def test_a_new_report_replaces_the_old_one(self, organization, auth_client):
         await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
         source = uuid4()
-        await auth_client.post(
-            f"{SOURCES}/{source}", json={"name": "Hurricane", "url": "https://hurricane.example.com"}
-        )
+        await auth_client.post(f"{SOURCES}/{source}", json={"name": "Hurricane", "url": "https://hurricane.example.com"})
         await auth_client.put(f"{SOURCES}/{source}/mcp-servers", json={"servers": [TUNNEL_URL]})
 
         await auth_client.put(f"{SOURCES}/{source}/mcp-servers", json={"servers": [MCP_URL]})
@@ -680,9 +622,7 @@ class TestBackendsGrantTheServersTheyDeclare:
     async def test_the_reported_servers_are_validated(self, organization, auth_client):
         await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
         source = uuid4()
-        await auth_client.post(
-            f"{SOURCES}/{source}", json={"name": "Hurricane", "url": "https://hurricane.example.com"}
-        )
+        await auth_client.post(f"{SOURCES}/{source}", json={"name": "Hurricane", "url": "https://hurricane.example.com"})
 
         for servers in (["ftp://tunnel.example.com/mcp"], ["https://user:pass@tunnel.example.com/mcp"]):
             response = await auth_client.put(f"{SOURCES}/{source}/mcp-servers", json={"servers": servers})
