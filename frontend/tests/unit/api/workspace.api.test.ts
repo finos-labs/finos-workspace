@@ -9,6 +9,8 @@ import {
   updateWidget,
 } from "~/api/workspace.api";
 import type { WidgetT } from "~/components/types";
+import { usePluginRegistryStore } from "~/plugins/registry";
+import type { AvailablePlugin } from "~/plugins/types";
 
 const mockGetAppWidget = vi.fn();
 const mockAddWidget = vi.fn();
@@ -369,6 +371,42 @@ describe("FINOS Workspace API", () => {
       const result = readWidget(dashboardId, widgetUuid);
 
       expect(result?.data).toBe("rendered");
+    });
+
+    it("gives a plugin widget's settings as ui_args.config, as they are now", () => {
+      usePluginRegistryStore.setState({
+        plugins: [
+          {
+            id: "map-widget",
+            widgets: [
+              {
+                id: "map",
+                settings: {
+                  schema: {
+                    properties: {
+                      zoom: { type: "number", minimum: 0, maximum: 19 },
+                      latitude: { type: "number", minimum: -90, maximum: 90 },
+                    },
+                  },
+                  defaults: {},
+                },
+              },
+            ],
+          } as unknown as AvailablePlugin,
+        ],
+      });
+      mockGetTabWidgetById.mockReturnValue(
+        createMockWidget({
+          id: widgetUuid,
+          plugin: { id: "map-widget", widget: "map" },
+          storage: { plugin: { config: { zoom: 12, latitude: 48.85, stray: 1 } } },
+        }),
+      );
+
+      expect(readWidget(dashboardId, widgetUuid)?.ui_args).toEqual({
+        config: { zoom: 12, latitude: 48.85 },
+      });
+      usePluginRegistryStore.getState().clear();
     });
   });
 
