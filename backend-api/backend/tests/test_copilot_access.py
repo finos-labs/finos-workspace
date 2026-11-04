@@ -758,6 +758,26 @@ class TestUsersOwnServersAreTheirs:
         assert _servers(access) == {(OTHER_MCP_URL, "search"), (TUNNEL_URL, "*")}
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "spelling",
+        [
+            "https://tools.example.com:443/mcp",
+            "https://tools.example.com./mcp",
+            "HTTPS://Tools.Example.com.:443/mcp/",
+        ],
+    )
+    async def test_a_default_server_saved_under_another_spelling_keeps_the_roles_limits(
+        self, organization, auth_client, spelling
+    ):
+        await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
+        default = DefaultMCPServer(id="tools", name="Tools", url=OTHER_MCP_URL)
+        with patch.object(settings, "DEFAULT_MCP_SERVERS", [default]):
+            await auth_client.post("/app/mcp-servers", json=_own_servers(spelling))
+            access = (await auth_client.get("/app/copilot/access")).json()
+
+        assert access["mcp"] == []
+
+    @pytest.mark.asyncio
     async def test_another_users_server_grants_nothing(self, organization, auth_client):
         other = await organization.add_user(models.DEVELOPER_TYPE)
         organization.db.add(models.MCPServers(user_uuid=other.uuid, servers=_own_servers(TUNNEL_URL)["servers"]))

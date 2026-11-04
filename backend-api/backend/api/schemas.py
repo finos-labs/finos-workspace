@@ -1020,10 +1020,24 @@ def mcp_header_flags(headers: dict[str, str] | None) -> dict[str, list[str] | bo
     }
 
 
+DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
 def normalize_mcp_url(url: str) -> str:
     parsed = urlsplit(url.strip())
+    scheme = parsed.scheme.lower()
     path = parsed.path.rstrip("/")
-    return urlunsplit((parsed.scheme.lower(), parsed.netloc.lower(), path, "", ""))
+    try:
+        port = parsed.port
+    except ValueError:
+        return urlunsplit((scheme, parsed.netloc.lower(), path, "", ""))
+    host = (parsed.hostname or "").rstrip(".")
+    if ":" in host:
+        host = f"[{host}]"
+    if port is not None and port != DEFAULT_PORTS.get(scheme):
+        host = f"{host}:{port}"
+    userinfo, at, _ = parsed.netloc.rpartition("@")
+    return urlunsplit((scheme, f"{userinfo.lower()}{at}{host}", path, "", ""))
 
 
 def mcp_server_url(url: str) -> str:
