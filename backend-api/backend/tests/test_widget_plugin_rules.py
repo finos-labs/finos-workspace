@@ -153,6 +153,8 @@ class TestManifest:
             {"permissions": ["core:export:provide"], "exports": ["csv"]},
             {"model": {"traits": {"rows": {"bind": "data", "access": "readwrite"}}}},
             {"model": {"traits": {"rows": {"bind": "window"}}}},
+            {"model": {"traits": {"tiles": {"bind": "adminSettings:tiles", "access": "readwrite"}}}},
+            {"permissions": ["core:config:edit"]},
             {"handles": [{"type": "t1", "definition": {"type": "object"}}]},
         ],
         ids=str,
@@ -162,6 +164,21 @@ class TestManifest:
         data["contributes"]["widgets"][0].update(widget_change)
         with pytest.raises(ValueError):
             Manifest.model_validate(data)
+
+    @pytest.mark.parametrize(
+        "traits",
+        [
+            {"zoom": {"bind": "config:zoom", "access": "readwrite"}},
+            {"settings": {"bind": "config", "access": "readwrite"}},
+        ],
+        ids=str,
+    )
+    def test_a_module_may_write_its_config(self, traits):
+        data = manifest()
+        data["contributes"]["widgets"][0].update(
+            {"model": {"traits": traits}, "permissions": ["core:data:read", "core:config:write"]}
+        )
+        Manifest.model_validate(data)
 
 
 class TestDiscovery:

@@ -1,5 +1,5 @@
 import { useId } from "react";
-import type { SettingsSchema } from "./types";
+import { MAX_SETTING_LENGTH, type SettingsSchema } from "./types";
 
 export function SettingsForm(props: {
   schema: SettingsSchema;
@@ -117,7 +117,7 @@ export function cleanSettings(
     )
       result[key] = prop.type === "integer" ? Math.trunc(value) : value;
     else if (prop.type === "string" && typeof value === "string")
-      result[key] = value.slice(0, prop.maxLength ?? 1000);
+      result[key] = value.slice(0, prop.maxLength ?? MAX_SETTING_LENGTH);
   }
   return result;
 }
