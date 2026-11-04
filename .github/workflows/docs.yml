@@ -15,6 +15,11 @@ on:
       - "agent/**"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: Publish the built site to Netlify (only from main)
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -140,7 +145,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Look up the address that Netlify serves the site at
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.deploy)
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -195,7 +200,7 @@ jobs:
 
   deploy:
     name: Deploy to Netlify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.base_ref == 'main' || github.event.merge_group.base_ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.deploy) || github.base_ref == 'main' || github.event.merge_group.base_ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -210,5 +215,5 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-          PRODUCTION: ${{ github.event_name == 'push' && '--prod' || '' }}
+          PRODUCTION: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.deploy) && '--prod' || '' }}
         run: npx --yes netlify-cli@27.15.0 deploy $PRODUCTION --no-build --dir site --message "$GITHUB_SHA"
