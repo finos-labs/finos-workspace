@@ -206,7 +206,7 @@ writes the `sql` parameter on a Files run, so a dashboard group can feed it to a
 
 The card's **Create static widget** button freezes the current result into an AgGrid table widget of its own, with no
 parameters and no query: the first 60 columns and the first 1,000 rows, as the table's artifact holds them, and fewer rows
-when they would pass 1,000,000 bytes, the most the host takes. The button is the
+when they would pass 380,000 bytes, which keeps the copy under the host's limit. The button is the
 widget's `freeze` action (`core:ui:button`), and the copy is made with the command `core:dashboard:add-widget`, which the
 host takes only right after the click.
 

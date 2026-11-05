@@ -26,7 +26,7 @@ export function gridRows(result) {
 const MAX_STATIC_ROWS = 1000;
 const MAX_STATIC_COLUMNS = 60;
 const MAX_STATIC_TEXT = 500;
-const MAX_STATIC_BYTES = 1_000_000;
+const MAX_STATIC_BYTES = 380_000;
 
 const byteSize = (value) => new TextEncoder().encode(JSON.stringify(value)).byteLength;
 

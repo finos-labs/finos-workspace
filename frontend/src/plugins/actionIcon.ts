@@ -4,7 +4,12 @@ import SVG_RULES from "./action-icon-svg.json";
 import { loadAsset } from "./bundle";
 import type { AvailablePlugin } from "./types";
 
-const LOCAL_URL = /^url\(#[A-Za-z][A-Za-z0-9_.:-]*\)$/;
+const VALUE_PATTERNS = new Map(
+  Object.entries(SVG_RULES.values).map(([name, pattern]) => [
+    name.toLowerCase(),
+    new RegExp(`^(?:${pattern})$`),
+  ]),
+);
 
 let purifier: ReturnType<typeof DOMPurify> | null = null;
 
@@ -12,11 +17,8 @@ function svgPurifier() {
   if (purifier) return purifier;
   purifier = DOMPurify(window);
   purifier.addHook("uponSanitizeAttribute", (_node, data) => {
-    if (
-      data.attrValue.toLowerCase().includes("url(") &&
-      !LOCAL_URL.test(data.attrValue.trim())
-    )
-      data.keepAttr = false;
+    const pattern = VALUE_PATTERNS.get(data.attrName.toLowerCase());
+    if (!pattern?.test(data.attrValue.trim())) data.keepAttr = false;
   });
   return purifier;
 }
@@ -26,7 +28,7 @@ export function sanitizeActionIcon(text: string): string | null {
   if (/<!(DOCTYPE|ENTITY)/i.test(text)) return null;
   const clean = svgPurifier().sanitize(text, {
     ALLOWED_TAGS: SVG_RULES.tags.map((tag) => tag.toLowerCase()),
-    ALLOWED_ATTR: SVG_RULES.attributes.map((name) => name.toLowerCase()),
+    ALLOWED_ATTR: Object.keys(SVG_RULES.values).map((name) => name.toLowerCase()),
     ALLOW_DATA_ATTR: false,
     ALLOW_ARIA_ATTR: false,
     KEEP_CONTENT: false,

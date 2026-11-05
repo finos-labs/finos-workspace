@@ -40,7 +40,7 @@ test("a static copy keeps the columns and rows the table widget's artifact takes
   assert.equal(staticTableData({ ...result, rows: [["s", 0, 0, long]] }).rowData[0][3].length, 500);
 });
 
-test("a static copy keeps the first 60 columns and stays under 1,000,000 bytes", () => {
+test("a static copy keeps the first 60 columns and stays under 380,000 bytes", () => {
   const wide = {
     columns: [...Array(80)].map((_, i) => ({ name: `c${i}`, type: "VARCHAR" })),
     rows: [...Array(1000)].map(() => [...Array(80)].map(() => "y".repeat(200))),
@@ -50,6 +50,6 @@ test("a static copy keeps the first 60 columns and stays under 1,000,000 bytes",
   assert.equal(data.columnDefs.length, 60);
   assert.deepEqual(Object.keys(data.rowData[0]), data.columnDefs.map((c) => c.field));
   const bytes = new TextEncoder().encode(JSON.stringify(data)).byteLength;
-  assert.ok(bytes <= 1_000_000, `${bytes} bytes`);
+  assert.ok(bytes <= 380_000, `${bytes} bytes`);
   assert.ok(data.rowData.length > 0 && data.rowData.length < 1000);
 });

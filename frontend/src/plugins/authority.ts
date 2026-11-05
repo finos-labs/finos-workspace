@@ -479,6 +479,38 @@ export function cardActions(
   };
 }
 
+function plainJson(value: unknown, depth = 0): unknown {
+  if (depth > 32) throw new CommandError("invalid_args", "data is nested too deeply");
+  if (value === null || typeof value === "string" || typeof value === "boolean")
+    return value;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value))
+      throw new CommandError("invalid_args", "data holds a number that is not finite");
+    return value;
+  }
+  if (Array.isArray(value)) {
+    const copy: unknown[] = [];
+    for (let index = 0; index < value.length; index++) {
+      if (!Object.hasOwn(value, index))
+        throw new CommandError("invalid_args", "data holds a sparse array");
+      copy.push(plainJson(value[index], depth + 1));
+    }
+    return copy;
+  }
+  const proto = typeof value === "object" ? Object.getPrototypeOf(value) : undefined;
+  if (proto !== Object.prototype && proto !== null)
+    throw new CommandError("invalid_args", "data is plain JSON");
+  const copy: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value as object))
+    Object.defineProperty(copy, key, {
+      value: plainJson(item, depth + 1),
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  return copy;
+}
+
 export function readAddedWidget(
   args: Record<string, unknown>,
   resolve: (widgetId: string) => ResolvedPluginWidget | null,
@@ -490,7 +522,8 @@ export function readAddedWidget(
       "out_of_scope",
       `${widgetId || "the widget"} is not a widget of this plugin that takes data`,
     );
-  const problems = validateDefinition(args.data, target.widget.artifact.data);
+  const data = plainJson(args.data);
+  const problems = validateDefinition(data, target.widget.artifact.data);
   if (problems.length)
     throw new CommandError(
       "invalid_args",
@@ -499,7 +532,7 @@ export function readAddedWidget(
         .map((e) => `data${e.path}: ${e.message}`)
         .join("; "),
     );
-  if (jsonSize(args.data) > MAX_ADDED_WIDGET_BYTES)
+  if (jsonSize(data) > MAX_ADDED_WIDGET_BYTES)
     throw new CommandError(
       "too_large",
       `the data is limited to ${MAX_ADDED_WIDGET_BYTES / 1024} KiB`,
@@ -508,5 +541,5 @@ export function readAddedWidget(
     typeof args.name === "string" && args.name.trim()
       ? args.name.trim().slice(0, 80)
       : undefined;
-  return { target, data: args.data, name };
+  return { target, data, name };
 }

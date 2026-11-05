@@ -18,7 +18,7 @@ import {
 } from "~/components/Widgets/Helpers/RawRows";
 import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGroupBindings";
 import { useJsonData } from "~/lib/api";
-import { useShallowAppStore } from "~/lib/state/app";
+import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn, uuidv4 } from "~/lib/utils";
 import { sourceStreamHref } from "~/lib/utils/fetch";
@@ -486,8 +486,8 @@ function PluginWidgetBody({
           setLink(safeLink(args.url));
           return {};
         case "core:dashboard:add-widget": {
-          if (isShared)
-            throw new CommandError("unavailable", "a shared dashboard is read-only");
+          if (isShared || useAppStore.getState().isDashboardLocked(activeDashboardId))
+            throw new CommandError("unavailable", "the dashboard is read-only");
           if (actionGrant.current < Date.now())
             throw new CommandError(
               "out_of_scope",
@@ -496,7 +496,6 @@ function PluginWidgetBody({
           const { target, data, name } = readAddedWidget(args, (id) =>
             resolvePluginWidget({ id: plugin.id, widget: id }),
           );
-          const grant = actionGrant.current;
           actionGrant.current = 0;
           const added = await addWidget(
             activeDashboardId,
@@ -507,13 +506,11 @@ function PluginWidgetBody({
               innerTab: widget.innerTab,
             }),
           );
-          if (!added) {
-            actionGrant.current = grant;
+          if (!added)
             throw new CommandError(
               "unavailable",
               "the dashboard did not take the widget",
             );
-          }
           return { value: { instanceId: added } };
         }
         case "core:clipboard:write": {

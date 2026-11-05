@@ -16,6 +16,7 @@ from pydantic import ValidationError
 from .manifest import (
     ACTION_ICON_ATTRIBUTES,
     ACTION_ICON_TAGS,
+    ACTION_ICON_VALUES,
     MAX_ACTION_ICON_BYTES,
     PLUGIN_ID_PATTERN,
     VERSION_PATTERN,
@@ -191,9 +192,6 @@ def _check_skill_file(found: DiscoveredVersion, version_dir: Path, path: str) ->
             found.fail("manifest", f"{path}: a skill is not empty")
 
 
-_LOCAL_URL = re.compile(r"^url\(#[A-Za-z][A-Za-z0-9_.:-]*\)$")
-
-
 def _element_problems(root: Any) -> Iterator[str]:
     for element in root.iter():
         tag = element.tag.rsplit("}", 1)[-1]
@@ -205,8 +203,8 @@ def _element_problems(root: Any) -> Iterator[str]:
             local = name.rsplit("}", 1)[-1]
             if local not in ACTION_ICON_ATTRIBUTES:
                 yield f"has the attribute {local} on <{tag}>, which an action icon cannot use"
-            elif "url(" in value.lower() and not _LOCAL_URL.fullmatch(value.strip()):
-                yield f"refers outside the file in {local} on <{tag}>"
+            elif not re.fullmatch(ACTION_ICON_VALUES[local], value.strip()):
+                yield f"has a value of {local} on <{tag}> that an action icon cannot use"
 
 
 def action_icon_problem(text: str) -> str | None:

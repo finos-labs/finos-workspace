@@ -489,10 +489,27 @@ describe("adding a widget of the plugin", () => {
       { rowData: [{ a: 1 }, { a: 2 }, { a: 3 }] },
       { rowData: [{ a: { nested: true } }] },
       { rowData: [], extra: 1 },
+      { rowData: [{ a: Number.NaN }] },
+      { rowData: [{ a: Number.POSITIVE_INFINITY }] },
+      { rowData: [{ a: new Date(0) }] },
+      { rowData: Object.assign(new Array(2), { 1: { a: 1 } }) },
+      { rowData: new Map() },
+      { rowData: [{ a: undefined }] },
     ])
       expect(() => readAddedWidget({ widget: "table", data }, resolveTable)).toThrow(
         /data/,
       );
+  });
+
+  it("stores a plain JSON copy of the data, not the module's object", () => {
+    const data = { rowData: [{ a: "x" }] };
+    const added = readAddedWidget({ widget: "table", data }, resolveTable);
+    expect(added.data).toEqual(data);
+    expect(added.data).not.toBe(data);
+    const withProto = structuredClone(JSON.parse('{"rowData":[],"__proto__":{"x":1}}'));
+    expect(() =>
+      readAddedWidget({ widget: "table", data: withProto }, resolveTable),
+    ).toThrow(/data/);
   });
 
   it("builds the widget as a chat artifact is built, with the target's own parameters", () => {

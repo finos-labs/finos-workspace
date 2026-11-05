@@ -7,8 +7,8 @@ import pytest
 from api.widget_plugins import csp, proxy as proxy_rules
 from api.widget_plugins.discovery import action_icon_problem, inspect_version, resolve_served_file, scan
 from api.widget_plugins.manifest import (
-    ACTION_ICON_ATTRIBUTES,
     ACTION_ICON_TAGS,
+    ACTION_ICON_VALUES,
     ACTION_ICONS,
     MAX_ACTION_ICON_BYTES,
     Manifest,
@@ -332,8 +332,9 @@ class TestCardActions:
         [
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">'
             '<path d="M0 0h16v16z" fill="currentColor"/></svg>',
-            '<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g"><stop offset="0" stop-color="red"/>'
-            '</linearGradient></defs><rect width="4" height="4" fill="url(#g)"/></svg>',
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+            'stroke-width="1.5" stroke-linecap="round"><g transform="translate(1, 2) rotate(45)">'
+            '<circle cx="8" cy="8" r="2" fill="#0af"/></g></svg>',
         ],
     )
     def test_a_clean_icon_passes(self, svg):
@@ -353,8 +354,20 @@ class TestCardActions:
             ('<svg xmlns="http://www.w3.org/2000/svg"><a href="javascript:alert(1)"/></svg>', "<a>"),
             (
                 '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(https://evil.example/p)"/></svg>',
-                "refers outside",
+                "a value of fill",
             ),
+            ('<svg xmlns="http://www.w3.org/2000/svg"><rect fill="\\75 rl(https://e.example/p)"/></svg>', "fill"),
+            ('<svg xmlns="http://www.w3.org/2000/svg"><rect stroke="u\\72l(https://e.example/c)"/></svg>', "stroke"),
+            (
+                '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="image-set(\'https://e.example/m\' 1x)"/></svg>',
+                "fill",
+            ),
+            ('<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(#g)"/></svg>', "a value of fill"),
+            ('<svg xmlns="http://www.w3.org/2000/svg"><rect id="root"/></svg>', "attribute id"),
+            ('<svg xmlns="http://www.w3.org/2000/svg"><rect mask="url(#m)"/></svg>', "attribute mask"),
+            ('<svg xmlns="http://www.w3.org/2000/svg"><defs/></svg>', "<defs>"),
+            ('<svg xmlns="http://www.w3.org/2000/svg"><g transform="url(https://e.example/x)"/></svg>', "transform"),
+            ('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0 url(https://e.example/x)"/></svg>', "a value of d"),
             ('<svg xmlns="http://www.w3.org/2000/svg"><rect style="fill:red"/></svg>', "style"),
             ('<!DOCTYPE svg [<!ENTITY a "aaaa">]><svg>&a;</svg>', "DOCTYPE or an entity"),
             ("<html/>", "not an <svg>"),
@@ -386,7 +399,7 @@ class TestCardActions:
     def test_the_host_and_the_web_app_allow_the_same_svg(self):
         spec = json.loads((Path(__file__).resolve().parents[3] / "frontend/src/plugins/action-icon-svg.json").read_text())
         assert set(spec["tags"]) == ACTION_ICON_TAGS
-        assert set(spec["attributes"]) == ACTION_ICON_ATTRIBUTES
+        assert spec["values"] == ACTION_ICON_VALUES
         assert spec["maxBytes"] == MAX_ACTION_ICON_BYTES
 
     def test_the_host_and_the_web_app_offer_the_same_icons(self):
