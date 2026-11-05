@@ -36,7 +36,7 @@ description: 'Covers changing FINOS Workspace and opening a pull request into de
 | Biome | 2.4.8 | `frontend/package-lock.json` |
 | finos-node image | 26.12.1-3 | `agent-node.yml`; CI runs `tsc` and Vitest of `frontend/`, `node --test` of `agent/` and the Docs build in it |
 
-- Backend tests need a running Docker. Testcontainers start `mysql:8.0` and `valkey/valkey:9.1.2-alpine`; `tests/test_migration_dialects.py` adds `postgres:16` and `tests/test_gcp_storage.py` adds `fsouza/fake-gcs-server`.
+- Backend tests need a running Docker. Testcontainers start `mysql:8.0` and `valkey/valkey:9.1.2-alpine`; `tests/test_migration_dialects.py` adds `mysql:8.4` and `postgres:16`, and `tests/test_gcp_storage.py` adds `fsouza/fake-gcs-server`.
 - `backend-api/backend/envs/.env` and `backend-api/backend/user_create.json` change the settings that tests see. Move both out for a full run and back afterwards:
   ```bash
   cd backend-api/backend
