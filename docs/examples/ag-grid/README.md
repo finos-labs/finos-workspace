@@ -210,6 +210,10 @@ when they would pass 1,000,000 bytes, the most the host takes. The button is the
 widget's `freeze` action (`core:ui:button`), and the copy is made with the command `core:dashboard:add-widget`, which the
 host takes only right after the click.
 
+![The Create static widget button and its hover text](screenshots/freeze-button-tooltip.png)
+
+![The static AgGrid table below the SQL widget it was made from](screenshots/static-widget-created.jpg)
+
 ## Card actions
 
 The AgGrid table has a **Floating filters** button in its header, which switches the widget's `floatingFilters` setting
@@ -217,6 +221,10 @@ and shows a filter box under each column header while it is on, and two items in
 columns** and **Clear filters and sort**. They are the widget's `actions` (`core:ui:button`, `core:ui:menu`); the
 autosize item draws the package's own `assets/autosize.svg`, which the host sanitizes before it draws it. A static copy
 made by the SQL widget is an AgGrid table, so it has the same button and menu items.
+
+| Floating filters, hovered and on | The options menu |
+|---|---|
+| ![The Floating filters button and its hover text](screenshots/toggle-tooltip.png) ![The table with floating filters on](screenshots/toggle-on-floating-filters.png) | ![Autosize columns, with the package's own icon, and Clear filters and sort](screenshots/menu-items-svg-icon.png) |
 
 ## For the AI agent
 
