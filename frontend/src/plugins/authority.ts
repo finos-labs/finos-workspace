@@ -9,6 +9,7 @@ import {
   MAX_EXPORT_OPTIONS,
   MAX_MENU_ACTIONS,
   MAX_NAVBAR_ACTIONS,
+  MAX_PRESET_NAME,
 } from "./limits";
 import { CommandError, type CommandErrorName, MAX_EXPORT_BYTES } from "./protocol";
 import {
@@ -237,6 +238,9 @@ export const COMMAND_PERMISSIONS: Record<string, Permission> = {
   "core:download:save": "core:download:save",
   "core:proxy:call": "core:proxy:call",
   "core:backend:call": "core:backend:call",
+  "core:presets:list": "core:presets",
+  "core:presets:apply": "core:presets",
+  "core:presets:save": "core:presets",
 };
 
 const ASSET_PATH = /^assets\/[A-Za-z0-9._-]{1,128}(\/[A-Za-z0-9._-]{1,128})*$/;
@@ -300,6 +304,41 @@ export function serverCallRequest(
   if (typeof args !== "object" || args === null || Array.isArray(args))
     throw new CommandError("invalid_args", "args is an object");
   return { name, args: args as Record<string, unknown> };
+}
+
+export function presetName(value: unknown): string {
+  const name = typeof value === "string" ? value.trim() : "";
+  if (!name || name.length > MAX_PRESET_NAME)
+    throw new CommandError(
+      "invalid_args",
+      `a preset's name has 1 to ${MAX_PRESET_NAME} characters`,
+    );
+  return name;
+}
+
+export function presetError(error: unknown): CommandError {
+  const response = (
+    error as { response?: { status?: number; data?: { detail?: unknown } } }
+  )?.response;
+  const detail = response?.data?.detail;
+  const status = response?.status;
+  return new CommandError(
+    status === 409 || status === 413
+      ? "too_large"
+      : status === 422
+        ? "invalid_args"
+        : "unavailable",
+    typeof detail === "string" ? detail.slice(0, 300) : "the preset call failed",
+  );
+}
+
+export function defaultPreset<T extends { scope: string; is_default: boolean }>(
+  presets: T[],
+): T | undefined {
+  return (
+    presets.find((preset) => preset.scope === "user" && preset.is_default) ??
+    presets.find((preset) => preset.scope === "org" && preset.is_default)
+  );
 }
 
 export class RateLimiter {

@@ -48,6 +48,7 @@ PERMISSIONS = frozenset(
         "core:download:save",
         "core:proxy:call",
         "core:backend:call",
+        "core:presets",
     }
 )
 PERMISSIONS_LATER = frozenset({"core:data:query"})

@@ -97,6 +97,14 @@ The host calls `copilotContext` when the user asks the AI agent about the dashbo
 
 A module that returns exports from `initialize` cannot return a cleanup function as well, so it performs its cleanup through `signal`.
 
+## Presets
+
+A preset is a named combination of a widget's settings, which the module sees as `config`, and its own state, which it sees as `state`. The user saves presets of a plugin widget in the card's Settings and applies them to any card of the same widget on any of their dashboards. An organization admin publishes presets for the whole organization, which its users apply but cannot change. A preset's settings must satisfy the widget's `settings`, and its state may hold at most <PluginValue of="limits.maxStateBytes" unit="bytes" /> of JSON.
+
+Each user can mark one of their presets as their default for a widget, and an admin can mark one organization preset as the organization's default. A new card of the widget starts from the user's default, or else from the organization's default.
+
+A module with the permission `core:presets` can use presets itself, with the commands `core:presets:list`, `core:presets:apply` and `core:presets:save` that [Plugin permissions and commands](commands-and-permissions.mdx#commands) describes. Applying a preset changes `config` and `state`, so the module receives the new values of the traits bound to them, as when the user saves the Settings. The Settings presets work for every plugin widget without the permission.
+
 ## Errors and budgets
 
 The host logs uncaught errors and unhandled rejections, and it does not treat them as fatal. The frame does have a message budget of about <PluginValue of="limits.GUEST_MESSAGE_RATE.perSecond" /> messages per second, with bursts of up to <PluginValue of="limits.GUEST_MESSAGE_RATE.burst" />, and each message may be at most <PluginValue of="limits.maxGuestMessageBytes" unit="bytes" />. The host ends the frame when the module breaks the budget, when it sends a message that the protocol does not define, or when it fails <PluginValue of="limits.VIOLATION_LIMIT.count" /> times within <PluginValue of="limits.VIOLATION_LIMIT.windowMs" unit="ms" />. The card then shows the reason. The host also pings the frame, and it ends a frame that stops answering as unresponsive.

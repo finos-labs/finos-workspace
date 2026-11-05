@@ -324,6 +324,10 @@ PERMISSION_MEANINGS = {
     "core:backend:call": (
         "Calling a route of the plugin's backend that the widget declares, with the command core:backend:call."
     ),
+    "core:presets": (
+        "Listing, applying and saving the user's presets of the widget, with the commands core:presets:list, "
+        "core:presets:apply and core:presets:save."
+    ),
 }
 
 

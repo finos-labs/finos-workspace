@@ -1,7 +1,13 @@
 import get from "lodash/get";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { callPluginBackend, callPluginProxy } from "~/api/plugins.api";
+import {
+  callPluginBackend,
+  callPluginProxy,
+  createPluginPreset,
+  listPluginPresets,
+  type PluginPreset,
+} from "~/api/plugins.api";
 import DraggableCard from "~/components/DraggableCard";
 import { ExternalLinkDialog } from "~/components/ExternalLinkDialog";
 import SearchResultsNotFound from "~/components/General/SearchResultsNotFound";
@@ -33,8 +39,11 @@ import {
   checkStateWrite,
   coerceParamValue,
   commandPermission,
+  defaultPreset,
   exportFile,
   jsonSize,
+  presetError,
+  presetName,
   RateLimiter,
   readAddedWidget,
   readExportOptions,
@@ -54,9 +63,11 @@ import {
   MAX_NOTIFY_LENGTH,
   NOTIFY_LEVELS,
   NOTIFY_RATE,
+  PRESET_SAVE_RATE,
   SERVER_CALL_RATE,
 } from "./limits";
 import PluginFrame, { type FrameStatus, type PluginFrameHandle } from "./PluginFrame";
+import { PresetsPanel } from "./PresetsPanel";
 import { CommandError, MAX_EXPORT_BYTES } from "./protocol";
 import {
   buildPluginArtifactWidget,
@@ -172,7 +183,8 @@ function PluginWidgetBody({
   viewName: string;
 }) {
   const { plugin, widget: pluginWidget, vizType } = resolved;
-  const { widget, updateWidget, activeDashboardId, isShared } = useWidgetContext();
+  const { widget, updateWidget, activeDashboardId, isShared, isPreview } =
+    useWidgetContext();
   const addWidget = useShallowAppStore((state) => state.addWidget);
   const theme = useShallowThemeStore((state) => state.theme);
   const frameRef = useRef<PluginFrameHandle>(null);
@@ -185,6 +197,9 @@ function PluginWidgetBody({
   );
   const serverLimiter = useRef(
     new RateLimiter(SERVER_CALL_RATE.perSecond, SERVER_CALL_RATE.burst),
+  );
+  const presetLimiter = useRef(
+    new RateLimiter(PRESET_SAVE_RATE.perSecond, PRESET_SAVE_RATE.burst),
   );
   const { updateGroupedParams } = useParamGroupBindings();
 
@@ -456,6 +471,84 @@ function PluginWidgetBody({
     ],
   );
 
+  const presetValues = useCallback(
+    (preset: Pick<PluginPreset, "config" | "state">) => {
+      const schema = pluginWidget.settings?.schema;
+      return {
+        config: checkConfigWrite(
+          schema,
+          {},
+          undefined,
+          cleanSettings(schema, preset.config ?? {}),
+        ),
+        state: checkStateWrite(preset.state ?? null),
+      };
+    },
+    [pluginWidget.settings],
+  );
+
+  const writePreset = useCallback(
+    (preset: Pick<PluginPreset, "config" | "state">) => {
+      const next = presetValues(preset);
+      updateWidget((prev) => ({
+        ...prev,
+        storage: {
+          ...prev.storage,
+          plugin: {
+            ...(prev.storage?.plugin as PluginInstanceStorage),
+            ...next,
+          },
+        },
+      }));
+    },
+    [presetValues, updateWidget],
+  );
+
+  const presetChecked = useRef(false);
+  useEffect(() => {
+    if (
+      presetChecked.current ||
+      isShared ||
+      isPreview ||
+      showRows ||
+      storagePlugin.config ||
+      storagePlugin.state !== undefined ||
+      storagePlugin.presetChecked
+    )
+      return;
+    presetChecked.current = true;
+    listPluginPresets(plugin.id, pluginWidget.id)
+      .then(({ presets }) => {
+        const preset = defaultPreset(presets);
+        return preset ? presetValues(preset) : {};
+      })
+      .catch(() => ({}))
+      .then((values) =>
+        updateWidget((prev) => {
+          const current = (prev.storage?.plugin ?? {}) as PluginInstanceStorage;
+          const untouched = !current.config && current.state === undefined;
+          return {
+            ...prev,
+            storage: {
+              ...prev.storage,
+              plugin: { ...current, ...(untouched ? values : {}), presetChecked: true },
+            },
+          };
+        }),
+      );
+  }, [
+    isShared,
+    isPreview,
+    showRows,
+    storagePlugin.config,
+    storagePlugin.state,
+    storagePlugin.presetChecked,
+    plugin.id,
+    pluginWidget.id,
+    presetValues,
+    updateWidget,
+  ]);
+
   const onCommand = useCallback(
     async (name: string, msg: unknown, buffers: ArrayBuffer[]) => {
       commandPermission(name, permissions);
@@ -567,6 +660,50 @@ function PluginWidgetBody({
           });
           return { value: answer.body };
         }
+        case "core:presets:list":
+        case "core:presets:apply":
+        case "core:presets:save": {
+          if (isShared)
+            throw new CommandError("unavailable", "a shared dashboard is read-only");
+          if (name === "core:presets:save") {
+            const presetLabel = presetName(args.name);
+            if (!presetLimiter.current.take())
+              throw new CommandError("rate_limited", "too many presets saved");
+            const saved = await createPluginPreset(plugin.id, pluginWidget.id, {
+              name: presetLabel,
+              config,
+              state: storagePlugin.state ?? null,
+              is_default: args.isDefault === true,
+            }).catch((error) => {
+              throw presetError(error);
+            });
+            return { value: { id: saved.id } };
+          }
+          const { presets } = await listPluginPresets(plugin.id, pluginWidget.id).catch(
+            (error) => {
+              throw presetError(error);
+            },
+          );
+          if (name === "core:presets:list")
+            return {
+              value: {
+                presets: presets.map((preset) => ({
+                  id: preset.id,
+                  name: preset.name,
+                  scope: preset.scope,
+                  isDefault: preset.is_default,
+                })),
+              },
+            };
+          const preset = presets.find((p) => p.id === args.id);
+          if (!preset)
+            throw new CommandError(
+              "out_of_scope",
+              "no preset of this widget has that id",
+            );
+          writePreset(preset);
+          return { value: {} };
+        }
         default:
           throw new CommandError("unknown_command", `${name} is not a host command`);
       }
@@ -574,6 +711,7 @@ function PluginWidgetBody({
     [
       activeDashboardId,
       addWidget,
+      config,
       isShared,
       permissions,
       plugin,
@@ -583,6 +721,8 @@ function PluginWidgetBody({
       widget.id,
       widget.innerTab,
       widget.name,
+      storagePlugin.state,
+      writePreset,
     ],
   );
 
@@ -657,11 +797,13 @@ function PluginWidgetBody({
     name: widget.name ?? "",
     description: widget.description ?? "",
   });
+  const [presetState, setPresetState] = useState<{ state: unknown } | null>(null);
   useEffect(() => setDraft(config), [config]);
   const resetSettings = useCallback(
     (open: boolean) => {
       if (!open) return;
       setDraft(config);
+      setPresetState(null);
       setDetails({ name: widget.name ?? "", description: widget.description ?? "" });
     },
     [config, widget.name, widget.description],
@@ -672,6 +814,13 @@ function PluginWidgetBody({
       toast.error("These settings are too large");
       return;
     }
+    let state: { state: unknown } | null = null;
+    try {
+      if (presetState) state = { state: checkStateWrite(presetState.state ?? null) };
+    } catch {
+      toast.error("The preset's state is too large");
+      return;
+    }
     const name = details.name.trim().slice(0, LIMITS.name);
     const description = details.description.trim().slice(0, LIMITS.description);
     updateWidget((prev) => ({
@@ -680,10 +829,25 @@ function PluginWidgetBody({
       description,
       storage: {
         ...prev.storage,
-        plugin: { ...(prev.storage?.plugin as PluginInstanceStorage), config: next },
+        plugin: {
+          ...(prev.storage?.plugin as PluginInstanceStorage),
+          config: next,
+          ...state,
+        },
       },
     }));
-  }, [details, draft, settingsSchema, updateWidget]);
+    setPresetState(null);
+  }, [details, draft, presetState, settingsSchema, updateWidget]);
+  const applyPreset = useCallback(
+    (preset: PluginPreset) => {
+      setDraft({
+        ...(pluginWidget.settings?.defaults ?? {}),
+        ...cleanSettings(settingsSchema, preset.config ?? {}),
+      });
+      setPresetState({ state: preset.state });
+    },
+    [pluginWidget.settings, settingsSchema],
+  );
 
   const actions = useMemo(
     () => cardActions(pluginWidget, permissions, plugin.files),
@@ -815,6 +979,14 @@ function PluginWidgetBody({
         onExport={canExport ? onExport : undefined}
         settingsModalChildren={
           <>
+            <PresetsPanel
+              pluginId={plugin.id}
+              widgetId={pluginWidget.id}
+              config={cleanSettings(settingsSchema, draft)}
+              state={presetState ? presetState.state : storagePlugin.state}
+              onApply={applyPreset}
+              disabled={isShared}
+            />
             <CardDetailsForm
               values={details}
               onChange={setDetails}

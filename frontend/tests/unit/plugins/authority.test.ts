@@ -7,7 +7,10 @@ import {
   checkStateWrite,
   coerceParamValue,
   commandPermission,
+  defaultPreset,
   exportFile,
+  presetError,
+  presetName,
   RateLimiter,
   readAddedWidget,
   readExportOptions,
@@ -549,5 +552,60 @@ describe("adding a widget of the plugin", () => {
     );
     expect(built.storage?.copiedFrom).toEqual({ widgetUuid: "sql-1", name: "SQL" });
     expect(Number.isNaN(Date.parse(String(built.storage?.createdAt)))).toBe(false);
+  });
+});
+
+describe("presets", () => {
+  it("needs core:presets for the preset commands", () => {
+    for (const name of [
+      "core:presets:list",
+      "core:presets:apply",
+      "core:presets:save",
+    ]) {
+      expect(() => commandPermission(name, perms())).toThrow(
+        expect.objectContaining({ name: "not_granted" }),
+      );
+      expect(() => commandPermission(name, perms("core:presets"))).not.toThrow();
+    }
+  });
+
+  it("takes a name of 1 to 80 characters, trimmed", () => {
+    expect(presetName("  Weekly  ")).toBe("Weekly");
+    expect(presetName("x".repeat(80))).toHaveLength(80);
+    for (const bad of ["", "   ", "x".repeat(81), 5, undefined])
+      expect(() => presetName(bad)).toThrow(
+        expect.objectContaining({ name: "invalid_args" }),
+      );
+  });
+
+  it("turns the API's refusals into the frame's error names", () => {
+    const refusal = (status: number, detail: unknown = "why") => ({
+      response: { status, data: { detail } },
+    });
+    expect(presetError(refusal(409, "You keep 100 presets"))).toMatchObject({
+      name: "too_large",
+      message: "You keep 100 presets",
+    });
+    expect(presetError(refusal(413)).name).toBe("too_large");
+    expect(presetError(refusal(422, [{ msg: "bad" }]))).toMatchObject({
+      name: "invalid_args",
+      message: "the preset call failed",
+    });
+    expect(presetError(refusal(404)).name).toBe("unavailable");
+    expect(presetError(new Error("Network Error")).name).toBe("unavailable");
+  });
+
+  it("starts a new card from the user's default, else the organization's", () => {
+    const preset = (id: string, scope: string, is_default: boolean) => ({
+      id,
+      scope,
+      is_default,
+    });
+    const orgDefault = preset("o1", "org", true);
+    const mine = preset("u1", "user", false);
+    const myDefault = preset("u2", "user", true);
+    expect(defaultPreset([mine, orgDefault, myDefault])).toBe(myDefault);
+    expect(defaultPreset([mine, orgDefault])).toBe(orgDefault);
+    expect(defaultPreset([mine, preset("o2", "org", false)])).toBeUndefined();
   });
 });

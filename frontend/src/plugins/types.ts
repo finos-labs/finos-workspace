@@ -23,6 +23,7 @@ export const PERMISSIONS = [
   "core:download:save",
   "core:proxy:call",
   "core:backend:call",
+  "core:presets",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -154,6 +155,7 @@ export interface PluginInstanceStorage {
   data?: unknown;
   state?: unknown;
   config?: Record<string, unknown>;
+  presetChecked?: boolean;
 }
 
 export const MAX_STATE_BYTES = 64 * 1024;
