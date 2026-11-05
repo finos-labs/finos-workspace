@@ -204,6 +204,20 @@ grid of this plugin, with every panel above. The plugin's backend serves the exp
 writes the `sql` parameter on a Files run, so a dashboard group can feed it to a chart. The frame's policy gains
 `script-src 'wasm-unsafe-eval'` and `connect-src blob:` for DuckDB, as the explorer's does.
 
+The card's **Create static widget** button freezes the current result into an AgGrid table widget of its own, with no
+parameters and no query: the first 60 columns and the first 1,000 rows, as the table's artifact holds them, and fewer rows
+when they would pass 1,000,000 bytes, the most the host takes. The button is the
+widget's `freeze` action (`core:ui:button`), and the copy is made with the command `core:dashboard:add-widget`, which the
+host takes only right after the click.
+
+## Card actions
+
+The AgGrid table has a **Floating filters** button in its header, which switches the widget's `floatingFilters` setting
+and shows a filter box under each column header while it is on, and two items in the card's options menu: **Autosize
+columns** and **Clear filters and sort**. They are the widget's `actions` (`core:ui:button`, `core:ui:menu`); the
+autosize item draws the package's own `assets/autosize.svg`, which the host sanitizes before it draws it. A static copy
+made by the SQL widget is an AgGrid table, so it has the same button and menu items.
+
 ## For the AI agent
 
 Two of the four widgets declare an `artifact` (`src/plugin.json`), a component the AI agent can show

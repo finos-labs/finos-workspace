@@ -41,6 +41,9 @@ PERMISSIONS = frozenset(
         "core:export:provide",
         "core:ui:notify",
         "core:ui:open-link",
+        "core:ui:button",
+        "core:ui:menu",
+        "core:dashboard:add-widget",
         "core:clipboard:write",
         "core:download:save",
         "core:proxy:call",
@@ -48,6 +51,111 @@ PERMISSIONS = frozenset(
     }
 )
 PERMISSIONS_LATER = frozenset({"core:data:query"})
+ACTION_ICONS = frozenset(
+    {
+        "bell",
+        "calendar",
+        "chart",
+        "check",
+        "clock",
+        "code",
+        "columns",
+        "copy",
+        "database",
+        "download",
+        "edit",
+        "eye",
+        "filter",
+        "globe",
+        "grid",
+        "info",
+        "link",
+        "lock",
+        "maximize",
+        "pie-chart",
+        "play",
+        "refresh",
+        "search",
+        "settings",
+        "sliders",
+        "sparkles",
+        "star",
+        "table",
+        "upload",
+        "zap",
+        "zoom-in",
+        "zoom-out",
+    }
+)
+ACTION_ICON_PATH = r"^assets/[A-Za-z0-9._-]{1,100}\.svg$"
+MAX_ACTION_ICON_BYTES = 16384
+ACTION_ICON_TAGS = frozenset(
+    {
+        "circle",
+        "clipPath",
+        "defs",
+        "desc",
+        "ellipse",
+        "g",
+        "line",
+        "linearGradient",
+        "mask",
+        "path",
+        "polygon",
+        "polyline",
+        "radialGradient",
+        "rect",
+        "stop",
+        "svg",
+        "title",
+    }
+)
+ACTION_ICON_ATTRIBUTES = frozenset(
+    {
+        "clip-path",
+        "clip-rule",
+        "cx",
+        "cy",
+        "d",
+        "fill",
+        "fill-opacity",
+        "fill-rule",
+        "gradientTransform",
+        "gradientUnits",
+        "height",
+        "id",
+        "mask",
+        "offset",
+        "opacity",
+        "points",
+        "r",
+        "rx",
+        "ry",
+        "stop-color",
+        "stop-opacity",
+        "stroke",
+        "stroke-dasharray",
+        "stroke-dashoffset",
+        "stroke-linecap",
+        "stroke-linejoin",
+        "stroke-miterlimit",
+        "stroke-opacity",
+        "stroke-width",
+        "transform",
+        "viewBox",
+        "width",
+        "x",
+        "x1",
+        "x2",
+        "xmlns",
+        "y",
+        "y1",
+        "y2",
+    }
+)
+MAX_NAVBAR_ACTIONS = 3
+MAX_MENU_ACTIONS = 8
+ACTION_PERMISSIONS = {"navbar": "core:ui:button", "menu": "core:ui:menu"}
 MAX_ROUTE_BYTES = 5 * 1024 * 1024
 
 
@@ -358,6 +466,41 @@ class WidgetServer(BaseModel):
     )
 
 
+class Action(BaseModel):
+    model_config = closed
+
+    id: Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_-]{0,31}$")] = Field(
+        description="The action's id, unique within the widget. The module receives it when the user picks the action."
+    )
+    label: Annotated[str, StringConstraints(min_length=1, max_length=40)] = Field(
+        description="The text of the menu item, or the tooltip of the button."
+    )
+    icon: str = Field(
+        description=(
+            "One of the icons that the host offers, by name, or an SVG file of the package under assets/. "
+            "The host draws only the SVG elements and attributes that it allows."
+        )
+    )
+    placement: Literal["navbar", "menu"] = Field(
+        description="navbar puts a button in the card's header, menu puts an item in the card's options menu."
+    )
+    toggles: Annotated[str, StringConstraints(pattern=r"^[A-Za-z][A-Za-z0-9_]{0,63}$")] | None = Field(
+        default=None,
+        description=(
+            "A boolean setting of the widget that the button switches on and off. "
+            "The button shows as pressed while the setting is on. Only a navbar button toggles."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def valid(self):
+        if self.icon not in ACTION_ICONS and not re.fullmatch(ACTION_ICON_PATH, self.icon):
+            raise ValueError(f"{self.icon!r} is neither a host icon nor an SVG file under assets/")
+        if self.toggles is not None and self.placement != "navbar":
+            raise ValueError("only a navbar button toggles a setting")
+        return self
+
+
 class Widget(BaseModel):
     model_config = closed
 
@@ -408,6 +551,36 @@ class Widget(BaseModel):
         default=None, description="A form that the user edits for each widget instance."
     )
     grid: Grid = Field(default_factory=Grid, description="The widget's size on the dashboard grid.")
+    actions: list[Action] = Field(
+        default_factory=list,
+        max_length=MAX_NAVBAR_ACTIONS + MAX_MENU_ACTIONS,
+        description=(
+            "Buttons in the card's header and items in its options menu. The host draws them, "
+            "and sends the module an action event when the user picks one."
+        ),
+    )
+
+    def _check_actions(self) -> None:
+        ids = [a.id for a in self.actions]
+        if len(set(ids)) != len(ids):
+            raise ValueError("an action id is declared twice")
+        for placement, permission in ACTION_PERMISSIONS.items():
+            declared = any(a.placement == placement for a in self.actions)
+            if declared != (permission in self.permissions):
+                raise ValueError(f"a widget with {placement} actions has the permission {permission}, and only then")
+        if sum(a.placement == "navbar" for a in self.actions) > MAX_NAVBAR_ACTIONS:
+            raise ValueError(f"a widget has at most {MAX_NAVBAR_ACTIONS} navbar buttons")
+        if "core:dashboard:add-widget" in self.permissions and not any(a.toggles is None for a in self.actions):
+            raise ValueError(
+                "a widget with the permission core:dashboard:add-widget has an action that toggles nothing, "
+                "since it adds a widget only right after the user picks such an action"
+            )
+        if sum(a.placement == "menu" for a in self.actions) > MAX_MENU_ACTIONS:
+            raise ValueError(f"a widget has at most {MAX_MENU_ACTIONS} menu items")
+        properties = (self.settings.schema_.get("properties") or {}) if self.settings else {}
+        for action in self.actions:
+            if action.toggles is not None and (properties.get(action.toggles) or {}).get("type") != "boolean":
+                raise ValueError(f"the action {action.id!r} toggles {action.toggles!r}, which is not a boolean setting")
 
     def _check_artifact(self) -> None:
         if self.artifact is None:
@@ -432,6 +605,7 @@ class Widget(BaseModel):
         if len(set(self.permissions)) != len(self.permissions):
             raise ValueError("a permission is listed twice")
         self._check_artifact()
+        self._check_actions()
         calls_proxies = bool(self.server and self.server.proxies)
         if calls_proxies != ("core:proxy:call" in self.permissions):
             raise ValueError("a widget that names proxies has the permission core:proxy:call, and only then")
@@ -561,6 +735,11 @@ class Manifest(BaseModel):
             if directive not in (self.csp or {}):
                 raise ValueError(f"cspNotes: {directive} is not in csp")
         self._check_server()
+        widgets = self.contributes.widgets
+        if any("core:dashboard:add-widget" in w.permissions for w in widgets) and not any(w.artifact for w in widgets):
+            raise ValueError(
+                "a plugin whose widget has the permission core:dashboard:add-widget has a widget with an artifact"
+            )
         if self.icon and not self.icon.startswith("assets/"):
             raise ValueError("the icon is a file under assets/")
         return self
@@ -616,8 +795,11 @@ class Manifest(BaseModel):
     def skill_paths(self) -> set[str]:
         return {skill.file for skill in self.contributes.skills}
 
+    def action_icon_paths(self) -> set[str]:
+        return {a.icon for w in self.contributes.widgets for a in w.actions if a.icon not in ACTION_ICONS}
+
     def served_paths(self) -> set[str]:
-        paths = {self.entry.module, *self.entry.styles}
+        paths = {self.entry.module, *self.entry.styles, *self.action_icon_paths()}
         if self.icon:
             paths.add(self.icon)
         return paths

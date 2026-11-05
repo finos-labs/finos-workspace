@@ -131,6 +131,45 @@ export function pluginWidgetId(pluginId: string, widgetId: string) {
   return `plugin:${pluginId}:${widgetId}`;
 }
 
+export function buildPluginArtifactWidget(
+  resolved: ResolvedPluginWidget,
+  data: unknown,
+  options: {
+    id: string;
+    name: string;
+    description: string;
+    innerTab?: string;
+    config?: Record<string, unknown>;
+  },
+): WidgetT {
+  const { plugin, widget } = resolved;
+  const { h, minW, minH } = widget.grid;
+  return {
+    id: options.id,
+    name: options.name,
+    description: options.description,
+    innerTab: options.innerTab,
+    category: "Others",
+    subCategory: "",
+    source: "",
+    external: false,
+    widgetId: pluginWidgetId(plugin.id, widget.id),
+    type: "custom",
+    connectionType: "plugin",
+    plugin: { id: plugin.id, widget: widget.id },
+    params: widget.params as unknown as ParamDef[],
+    gridData: {
+      w: 40,
+      h: Math.max(h, 12),
+      ...(minW ? { minW } : {}),
+      ...(minH ? { minH } : {}),
+    },
+    storage: {
+      plugin: { data, ...(options.config ? { config: options.config } : {}) },
+    },
+  } as WidgetT;
+}
+
 export function standalonePluginWidgets(plugins: AvailablePlugin[]): WidgetT[] {
   return plugins.flatMap((plugin) =>
     plugin.widgets

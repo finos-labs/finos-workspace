@@ -74,6 +74,7 @@ type ExtraAction = {
   label: string;
   onClick?: () => void;
   icon: IconId;
+  iconElement?: ReactNode;
   id: string;
   hide?: boolean;
   tooltipMessage?: string;

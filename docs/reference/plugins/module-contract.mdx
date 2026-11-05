@@ -49,7 +49,7 @@ The model holds the widget's traits. A trait is a named value that is bound to s
 | `model.save_changes()` | It sends the changed traits that are bound and writable. The host echoes back what it accepted. A refused write is echoed with the previous value, which fires `change:` again. |
 | `model.on(event, callback)` and `model.off(event?, callback?)` | They add and remove listeners. The callbacks of `change:<name>` receive no arguments. Calling `off()` removes every listener, and `off(event)` removes the listeners of that event. |
 | `model.send(content, callbacks, buffers)` | It sends a message to the host. The host answers only anywidget's own `invoke` message, which has `kind: "anywidget-command"`, and it answers with a `msg:custom` event that has the same `id`. The host drops every other message. |
-| `model.on("msg:custom", (content, buffers) => ...)` | It receives host events. The host sends `{ kind: "workspace-event", name: "refresh" }` when the user refreshes the widget, and `{ kind: "workspace-event", name: "visibility", visible }` when the widget becomes visible or hidden. |
+| `model.on("msg:custom", (content, buffers) => ...)` | It receives host events. The host sends `{ kind: "workspace-event", name: "refresh" }` when the user refreshes the widget, `{ kind: "workspace-event", name: "visibility", visible }` when the widget becomes visible or hidden, and `{ kind: "workspace-event", name: "action", id }` when the user picks one of the widget's [actions](package-and-manifest.mdx#actions), with `pressed` when the action toggles a setting. |
 
 When the manifest has no `model.traits` entry, the model offers these traits: <PluginList of="traits" />.
 

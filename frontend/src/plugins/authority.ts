@@ -1,13 +1,24 @@
 import { z } from "zod";
+import type { IconId } from "~/components/Icon.types";
 import type { ParamDef } from "~/components/types";
-import { LINK_PROTOCOLS, MAX_EXPORT_OPTIONS } from "./limits";
+import ACTION_ICONS from "./action-icons.json";
+import { validateDefinition } from "./definition";
+import {
+  LINK_PROTOCOLS,
+  MAX_ADDED_WIDGET_BYTES,
+  MAX_EXPORT_OPTIONS,
+  MAX_MENU_ACTIONS,
+  MAX_NAVBAR_ACTIONS,
+} from "./limits";
 import { CommandError, type CommandErrorName, MAX_EXPORT_BYTES } from "./protocol";
 import {
   MAX_CONFIG_BYTES,
   MAX_SETTING_LENGTH,
   MAX_STATE_BYTES,
   type Permission,
+  type PluginAction,
   type PluginWidgetDef,
+  type ResolvedPluginWidget,
   type SettingsSchema,
 } from "./types";
 
@@ -221,6 +232,7 @@ export const COMMAND_PERMISSIONS: Record<string, Permission> = {
   "core:asset:read": "core:default",
   "core:ui:notify": "core:ui:notify",
   "core:ui:open-link": "core:ui:open-link",
+  "core:dashboard:add-widget": "core:dashboard:add-widget",
   "core:clipboard:write": "core:clipboard:write",
   "core:download:save": "core:download:save",
   "core:proxy:call": "core:proxy:call",
@@ -412,4 +424,89 @@ export function safeFilename(name: unknown): string {
     .replace(/^\.+/, "")
     .slice(0, 120);
   return cleaned || "download";
+}
+
+export const ACTION_ICON_PATH = /^assets\/[A-Za-z0-9._-]{1,100}\.svg$/;
+
+export interface CardAction {
+  id: string;
+  label: string;
+  icon?: IconId;
+  iconPath?: string;
+  toggles?: string;
+}
+
+export function cardActions(
+  widget: Pick<PluginWidgetDef, "actions" | "settings">,
+  permissions: ReadonlySet<string>,
+  files: Readonly<Record<string, unknown>> = {},
+): { buttons: CardAction[]; menu: CardAction[] } {
+  const properties = widget.settings?.schema?.properties ?? {};
+  const resolve = (action: PluginAction): CardAction | null => {
+    const icon = Object.hasOwn(ACTION_ICONS, action.icon)
+      ? (ACTION_ICONS as Record<string, IconId>)[action.icon]
+      : undefined;
+    const iconPath =
+      !icon && ACTION_ICON_PATH.test(action.icon) && Object.hasOwn(files, action.icon)
+        ? action.icon
+        : undefined;
+    if (!icon && !iconPath) return null;
+    const base = {
+      id: action.id,
+      label: action.label,
+      ...(icon ? { icon } : { iconPath }),
+    };
+    if (!action.toggles) return base;
+    if (action.placement !== "navbar" || properties[action.toggles]?.type !== "boolean")
+      return null;
+    return { ...base, toggles: action.toggles };
+  };
+  const pick = (
+    placement: PluginAction["placement"],
+    permission: Permission,
+    limit: number,
+  ) =>
+    permissions.has(permission)
+      ? widget.actions
+          .filter((action) => action.placement === placement)
+          .map(resolve)
+          .filter((action): action is CardAction => action !== null)
+          .slice(0, limit)
+      : [];
+  return {
+    buttons: pick("navbar", "core:ui:button", MAX_NAVBAR_ACTIONS),
+    menu: pick("menu", "core:ui:menu", MAX_MENU_ACTIONS),
+  };
+}
+
+export function readAddedWidget(
+  args: Record<string, unknown>,
+  resolve: (widgetId: string) => ResolvedPluginWidget | null,
+): { target: ResolvedPluginWidget; data: unknown; name?: string } {
+  const widgetId = typeof args.widget === "string" ? args.widget : "";
+  const target = widgetId ? resolve(widgetId) : null;
+  if (!target?.widget.artifact)
+    throw new CommandError(
+      "out_of_scope",
+      `${widgetId || "the widget"} is not a widget of this plugin that takes data`,
+    );
+  const problems = validateDefinition(args.data, target.widget.artifact.data);
+  if (problems.length)
+    throw new CommandError(
+      "invalid_args",
+      problems
+        .slice(0, 3)
+        .map((e) => `data${e.path}: ${e.message}`)
+        .join("; "),
+    );
+  if (jsonSize(args.data) > MAX_ADDED_WIDGET_BYTES)
+    throw new CommandError(
+      "too_large",
+      `the data is limited to ${MAX_ADDED_WIDGET_BYTES / 1024} KiB`,
+    );
+  const name =
+    typeof args.name === "string" && args.name.trim()
+      ? args.name.trim().slice(0, 80)
+      : undefined;
+  return { target, data: args.data, name };
 }

@@ -13,8 +13,8 @@ import { useShallowThemeStore } from "~/lib/state/theme";
 import { generateRandomName } from "~/lib/utils";
 import { HTML_SANITIZE_CONFIG } from "~/lib/utils/sanitize";
 import { scrollToAndHighlightWidget } from "~/lib/utils/widgetHighlight";
-import { pluginWidgetId, resolvePluginWidget } from "~/plugins/registry";
-import type { ParamDef, WidgetJsonT, WidgetT } from "../../types";
+import { buildPluginArtifactWidget, resolvePluginWidget } from "~/plugins/registry";
+import type { WidgetJsonT, WidgetT } from "../../types";
 import {
   createConversationContextPayload,
   getFallbackName,
@@ -227,21 +227,16 @@ export function useCreateWidgetFromArtifact() {
         const { plugin, data, config } = params.pluginArtifact;
         const found = resolvePluginWidget(plugin);
         if (!found) throw new Error("This plugin component is not available to you");
-        const { h, minW, minH } = found.widget.grid;
-        widget.widgetId = pluginWidgetId(plugin.id, plugin.widget);
-        widget.type = "custom";
-        widget.connectionType = "plugin";
-        widget.plugin = plugin;
-        widget.params = found.widget.params as unknown as ParamDef[];
-        widget.gridData = {
-          w: 40,
-          h: Math.max(h, 12),
-          ...(minW ? { minW } : {}),
-          ...(minH ? { minH } : {}),
-        };
-        widget.storage = { plugin: { data, ...(config ? { config } : {}) } };
-
-        return await widgetCreation(widget, { saveMetadata: false });
+        return await widgetCreation(
+          buildPluginArtifactWidget(found, data, {
+            id: widgetUuid,
+            name: widgetName,
+            description: widgetDescription,
+            innerTab,
+            config,
+          }),
+          { saveMetadata: false },
+        );
       }
       throw new Error("Invalid widget type");
     },

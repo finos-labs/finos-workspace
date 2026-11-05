@@ -17,6 +17,10 @@ export const LINK_PROTOCOLS = ["https:", "mailto:"] as const;
 export const MAX_CLIPBOARD_BYTES = 1024 * 1024;
 export const MAX_COPILOT_CONTEXT_BYTES = 256 * 1024;
 export const MAX_EXPORT_OPTIONS = 16;
+export const ACTION_GRANT_MS = 10_000;
+export const MAX_NAVBAR_ACTIONS = 3;
+export const MAX_MENU_ACTIONS = 8;
+export const MAX_ADDED_WIDGET_BYTES = 1024 * 1024;
 export const EXPORT_TIMEOUTS_MS: Record<ExportMember, number> = {
   exportOptions: 10_000,
   exportData: 60_000,

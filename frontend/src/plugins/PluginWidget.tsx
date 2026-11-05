@@ -5,6 +5,8 @@ import { callPluginBackend, callPluginProxy } from "~/api/plugins.api";
 import DraggableCard from "~/components/DraggableCard";
 import { ExternalLinkDialog } from "~/components/ExternalLinkDialog";
 import SearchResultsNotFound from "~/components/General/SearchResultsNotFound";
+import Icon from "~/components/Icon";
+import Tooltip from "~/components/Tooltip";
 import type { ParamDef, StoredParamValue } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams";
@@ -18,10 +20,14 @@ import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGrou
 import { useJsonData } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { cn, uuidv4 } from "~/lib/utils";
 import { sourceStreamHref } from "~/lib/utils/fetch";
 import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
+import { useActionIcon } from "./actionIcon";
 import {
   assetPath,
+  type CardAction,
+  cardActions,
   checkConfigWrite,
   checkStateWrite,
   coerceParamValue,
@@ -29,6 +35,7 @@ import {
   exportFile,
   jsonSize,
   RateLimiter,
+  readAddedWidget,
   readExportOptions,
   safeFilename,
   safeLink,
@@ -40,6 +47,7 @@ import {
 import { BundleIntegrityError, loadAsset } from "./bundle";
 import { validateDefinition } from "./definition";
 import {
+  ACTION_GRANT_MS,
   MAX_CLIPBOARD_BYTES,
   MAX_COPILOT_CONTEXT_BYTES,
   MAX_NOTIFY_LENGTH,
@@ -50,6 +58,7 @@ import {
 import PluginFrame, { type FrameStatus, type PluginFrameHandle } from "./PluginFrame";
 import { CommandError, MAX_EXPORT_BYTES } from "./protocol";
 import {
+  buildPluginArtifactWidget,
   resolvePluginWidget,
   resolveVizHandler,
   usePluginRegistryStore,
@@ -164,6 +173,7 @@ function PluginWidgetBody({
   const [status, setStatus] = useState<FrameStatus>({ kind: "booting" });
   const [link, setLink] = useState<string | null>(null);
   const [copilotContext, setCopilotContext] = useState<unknown>(undefined);
+  const actionGrant = useRef(0);
   const notifyLimiter = useRef(
     new RateLimiter(NOTIFY_RATE.perSecond, NOTIFY_RATE.burst),
   );
@@ -475,6 +485,37 @@ function PluginWidgetBody({
         case "core:ui:open-link":
           setLink(safeLink(args.url));
           return {};
+        case "core:dashboard:add-widget": {
+          if (isShared)
+            throw new CommandError("unavailable", "a shared dashboard is read-only");
+          if (actionGrant.current < Date.now())
+            throw new CommandError(
+              "out_of_scope",
+              "a widget is added only right after the user picks one of the widget's actions",
+            );
+          const { target, data, name } = readAddedWidget(args, (id) =>
+            resolvePluginWidget({ id: plugin.id, widget: id }),
+          );
+          const grant = actionGrant.current;
+          actionGrant.current = 0;
+          const added = await addWidget(
+            activeDashboardId,
+            buildPluginArtifactWidget(target, data, {
+              id: uuidv4(),
+              name: name ?? widget.name,
+              description: `A static copy of ${widget.name}`,
+              innerTab: widget.innerTab,
+            }),
+          );
+          if (!added) {
+            actionGrant.current = grant;
+            throw new CommandError(
+              "unavailable",
+              "the dashboard did not take the widget",
+            );
+          }
+          return { value: { instanceId: added } };
+        }
         case "core:clipboard:write": {
           const text = String(args.text ?? "");
           if (text.length > MAX_CLIPBOARD_BYTES)
@@ -527,12 +568,17 @@ function PluginWidgetBody({
       }
     },
     [
+      activeDashboardId,
+      addWidget,
+      isShared,
       permissions,
       plugin,
       pluginWidget.id,
       pluginWidget.proxies,
       pluginWidget.routes,
       widget.id,
+      widget.innerTab,
+      widget.name,
     ],
   );
 
@@ -618,6 +664,76 @@ function PluginWidgetBody({
     }));
   }, [draft, settingsSchema, updateWidget]);
 
+  const actions = useMemo(
+    () => cardActions(pluginWidget, permissions, plugin.files),
+    [pluginWidget, permissions, plugin.files],
+  );
+  const running = status.kind === "running";
+  const onAction = useCallback(
+    (action: CardAction) => {
+      if (!action.toggles) {
+        actionGrant.current = Date.now() + ACTION_GRANT_MS;
+        frameRef.current?.sendEvent({
+          kind: "workspace-event",
+          name: "action",
+          id: action.id,
+        });
+        return;
+      }
+      if (isShared) return;
+      const key = action.toggles;
+      const pressed = config[key] !== true;
+      updateWidget((prev) => {
+        const stored = prev.storage?.plugin as PluginInstanceStorage | undefined;
+        try {
+          const next = checkConfigWrite(
+            settingsSchema,
+            cleanSettings(settingsSchema, stored?.config),
+            key,
+            pressed,
+          );
+          return {
+            ...prev,
+            storage: { ...prev.storage, plugin: { ...stored, config: next } },
+          };
+        } catch {
+          return prev;
+        }
+      });
+      frameRef.current?.sendEvent({
+        kind: "workspace-event",
+        name: "action",
+        id: action.id,
+        pressed,
+      });
+    },
+    [config, isShared, settingsSchema, updateWidget],
+  );
+  const menuActions = useMemo(
+    () =>
+      actions.menu.map((action) => ({
+        id: `plugin-action-${action.id}`,
+        label: action.label,
+        icon: action.icon ?? ("widget" as const),
+        iconElement: <PluginActionIcon plugin={plugin} action={action} />,
+        hide: !running,
+        onClick: () => onAction(action),
+      })),
+    [actions.menu, onAction, plugin, running],
+  );
+  const navbarButtons = running
+    ? actions.buttons.map((action) => (
+        <PluginActionButton
+          key={action.id}
+          plugin={plugin}
+          action={action}
+          pressed={action.toggles ? config[action.toggles] === true : undefined}
+          disabled={!!action.toggles && isShared}
+          onClick={() => onAction(action)}
+        />
+      ))
+    : [];
+
   const { renderRow0Params, renderBelowNavbarRows } = useWidgetParamsPositions();
 
   if (definitionErrors.length) {
@@ -656,14 +772,20 @@ function PluginWidgetBody({
               : { data, context: copilotContext }
         }
         extraNavbarElements={
-          widget.raw ? (
-            <RowsToggle
-              showRows={showRows}
-              onChange={setShowRows}
-              viewName={viewName}
-            />
+          navbarButtons.length || widget.raw ? (
+            <>
+              {navbarButtons}
+              {widget.raw ? (
+                <RowsToggle
+                  showRows={showRows}
+                  onChange={setShowRows}
+                  viewName={viewName}
+                />
+              ) : null}
+            </>
           ) : undefined
         }
+        extraSettings={menuActions}
         lastUpdated={readsData ? dataUpdatedAt : undefined}
         loading={readsData && isLoading}
         error={readsData ? error : undefined}
@@ -729,6 +851,52 @@ function PluginWidgetBody({
         onOpenInNewTab={(url) => window.open(url, "_blank", "noopener,noreferrer")}
       />
     </>
+  );
+}
+
+function PluginActionIcon({
+  plugin,
+  action,
+}: {
+  plugin: ResolvedPluginWidget["plugin"];
+  action: CardAction;
+}) {
+  const svg = useActionIcon(plugin, action.iconPath);
+  if (action.icon) return <Icon id={action.icon} className="h-3.5 w-3.5" />;
+  return (
+    <span
+      className="inline-flex h-3.5 w-3.5 [&>svg]:h-full [&>svg]:w-full"
+      data-plugin-icon={action.iconPath}
+      dangerouslySetInnerHTML={{ __html: svg ?? "" }}
+    />
+  );
+}
+
+function PluginActionButton(props: {
+  plugin: ResolvedPluginWidget["plugin"];
+  action: CardAction;
+  pressed?: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const { plugin, action, pressed, disabled, onClick } = props;
+  return (
+    <Tooltip message={action.label}>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className={cn("ws-small-navbar-btn", {
+          "bg-brand-main! text-white! hover:bg-brand-main!": pressed,
+          "opacity-30": disabled,
+        })}
+        aria-label={action.label}
+        aria-pressed={pressed}
+        data-plugin-action={action.id}
+      >
+        <PluginActionIcon plugin={plugin} action={action} />
+      </button>
+    </Tooltip>
   );
 }
 

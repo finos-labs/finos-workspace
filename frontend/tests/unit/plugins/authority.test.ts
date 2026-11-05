@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { ParamDef } from "~/components/types";
 import {
   assetPath,
+  cardActions,
   checkConfigWrite,
   checkStateWrite,
   coerceParamValue,
   commandPermission,
   exportFile,
   RateLimiter,
+  readAddedWidget,
   readExportOptions,
   safeFilename,
   safeLink,
@@ -17,6 +19,8 @@ import {
   ViolationCounter,
 } from "~/plugins/authority";
 import { CommandError } from "~/plugins/protocol";
+import { buildPluginArtifactWidget } from "~/plugins/registry";
+import { PluginListingSchema } from "~/plugins/types";
 
 const perms = (...p: string[]) => new Set(["core:default", ...p]);
 
@@ -323,6 +327,194 @@ describe("the runtime authority", () => {
       expect(exportFile(new Blob(["x"]), geojson)?.type).toBe("application/geo+json");
       expect(exportFile(null, geojson)).toBeNull();
       expect(() => exportFile({ rows: [] }, geojson)).toThrow(CommandError);
+    });
+  });
+});
+
+const ROWS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["rowData"],
+  properties: {
+    rowData: {
+      type: "array",
+      maxItems: 2,
+      items: { type: "object", additionalProperties: { type: ["string", "number"] } },
+    },
+  },
+};
+
+const tablePlugin = PluginListingSchema.parse({
+  enabled: true,
+  etag: "1",
+  plugins: [
+    {
+      id: "grid-kit",
+      version: "1.0.0",
+      name: "Grid kit",
+      digest: `sha256-${"A".repeat(43)}`,
+      entry: { module: "entry.js", styles: [] },
+      files: {},
+      csp: {},
+      widgets: [
+        {
+          id: "table",
+          name: "Table",
+          handles: [{ type: "grid-table" }],
+          permissions: ["core:data:read"],
+          artifact: { description: "Rows", data: ROWS_SCHEMA },
+        },
+        {
+          id: "sql",
+          name: "SQL",
+          standalone: true,
+          permissions: ["core:ui:button", "core:ui:menu", "core:dashboard:add-widget"],
+          settings: {
+            schema: {
+              properties: {
+                heatmap: { type: "boolean" },
+                title: { type: "string" },
+              },
+            },
+          },
+          actions: [
+            { id: "freeze", label: "Freeze", icon: "table", placement: "navbar" },
+            {
+              id: "heat",
+              label: "Heatmap",
+              icon: "grid",
+              placement: "navbar",
+              toggles: "heatmap",
+            },
+            { id: "reset", label: "Reset", icon: "refresh", placement: "menu" },
+          ],
+        },
+      ],
+    },
+  ],
+}).plugins[0];
+const [tableWidget, sqlWidget] = tablePlugin.widgets;
+const resolveTable = (id: string) => {
+  const widget = tablePlugin.widgets.find((w) => w.id === id);
+  return widget ? { plugin: tablePlugin, widget } : null;
+};
+
+describe("card actions", () => {
+  it("draws the buttons and menu items that the permissions allow, with host icons", () => {
+    const actions = cardActions(sqlWidget, new Set(sqlWidget.permissions));
+    expect(actions.buttons).toEqual([
+      { id: "freeze", label: "Freeze", icon: "table-02" },
+      { id: "heat", label: "Heatmap", icon: "grid-01", toggles: "heatmap" },
+    ]);
+    expect(actions.menu).toEqual([
+      { id: "reset", label: "Reset", icon: "refresh-icon" },
+    ]);
+  });
+
+  it("draws an SVG of the package only when the package has the file", () => {
+    const widget = {
+      ...sqlWidget,
+      actions: [
+        { id: "a", label: "A", icon: "assets/a.svg", placement: "menu" as const },
+        { id: "b", label: "B", icon: "assets/missing.svg", placement: "menu" as const },
+        { id: "c", label: "C", icon: "entry.js", placement: "menu" as const },
+        { id: "d", label: "D", icon: "constructor", placement: "menu" as const },
+      ],
+    };
+    const files = {
+      "assets/a.svg": { size: 1, sha256: "a".repeat(64) },
+      "entry.js": {},
+    };
+    expect(cardActions(widget, new Set(["core:ui:menu"]), files).menu).toEqual([
+      { id: "a", label: "A", iconPath: "assets/a.svg" },
+    ]);
+  });
+
+  it("draws nothing without the permission", () => {
+    expect(cardActions(sqlWidget, new Set(["core:ui:menu"])).buttons).toEqual([]);
+    expect(cardActions(sqlWidget, new Set(["core:ui:button"])).menu).toEqual([]);
+  });
+
+  it("drops an unknown icon, a toggle of a setting that is not boolean, and actions past the limit", () => {
+    const widget = {
+      ...sqlWidget,
+      actions: [
+        { id: "a", label: "A", icon: "skull", placement: "navbar" as const },
+        {
+          id: "b",
+          label: "B",
+          icon: "eye",
+          placement: "navbar" as const,
+          toggles: "title",
+        },
+        ...["c", "d", "e", "f"].map((id) => ({
+          id,
+          label: id,
+          icon: "eye",
+          placement: "navbar" as const,
+        })),
+      ],
+    };
+    expect(
+      cardActions(widget, new Set(["core:ui:button"])).buttons.map((a) => a.id),
+    ).toEqual(["c", "d", "e"]);
+  });
+});
+
+describe("adding a widget of the plugin", () => {
+  const rows = { rowData: [{ region: "north", units: 3 }] };
+
+  it("takes data that satisfies the target's artifact", () => {
+    const added = readAddedWidget(
+      { widget: "table", data: rows, name: "  Units  " },
+      resolveTable,
+    );
+    expect(added.target.widget.id).toBe("table");
+    expect(added.data).toEqual(rows);
+    expect(added.name).toBe("Units");
+  });
+
+  it("refuses a widget that takes no data, or is not the plugin's", () => {
+    expect(() => readAddedWidget({ widget: "sql", data: rows }, resolveTable)).toThrow(
+      CommandError,
+    );
+    expect(() =>
+      readAddedWidget({ widget: "other", data: rows }, resolveTable),
+    ).toThrow(CommandError);
+  });
+
+  it("refuses data that does not satisfy the artifact", () => {
+    for (const data of [
+      {},
+      { rowData: [{ a: 1 }, { a: 2 }, { a: 3 }] },
+      { rowData: [{ a: { nested: true } }] },
+      { rowData: [], extra: 1 },
+    ])
+      expect(() => readAddedWidget({ widget: "table", data }, resolveTable)).toThrow(
+        /data/,
+      );
+  });
+
+  it("builds the widget as a chat artifact is built, with the target's own parameters", () => {
+    const built = buildPluginArtifactWidget(
+      { plugin: tablePlugin, widget: tableWidget },
+      rows,
+      {
+        id: "w1",
+        name: "Units",
+        description: "A static copy of SQL",
+        innerTab: "t1",
+      },
+    );
+    expect(built).toMatchObject({
+      id: "w1",
+      name: "Units",
+      widgetId: "plugin:grid-kit:table",
+      connectionType: "plugin",
+      plugin: { id: "grid-kit", widget: "table" },
+      params: [],
+      innerTab: "t1",
+      storage: { plugin: { data: rows } },
     });
   });
 });
