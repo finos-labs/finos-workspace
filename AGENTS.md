@@ -1,6 +1,6 @@
 # FINOS Workspace
 
-Self-hosted analytics workspace: web app, API, agent, MCP servers, widget plugins, docs site.
+Self-hosted analytics workspace: web app, API, agent, MCP servers, widget plugins, docs site ([workspace.finos.org](https://workspace.finos.org)).
 
 ## Layout
 
