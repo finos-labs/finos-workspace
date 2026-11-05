@@ -148,4 +148,11 @@ describe("the web app's Content-Security-Policy", () => {
       "js_set $content_security_policy app_config.contentSecurityPolicy;",
     );
   });
+
+  it("serves .mjs files, such as the bundled pdf.js worker, as JavaScript", () => {
+    const conf = readFileSync(resolve(process.cwd(), "nginx.conf"), "utf8");
+    expect(conf).toMatch(
+      /location ~ \\\.mjs\$ \{\s*types \{\}\s*default_type text\/javascript;/,
+    );
+  });
 });
