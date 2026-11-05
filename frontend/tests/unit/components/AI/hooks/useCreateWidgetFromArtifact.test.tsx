@@ -171,6 +171,7 @@ describe("useCreateWidgetFromArtifact", () => {
           plugin: { id: "chart-kit", widget: "bars" },
           gridData: { w: 40, h: 12 },
           storage: {
+            createdAt: expect.any(String),
             plugin: { data: { rows: [{ x: "a", y: 1 }] }, config: { color: "red" } },
           },
         }),
