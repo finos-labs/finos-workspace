@@ -192,6 +192,13 @@ class TestDiscovery:
         assert found.digest == digest_of(directory)
         assert set(found.served_files()) == {"entry.js", "entry.css"}
 
+    def test_a_version_whose_directory_is_gone_is_reported_and_not_raised(self, tmp_path):
+        (tmp_path / "test-chart").mkdir()
+        found = inspect_version(
+            tmp_path, "test-chart", "1.0.0", pins={}, require_pins=False, max_files=10, max_bytes=1000, development=True
+        )
+        assert found.errors == ["test-chart/1.0.0 is missing"]
+
     def test_the_directory_must_be_set_and_exist(self, tmp_path):
         assert scan(None).error
         assert scan(str(tmp_path / "missing")).error

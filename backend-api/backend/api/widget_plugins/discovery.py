@@ -195,6 +195,9 @@ def inspect_version(  # noqa: PLR0911, PLR0912
 ) -> DiscoveredVersion:
     found = DiscoveredVersion(plugin_id=plugin_id, version=version_name, path=f"{plugin_id}/{version_name}")
     version_dir = root / plugin_id / version_name
+    if not version_dir.is_dir():
+        found.fail("files", f"{found.path} is missing")
+        return found
     _walk(version_dir, found, max_files, max_bytes, cached_sha256 if development else sha256_file)
     if found.errors:
         return found
