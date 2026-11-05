@@ -17,6 +17,7 @@ type DashboardLayoutEntryT = {
 type DashboardTabWidgetInfoT = {
   widget_uuid: string;
   name: string | undefined;
+  copied_from?: { widget_uuid: string; name: string; created_at?: string };
 };
 
 type DashboardTabInfoT = {
@@ -131,9 +132,21 @@ export function getDashboardInfo(
     }
 
     const { tab } = ensureTab(widget.innerTab);
+    const copiedFrom = widget.storage?.copiedFrom;
     tab.widgets.push({
       widget_uuid: widget.id,
       name: widget.name,
+      ...(copiedFrom
+        ? {
+            copied_from: {
+              widget_uuid: copiedFrom.widgetUuid,
+              name: copiedFrom.name,
+              ...(widget.storage?.createdAt
+                ? { created_at: widget.storage.createdAt }
+                : {}),
+            },
+          }
+        : {}),
     });
   }
 

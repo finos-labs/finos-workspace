@@ -204,11 +204,12 @@ grid of this plugin, with every panel above. The plugin's backend serves the exp
 writes the `sql` parameter on a Files run, so a dashboard group can feed it to a chart. The frame's policy gains
 `script-src 'wasm-unsafe-eval'` and `connect-src blob:` for DuckDB, as the explorer's does.
 
-The card's **Create static widget** button freezes the current result into an AgGrid table widget of its own, with no
-parameters and no query: the first 60 columns and the first 1,000 rows, as the table's artifact holds them, and fewer rows
+The card's **Create static widget** button freezes the current result into an AgGrid table widget of its own, named
+after the SQL widget with "(static)" added, with no parameters and no query: the first 60 columns and the first 1,000 rows, as the table's artifact holds them, and fewer rows
 when they would pass 380,000 bytes, which keeps the copy under the host's limit. The button is the
 widget's `freeze` action (`core:ui:button`), and the copy is made with the command `core:dashboard:add-widget`, which the
-host takes only right after the click.
+host takes only right after the click. Rename the copy and change its description in its **Settings**; it keeps a record of
+the SQL widget it came from and when, which the AI agent sees, and its title tooltip shows when it was made.
 
 ![The Create static widget button and its hover text](screenshots/freeze-button-tooltip.png)
 

@@ -485,6 +485,35 @@ describe("buildSystemPrompt — tool groups", () => {
     expect(out).toContain("[current]");
     expect(out).toContain("W1 [uuid: w-1]");
   });
+
+  it("says which dashboard widgets are static copies, of what and from when", () => {
+    const ws: WorkspaceState = {
+      current_page_context: "page",
+      current_dashboard_uuid: "d-1",
+      current_dashboard_info: {
+        id: "d-1",
+        current_tab_id: "t1",
+        tabs: [
+          {
+            tab_id: "t1",
+            widgets: [
+              { widget_uuid: "w-1", name: "Trades SQL" },
+              {
+                widget_uuid: "w-2",
+                name: "Trades at close",
+                copied_from: { widget_uuid: "w-1", name: "Trades SQL", created_at: "2026-11-05T14:05:00Z" },
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const out = buildSystemPrompt(req(), { workspaceState: ws });
+    expect(out).toContain(
+      'Trades at close [uuid: w-2] [static copy of "Trades SQL" (uuid: w-1), made 2026-11-05T14:05:00Z]',
+    );
+    expect(out).toContain("Trades SQL [uuid: w-1], ");
+  });
 });
 
 describe("buildSystemPrompt — catalog matches registration", () => {

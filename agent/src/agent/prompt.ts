@@ -133,7 +133,12 @@ function describeDashboardContext(state: WorkspaceState): string {
     for (const tab of tabs) {
       const isCurrent = tab.tab_id === info.current_tab_id ? " [current]" : "";
       const widgets = (tab.widgets ?? [])
-        .map((w) => `${w.name ?? "unnamed"} [uuid: ${w.widget_uuid}]`)
+        .map((w) => {
+          const copy = w.copied_from
+            ? ` [static copy of "${w.copied_from.name}" (uuid: ${w.copied_from.widget_uuid})${w.copied_from.created_at ? `, made ${w.copied_from.created_at}` : ""}]`
+            : "";
+          return `${w.name ?? "unnamed"} [uuid: ${w.widget_uuid}]${copy}`;
+        })
         .join(", ");
       lines.push(`  - "${tab.tab_id}"${isCurrent}: ${widgets || "(empty)"}`);
     }

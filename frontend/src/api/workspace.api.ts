@@ -315,6 +315,12 @@ function readWidget(
 
   const config = pluginConfig(widget as WidgetT);
   if (config) result.ui_args = { config };
+  if (widget.storage?.createdAt) result.created_at = widget.storage.createdAt;
+  if (widget.storage?.copiedFrom)
+    result.copied_from = {
+      widget_uuid: widget.storage.copiedFrom.widgetUuid,
+      name: widget.storage.copiedFrom.name,
+    };
 
   const widgetData = useCopilotDataStore.getState().getDashboardWidgetData(widgetUuid);
   if (widgetData?.data) {
@@ -323,6 +329,10 @@ function readWidget(
     result.data = widget.storage.text;
   } else if (typeof widget.storage?.html === "string") {
     result.data = widget.storage.html;
+  } else if (
+    (widget.storage?.plugin as { data?: unknown } | undefined)?.data !== undefined
+  ) {
+    result.data = (widget.storage?.plugin as { data?: unknown }).data;
   }
 
   return result;

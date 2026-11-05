@@ -27,6 +27,8 @@ export function createCopilotDataWidget(params: {
     ...(widgetMetadata || {}),
     ...(widget?.metadata || {}),
     ...{ params: widget?.storage?.params || {} },
+    ...(widget?.storage?.createdAt ? { createdAt: widget.storage.createdAt } : {}),
+    ...(widget?.storage?.copiedFrom ? { copiedFrom: widget.storage.copiedFrom } : {}),
   };
 
   return {

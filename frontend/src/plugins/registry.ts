@@ -140,6 +140,7 @@ export function buildPluginArtifactWidget(
     description: string;
     innerTab?: string;
     config?: Record<string, unknown>;
+    copiedFrom?: { widgetUuid: string; name: string };
   },
 ): WidgetT {
   const { plugin, widget } = resolved;
@@ -165,6 +166,8 @@ export function buildPluginArtifactWidget(
       ...(minH ? { minH } : {}),
     },
     storage: {
+      createdAt: new Date().toISOString(),
+      ...(options.copiedFrom ? { copiedFrom: options.copiedFrom } : {}),
       plugin: { data, ...(options.config ? { config: options.config } : {}) },
     },
   } as WidgetT;

@@ -20,6 +20,7 @@ import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGrou
 import { useJsonData } from "~/lib/api";
 import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { LIMITS } from "~/lib/types/widgetsContract";
 import { cn, uuidv4 } from "~/lib/utils";
 import { sourceStreamHref } from "~/lib/utils/fetch";
 import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
@@ -64,7 +65,12 @@ import {
   usePluginRegistryStore,
   useRowsPlugin,
 } from "./registry";
-import { cleanSettings, SettingsForm } from "./SettingsForm";
+import {
+  type CardDetails,
+  CardDetailsForm,
+  cleanSettings,
+  SettingsForm,
+} from "./SettingsForm";
 import { openStream, type Stream, webSocketUrl } from "./stream";
 import { readThemeTrait } from "./theme";
 import {
@@ -501,9 +507,10 @@ function PluginWidgetBody({
             activeDashboardId,
             buildPluginArtifactWidget(target, data, {
               id: uuidv4(),
-              name: name ?? widget.name,
+              name: name ?? `${widget.name} (static)`.slice(0, LIMITS.name),
               description: `A static copy of ${widget.name}`,
               innerTab: widget.innerTab,
+              copiedFrom: { widgetUuid: widget.id, name: widget.name },
             }),
           );
           if (!added)
@@ -644,22 +651,39 @@ function PluginWidgetBody({
   }, [wantsCopilotContext, data]);
 
   const settingsSchema = pluginWidget.settings?.schema;
+  const hasSettings = Object.keys(settingsSchema?.properties ?? {}).length > 0;
   const [draft, setDraft] = useState<Record<string, unknown>>(config);
+  const [details, setDetails] = useState<CardDetails>({
+    name: widget.name ?? "",
+    description: widget.description ?? "",
+  });
   useEffect(() => setDraft(config), [config]);
+  const resetSettings = useCallback(
+    (open: boolean) => {
+      if (!open) return;
+      setDraft(config);
+      setDetails({ name: widget.name ?? "", description: widget.description ?? "" });
+    },
+    [config, widget.name, widget.description],
+  );
   const saveSettings = useCallback(() => {
     const next = cleanSettings(settingsSchema, draft);
     if (jsonSize(next) > MAX_CONFIG_BYTES) {
       toast.error("These settings are too large");
       return;
     }
+    const name = details.name.trim().slice(0, LIMITS.name);
+    const description = details.description.trim().slice(0, LIMITS.description);
     updateWidget((prev) => ({
       ...prev,
+      name: name || prev.name,
+      description,
       storage: {
         ...prev.storage,
         plugin: { ...(prev.storage?.plugin as PluginInstanceStorage), config: next },
       },
     }));
-  }, [draft, settingsSchema, updateWidget]);
+  }, [details, draft, settingsSchema, updateWidget]);
 
   const actions = useMemo(
     () => cardActions(pluginWidget, permissions, plugin.files),
@@ -790,15 +814,24 @@ function PluginWidgetBody({
         settings={{ overrideSettings: false, showExport: canExport }}
         onExport={canExport ? onExport : undefined}
         settingsModalChildren={
-          settingsSchema && Object.keys(settingsSchema.properties ?? {}).length ? (
-            <SettingsForm
-              schema={settingsSchema}
-              values={draft}
-              onChange={setDraft}
+          <>
+            <CardDetailsForm
+              values={details}
+              onChange={setDetails}
               disabled={isShared}
             />
-          ) : null
+            {settingsSchema && hasSettings ? (
+              <SettingsForm
+                schema={settingsSchema}
+                values={draft}
+                onChange={setDraft}
+                disabled={isShared}
+              />
+            ) : null}
+          </>
         }
+        showActionsSettings={!isShared}
+        setOpenSettings={resetSettings}
         onSaveSettings={saveSettings}
         keepMounted={true}
       >

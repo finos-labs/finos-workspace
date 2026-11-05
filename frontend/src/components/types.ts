@@ -72,6 +72,7 @@ export type WidgetStorage = {
   tabs?: InnerTab[];
   mcpUrl?: string;
   createdAt?: string;
+  copiedFrom?: { widgetUuid: string; name: string };
   html?: string;
   text?: string;
   scale?: number;

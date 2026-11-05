@@ -531,7 +531,23 @@ describe("adding a widget of the plugin", () => {
       plugin: { id: "grid-kit", widget: "table" },
       params: [],
       innerTab: "t1",
-      storage: { plugin: { data: rows } },
+      storage: { plugin: { data: rows }, createdAt: expect.any(String) },
     });
+    expect(built.storage).not.toHaveProperty("copiedFrom");
+  });
+
+  it("records which widget a static copy came from, and when", () => {
+    const built = buildPluginArtifactWidget(
+      { plugin: tablePlugin, widget: tableWidget },
+      rows,
+      {
+        id: "w2",
+        name: "SQL (static)",
+        description: "A static copy of SQL",
+        copiedFrom: { widgetUuid: "sql-1", name: "SQL" },
+      },
+    );
+    expect(built.storage?.copiedFrom).toEqual({ widgetUuid: "sql-1", name: "SQL" });
+    expect(Number.isNaN(Date.parse(String(built.storage?.createdAt)))).toBe(false);
   });
 });
