@@ -387,6 +387,24 @@ describe("FINOS Workspace API", () => {
       );
     });
 
+    it("says which chat artifact a widget was made from", () => {
+      mockGetTabWidgetById.mockReturnValue(
+        createMockWidget({
+          id: widgetUuid,
+          storage: {
+            fromArtifact: { artifactUuid: "a-1", name: "Sales bars", chatUuid: "c-1" },
+          },
+        }),
+      );
+      mockGetDashboardWidgetData.mockReturnValue(undefined);
+      const result = readWidget(dashboardId, widgetUuid);
+      expect(result?.from_artifact).toEqual({
+        artifact_uuid: "a-1",
+        name: "Sales bars",
+      });
+      expect(JSON.stringify(result)).not.toContain("c-1");
+    });
+
     it("leaves out copy fields for a widget that is not a copy", () => {
       mockGetDashboardWidgetData.mockReturnValue(undefined);
       const result = readWidget(dashboardId, widgetUuid);

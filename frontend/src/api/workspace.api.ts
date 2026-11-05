@@ -321,6 +321,11 @@ function readWidget(
       widget_uuid: widget.storage.copiedFrom.widgetUuid,
       name: widget.storage.copiedFrom.name,
     };
+  if (widget.storage?.fromArtifact)
+    result.from_artifact = {
+      artifact_uuid: widget.storage.fromArtifact.artifactUuid,
+      name: widget.storage.fromArtifact.name,
+    };
 
   const widgetData = useCopilotDataStore.getState().getDashboardWidgetData(widgetUuid);
   if (widgetData?.data) {

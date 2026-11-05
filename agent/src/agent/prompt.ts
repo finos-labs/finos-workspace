@@ -137,7 +137,10 @@ function describeDashboardContext(state: WorkspaceState): string {
           const copy = w.copied_from
             ? ` [static copy of "${w.copied_from.name}" (uuid: ${w.copied_from.widget_uuid})${w.copied_from.created_at ? `, made ${w.copied_from.created_at}` : ""}]`
             : "";
-          return `${w.name ?? "unnamed"} [uuid: ${w.widget_uuid}]${copy}`;
+          const made = w.from_artifact
+            ? ` [made from ${w.from_artifact.in_current_chat ? "this chat's" : "a chat"} artifact "${w.from_artifact.name}"${w.from_artifact.created_at ? `, ${w.from_artifact.created_at}` : ""}]`
+            : "";
+          return `${w.name ?? "unnamed"} [uuid: ${w.widget_uuid}]${copy}${made}`;
         })
         .join(", ");
       lines.push(`  - "${tab.tab_id}"${isCurrent}: ${widgets || "(empty)"}`);

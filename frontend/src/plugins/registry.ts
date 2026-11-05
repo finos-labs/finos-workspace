@@ -141,6 +141,7 @@ export function buildPluginArtifactWidget(
     innerTab?: string;
     config?: Record<string, unknown>;
     copiedFrom?: { widgetUuid: string; name: string };
+    fromArtifact?: { artifactUuid: string; name: string; chatUuid: string };
   },
 ): WidgetT {
   const { plugin, widget } = resolved;
@@ -168,6 +169,7 @@ export function buildPluginArtifactWidget(
     storage: {
       createdAt: new Date().toISOString(),
       ...(options.copiedFrom ? { copiedFrom: options.copiedFrom } : {}),
+      ...(options.fromArtifact ? { fromArtifact: options.fromArtifact } : {}),
       plugin: { data, ...(options.config ? { config: options.config } : {}) },
     },
   } as WidgetT;

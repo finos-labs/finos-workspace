@@ -18,6 +18,12 @@ type DashboardTabWidgetInfoT = {
   widget_uuid: string;
   name: string | undefined;
   copied_from?: { widget_uuid: string; name: string; created_at?: string };
+  from_artifact?: {
+    artifact_uuid: string;
+    name: string;
+    created_at?: string;
+    in_current_chat: boolean;
+  };
 };
 
 type DashboardTabInfoT = {
@@ -79,6 +85,7 @@ function sortLayoutEntries(a: DashboardLayoutEntryT, b: DashboardLayoutEntryT) {
 export function getDashboardInfo(
   dashboardId: string | null | undefined,
   currentTab?: string | null,
+  currentChatArtifacts: ReadonlySet<string> = new Set(),
 ): DashboardInfoT {
   if (!dashboardId) {
     return null;
@@ -133,6 +140,7 @@ export function getDashboardInfo(
 
     const { tab } = ensureTab(widget.innerTab);
     const copiedFrom = widget.storage?.copiedFrom;
+    const fromArtifact = widget.storage?.fromArtifact;
     tab.widgets.push({
       widget_uuid: widget.id,
       name: widget.name,
@@ -144,6 +152,18 @@ export function getDashboardInfo(
               ...(widget.storage?.createdAt
                 ? { created_at: widget.storage.createdAt }
                 : {}),
+            },
+          }
+        : {}),
+      ...(fromArtifact
+        ? {
+            from_artifact: {
+              artifact_uuid: fromArtifact.artifactUuid,
+              name: fromArtifact.name,
+              ...(widget.storage?.createdAt
+                ? { created_at: widget.storage.createdAt }
+                : {}),
+              in_current_chat: currentChatArtifacts.has(fromArtifact.artifactUuid),
             },
           }
         : {}),

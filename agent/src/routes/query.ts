@@ -233,6 +233,12 @@ const WorkspaceStateSchema = z.object({
           name: z.string(),
           created_at: z.string().optional(),
         }).optional(),
+        from_artifact: z.object({
+          artifact_uuid: z.string(),
+          name: z.string(),
+          created_at: z.string().optional(),
+          in_current_chat: z.boolean().optional(),
+        }).optional(),
       })).optional(),
     })).optional(),
   }).nullish(),

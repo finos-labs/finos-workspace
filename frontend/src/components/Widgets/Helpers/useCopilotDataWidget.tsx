@@ -29,6 +29,14 @@ export function createCopilotDataWidget(params: {
     ...{ params: widget?.storage?.params || {} },
     ...(widget?.storage?.createdAt ? { createdAt: widget.storage.createdAt } : {}),
     ...(widget?.storage?.copiedFrom ? { copiedFrom: widget.storage.copiedFrom } : {}),
+    ...(widget?.storage?.fromArtifact
+      ? {
+          fromArtifact: {
+            artifactUuid: widget.storage.fromArtifact.artifactUuid,
+            name: widget.storage.fromArtifact.name,
+          },
+        }
+      : {}),
   };
 
   return {

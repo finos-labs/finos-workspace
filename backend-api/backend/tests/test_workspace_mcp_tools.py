@@ -511,6 +511,7 @@ def test_the_dashboard_snapshot_keeps_which_widgets_are_static_copies():
                                 "name": "Trades SQL",
                                 "created_at": "2026-11-05T14:05:00Z",
                             },
+                            "from_artifact": {"artifact_uuid": "a1", "name": "Sales", "in_current_chat": True},
                         },
                     ],
                 }
@@ -519,8 +520,15 @@ def test_the_dashboard_snapshot_keeps_which_widgets_are_static_copies():
     )
     source, copy = info.tabs[0].widgets
     assert source.copied_from is None
+    assert source.from_artifact is None
     assert copy.copied_from.model_dump() == {
         "widget_uuid": "w1",
         "name": "Trades SQL",
         "created_at": "2026-11-05T14:05:00Z",
+    }
+    assert copy.from_artifact.model_dump() == {
+        "artifact_uuid": "a1",
+        "name": "Sales",
+        "created_at": None,
+        "in_current_chat": True,
     }
