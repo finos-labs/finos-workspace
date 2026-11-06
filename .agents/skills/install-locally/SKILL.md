@@ -62,6 +62,8 @@ Run one stack at a time: both publish port 8000. Both read the same `backend-api
 - Reset erases them with the rest of the database, and the next `make up` seeds them again.
 - Never reach for these emails in production code, tests outside `backend-api/backend/tests/scripts/`, or a production `config.toml`. They are only for the local development stack.
 
+Everything else an administrator does from a shell — organizations, users, data backends, bulk provisioning, widget plugins — runs through `python -m scripts.workspace_admin`, covered in `.agents/skills/administer-via-cli/SKILL.md`.
+
 ## Development stack: commands
 
 Run in `local/`, or from the repo root as `make -C local <target>`. `make` alone lists the targets.

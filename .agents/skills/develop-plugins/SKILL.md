@@ -103,7 +103,7 @@ Exit codes: 0 ok, 1 blocked, 2 not a directory. It ignores pins and `WIDGET_PLUG
 3. Under **Enabled for**, switch on the organization, or select **Enable for all**. An organization admin uses the plugin's **Enabled** switch on the **Plugin widgets** tab instead.
 4. In **Roles and Access**, select the role's **Widget plugins** button, tick **All widgets of this plugin** or single widgets, **Save**. Grant a role you hold. Confirm: toast `Widget plugin access saved`.
 
-Same steps in the API container: `python -m scripts.workspace_admin plugin <action>` with `rescan`, `show <plugin-id>`, `approve <plugin-id> <version> --digest <digest> --acknowledge`, `enable <plugin-id> --all`, `grant <plugin-id> --role <role-uuid>`. Detail: `docs/tutorials/plugins/review-and-enable-a-plugin.md`.
+Same steps from a shell with `python -m scripts.workspace_admin plugin <action>` (`rescan`, `show`, `approve`, `enable`, `grant`). Full command surface and failure table: `.agents/skills/administer-via-cli/SKILL.md`. Tutorial walkthrough: `docs/tutorials/plugins/review-and-enable-a-plugin.md`.
 
 ## 5. Add the widget to a dashboard
 

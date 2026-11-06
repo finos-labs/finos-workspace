@@ -177,3 +177,4 @@ Write `backend.env`, `mysql.env`, `config.yaml`, `data.yaml`, `init-job.yaml`, `
 | Single sign-on; more organizations | `docs/tutorials/deploy/set-up-single-sign-on.md`, `docs/tutorials/deploy/provision-an-organization.mdx` |
 | Several agent replicas, proxy timeouts; logs, metrics, traces | `docs/tutorials/deploy/run-the-agent-on-several-replicas.mdx`, `docs/tutorials/deploy/ship-logs-and-metrics.mdx`, `docs/tutorials/deploy/export-traces.mdx` |
 | Widget plugins | `docs/tutorials/plugins/deploy-a-plugin.md` |
+| Everyday administration from a shell (entities, users, data backends, plugins) | `.agents/skills/administer-via-cli/SKILL.md` |
