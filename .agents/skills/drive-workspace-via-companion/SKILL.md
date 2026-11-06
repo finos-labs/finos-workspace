@@ -1,6 +1,6 @@
 ---
 name: drive-workspace-via-companion
-description: 'Drives a running FINOS Workspace from an external AI tool (Claude Desktop, Claude Code, Cursor, Codex, any MCP streamable-HTTP client) through the MCP Companion: turning the Companion entry on in the stack, connecting the browser tab, minting the ws_mcp_ personal access token, wiring the Authorization and Origin headers, and the eighteen workspace tools with their calling conventions (snake_case payloads, snapshot-first discovery, widget schemas and param options, add_generative_widget for notes and HTML, update_widget_layout on the 40-column grid, manage_navigation_bar for tabs, dashboard targeting through current_dashboard_uuid). Covers helping with widget plugin iteration on a MODE=local hot-reload stack through the Companion (never rebuilding images or copying into containers). Use for requests such as "connect Claude Desktop to FINOS Workspace", "set up the MCP Companion", "create a ws_mcp token", "build a dashboard from Claude Code", "add a widget from an outside AI tool", "iterate on a widget plugin through an outside AI tool", "why does the Companion say no browser is connected", "revoke a Companion token", "drive the workspace from an AI tool outside the tab".'
+description: 'Drives a running FINOS Workspace from an external AI tool (Claude Desktop, Claude Code, Cursor, Codex, any MCP streamable-HTTP client) through the MCP Companion: turning the Companion entry on in the stack, connecting the browser tab, minting the ws_mcp_ personal access token, wiring the Authorization and Origin headers, and the eighteen workspace tools with their calling conventions (snake_case payloads, snapshot-first discovery, widget schemas and param options, add_generative_widget for notes and HTML, update_widget_layout on the 40-column grid, manage_navigation_bar for tabs, dashboard targeting through current_dashboard_uuid). Use for requests such as "connect Claude Desktop to FINOS Workspace", "set up the MCP Companion", "create a ws_mcp token", "build a dashboard from Claude Code", "add a widget from an outside AI tool", "why does the Companion say no browser is connected", "revoke a Companion token", "drive the workspace from an AI tool outside the tab". For widget plugin iteration, defer to `.agents/skills/develop-plugins/SKILL.md`.'
 ---
 
 # Drive FINOS Workspace through the MCP Companion
@@ -113,21 +113,6 @@ All names are snake_case; so are the JSON payloads. The exact arg lists live in 
 7. Place and size: `update_widget_layout` with `x`, `y`, `w`, `h` and `tab_id`. Read current placement with `manage_dashboard operation="read"` or from `get_workspace_snapshot.dashboard_composition`, not from `read_widget`.
 8. Read, update and delete: prefer `widget_uuid` over `widget_id`. Never use a widget title or a generic type such as `rich_note` as a layout identifier.
 9. Target another dashboard: pass `dashboard_id` explicitly. Omitting it targets the current route.
-
-## 6a. Developing widget plugins through the Companion
-
-For any plugin work, the stack is `local/` with `MODE=local`, mounting `widget-plugins/` at the repository root as a hot-reload directory. Never rebuild the backend image for a plugin change, never copy files into a running container, never approach this as "rebuild and redeploy". The dashboard window reloads the plugin list every 30 seconds after focus and every 60 seconds regardless; filesystem writes to `widget-plugins/<plugin-id>/<version>/` show up without any container action.
-
-- Edit, build and mirror the plugin from its example folder, as `develop-plugins` section 6 covers in full:
-  ```bash
-  npm run build
-  rsync -a --delete dist/<plugin-id>/<next-version>/ ../../../widget-plugins/<plugin-id>/<next-version>/
-  ```
-- Approve a new version through the Companion by driving the FINOS Workspace UI itself (the **Deployment** tab under `/admin/widgets`). None of the eighteen Companion tools install, approve or enable a plugin — those are administrator actions in the web app. Use the Companion to read the state (`get_workspace_snapshot`, `read_widget` on the widget that was added), move the user through the admin pages (`navigate_workspace`), and verify the widget renders after the tab's plugin list reloads.
-- `plugin_check` runs inside the backend container but reads the mounted directory: `docker compose exec backend python -m scripts.plugin_check /opt/widget-plugins/<plugin-id>/<version>` reads the bytes on the host.
-- The `Patch`, `Minor` and `Major` buttons appear only for a superuser, with `MODE=local`, an active version and no version in `development`.
-
-Full plugin workflow (packaging, checksum, approval, enablement, secrets, backends, interop tests): `.agents/skills/develop-plugins/SKILL.md`.
 
 ## 7. What the Companion cannot do
 

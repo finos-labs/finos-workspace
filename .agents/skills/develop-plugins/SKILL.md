@@ -7,14 +7,23 @@ description: Covers building a FINOS Workspace widget plugin from the docs/examp
 
 ## Stack
 
+Use `local/` (`local/compose.yaml`, `MODE=local`, Vite and uvicorn hot reload). It exists for exactly this. Do not rebuild the backend image, the web image or the agent image between plugin iterations; do not `docker compose up --build` on a plugin change; do not copy files into a running container. The plugins directory is a bind mount — writes to `widget-plugins/<plugin-id>/<version>/` on the host appear in the API process without any container action, and the tab reloads the plugin list every 30 seconds on focus and every 60 seconds otherwise.
+
 | Stack | Start | App | API service | Run compose from | Docker network |
 |---|---|---|---|---|---|
-| `local/compose.yaml` | `make up` | `http://localhost:1420` | `backend` | `local/` | `workspace-local_default` |
+| **`local/compose.yaml` (use this)** | `make up` | `http://localhost:1420` | `backend` | `local/` | `workspace-local_default` |
 | `docker-compose.yml` | `docker compose up --build -d` | `http://localhost:3000` | `api` | repository root | `workspace_workspace` |
 
 - Both set `MODE: local` and `WIDGET_PLUGINS_DIR: /opt/widget-plugins` and mount `widget-plugins/` at the repository root (git-ignored) there, writable, into the API, worker and `init`. `WORKSPACE_PLUGINS_DIR=<folder>` mounts another folder.
-- After the first start and administrator sign-in (the `install-locally` skill), confirm: as a superuser, `/admin/widgets` (menu **Admin Portal**, **Widgets**), tab **Deployment** shows **Rescan**, not "Widget plugins are off".
 - Only `MODE=local` offers development versions (section 6). The deploy tutorials set `MODE=production`.
+- After the first start and administrator sign-in (the `install-locally` skill), confirm: as a superuser, `/admin/widgets` (menu **Admin Portal**, **Widgets**), tab **Deployment** shows **Rescan**, not "Widget plugins are off".
+- The root `docker-compose.yml` is for seeing production-shaped images (nginx-served web app, built agent, `MODE=local` only for the plugin flag). Reach for it to check the final image, never to iterate; frontend and backend code changes there need an image rebuild, and that round trip is the "frozen container" trap this skill is here to steer agents away from.
+
+Never, when iterating on a plugin:
+
+- Rebuild `workspace-backend`, `workspace-web`, `workspace-agent` or any other image.
+- Run `docker cp` into a running container, or shell in and edit files there. The container is a view of `widget-plugins/` on the host; edit the host.
+- Treat an image as the source of truth. The source of truth is `widget-plugins/<plugin-id>/<version>/` on the host and the `src/` of the example in `docs/examples/`.
 
 ## 1. Build an example
 
