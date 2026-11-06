@@ -156,7 +156,7 @@ def test_the_seed_config_names_the_administrator_and_no_password(tmp_path, monke
     monkeypatch.setattr(local_env, "EXAMPLE", example)
     monkeypatch.setattr(local_env, "TARGET", tmp_path / ".env")
 
-    assert local_env.main([*ADMIN, "--entity-name", "Acme"]) == 0
+    assert local_env.main([*ADMIN, "--entity-name", "Acme", "--no-extra-admins"]) == 0
 
     seed = tomllib.loads(config.read_text())
     assert seed["entity"]["name"] == "Acme"
@@ -165,6 +165,57 @@ def test_the_seed_config_names_the_administrator_and_no_password(tmp_path, monke
     ]
     assert "password" not in config.read_text()
     assert "password" not in (tmp_path / ".env").read_text().lower()
+
+
+def test_the_seed_config_also_names_three_local_dev_admins_by_default(tmp_path, monkeypatch, config):
+    example = tmp_path / ".env.example"
+    example.write_text(EXAMPLE)
+    monkeypatch.setattr(local_env, "EXAMPLE", example)
+    monkeypatch.setattr(local_env, "TARGET", tmp_path / ".env")
+
+    assert local_env.main([*ADMIN]) == 0
+
+    seed = tomllib.loads(config.read_text())
+    emails = [admin["email"] for admin in seed["admins"]]
+    assert emails == [
+        "admin@mail.test",
+        "workspace-dev1@localhost.local",
+        "workspace-dev2@localhost.local",
+        "workspace-dev3@localhost.local",
+    ]
+    assert "password" not in config.read_text()
+
+
+def test_create_local_env_prints_the_dev_admin_passwords(tmp_path, monkeypatch, config, capsys):
+    example = tmp_path / ".env.example"
+    example.write_text(EXAMPLE)
+    monkeypatch.setattr(local_env, "EXAMPLE", example)
+    monkeypatch.setattr(local_env, "TARGET", tmp_path / ".env")
+
+    assert local_env.main([*ADMIN]) == 0
+
+    out = capsys.readouterr().out
+    assert "workspace-dev1@localhost.local" in out
+    assert "WorkspaceDev!1" in out
+    assert "workspace-dev2@localhost.local" in out
+    assert "WorkspaceDev!2" in out
+    assert "workspace-dev3@localhost.local" in out
+    assert "WorkspaceDev!3" in out
+    assert "MODE=local" in out
+
+
+def test_no_extra_admins_leaves_just_the_primary(tmp_path, monkeypatch, config, capsys):
+    example = tmp_path / ".env.example"
+    example.write_text(EXAMPLE)
+    monkeypatch.setattr(local_env, "EXAMPLE", example)
+    monkeypatch.setattr(local_env, "TARGET", tmp_path / ".env")
+
+    assert local_env.main([*ADMIN, "--no-extra-admins"]) == 0
+
+    seed = tomllib.loads(config.read_text())
+    assert [admin["email"] for admin in seed["admins"]] == ["admin@mail.test"]
+    out = capsys.readouterr().out
+    assert "WorkspaceDev" not in out
 
 
 def test_the_administrator_password_is_no_option():

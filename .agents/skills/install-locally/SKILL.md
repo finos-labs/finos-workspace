@@ -1,6 +1,6 @@
 ---
 name: install-locally
-description: Runs FINOS Workspace on a workstation with either the hot-reload development stack in local/ (make up) or the stack that builds every image from the root docker-compose.yml, covering prerequisites, first start, the administrator password, health checks, which change needs a restart or rebuild, settings files, turning on the agent, stopping, resetting and troubleshooting. Use for "run the stack locally", "make up", "docker compose up", "start FINOS Workspace on my machine", "set the admin password", "reset the local database", "port 8000 is in use", "turn on the agent locally", "PLATFORM=linux/arm64".
+description: Runs FINOS Workspace on a workstation with either the hot-reload development stack in local/ (make up) or the stack that builds every image from the root docker-compose.yml, covering prerequisites, first start, the administrator password, the three local-dev administrator accounts seeded with known passwords so multiple agents can sign in at once, health checks, which change needs a restart or rebuild, settings files, turning on the agent, stopping, resetting and troubleshooting. Use for "run the stack locally", "make up", "docker compose up", "start FINOS Workspace on my machine", "set the admin password", "sign another agent in as admin", "seed extra local admins", "reset the local database", "port 8000 is in use", "turn on the agent locally", "PLATFORM=linux/arm64".
 ---
 
 # Install locally
@@ -47,6 +47,20 @@ Run one stack at a time: both publish port 8000. Both read the same `backend-api
    curl -fs http://localhost:8000/health
    curl -fs -o /dev/null -w '%{http_code}\n' http://localhost:1420
    ```
+
+## Development stack: dev admins for other agents
+
+`scripts.create_local_env` seeds three extra administrators alongside yours, each with a known password, so another AI agent or another browser session can sign in at the same time without racing on your login. The accounts only exist in `scripts/cfgs/config.toml` written by the script, so they never reach a deployment. Pass `--no-extra-admins` to turn this off.
+
+| Email | Password |
+|---|---|
+| `workspace-dev1@localhost.local` | `WorkspaceDev!1` |
+| `workspace-dev2@localhost.local` | `WorkspaceDev!2` |
+| `workspace-dev3@localhost.local` | `WorkspaceDev!3` |
+
+- The passwords are set once on the `init` step's first run; `scripts.init_users` picks the known value for these emails and `base.random_password()` for every other admin. Subsequent runs are idempotent and leave an already-set password alone.
+- Reset erases them with the rest of the database, and the next `make up` seeds them again.
+- Never reach for these emails in production code, tests outside `backend-api/backend/tests/scripts/`, or a production `config.toml`. They are only for the local development stack.
 
 ## Development stack: commands
 
