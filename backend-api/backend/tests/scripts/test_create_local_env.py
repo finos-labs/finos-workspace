@@ -179,9 +179,9 @@ def test_the_seed_config_also_names_three_local_dev_admins_by_default(tmp_path, 
     emails = [admin["email"] for admin in seed["admins"]]
     assert emails == [
         "admin@mail.test",
-        "workspace-dev1@localhost.local",
-        "workspace-dev2@localhost.local",
-        "workspace-dev3@localhost.local",
+        "workspace-dev1@example.com",
+        "workspace-dev2@example.com",
+        "workspace-dev3@example.com",
     ]
     assert "password" not in config.read_text()
 
@@ -195,13 +195,23 @@ def test_create_local_env_prints_the_dev_admin_passwords(tmp_path, monkeypatch, 
     assert local_env.main([*ADMIN]) == 0
 
     out = capsys.readouterr().out
-    assert "workspace-dev1@localhost.local" in out
+    assert "workspace-dev1@example.com" in out
     assert "WorkspaceDev!1" in out
-    assert "workspace-dev2@localhost.local" in out
+    assert "workspace-dev2@example.com" in out
     assert "WorkspaceDev!2" in out
-    assert "workspace-dev3@localhost.local" in out
+    assert "workspace-dev3@example.com" in out
     assert "WorkspaceDev!3" in out
     assert "MODE=local" in out
+
+
+def test_every_dev_admin_email_passes_pydantic_email_str():
+    from pydantic import BaseModel, EmailStr
+    from scripts.local_dev_admins import LOCAL_DEV_ADMINS
+
+    class HasEmails(BaseModel):
+        emails: list[EmailStr]
+
+    HasEmails(emails=[email for email, _f, _l, _p in LOCAL_DEV_ADMINS])
 
 
 def test_no_extra_admins_leaves_just_the_primary(tmp_path, monkeypatch, config, capsys):

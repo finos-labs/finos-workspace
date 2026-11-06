@@ -54,9 +54,9 @@ Run one stack at a time: both publish port 8000. Both read the same `backend-api
 
 | Email | Password |
 |---|---|
-| `workspace-dev1@localhost.local` | `WorkspaceDev!1` |
-| `workspace-dev2@localhost.local` | `WorkspaceDev!2` |
-| `workspace-dev3@localhost.local` | `WorkspaceDev!3` |
+| `workspace-dev1@example.com` | `WorkspaceDev!1` |
+| `workspace-dev2@example.com` | `WorkspaceDev!2` |
+| `workspace-dev3@example.com` | `WorkspaceDev!3` |
 
 - The passwords are set once on the `init` step's first run; `scripts.init_users` picks the known value for these emails and `base.random_password()` for every other admin. Subsequent runs are idempotent and leave an already-set password alone.
 - Reset erases them with the rest of the database, and the next `make up` seeds them again.

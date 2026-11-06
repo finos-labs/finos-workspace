@@ -158,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=(
             "Do not seed the three extra local-dev admins "
-            "(workspace-dev1..dev3@localhost.local) with known passwords"
+            "(workspace-dev1..dev3@example.com) with known passwords"
         ),
     )
     args = parser.parse_args(argv)

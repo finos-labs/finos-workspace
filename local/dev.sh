@@ -97,9 +97,9 @@ Ready.
   Agents:   three extra MODE=local-only admins are also seeded with known passwords
             so other agents can sign in alongside you:
 
-              workspace-dev1@localhost.local  WorkspaceDev!1
-              workspace-dev2@localhost.local  WorkspaceDev!2
-              workspace-dev3@localhost.local  WorkspaceDev!3
+              workspace-dev1@example.com  WorkspaceDev!1
+              workspace-dev2@example.com  WorkspaceDev!2
+              workspace-dev3@example.com  WorkspaceDev!3
 READY
 }
 

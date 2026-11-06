@@ -168,7 +168,7 @@ printf '%s' "<the value>" | docker compose exec -T backend python -m scripts.wor
 
 ## Compose with the three local-dev admins
 
-The three seeded admins (`workspace-dev1..dev3@localhost.local`, `.agents/skills/install-locally/SKILL.md`) all have the Admin role, so each can run every verb above and each stay signed in alongside the primary. For multi-agent work on the same stack, use one seeded admin per agent and let the primary stay with the human.
+The three seeded admins (`workspace-dev1..dev3@example.com`, `.agents/skills/install-locally/SKILL.md`) all have the Admin role, so each can run every verb above and each stay signed in alongside the primary. For multi-agent work on the same stack, use one seeded admin per agent and let the primary stay with the human.
 
 ## Reference
 
