@@ -56,6 +56,8 @@ Open <http://localhost:3000> and sign in with your email address and password.
 
 To let the AI agent answer questions, set `DEFAULT_MODEL` and your model provider's API key in `agent/.env`, then run `docker compose up -d`.
 
+To pull the images from Docker Hub instead of building them, which needs no token, follow the [Quick start guide](https://workspace.finos.org/quick-start?images=docker-hub).
+
 The [Quick start guide](https://workspace.finos.org/quick-start) continues from here: you write a small data backend and put its first widget on a dashboard.
 
 ## Container images
