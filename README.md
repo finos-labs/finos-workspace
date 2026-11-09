@@ -58,6 +58,10 @@ To let the AI agent answer questions, set `DEFAULT_MODEL` and your model provide
 
 The [Quick start guide](https://workspace.finos.org/quick-start) continues from here: you write a small data backend and put its first widget on a dashboard.
 
+## Container images
+
+Each release publishes the four images on Docker Hub, built for `linux/amd64` and tagged with the release's tag: [`finos/workspace-backend`](https://hub.docker.com/r/finos/workspace-backend), [`finos/workspace-web`](https://hub.docker.com/r/finos/workspace-web), [`finos/workspace-agent`](https://hub.docker.com/r/finos/workspace-agent) and [`finos/workspace-agent-mcp`](https://hub.docker.com/r/finos/workspace-agent-mcp). [Deploy with Docker Compose](https://workspace.finos.org/tutorials/deploy/deploy-with-docker-compose) and [Deploy on Kubernetes](https://workspace.finos.org/tutorials/deploy/deploy-on-kubernetes) show how to run them.
+
 ## Features
 
 | Feature | What it does |

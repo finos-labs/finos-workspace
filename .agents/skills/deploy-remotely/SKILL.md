@@ -10,14 +10,18 @@ description: Builds the FINOS Workspace images (backend, web app, agent, agent M
 | Item | Requirement |
 |---|---|
 | Target | Linux server with Docker Engine and the Compose plugin, or a cluster reachable with `kubectl` plus an ingress controller |
-| Registry | Pullable from the target; written `<registry>` below. One tag for all four images, written `<version>` |
+| Images | Pulled from Docker Hub as `finos/workspace-<image>:<version>`, or from your own registry, written `<registry>` below. One tag for all four images, written `<version>`. The released images are `linux/amd64` only |
 | DNS and TLS | Three names on one registrable domain, `workspace.example.com` (web), `api.workspace.example.com` (API) and `agent.workspace.example.com` (agent), with a certificate ended at a reverse proxy or ingress that sets `X-Forwarded-For` and `X-Forwarded-Proto` |
 | Proxy limits | Request body of at least 64 MB on the agent name (`AGENT_MAX_BODY_MB`); idle timeout longer than the slowest streamed answer |
 | `DEFAULT_MODEL` | `<provider>:<model>` and that provider's key, for example `OPENAI_API_KEY` |
 
-## Build and push the images
+## Get the images
 
-`workspace-backend` also runs the worker (`python base_workers.py`) and the init step; `agent` and `agent-mcp` are stages of `agent/Dockerfile`. Details: `docs/tutorials/build-from-source/build-the-images.md`.
+Pull the released images from Docker Hub unless the deployment needs code or build settings of its own. `.github/workflows/docker-publish.yml` publishes `finos/workspace-backend`, `finos/workspace-web`, `finos/workspace-agent` and `finos/workspace-agent-mcp` on every published GitHub release, only when the repository owner is `finos` or `finos-labs`. They are built for `linux/amd64` only and tagged with the release tag, leading `v` included, and `latest`. Set `<version>` to the release tag, never `latest`, which moves to every release, pre-releases included, and use `finos/workspace-<image>:<version>` wherever `<registry>/workspace-<image>:<version>` appears below. An arm64 target runs them through emulation. With the released images, skip the next section and go to "Generate the secrets".
+
+### Build and push your own images
+
+Use this when the code or a build-time white label setting changes, or when the target cannot reach Docker Hub. `workspace-backend` also runs the worker (`python base_workers.py`) and the init step; `agent` and `agent-mcp` are stages of `agent/Dockerfile`. Details: `docs/tutorials/build-from-source/build-the-images.md`.
 
 1. From the repository root, log in to `ghcr.io` with a classic GitHub token that has `read:packages` and can read the `finos-labs` packages, then read the `finos-node` base pinned in `docker-compose.yml`:
    ```bash
@@ -37,8 +41,6 @@ description: Builds the FINOS Workspace images (backend, web app, agent, agent M
    ```bash
    for image in backend web agent agent-mcp; do docker push <registry>/workspace-$image:<version>; done
    ```
-
-Published images: `.github/workflows/docker-publish.yml` runs on every published GitHub release only when the repository owner is `finos`, builds the same four images for `linux/amd64` only, and pushes `finos/workspace-backend`, `finos/workspace-web`, `finos/workspace-agent` and `finos/workspace-agent-mcp` to Docker Hub, tagged `<release-tag>` and `latest`. Use `finos/workspace-<image>:<release-tag>` in place of `<registry>/workspace-<image>:<version>` to skip the build.
 
 ## Generate the secrets
 
