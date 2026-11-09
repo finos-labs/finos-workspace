@@ -16,7 +16,7 @@ env:
 jobs:
   node:
     name: Node for the web app and the agent
-    if: github.repository_owner == 'finos'
+    if: github.repository_owner == 'finos' || github.repository_owner == 'finos-labs'
     permissions:
       contents: read
       packages: read
@@ -24,7 +24,7 @@ jobs:
 
   docker-build-publish:
     name: Build and Publish ${{ matrix.image }}
-    if: github.repository_owner == 'finos'
+    if: github.repository_owner == 'finos' || github.repository_owner == 'finos-labs'
     needs: node
     runs-on: ubuntu-latest
     permissions:
