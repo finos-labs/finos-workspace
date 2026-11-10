@@ -199,6 +199,7 @@ interface SelectProps<T extends string = string>
   message?: React.ReactNode;
   error?: boolean;
   forceLight?: boolean;
+  contentClassName?: string;
 }
 const SelectBase = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
@@ -215,6 +216,7 @@ const SelectBase = React.forwardRef<
     message,
     error,
     forceLight,
+    contentClassName,
     ...rest
   } = props;
 
@@ -257,7 +259,7 @@ const SelectBase = React.forwardRef<
         </SelectTrigger>
         <Message error={error}>{message}</Message>
       </div>
-      <SelectContent className={forceLight ? "force-light" : undefined}>
+      <SelectContent className={cn(forceLight && "force-light", contentClassName)}>
         {options.map((option) =>
           typeof option === "object" && "options" in option
             ? renderGroup(option)
