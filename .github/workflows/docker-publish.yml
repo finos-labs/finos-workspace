@@ -77,10 +77,15 @@ jobs:
         env:
           IMAGE: ${{ env.IMAGE_PREFIX }}-${{ matrix.image }}
           TAG: ${{ github.ref_name }}
-        run: echo "tags=${IMAGE,,}:$TAG,${IMAGE,,}:latest" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "image=${IMAGE,,}" >> "$GITHUB_OUTPUT"
+          echo "tags=${IMAGE,,}:$TAG,${IMAGE,,}:latest" >> "$GITHUB_OUTPUT"
 
       - name: Build and Publish Docker Image
+        id: build
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        env:
+          DOCKER_BUILD_SUMMARY: "false"
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
@@ -91,3 +96,17 @@ jobs:
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           provenance: true
+
+      - name: Add Image to Run Summary
+        env:
+          IMAGE: ${{ steps.tags.outputs.image }}
+          TAG: ${{ github.ref_name }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          {
+            echo "### [$IMAGE](https://hub.docker.com/r/$IMAGE/tags)"
+            echo
+            echo "- Tags: \`$TAG\`, \`latest\`"
+            echo "- Digest: \`$DIGEST\`"
+            echo "- Pull: \`docker pull $IMAGE:$TAG\`"
+          } >> "$GITHUB_STEP_SUMMARY"
