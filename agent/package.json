@@ -47,7 +47,7 @@
     "mammoth": "^1.13.0",
     "ollama-ai-provider-v2": "^3.6.0",
     "turndown": "^7.2.4",
-    "unpdf": "^1.8.1",
+    "unpdf": "^2.1.0",
     "ws": "^8.22.0",
     "zod": "^4.6.7"
   },
