@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM chimeralinux/chimera@sha256:29102d7e12a1f464707d7aba19ce53e652d277861838ed4129178d0655444b1a AS node-build
+FROM chimeralinux/chimera@sha256:b58ec2b8c80561ba8f41d8852463585d22299b38737ce36d7d926cabf9c94174 AS node-build
 
 ARG NODE_VERSION=26.12.1
 ARG NODE_SHA256=053e3b296859b6d8d93f99ef97fa9cec1c4ee171c72968100c649978c1dbd38c
