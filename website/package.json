@@ -30,7 +30,7 @@
     "@docusaurus/types": "3.10.2",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
-    "postcss": "8.5.31",
+    "postcss": "8.5.32",
     "typescript": "7.0.2"
   },
   "overrides": {
