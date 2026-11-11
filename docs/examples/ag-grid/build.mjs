@@ -10,10 +10,19 @@ const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const manifest = JSON.parse(readFileSync(join(root, "src/plugin.json"), "utf8"));
 
 const require = createRequire(import.meta.url);
-const agGridMain = require.resolve("ag-grid-community");
-const agGridDistPkg = dirname(agGridMain);           // .../ag-grid-community/dist/package
-const agGridDir = dirname(dirname(agGridDistPkg));   // .../ag-grid-community (package root)
-const agGridStylesDir = join(agGridDir, "styles");
+const agGridStyles = join(dirname(dirname(dirname(require.resolve("ag-grid-community")))), "styles");
+
+const FILES = {
+  "assets/icon.svg": join(root, "src/assets/icon.svg"),
+  "assets/autosize.svg": join(root, "src/assets/autosize.svg"),
+  "backend/grid_server.py": join(root, "backend/grid_server.py"),
+  "backend/ssrm.py": join(root, "backend/ssrm.py"),
+  "backend/server.py": join(shared, "backend/server.py"),
+  "backend/engines.py": join(shared, "backend/engines.py"),
+  "backend/identity.py": join(shared, "backend/identity.py"),
+  "backend/values.py": join(shared, "backend/values.py"),
+  ...(await duckdbFiles(duckdbDist)),
+};
 
 const out = join(root, "dist", manifest.id, pkg.version);
 rmSync(out, { recursive: true, force: true });

@@ -45,8 +45,235 @@
             "type": "ag-grid",
             "response": {
               "accepts": "json",
-              "description": "Rows as JSON: a list of records, a dict of columns, pandas split, or an ag-grid-ready object ({ columnDefs, rowData, gridOptions }). data[\"ag-grid\"] in widgets.json takes OpenBB's table configuration. The endpoint gets theme=dark or theme=light."
+              "description": "A grid as JSON: an ag-grid-ready object ({ columnDefs, rowData, gridOptions }) or pandas-style data (a list of records, a dict of columns, or {columns, index, data}). The endpoint gets theme=dark or theme=light."
+            }
+          }
+        ],
+        "permissions": [
+          "core:data:read",
+          "core:export:provide",
+          "core:copilot:context",
+          "core:clipboard:write",
+          "core:download:save",
+          "core:state:write",
+          "core:ui:button",
+          "core:ui:menu"
+        ],
+        "model": {
+          "traits": {
+            "data": {
+              "bind": "data",
+              "access": "read"
             },
+            "config": {
+              "bind": "config",
+              "access": "read"
+            },
+            "theme": {
+              "bind": "theme",
+              "access": "read"
+            },
+            "adminSettings": {
+              "bind": "adminSettings",
+              "access": "read"
+            },
+            "state": {
+              "bind": "state",
+              "access": "readwrite"
+            },
+            "meta": {
+              "bind": "meta",
+              "access": "read"
+            }
+          }
+        },
+        "settings": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "licenseKey": {
+                "type": "string",
+                "title": "AgGrid license key",
+                "description": "AgGrid Enterprise license key for this card. It replaces the organization's key.",
+                "maxLength": 1024
+              },
+              "floatingFilters": {
+                "type": "boolean",
+                "title": "Floating filters",
+                "description": "A filter box under each column header."
+              }
+            }
+          },
+          "defaults": {}
+        },
+        "grid": {
+          "w": 24,
+          "h": 16,
+          "minW": 10,
+          "minH": 6
+        },
+        "artifact": {
+          "description": "A table of rows in AgGrid: sortable, filterable, groupable, selectable and exportable, with numbers right-aligned and formatted. Use it to show rows the user will want to work with, such as a list of records or the rows of a query.",
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rowData"
+            ],
+            "properties": {
+              "columnDefs": {
+                "type": "array",
+                "maxItems": 60,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "field"
+                  ],
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    "headerName": {
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    "type": {
+                      "enum": [
+                        "numericColumn",
+                        "rightAligned"
+                      ]
+                    },
+                    "width": {
+                      "type": "integer",
+                      "minimum": 40,
+                      "maximum": 800
+                    }
+                  }
+                }
+              },
+              "rowData": {
+                "type": "array",
+                "maxItems": 1000,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ],
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
+        },
+        "actions": [
+          {
+            "id": "floating-filters",
+            "label": "Floating filters",
+            "icon": "filter",
+            "placement": "navbar",
+            "toggles": "floatingFilters"
+          },
+          {
+            "id": "autosize",
+            "label": "Autosize columns",
+            "icon": "assets/autosize.svg",
+            "placement": "menu"
+          },
+          {
+            "id": "clear-filters",
+            "label": "Clear filters and sort",
+            "icon": "refresh",
+            "placement": "menu"
+          }
+        ]
+      },
+      {
+        "id": "livegrid",
+        "name": "AgGrid live grid",
+        "description": "An ag-grid table kept current by a WebSocket that FINOS Workspace opens: snapshots, upserts and removals by row id.",
+        "category": "Data",
+        "handles": [
+          {
+            "type": "aggrid-livegrid",
+            "response": {
+              "accepts": "json",
+              "description": "The columns and a first snapshot, { columnDefs, rowData, gridOptions }, every row with an id. The widget's data.streamEndpoint is a WebSocket whose JSON messages are {op: snapshot, rows}, {op: upsert, rows} and {op: remove, ids}."
+            }
+          }
+        ],
+        "permissions": [
+          "core:data:read",
+          "core:data:stream",
+          "core:export:provide",
+          "core:copilot:context",
+          "core:clipboard:write",
+          "core:download:save",
+          "core:state:write"
+        ],
+        "model": {
+          "traits": {
+            "data": {
+              "bind": "data",
+              "access": "read"
+            },
+            "config": {
+              "bind": "config",
+              "access": "read"
+            },
+            "theme": {
+              "bind": "theme",
+              "access": "read"
+            },
+            "adminSettings": {
+              "bind": "adminSettings",
+              "access": "read"
+            },
+            "state": {
+              "bind": "state",
+              "access": "readwrite"
+            },
+            "meta": {
+              "bind": "meta",
+              "access": "read"
+            }
+          }
+        },
+        "settings": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "licenseKey": {
+                "type": "string",
+                "title": "AgGrid license key",
+                "description": "AgGrid Enterprise license key for this card. It replaces the organization's key.",
+                "maxLength": 1024
+              }
+            }
+          },
+          "defaults": {}
+        },
+        "grid": {
+          "w": 24,
+          "h": 16,
+          "minW": 10,
+          "minH": 6
+        }
+      },
+      {
+        "id": "ssrm",
+        "name": "AgGrid server-side table",
+        "description": "A large Postgres table paged, sorted, filtered, grouped and pivoted on the server.",
+        "category": "Data",
+        "handles": [
+          {
+            "type": "aggrid-ssrm",
             "definition": {
               "type": "object",
               "additionalProperties": false,
@@ -646,6 +873,77 @@
               "bind": "state",
               "access": "readwrite"
             },
+            "meta": {
+              "bind": "meta",
+              "access": "read"
+            }
+          }
+        },
+        "settings": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "licenseKey": {
+                "type": "string",
+                "title": "AgGrid license key",
+                "description": "AgGrid Enterprise license key for this card. It replaces the organization's key.",
+                "maxLength": 1024
+              }
+            }
+          },
+          "defaults": {}
+        },
+        "grid": {
+          "w": 24,
+          "h": 18,
+          "minW": 12,
+          "minH": 8
+        }
+      },
+      {
+        "id": "sql",
+        "name": "AgGrid SQL",
+        "description": "Read-only SQL against the deployment's Postgres or its data files, with completion, and the result in AgGrid.",
+        "category": "Data",
+        "standalone": true,
+        "handles": [
+          {
+            "type": "aggrid-sql",
+            "definition": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {}
+            },
+            "response": {
+              "accepts": "json",
+              "description": "Nothing the widget reads: the query runs in the plugin's backend."
+            }
+          }
+        ],
+        "permissions": [
+          "core:data:read",
+          "core:backend:call",
+          "core:state:write",
+          "core:export:provide",
+          "core:copilot:context",
+          "core:params:write",
+          "core:ui:button",
+          "core:dashboard:add-widget"
+        ],
+        "server": {
+          "routes": [
+            "postgres_schema",
+            "postgres_query",
+            "files_schema",
+            "files_query"
+          ]
+        },
+        "model": {
+          "traits": {
+            "state": {
+              "bind": "state",
+              "access": "readwrite"
+            },
             "params": {
               "bind": "params",
               "access": "readwrite"
@@ -672,10 +970,40 @@
         },
         "grid": {
           "w": 24,
-          "h": 16,
-          "minW": 10,
-          "minH": 6
-        }
+          "h": 18,
+          "minW": 12,
+          "minH": 8
+        },
+        "artifact": {
+          "description": "Runs a read-only SQL query against the deployment's Postgres or data files, in the user's own session, and shows the result in AgGrid. Use it to answer a question about the deployment's data: write the query and set its source. The user can edit and rerun it.",
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sql"
+            ],
+            "properties": {
+              "source": {
+                "enum": [
+                  "postgres",
+                  "files"
+                ]
+              },
+              "sql": {
+                "type": "string",
+                "maxLength": 8000
+              }
+            }
+          }
+        },
+        "actions": [
+          {
+            "id": "freeze",
+            "label": "Create static widget",
+            "icon": "table",
+            "placement": "navbar"
+          }
+        ]
       }
     ]
   }

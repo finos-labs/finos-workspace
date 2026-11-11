@@ -210,16 +210,148 @@ from the data:
 
 ## Model traits
 
-| Trait | Bind | Writable | Purpose |
-|---|---|---|---|
-| `data` | `data` | No | The grid data from the backend (extracted at `dataKey` path) |
-| `definition` | `definition` | No | The widget's `data["ag-grid"]` object: the table chart configuration above. |
-| `params` | `params` | Yes | The widget's params, written by `cellOnClick` with `groupBy` (needs `core:params:write`). |
-| `capabilities` | `capabilities` | No | The permissions the organization left the widget. |
-| `config` | `config` | No | Per-instance widget settings |
-| `theme` | `theme` | No | `{ mode, tokens, ... }` — drives dark/light theme |
-| `adminSettings` | `adminSettings` | No | Organization admin settings (license key, etc.) |
-| `state` | `state` | Yes | Grid state written back: selection, last event, filter/sort models, column state, the ChartView and its chart, the last agent prompt |
+The backend declares a widget of type `aggrid-livegrid` with a `data.streamEndpoint`, a WebSocket of its own:
+
+```json
+{
+  "prices": {
+    "name": "Live prices",
+    "type": "aggrid-livegrid",
+    "endpoint": "/prices/columns",
+    "data": { "streamEndpoint": "/prices/ws" }
+  }
+}
+```
+
+The socket is FINOS Workspace's, not the plugin's: the plugin has the permission `core:data:stream`, the host opens the
+address through the FINOS Workspace API as it builds the widget's request (the params as query values, `ws` or `wss` for
+`http` or `https`), the API adds the backend connection's credentials, and the host hands the JSON messages to the frame as events
+([the plugin permissions](../../reference/plugins/commands-and-permissions.mdx)). The frame needs no network, no policy override and no secret.
+
+The endpoint returns the grid before the first message, `{ columnDefs, rowData, gridOptions }`, with an `id` in every row.
+The socket then sends JSON messages:
+
+| Message | Does |
+|---|---|
+| `{ "op": "snapshot", "rows": [...] }` | Replaces all rows. |
+| `{ "op": "upsert", "rows": [...] }` | Updates the rows whose `id` the grid has and adds the others. |
+| `{ "op": "remove", "ids": [...] }` | Removes the rows. |
+
+The host gathers messages for 100 ms, and the plugin applies them as one transaction every 150 ms. A cell whose value changed
+flashes (`enableCellChangeFlash`, 0.6 s, fading over 1.8 s), and a column can show the direction of the change with the
+`agAnimateShowChangeCellRenderer`, as the examples backend's *Price* column does. A strip above the grid says what the host
+reports: *Connecting*, *Live*, *Disconnected, retrying in n s* (1 s, then doubling up to 15 s) or *Closed*. Refreshing the card
+opens the socket again.
+
+## AgGrid server-side table
+
+The backend declares a widget of type `aggrid-ssrm` with the table in its definition:
+
+```json
+{
+  "trades": {
+    "name": "Trades",
+    "type": "aggrid-ssrm",
+    "endpoint": "/trades",
+    "data": { "aggrid-ssrm": { "table": "demo.trades", "pageSize": 100 } }
+  }
+}
+```
+
+The widget reads nothing from the endpoint. It calls two routes of the plugin's backend, which reads the Postgres
+whose URL is the plugin's `postgres_url` secret:
+
+| Route | Answers |
+|---|---|
+| `ssrm_columns` | The table's columns with their types and kinds (`number`, `date`, `boolean`, `text`), from `information_schema`. The widget turns them into column definitions with the right filter for each. |
+| `ssrm_rows` | One block of AgGrid's server-side request, JSON-encoded: `startRow`, `endRow`, `sortModel`, `filterModel`, `rowGroupCols`, `valueCols`, `pivotCols`, `pivotMode`, `groupKeys`. |
+
+The backend turns the request into one query, with the values as parameters and the names quoted after they were
+checked against the table's columns:
+
+- **Paging and sorting**: `LIMIT` and `OFFSET`, `ORDER BY` the sort model and then `ctid`, so pages do not overlap. The
+  answer carries the exact row count, which the pager shows.
+- **Filters**: text (`equals`, `notEqual`, `contains`, `notContains`, `startsWith`, `endsWith`, `blank`, `notBlank`, case-insensitive),
+  number and date (`equals`, `notEqual`, `lessThan`, `lessThanOrEqual`, `greaterThan`, `greaterThanOrEqual`, `inRange`, `blank`,
+  `notBlank`), set filters, and two conditions joined by `AND` or `OR`.
+- **Row groups**: one `GROUP BY` for the level being opened, the parent group keys as `WHERE`, the aggregates `sum`, `avg`, `min`,
+  `max` and `count` of the value columns, and the number of groups as the row count.
+- **Pivot**: in Pivot Mode with value columns, the distinct values of the pivot columns (at most 100) become columns, each
+  `aggregate(value) FILTER (WHERE pivot = value)`, named `<pivot value>|<value column>` and sent as `pivotResultFields`.
+
+A request that makes no sense (an unknown column, a sum of text, a pivot of more than 100 values, more than 1,000 rows) is
+answered with a message the card shows. The table is a base table, not a view, and the Postgres role the secret names
+should only be able to read: the connection is read-only and each query stops after 15 seconds. Numerics of a table are
+sent as JSON numbers, so a `numeric` with more than 15 digits loses its tail.
+
+## AgGrid SQL
+
+The editor, its table list, the Postgres and Files sources and the DuckDB completion are the SQL explorer's, from the
+same files ([SQL explorer](../sql-explorer/README.md)): a textarea in which DuckDB-WASM, running in a worker inside the frame,
+suggests keywords, functions, tables and columns as you type (Ctrl+Space anywhere). The result is drawn in the
+grid of this plugin, with every panel above. The plugin's backend serves the explorer's four routes
+(`postgres_schema`, `postgres_query`, `files_schema`, `files_query`) from the explorer's `backend/` files, and the widget
+writes the `sql` parameter on a Files run, so a dashboard group can feed it to a chart. The frame's policy gains
+`script-src 'wasm-unsafe-eval'` and `connect-src blob:` for DuckDB, as the explorer's does.
+
+The card's **Create static widget** button freezes the current result into an AgGrid table widget of its own, named
+after the SQL widget with "(static)" added, with no parameters and no query: the first 60 columns and the first 1,000 rows, as the table's artifact holds them, and fewer rows
+when they would pass 380,000 bytes, which keeps the copy under the host's limit. The button is the
+widget's `freeze` action (`core:ui:button`), and the copy is made with the command `core:dashboard:add-widget`, which the
+host takes only right after the click. Rename the copy and change its description in its **Settings**; it keeps a record of
+the SQL widget it came from and when, which the AI agent sees, and its title tooltip shows when it was made.
+
+![The Create static widget button and its hover text](screenshots/freeze-button-tooltip.png)
+
+![The static AgGrid table below the SQL widget it was made from](screenshots/static-widget-created.jpg)
+
+## Card actions
+
+The AgGrid table has a **Floating filters** button in its header, which switches the widget's `floatingFilters` setting
+and shows a filter box under each column header while it is on, and two items in the card's options menu: **Autosize
+columns** and **Clear filters and sort**. They are the widget's `actions` (`core:ui:button`, `core:ui:menu`); the
+autosize item draws the package's own `assets/autosize.svg`, which the host sanitizes before it draws it. A static copy
+made by the SQL widget is an AgGrid table, so it has the same button and menu items.
+
+| Floating filters, hovered and on | The options menu |
+|---|---|
+| ![The Floating filters button and its hover text](screenshots/toggle-tooltip.png) ![The table with floating filters on](screenshots/toggle-on-floating-filters.png) | ![Autosize columns, with the package's own icon, and Clear filters and sort](screenshots/menu-items-svg-icon.png) |
+
+## For the AI agent
+
+Two of the four widgets declare an `artifact` (`src/plugin.json`), a component the AI agent can show
+under its answer, and the user can add the card to a dashboard as a widget that keeps its data. The
+card follows the site's light or dark mode.
+
+- **`table`** takes an ag-grid-ready object: `rowData` (up to 1,000 rows of strings, numbers,
+  booleans and nulls) and, optionally, `columnDefs` (a `field`, a `headerName`, a `type` of
+  `numericColumn` or `rightAligned`, and a `width`). The agent can fill `rowData` from a table it has
+  loaded instead of copying the rows.
+- **`sql`** takes a query: `source` (`postgres` or `files`) and `sql` (one read-only SELECT, up to
+  8,000 characters). The agent writes the query for a question about the deployment's data and the
+  card runs it from the user's own session through the plugin's backend, as the widget does. The user
+  can edit and rerun it, and the dashboard widget made from the card keeps the query.
+
+The live grid and the server-side table need a backend that streams or serves a table, so the agent
+adds them to a dashboard for the user and does not show them in the chat.
+
+Two skills, in `src/skills/`, tell the agent how to use them. `ag-grid-tables` describes the four
+widgets and when each fits, and the data of the table component. `ag-grid-sql` gives the exact steps for a question about the
+deployment's data (load the `components` tool group, then show `ag-grid/sql` with a query), the two
+sources and their dialects, what a query may be, and the tables of the example deployment.
+
+## The package
+
+| Path | |
+|---|---|
+| `src/plugin.json` | The manifest: four widgets, six routes, the `postgres_url` secret, the policy DuckDB needs, `identity: "pseudonymous"`, the organization's licence key setting. |
+| `src/entry.js` | Hands each widget its module by the `widgetId` of its `meta` trait. |
+| `src/grid.js` | What every grid shares: shapes, column inference, options, theme, the state it writes, CSV and Copilot context. |
+| `src/table.js`, `src/livegrid.js`, `src/ssrm.js`, `src/sql.js` | The four widgets. |
+| `backend/grid_server.py`, `backend/ssrm.py` | The plugin's backend: its routes, and the server-side query builder. |
+| `../sql-explorer/src/widget.js`, `../sql-explorer/backend/` | The editor and the SQL engines this package builds in. |
+
+The versions of everything are exact: AgGrid 32.3.9 (Community and Enterprise), esbuild, jsdom.
 
 ## License key (AgGrid Enterprise)
 
