@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM chimeralinux/chimera@sha256:29102d7e12a1f464707d7aba19ce53e652d277861838ed4129178d0655444b1a AS builder-base
+FROM chimeralinux/chimera@sha256:b58ec2b8c80561ba8f41d8852463585d22299b38737ce36d7d926cabf9c94174 AS builder-base
 
 ARG PYTHON_RELEASE=20261021
 ARG PYTHON_VERSION=3.13.17
