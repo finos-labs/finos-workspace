@@ -520,9 +520,9 @@ fastjsonschema==2.22.3 \
 filelock==4.2.10 \
     --hash=sha256:9479aaeb4db20b5a53e3da28493edd24720b66b8a0b84030aa56ccdf243d6857 \
     --hash=sha256:fcc3c0cb8bfe7f4b3bb0e231c04b15dbad068cb3c2515f343d8fde4dce93bd5d
-findpython==0.7.1 \
-    --hash=sha256:1b78b1ff6e886cbddeffe80f8ecdbf2b8b061169bbd18b673070e26b644c51ac \
-    --hash=sha256:9f29e6a3dabdb75f2b39c949772c0ed26eab15308006669f3478cdab0d867c78
+findpython==0.9.0 \
+    --hash=sha256:0d58e63106cab47a48793cc7b51faba3956caa46b3b8043c92d738bfef5e2a33 \
+    --hash=sha256:497c6b5eb13734be2542dfb6a93267946339601cbc2f1138c8cd4d40311fefe5
 h11==0.16.0 ; sys_platform != 'emscripten' \
     --hash=sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1 \
     --hash=sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86
@@ -663,12 +663,12 @@ pkginfo==1.13.3 \
 platformdirs==4.14.5 \
     --hash=sha256:32e9921db7385aa8169bee4fe9501923e5715ba9fb7ea3b9c69b0d8e0639f7a1 \
     --hash=sha256:8e778c6fa421516f4d3369449f8df3b0e1b72c0e0005fe88e3ec772d0a14e750
-poetry==2.3.2 \
-    --hash=sha256:4b64412c61b4de2c7268ffebbde7d564b655a37d29c2cd82bf1b52f15c8066b4 \
-    --hash=sha256:6e81526ae99a4f07f75174600bfe8b73e74c786dc18c9d1ce1800dd6f807414b
-poetry-core==2.3.1 \
-    --hash=sha256:96f791d5d7d4e040f3983d76779425cf9532690e2756a24fd5ca0f86af19ef82 \
-    --hash=sha256:db1cf63b782570deb38bfba61e2304a553eef0740dc17959a50cc0f5115ee634
+poetry==2.5.1 \
+    --hash=sha256:19fbd566efced512be58989a756aa1333cdc9b6aabb4fc84fd1ec9d29ee74874 \
+    --hash=sha256:3f7910abc667ce0c33a67e306baf017acdec1c8eeec4aa64d176e530d8338a61
+poetry-core==2.5.0 \
+    --hash=sha256:81d04c9253b19d0604718268d781867c8f7b2128e5b25bbf1e84141eec6b89c4 \
+    --hash=sha256:98ee465b66f7e14bb9fbe68fb5e00d0cff184f036993ec94610ae4b5612f3add
 pycparser==3.12 ; (implementation_name != 'PyPy' and platform_python_implementation != 'PyPy' and sys_platform == 'linux') or (implementation_name != 'PyPy' and sys_platform == 'darwin') \
     --hash=sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e \
     --hash=sha256:f03387877eab82ce01bbdfd0ba7252ee55a90b1c708d5129e2ce915475cf1db6
