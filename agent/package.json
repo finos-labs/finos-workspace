@@ -43,7 +43,7 @@
     "exceljs": "4.4.0",
     "gpt-tokenizer": "^3.4.0",
     "hono": "^4.13.13",
-    "ioredis": "5.10.1",
+    "ioredis": "6.0.0",
     "mammoth": "^1.13.0",
     "ollama-ai-provider-v2": "^3.6.0",
     "turndown": "^7.2.4",
