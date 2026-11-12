@@ -93,6 +93,22 @@ function getFileTag(w: Widget): string {
 }
 
 const MAX_LISTED_WIDGETS = 60;
+const MAX_VIEW_SUMMARY_CHARS = 300;
+
+// What a widget says it shows now, such as "50 trades shown, more available". It comes from outside
+// the agent and goes in the prompt, so it is one short line whatever was sent, with no brackets or
+// control characters: it cannot close its own tag and add tags that look like the host's.
+function describeShownNow(w: Widget): string {
+  const summary = w.metadata?.view_summary;
+  if (typeof summary !== "string") return "";
+  const line = summary
+    .slice(0, MAX_VIEW_SUMMARY_CHARS * 4)
+    .replace(/[\[\]\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_VIEW_SUMMARY_CHARS);
+  return line ? ` [shows now: ${line}]` : "";
+}
 
 function describeWidgets(
   label: string,
@@ -109,7 +125,7 @@ function describeWidgets(
       const typeTag = w.widget_type === "iframe" ? " [iframe]" : w.widget_type === "plugin" ? " [plugin]" : "";
       const tool = linkedTool(w);
       const toolTag = tool ? ` [query tool: ${tool}]` : "";
-      return `- ${w.name} (${w.widget_id}) [origin: ${w.origin}] [uuid: ${w.uuid}]:${fileTag}${typeTag}${toolTag} ${w.description}${params ? ` [${params}]` : ""}`;
+      return `- ${w.name} (${w.widget_id}) [origin: ${w.origin}] [uuid: ${w.uuid}]:${fileTag}${typeTag}${toolTag}${describeShownNow(w)} ${w.description}${params ? ` [${params}]` : ""}`;
     })
     .join("\n");
   const rest = more > 0 ? `\n- …and ${more} more: use search_widgets to see them.` : "";

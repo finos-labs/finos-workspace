@@ -324,7 +324,17 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
     if (!clientRef.current) {
       clientRef.current = new Client(
         { name: clientName || "FINOS Workspace", version: "0.1.0" },
-        { capabilities: {} },
+        {
+          capabilities: {
+            // MCP Apps: spec-following servers only register UI tools for
+            // clients that advertise this extension.
+            extensions: {
+              "io.modelcontextprotocol/ui": {
+                mimeTypes: ["text/html;profile=mcp-app"],
+              },
+            },
+          },
+        },
       );
       addLog("debug", "MCP Client initialized in connect.");
     }

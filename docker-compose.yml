@@ -137,9 +137,12 @@ services:
       AI_API_URL: ${AI_API_URL:-http://localhost:7777}
       AI_COPILOT_ENABLED: ${AI_COPILOT_ENABLED:-true}
       ALLOW_HTML_JS_EXECUTION: ${ALLOW_HTML_JS_EXECUTION:-true}
+      MCP_APPS_SANDBOX_URL: ${MCP_APPS_SANDBOX_URL:-http://*.sandbox.localhost:3001}
+      MCP_APPS_HOST_ORIGINS: ${MCP_APPS_HOST_ORIGINS:-${WEB_URL:-http://localhost:3000}}
       UI_SHOW_COMPANION_MCP_MODE: ${UI_SHOW_COMPANION_MCP_MODE:-true}
     ports:
       - "3000:8080"
+      - "3001:8081"
     depends_on:
       - api
       - agent

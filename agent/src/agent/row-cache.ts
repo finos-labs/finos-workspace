@@ -14,11 +14,18 @@ interface CachedRows {
   rows: Record<string, unknown>[];
   widgetUuid?: string;
   inputArgs?: Record<string, unknown>;
+  dataVersion?: unknown;
 }
 
 interface RememberRowsOptions {
   widgetUuid?: string;
   inputArgs?: Record<string, unknown>;
+  dataVersion?: unknown;
+}
+
+/** Set by a widget whose rows change with no change of its parameters, such as an MCP App the user filters. */
+export function widgetDataVersion(widget: Widget | undefined): unknown {
+  return widget?.metadata?.data_version;
 }
 
 let store: Store | null = null;
@@ -81,6 +88,7 @@ function normalizeCachedRows(value: unknown): CachedRows | null {
       record.inputArgs && typeof record.inputArgs === "object" && !Array.isArray(record.inputArgs)
         ? record.inputArgs
         : undefined,
+    dataVersion: record.dataVersion,
   };
 }
 
@@ -94,6 +102,8 @@ function cachedRowsMatchCurrentWidget(
     ? allWidgets.find((w) => w.uuid === cached.widgetUuid)
     : allWidgets.find((w) => sanitizeName(w.name) === tableName);
   if (!widget) return true;
+  // Only rows a widget gave carry its version; a table the chat made itself has none.
+  if (cached.widgetUuid && cached.dataVersion !== widgetDataVersion(widget)) return false;
   if (!cached.widgetUuid && stableInputArgsKey(currentWidgetInputArgs(widget)) !== "{}") {
     return false;
   }
@@ -147,6 +157,7 @@ export function rememberRows(
     rows,
     widgetUuid: options.widgetUuid,
     inputArgs: options.inputArgs ? compactInputArgs(options.inputArgs) : undefined,
+    dataVersion: options.dataVersion,
   };
   logger.debug("Keeping rows for chat", { conversationId, tableName, rowCount: rows.length });
   return (async () => {

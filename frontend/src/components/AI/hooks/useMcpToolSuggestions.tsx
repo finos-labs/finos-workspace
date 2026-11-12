@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { isMcpToolAllowed, useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import {
   dedupeIframeServersByUrl,
+  modelMayCallTool,
   useShallowMcpToolsStore,
 } from "~/lib/state/mcpTools";
 
@@ -45,7 +46,11 @@ export function useMcpToolSuggestions() {
       if (!server.toolsEnabled) continue;
 
       for (const tool of server.tools) {
-        if (tool.enabled && isMcpToolAllowed(access, server.url, tool.id)) {
+        if (
+          tool.enabled &&
+          modelMayCallTool(tool) &&
+          isMcpToolAllowed(access, server.url, tool.id)
+        ) {
           tools.push({
             type: "mcpTool",
             id: `${server.id}_${tool.id}`,

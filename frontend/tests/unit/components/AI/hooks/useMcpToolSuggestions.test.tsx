@@ -82,6 +82,7 @@ vi.mock("~/lib/state/mcpTools", async (importOriginal) => {
   const actual = await importOriginal<typeof import("~/lib/state/mcpTools")>();
   return {
     dedupeIframeServersByUrl: actual.dedupeIframeServersByUrl,
+    modelMayCallTool: actual.modelMayCallTool,
     useShallowMcpToolsStore: (selector: (state: unknown) => unknown) =>
       mockUseShallowMcpToolsStore(selector),
   };
@@ -129,6 +130,35 @@ describe("useMcpToolSuggestions", () => {
       const { result } = renderHook(() => useMcpToolSuggestions());
 
       expect(result.current.mcpToolOptions).toHaveLength(3);
+    });
+
+    it("leaves out a tool whose visibility is for an MCP App only", () => {
+      const withAppOnly = [
+        {
+          ...mockServers[0],
+          tools: [
+            ...mockServers[0].tools,
+            {
+              id: "tool-app",
+              name: "app_only_tool",
+              description: "Called by the server's app only",
+              enabled: true,
+              inputSchema: { type: "object" },
+              _meta: { ui: { visibility: ["app"] } },
+            },
+          ],
+        },
+      ];
+      mockUseShallowMcpToolsStore.mockImplementation((selector) =>
+        selector({ servers: withAppOnly, getMCPConnection: mockGetMCPConnection }),
+      );
+
+      const { result } = renderHook(() => useMcpToolSuggestions());
+
+      expect(result.current.mcpToolOptions.map((t) => t.toolName)).toEqual([
+        "get_stock_price",
+        "get_market_data",
+      ]);
     });
 
     it("suggests only the tools a role grants", () => {

@@ -36,6 +36,38 @@ describe("getCachedRows", () => {
   });
 });
 
+describe("the version of the rows a widget shows", () => {
+  const widget = (data_version?: unknown) =>
+    ({ uuid: "w1", name: "t1", params: [], ...(data_version === undefined ? {} : { metadata: { data_version } }) }) as never;
+
+  it("keeps the rows while the widget still shows that version", async () => {
+    await rememberRows("c1", "t1", [{ a: 1 }], { widgetUuid: "w1", dataVersion: 1 });
+    expect((await getCachedRows("c1", [widget(1)])).get("t1")).toEqual([{ a: 1 }]);
+  });
+
+  it("drops rows of an older version, so that a question is answered from what is on screen", async () => {
+    await rememberRows("c1", "t1", [{ a: 1 }], { widgetUuid: "w1", dataVersion: 1 });
+    expect((await getCachedRows("c1", [widget(2)])).has("t1")).toBe(false);
+  });
+
+  it("drops rows kept before the widget had a version", async () => {
+    await rememberRows("c1", "t1", [{ a: 1 }], { widgetUuid: "w1" });
+    expect((await getCachedRows("c1", [widget(1)])).has("t1")).toBe(false);
+  });
+
+  it("leaves a widget that has no version as it was", async () => {
+    await rememberRows("c1", "t1", [{ a: 1 }], { widgetUuid: "w1" });
+    expect((await getCachedRows("c1", [widget()])).get("t1")).toEqual([{ a: 1 }]);
+  });
+
+  it("keeps a table the chat made itself when a widget with a version has its name", async () => {
+    // An MCP tool result or create_table_from_text is kept without a widget, and
+    // an MCP App widget is named after its tool, so the two can share a name.
+    await rememberRows("c1", "t1", [{ a: 1 }]);
+    expect((await getCachedRows("c1", [widget(123)])).get("t1")).toEqual([{ a: 1 }]);
+  });
+});
+
 describe("rememberRows", () => {
   it("stores rows under tableName scoped to conversationId", async () => {
     await rememberRows("c1", "t1", [{ a: 1 }, { a: 2 }]);

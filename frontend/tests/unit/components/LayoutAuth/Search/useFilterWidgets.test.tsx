@@ -24,6 +24,14 @@ const defaultState: SearchDialogState = {
 };
 
 describe("useFilterWidgets", () => {
+  it("offers the MCP App widget, which is built in like an iframe", () => {
+    const widgets = [createMockWidget({ widgetId: "mcp_app", name: "MCP App" })];
+
+    const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
+
+    expect(result.current.map((widget) => widget.widgetId)).toEqual(["mcp_app"]);
+  });
+
   describe("Basic Filtering", () => {
     it("returns all widgets when category is All and no options selected", () => {
       const widgets = [

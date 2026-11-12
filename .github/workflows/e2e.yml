@@ -66,7 +66,7 @@ jobs:
 
       - name: Make the stack's certificate
         run: |
-          frontend/tests/e2e/make-tls.sh frontend/tests/e2e/tls/certs localhost
+          frontend/tests/e2e/make-tls.sh frontend/tests/e2e/tls/certs localhost "*.sandbox.localhost"
           echo "NODE_EXTRA_CA_CERTS=$GITHUB_WORKSPACE/frontend/tests/e2e/tls/certs/ca.pem" >> "$GITHUB_ENV"
 
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0

@@ -137,6 +137,12 @@ export const RuntimeConfigSchema = z.object({
       "Let scripts in HTML widgets and in HTML artifacts of the Copilot run. Off, those pages run no script.",
     ),
   }),
+  mcpApps: z.object({
+    sandboxUrl: stringField(
+      "",
+      "Address of the separate origin that runs MCP App views. A * as the first label of the host gives every MCP server an origin of its own, for example https://*.mcp-sandbox.example.net, which needs a wildcard DNS record and certificate. It must not share a registrable domain with the app or the API. Empty, the MCP App widget is unavailable.",
+    ),
+  }),
   links: z.object({
     docsUrl: stringField(
       "",
@@ -217,6 +223,9 @@ export const ENV_NAMES = {
   },
   data: {
     allowHtmlJsExecution: "VITE_ALLOW_HTML_JS_EXECUTION",
+  },
+  mcpApps: {
+    sandboxUrl: "VITE_MCP_APPS_SANDBOX_URL",
   },
   links: {
     docsUrl: "VITE_DOCS_URL",
