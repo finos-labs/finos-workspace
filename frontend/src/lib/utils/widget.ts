@@ -31,7 +31,7 @@ import {
   type DataUrl,
 } from "../state/copilot";
 
-export const CORE_WIDGET_IDS = ["navigation_bar", "iframe", "html"];
+export const CORE_WIDGET_IDS = ["navigation_bar", "iframe", "html", "mcp_app"];
 
 // biome-ignore format: off
 export type WidgetsIds = Extract<keyof typeof WIDGETS, string> | `${string}-${number | string}`;

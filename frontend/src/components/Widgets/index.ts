@@ -7,6 +7,7 @@ const NewsFC = lazy(() => import("./custom/News"));
 const PdfViewerFC = lazy(() => import("./PdfViewer"));
 const HtmlViewerFC = lazy(() => import("./custom/HtmlViewer"));
 const NavigationBarFC = lazy(() => import("./ui/NavigationBar"));
+const McpAppFC = lazy(() => import("./McpApp/McpAppWidget"));
 
 export const WidgetComponentMap = {
   iframe: "Iframe",
@@ -15,6 +16,7 @@ export const WidgetComponentMap = {
   pdf: "PdfViewer",
   html: "HtmlViewer",
   navigation_bar: "NavigationBar",
+  mcp_app: "McpApp",
 } as const;
 
 const Widgets = {
@@ -24,6 +26,7 @@ const Widgets = {
   PdfViewer: PdfViewerFC,
   HtmlViewer: HtmlViewerFC,
   NavigationBar: NavigationBarFC,
+  McpApp: McpAppFC,
 } as const;
 
 export default Widgets;

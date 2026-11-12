@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CopilotAccess, useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import { type McpServer, useMcpToolsStore } from "~/lib/state/mcpTools";
 
@@ -14,6 +14,42 @@ const server = (id: string, url: string, tools: string[]): McpServer => ({
 const ready = { state: "ready", retry: () => {} } as never;
 
 const grants = (mcp: CopilotAccess["mcp"]): CopilotAccess => ({ models: [], mcp });
+
+describe("reconnecting when the tools are read for a chat request", () => {
+  const withConnection = (state: string) => {
+    const retry = vi.fn();
+    useMcpToolsStore.setState({
+      servers: [server("docs", "https://docs.example.com/mcp", ["search"])],
+      mcpConnectionRegistry: { docs: { state, retry } as never },
+    });
+    useCopilotAccessStore
+      .getState()
+      .setAccess(
+        grants([{ server_url: "https://docs.example.com/mcp", tool_name: "*" }]),
+      );
+    return retry;
+  };
+
+  afterEach(() => {
+    useCopilotAccessStore.getState().setAccess(null);
+  });
+
+  it("leaves a ready connection alone, because reconnecting tears down what is using it", async () => {
+    const retry = withConnection("ready");
+
+    await useMcpToolsStore.getState().getEnabledToolsForAgent();
+
+    expect(retry).not.toHaveBeenCalled();
+  });
+
+  it("tries a failed connection again", async () => {
+    const retry = withConnection("failed");
+
+    await useMcpToolsStore.getState().getEnabledToolsForAgent();
+
+    expect(retry).toHaveBeenCalledOnce();
+  });
+});
 
 describe("MCP tools and what the user's roles grant", () => {
   beforeEach(() => {

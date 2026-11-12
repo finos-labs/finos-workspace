@@ -8,6 +8,7 @@ export const mockConfig = RuntimeConfigSchema.parse({
   copilot: { enabled: true, saveSkillFromChat: true },
   ui: {},
   data: {},
+  mcpApps: {},
   links: {},
   contact: {},
   whiteLabel: {},

@@ -20,6 +20,7 @@ const FIELDS = [
   ["ui", "showRemoveFromOrg", "UI_SHOW_REMOVE_FROM_ORG", "bool"],
   ["ui", "defaultTheme", "UI_DEFAULT_THEME", "theme"],
   ["data", "allowHtmlJsExecution", "ALLOW_HTML_JS_EXECUTION", "bool"],
+  ["mcpApps", "sandboxUrl", "MCP_APPS_SANDBOX_URL", "string"],
   ["links", "docsUrl", "DOCS_URL", "string"],
   ["contact", "supportEmail", "SUPPORT_EMAIL", "string"],
   ["whiteLabel", "name", "WL_NAME", "string"],
@@ -92,6 +93,10 @@ const HEADER_FIELDS = [
     "CSP_REPORT_ONLY",
     "true sends the policy as Content-Security-Policy-Report-Only, so the browser reports what it would block without blocking it. Must be true or false.",
   ],
+  [
+    "MCP_APPS_HOST_ORIGINS",
+    "Origins that may frame the MCP App sandbox page, separated by spaces, for example https://workspace.example.com. Only plain http and https origins count. With none valid, the sandbox page refuses to be framed. Defaults to http://localhost:3000 and http://localhost:5173.",
+  ],
 ];
 
 function originOf(url) {
@@ -149,7 +154,9 @@ function policy(env) {
     "connect-src": ["'self'", "blob:", "data:", "https:", "wss:", backend, backend && backend.replace(/^http/, "ws"), ai].concat(
       google ? [GOOGLE_SIGN_IN] : [],
     ),
-    "frame-src": ["'self'", "blob:", "data:", "https:", backend].concat(LOCAL_FRAMES).concat(google ? [GOOGLE_SIGN_IN] : []),
+    "frame-src": ["'self'", "blob:", "data:", "https:", backend, sandboxFrameSource(env.MCP_APPS_SANDBOX_URL)]
+      .concat(LOCAL_FRAMES)
+      .concat(google ? [GOOGLE_SIGN_IN] : []),
     "worker-src": ["'self'", "blob:"],
     "media-src": ["'self'", "data:", "blob:", "https:"],
     "manifest-src": ["'self'"],
@@ -169,6 +176,64 @@ function policy(env) {
     }
     return directive + " " + seen.join(" ");
   }).join("; ");
+}
+
+// MCP Apps: the sandbox origin serves one static page whose CSP arrives as an
+// HTTP header, built here from the domains the MCP App declared. Every source is
+// checked, and one that does not parse is dropped, so the policy can only get
+// narrower than what was asked for.
+// A wildcard needs at least two labels after it: *.example.com, never *.com.
+const SANDBOX_SOURCE =
+  /^(https?|wss?):\/\/(\*\.[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+|[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*)(:([0-9]+|\*))?$/;
+const SANDBOX_HOST_ORIGIN = /^https?:\/\/[A-Za-z0-9.-]+(:[0-9]+)?$/;
+const SANDBOX_DEFAULT_HOSTS = "http://localhost:3000 http://localhost:5173";
+
+// The sandbox origin the app frames MCP App views from. A * as the leftmost label
+// stands for one origin per MCP server, which a CSP source matches as written.
+function sandboxFrameSource(url) {
+  const origin = originOf(url);
+  return origin && /^https?:/.test(origin) && SANDBOX_SOURCE.test(origin) ? origin : null;
+}
+
+function sandboxSources(raw) {
+  const out = [];
+  const words = String(raw || "").split(/\s+/);
+  for (let i = 0; i < words.length; i++) {
+    if (SANDBOX_SOURCE.test(words[i]) && out.indexOf(words[i]) === -1) {
+      out.push(words[i]);
+    }
+  }
+  return out;
+}
+
+function sandboxPolicy(args, env) {
+  const connect = sandboxSources(args.connect);
+  const resource = sandboxSources(args.resource);
+  const frame = sandboxSources(args.frame);
+  const base = sandboxSources(args.base);
+  const hosts = String(env.MCP_APPS_HOST_ORIGINS || SANDBOX_DEFAULT_HOSTS)
+    .split(/\s+/)
+    .map(originOf) // WEB_URL may carry a trailing slash or a path; frame-ancestors wants the origin
+    .filter(function (origin) {
+      return origin !== null && SANDBOX_HOST_ORIGIN.test(origin);
+    });
+  return [
+    "default-src 'none'",
+    ["script-src 'self' 'unsafe-inline'"].concat(resource).join(" "),
+    ["style-src 'self' 'unsafe-inline'"].concat(resource).join(" "),
+    ["img-src 'self' data:"].concat(resource).join(" "),
+    ["media-src 'self' data:"].concat(resource).join(" "),
+    ["font-src 'self'"].concat(resource).join(" "),
+    connect.length ? ["connect-src 'self'"].concat(connect).join(" ") : "connect-src 'none'",
+    frame.length ? ["frame-src"].concat(frame).join(" ") : "frame-src 'none'",
+    "object-src 'none'",
+    base.length ? ["base-uri 'self'"].concat(base).join(" ") : "base-uri 'self'",
+    hosts.length ? ["frame-ancestors"].concat(hosts).join(" ") : "frame-ancestors 'none'",
+  ].join("; ");
+}
+
+function sandboxContentSecurityPolicy(r) {
+  return sandboxPolicy(r.args, process.env);
 }
 
 function headers(env) {
@@ -238,6 +303,8 @@ export default {
   PLUGIN_SHELL_HASH: PLUGIN_SHELL_HASH,
   render: render,
   policy: policy,
+  sandboxPolicy: sandboxPolicy,
+  sandboxContentSecurityPolicy: sandboxContentSecurityPolicy,
   headers: headers,
   configJs: configJs,
   healthz: healthz,
