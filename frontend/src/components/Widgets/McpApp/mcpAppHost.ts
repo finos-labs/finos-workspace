@@ -318,6 +318,13 @@ const lastTwoLabels = (hostname: string) => hostname.split(".").slice(-2).join("
 const PER_SERVER = /^https?:\/\/\*\.[^*/?#]+$/i;
 /** Stands in for a server's id while the address is checked. */
 const SAMPLE_ID = "0".repeat(32);
+/** The * that stands for a server's id: the whole first label of the host, nowhere else. */
+const ID_LABEL = /^(https?:\/\/)\*(?=\.)/i;
+
+/** The address with id in place of the * of its first label, if it has one. */
+function withServerId(template: string, id: string): string {
+  return template.replace(ID_LABEL, (_, scheme: string) => scheme + id);
+}
 
 /**
  * The sandbox origin has to be a different origin from the app, and should not
@@ -341,7 +348,7 @@ export function checkSandboxOrigin(
   }
   let sandbox: URL;
   try {
-    sandbox = new URL(template.replace("*", SAMPLE_ID));
+    sandbox = new URL(withServerId(template, SAMPLE_ID));
   } catch {
     return { ok: false, reason: "MCP_APPS_SANDBOX_URL is not a valid address." };
   }
@@ -394,9 +401,13 @@ export async function sandboxIdFor(serverUrl: string): Promise<string> {
     .slice(0, 32);
 }
 
-/** The sandbox address for one server: its id in place of the *, if there is one. */
+/**
+ * The sandbox address for one server: its id in place of the * that is the
+ * first label of the host, if there is one. A * anywhere else stays as it is,
+ * and checkSandboxOrigin refuses such an address.
+ */
 export function sandboxBaseFor(sandboxUrl: string, id: string): string {
-  return sandboxUrl.replace("*", id);
+  return withServerId(sandboxUrl, id);
 }
 
 /** Links an MCP App asks the host to open: web addresses only. */

@@ -4,7 +4,11 @@ import { expect, test } from "@playwright/test";
 // server's label, as in MCP_APPS_SANDBOX_URL.
 const SANDBOX = process.env.E2E_SANDBOX_URL ?? "https://*.sandbox.localhost:3001";
 const SANDBOX_PAGE = "mcp-app-sandbox.html";
-const sandboxFor = (label: string) => SANDBOX.replace("*", label).replace(/\/$/, "");
+const sandboxFor = (label: string) =>
+  SANDBOX.replace(
+    /^(https?:\/\/)\*(?=\.)/i,
+    (_, scheme: string) => scheme + label,
+  ).replace(/\/$/, "");
 const directLocal = (url: string) =>
   url.replace(/\/\/[^/]*\.sandbox\.localhost/, "//localhost");
 

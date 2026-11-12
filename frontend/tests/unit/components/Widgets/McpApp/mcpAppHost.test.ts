@@ -487,6 +487,15 @@ describe("the sandbox origin of one server", () => {
     );
   });
 
+  it("replaces only the * that is the first label of the host", () => {
+    expect(sandboxBaseFor("https://*.sandbox.example.net/a*b", "ab12")).toBe(
+      "https://ab12.sandbox.example.net/a*b",
+    );
+    expect(sandboxBaseFor("https://sandbox.*.example.net", "ab12")).toBe(
+      "https://sandbox.*.example.net",
+    );
+  });
+
   it("leaves a shared sandbox address as it is", () => {
     expect(sandboxBaseFor("https://sandbox.example.net/", "ab12")).toBe(
       "https://sandbox.example.net/",
