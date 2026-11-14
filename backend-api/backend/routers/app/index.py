@@ -44,6 +44,7 @@ from api import (
     provider_tokens,
     schemas,
     sign_in_providers,
+    signup,
     source_proxy,
 )
 from api.body_limit import AGENT_BODY_BYTES
@@ -476,6 +477,89 @@ async def post_reset_password(
             detail="This link has expired or was used already. Ask your admin for a new one.",
         )
     await db.execute(delete(models.Session).where(models.Session.user_uuid == user_uuid))
+    await db.commit()
+    return SuccessReturn.success_instance()
+
+
+def _require_signup() -> None:
+    if not settings.SIGNUP_ENABLED:
+        raise HTTPException(404, detail="Not Found")
+    if settings.DISABLE_REGISTRATION:
+        raise HTTPException(403, detail="Registration is disabled")
+    if settings.DEFAULT_USER_MAPPING is None:
+        raise HTTPException(503, detail="Signup is not configured")
+
+
+@router.post(
+    "/signup",
+    response_model=SuccessReturn,
+    status_code=202,
+    summary="Ask for an account with an email address",
+    description=(
+        "Emails a single-use link to the address, through the mailer that SIGNUP_MAILER names. The link opens a page "
+        "where the person chooses a password, and only then does the account exist. It answers 202 the same way "
+        "whether or not an account with the address exists, and sends nothing for an address that has one. Answers "
+        "404 unless SIGNUP_ENABLED is true, 403 when registration is disabled, 503 when the mailer or the default "
+        "permissions mapping is not configured, and 400 without the header `X-Workspace-Client: web`."
+    ),
+)
+@limiter.limit(LIMIT_FEW)
+async def post_signup(
+    request: Request,
+    body: schemas.SignupRequest,
+    db: AsyncSession = Depends(aget_write_db),
+):
+    auth_helpers.check_browser_sign_in(request)
+    _require_signup()
+    if not signup.get_mailer().configured:
+        raise HTTPException(503, detail="Signup is not configured")
+    if not await crud.check_new_user(db, body.email):
+        token = await signup.issue_signup(body.email, body.first_name, body.last_name)
+        link = f"{settings.APPURL.rstrip('/')}/signup/confirm#{token}"
+        await signup.send_confirmation(body.email, link)
+    return SuccessReturn.success_instance()
+
+
+@router.post(
+    "/signup/confirm",
+    response_model=SuccessReturn,
+    summary="Create the account with the signup link",
+    description=(
+        "Uses the token of a signup link, which works once, to create the account with the chosen password. Answers "
+        "400 when the link has expired or was used already, 404 unless SIGNUP_ENABLED is true, and 400 without the "
+        "header `X-Workspace-Client: web`. The person signs in afterwards."
+    ),
+)
+@limiter.limit(LIMIT_FEW)
+async def post_signup_confirm(
+    request: Request,
+    body: schemas.PasswordReset,
+    db: AsyncSession = Depends(aget_write_db),
+):
+    auth_helpers.check_browser_sign_in(request)
+    _require_signup()
+    if (pending := await signup.take_signup(body.token)) is None:
+        raise HTTPException(
+            400, detail="This link has expired or was used already. Sign up again."
+        )
+    user_create = schemas.UserCreateAppAdmin(
+        email=pending["email"],
+        first_name=pending["first_name"],
+        last_name=pending["last_name"],
+        permissions_uuid=settings.DEFAULT_USER_MAPPING,
+    )
+    invite_uuid = await register_app_user(
+        db, user_create, schemas.RegisterAppUser(), from_oauth=True
+    )
+    if not invite_uuid or not (
+        user_uuid := await process_create_user(invite_uuid, user_create.email, db)
+    ):
+        raise HTTPException(status_code=400, detail="Failed to create user")
+    await db.execute(
+        update(User)
+        .where(User.uuid == user_uuid)
+        .values(password=body.new_password, temporary_password=False)
+    )
     await db.commit()
     return SuccessReturn.success_instance()
 

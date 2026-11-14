@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { CredentialResponse } from "@react-oauth/google";
 import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import {
@@ -47,7 +47,10 @@ import {
 } from "~/types/auth.type";
 import { zodEmail, zodPassword } from "~/utils/zodForms";
 
-const { allowEmailLogin: authenticationAllowEmailLoginFF } = getConfig().authentication;
+const {
+  allowEmailLogin: authenticationAllowEmailLoginFF,
+  allowSignup: authenticationAllowSignupFF,
+} = getConfig().authentication;
 
 const { supportEmail } = getConfig().contact;
 const contactTarget = supportEmail ? `your admin (${supportEmail})` : "your admin";
@@ -215,6 +218,14 @@ export default function LoginPage() {
               {authenticationAllowEmailLoginFF && (
                 <p className="text-light-800 body-xs-regular">
                   Forgot your password? Ask {contactTarget} to reset your password.
+                </p>
+              )}
+              {authenticationAllowEmailLoginFF && authenticationAllowSignupFF && (
+                <p className="text-light-800 body-xs-regular">
+                  No account yet?{" "}
+                  <Link className="underline" to="/signup">
+                    Create one
+                  </Link>
                 </p>
               )}
               <div className="mt-[42px] flex flex-col gap-4 items-center justify-center">

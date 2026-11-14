@@ -73,6 +73,12 @@ This group configures the notification that goes out when a new organization is 
 
 <SettingsTable group="NotificationSettings" />
 
+## Signup (`SignupSettings`)
+
+This group switches on signup with an email address, which is off by default. The API sends no email itself: the mailer, by default a webhook, delivers the confirmation link, and a deployment can name its own class in `SIGNUP_MAILER`. The person chooses the password on the page that the link opens, and the account exists only after that. The web app shows the signup link and serves the signup pages only when its own `AUTHENTICATION_ALLOW_SIGNUP` is true, so set both.
+
+<SettingsTable group="SignupSettings" />
+
 ## Widget plugins (`WidgetPluginSettings`)
 
 This group configures widget plugins: the plugins directory, the digest pins, the limits on files, proxies and backends, the secrets directory, and the backends that the API may call. [Deploy a widget plugin](../../tutorials/plugins/deploy-a-plugin.md) explains how they fit together.

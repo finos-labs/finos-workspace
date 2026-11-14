@@ -165,6 +165,7 @@ describe("getConfig", () => {
     const cfg = getConfig();
     expect(cfg.urls.backend).toBe("");
     expect(cfg.authentication.allowEmailLogin).toBe(true);
+    expect(cfg.authentication.allowSignup).toBe(false);
     expect(cfg.copilot.enabled).toBe(false);
     expect(cfg.ui.defaultTheme).toBe("dark");
     expect(cfg.links.docsUrl).toBe("");
@@ -176,10 +177,12 @@ describe("getConfig", () => {
     vi.stubEnv("VITE_BACKEND_URL", "https://x.test");
     vi.stubEnv("VITE_AI_API_URL", "https://x.test");
     vi.stubEnv("VITE_AUTHENTICATION_ALLOW_EMAIL_LOGIN", "false");
+    vi.stubEnv("VITE_AUTHENTICATION_ALLOW_SIGNUP", "true");
     vi.stubEnv("VITE_AI_COPILOT_ENABLED", "true");
 
     const cfg = getConfig();
     expect(cfg.authentication.allowEmailLogin).toBe(false);
+    expect(cfg.authentication.allowSignup).toBe(true);
     expect(cfg.copilot.enabled).toBe(true);
   });
 
