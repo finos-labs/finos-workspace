@@ -183,6 +183,30 @@ class TestRefusals:
         assert response.status_code == 202
 
 
+class TestPerAddressLimit:
+    @pytest.mark.asyncio
+    async def test_a_fourth_link_in_an_hour_is_not_sent(self, client, mailer):
+        email = _email()
+        for _ in range(signup.MAILS_PER_ADDRESS + 1):
+            response = await _post("/app/signup", {"email": email})
+            assert response.status_code == 202
+            assert response.json() == {"success": True}
+        assert len(mailer.calls) == signup.MAILS_PER_ADDRESS
+
+    @pytest.mark.asyncio
+    async def test_plus_addressing_does_not_get_around_it(self, client, mailer):
+        name = f"signup-{uuid4().hex[:10]}"
+        for tag in range(signup.MAILS_PER_ADDRESS + 2):
+            await _post("/app/signup", {"email": f"{name}+{tag}@example.com"})
+        assert len(mailer.calls) == signup.MAILS_PER_ADDRESS
+
+    @pytest.mark.asyncio
+    async def test_another_address_is_not_affected(self, client, mailer):
+        for _ in range(signup.MAILS_PER_ADDRESS + 1):
+            await _post("/app/signup", {"email": _email()})
+        assert len(mailer.calls) == signup.MAILS_PER_ADDRESS + 1
+
+
 class TestTheHook:
     def test_a_deployment_names_its_own_mailer(self, monkeypatch):
         monkeypatch.setattr(settings, "SIGNUP_MAILER", "tests.test_signup:RecordingMailer")

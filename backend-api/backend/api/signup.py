@@ -8,12 +8,14 @@ from loguru import logger
 
 from utilities.config import settings
 
-from . import crypto
+from . import base, crypto
 from .auth_helpers import app_redis, app_redis_key
 from .notifications import AdminNotifier, WebhookNotifier
 
 SIGNUP_LIFETIME = timedelta(hours=24)
 SIGNUP_EVENT = "signup.confirmation"
+MAILS_PER_ADDRESS = 3
+MAIL_WINDOW = timedelta(hours=1)
 
 
 class WebhookMailer(WebhookNotifier):
@@ -29,6 +31,16 @@ def get_mailer() -> AdminNotifier:
 
 def _key(token: str) -> str:
     return app_redis_key(f"signup:{crypto.hash_token(token)}")
+
+
+async def allow_mail(email: str) -> bool:
+    address = crypto.hash_token(base.clean_email(email).lower())
+    async with app_redis() as redis:
+        key = app_redis_key(f"signup_mails:{address}")
+        count = await redis.incr(key)
+        if count == 1:
+            await redis.expire(key, int(MAIL_WINDOW.total_seconds()))
+    return count <= MAILS_PER_ADDRESS
 
 
 async def issue_signup(email: str, first_name: str | None, last_name: str | None) -> str:
