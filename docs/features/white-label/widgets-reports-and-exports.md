@@ -25,6 +25,6 @@ When a user exports a dashboard or a widget as an image, the image carries "Expo
 
 ## Messages from FINOS Workspace
 
-FINOS Workspace sends no email. Notifications for admins, such as the creation of a new organization, go to a webhook that `ADMIN_NOTIFY_WEBHOOK_URL` names, with the sender and recipient in `ADMIN_NOTIFY_SENDER` and `ADMIN_NOTIFY_RECIPIENT`; the service behind the webhook decides how a message looks. [Backend settings](../../reference/configuration/backend.mdx) lists them.
+FINOS Workspace sends no email. Notifications for admins, such as the creation of a new organization, go to a webhook that `ADMIN_NOTIFY_WEBHOOK_URL` names, with the sender and recipient in `ADMIN_NOTIFY_SENDER` and `ADMIN_NOTIFY_RECIPIENT`; the service behind the webhook decides how a message looks. The confirmation link of email signup, which is off unless `SIGNUP_ENABLED` is true, goes the same way, to `SIGNUP_WEBHOOK_URL` or to the class that `SIGNUP_MAILER` names. [Backend settings](../../reference/configuration/backend.mdx) lists them.
 
 Authenticator apps show the account of a user's two-factor sign-in under the issuer name "FINOS Workspace", which is in the code.
