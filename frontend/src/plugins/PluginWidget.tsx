@@ -977,6 +977,7 @@ function PluginWidgetBody({
         errorMessage={error?.message}
         settings={{ overrideSettings: false, showExport: canExport }}
         onExport={canExport ? onExport : undefined}
+        settingsDialogClassName="sm:max-w-3xl"
         settingsModalChildren={
           <>
             <PresetsPanel
@@ -994,6 +995,7 @@ function PluginWidgetBody({
             />
             {settingsSchema && hasSettings ? (
               <SettingsForm
+                title="Settings"
                 schema={settingsSchema}
                 values={draft}
                 onChange={setDraft}
