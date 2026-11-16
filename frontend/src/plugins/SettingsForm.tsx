@@ -1,14 +1,41 @@
 import { useId } from "react";
+import { Checkbox } from "~/components/ds/atoms/Checkbox";
+import { Input } from "~/components/ds/atoms/Input";
+import { Label } from "~/components/ds/atoms/Label";
+import { Select } from "~/components/ds/atoms/Select";
+import { Textarea } from "~/components/ds/atoms/TextArea";
+import { cn } from "~/components/ds/utils";
+import Icon from "~/components/Icon";
+import Tooltip from "~/components/Tooltip";
 import { LIMITS } from "~/lib/types/widgetsContract";
 import { MAX_SETTING_LENGTH, type SettingsSchema } from "./types";
+
+function Heading({ label, hint }: { label: string; hint?: string }) {
+  if (!hint) return label;
+  return (
+    <span className="inline-flex items-center gap-1">
+      {label}
+      <Tooltip message={hint} position="top" align="start" className="max-w-xs">
+        <button
+          type="button"
+          aria-label={`About ${label}`}
+          className="inline-flex cursor-help text-ds-text-caption hover:text-general-label"
+        >
+          <Icon id="info-circled-icon" className="size-3.5" />
+        </button>
+      </Tooltip>
+    </span>
+  );
+}
 
 export function SettingsForm(props: {
   schema: SettingsSchema;
   values: Record<string, unknown>;
   onChange: (values: Record<string, unknown>) => void;
   disabled?: boolean;
+  title?: string;
 }) {
-  const { schema, values, onChange, disabled } = props;
+  const { schema, values, onChange, disabled, title } = props;
   const formId = useId();
   const entries = Object.entries(schema.properties ?? {});
   if (!entries.length) return <p className="body-xs-regular">No settings.</p>;
@@ -16,84 +43,99 @@ export function SettingsForm(props: {
   const set = (key: string, value: unknown) => onChange({ ...values, [key]: value });
 
   return (
-    <div className="flex flex-col gap-3">
-      {entries.map(([key, prop]) => {
-        const id = `${formId}-${key}`;
-        const label = prop.title ?? key;
-        const value = values[key] ?? prop.default;
-        let control: React.ReactNode;
-        if (Array.isArray(prop.enum)) {
-          control = (
-            <select
-              id={id}
-              className="rounded border border-general-border-secondary bg-transparent p-1"
-              value={String(value ?? "")}
-              disabled={disabled}
-              onChange={(e) => {
-                const option = prop.enum?.find((o) => String(o) === e.target.value);
-                set(key, option);
-              }}
-            >
-              {prop.enum.map((option) => (
-                <option key={String(option)} value={String(option)}>
-                  {String(option)}
-                </option>
-              ))}
-            </select>
+    <div
+      className={cn(
+        "@container flex flex-col gap-4",
+        title && "border-general-border-primary border-t pt-4",
+      )}
+    >
+      {title ? <h3 className="body-sm-medium text-general-label">{title}</h3> : null}
+      <div className="grid grid-cols-1 items-start gap-x-4 gap-y-4 @sm:grid-cols-2 @2xl:grid-cols-3">
+        {entries.map(([key, prop]) => {
+          const label = prop.title ?? key;
+          const value = values[key] ?? prop.default;
+          const heading = <Heading label={label} hint={prop.description} />;
+
+          if (Array.isArray(prop.enum)) {
+            const options = prop.enum.map((option, index) => ({
+              label: String(option),
+              value: String(index),
+            }));
+            const selected = prop.enum.findIndex(
+              (option) => String(option) === String(value),
+            );
+            return (
+              <div key={key}>
+                <Select
+                  size="sm"
+                  label={heading}
+                  disabled={disabled}
+                  options={options}
+                  value={selected < 0 ? undefined : String(selected)}
+                  placeholder="Select"
+                  contentClassName="only-sm:z-[62]"
+                  onChange={(index) => set(key, prop.enum?.[Number(index)])}
+                />
+              </div>
+            );
+          }
+
+          if (prop.type === "boolean") {
+            return (
+              <div key={key}>
+                <Label htmlFor={`${formId}-${key}`}>{heading}</Label>
+                <div className="flex h-7 items-center">
+                  <Checkbox
+                    id={`${formId}-${key}`}
+                    aria-label={label}
+                    aria-description={prop.description}
+                    checked={value === true}
+                    disabled={disabled}
+                    onCheckedChange={(on) => set(key, on === true)}
+                  />
+                </div>
+              </div>
+            );
+          }
+
+          if (prop.type === "number" || prop.type === "integer") {
+            return (
+              <div key={key}>
+                <Input
+                  size="sm"
+                  type="number"
+                  label={heading}
+                  aria-label={label}
+                  aria-description={prop.description}
+                  clearable={false}
+                  disabled={disabled}
+                  value={typeof value === "number" ? value : ""}
+                  min={prop.minimum}
+                  max={prop.maximum}
+                  step={prop.type === "integer" ? 1 : "any"}
+                  onChange={(text) => set(key, text === "" ? undefined : Number(text))}
+                />
+              </div>
+            );
+          }
+
+          return (
+            <div key={key} className="@sm:col-span-2 @2xl:col-span-3">
+              <Input
+                size="sm"
+                label={heading}
+                aria-label={label}
+                aria-description={prop.description}
+                clearable={false}
+                disabled={disabled}
+                maxLength={prop.maxLength}
+                value={typeof value === "string" ? value : ""}
+                onChange={(text) => set(key, text)}
+              />
+            </div>
           );
-        } else if (prop.type === "boolean") {
-          control = (
-            <input
-              id={id}
-              type="checkbox"
-              checked={value === true}
-              disabled={disabled}
-              onChange={(e) => set(key, e.target.checked)}
-            />
-          );
-        } else if (prop.type === "number" || prop.type === "integer") {
-          control = (
-            <input
-              id={id}
-              type="number"
-              className="rounded border border-general-border-secondary bg-transparent p-1"
-              value={typeof value === "number" ? value : ""}
-              min={prop.minimum}
-              max={prop.maximum}
-              step={prop.type === "integer" ? 1 : "any"}
-              disabled={disabled}
-              onChange={(e) =>
-                set(key, e.target.value === "" ? undefined : Number(e.target.value))
-              }
-            />
-          );
-        } else {
-          control = (
-            <input
-              id={id}
-              type="text"
-              className="rounded border border-general-border-secondary bg-transparent p-1"
-              value={typeof value === "string" ? value : ""}
-              maxLength={prop.maxLength}
-              disabled={disabled}
-              onChange={(e) => set(key, e.target.value)}
-            />
-          );
-        }
-        return (
-          <div key={key} className="flex flex-col gap-1">
-            <label htmlFor={id} className="body-xs-medium">
-              {label}
-            </label>
-            {control}
-            {prop.description && (
-              <span className="body-xs-regular text-ds-text-caption">
-                {prop.description}
-              </span>
-            )}
-          </div>
-        );
-      })}
+        })}
+      </div>
     </div>
   );
 }
@@ -109,37 +151,24 @@ export function CardDetailsForm({
   onChange: (values: CardDetails) => void;
   disabled?: boolean;
 }) {
-  const formId = useId();
   return (
-    <div className="flex flex-col gap-3 pb-3">
-      <div className="flex flex-col gap-1">
-        <label htmlFor={`${formId}-name`} className="body-xs-medium">
-          Name
-        </label>
-        <input
-          id={`${formId}-name`}
-          type="text"
-          className="rounded border border-general-border-secondary bg-transparent p-1"
-          value={values.name}
-          maxLength={LIMITS.name}
-          disabled={disabled}
-          onChange={(e) => onChange({ ...values, name: e.target.value })}
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor={`${formId}-description`} className="body-xs-medium">
-          Description
-        </label>
-        <textarea
-          id={`${formId}-description`}
-          className="rounded border border-general-border-secondary bg-transparent p-1"
-          rows={2}
-          value={values.description}
-          maxLength={LIMITS.description}
-          disabled={disabled}
-          onChange={(e) => onChange({ ...values, description: e.target.value })}
-        />
-      </div>
+    <div className="flex flex-col gap-4">
+      <Input
+        size="sm"
+        label="Name"
+        clearable={false}
+        value={values.name}
+        maxLength={LIMITS.name}
+        disabled={disabled}
+        onChange={(name) => onChange({ ...values, name })}
+      />
+      <Textarea
+        label="Description"
+        value={values.description}
+        maxLength={LIMITS.description}
+        disabled={disabled}
+        onChange={(description) => onChange({ ...values, description })}
+      />
     </div>
   );
 }
