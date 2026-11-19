@@ -8,6 +8,7 @@ const makeApp = (over: Partial<App> = {}): App => ({
   url: "https://risk.example.com",
   user_uuid: "u1",
   user_email: "alice@example.com",
+  enabled: true,
   created_date: "2026-01-01T10:00:00Z",
   updated_date: "2026-02-01T10:00:00Z",
   ...over,

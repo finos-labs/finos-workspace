@@ -21,7 +21,29 @@ Open the admin area and select Entities. The page is titled Entity Management an
 
 Messages say "Entity added" and "Administrator added". The administrator gets the type Admin, and FINOS Workspace shows the link that sets their password, which you give to them yourself, as [Add a user](add-a-user.mdx) describes. A deployment that you start with the files of this repository already has one organization, which the first start created from `config.toml`. To create an organization and all of its people from a file, follow [Provision an organization from a file](../../tutorials/deploy/provision-an-organization.mdx).
 
-The table lists each organization with its Name and whether Sharing is Enabled. The button Edit entity at the end of a row changes the name and the sharing switch, and a message says "Entity updated".
+The table lists each organization with its Name, whether Sharing is Enabled or Disabled and its Status, Active or Disabled. The button Edit entity at the end of a row changes the name, the sharing switch and the Disabled switch, and a message says "Entity updated". The button Remove entity next to it removes the organization.
+
+## Disable an organization
+
+Turn on the switch Disabled in the dialog Edit entity and select Save. No one in the organization can sign in any more, whichever way they sign in, and their sessions end at once. Their dashboards, roles and backends stay, and turning the switch off lets them sign in again.
+
+An organization that has a superuser cannot be disabled, and FINOS Workspace answers "Cannot disable an entity that has a superuser". A superuser who is moved into a disabled organization can still sign in.
+
+## Remove an organization
+
+Select Remove entity at the end of the row and confirm with Yes, Remove. A message says "Entity removed". An organization that still has users is not removed, and a message says "Cannot delete entity with existing users": move its users to another organization first, as the next section describes, or disable the organization instead. The organization leaves every list and its name is free for a new organization. FINOS Workspace keeps its permission maps, roles, settings and backends, and you can bring the organization back, as the next section describes.
+
+## Restore a removed organization
+
+1. On the tab Entities, turn on the switch Show removed. The table lists the removed organizations under the names they had.
+2. Select Restore entity at the end of the row.
+3. In the dialog Restore entity, keep the Name or change it, and select Restore. A message says "Entity restored".
+
+The organization comes back with its permission maps, roles, settings and backends. When another organization has taken the name, FINOS Workspace answers "An entity with this name already exists", and you restore the organization under another name. A removed organization has no users. Give it an administrator again from the command line, and give them the link that sets their password:
+
+```bash
+python -m scripts.workspace_admin user create <entity-uuid> --email <email> --first-name <first name> --last-name <last name> --role admin
+```
 
 ## What the other tabs show
 
@@ -42,4 +64,4 @@ The same move is available from the command line, which is the way to put back a
 python -m scripts.workspace_admin user move --email <email> --entity-uuid <entity-uuid> --role user
 ```
 
-[Admin command line](../../reference/command-line/admin-cli.mdx) lists the commands for organizations and users, including `entity delete`, which removes an organization that has no users left.
+[Admin command line](../../reference/command-line/admin-cli.mdx) lists the commands for organizations and users, including `entity delete`, which removes an organization that has no users left, `entity list --removed` and `entity restore`, which brings a removed organization back.

@@ -6,6 +6,7 @@ export interface App {
   url: string;
   user_uuid: string;
   user_email: string;
+  enabled: boolean;
   created_date: string;
   updated_date: string;
 }

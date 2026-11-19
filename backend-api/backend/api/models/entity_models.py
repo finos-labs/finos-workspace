@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     true,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,6 +45,12 @@ class Entity(Base, UUIDMixin, DateMixin):
     require_authenticator: Mapped[bool] = mapped_column(Boolean, default=False)
     sharing_enabled: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=true()
+    )
+    disabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false()
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        AwareDateTime(timezone=True), nullable=True
     )
 
 

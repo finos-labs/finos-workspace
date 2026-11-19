@@ -436,11 +436,31 @@ class EntityPost(EntityBase):
     )
 
 
+class EntityUpdate(EntityBase):
+    disabled: bool | None = Field(
+        None,
+        description=(
+            "Whether the organization is disabled: its users cannot sign in and their sessions end. Leave it out to "
+            "keep the current value."
+        ),
+    )
+
+
+class EntityRestore(BaseModel, extra="forbid"):  # type: ignore[call-arg]
+    name: str | None = Field(
+        None,
+        min_length=1,
+        max_length=100,
+        description="The name to give the restored organization. Leave it out to restore the name it had before.",
+    )
+
+
 class EntityReturn(BaseModel):
     model_config = ConfigDict(extra="ignore", from_attributes=True)
     uuid: UUID = Field(description="The UUID of the organization.")
     name: str = Field(description="The organization's name.")
     sharing_enabled: bool = Field(description="Whether the organization's users may share dashboards and apps.")
+    disabled: bool = Field(description="Whether the organization is disabled and its users cannot sign in.")
 
 
 class UserAdminUpdate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
@@ -1620,8 +1640,13 @@ class AppReturn(BaseModel):
     url: str = Field(description="The backend's address.")
     user_uuid: UUID = Field(description="The UUID of the user who connected the backend.")
     user_email: str | None = Field(None, description="The email address of the user who connected the backend.")
+    enabled: bool = Field(description="Whether the backend is enabled. A disabled backend is unavailable to its users.")
     created_date: datetime = Field(description="When the backend was created.")
     updated_date: datetime = Field(description="When the backend was last changed.")
+
+
+class AppEnabledPut(BaseModel, extra="forbid"):  # type: ignore[call-arg]
+    enabled: bool = Field(description="Whether the backend is enabled.")
 
 
 class RolePermissions(BaseModel):

@@ -1,3 +1,4 @@
+import re
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -6,13 +7,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import auth_helpers, crud, models, schemas
-from api.base import clean_email, get_now, random_password
+from api.base import clean_email, get_now, random_password, random_string
 from api.models import Entity, PermissionsEntityMap, User, UserInvite, UserRole
 from api.notifications import notify_admins
 from routers import app_helpers
 from utilities.config import settings
 
 NAME_TAKEN = HTTPException(409, detail="An entity with this name already exists")
+REMOVED_PREFIX = re.compile(r"^deleted-[0-9A-Za-z]{4}-")
 
 
 async def create_entity(
@@ -53,14 +55,21 @@ async def notify_entity_created(entity: schemas.EntityPost) -> None:
 
 
 async def update_entity(
-    db: AsyncSession, entity_uuid: UUID, entity: schemas.EntityBase
+    db: AsyncSession, entity_uuid: UUID, entity: schemas.EntityUpdate
 ) -> None:
-    sharing_query = select(Entity.sharing_enabled).where(Entity.uuid == entity_uuid)
+    sharing_query = select(Entity.sharing_enabled).where(
+        Entity.uuid == entity_uuid, Entity.deleted_at.is_(None)
+    )
     sharing_was_enabled = (await db.execute(sharing_query)).scalar_one_or_none()
+    values: dict = {"name": entity.name, "sharing_enabled": entity.sharing_enabled}
+    if entity.disabled is not None:
+        values["disabled"] = entity.disabled
+    if entity.disabled:
+        await check_entity_has_no_superuser(db, entity_uuid)
     query = (
         update(Entity)
-        .where(Entity.uuid == entity_uuid)
-        .values(name=entity.name, sharing_enabled=entity.sharing_enabled)
+        .where(Entity.uuid == entity_uuid, Entity.deleted_at.is_(None))
+        .values(**values)
     )
     try:
         response = await db.execute(query)
@@ -74,29 +83,128 @@ async def update_entity(
         await crud.revoke_disallowed_shares(
             db, list(await app_helpers.get_entity_users(db, entity_uuid))
         )
+    if entity.disabled:
+        await end_entity_sessions(db, entity_uuid)
 
 
-def entities_query() -> Select:
-    return select(Entity.uuid, Entity.name, Entity.sharing_enabled).order_by(Entity.name)
+async def check_entity_has_no_superuser(db: AsyncSession, entity_uuid: UUID) -> None:
+    query = (
+        select(User.uuid)
+        .join(PermissionsEntityMap, PermissionsEntityMap.uuid == User.permissions_uuid)
+        .where(
+            PermissionsEntityMap.entity_uuid == entity_uuid,
+            User.is_superuser.is_(True),
+        )
+        .limit(1)
+    )
+    if (await db.execute(query)).first():
+        raise HTTPException(
+            409, detail="Cannot disable an entity that has a superuser"
+        )
+
+
+async def end_entity_sessions(db: AsyncSession, entity_uuid: UUID) -> None:
+    users = await app_helpers.get_entity_users(db, entity_uuid)
+    sessions = (
+        await db.execute(
+            select(models.Session.uuid).where(models.Session.user_uuid.in_(users))
+        )
+    ).scalars().all()
+    await db.execute(
+        delete(models.Session).where(models.Session.user_uuid.in_(users))
+    )
+    await db.commit()
+    for session_uuid in sessions:
+        await auth_helpers.revoke_agent_tokens(session_uuid)
+
+
+def entities_query(removed: bool = False) -> Select:
+    return (
+        select(
+            Entity.uuid,
+            Entity.name,
+            Entity.sharing_enabled,
+            Entity.disabled,
+            Entity.deleted_at,
+        )
+        .where(Entity.deleted_at.is_not(None) if removed else Entity.deleted_at.is_(None))
+        .order_by(Entity.name)
+    )
 
 
 def entity_return(item) -> schemas.EntityReturn:
     return schemas.EntityReturn(
-        uuid=item.uuid, name=item.name, sharing_enabled=item.sharing_enabled
+        uuid=item.uuid,
+        name=REMOVED_PREFIX.sub("", item.name) if item.deleted_at else item.name,
+        sharing_enabled=item.sharing_enabled,
+        disabled=item.disabled,
     )
 
 
 async def delete_entity(db: AsyncSession, entity_uuid: UUID) -> None:
+    name = (
+        await db.execute(
+            select(Entity.name).where(
+                Entity.uuid == entity_uuid, Entity.deleted_at.is_(None)
+            )
+        )
+    ).scalar_one_or_none()
+    if name is None:
+        raise HTTPException(status_code=404, detail="Entity not found")
     if await app_helpers.get_entity_users(db, entity_uuid):
         raise HTTPException(
             status_code=400, detail="Cannot delete entity with existing users"
         )
-    result = await db.execute(
-        delete(models.Entity).where(models.Entity.uuid == entity_uuid)
+    await db.execute(
+        update(Entity)
+        .where(Entity.uuid == entity_uuid)
+        .values(
+            name=f"deleted-{random_string(4)}-{name}"[:100],
+            deleted_at=get_now(),
+        )
     )
-    if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="Entity not found")
     await db.commit()
+
+
+async def restore_entity(
+    db: AsyncSession, entity_uuid: UUID, name: str | None = None
+) -> None:
+    current = (
+        await db.execute(
+            select(Entity.name).where(
+                Entity.uuid == entity_uuid, Entity.deleted_at.is_not(None)
+            )
+        )
+    ).scalar_one_or_none()
+    if current is None:
+        raise HTTPException(404, detail="Entity not found")
+    try:
+        await db.execute(
+            update(Entity)
+            .where(Entity.uuid == entity_uuid)
+            .values(name=name or REMOVED_PREFIX.sub("", current), deleted_at=None)
+        )
+        await db.commit()
+    except IntegrityError as exc:
+        raise NAME_TAKEN from exc
+
+
+async def check_entity_active(db: AsyncSession, entity_uuid: UUID) -> None:
+    query = select(Entity.uuid).where(
+        Entity.uuid == entity_uuid, Entity.deleted_at.is_(None)
+    )
+    if (await db.execute(query)).first() is None:
+        raise HTTPException(404, detail="Entity not found")
+
+
+async def check_map_entity_active(db: AsyncSession, permissions_uuid: UUID) -> None:
+    query = (
+        select(PermissionsEntityMap.uuid)
+        .join(Entity, Entity.uuid == PermissionsEntityMap.entity_uuid)
+        .where(PermissionsEntityMap.uuid == permissions_uuid, Entity.deleted_at.is_(None))
+    )
+    if (await db.execute(query)).first() is None:
+        raise HTTPException(404, detail="Permission map not found")
 
 
 async def password_reset_link(user_uuid: UUID) -> schemas.PasswordResetLink:
@@ -182,8 +290,12 @@ async def move_user(db: AsyncSession, user_uuid: UUID, permissions_uuid: UUID) -
         .where(User.uuid == user_uuid)
     )
     old_entity_uuid = (await db.execute(old_entity_query)).scalar_one_or_none()
-    new_entity_query = select(PermissionsEntityMap.entity_uuid).where(
-        PermissionsEntityMap.uuid == permissions_uuid
+    new_entity_query = (
+        select(PermissionsEntityMap.entity_uuid)
+        .join(Entity, Entity.uuid == PermissionsEntityMap.entity_uuid)
+        .where(
+            PermissionsEntityMap.uuid == permissions_uuid, Entity.deleted_at.is_(None)
+        )
     )
     new_entity_uuid = (await db.execute(new_entity_query)).scalar_one_or_none()
     if new_entity_uuid is None:
@@ -235,6 +347,7 @@ async def user_return(db: AsyncSession, item) -> schemas.EntityUserReturn:
 async def add_data_backend(
     db: AsyncSession, entity_uuid: UUID, data_backend: schemas.CreateApiSource
 ) -> None:
+    await check_entity_active(db, entity_uuid)
     await db.execute(
         insert(models.ApiSource).values(
             **data_backend.model_dump(), entity_uuid=entity_uuid
@@ -246,6 +359,7 @@ async def add_data_backend(
 async def delete_data_backend(
     db: AsyncSession, entity_uuid: UUID, backend_name: str
 ) -> None:
+    await check_entity_active(db, entity_uuid)
     result = await db.execute(
         delete(models.ApiSource).where(
             models.ApiSource.entity_uuid == entity_uuid,
@@ -258,5 +372,6 @@ async def delete_data_backend(
 
 
 async def data_backends(db: AsyncSession, entity_uuid: UUID) -> list[models.ApiSource]:
+    await check_entity_active(db, entity_uuid)
     query = select(models.ApiSource).where(models.ApiSource.entity_uuid == entity_uuid)
     return list((await db.execute(query)).scalars().all())

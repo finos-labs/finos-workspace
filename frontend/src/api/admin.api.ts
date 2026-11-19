@@ -17,6 +17,7 @@ interface App {
   created_date: string;
   user_email: string;
   updated_date: string;
+  enabled: boolean;
 }
 
 export async function getUsers() {
@@ -138,6 +139,18 @@ export async function getEntityMap() {
 export async function getApps() {
   const response = await apiClient.get<App[]>("/admin/apps");
   return response.data;
+}
+
+export async function setAppEnabled(uuid: string, enabled: boolean) {
+  const { data } = await apiClient.patch<BaseResponse>(`/admin/apps/${uuid}`, {
+    enabled,
+  });
+  return data;
+}
+
+export async function deleteApp(uuid: string) {
+  const { data } = await apiClient.delete<BaseResponse>(`/admin/apps/${uuid}`);
+  return data;
 }
 
 export async function updateEntityThemeSettings(

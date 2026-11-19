@@ -13,6 +13,7 @@ const entity = (uuid: string, name: string): Entity => ({
   uuid,
   name,
   sharing_enabled: true,
+  disabled: false,
 });
 
 const ACME = entity("0d1b9b0e-7c2b-4a58-8d63-5c1f6f0c8a21", "Acme");

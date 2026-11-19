@@ -1,11 +1,15 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getApps } from "~/api/admin.api";
+import { deleteApp, getApps, setAppEnabled } from "~/api/admin.api";
 import AdminApps from "~/routes/admin/apps";
 
 vi.mock("~/api/admin.api", () => ({
   getApps: vi.fn(),
+  setAppEnabled: vi.fn(),
+  deleteApp: vi.fn(),
 }));
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 vi.mock("@tanstack/react-query", () => ({
   useQuery: ({ queryFn }: { queryFn: unknown }) => {
@@ -14,6 +18,19 @@ vi.mock("@tanstack/react-query", () => ({
     }
     return { data: undefined, isLoading: false, isError: false };
   },
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  useMutation: ({
+    mutationFn,
+    onSuccess,
+  }: {
+    mutationFn: (variables: unknown) => Promise<unknown>;
+    onSuccess?: (data: unknown, variables: unknown) => unknown;
+  }) => ({
+    mutate: async (variables: unknown) => {
+      const data = await mutationFn(variables);
+      await onSuccess?.(data, variables);
+    },
+  }),
 }));
 
 vi.mock("react-router-dom", () => ({
@@ -39,6 +56,7 @@ vi.mock("~/components/Apps/ManageAppDialog", () => ({ default: () => null }));
 const mockApps = [
   {
     uuid: "app-1",
+    enabled: true,
     name: "Shared App",
     url: "https://example.com/shared",
     user_uuid: "user-1",
@@ -48,6 +66,7 @@ const mockApps = [
   },
   {
     uuid: "app-2",
+    enabled: true,
     name: "Shared App",
     url: "https://example.com/shared",
     user_uuid: "user-2",
@@ -57,6 +76,7 @@ const mockApps = [
   },
   {
     uuid: "app-3",
+    enabled: false,
     name: "Solo App",
     url: "https://example.com/solo",
     user_uuid: "user-3",
@@ -69,6 +89,7 @@ const mockApps = [
 let originalRO: typeof ResizeObserver;
 
 beforeEach(() => {
+  vi.clearAllMocks();
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
     width: 1100,
     height: 600,
@@ -143,5 +164,60 @@ describe("AdminApps", () => {
     await waitFor(() =>
       expect(screen.getByText("Users with apps")).toBeInTheDocument(),
     );
+  });
+
+  it("shows whether each app is enabled", async () => {
+    render(<AdminApps />);
+    await waitFor(() =>
+      expect(screen.getByText("user3@example.com")).toBeInTheDocument(),
+    );
+
+    expect(screen.getAllByText("Enabled")).toHaveLength(2);
+    expect(screen.getAllByText("Disabled")).toHaveLength(1);
+  });
+
+  it("disables an enabled app and enables a disabled one", async () => {
+    vi.mocked(setAppEnabled).mockResolvedValue({ success: true });
+    render(<AdminApps />);
+    await waitFor(() =>
+      expect(screen.getByText("user3@example.com")).toBeInTheDocument(),
+    );
+
+    const disable = screen.getAllByRole("button", { name: "Disable app" });
+    const enable = screen.getAllByRole("button", { name: "Enable app" });
+    expect(disable).toHaveLength(2);
+    expect(enable).toHaveLength(1);
+
+    fireEvent.click(enable[0]);
+    await waitFor(() => expect(setAppEnabled).toHaveBeenCalledWith("app-3", true));
+    fireEvent.click(disable[0]);
+    await waitFor(() => expect(setAppEnabled).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(setAppEnabled).mock.calls[1][1]).toBe(false);
+  });
+
+  it("removes an app only after it is confirmed", async () => {
+    vi.mocked(deleteApp).mockResolvedValue({ success: true });
+    render(<AdminApps />);
+    await waitFor(() =>
+      expect(screen.getByText("user3@example.com")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Remove app" })[0]);
+    expect(deleteApp).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: "Yes, Remove" }));
+
+    await waitFor(() => expect(deleteApp).toHaveBeenCalledTimes(1));
+  });
+
+  it("keeps the app when the removal is cancelled", async () => {
+    render(<AdminApps />);
+    await waitFor(() =>
+      expect(screen.getByText("user3@example.com")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Remove app" })[0]);
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    expect(deleteApp).not.toHaveBeenCalled();
   });
 });
