@@ -750,7 +750,12 @@ async def platform_plugin(db: AsyncSession, plugin_id: str) -> dict[str, Any]:
             )
         ).scalars()
     }
-    entities = (await db.execute(select(models.Entity.uuid, models.Entity.name).order_by(models.Entity.name))).all()
+    entities_query = (
+        select(models.Entity.uuid, models.Entity.name)
+        .where(models.Entity.deleted_at.is_(None))
+        .order_by(models.Entity.name)
+    )
+    entities = (await db.execute(entities_query)).all()
     return {
         **await _platform_entry(db, plugin),
         "entities": [
@@ -1366,7 +1371,8 @@ async def entity_backends(db: AsyncSession, entity_uuid: UUID) -> list[dict[str,
 
 
 async def update_all_entities(db: AsyncSession, plugin_id: str, changes: dict[str, Any], actor_uuid: UUID | None) -> int:
-    entity_uuids = (await db.execute(select(models.Entity.uuid))).scalars().all()
+    active = select(models.Entity.uuid).where(models.Entity.deleted_at.is_(None))
+    entity_uuids = (await db.execute(active)).scalars().all()
     for entity_uuid in entity_uuids:
         await update_entity(db, entity_uuid, plugin_id, changes, actor_uuid)
     return len(entity_uuids)

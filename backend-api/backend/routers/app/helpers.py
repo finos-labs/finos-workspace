@@ -32,7 +32,7 @@ async def set_app_user_data(user, db: AsyncSession) -> schemas.AppUserReturn:
         last_name=user.last_name,
         display_settings=user.display_settings,
         file_widgets=[x.__dict__ for x in user.FileWidget] if own_connections else [],
-        api_sources=[x.__dict__ for x in user.ApiSource] if own_connections else [],
+        api_sources=[x.__dict__ for x in user.ApiSource if x.enabled] if own_connections else [],
         username=user.username,
         email=user.email,
         uuid=user.uuid,
@@ -369,6 +369,21 @@ async def check_may_add_connections(db: AsyncSession, user_uuid: UUID) -> None:
         raise HTTPException(403, detail="Your account type cannot add connections")
 
 
+async def check_entity_enabled(db: AsyncSession, user_uuid: UUID) -> None:
+    query = (
+        select(models.Entity.disabled)
+        .select_from(models.User)
+        .join(
+            models.PermissionsEntityMap,
+            models.PermissionsEntityMap.uuid == models.User.permissions_uuid,
+        )
+        .join(models.Entity, models.Entity.uuid == models.PermissionsEntityMap.entity_uuid)
+        .where(models.User.uuid == user_uuid, models.User.is_superuser.is_(False))
+    )
+    if (await db.execute(query)).scalar_one_or_none():
+        raise HTTPException(403, detail="Your organization is disabled")
+
+
 async def readable_backends(db: AsyncSession, user_uuid: UUID, entity_uuid: UUID | None):
     rules = []
     if entity_uuid is not None:
@@ -386,7 +401,7 @@ async def readable_backends(db: AsyncSession, user_uuid: UUID, entity_uuid: UUID
         rules.append(models.ApiSource.uuid.in_(granted))
     if await may_add_connections(db, user_uuid):
         rules.append(models.ApiSource.user_uuid == user_uuid)
-    return or_(*rules) if rules else false()
+    return and_(or_(*rules), models.ApiSource.enabled.is_(True)) if rules else false()
 
 
 async def get_backend_mcp_grants(db: AsyncSession, user_uuid: UUID) -> list[schemas.McpGrant]:

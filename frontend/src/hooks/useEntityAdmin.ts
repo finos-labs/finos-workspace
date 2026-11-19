@@ -4,6 +4,7 @@ import {
   getEntities,
   getEntityMaps,
   getEntityUsers,
+  getRemovedEntities,
   validateEntityAdmin,
 } from "~/api/entities.api";
 
@@ -13,6 +14,7 @@ export const entityAdminKeys = {
   root: ROOT,
   validate: [...ROOT, "validate"] as const,
   entities: [...ROOT, "entities"] as const,
+  removedEntities: [...ROOT, "removedEntities"] as const,
   maps: [...ROOT, "maps"] as const,
   users: [...ROOT, "users"] as const,
 };
@@ -39,6 +41,14 @@ export const useEntities = () =>
     queryKey: entityAdminKeys.entities,
     queryFn: getEntities,
     staleTime: STALE_TIME,
+  });
+
+export const useRemovedEntities = (enabled: boolean) =>
+  useQuery({
+    queryKey: entityAdminKeys.removedEntities,
+    queryFn: getRemovedEntities,
+    staleTime: STALE_TIME,
+    enabled,
   });
 
 export const useEntityMaps = () =>

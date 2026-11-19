@@ -118,8 +118,10 @@ class TestColumnTypes:
 
     def test_a_tampered_column_value_raises(self):
         stored = EncryptedStringType("user.totp_secret").process_bind_param("secret", None)
+        first = len(crypto.VERSION_PREFIX)
+        tampered = stored[:first] + ("B" if stored[first] == "A" else "A") + stored[first + 1 :]
         with pytest.raises(crypto.DecryptionError):
-            EncryptedStringType("user.totp_secret").process_result_value(stored[:-2] + "AA", None)
+            EncryptedStringType("user.totp_secret").process_result_value(tampered, None)
 
     def test_a_value_moved_to_another_column_raises(self):
         key = EncryptedStringType("user.openai_api_key").process_bind_param("sk-victim", None)

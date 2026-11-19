@@ -2,12 +2,14 @@ import type { AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createUser,
+  deleteApp,
   deleteUser,
   getEntity,
   getEntityMap,
   getUsers,
   inviteUser,
   resetUserPassword,
+  setAppEnabled,
   updateEntity,
   updateUser,
 } from "~/api/admin.api";
@@ -119,6 +121,26 @@ describe("API functions", () => {
     });
     const response = await deleteUser(userId, "user");
     expect(apiClient.delete).toHaveBeenCalledWith(`/admin/users/${userId}`);
+    expect(response).toEqual(mockData.baseResponse);
+  });
+
+  it("should enable or disable an app", async () => {
+    (apiClient.patch as MockedAxiosMethod).mockResolvedValueOnce({
+      data: mockData.baseResponse,
+    });
+    const response = await setAppEnabled("app-1", false);
+    expect(apiClient.patch).toHaveBeenCalledWith("/admin/apps/app-1", {
+      enabled: false,
+    });
+    expect(response).toEqual(mockData.baseResponse);
+  });
+
+  it("should remove an app", async () => {
+    (apiClient.delete as MockedAxiosMethod).mockResolvedValueOnce({
+      data: mockData.baseResponse,
+    });
+    const response = await deleteApp("app-1");
+    expect(apiClient.delete).toHaveBeenCalledWith("/admin/apps/app-1");
     expect(response).toEqual(mockData.baseResponse);
   });
 
