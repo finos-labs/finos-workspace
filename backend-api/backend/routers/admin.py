@@ -386,10 +386,11 @@ async def see_users(
 @router.get(
     "/apps",
     response_model=list[schemas.AppReturn],
-    summary="List the backends of the organization's users",
+    summary="List the backends of the organization and its users",
     description=(
-        "Returns the data backends that users of the admin's organization have connected, ordered by owner, with the "
-        "name and URL of each backend and the email of its owner."
+        "Returns the data backends that users of the admin's organization have connected and the backends that were "
+        "added for the organization, ordered by owner, with the name and URL of each backend. A backend of the "
+        "organization has no owner, so its `user_uuid` and `user_email` are null."
     ),
 )
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
@@ -423,8 +424,13 @@ async def get_apps(
             models.ApiSource.created_date,
             models.ApiSource.updated_date,
         )
-        .where(models.ApiSource.user_uuid.in_(user_dict.keys()))
-        .order_by(models.ApiSource.user_uuid)
+        .where(
+            or_(
+                models.ApiSource.user_uuid.in_(user_dict.keys()),
+                models.ApiSource.entity_uuid == admin_result,
+            )
+        )
+        .order_by(models.ApiSource.user_uuid, models.ApiSource.name)
     )
 
     apps_result = (await db.execute(apps_query)).all()
@@ -457,17 +463,23 @@ async def admin_app_filters(db: AsyncSession, admin: Row, app_uuid: UUID):
             User.deleted.is_(False),
         )
     )
-    return (models.ApiSource.uuid == app_uuid, models.ApiSource.user_uuid.in_(members))
+    return (
+        models.ApiSource.uuid == app_uuid,
+        or_(
+            models.ApiSource.user_uuid.in_(members),
+            models.ApiSource.entity_uuid == entity_uuid,
+        ),
+    )
 
 
 @router.patch(
     "/apps/{app_uuid}",
     response_model=SuccessReturn,
-    summary="Enable or disable a backend of the organization's users",
+    summary="Enable or disable a backend of the organization or its users",
     description=(
-        "Sets whether a backend that a user of the admin's organization connected is enabled. A disabled backend is "
-        "unavailable to its users and their requests through it are refused. Answers 404 when the organization has no "
-        "such backend."
+        "Sets whether a backend that a user of the admin's organization connected, or that was added for the "
+        "organization, is enabled. A disabled backend is unavailable to its users and their requests through it are "
+        "refused. Answers 404 when the organization has no such backend."
     ),
 )
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
@@ -491,10 +503,10 @@ async def put_app_enabled(
 @router.delete(
     "/apps/{app_uuid}",
     response_model=SuccessReturn,
-    summary="Delete a backend of the organization's users",
+    summary="Delete a backend of the organization or its users",
     description=(
-        "Deletes a backend that a user of the admin's organization connected, together with the access that roles gave "
-        "to it. Answers 404 when the organization has no such backend."
+        "Deletes a backend that a user of the admin's organization connected, or that was added for the organization, "
+        "together with the access that roles gave to it. Answers 404 when the organization has no such backend."
     ),
 )
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)

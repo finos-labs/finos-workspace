@@ -13,9 +13,9 @@ interface App {
   uuid: string;
   name: string;
   url: string;
-  user_uuid: string;
+  user_uuid: string | null;
   created_date: string;
-  user_email: string;
+  user_email: string | null;
   updated_date: string;
   enabled: boolean;
 }

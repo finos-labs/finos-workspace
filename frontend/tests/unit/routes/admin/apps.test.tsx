@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { deleteApp, getApps, setAppEnabled } from "~/api/admin.api";
 import AdminApps from "~/routes/admin/apps";
@@ -53,7 +53,7 @@ vi.mock("~/lib/state/theme", () => ({
 
 vi.mock("~/components/Apps/ManageAppDialog", () => ({ default: () => null }));
 
-const mockApps = [
+const baseApps = [
   {
     uuid: "app-1",
     enabled: true,
@@ -86,9 +86,28 @@ const mockApps = [
   },
 ];
 
+const organizationApp = {
+  uuid: "app-org",
+  enabled: true,
+  name: "Shared Prices",
+  url: "https://example.com/prices",
+  user_uuid: null,
+  user_email: null,
+  created_date: "2023-04-01T00:00:00Z",
+  updated_date: "2023-04-02T00:00:00Z",
+};
+
+let mockApps: Array<
+  Omit<(typeof baseApps)[number], "user_uuid" | "user_email"> & {
+    user_uuid: string | null;
+    user_email: string | null;
+  }
+> = baseApps;
+
 let originalRO: typeof ResizeObserver;
 
 beforeEach(() => {
+  mockApps = baseApps;
   vi.clearAllMocks();
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
     width: 1100,
@@ -219,5 +238,32 @@ describe("AdminApps", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
 
     expect(deleteApp).not.toHaveBeenCalled();
+  });
+
+  it("lists a backend of the organization as the Organization and counts only users", async () => {
+    mockApps = [...baseApps, organizationApp];
+    render(<AdminApps />);
+
+    const row = (await screen.findByText("Shared Prices")).closest("tr") as HTMLElement;
+    expect(within(row).getByText("Organization")).toBeInTheDocument();
+    expect(within(row).getByText("-")).toBeInTheDocument();
+    expect(screen.getByText("Total apps").nextSibling).toHaveTextContent("4");
+    expect(screen.getByText("Users with apps").nextSibling).toHaveTextContent("3");
+  });
+
+  it("disables and removes a backend of the organization", async () => {
+    mockApps = [...baseApps, organizationApp];
+    vi.mocked(setAppEnabled).mockResolvedValue({ success: true });
+    vi.mocked(deleteApp).mockResolvedValue({ success: true });
+    render(<AdminApps />);
+
+    const row = (await screen.findByText("Shared Prices")).closest("tr") as HTMLElement;
+    fireEvent.click(within(row).getByRole("button", { name: "Disable app" }));
+    await waitFor(() => expect(setAppEnabled).toHaveBeenCalledWith("app-org", false));
+
+    fireEvent.click(within(row).getByRole("button", { name: "Remove app" }));
+    expect(await screen.findByText(/added for the organization/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Yes, Remove" }));
+    await waitFor(() => expect(deleteApp).toHaveBeenCalledWith("app-org"));
   });
 });

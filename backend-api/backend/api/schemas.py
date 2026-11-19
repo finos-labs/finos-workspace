@@ -1638,8 +1638,15 @@ class AppReturn(BaseModel):
     uuid: UUID = Field(description="The UUID of the backend.")
     name: str = Field(description="The backend's name.")
     url: str = Field(description="The backend's address.")
-    user_uuid: UUID = Field(description="The UUID of the user who connected the backend.")
-    user_email: str | None = Field(None, description="The email address of the user who connected the backend.")
+    user_uuid: UUID | None = Field(
+        None, description="The UUID of the user who connected the backend. It is null for a backend of the organization."
+    )
+    user_email: str | None = Field(
+        None,
+        description=(
+            "The email address of the user who connected the backend. It is null for a backend of the organization."
+        ),
+    )
     enabled: bool = Field(description="Whether the backend is enabled. A disabled backend is unavailable to its users.")
     created_date: datetime = Field(description="When the backend was created.")
     updated_date: datetime = Field(description="When the backend was last changed.")

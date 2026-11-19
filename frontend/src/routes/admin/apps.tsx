@@ -5,7 +5,12 @@ import { toast } from "sonner";
 import { deleteApp, getApps, setAppEnabled } from "~/api/admin.api";
 import { errorMessage } from "~/api/errors";
 import AppUsersDialog from "~/components/Apps/AppUsersDialog";
-import { type App, dedupeApps, formatDate } from "~/components/Apps/adminApps";
+import {
+  type App,
+  dedupeApps,
+  formatDate,
+  ownerLabel,
+} from "~/components/Apps/adminApps";
 import ExportAppsDialog from "~/components/Apps/ExportAppsDialog";
 import ManageAppDialog from "~/components/Apps/ManageAppDialog";
 import { Button } from "~/components/ds/atoms/Button";
@@ -57,7 +62,7 @@ function appSortValue(
     case "url":
       return (app.url ?? "").toLowerCase();
     case "user_email":
-      return (app.user_email ?? "").toLowerCase();
+      return ownerLabel(app).toLowerCase();
     case "status":
       return app.enabled ? 1 : 0;
     case "total_users":
@@ -168,9 +173,10 @@ export default function AdminApps() {
     const list = apps ?? [];
     const totalApps = list.length;
     const uniqueApps = userCounts.size;
-    const usersWithApps = new Set(list.map((a) => a.user_uuid)).size;
+    const userApps = list.filter((a) => a.user_uuid);
+    const usersWithApps = new Set(userApps.map((a) => a.user_uuid)).size;
     const avgPerUser =
-      usersWithApps === 0 ? 0 : Math.round((totalApps / usersWithApps) * 10) / 10;
+      usersWithApps === 0 ? 0 : Math.round((userApps.length / usersWithApps) * 10) / 10;
     return { totalApps, uniqueApps, usersWithApps, avgPerUser };
   }, [apps, userCounts]);
 
@@ -188,7 +194,7 @@ export default function AdminApps() {
         (a) =>
           a.name?.toLowerCase().includes(query) ||
           a.url?.toLowerCase().includes(query) ||
-          a.user_email?.toLowerCase().includes(query),
+          ownerLabel(a).toLowerCase().includes(query),
       );
     }
     return sortApps(rows, state.sortState, userCounts);
@@ -279,7 +285,7 @@ export default function AdminApps() {
         width: "20%",
         minWidth: 130,
         sortable: true,
-        cell: (app) => app.user_email || "-",
+        cell: ownerLabel,
       },
       {
         id: "status",
@@ -294,11 +300,14 @@ export default function AdminApps() {
         width: 100,
         sortable: true,
         align: "right",
-        cell: (app) => (
-          <span className="tabular-nums">
-            {userCounts.get(`${app.name}|||${app.url}`) ?? 0}
-          </span>
-        ),
+        cell: (app) =>
+          app.user_uuid ? (
+            <span className="tabular-nums">
+              {userCounts.get(`${app.name}|||${app.url}`) ?? 0}
+            </span>
+          ) : (
+            "-"
+          ),
       },
       {
         id: "created_date",
@@ -464,7 +473,7 @@ export default function AdminApps() {
           open={!!state.removeApp}
           onClose={() => dispatch({ removeApp: null })}
           title="Remove app"
-          description={`Remove ${state.removeApp?.name ?? "this app"}, connected by ${state.removeApp?.user_email ?? "this user"}? Its users lose it and the access that roles gave to it. This cannot be undone.`}
+          description={`Remove ${state.removeApp?.name ?? "this app"}, ${state.removeApp?.user_uuid === null ? "added for the organization" : `connected by ${state.removeApp?.user_email ?? "this user"}`}? Its users lose it and the access that roles gave to it. This cannot be undone.`}
           confirmButton={
             <Button
               variant="danger"

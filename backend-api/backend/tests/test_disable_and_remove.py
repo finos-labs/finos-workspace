@@ -384,6 +384,21 @@ async def user_backend(organization, db_session):
     await db_session.commit()
 
 
+@pytest.fixture
+async def organization_backend(organization, db_session):
+    row = models.ApiSource(
+        uuid=uuid4(),
+        name="Shared prices",
+        url="https://backend.example.com/shared",
+        entity_uuid=ADMIN_ENTITY,
+    )
+    db_session.add(row)
+    await db_session.commit()
+    yield row.uuid
+    await db_session.execute(delete(models.ApiSource).where(models.ApiSource.uuid == row.uuid))
+    await db_session.commit()
+
+
 async def _admin_apps(client) -> dict:
     response = await client.get("/admin/apps")
     assert response.status_code == 200, response.text
@@ -506,3 +521,104 @@ class TestRemoveApp:
             select(models.RoleBackend.uuid).where(models.RoleBackend.backend_uuid == backend)
         )
         assert granted.first() is None
+
+
+class TestOrganizationBackendInAppManagement:
+    @pytest.mark.asyncio
+    async def test_a_backend_of_the_organization_is_listed_without_an_owner(
+        self, admin_client, organization_backend
+    ):
+        listed = (await _admin_apps(admin_client))[str(organization_backend)]
+
+        assert listed["name"] == "Shared prices"
+        assert listed["user_uuid"] is None
+        assert listed["user_email"] is None
+        assert listed["enabled"] is True
+
+    @pytest.mark.asyncio
+    async def test_disabling_it_takes_it_from_the_users_a_role_gave_it_to(
+        self, organization, admin_client, db_session, organization_backend
+    ):
+        member = await organization.add_user(models.USER_TYPE)
+        role = await organization.role(member.uuid)
+        db_session.add(
+            models.RoleBackend(role_uuid=role, backend_uuid=organization_backend, access="access")
+        )
+        await db_session.commit()
+        assert await readable_backend(db_session, member.uuid, ADMIN_ENTITY, organization_backend) is not None
+
+        disabled = await admin_client.patch(
+            f"/admin/apps/{organization_backend}", json={"enabled": False}
+        )
+
+        assert disabled.status_code == 200, disabled.text
+        assert (await _admin_apps(admin_client))[str(organization_backend)]["enabled"] is False
+        assert await readable_backend(db_session, member.uuid, ADMIN_ENTITY, organization_backend) is None
+
+        enabled = await admin_client.patch(
+            f"/admin/apps/{organization_backend}", json={"enabled": True}
+        )
+
+        assert enabled.status_code == 200, enabled.text
+        assert await readable_backend(db_session, member.uuid, ADMIN_ENTITY, organization_backend) is not None
+
+    @pytest.mark.asyncio
+    async def test_removing_it_removes_the_grants_of_roles_to_it(
+        self, organization, admin_client, db_session, organization_backend
+    ):
+        role = await organization.role()
+        db_session.add(
+            models.RoleBackend(role_uuid=role, backend_uuid=organization_backend, access="access")
+        )
+        await db_session.commit()
+
+        response = await admin_client.delete(f"/admin/apps/{organization_backend}")
+
+        assert response.status_code == 200, response.text
+        assert str(organization_backend) not in await _admin_apps(admin_client)
+        granted = await db_session.execute(
+            select(models.RoleBackend.uuid).where(models.RoleBackend.backend_uuid == organization_backend)
+        )
+        assert granted.first() is None
+        kept = await db_session.execute(
+            select(models.ApiSource.uuid).where(models.ApiSource.uuid == organization_backend)
+        )
+        assert kept.first() is None
+
+    @pytest.mark.asyncio
+    async def test_an_admin_cannot_reach_the_backend_of_another_organization(
+        self, admin_client, auth_client, db_session
+    ):
+        with superuser_override():
+            created = await auth_client.post(
+                "/entity/entity",
+                json={"name": f"Other {uuid4().hex[:8]}", "admin_email": "admin@example.com"},
+            )
+        entity_uuid = created.json()["entity_uuid"]
+        row = models.ApiSource(
+            uuid=uuid4(),
+            name="Elsewhere",
+            url="https://backend.example.com/elsewhere",
+            entity_uuid=entity_uuid,
+        )
+        db_session.add(row)
+        await db_session.commit()
+        try:
+            listed = await _admin_apps(admin_client)
+            patched = await admin_client.patch(f"/admin/apps/{row.uuid}", json={"enabled": False})
+            deleted = await admin_client.delete(f"/admin/apps/{row.uuid}")
+            enabled = (
+                await db_session.execute(
+                    select(models.ApiSource.enabled).where(models.ApiSource.uuid == row.uuid)
+                )
+            ).scalar_one()
+        finally:
+            await db_session.execute(delete(models.ApiSource).where(models.ApiSource.uuid == row.uuid))
+            await db_session.commit()
+            with superuser_override():
+                await auth_client.delete(f"/entity/entity/{entity_uuid}")
+
+        assert str(row.uuid) not in listed
+        assert patched.status_code == 404
+        assert deleted.status_code == 404
+        assert enabled is True

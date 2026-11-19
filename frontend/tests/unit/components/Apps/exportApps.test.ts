@@ -25,6 +25,12 @@ describe("buildAppExportRows", () => {
     expect(rows[0]["Created Date"]).toMatch(/2026/);
     expect(rows[0]["Last Updated"]).toMatch(/2026/);
   });
+
+  it("names the Organization as the owner of an organization backend", () => {
+    const rows = buildAppExportRows([makeApp({ user_uuid: null, user_email: null })]);
+
+    expect(rows[0]["User Email"]).toBe("Organization");
+  });
 });
 
 describe("exportAppsToFile", () => {
