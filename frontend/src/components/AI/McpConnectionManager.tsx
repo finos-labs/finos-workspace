@@ -48,12 +48,23 @@ const McpServerConnection = memo(({ server }: { server: McpConnectionServer }) =
     };
   }, [server]);
 
-  const { state, error, tools, callTool, retry, disconnect, clearStorage } =
-    useMcp(mcpConfig);
+  const {
+    state,
+    error,
+    tools,
+    resources,
+    callTool,
+    readResource,
+    retry,
+    disconnect,
+    clearStorage,
+  } = useMcp(mcpConfig);
 
   useEffect(() => {
     updateMCPConnectionRegistry(server.id, {
       callTool,
+      readResource,
+      resources,
       state,
       tools,
       error,
@@ -61,7 +72,7 @@ const McpServerConnection = memo(({ server }: { server: McpConnectionServer }) =
       clearStorage,
       retry,
     });
-  }, [state, tools, error]);
+  }, [state, tools, resources, error]);
 
   useEffect(() => {
     if (tools?.length > 0 && state === "ready") {
@@ -72,6 +83,7 @@ const McpServerConnection = memo(({ server }: { server: McpConnectionServer }) =
         enabled: true,
         inputSchema: tool.inputSchema,
         annotations: tool.annotations,
+        _meta: tool._meta,
       }));
 
       addToolsToServer(server.id, mcpTools);

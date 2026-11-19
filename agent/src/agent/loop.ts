@@ -48,7 +48,7 @@ import { readExtraState } from "../protocol/extra-state.ts";
 import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server.ts";
 import { buildMessages } from "./messages.ts";
 import { injectFromReboot, injectSkill, injectWidgetData, type RoundTripContext } from "./round-trip.ts";
-import { getCachedRows, getKeptWidgetData, keepWidgetData } from "./row-cache.ts";
+import { getCachedRows, getKeptWidgetData, keepWidgetData, widgetDataVersion } from "./row-cache.ts";
 import {
   formatToolInputRejectedStatus,
   formatToolResultStatus,
@@ -107,14 +107,14 @@ import { ATTR_SESSION_ID } from "@opentelemetry/semantic-conventions/incubating"
 
 const logger = getLogger(["app", "agent", "loop"]);
 
-export function _widgetCacheKey(uuid: string, inputArgs?: Record<string, unknown>): string {
+export function _widgetCacheKey(uuid: string, inputArgs?: Record<string, unknown>, dataVersion?: unknown): string {
   const sortedArgs = inputArgs
     ? Object.keys(inputArgs).sort().reduce<Record<string, unknown>>((acc, k) => {
         acc[k] = inputArgs[k];
         return acc;
       }, {})
     : {};
-  return JSON.stringify({ uuid, args: sortedArgs });
+  return JSON.stringify(dataVersion === undefined ? { uuid, args: sortedArgs } : { uuid, args: sortedArgs, dataVersion });
 }
 
 const widgetCacheKey = _widgetCacheKey;
@@ -1377,7 +1377,11 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
 
       const seenFetchKeys = new Set<string>();
       for (const fetch of fetches) {
-        const key = widgetCacheKey(fetch.request.widget_uuid, fetch.cacheInputArgs);
+        const key = widgetCacheKey(
+          fetch.request.widget_uuid,
+          fetch.cacheInputArgs,
+          widgetDataVersion(allWidgets.find((w) => w.uuid === fetch.request.widget_uuid)),
+        );
         if (seenFetchKeys.has(key)) continue;
         seenFetchKeys.add(key);
         const cached = await getKeptWidgetData(conversationId, key);
@@ -1485,7 +1489,7 @@ export async function cacheWidgetItemsFromReboot(
     const inputArgs = widget
       ? effectiveWidgetInputArgs(widget, query?.input_args)
       : query?.input_args;
-    await keepWidgetData(scope, widgetCacheKey(items[i].uuid, inputArgs), [items[i]]);
+    await keepWidgetData(scope, widgetCacheKey(items[i].uuid, inputArgs, widgetDataVersion(widget)), [items[i]]);
   }
   return items;
 }

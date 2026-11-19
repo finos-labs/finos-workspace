@@ -29,6 +29,7 @@ describe("configFromEnv", () => {
       copilot: {},
       ui: {},
       data: {},
+      mcpApps: {},
       links: {},
       contact: {},
       whiteLabel: {},

@@ -15,7 +15,7 @@ import { readExtraState } from "../protocol/extra-state.ts";
 import { reasoningStep } from "../protocol/events.ts";
 import { htmlTableArtifact } from "../protocol/html-table.ts";
 import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../protocol/bridge-commands.ts";
-import { forgetRows, rememberRows } from "./row-cache.ts";
+import { forgetRows, rememberRows, widgetDataVersion } from "./row-cache.ts";
 import { formatWidgetDataLoadedStatuses } from "./tool-status.ts";
 import { mcpDisplayName } from "./mcp-display.ts";
 import type { PendingDocument } from "./documents.ts";
@@ -699,6 +699,7 @@ export function injectWidgetData(
           rememberRows(ctx.conversationId, table.tableName, rows, {
             widgetUuid: item.uuid,
             inputArgs,
+            dataVersion: widgetDataVersion(item.widget),
           });
           loadedAsTable = true;
 

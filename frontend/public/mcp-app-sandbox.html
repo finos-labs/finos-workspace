@@ -1,0 +1,116 @@
+<!doctype html>
+<!--
+  Copyright FINOS contributors. Licensed under the Apache License, Version 2.0.
+
+  MCP Apps sandbox proxy. Served from the sandbox origin, never from the
+  app or API origin. The host frames this page; this page frames the MCP App view
+  in an inner iframe and relays JSON-RPC between the two. It makes no requests of
+  its own, and only the framing host can hand it the view's HTML.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="color-scheme" content="light dark" />
+    <title>MCP App sandbox</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+      }
+      iframe {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      (() => {
+        "use strict";
+
+        const fail = (reason) => {
+          document.body.textContent = "MCP App sandbox refused to start: " + reason;
+        };
+
+        if (window.parent === window) return fail("not framed");
+
+        // The framing page's origin comes from the browser, not from a query
+        // parameter. The frame-ancestors header decides who may frame this page;
+        // this pins every message to that one origin as well.
+        let hostOrigin;
+        try {
+          hostOrigin = new URL(document.referrer).origin;
+        } catch {
+          return fail("no referrer");
+        }
+        if (hostOrigin === "null" || hostOrigin === location.origin) {
+          return fail("host origin is not separate from the sandbox");
+        }
+
+        // The sandbox must not be able to reach the host's DOM.
+        try {
+          void window.top.document.title;
+          return fail("sandbox shares an origin with the host");
+        } catch {
+          /* expected: cross-origin */
+        }
+
+        // The view never shares this page's origin: with allow-same-origin it could
+        // reach into this page and send messages as the relay.
+        const VIEW_TOKENS = ["allow-scripts", "allow-forms"];
+        const viewSandbox = (requested) => {
+          const asked = typeof requested === "string" ? requested.split(/\s+/) : [];
+          const kept = VIEW_TOKENS.filter((token) => asked.includes(token));
+          return (kept.includes("allow-scripts") ? kept : ["allow-scripts"].concat(kept)).join(" ");
+        };
+
+        const inner = document.createElement("iframe");
+        inner.setAttribute("referrerpolicy", "no-referrer");
+        document.body.appendChild(inner);
+
+        const postToHost = (message) => window.parent.postMessage(message, hostOrigin);
+        // An opaque-origin view can only be addressed with "*". Only the view's own
+        // window receives it, and nothing else can be loaded in that frame.
+        const postToView = (message) => inner.contentWindow?.postMessage(message, "*");
+
+        window.addEventListener("message", (event) => {
+          if (event.source === window.parent) {
+            if (event.origin !== hostOrigin) return;
+            const data = event.data;
+            if (data?.method === "ui/notifications/sandbox-resource-ready") {
+              const { html, sandbox, permissions } = data.params ?? {};
+              if (typeof html !== "string") return;
+              inner.setAttribute("sandbox", viewSandbox(sandbox));
+              if (permissions && typeof permissions === "object") {
+                const allow = [];
+                if (permissions.camera) allow.push("camera");
+                if (permissions.microphone) allow.push("microphone");
+                if (permissions.geolocation) allow.push("geolocation");
+                if (permissions.clipboardWrite) allow.push("clipboard-write");
+                if (allow.length) inner.setAttribute("allow", allow.join("; "));
+              }
+              inner.srcdoc = html;
+              return;
+            }
+            // Everything else goes to the view unchanged.
+            postToView(data);
+            return;
+          }
+          if (event.source === inner.contentWindow) {
+            // The view must not be able to forge the proxy's own handshake.
+            if (typeof event.data?.method === "string" && event.data.method.startsWith("ui/notifications/sandbox-")) return;
+            postToHost(event.data);
+          }
+        });
+
+        postToHost({ jsonrpc: "2.0", method: "ui/notifications/sandbox-proxy-ready", params: {} });
+      })();
+    </script>
+  </body>
+</html>

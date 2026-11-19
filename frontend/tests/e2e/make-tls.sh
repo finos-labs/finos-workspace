@@ -2,6 +2,12 @@
 set -eu
 dir="$1"
 host="$2"
+shift 2
+# Any further arguments are extra names for the certificate, such as *.sandbox.localhost.
+names="DNS:$host"
+for extra in "$@"; do
+  names="$names,DNS:$extra"
+done
 mkdir -p "$dir"
 cd "$dir"
 
@@ -17,7 +23,7 @@ printf '%s\n' \
   "basicConstraints=critical,CA:FALSE" \
   "keyUsage=critical,digitalSignature" \
   "extendedKeyUsage=serverAuth" \
-  "subjectAltName=DNS:$host" \
+  "subjectAltName=$names" \
   "subjectKeyIdentifier=hash" \
   "authorityKeyIdentifier=keyid" > cert.ext
 openssl x509 -req -in cert.csr -CA ca.pem -CAkey ca.key -CAcreateserial -days 2 \

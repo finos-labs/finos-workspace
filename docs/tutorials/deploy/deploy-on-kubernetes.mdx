@@ -741,6 +741,8 @@ spec:
       targetPort: http
 ```
 
+The web container serves the MCP App sandbox page on a second port, 8081. To offer MCP Apps, add that port to the Deployment and the Service, a wildcard host to the Ingress and the two settings that [Add an MCP App to a dashboard](../../features/widgets/add-an-mcp-app.md#run-the-sandbox-origin) describes. Without them, everything else works, and the MCP App widget says it is not set up.
+
 Save the Ingress as `ingress.yaml`, with your ingress controller's class in `ingressClassName`:
 
 ```yaml
