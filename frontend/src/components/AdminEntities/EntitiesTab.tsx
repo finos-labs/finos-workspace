@@ -45,6 +45,10 @@ const COLUMNS: DataTableColumn<Entity>[] = [
   },
 ];
 
+const REMOVED_COLUMNS = COLUMNS.map((column) =>
+  column.id === "status" ? { ...column, cell: () => "Removed" } : column,
+);
+
 const SORT_VALUES: Record<string, (entity: Entity) => string | number> = {
   name: (entity) => entity.name.toLowerCase(),
   sharing: (entity) => (entity.sharing_enabled ? 1 : 0),
@@ -83,7 +87,7 @@ export function EntitiesTab() {
     <>
       <AdminEntityTable
         rows={entitiesQuery.data ?? []}
-        columns={COLUMNS}
+        columns={showRemoved ? REMOVED_COLUMNS : COLUMNS}
         getRowId={getEntityId}
         sortValues={SORT_VALUES}
         searchText={searchText}

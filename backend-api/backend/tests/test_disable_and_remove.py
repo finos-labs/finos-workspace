@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, insert, select, update
 
 from api import base, models
 from api.widget_plugins.broker import readable_backend
@@ -181,6 +181,38 @@ class TestRemoveEntity:
         assert entity_uuid not in [item["uuid"] for item in entities["items"]]
         assert removed_entity["permission_map_uuid"] not in [item["uuid"] for item in maps["items"]]
         assert again.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_removing_an_entity_cancels_the_invitations_to_it(
+        self, auth_client, db_session
+    ):
+        with superuser_override():
+            created = await _create_entity(auth_client, f"Invited {uuid4().hex[:8]}")
+        invite = uuid4()
+        await db_session.execute(
+            insert(models.UserInvite).values(
+                uuid=invite,
+                email=f"invited-{uuid4().hex[:8]}@example.com",
+                permissions_uuid=created["permission_map_uuid"],
+                data={"first_name": "In", "last_name": "Vited"},
+            )
+        )
+        await db_session.commit()
+
+        with superuser_override():
+            removed = await auth_client.delete(f"/entity/entity/{created['entity_uuid']}")
+        remaining = (
+            await db_session.execute(
+                select(models.UserInvite.uuid).where(models.UserInvite.uuid == invite)
+            )
+        ).scalar_one_or_none()
+        await db_session.execute(
+            delete(models.Entity).where(models.Entity.uuid == created["entity_uuid"])
+        )
+        await db_session.commit()
+
+        assert removed.status_code == 200
+        assert remaining is None
 
     @pytest.mark.asyncio
     async def test_the_name_of_a_removed_entity_is_free_again(

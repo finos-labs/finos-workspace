@@ -31,11 +31,11 @@ An organization that has a superuser cannot be disabled, and FINOS Workspace ans
 
 ## Remove an organization
 
-Select Remove entity at the end of the row and confirm with Yes, Remove. A message says "Entity removed". An organization that still has users is not removed, and a message says "Cannot delete entity with existing users": move its users to another organization first, as the next section describes, or disable the organization instead. The organization leaves every list and its name is free for a new organization. FINOS Workspace keeps its permission maps, roles, settings and backends, and you can bring the organization back, as the next section describes.
+Select Remove entity at the end of the row and confirm with Yes, Remove. A message says "Entity removed". An organization that still has users is not removed, and a message says "Cannot delete entity with existing users": move its users to another organization first, as the next section describes, or disable the organization instead. The organization leaves every list and its name is free for a new organization. An invitation to the organization that nobody accepted yet, such as the one that Add entity sends to its first administrator, is cancelled. FINOS Workspace keeps its permission maps, roles, settings and backends, and you can bring the organization back, as the next section describes.
 
 ## Restore a removed organization
 
-1. On the tab Entities, turn on the switch Show removed. The table lists the removed organizations under the names they had.
+1. On the tab Entities, turn on the switch Show removed. The table lists the removed organizations under the names they had, with the status Removed.
 2. Select Restore entity at the end of the row.
 3. In the dialog Restore entity, keep the Name or change it, and select Restore. A message says "Entity restored".
 

@@ -132,6 +132,8 @@ describe("EntitiesTab", () => {
     expect(screen.getByText("Gamma")).toBeInTheDocument();
     expect(screen.queryByText("Acme")).not.toBeInTheDocument();
     const actions = within(row("Gamma"));
+    expect(actions.getByText("Removed")).toBeInTheDocument();
+    expect(actions.queryByText("Active")).not.toBeInTheDocument();
     expect(actions.getByRole("button", { name: "Restore entity" })).toBeInTheDocument();
     expect(
       actions.queryByRole("button", { name: "Edit entity" }),

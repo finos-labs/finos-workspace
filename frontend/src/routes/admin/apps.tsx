@@ -261,7 +261,7 @@ export default function AdminApps() {
         id: "name",
         header: "Name",
         width: "26%",
-        minWidth: 150,
+        minWidth: 130,
         sortable: true,
         cell: (app) => <span className="text-general-label">{app.name || "-"}</span>,
       },
@@ -269,7 +269,7 @@ export default function AdminApps() {
         id: "url",
         header: "URL",
         width: "34%",
-        minWidth: 180,
+        minWidth: 130,
         sortable: true,
         cell: (app) => <UrlCell url={app.url} />,
       },
@@ -277,21 +277,21 @@ export default function AdminApps() {
         id: "user_email",
         header: "User Email",
         width: "20%",
-        minWidth: 200,
+        minWidth: 130,
         sortable: true,
         cell: (app) => app.user_email || "-",
       },
       {
         id: "status",
         header: "Status",
-        width: 100,
+        width: 90,
         sortable: true,
         cell: (app) => (app.enabled ? "Enabled" : "Disabled"),
       },
       {
         id: "total_users",
         header: "Total Users",
-        width: 110,
+        width: 100,
         sortable: true,
         align: "right",
         cell: (app) => (
@@ -304,7 +304,7 @@ export default function AdminApps() {
         id: "created_date",
         header: "Created Date",
         width: "8%",
-        minWidth: 150,
+        minWidth: 140,
         sortable: true,
         cell: (app) => formatDate(app.created_date),
       },
@@ -312,7 +312,7 @@ export default function AdminApps() {
         id: "updated_date",
         header: "Last Updated",
         width: "8%",
-        minWidth: 150,
+        minWidth: 140,
         sortable: true,
         cell: (app) => formatDate(app.updated_date),
       },
@@ -442,7 +442,7 @@ export default function AdminApps() {
             sortState={state.sortState}
             onSortChange={onSortChange}
             renderRowActions={renderRowActions}
-            actionsWidth={140}
+            actionsWidth={132}
             className="h-full"
           />
           {!data.length && (
@@ -464,7 +464,7 @@ export default function AdminApps() {
           open={!!state.removeApp}
           onClose={() => dispatch({ removeApp: null })}
           title="Remove app"
-          description={`Remove ${state.removeApp?.name ?? "this app"} connected by ${state.removeApp?.user_email ?? "this user"}? Its users lose it, and the access that roles gave to it. This cannot be undone.`}
+          description={`Remove ${state.removeApp?.name ?? "this app"}, connected by ${state.removeApp?.user_email ?? "this user"}? Its users lose it and the access that roles gave to it. This cannot be undone.`}
           confirmButton={
             <Button
               variant="danger"

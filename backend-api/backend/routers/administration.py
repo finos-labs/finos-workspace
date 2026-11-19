@@ -156,6 +156,16 @@ async def delete_entity(db: AsyncSession, entity_uuid: UUID) -> None:
             status_code=400, detail="Cannot delete entity with existing users"
         )
     await db.execute(
+        delete(UserInvite).where(
+            UserInvite.used.is_(False),
+            UserInvite.permissions_uuid.in_(
+                select(PermissionsEntityMap.uuid).where(
+                    PermissionsEntityMap.entity_uuid == entity_uuid
+                )
+            ),
+        )
+    )
+    await db.execute(
         update(Entity)
         .where(Entity.uuid == entity_uuid)
         .values(
