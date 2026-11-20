@@ -41,7 +41,7 @@
     "ai": "6.0.142",
     "cheerio": "1.2.0",
     "exceljs": "4.4.0",
-    "gpt-tokenizer": "^3.4.0",
+    "gpt-tokenizer": "^4.1.2",
     "hono": "^4.13.16",
     "ioredis": "5.10.1",
     "mammoth": "^1.13.0",
