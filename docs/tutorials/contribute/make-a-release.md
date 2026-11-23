@@ -14,7 +14,7 @@ A release is one pull request from `release/<version>` into `main`. Maintainers 
 3. It writes the entry `## Version <version> - <date>` at the top of `frontend/CHANGELOG.md`, from the pull requests merged into `develop` since the last release, without the ones that bots opened. The older entries come from `main`. When the changelog on `develop` has the entry for the version already, the workflow keeps that one.
 4. It opens the pull request `Release/<version>` into `main`. Edit `frontend/CHANGELOG.md` on the branch to change the notes. Those notes are the changelog of the web app and the text of the GitHub release.
 
-The workflow pushes with the GitHub App of the `SBOM_APP_ID` and `SBOM_APP_PRIVATE_KEY` secrets, so the pull request starts the checks. The App needs write access to contents, pull requests and workflows, because the branch changes the workflow files that `main` has.
+The workflow works as the GitHub App of the `SBOM_APP_ID` and `SBOM_APP_PRIVATE_KEY` secrets, so the pull request starts the checks. It makes the release commit through the GitHub API instead of `git push`, because GitHub signs a commit that an App makes that way, and `main` requires signed commits. The workflow stops before it creates the branch when GitHub did not sign the commit. The App needs write access to contents, pull requests and workflows, because the branch changes the workflow files that `main` has.
 
 ## Check the release before the merge
 

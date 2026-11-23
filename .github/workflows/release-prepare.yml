@@ -38,6 +38,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ steps.token.outputs.token }}
+          persist-credentials: false
 
       - name: Cut the release branch and open its pull request
         env:
@@ -62,16 +63,10 @@ jobs:
 
           top_version() { awk '$1 == "##" && $2 == "Version" { print $3; exit }'; }
 
-          git config user.name "${APP_SLUG}[bot]"
-          git config user.email "$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)+${APP_SLUG}[bot]@users.noreply.github.com"
-          git switch --no-track -C "$branch" origin/main
-          git merge --no-commit --no-ff origin/develop || true
-          git read-tree -u --reset origin/develop
-          git clean -fdq
-
           previous=$(git describe --tags --abbrev=0 --match 'v[0-9]*' origin/main || true)
+          tree=$(git rev-parse 'origin/develop^{tree}')
           if [ "$(git show origin/develop:frontend/CHANGELOG.md | top_version)" = "$VERSION" ]; then
-            changes=$(awk '/^## /{ n++; next } n == 1' frontend/CHANGELOG.md)
+            changes=$(git show origin/develop:frontend/CHANGELOG.md | awk '/^## /{ n++; next } n == 1')
           else
             args=(-f "tag_name=$tag" -f target_commitish=develop)
             [ -z "$previous" ] || args+=(-f "previous_tag_name=$previous")
@@ -92,17 +87,22 @@ jobs:
             {
               printf '## Version %s - %s %s%s, %s\n\n### Changes\n\n%s\n\n' "$VERSION" "$(date -u +%B)" "$day" "$ordinal" "$(date -u +%Y)" "$changes"
               git show origin/main:frontend/CHANGELOG.md
-            } > frontend/CHANGELOG.md
+            } > "$RUNNER_TEMP/CHANGELOG.md"
+            tree=$(jq -n --arg base "$tree" --rawfile content "$RUNNER_TEMP/CHANGELOG.md" \
+              '{base_tree: $base, tree: [{path: "frontend/CHANGELOG.md", mode: "100644", type: "blob", content: $content}]}' \
+              | gh api "repos/$GITHUB_REPOSITORY/git/trees" --input - --jq .sha)
           fi
 
-          git add --all
-          others=$(git diff --cached --name-only origin/develop -- . ':!frontend/CHANGELOG.md')
-          if [ -n "$others" ]; then
-            echo "::error::The release branch differs from develop in $others" >&2
+          bot_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
+          message=$(printf 'Release/%s\n\nSigned-off-by: %s[bot] <%s+%s[bot]@users.noreply.github.com>' "$VERSION" "$APP_SLUG" "$bot_id" "$APP_SLUG")
+          commit=$(jq -n --arg message "$message" --arg tree "$tree" --arg main "$(git rev-parse origin/main)" --arg develop "$(git rev-parse origin/develop)" \
+            '{message: $message, tree: $tree, parents: [$main, $develop]}' \
+            | gh api "repos/$GITHUB_REPOSITORY/git/commits" --input -)
+          if [ "$(jq -r .verification.verified <<< "$commit")" != true ]; then
+            echo "::error::GitHub did not sign the release commit ($(jq -r .verification.reason <<< "$commit")), so no branch was created" >&2
             exit 1
           fi
-          git commit --signoff --message "Release/$VERSION"
-          git push origin "HEAD:refs/heads/$branch"
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/heads/$branch" -f "sha=$(jq -r .sha <<< "$commit")" > /dev/null
 
           # shellcheck disable=SC2016
           body=$(printf 'Release %s.\n\nThe Release workflow builds every image on this pull request, and all of it must pass before the pull request can be merged. Merging publishes the Docker images, tags the merge commit `%s` and creates the GitHub release with the changelog below.\n\nEdit `frontend/CHANGELOG.md` on this branch to change the notes.\n\n%s\n' "$VERSION" "$tag" "$changes")
