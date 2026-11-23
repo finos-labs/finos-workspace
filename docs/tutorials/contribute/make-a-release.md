@@ -5,34 +5,34 @@ sidebar_position: 8
 
 # Make a release
 
-A release is one pull request from `release/<version>` into `main`. Maintainers choose the version, and the workflows write the changelog, check the images before the merge and publish everything after it. This guide shows the steps and what each workflow does.
+A release is a pull request from `develop` into `main`. Open it, get it approved and add it to the merge queue. The workflow `Release` does everything else: it works out the version, writes the changelog and the release notes, builds the images before the merge, and publishes the images, the tag and the GitHub release after it.
 
-## Prepare the release
+## Open the pull request
 
-1. In the repository's Actions tab, run the workflow `Prepare release` on `develop`, and give it the version, such as `0.2.0` or `0.2.0-alpha.1`. A version with a hyphen is a pre-release.
-2. The workflow cuts the branch `release/<version>` from `main`, with the files of `develop`, and keeps `develop` as a parent of the commit. It stops when the tag or the branch exists already, or when no pull request was merged into `develop` since the last `v` tag.
-3. It writes the entry `## Version <version> - <date>` at the top of `frontend/CHANGELOG.md`, from the pull requests merged into `develop` since the last release, without the ones that bots opened. The older entries come from `main`. When the changelog on `develop` has the entry for the version already, the workflow keeps that one.
-4. It opens the pull request `Release/<version>` into `main`. Edit `frontend/CHANGELOG.md` on the branch to change the notes. Those notes are the changelog of the web app and the text of the GitHub release.
+Open a pull request with the base `main` and the head `develop`, with a description, and with no other work:
 
-The workflow works as the GitHub App of the `SBOM_APP_ID` and `SBOM_APP_PRIVATE_KEY` secrets, so the pull request starts the checks. It makes the release commit through the GitHub API instead of `git push`, because GitHub signs a commit that an App makes that way, and `main` requires signed commits. The workflow stops before it creates the branch when GitHub did not sign the commit. The App needs write access to contents, pull requests and workflows, because the branch changes the workflow files that `main` has.
+```bash
+gh pr create --base main --head develop
+```
 
-## Check the release before the merge
+The version needs no input. To choose it, put the label `release:X.Y.Z`, such as `release:0.2.0` or `release:0.2.0-alpha.1`, on the pull request. A version with a hyphen is a pre-release.
 
-The workflow `Release` runs on every pull request into `main`, and it does everything that publishing does except the pushing:
+## What the workflow does
 
-- It reads the version from the top heading of `frontend/CHANGELOG.md`. It fails when that is not a semantic version, when the entry has no changes, or when the tag `v<version>` exists already. So a pull request into `main` that does not start a new version cannot pass.
-- It builds the four images, `backend`, `web`, `agent` and `agent-mcp`, from the branch, and pushes none of them.
+1. It takes the version from the label, or else counts up the number at the end of the latest `v` tag: `v0.1.0-alpha.1` becomes `0.1.0-alpha.2` and `v1.2.3` becomes `1.2.4`. It fails when the tag exists already.
+2. It lists the pull requests merged since the latest `v` tag, without the ones that bots opened and without the release pull request itself. That list is the text of the GitHub release. The changelog of the web app is that list as a new entry at the top, then the entries of the earlier releases, which come from their GitHub release notes, then `frontend/CHANGELOG.md`, which holds the history from before the releases were automated. The web image gets this changelog, and the file in the repository stays as it is.
+3. On the pull request and again in the merge queue it builds the four images, `backend`, `web`, `agent` and `agent-mcp`, and pushes none of them. The job `Ready to release` is green only when everything before it passed.
+4. After the merge it pushes the four images to Docker Hub under the commit's SHA. When all four are there, it gives each one the tags `v<version>` and `latest`, and then it tags the merge commit and creates the GitHub release. `latest` moves to every release, pre-releases included. A release is marked as a pre-release when its version has a hyphen, and as the latest release when it has none.
 
-The job `Ready to release` is green only when all of that passed. Make it a required status check of `main`, so that nothing can be merged before it is green.
+A failed run leaves no release tag and no release. Run its failed jobs again from the Actions tab: the last run for a commit that already has a `v` tag does nothing.
 
-## Publish by merging
+## Settings that the release needs
 
-On the push to `main` that the merge makes, the workflow `Release` runs again with the push enabled, in this order:
+These are settings of the repository, so no workflow sets them:
 
-1. It builds the four images and pushes each one to Docker Hub under the commit's SHA, as `finos/workspace-<image>:<sha>`.
-2. When all four are there, it gives each one the tags `v<version>` and `latest`. `latest` moves to every release, pre-releases included. A failed build leaves no release tag and does not move `latest`.
-3. It tags the merge commit `v<version>` and creates the GitHub release with the changelog entry as its notes. The release is marked as a pre-release when the version has a hyphen, and as the latest release when it has none.
+- A merge queue on `main` that merges with a merge commit. A squash or a rebase would make `develop` and `main` diverge again, and the next release pull request would conflict.
+- The check `Ready to release` as a required status check of `main`. The merge queue runs the workflow on its own commit, so the check has to be required there.
 
-A push to `main` whose changelog version is tagged already publishes nothing. When a run fails, run its failed jobs again from the Actions tab. Every step can run again, and the tag and the release come last.
+## What the release does not cover
 
-The base image of the agent and the web app, `finos-node`, is released on its own, by pushing a tag named `finos-node-v<Node version>-<build>`, which the workflow `finos-node` handles. A release of the images uses the `finos-node` release that `docker-compose.yml` names.
+The workflow `docker-publish.yml` is the older path. It still publishes the images when a person publishes a release by hand, and the releases that the workflow `Release` creates do not start it. The base image of the agent and the web app, `finos-node`, has its own workflow, which a tag named `finos-node-v<Node version>-<build>` starts. A release of the images uses the `finos-node` release that `docker-compose.yml` names.
