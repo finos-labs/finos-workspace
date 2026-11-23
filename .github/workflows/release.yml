@@ -1,0 +1,113 @@
+name: Release
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  plan:
+    name: Plan the release
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.plan.outputs.release }}
+      tag: ${{ steps.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the release from the changelog
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          version=$(awk '$1 == "##" && $2 == "Version" { print $3; exit }' frontend/CHANGELOG.md)
+          if ! grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' <<< "$version"; then
+            echo "::error file=frontend/CHANGELOG.md::The changelog must start with '## Version X.Y.Z - <date>', a semantic version, and it starts with '$version'" >&2
+            exit 1
+          fi
+          if [ -z "$(awk '/^## /{ n++; next } n == 1' frontend/CHANGELOG.md | tr -d '[:space:]')" ]; then
+            echo "::error file=frontend/CHANGELOG.md::The entry for $version has no changes" >&2
+            exit 1
+          fi
+          tag="v$version"
+          found=0
+          git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null || found=$?
+          case $found in
+            0) released=true ;;
+            2) released=false ;;
+            *) exit "$found" ;;
+          esac
+          if [ "$EVENT" = pull_request ] && [ "$released" = true ]; then
+            echo "::error file=frontend/CHANGELOG.md::$tag is released already. A pull request into main is a release, so add an entry for the next version to the top of the changelog" >&2
+            exit 1
+          fi
+          echo "release=$([ "$released" = false ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  images:
+    name: Images
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/docker-publish.yml
+    with:
+      tag: ${{ needs.plan.outputs.tag }}
+      publish: ${{ github.event_name == 'push' }}
+    secrets: inherit
+
+  release:
+    name: Tag and release
+    needs: [plan, images]
+    if: github.event_name == 'push' && needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Create the tag and the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          awk '/^## /{ n++; next } n == 1' frontend/CHANGELOG.md > notes.md
+          [[ $TAG == *-* ]] && kind=--prerelease || kind=--latest
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md "$kind"
+
+  ready:
+    name: Ready to release
+    if: always()
+    needs: [plan, images]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Check that every release step passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          case " $RESULTS " in
+            *" failure "* | *" cancelled "*)
+              echo "A release step did not pass: $RESULTS" >&2
+              exit 1
+              ;;
+          esac

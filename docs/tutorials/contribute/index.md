@@ -20,3 +20,4 @@ Before you open a pull request, read [CONTRIBUTING.md](https://github.com/finos-
 | Change the documentation | [Write and preview documentation](write-docs.md) |
 | Rebuild the generated reference | [Regenerate the reference data](regenerate-reference-data.md) |
 | Change what a [`widgets.json`](../../reference/schemas/widgets-json.mdx) file may contain | [Change the widgets.json contract](change-the-widgets-contract.md) |
+| Publish a version | [Make a release](make-a-release.md) |
