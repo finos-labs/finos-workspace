@@ -1,6 +1,5 @@
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import dayjs from "dayjs";
-import { toPng } from "html-to-image";
 import { cloneDeep } from "lodash";
 import {
   forwardRef,
@@ -723,49 +722,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
       shouldShowMinimizeButton,
     ]);
 
-    const ellipsisExportFns = useMemo(() => {
-      const widget = widgetRef?.current;
-      return {
-        ...exportFns,
-        pngFunction: exportFns?.pngFunction
-          ? exportFns?.pngFunction
-          : widget?.id
-            ? (title = "report") => {
-                const element = document.getElementById(widget?.id);
-                if (!element) return;
-
-                const prevElementStyle = (element.cloneNode(true) as HTMLElement).style;
-                element.style.overflow = "hidden";
-
-                const prevChildrenStyles: string[] = [];
-                const children = element.querySelectorAll(
-                  "*",
-                ) as NodeListOf<HTMLElement>;
-
-                for (const child of children) {
-                  prevChildrenStyles.push(child.style.overflow);
-                  child.style.overflow = "hidden";
-                }
-
-                toPng(element, {})
-                  .then((dataUrl) => {
-                    const link = document.createElement("a");
-                    link.download = `${title}.png`;
-                    link.href = dataUrl;
-                    link.click();
-                    link.remove();
-                  })
-                  .finally(() => {
-                    element.style.overflow = prevElementStyle.overflow;
-                    for (const child of children) {
-                      child.style.overflow = prevChildrenStyles.shift() ?? "";
-                    }
-                  });
-              }
-            : null,
-      };
-    }, [Object.values(exportFns), widgetRef]);
-
     const { runButton, showLastUpdate } = useMemo(() => {
       const widget = widgetRef?.current;
       const runButton = refreshButtonType === "run" || widget?.runButton;
@@ -1092,7 +1048,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                       dispatch={dispatch}
                       settings={ellipsisSettings}
                       extraSettings={extraSettings}
-                      exportFns={ellipsisExportFns}
+                      exportFns={exportFns}
                       onExport={onExport}
                       isMinimized={state.isMinimized}
                       onMinimizeToggle={handleMinimizeWidget}
@@ -1132,7 +1088,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                   dispatch={dispatch}
                   settings={ellipsisSettings}
                   extraSettings={extraSettings}
-                  exportFns={ellipsisExportFns}
+                  exportFns={exportFns}
                   onExport={onExport}
                   isMinimized={state.isMinimized}
                   onMinimizeToggle={handleMinimizeWidget}
