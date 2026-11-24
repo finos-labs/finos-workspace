@@ -1,13 +1,22 @@
 import { act, fireEvent, render } from "@testing-library/react";
+import { createRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TraitBinding } from "~/plugins/authority";
 import { BundleIntegrityError, loadBundle } from "~/plugins/bundle";
 import PluginFrame, {
   type FrameStatus,
+  type PluginFrameHandle,
   type PluginFrameProps,
 } from "~/plugins/PluginFrame";
-import { AFM_VERSION, RUNTIME_VERSION, SHELL_READY } from "~/plugins/protocol";
+import {
+  AFM_VERSION,
+  approximateSize,
+  MAX_GUEST_MESSAGE_BYTES,
+  RUNTIME_VERSION,
+  SHELL_READY,
+} from "~/plugins/protocol";
 import type { AvailablePlugin } from "~/plugins/types";
+import { required } from "../mocks";
 
 vi.mock("~/plugins/frame", () => ({
   FRAME_SANDBOX: "allow-scripts",
@@ -220,6 +229,37 @@ describe("files that fail the host's check", () => {
     await tick();
     expect(received.some((m) => m.t === "load")).toBe(false);
     expect(container.querySelector("iframe")).toBeNull();
+  });
+});
+
+describe("an export's answer", () => {
+  it("may hand the host more rows than one message may otherwise hold", async () => {
+    const handleRef = createRef<PluginFrameHandle>();
+    const { props, statuses } = frameProps({ handleRef });
+    render(<PluginFrame {...props} />);
+    const { port, received } = await start(await frameNamed(props.title));
+    await vi.waitFor(() => expect(statuses.at(-1)?.kind).toBe("running"));
+    const rows = Array.from({ length: 40_000 }, (_, i) => ({
+      id: i,
+      name: `row ${i}`,
+    }));
+    expect(approximateSize(rows, Number.POSITIVE_INFINITY)).toBeGreaterThan(
+      MAX_GUEST_MESSAGE_BYTES,
+    );
+    const answer = required(handleRef.current).callExport("copilotRows", []);
+    let call: Message | undefined;
+    await vi.waitFor(() => {
+      call = received.find((m) => m.t === "call-export");
+      expect(call?.member).toBe("copilotRows");
+    });
+    port.postMessage({
+      t: "export-result",
+      id: required(call).id,
+      ok: true,
+      value: rows,
+    });
+    await expect(answer).resolves.toHaveLength(40_000);
+    expect(statuses.at(-1)?.kind).toBe("running");
   });
 });
 

@@ -53,8 +53,9 @@ An export has at most <PluginValue of="limits.MAX_EXPORT_OPTIONS" /> options, an
 | `exportOptions` | <PluginValue of="limits.EXPORT_TIMEOUTS_MS.exportOptions" unit="ms" /> |
 | `exportData` | <PluginValue of="limits.EXPORT_TIMEOUTS_MS.exportData" unit="ms" /> |
 | `copilotContext` | <PluginValue of="limits.EXPORT_TIMEOUTS_MS.copilotContext" unit="ms" /> |
+| `copilotRows` | <PluginValue of="limits.EXPORT_TIMEOUTS_MS.copilotRows" unit="ms" /> |
 
-A `copilotContext` function, together with the permission [`core:copilot:context`](../../reference/plugins/commands-and-permissions.mdx), works the same way. It tells the AI agent what the widget shows.
+A `copilotContext` function, together with the permission [`core:copilot:context`](../../reference/plugins/commands-and-permissions.mdx), works the same way. It tells the AI agent what the widget shows. A `copilotRows` function, with the same permission, hands the AI agent every row of the widget, which the agent loads as a table that it can query.
 
 ## Next steps
 
