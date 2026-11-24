@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import type React from "react";
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { useWidgetContext } from "~/components/Widget.context";
 import Markdown, { MarkdownContent } from "~/components/Widgets/custom/Markdown";
 import { useJsonData } from "~/lib/api";
@@ -26,15 +26,51 @@ vi.mock("~/components/AI/Artifact", () => ({
   ),
 }));
 
+const cardProps = vi.hoisted(() => ({
+  exportFns: undefined as Record<string, (title: string) => void> | undefined,
+}));
+
 vi.mock("~/components/DraggableCard", () => ({
   __esModule: true,
-  default: ({ children, title }: { children: React.ReactNode; title: string }) => (
-    <div data-testid="draggable-card">
-      <h1>{title}</h1>
-      {children}
-    </div>
-  ),
+  default: ({
+    children,
+    title,
+    exportFns,
+  }: {
+    children: React.ReactNode;
+    title: string;
+    exportFns?: Record<string, (title: string) => void>;
+  }) => {
+    cardProps.exportFns = exportFns;
+    return (
+      <div data-testid="draggable-card">
+        <h1>{title}</h1>
+        {children}
+      </div>
+    );
+  },
 }));
+
+const downloadProbe = () => {
+  Object.assign(URL, {
+    createObjectURL: vi.fn(() => "blob:x"),
+    revokeObjectURL: vi.fn(),
+  });
+  const blobs: Blob[] = [];
+  (URL.createObjectURL as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+    (blob: Blob) => {
+      blobs.push(blob);
+      return "blob:x";
+    },
+  );
+  const links: HTMLAnchorElement[] = [];
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    links.push(this);
+  });
+  return { blobs, links };
+};
 
 describe("Markdown Component", () => {
   const mockWidget = {
@@ -237,5 +273,42 @@ describe("Markdown Component", () => {
 
     expect(screen.getByText(/Hello/)).toBeInTheDocument();
     expect(screen.getByText(/world/)).toBeInTheDocument();
+  });
+
+  describe("export", () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it("exports the text itself as a .txt file", async () => {
+      const { blobs, links } = downloadProbe();
+      (useJsonData as Mock).mockReturnValue({
+        data: "hello export test\n",
+        isLoading: false,
+        error: null,
+        dataUpdatedAt: Date.now(),
+      });
+      (useWidgetContext as Mock).mockReturnValue({
+        widget: { ...mockWidget, endpoint: { ...mockWidget.endpoint, url: "a/b.txt" } },
+      });
+
+      renderWithQueryClient(<Markdown />);
+      expect(Object.keys(cardProps.exportFns ?? {})).toEqual(["txtFunction"]);
+      cardProps.exportFns?.txtFunction?.("my-file");
+
+      expect(links[0].download).toBe("my-file.txt");
+      expect(await blobs[0].text()).toBe("hello export test\n");
+    });
+
+    it("offers no export for a .docx, whose text is converted HTML", () => {
+      (useWidgetContext as Mock).mockReturnValue({
+        widget: {
+          ...mockWidget,
+          endpoint: { ...mockWidget.endpoint, url: "a/b.docx" },
+        },
+      });
+
+      renderWithQueryClient(<Markdown />);
+
+      expect(cardProps.exportFns).toBeUndefined();
+    });
   });
 });

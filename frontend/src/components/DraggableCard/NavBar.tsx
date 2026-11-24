@@ -130,6 +130,7 @@ export interface NavBarProps {
     pngFunction?: (title: string) => void;
     pdfFunction?: (title: string) => void;
     txtFunction?: (title: string) => void;
+    htmlFunction?: (title: string) => void;
   };
   onExport?: () => void;
   settingsDialogClassName?: string;
