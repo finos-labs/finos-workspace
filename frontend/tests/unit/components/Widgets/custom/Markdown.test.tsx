@@ -298,6 +298,37 @@ describe("Markdown Component", () => {
       expect(await blobs[0].text()).toBe("hello export test\n");
     });
 
+    it("exports a .md file as .md, not .txt", async () => {
+      const { blobs, links } = downloadProbe();
+      (useJsonData as Mock).mockReturnValue({
+        data: "# Title\n",
+        isLoading: false,
+        error: null,
+        dataUpdatedAt: Date.now(),
+      });
+      (useWidgetContext as Mock).mockReturnValue({
+        widget: { ...mockWidget, endpoint: { ...mockWidget.endpoint, url: "a/b.md" } },
+      });
+
+      renderWithQueryClient(<Markdown />);
+      expect(Object.keys(cardProps.exportFns ?? {})).toEqual(["mdFunction"]);
+      cardProps.exportFns?.mdFunction?.("my-doc");
+
+      expect(links[0].download).toBe("my-doc.md");
+      expect(blobs[0].type).toBe("text/markdown");
+      expect(await blobs[0].text()).toBe("# Title\n");
+    });
+
+    it("exports a note written in the widget as .md", () => {
+      renderWithQueryClient(<Markdown />);
+      (useWidgetContext as Mock).mockReturnValue({
+        widget: { name: "Note", storage: { text: "# My note" } },
+      });
+      renderWithQueryClient(<Markdown />);
+
+      expect(Object.keys(cardProps.exportFns ?? {})).toEqual(["mdFunction"]);
+    });
+
     it("offers no export for a .docx, whose text is converted HTML", () => {
       (useWidgetContext as Mock).mockReturnValue({
         widget: {

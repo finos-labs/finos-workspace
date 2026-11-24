@@ -196,16 +196,19 @@ export default function Markdown() {
     widget.storage?.artifacts,
   ]);
 
-  const exportFns = useMemo(
-    () =>
-      extension === "docx"
-        ? undefined
-        : {
-            txtFunction: (title: string) =>
-              downloadText(markdownPayload.content, `${title}.txt`, "text/plain"),
-          },
-    [extension, markdownPayload.content],
-  );
+  const exportFns = useMemo(() => {
+    if (extension === "docx") return undefined;
+    const content = markdownPayload.content;
+    return extension === "txt"
+      ? {
+          txtFunction: (title: string) =>
+            downloadText(content, `${title}.txt`, "text/plain"),
+        }
+      : {
+          mdFunction: (title: string) =>
+            downloadText(content, `${title}.md`, "text/markdown"),
+        };
+  }, [extension, markdownPayload.content]);
 
   const handleExternalLinkClick = useCallback((url: string) => {
     setExternalLinkDialog({ open: true, url });

@@ -22,7 +22,12 @@ type ExportFn = ((title: string) => void) | null;
 
 export type ExportFns = Partial<
   Record<
-    "csvFunction" | "pngFunction" | "pdfFunction" | "txtFunction" | "htmlFunction",
+    | "csvFunction"
+    | "pngFunction"
+    | "pdfFunction"
+    | "txtFunction"
+    | "htmlFunction"
+    | "mdFunction",
     ExportFn
   >
 >;
