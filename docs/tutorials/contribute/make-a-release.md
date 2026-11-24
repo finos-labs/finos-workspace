@@ -5,7 +5,7 @@ sidebar_position: 8
 
 # Make a release
 
-A release is a pull request from `develop` into `main`. Open it, get it approved and add it to the merge queue. The workflow `Release` does everything else: it works out the version, writes the changelog and the release notes, builds the images before the merge, and publishes the images, the tag and the GitHub release after it.
+A release is a pull request from `develop` into `main`. Open it, get it approved and add it to the merge queue. The workflow `Release` does everything else: it works out the version, writes the changelog and the release notes, builds the images before the merge, and publishes the images, the tag and the GitHub release after it. Then it opens the pull request that merges `main` back into `develop`.
 
 ## Open the pull request
 
@@ -23,6 +23,7 @@ The version needs no input. To choose it, put the label `release:X.Y.Z`, such as
 2. It lists the pull requests merged since the latest `v` tag, without the ones that bots opened and without the release pull request itself. That list is the text of the GitHub release. The changelog of the web app is that list as a new entry at the top, then the entries of the earlier releases, which come from their GitHub release notes, then `frontend/CHANGELOG.md`, which holds the history from before the releases were automated. The web image gets this changelog, and the file in the repository stays as it is.
 3. On the pull request and again in the merge queue it builds the four images, `backend`, `web`, `agent` and `agent-mcp`, and pushes none of them. The job `Ready to release` is green only when everything before it passed.
 4. After the merge it pushes the four images to Docker Hub under the commit's SHA. When all four are there, it gives each one the tags `v<version>` and `latest`, and then it tags the merge commit and creates the GitHub release. `latest` moves to every release, pre-releases included. A release is marked as a pre-release when its version has a hyphen, and as the latest release when it has none.
+5. When the release exists, it opens a pull request from `main` into `develop`, titled `Merge main back into develop after v<version>`, so that `develop` gets the merge commit and whatever else is only on `main`. It opens none when `develop` has everything already, or when such a pull request is open: that pull request follows `main`. Review it and merge it with a merge commit, never with a squash or a rebase, which would make the two branches diverge again.
 
 A failed run leaves no release tag and no release. Run its failed jobs again from the Actions tab: the last run for a commit that already has a `v` tag does nothing.
 
@@ -32,6 +33,7 @@ These are settings of the repository, so no workflow sets them:
 
 - A merge queue on `main` that merges with a merge commit. A squash or a rebase would make `develop` and `main` diverge again, and the next release pull request would conflict.
 - The check `Ready to release` as a required status check of `main`. The merge queue runs the workflow on its own commit, so the check has to be required there.
+- **Allow GitHub Actions to create and approve pull requests**, under Settings, Actions, General, Workflow permissions. The pull request from `main` into `develop` is opened by the workflow, which cannot open it without this. A pull request that the workflow opens does not start other workflows, so its checks do not run on their own.
 
 ## What the release does not cover
 

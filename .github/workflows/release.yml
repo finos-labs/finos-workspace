@@ -158,6 +158,39 @@ jobs:
           [[ $TAG == *-* ]] && kind=--prerelease || kind=--latest
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" --notes-file "$RUNNER_TEMP/release/notes.md" "$kind"
 
+  backmerge:
+    name: Merge main back into develop
+    needs: [plan, release]
+    if: github.event_name == 'push' && needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Open the pull request from main into develop
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          ahead=$(gh api "repos/$GITHUB_REPOSITORY/compare/develop...main" --jq .ahead_by)
+          if [ "$ahead" = 0 ]; then
+            echo "develop has everything that main has, so there is nothing to merge back." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          open=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main --state open --json url --jq '.[0].url // empty')
+          if [ -n "$open" ]; then
+            echo "$open is open already and follows main." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          body=$(printf '%s\n\n%s\n\n%s\n' \
+            "Release [$TAG]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG) is on \`main\`. This brings its merge commit, and anything else that is only on \`main\`, back into \`develop\`." \
+            "Merge it with a merge commit. A squash or a rebase makes \`develop\` and \`main\` diverge again, and the next release pull request conflicts." \
+            "Opened by the [release run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID).")
+          url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head main --title "Merge main back into develop after $TAG" --body "$body")
+          echo "Opened $url" >> "$GITHUB_STEP_SUMMARY"
+
   ready:
     name: Ready to release
     if: always()
