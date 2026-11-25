@@ -295,6 +295,16 @@ export async function handleWidgetDeletion({
   throw new Error("Invalid widget type");
 }
 
+export function downloadText(content: string, filename: string, type: string) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export interface FileResponse {
   aiData: Partial<DataContent | DataUrl | CopilotError>;
   objectUrl: string;

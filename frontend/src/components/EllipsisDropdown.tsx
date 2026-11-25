@@ -126,7 +126,7 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
         </DropdownMenuPrimitive.Item>,
       );
     }
-    if (settings?.showExport) {
+    if (settings?.showExport && (onExport || exportFunctions.length > 0)) {
       const isExportable = (widgetFromJSON?.exportable ?? widget?.exportable) !== false;
       exportItems.push(
         <DropdownMenuPrimitive.Item
@@ -141,10 +141,10 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
               return;
             }
             setExportWidgetData({
-              possibleExportFormats: exportFns ? exportFunctions : [],
+              possibleExportFormats: exportFunctions,
               widgetId: widget.id,
               widgetName: widget.name,
-              selectedExportFormat: exportFns ? exportFunctions[0].value : "",
+              selectedExportFormat: exportFunctions[0].value,
             });
           }}
         >

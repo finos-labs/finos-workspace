@@ -21,7 +21,15 @@ export type MoveToOnSelectProps = {
 type ExportFn = ((title: string) => void) | null;
 
 export type ExportFns = Partial<
-  Record<"csvFunction" | "pngFunction" | "pdfFunction" | "txtFunction", ExportFn>
+  Record<
+    | "csvFunction"
+    | "pngFunction"
+    | "pdfFunction"
+    | "txtFunction"
+    | "htmlFunction"
+    | "mdFunction",
+    ExportFn
+  >
 >;
 
 export type EllipsisSettings = {
