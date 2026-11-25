@@ -76,6 +76,14 @@ export const resetSchema = z
 
 export type resetForm = z.infer<typeof resetSchema>;
 
+export const signupSchema = z.object({
+  email: zodEmail,
+  firstName: z.string().max(100, "At most 100 characters"),
+  lastName: z.string().max(100, "At most 100 characters"),
+});
+
+export type signupForm = z.infer<typeof signupSchema>;
+
 export type WidgetType = Omit<WidgetBaseContractT, "params"> & {
   type: WidgetVizType;
   params?: ParamDef[];

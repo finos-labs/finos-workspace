@@ -61,6 +61,10 @@ export const RuntimeConfigSchema = z.object({
       true,
       "Offer sign-in with an email address and password on the login page. Turn it off when users sign in only through an identity provider.",
     ),
+    allowSignup: boolField(
+      false,
+      "Offer account signup with an email address on the login page. The backend must have SIGNUP_ENABLED on and a mailer that delivers the confirmation link.",
+    ),
     identityProviders: strArrayField(
       [],
       "The identity providers that the login page offers, as a comma-separated list. The app ignores any other item.",
@@ -191,6 +195,7 @@ export const ENV_NAMES = {
   },
   authentication: {
     allowEmailLogin: "VITE_AUTHENTICATION_ALLOW_EMAIL_LOGIN",
+    allowSignup: "VITE_AUTHENTICATION_ALLOW_SIGNUP",
     identityProviders: "VITE_AUTHENTICATION_IDENTITY_PROVIDERS",
     sendUserEmailAsHeader: "VITE_AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER",
   },

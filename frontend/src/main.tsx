@@ -48,6 +48,8 @@ const HomePage = lazy(() => import("./routes/home"));
 const LoginPage = lazy(() => import("./routes/login"));
 const DataConnectors = lazy(() => import("./routes/newDataConnectors"));
 const ResetPasswordPage = lazy(() => import("./routes/resetPassword"));
+const SignupPage = lazy(() => import("./routes/signup"));
+const SignupConfirmPage = lazy(() => import("./routes/signupConfirm"));
 const Settings = lazy(() => import("./routes/settings"));
 const TabPage = lazy(() => import("./routes/tab"));
 
@@ -159,6 +161,16 @@ const router = createBrowserRouter([
             path: "reset-password",
             element: <S children={<ResetPasswordPage />} />,
             id: "reset-password",
+          },
+          {
+            path: "signup",
+            element: <S children={<SignupPage />} />,
+            id: "signup",
+          },
+          {
+            path: "signup/confirm",
+            element: <S children={<SignupConfirmPage />} />,
+            id: "signup-confirm",
           },
         ],
       },

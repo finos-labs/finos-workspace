@@ -184,15 +184,43 @@ describe("EllipsisDropdownMenu", () => {
   });
 
   describe("Export", () => {
-    const openMenu = async (settings: EllipsisDropdownMenuProps["settings"]) => {
-      render(<EllipsisDropdownMenu {...defaultProps} settings={settings} />);
+    const openMenu = async (
+      settings: EllipsisDropdownMenuProps["settings"],
+      exportFns?: EllipsisDropdownMenuProps["exportFns"],
+    ) => {
+      render(
+        <EllipsisDropdownMenu
+          {...defaultProps}
+          settings={settings}
+          exportFns={exportFns}
+        />,
+      );
       await userEvent.setup().click(screen.getByRole("button"));
     };
 
-    it("offers Export to every user", async () => {
-      await openMenu({ showExport: true });
+    it("offers Export to every user when the widget has an export format", async () => {
+      await openMenu({ showExport: true }, { csvFunction: vi.fn() });
 
       expect(screen.getByText("Export")).toBeInTheDocument();
+    });
+
+    it("offers Export to a plugin widget that supplies onExport", async () => {
+      render(
+        <EllipsisDropdownMenu
+          {...defaultProps}
+          settings={{ showExport: true }}
+          onExport={vi.fn()}
+        />,
+      );
+      await userEvent.setup().click(screen.getByRole("button"));
+
+      expect(screen.getByText("Export")).toBeInTheDocument();
+    });
+
+    it("hides Export when the widget has nothing real to export", async () => {
+      await openMenu({ showExport: true });
+
+      expect(screen.queryByText("Export")).not.toBeInTheDocument();
     });
   });
 });

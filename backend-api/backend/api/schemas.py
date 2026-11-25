@@ -165,6 +165,15 @@ class PasswordReset(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     )
 
 
+class SignupRequest(BaseModel):
+    model_config = main_config
+    email: Annotated[EmailStr, AfterValidator(check_email)] = Field(
+        description="The email address that gets the confirmation link."
+    )
+    first_name: None | str = Field(None, max_length=100, description="The user's first name.")
+    last_name: None | str = Field(None, max_length=100, description="The user's last name.")
+
+
 class DashboardShareReturn(BaseModel):
     created_date: None | datetime = Field(description="When the share was created.")
     permissions: None | base.PermissionEnum = Field(
