@@ -232,15 +232,12 @@ export async function updatePassword(
   return status;
 }
 
-export async function resetPassword(
-  token: string,
-  newPassword: string,
+async function postWithDetail(
+  path: string,
+  body: Record<string, unknown>,
 ): Promise<{ status: number; detail?: string }> {
   try {
-    const { status } = await apiClient.post("/app/reset-password", {
-      token,
-      new_password: newPassword,
-    });
+    const { status } = await apiClient.post(path, body);
     return { status };
   } catch (e) {
     const { status, data } = getErrorResponse(e);
@@ -249,6 +246,22 @@ export async function resetPassword(
       detail: typeof data.detail === "string" ? data.detail : undefined,
     };
   }
+}
+
+export function resetPassword(token: string, newPassword: string) {
+  return postWithDetail("/app/reset-password", { token, new_password: newPassword });
+}
+
+export function requestSignup(email: string, firstName: string, lastName: string) {
+  return postWithDetail("/app/signup", {
+    email,
+    first_name: firstName || null,
+    last_name: lastName || null,
+  });
+}
+
+export function confirmSignup(token: string, newPassword: string) {
+  return postWithDetail("/app/signup/confirm", { token, new_password: newPassword });
 }
 
 export async function generateQRCode(): Promise<{

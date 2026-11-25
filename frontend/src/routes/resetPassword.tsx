@@ -10,12 +10,24 @@ import ErrorContent from "~/components/Forms/Error";
 import { getConfig } from "~/lib/runtimeConfig";
 import { invalidPassword, type resetForm, resetSchema } from "~/utils/zodForms";
 
-const NO_LINK = "This link is not complete. Ask your admin for a new one.";
+type Submit = (
+  token: string,
+  password: string,
+) => Promise<{ status: number; detail?: string }>;
 
-function resetError(status: number, detail?: string): string {
+type SetPasswordProps = {
+  title: string;
+  noLink: string;
+  doneText: string;
+  submit: Submit;
+};
+
+function submitError(status: number, noLink: string, detail?: string): string {
   switch (status) {
     case 400:
-      return detail ?? NO_LINK;
+      return detail ?? noLink;
+    case 404:
+      return "This is not available.";
     case 422:
       return invalidPassword;
     case 429:
@@ -25,12 +37,12 @@ function resetError(status: number, detail?: string): string {
   }
 }
 
-export default function ResetPasswordPage() {
+export function SetPasswordPage({ title, noLink, doneText, submit }: SetPasswordProps) {
   const { hash, pathname } = useLocation();
   const navigate = useNavigate();
   const [token, setToken] = useState(() => hash.slice(1));
   const [done, setDone] = useState(false);
-  const [error, setError] = useState<string | null>(token ? null : NO_LINK);
+  const [error, setError] = useState<string | null>(token ? null : noLink);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -50,12 +62,12 @@ export default function ResetPasswordPage() {
     async (values: resetForm) => {
       setLoading(true);
       setError(null);
-      const { status, detail } = await resetPassword(token, values.password);
+      const { status, detail } = await submit(token, values.password);
       setLoading(false);
       if (status === 200) setDone(true);
-      else setError(resetError(status, detail));
+      else setError(submitError(status, noLink, detail));
     },
-    [token],
+    [token, submit, noLink],
   );
 
   return (
@@ -67,12 +79,10 @@ export default function ResetPasswordPage() {
             src={getConfig().whiteLabel.loginImage}
             alt="workspace"
           />
-          <h1 className="text-light-800 body-lg-bold">Set a new password</h1>
+          <h1 className="text-light-800 body-lg-bold">{title}</h1>
           {done ? (
             <>
-              <p className="text-light-800 body-sm-regular">
-                Your password is set. Sign in with it.
-              </p>
+              <p className="text-light-800 body-sm-regular">{doneText}</p>
               <Button
                 className="w-full"
                 variant="primary"
@@ -131,5 +141,16 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <SetPasswordPage
+      title="Set a new password"
+      noLink="This link is not complete. Ask your admin for a new one."
+      doneText="Your password is set. Sign in with it."
+      submit={resetPassword}
+    />
   );
 }

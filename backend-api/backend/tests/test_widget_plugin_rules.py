@@ -186,6 +186,12 @@ class TestManifest:
         )
         Manifest.model_validate(data)
 
+    def test_a_widget_may_query_its_endpoint(self):
+        data = manifest()
+        data["contributes"]["widgets"][0]["permissions"] = ["core:data:read", "core:data:query"]
+        widget = Manifest.model_validate(data).contributes.widgets[0]
+        assert "core:data:query" in widget.permissions
+
 
 HEATMAP_SETTINGS = {
     "schema": {"properties": {"heatmap": {"type": "boolean"}, "title": {"type": "string", "maxLength": 40}}},

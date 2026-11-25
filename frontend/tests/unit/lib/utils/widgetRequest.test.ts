@@ -3,6 +3,7 @@ import type { ParamDef, ParamDefT, WidgetT } from "~/components/types";
 import { createParamDefs, currentDateModifier } from "~/lib/utils/widgetParams";
 import {
   type BuiltRequest,
+  bodyParamNames,
   buildFormRequest,
   buildOptionsRequest,
   buildWidgetRequest,
@@ -259,6 +260,17 @@ describe("values (4.3)", () => {
       ),
     );
     expect(request.url).toBe(`${BACKEND}/x?a=1`);
+  });
+
+  it("names the params that go in the body", () => {
+    expect(
+      bodyParamNames([
+        { paramName: "a", type: "text", in: "body" },
+        [{ paramName: "b", type: "text", in: "body" }],
+        { paramName: "c", type: "text" },
+        { paramName: "d", type: "text", in: "query" },
+      ] as unknown as WidgetT["params"]),
+    ).toEqual(new Set(["a", "b"]));
   });
 });
 

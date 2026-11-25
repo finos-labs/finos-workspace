@@ -7,6 +7,9 @@ import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { RenderNoData } from "~/routes/admin";
 
+const ACTION_BUTTON =
+  "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center";
+
 interface AdminEntityTableProps<T> {
   rows: T[];
   columns: DataTableColumn<T>[];
@@ -16,8 +19,13 @@ interface AdminEntityTableProps<T> {
   searchPlaceholder: string;
   addLabel?: string;
   onAdd?: () => void;
-  onEdit: (row: T) => void;
-  editLabel: string;
+  onEdit?: (row: T) => void;
+  editLabel?: string;
+  onDelete?: (row: T) => void;
+  deleteLabel?: string;
+  onRestore?: (row: T) => void;
+  restoreLabel?: string;
+  toolbar?: ReactNode;
   isLoading: boolean;
   isError: boolean;
   emptyMessage: ReactNode;
@@ -34,6 +42,11 @@ export function AdminEntityTable<T>({
   onAdd,
   onEdit,
   editLabel,
+  onDelete,
+  deleteLabel,
+  onRestore,
+  restoreLabel,
+  toolbar,
   isLoading,
   isError,
   emptyMessage,
@@ -65,18 +78,46 @@ export function AdminEntityTable<T>({
 
   const renderRowActions = useCallback(
     (row: T) => (
-      <Tooltip message={editLabel}>
-        <button
-          type="button"
-          aria-label={editLabel}
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
-          onClick={() => onEdit(row)}
-        >
-          <Icon id="pencil-04" className="size-3.5" />
-        </button>
-      </Tooltip>
+      <>
+        {onEdit && (
+          <Tooltip message={editLabel}>
+            <button
+              type="button"
+              aria-label={editLabel}
+              className={ACTION_BUTTON}
+              onClick={() => onEdit(row)}
+            >
+              <Icon id="pencil-04" className="size-3.5" />
+            </button>
+          </Tooltip>
+        )}
+        {onDelete && (
+          <Tooltip message={deleteLabel}>
+            <button
+              type="button"
+              aria-label={deleteLabel}
+              className={ACTION_BUTTON}
+              onClick={() => onDelete(row)}
+            >
+              <Icon id="trash-04" className="size-3.5" />
+            </button>
+          </Tooltip>
+        )}
+        {onRestore && (
+          <Tooltip message={restoreLabel}>
+            <button
+              type="button"
+              aria-label={restoreLabel}
+              className={ACTION_BUTTON}
+              onClick={() => onRestore(row)}
+            >
+              <Icon id="refresh-right" className="size-3.5" />
+            </button>
+          </Tooltip>
+        )}
+      </>
     ),
-    [editLabel, onEdit],
+    [editLabel, onEdit, onDelete, deleteLabel, onRestore, restoreLabel],
   );
 
   return (
@@ -89,6 +130,7 @@ export function AdminEntityTable<T>({
           prefix={<Icon id="search" />}
           onChange={(value: string) => setSearch(value)}
         />
+        {toolbar}
         <div className="flex-1" />
         {onAdd && (
           <Button variant="primary" size="sm" onClick={onAdd}>
@@ -104,7 +146,7 @@ export function AdminEntityTable<T>({
           sortState={sortState}
           onSortChange={setSortState}
           renderRowActions={renderRowActions}
-          actionsWidth={64}
+          actionsWidth={32 + 32 * [onEdit, onDelete, onRestore].filter(Boolean).length}
         />
         {visible.length === 0 && (
           <div className="absolute bottom-0 left-0 right-0 top-0">

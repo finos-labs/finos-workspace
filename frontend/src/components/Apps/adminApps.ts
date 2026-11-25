@@ -4,10 +4,15 @@ export interface App {
   uuid: string;
   name: string;
   url: string;
-  user_uuid: string;
-  user_email: string;
+  user_uuid: string | null;
+  user_email: string | null;
+  enabled: boolean;
   created_date: string;
   updated_date: string;
+}
+
+export function ownerLabel(app: App) {
+  return app.user_uuid ? app.user_email || "-" : "Organization";
 }
 
 export function formatDate(value: string | undefined) {

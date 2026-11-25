@@ -1,13 +1,21 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getApps } from "~/api/admin.api";
+import { toast } from "sonner";
+import { deleteApp, getApps, setAppEnabled } from "~/api/admin.api";
+import { errorMessage } from "~/api/errors";
 import AppUsersDialog from "~/components/Apps/AppUsersDialog";
-import { type App, dedupeApps, formatDate } from "~/components/Apps/adminApps";
+import {
+  type App,
+  dedupeApps,
+  formatDate,
+  ownerLabel,
+} from "~/components/Apps/adminApps";
 import ExportAppsDialog from "~/components/Apps/ExportAppsDialog";
 import ManageAppDialog from "~/components/Apps/ManageAppDialog";
 import { Button } from "~/components/ds/atoms/Button";
 import { Input } from "~/components/ds/atoms/Input";
+import { ConfirmDialog } from "~/components/ds/dialogs/ConfirmDialog";
 import type { DataTableColumn, SortState } from "~/components/ds/molecules/DataTable";
 import { DataTable } from "~/components/ds/molecules/DataTable";
 import Icon from "~/components/Icon";
@@ -54,7 +62,9 @@ function appSortValue(
     case "url":
       return (app.url ?? "").toLowerCase();
     case "user_email":
-      return (app.user_email ?? "").toLowerCase();
+      return ownerLabel(app).toLowerCase();
+    case "status":
+      return app.enabled ? 1 : 0;
     case "total_users":
       return userCounts.get(appGroupKey(app)) ?? 0;
     case "created_date":
@@ -115,9 +125,35 @@ export default function AdminApps() {
     search: "",
     sortState: DEFAULT_SORT as SortState,
     detailApp: null as App | null,
+    removeApp: null as App | null,
   });
 
+  const queryClient = useQueryClient();
   const appsQuery = useQuery({ queryKey: ["admin", "apps"], queryFn: getApps });
+
+  const refreshApps = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: ["admin", "apps"] }),
+    [queryClient],
+  );
+
+  const enabledMutation = useMutation({
+    mutationFn: ({ uuid, enabled }: { uuid: string; enabled: boolean }) =>
+      setAppEnabled(uuid, enabled),
+    onSuccess: (_, { enabled }) => {
+      toast.success(enabled ? "App enabled" : "App disabled");
+      return refreshApps();
+    },
+    onError: (e) => toast.error(errorMessage(e, "Unable to change the app")),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: deleteApp,
+    onSuccess: () => {
+      toast.success("App removed");
+      return refreshApps();
+    },
+    onError: (e) => toast.error(errorMessage(e, "Unable to remove the app")),
+  });
 
   const apps = useMemo(
     () => (appsQuery.data ? dedupeApps(appsQuery.data) : undefined),
@@ -137,9 +173,10 @@ export default function AdminApps() {
     const list = apps ?? [];
     const totalApps = list.length;
     const uniqueApps = userCounts.size;
-    const usersWithApps = new Set(list.map((a) => a.user_uuid)).size;
+    const userApps = list.filter((a) => a.user_uuid);
+    const usersWithApps = new Set(userApps.map((a) => a.user_uuid)).size;
     const avgPerUser =
-      usersWithApps === 0 ? 0 : Math.round((totalApps / usersWithApps) * 10) / 10;
+      usersWithApps === 0 ? 0 : Math.round((userApps.length / usersWithApps) * 10) / 10;
     return { totalApps, uniqueApps, usersWithApps, avgPerUser };
   }, [apps, userCounts]);
 
@@ -157,7 +194,7 @@ export default function AdminApps() {
         (a) =>
           a.name?.toLowerCase().includes(query) ||
           a.url?.toLowerCase().includes(query) ||
-          a.user_email?.toLowerCase().includes(query),
+          ownerLabel(a).toLowerCase().includes(query),
       );
     }
     return sortApps(rows, state.sortState, userCounts);
@@ -230,7 +267,7 @@ export default function AdminApps() {
         id: "name",
         header: "Name",
         width: "26%",
-        minWidth: 150,
+        minWidth: 130,
         sortable: true,
         cell: (app) => <span className="text-general-label">{app.name || "-"}</span>,
       },
@@ -238,7 +275,7 @@ export default function AdminApps() {
         id: "url",
         header: "URL",
         width: "34%",
-        minWidth: 180,
+        minWidth: 130,
         sortable: true,
         cell: (app) => <UrlCell url={app.url} />,
       },
@@ -246,27 +283,37 @@ export default function AdminApps() {
         id: "user_email",
         header: "User Email",
         width: "20%",
-        minWidth: 200,
+        minWidth: 130,
         sortable: true,
-        cell: (app) => app.user_email || "-",
+        cell: ownerLabel,
+      },
+      {
+        id: "status",
+        header: "Status",
+        width: 90,
+        sortable: true,
+        cell: (app) => (app.enabled ? "Enabled" : "Disabled"),
       },
       {
         id: "total_users",
         header: "Total Users",
-        width: 110,
+        width: 100,
         sortable: true,
         align: "right",
-        cell: (app) => (
-          <span className="tabular-nums">
-            {userCounts.get(`${app.name}|||${app.url}`) ?? 0}
-          </span>
-        ),
+        cell: (app) =>
+          app.user_uuid ? (
+            <span className="tabular-nums">
+              {userCounts.get(`${app.name}|||${app.url}`) ?? 0}
+            </span>
+          ) : (
+            "-"
+          ),
       },
       {
         id: "created_date",
         header: "Created Date",
         width: "8%",
-        minWidth: 150,
+        minWidth: 140,
         sortable: true,
         cell: (app) => formatDate(app.created_date),
       },
@@ -274,7 +321,7 @@ export default function AdminApps() {
         id: "updated_date",
         header: "Last Updated",
         width: "8%",
-        minWidth: 150,
+        minWidth: 140,
         sortable: true,
         cell: (app) => formatDate(app.updated_date),
       },
@@ -303,9 +350,34 @@ export default function AdminApps() {
             <Icon id="external-link-icon" className="size-3.5" />
           </button>
         </Tooltip>
+        <Tooltip position="top" message={app.enabled ? "Disable app" : "Enable app"}>
+          <button
+            type="button"
+            aria-label={app.enabled ? "Disable app" : "Enable app"}
+            className={ACTION_BTN}
+            onClick={() =>
+              enabledMutation.mutate({ uuid: app.uuid, enabled: !app.enabled })
+            }
+          >
+            <Icon
+              id={app.enabled ? "slash-circle-01" : "check-circle"}
+              className="size-3.5"
+            />
+          </button>
+        </Tooltip>
+        <Tooltip position="top" message="Remove app">
+          <button
+            type="button"
+            aria-label="Remove app"
+            className={ACTION_BTN}
+            onClick={() => dispatch({ removeApp: app })}
+          >
+            <Icon id="trash-04" className="size-3.5" />
+          </button>
+        </Tooltip>
       </>
     ),
-    [dispatch, handleConnect],
+    [dispatch, handleConnect, enabledMutation.mutate],
   );
 
   return (
@@ -379,7 +451,7 @@ export default function AdminApps() {
             sortState={state.sortState}
             onSortChange={onSortChange}
             renderRowActions={renderRowActions}
-            actionsWidth={80}
+            actionsWidth={132}
             className="h-full"
           />
           {!data.length && (
@@ -396,6 +468,24 @@ export default function AdminApps() {
           onClose={() => dispatch({ openExport: false })}
           rows={data}
           selectedRows={selectedApps}
+        />
+        <ConfirmDialog
+          open={!!state.removeApp}
+          onClose={() => dispatch({ removeApp: null })}
+          title="Remove app"
+          description={`Remove ${state.removeApp?.name ?? "this app"}, ${state.removeApp?.user_uuid === null ? "added for the organization" : `connected by ${state.removeApp?.user_email ?? "this user"}`}? Its users lose it and the access that roles gave to it. This cannot be undone.`}
+          confirmButton={
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => {
+                if (state.removeApp) removeMutation.mutate(state.removeApp.uuid);
+                dispatch({ removeApp: null });
+              }}
+            >
+              Yes, Remove
+            </Button>
+          }
         />
         <AppUsersDialog
           open={!!state.detailApp}

@@ -4,6 +4,7 @@ import {
   entityBody,
   entityFormDefaults,
   entityFormSchema,
+  entityUpdateBody,
   newEntityFormDefaults,
   newEntityFormSchema,
 } from "~/components/AdminEntities/entityForms";
@@ -12,13 +13,18 @@ import type { Entity } from "~/types/entity.type";
 const ENTITY_UUID = "7d4f3a52-1b1e-4c7a-9a43-3f7a2b1c9e10";
 const OTHER_UUID = "0d1b9b0e-7c2b-4a58-8d63-5c1f6f0c8a21";
 
-const ENTITY: Entity = { uuid: OTHER_UUID, name: "Acme", sharing_enabled: true };
+const ENTITY: Entity = {
+  uuid: OTHER_UUID,
+  name: "Acme",
+  sharing_enabled: true,
+  disabled: false,
+};
 
 describe("entity form", () => {
   const valid = entityFormDefaults(ENTITY);
 
   it("starts from the entity it edits", () => {
-    expect(valid).toEqual({ name: "Acme", sharingEnabled: true });
+    expect(valid).toEqual({ name: "Acme", sharingEnabled: true, disabled: false });
     expect(entityFormSchema.safeParse(valid).success).toBe(true);
   });
 
@@ -40,6 +46,22 @@ describe("entity form", () => {
   it("makes the request body: the name and the sharing switch", () => {
     expect(entityBody(valid)).toEqual({ name: "Acme", sharing_enabled: true });
     expect(entityBody({ ...valid, sharingEnabled: false }).sharing_enabled).toBe(false);
+  });
+
+  it("sends the disabled flag only when an entity is updated", () => {
+    expect(entityBody({ ...valid, disabled: true })).toEqual({
+      name: "Acme",
+      sharing_enabled: true,
+    });
+    expect(entityUpdateBody({ ...valid, disabled: true })).toEqual({
+      name: "Acme",
+      sharing_enabled: true,
+      disabled: true,
+    });
+  });
+
+  it("starts a new entity enabled", () => {
+    expect(newEntityFormDefaults().disabled).toBe(false);
   });
 
   it("needs an administrator for a new entity", () => {

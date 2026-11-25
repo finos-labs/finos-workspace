@@ -8,13 +8,13 @@ import { errorMessage } from "~/api/errors";
 import { Form } from "~/components/ds/molecules/Form";
 import { entityAdminKeys } from "~/hooks/useEntityAdmin";
 import type { Entity } from "~/types/entity.type";
-import { EntityBaseFields } from "./EntityFields";
+import { EntityBaseFields, EntityDisabledField } from "./EntityFields";
 import { EntityPluginsLine } from "./EntityPluginsLine";
 import {
   type EntityFormValues,
-  entityBody,
   entityFormDefaults,
   entityFormSchema,
+  entityUpdateBody,
 } from "./entityForms";
 import { FormDialog } from "./FormDialog";
 
@@ -36,7 +36,7 @@ export function EntityEditDialog({
   async function submit(values: EntityFormValues) {
     setError(null);
     try {
-      await updateEntity(entity.uuid, entityBody(values));
+      await updateEntity(entity.uuid, entityUpdateBody(values));
     } catch (e) {
       const message = errorMessage(e, "Unable to save the entity");
       setError(message);
@@ -59,6 +59,7 @@ export function EntityEditDialog({
         error={error}
       >
         <EntityBaseFields />
+        <EntityDisabledField />
         <EntityPluginsLine entityUuid={entity.uuid} />
       </FormDialog>
     </Form>

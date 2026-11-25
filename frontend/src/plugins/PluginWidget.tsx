@@ -28,8 +28,8 @@ import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { LIMITS } from "~/lib/types/widgetsContract";
 import { cn, uuidv4 } from "~/lib/utils";
-import { sourceStreamHref } from "~/lib/utils/fetch";
-import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
+import { fetchRequest, sourceStreamHref } from "~/lib/utils/fetch";
+import { bodyParamNames, buildWidgetRequest } from "~/lib/utils/widgetRequest";
 import { useActionIcon } from "./actionIcon";
 import {
   assetPath,
@@ -39,6 +39,8 @@ import {
   checkStateWrite,
   coerceParamValue,
   commandPermission,
+  dataQueryAnswer,
+  dataQueryRequest,
   defaultPreset,
   exportFile,
   jsonSize,
@@ -227,6 +229,7 @@ function PluginWidgetBody({
       }),
     [widget.endpoint, widget.params, widget.storage?.params, widget.sourceId, theme],
   );
+  const bodyParams = useMemo(() => bodyParamNames(widget.params), [widget.params]);
   const dataKey = widget.data?.dataKey;
   const answer = useJsonData(
     {
@@ -660,6 +663,15 @@ function PluginWidgetBody({
           });
           return { value: answer.body };
         }
+        case "core:data:query": {
+          const query = dataQueryRequest(args, request, bodyParams);
+          if (!serverLimiter.current.take())
+            throw new CommandError("rate_limited", "too many server calls");
+          const response = await fetchRequest(query).catch(() => {
+            throw new CommandError("unavailable", "the endpoint did not answer");
+          });
+          return { value: await dataQueryAnswer(response) };
+        }
         case "core:presets:list":
         case "core:presets:apply":
         case "core:presets:save": {
@@ -711,6 +723,7 @@ function PluginWidgetBody({
     [
       activeDashboardId,
       addWidget,
+      bodyParams,
       config,
       isShared,
       permissions,
@@ -718,6 +731,7 @@ function PluginWidgetBody({
       pluginWidget.id,
       pluginWidget.proxies,
       pluginWidget.routes,
+      request,
       widget.id,
       widget.innerTab,
       widget.name,

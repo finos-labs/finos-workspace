@@ -10,17 +10,18 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 vi.mock("~/api/entities.api", () => ({ updateEntity: vi.fn() }));
 
-const entity = (sharing_enabled: boolean): Entity => ({
+const entity = (sharing_enabled: boolean, disabled = false): Entity => ({
   uuid: "0d1b9b0e-7c2b-4a58-8d63-5c1f6f0c8a21",
   name: "Acme",
   sharing_enabled,
+  disabled,
 });
 
-function renderDialog(sharingEnabled: boolean) {
+function renderDialog(sharingEnabled: boolean, disabled = false) {
   const onClose = vi.fn();
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <EntityEditDialog entity={entity(sharingEnabled)} onClose={onClose} />
+      <EntityEditDialog entity={entity(sharingEnabled, disabled)} onClose={onClose} />
     </QueryClientProvider>,
   );
   return { onClose };
@@ -64,6 +65,50 @@ describe("EntityEditDialog sharing switch", () => {
       expect(updateEntity).toHaveBeenCalledWith(
         "0d1b9b0e-7c2b-4a58-8d63-5c1f6f0c8a21",
         expect.objectContaining({ sharing_enabled: false }),
+      ),
+    );
+  });
+});
+
+const disabledSwitch = () => screen.getByRole("switch", { name: "Disabled" });
+
+describe("EntityEditDialog disabled switch", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (updateEntity as Mock).mockResolvedValue({ success: true });
+  });
+
+  it("shows whether the organization is disabled", () => {
+    renderDialog(true, true);
+
+    expect(disabledSwitch()).toBeChecked();
+  });
+
+  it("disables the organization", async () => {
+    const { onClose } = renderDialog(true);
+    expect(disabledSwitch()).not.toBeChecked();
+
+    await userEvent.click(disabledSwitch());
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(updateEntity).toHaveBeenCalledWith("0d1b9b0e-7c2b-4a58-8d63-5c1f6f0c8a21", {
+      name: "Acme",
+      sharing_enabled: true,
+      disabled: true,
+    });
+  });
+
+  it("enables the organization again", async () => {
+    renderDialog(true, true);
+
+    await userEvent.click(disabledSwitch());
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(updateEntity).toHaveBeenCalledWith(
+        "0d1b9b0e-7c2b-4a58-8d63-5c1f6f0c8a21",
+        expect.objectContaining({ disabled: false }),
       ),
     );
   });

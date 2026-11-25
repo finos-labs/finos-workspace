@@ -3,20 +3,29 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import PdfViewer from "~/components/Widgets/PdfViewer";
 
+const cardProps = vi.hoisted(() => ({
+  exportFns: undefined as { pdfFunction: (title: string) => void } | undefined,
+}));
+
 vi.mock("~/components/DraggableCard", () => ({
   default: ({
     children,
     loading,
     error,
+    exportFns,
   }: {
     children?: ReactNode;
     loading?: boolean;
     error?: boolean;
-  }) => (
-    <div data-testid="draggable-card" data-loading={loading} data-error={error}>
-      {children}
-    </div>
-  ),
+    exportFns?: { pdfFunction: (title: string) => void };
+  }) => {
+    cardProps.exportFns = exportFns;
+    return (
+      <div data-testid="draggable-card" data-loading={loading} data-error={error}>
+        {children}
+      </div>
+    );
+  },
   SetLoadingOnResize: ({ children }: { children?: ReactNode }) => (
     <div data-testid="set-loading-on-resize">{children}</div>
   ),
@@ -97,5 +106,26 @@ describe("PdfViewer Widget", () => {
 
     const card = screen.getByTestId("draggable-card");
     expect(card.getAttribute("data-loading")).toBe("false");
+  });
+
+  it("exports the PDF file itself, never a screenshot", () => {
+    render(<PdfViewer />);
+
+    expect(Object.keys(cardProps.exportFns ?? {})).toEqual(["pdfFunction"]);
+
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+    const create = vi.spyOn(document, "createElement");
+    cardProps.exportFns?.pdfFunction("my-report");
+
+    const link = create.mock.results
+      .map((r) => r.value)
+      .find((el) => el instanceof HTMLAnchorElement) as HTMLAnchorElement;
+    expect(link.download).toBe("my-report.pdf");
+    expect(link.href).toBe("http://example.com/test.pdf");
+    expect(click).toHaveBeenCalledOnce();
+    click.mockRestore();
+    create.mockRestore();
   });
 });

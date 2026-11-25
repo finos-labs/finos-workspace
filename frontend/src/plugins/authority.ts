@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { IconId } from "~/components/Icon.types";
 import type { ParamDef } from "~/components/types";
+import type { BackendRequest, BuiltRequest } from "~/lib/utils/widgetRequest";
 import ACTION_ICONS from "./action-icons.json";
 import { validateDefinition } from "./definition";
 import {
@@ -10,6 +11,7 @@ import {
   MAX_MENU_ACTIONS,
   MAX_NAVBAR_ACTIONS,
   MAX_PRESET_NAME,
+  MAX_QUERY_BODY_BYTES,
 } from "./limits";
 import { CommandError, type CommandErrorName, MAX_EXPORT_BYTES } from "./protocol";
 import {
@@ -238,6 +240,7 @@ export const COMMAND_PERMISSIONS: Record<string, Permission> = {
   "core:download:save": "core:download:save",
   "core:proxy:call": "core:proxy:call",
   "core:backend:call": "core:backend:call",
+  "core:data:query": "core:data:query",
   "core:presets:list": "core:presets",
   "core:presets:apply": "core:presets",
   "core:presets:save": "core:presets",
@@ -304,6 +307,56 @@ export function serverCallRequest(
   if (typeof args !== "object" || args === null || Array.isArray(args))
     throw new CommandError("invalid_args", "args is an object");
   return { name, args: args as Record<string, unknown> };
+}
+
+export function dataQueryRequest(
+  msg: Record<string, unknown>,
+  built: BuiltRequest | null,
+  bodyParams: ReadonlySet<string>,
+): BackendRequest {
+  const body = msg.body;
+  if (typeof body !== "object" || body === null || Array.isArray(body))
+    throw new CommandError("invalid_args", "body is an object");
+  if (jsonSize(body) > MAX_QUERY_BODY_BYTES)
+    throw new CommandError(
+      "too_large",
+      `body is limited to ${MAX_QUERY_BODY_BYTES / 1024} KiB`,
+    );
+  if (!built) throw new CommandError("unavailable", "the widget has no endpoint");
+  if (!built.ok)
+    throw new CommandError(
+      "unavailable",
+      built.problems.map((problem) => problem.message).join("; "),
+    );
+  if (built.request.method !== "POST")
+    throw new CommandError(
+      "unavailable",
+      "the widget's endpoint takes no body, because its method is not POST",
+    );
+  const declared = Object.keys(body).find((key) => bodyParams.has(key));
+  if (declared)
+    throw new CommandError(
+      "out_of_scope",
+      `${declared} is a param of the widget, which the user sets`,
+    );
+  const sent = built.request.body ? JSON.parse(built.request.body) : {};
+  return { ...built.request, body: JSON.stringify({ ...sent, ...body }) };
+}
+
+export async function dataQueryAnswer(response: Response): Promise<unknown> {
+  if (!response.ok) {
+    const answer = await response.json().catch(() => null);
+    const detail = answer?.detail ?? answer?.message ?? answer?.error;
+    throw new CommandError(
+      "unavailable",
+      typeof detail === "string"
+        ? detail.slice(0, 300)
+        : `the endpoint answered ${response.status}`,
+    );
+  }
+  return response.json().catch(() => {
+    throw new CommandError("unavailable", "the endpoint's answer is not JSON");
+  });
 }
 
 export function presetName(value: unknown): string {

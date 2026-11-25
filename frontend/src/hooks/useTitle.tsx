@@ -29,6 +29,10 @@ export function useGlobalTitleManager(): void {
       pageTitle = "Login";
     } else if (path === "/reset-password") {
       pageTitle = "Set a new password";
+    } else if (path === "/signup") {
+      pageTitle = "Create an account";
+    } else if (path === "/signup/confirm") {
+      pageTitle = "Choose your password";
     } else if (path === "/app") {
       pageTitle = "Apps";
     } else if (path.startsWith("/app/widgets")) {

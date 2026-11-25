@@ -9,6 +9,8 @@ export function getExportFns(exportFns?: ExportFns) {
     { value: "PNG", fn: exportFns?.pngFunction },
     { value: "PDF", fn: exportFns?.pdfFunction },
     { value: "TXT", fn: exportFns?.txtFunction },
+    { value: "HTML", fn: exportFns?.htmlFunction },
+    { value: "MD", fn: exportFns?.mdFunction },
   ];
 
   return exportFunctions.filter(({ fn }) => fn !== undefined && fn !== null);
