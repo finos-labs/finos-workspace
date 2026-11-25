@@ -2,6 +2,7 @@ const FIELDS = [
   ["urls", "backend", "BACKEND_URL", "string"],
   ["urls", "ai", "AI_API_URL", "string"],
   ["authentication", "allowEmailLogin", "AUTHENTICATION_ALLOW_EMAIL_LOGIN", "bool"],
+  ["authentication", "allowSignup", "AUTHENTICATION_ALLOW_SIGNUP", "bool"],
   ["authentication", "identityProviders", "AUTHENTICATION_IDENTITY_PROVIDERS", "list"],
   ["authentication", "sendUserEmailAsHeader", "AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER", "bool"],
   ["authProviders", "googleClientId", "GOOGLE_OAUTH_CLIENT_ID", "string"],

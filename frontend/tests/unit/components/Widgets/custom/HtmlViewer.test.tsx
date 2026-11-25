@@ -36,6 +36,10 @@ const sharedAppStoreMock = vi.hoisted(() => ({
   ),
 }));
 
+const cardProps = vi.hoisted(() => ({
+  exportFns: undefined as Record<string, (title: string) => void> | undefined,
+}));
+
 vi.mock("~/components/DraggableCard", () => ({
   default: ({
     children,
@@ -43,20 +47,25 @@ vi.mock("~/components/DraggableCard", () => ({
     error,
     extraNavbarElements,
     aiData,
+    exportFns,
   }: {
     children?: ReactNode;
     loading?: boolean;
     error?: boolean;
     extraNavbarElements?: ReactNode;
     aiData?: unknown;
-  }) => (
-    <div data-testid="draggable-card" data-ai={JSON.stringify(aiData ?? null)}>
-      {extraNavbarElements}
-      {loading && <span data-testid="loading">Loading...</span>}
-      {error && <span data-testid="error">Error</span>}
-      {children}
-    </div>
-  ),
+    exportFns?: Record<string, (title: string) => void>;
+  }) => {
+    cardProps.exportFns = exportFns;
+    return (
+      <div data-testid="draggable-card" data-ai={JSON.stringify(aiData ?? null)}>
+        {extraNavbarElements}
+        {loading && <span data-testid="loading">Loading...</span>}
+        {error && <span data-testid="error">Error</span>}
+        {children}
+      </div>
+    );
+  },
 }));
 
 vi.mock("~/lib/api", () => ({
@@ -103,6 +112,41 @@ vi.mock("~/components/WidgetParams/QueryParams", () => ({
     renderBelowNavbarRows: null,
   }),
 }));
+
+const downloadProbe = () => {
+  Object.assign(URL, {
+    createObjectURL: vi.fn(() => "blob:x"),
+    revokeObjectURL: vi.fn(),
+  });
+  const blobs: Blob[] = [];
+  (URL.createObjectURL as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+    (blob: Blob) => {
+      blobs.push(blob);
+      return "blob:x";
+    },
+  );
+  const links: HTMLAnchorElement[] = [];
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    links.push(this);
+  });
+  return { blobs, links };
+};
+
+describe("HtmlViewer - export", () => {
+  it("exports the HTML itself as a .html file", async () => {
+    const { blobs, links } = downloadProbe();
+    renderWidget(<HtmlViewer />);
+
+    expect(Object.keys(cardProps.exportFns ?? {})).toEqual(["htmlFunction"]);
+    cardProps.exportFns?.htmlFunction?.("my-page");
+
+    expect(links[0].download).toBe("my-page.html");
+    expect(await blobs[0].text()).toBe("<div>Test HTML Content</div>");
+    vi.restoreAllMocks();
+  });
+});
 
 describe("HtmlViewer Widget", () => {
   it("renders HTML viewer container", () => {

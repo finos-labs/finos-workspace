@@ -7,6 +7,7 @@ const required = z.string().trim().min(1, "This field is required");
 export const entityFormSchema = z.object({
   name: required,
   sharingEnabled: z.boolean(),
+  disabled: z.boolean(),
 });
 
 export const newEntityFormSchema = entityFormSchema.extend({
@@ -22,6 +23,7 @@ export function entityFormDefaults(entity: Entity | undefined): EntityFormValues
   return {
     name: entity?.name ?? "",
     sharingEnabled: entity?.sharing_enabled ?? true,
+    disabled: entity?.disabled ?? false,
   };
 }
 
@@ -36,4 +38,8 @@ export function newEntityFormDefaults(): NewEntityFormValues {
 
 export function entityBody(values: EntityFormValues): EntityBody {
   return { name: values.name, sharing_enabled: values.sharingEnabled };
+}
+
+export function entityUpdateBody(values: EntityFormValues): EntityBody {
+  return { ...entityBody(values), disabled: values.disabled };
 }

@@ -118,10 +118,43 @@ class TestEntities:
         assert f"{entity_uuid} | {shown['name']} | Sharing: off" in out
 
         status, out, _ = await cli("entity", "delete", entity_uuid)
-        assert (status, out.strip()) == (0, f"✓ Entity {entity_uuid} deleted")
+        assert (status, out.strip()) == (0, f"✓ Entity {entity_uuid} removed")
         status, _, err = await cli("entity", "show", entity_uuid)
         assert status == 1
         assert err.strip() == f"✗ Error (404): Entity {entity_uuid} not found"
+
+    @pytest.mark.asyncio
+    async def test_a_removed_entity_is_listed_and_restored(self, cli, tmp_path):
+        entity_uuid = await _entity(cli, tmp_path)
+        _, out, _ = await cli("entity", "show", entity_uuid, "--json")
+        name = json.loads(out)["name"]
+        await cli("entity", "delete", entity_uuid)
+
+        _, listed, _ = await cli("entity", "list")
+        _, removed, _ = await cli("entity", "list", "--removed")
+        assert entity_uuid not in listed
+        assert f"{entity_uuid} | {name} |" in removed
+
+        status, out, _ = await cli("entity", "restore", entity_uuid)
+        assert (status, out.strip()) == (0, f"✓ Entity {entity_uuid} restored")
+        _, listed, _ = await cli("entity", "list")
+        assert f"{entity_uuid} | {name} |" in listed
+
+        status, _, err = await cli("entity", "restore", entity_uuid)
+        assert status != 0
+        assert err.strip() == "✗ Error (404): Entity not found"
+
+    @pytest.mark.asyncio
+    async def test_a_removed_entity_is_restored_under_a_new_name(self, cli, tmp_path):
+        entity_uuid = await _entity(cli, tmp_path)
+        await cli("entity", "delete", entity_uuid)
+        name = f"CLI restored {uuid4().hex[:8]}"
+
+        status, _, _ = await cli("entity", "restore", entity_uuid, "--name", name)
+
+        assert status == 0
+        _, out, _ = await cli("entity", "show", entity_uuid, "--json")
+        assert json.loads(out)["name"] == name
 
     @pytest.mark.asyncio
     async def test_an_entity_with_users_is_not_deleted(self, cli, tmp_path):
