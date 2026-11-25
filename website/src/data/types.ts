@@ -433,7 +433,6 @@ export type PluginValueType = number | string | string[];
 
 export interface PluginsData {
   permissions: PluginPermission[];
-  permissionsLater: string[];
   commandErrors: string[];
   exportMembers: string[];
   exportOption: AgentField[];

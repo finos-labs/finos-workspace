@@ -69,7 +69,7 @@ Never, when iterating on a plugin:
 | Required keys | `manifestVersion: 1`, `id`, `version`, `name`, `publisher.name`, `host: {"api": 1, "afm": "0.11"}`, `checksum`, `entry.module` (`.js` outside `backend/`), `contributes.widgets` (1 to 20) |
 | Widget | `id`, `name`, and `handles` (types, not `markdown`, `html`, `iframe`, `newsfeed`, `pdf`) or `standalone: true` |
 | Pairing | `core:proxy:call` exactly when the widget names `server.proxies`; `core:backend:call` exactly when it names `server.routes`; `artifact` needs `core:data:read` |
-| Closed | an unknown key, a non-null `signatures`, or `core:data:query` blocks the version |
+| Closed | an unknown key or a non-null `signatures` blocks the version |
 | Served to browsers | `entry.module`, `entry.styles`, `icon`, `assets/*`; never `plugin.json`, `skills/`, `backend/`, `licenses/` |
 
 Every key: `docs/reference/plugins/package-and-manifest.mdx`, `docs/reference/schemas/plugin-json.mdx`, `docs/reference/plugins/module-contract.mdx`.

@@ -42,7 +42,6 @@ export function collectPlugins(): PluginsData {
       meaning: permission.meaning as string,
       command: commandOf.get(permission.name as string) ?? null,
     })),
-    permissionsLater: backend.permissionsLater as string[],
     commandErrors: frontend.commandErrors as string[],
     exportMembers: frontend.exportMembers as string[],
     exportOption: jsonSchemaFields(frontend.exportOption as Json),
