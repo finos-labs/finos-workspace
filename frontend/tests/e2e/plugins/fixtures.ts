@@ -65,7 +65,17 @@ export default {
       },
     };
   },
-  render({ model, el, experimental }) {
+  async render({ model, el, experimental }) {
+    if (model.get("meta")?.widgetId === "query") {
+      const outcome = (call) => call.then(([value]) => value, (error) => error.name);
+      const answer = await outcome(experimental.invoke("core:data:query", { body: { startRow: 1, endRow: 3 } }));
+      const clash = await outcome(experimental.invoke("core:data:query", { body: { table: "users" } }));
+      const result = document.createElement("pre");
+      result.id = "e2e-query";
+      result.textContent = JSON.stringify({ answer, clash });
+      el.replaceChildren(result);
+      return;
+    }
     if (model.get("meta")?.widgetId === "file") {
       const drawFile = () => {
         const file = model.get("data")?.file;
@@ -254,6 +264,12 @@ export function tableManifest(id = "e2e-table") {
           permissions: ["core:data:read"],
         },
         {
+          id: "query",
+          name: "End-to-end query",
+          handles: [{ type: "e2e_query" }],
+          permissions: ["core:data:query"],
+        },
+        {
           id: "note",
           name: "End-to-end note",
           description: "A note the plugin renders from its settings",
@@ -348,9 +364,20 @@ const WIDGETS = {
     type: "e2e_file",
     endpoint: "/file",
   },
+  e2e_query: {
+    name: "E2E query",
+    description: "Rows the plugin asks for by range",
+    type: "e2e_query",
+    endpoint: "/query",
+    method: "POST",
+    params: [
+      { paramName: "table", type: "text", value: "sales", label: "Table", in: "body" },
+    ],
+  },
 };
 
 export const FILE_CSV = "country,sales\nJapan,12\nIndia,9\n";
+export const QUERY_ROWS = ["France", "Spain", "Japan", "India", "Korea"];
 
 const ROWS: Record<string, unknown[]> = {
   emea: [
@@ -401,7 +428,18 @@ export function startBackend(
           "Content-Disposition": 'attachment; filename="sales.csv"',
         })
         .end(FILE_CSV);
-    else send(404, { detail: "not found" });
+    else if (url.pathname === "/query" && request.method === "POST") {
+      const chunks: Buffer[] = [];
+      request.on("data", (chunk: Buffer) => chunks.push(chunk));
+      request.on("end", () => {
+        const body = JSON.parse(Buffer.concat(chunks).toString() || "{}");
+        send(200, {
+          table: body.table,
+          rows: QUERY_ROWS.slice(body.startRow ?? 0, body.endRow ?? QUERY_ROWS.length),
+          lastRow: QUERY_ROWS.length,
+        });
+      });
+    } else send(404, { detail: "not found" });
   });
   return new Promise((resolve) =>
     server.listen(port, listen, () => resolve({ server, received })),

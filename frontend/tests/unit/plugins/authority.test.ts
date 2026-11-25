@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ParamDef } from "~/components/types";
+import type { BuiltRequest } from "~/lib/utils/widgetRequest";
 import {
   assetPath,
   cardActions,
@@ -7,6 +8,8 @@ import {
   checkStateWrite,
   coerceParamValue,
   commandPermission,
+  dataQueryAnswer,
+  dataQueryRequest,
   defaultPreset,
   exportFile,
   presetError,
@@ -21,6 +24,7 @@ import {
   traitBindings,
   ViolationCounter,
 } from "~/plugins/authority";
+import { MAX_QUERY_BODY_BYTES } from "~/plugins/limits";
 import { CommandError } from "~/plugins/protocol";
 import { buildPluginArtifactWidget } from "~/plugins/registry";
 import { PluginListingSchema } from "~/plugins/types";
@@ -237,6 +241,106 @@ describe("the runtime authority", () => {
       expect(() =>
         serverCallRequest({ id: "quote", args: ["IBM"] }, "id", ["quote"]),
       ).toThrow(expect.objectContaining({ name: "invalid_args" }));
+    });
+
+    describe("a data query", () => {
+      const post: BuiltRequest = {
+        ok: true,
+        request: {
+          url: "https://backend.example.com/rows?theme=dark",
+          method: "POST",
+          sourceId: "s1",
+          paramHeaders: { "X-Region": "emea" },
+          body: JSON.stringify({ table: "orders" }),
+        },
+      };
+      const bodyParams = new Set(["table"]);
+
+      it("needs the permission core:data:query", () => {
+        expect(() => commandPermission("core:data:query", perms())).toThrow(/needs/);
+        expect(() =>
+          commandPermission("core:data:query", perms("core:data:query")),
+        ).not.toThrow();
+      });
+
+      it("sends the widget's own request with the keys of the body added", () => {
+        const sent = dataQueryRequest(
+          { body: { startRow: 0, endRow: 100, sortModel: [{ colId: "a" }] } },
+          post,
+          bodyParams,
+        );
+        expect(sent).toEqual({
+          ...post.request,
+          body: JSON.stringify({
+            table: "orders",
+            startRow: 0,
+            endRow: 100,
+            sortModel: [{ colId: "a" }],
+          }),
+        });
+        expect(
+          JSON.parse(
+            dataQueryRequest(
+              { body: { page: 2 } },
+              { ok: true, request: { ...post.request, body: undefined } },
+              new Set(),
+            ).body ?? "",
+          ),
+        ).toEqual({ page: 2 });
+      });
+
+      it("refuses a key that names a param of the widget in the body", () => {
+        expect(() =>
+          dataQueryRequest({ body: { table: "users" } }, post, bodyParams),
+        ).toThrow(expect.objectContaining({ name: "out_of_scope" }));
+      });
+
+      it("takes a JSON object of at most the query limit as the body", () => {
+        for (const body of [undefined, null, "x", [1], 5])
+          expect(() => dataQueryRequest({ body }, post, bodyParams)).toThrow(
+            expect.objectContaining({ name: "invalid_args" }),
+          );
+        expect(() =>
+          dataQueryRequest(
+            { body: { filter: "x".repeat(MAX_QUERY_BODY_BYTES) } },
+            post,
+            bodyParams,
+          ),
+        ).toThrow(expect.objectContaining({ name: "too_large" }));
+      });
+
+      it("needs an endpoint with the method POST and valid params", () => {
+        const refused = (built: BuiltRequest | null) =>
+          expect(() => dataQueryRequest({ body: {} }, built, bodyParams)).toThrow(
+            expect.objectContaining({ name: "unavailable" }),
+          );
+        refused(null);
+        refused({ ok: true, request: { ...post.request, method: "GET" } });
+        refused({
+          ok: false,
+          problems: [{ paramName: "table", kind: "missing", message: "needs a value" }],
+        });
+      });
+
+      it("resolves to the answer's JSON and turns a failure into unavailable", async () => {
+        await expect(
+          dataQueryAnswer(new Response(JSON.stringify({ rows: [1], lastRow: 1 }))),
+        ).resolves.toEqual({ rows: [1], lastRow: 1 });
+        await expect(
+          dataQueryAnswer(
+            new Response(JSON.stringify({ detail: "no such table" }), { status: 502 }),
+          ),
+        ).rejects.toMatchObject({ name: "unavailable", message: "no such table" });
+        await expect(
+          dataQueryAnswer(new Response("down", { status: 503 })),
+        ).rejects.toMatchObject({
+          name: "unavailable",
+          message: "the endpoint answered 503",
+        });
+        await expect(dataQueryAnswer(new Response("<html>"))).rejects.toMatchObject({
+          name: "unavailable",
+        });
+      });
     });
 
     it("turns the API's refusals into the frame's error names", () => {

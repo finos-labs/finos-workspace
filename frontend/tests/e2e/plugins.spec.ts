@@ -171,6 +171,7 @@ test.beforeAll(async ({ browser }, testInfo) => {
     "e2e_rows",
     "e2e_probe",
     "e2e_file",
+    "e2e_query",
   ]);
 
   await page.goto("/app");
@@ -410,4 +411,16 @@ test("plugin-widget-receives-its-backend-answer-as-a-file", async () => {
     timeout: 30000,
   });
   expect(backendReceived.some((request) => request.path === "/file")).toBe(true);
+});
+
+test("plugin-queries-its-endpoint-with-its-own-body", async () => {
+  await addWidgets(["E2E query"]);
+  const query = card("E2E query");
+  await query.scrollIntoViewIfNeeded();
+  const result = page.frameLocator('iframe[title^="E2E query"]').locator("#e2e-query");
+  await expect(result).toBeVisible({ timeout: 30000 });
+  expect(JSON.parse((await result.textContent()) ?? "{}")).toEqual({
+    answer: { table: "sales", rows: ["Spain", "Japan"], lastRow: 5 },
+    clash: "out_of_scope",
+  });
 });

@@ -9,6 +9,7 @@ export const PERMISSIONS = [
   "core:default",
   "core:data:read",
   "core:data:stream",
+  "core:data:query",
   "core:params:write",
   "core:state:write",
   "core:config:write",
