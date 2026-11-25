@@ -17,6 +17,7 @@ interface SuccessResponse {
 export interface EntityBody {
   name: string;
   sharing_enabled: boolean;
+  disabled?: boolean;
 }
 
 interface EntityAdminBody {
@@ -28,13 +29,16 @@ interface EntityAdminBody {
 
 const PAGE_SIZE = 1000;
 
-async function getAllPages<T>(path: string): Promise<T[]> {
+async function getAllPages<T>(
+  path: string,
+  extra: Record<string, unknown> = {},
+): Promise<T[]> {
   const items: T[] = [];
   let page = 1;
   let pages = 1;
   do {
     const { data } = await apiClient.get<Page<T>>(path, {
-      params: { size: PAGE_SIZE, page },
+      params: { size: PAGE_SIZE, page, ...extra },
     });
     items.push(...data.items);
     pages = data.pages;
@@ -49,6 +53,8 @@ export async function validateEntityAdmin() {
 }
 
 export const getEntities = () => getAllPages<Entity>("/entity/entity");
+export const getRemovedEntities = () =>
+  getAllPages<Entity>("/entity/entity", { removed: true });
 export const getEntityMaps = () => getAllPages<EntityMapItem>("/entity/entity-map");
 export const getEntityUsers = () => getAllPages<EntityUser>("/entity/user");
 
@@ -69,6 +75,19 @@ export async function createEntity(body: EntityBody & { admin_email: string }) {
 
 export async function updateEntity(uuid: string, body: EntityBody) {
   const { data } = await apiClient.put<SuccessResponse>(`/entity/entity/${uuid}`, body);
+  return data;
+}
+
+export async function deleteEntity(uuid: string) {
+  const { data } = await apiClient.delete<SuccessResponse>(`/entity/entity/${uuid}`);
+  return data;
+}
+
+export async function restoreEntity(uuid: string, name?: string) {
+  const { data } = await apiClient.post<SuccessResponse>(
+    `/entity/entity/${uuid}/restore`,
+    name ? { name } : {},
+  );
   return data;
 }
 

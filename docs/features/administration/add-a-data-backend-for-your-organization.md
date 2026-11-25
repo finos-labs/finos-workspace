@@ -38,6 +38,12 @@ python -m scripts.workspace_admin data-backend delete <entity-id> --name "Sales"
 
 The list shows each backend's id, name and address. Deleting by name removes the backend from the organization.
 
+## Disable or remove a backend
+
+App Management in the admin area lists the backends that the users of your organization connected themselves and the backends that you added for the organization with the command line. The column User Email shows the owner of a backend, and the word Organization for a backend of the organization. The column Status shows Enabled or Disabled.
+
+Select the button Disable app at the end of a row to stop that backend: the web app no longer lists it for the people who use it, and requests and MCP tools through it are refused. The row stays, and Enable app puts it back. Select Remove app and confirm with Yes, Remove to delete the backend and the access that roles gave to it, which cannot be undone. `data-backend delete` removes a backend of the organization in the same way.
+
 ## Let a role use it
 
 A new organization backend reaches no one yet, an admin included. The admin area lists it, so that an admin can grant it: the dialog Setup Permissions shows it under Backend Widgets with the value No Access, and without widgets, because the web app reads the widgets of a backend as the person who is signed in, and no role of the admin grants it yet. Set it to Access for a role that you belong to and save, as [Give a role access to data](give-a-role-access-to-data.md) describes. Open the dialog again to see its widgets, and grant the widgets that other roles may use. A person whose roles grant none of the backend does not see it and cannot use its widgets.

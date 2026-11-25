@@ -13,7 +13,7 @@ import { type QueryOptions, useJsonData } from "~/lib/api";
 import { IFRAME_SRCDOC_SANDBOX_ATTRIBUTES } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { triggerCustomEvent, useEventListener } from "~/lib/utils";
+import { downloadText, triggerCustomEvent, useEventListener } from "~/lib/utils";
 import { buildWidgetRequest, requestKey } from "~/lib/utils/widgetRequest";
 import { useRowsPlugin } from "~/plugins/registry";
 import {
@@ -219,6 +219,15 @@ export default function HtmlViewer() {
 
   const { renderRow0Params, renderBelowNavbarRows } = useWidgetParamsPositions();
 
+  const exportFns = useMemo(
+    () => ({
+      htmlFunction: (title: string) => {
+        if (typeof data === "string") downloadText(data, `${title}.html`, "text/html");
+      },
+    }),
+    [data],
+  );
+
   const handleRunParams = useCallback(
     () => updateIframeParams(latestIframeParamsRef.current, true),
     [updateIframeParams, latestIframeParamsRef],
@@ -239,6 +248,7 @@ export default function HtmlViewer() {
     <DraggableCard
       title={widget.name}
       aiEnabled={true}
+      exportFns={exportFns}
       aiData={isStaticMode ? staticHtml : hasRows ? rows.data : htmlData}
       elementRightNextToTitle={renderRow0Params}
       elementBelowNavbar={renderBelowNavbarRows}

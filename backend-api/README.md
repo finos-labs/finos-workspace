@@ -30,7 +30,7 @@ docker compose exec api python -m scripts.workspace_admin --help    # the root d
 
 | Command | Does |
 |---|---|
-| `entity create --config <file>`, `entity list`, `entity show <uuid>`, `entity update <uuid> --data '<json>'`, `entity delete <uuid>` | Entities; `entity sample` prints a config |
+| `entity create --config <file>`, `entity list [--removed]`, `entity show <uuid>`, `entity update <uuid> --data '<json>'`, `entity delete <uuid>`, `entity restore <uuid> [--name <name>]` | Entities; `entity sample` prints a config. `delete` removes an entity that has no users and keeps its record; `restore` brings it back, `--data '{"disabled": true}'` blocks its users' sign-in |
 | `user create <entity-uuid> --email <email> --first-name <name> --last-name <name> [--role admin\|developer\|user]` | Prints the link with which the user sets their password (once, within 24 hours) |
 | `user reset-password <email>` | The password stops working, every session ends; prints the link that sets a new one |
 | `user list [--email <part>]`, `user move --entity-uuid <uuid> --email <email> [--role ...]`, `user delete <email>` | `delete` removes the user from their entity |

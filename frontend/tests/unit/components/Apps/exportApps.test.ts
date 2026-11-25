@@ -8,6 +8,7 @@ const makeApp = (over: Partial<App> = {}): App => ({
   url: "https://risk.example.com",
   user_uuid: "u1",
   user_email: "alice@example.com",
+  enabled: true,
   created_date: "2026-01-01T10:00:00Z",
   updated_date: "2026-02-01T10:00:00Z",
   ...over,
@@ -23,6 +24,12 @@ describe("buildAppExportRows", () => {
     });
     expect(rows[0]["Created Date"]).toMatch(/2026/);
     expect(rows[0]["Last Updated"]).toMatch(/2026/);
+  });
+
+  it("names the Organization as the owner of an organization backend", () => {
+    const rows = buildAppExportRows([makeApp({ user_uuid: null, user_email: null })]);
+
+    expect(rows[0]["User Email"]).toBe("Organization");
   });
 });
 

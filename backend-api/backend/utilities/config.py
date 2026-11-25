@@ -800,6 +800,39 @@ class NotificationSettings(BaseModel):
     )
 
 
+class SignupSettings(BaseModel):
+    SIGNUP_ENABLED: bool = Field(
+        False,
+        description=(
+            "With true, anyone can ask for an account at POST /app/signup, and the API emails them a link that creates "
+            "it once they choose a password. It needs a mailer, DEFAULT_USER_MAPPING and DISABLE_REGISTRATION off. "
+            "Unset, the two signup routes answer 404. Read once at startup."
+        ),
+    )
+    SIGNUP_MAILER: str = Field(
+        "api.signup:WebhookMailer",
+        description=(
+            "The transport that delivers the confirmation link, as an import path package.module:Class. The class has "
+            "the property configured and the coroutine notify(event, subject, text, payload) of the admin notifier. "
+            "The payload holds recipient and link. The default posts JSON to SIGNUP_WEBHOOK_URL."
+        ),
+    )
+    SIGNUP_WEBHOOK_URL: str | None = Field(
+        None,
+        description=(
+            "The address that the default mailer posts to. Unset, the default mailer is not configured and signup "
+            "answers 503."
+        ),
+    )
+    SIGNUP_WEBHOOK_SECRET: str | None = Field(
+        None,
+        description=(
+            "The secret of the X-Admin-Notification-Signature header of the default mailer, an HMAC-SHA256 of the "
+            "body. Without it, the mailer sends no signature."
+        ),
+    )
+
+
 class AppSettings(BaseModel):
     DEFAULT_USER_MAPPING: UUID | None = Field(
         None,
@@ -1255,6 +1288,7 @@ class Settings(
     LocalStorageSettings,
     PrometheusSettings,
     NotificationSettings,
+    SignupSettings,
 ):
     model_config = SettingsConfigDict(
         env_file=create_path("envs", ".env"),
