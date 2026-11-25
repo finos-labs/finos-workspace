@@ -15,6 +15,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     text,
+    true,
 )
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -100,6 +101,9 @@ class ApiSource(Base, UUIDMixin, DateMixin):
         ForeignKey("entity.uuid", ondelete="CASCADE"), index=True
     )
     mcp_servers: Mapped[list[str] | None] = mapped_column(JSONType)
+    enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=true()
+    )
 
     __table_args__ = (
         CheckConstraint(

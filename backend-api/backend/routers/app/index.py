@@ -201,6 +201,7 @@ async def _start_session(  # noqa: PLR0913, PLR0917
     source: str,
     remember: bool,
 ) -> tuple[str, timedelta]:
+    await app_helpers.check_entity_enabled(db, user_uuid)
     lifetime = helpers.get_app_session_expiration(remember)
     await auth_helpers.delete_user_app_sessions(db, user_uuid, ["app", "oauth-app"])
 
@@ -325,7 +326,9 @@ async def finish_sign_in(  # noqa: PLR0914
     )
 
     if access.user_type == models.ADMIN_TYPE and db_user.entity_uuid is not None:
-        entity_query = select(models.ApiSource).where(models.ApiSource.entity_uuid == db_user.entity_uuid)
+        entity_query = select(models.ApiSource).where(
+            models.ApiSource.entity_uuid == db_user.entity_uuid, models.ApiSource.enabled.is_(True)
+        )
         entity_backends = (await db.execute(entity_query)).scalars().all()
         if entity_backends and isinstance(curr_user.ApiSource, list):
             curr_user.ApiSource.extend(entity_backends)

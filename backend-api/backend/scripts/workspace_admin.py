@@ -130,9 +130,14 @@ async def user_by_email(db: AsyncSession, email: str) -> models.User:
 
 async def permission_map(db: AsyncSession, entity_uuid: UUID, role: str) -> UUID:
     user_type = PERMISSION_MAPS[role.lower()]
-    query = select(models.PermissionsEntityMap.uuid).where(
-        models.PermissionsEntityMap.entity_uuid == entity_uuid,
-        models.PermissionsEntityMap.name == user_type,
+    query = (
+        select(models.PermissionsEntityMap.uuid)
+        .join(models.Entity, models.Entity.uuid == models.PermissionsEntityMap.entity_uuid)
+        .where(
+            models.PermissionsEntityMap.entity_uuid == entity_uuid,
+            models.PermissionsEntityMap.name == user_type,
+            models.Entity.deleted_at.is_(None),
+        )
     )
     if (map_uuid := (await db.execute(query)).scalar_one_or_none()) is None:
         raise HTTPException(
@@ -200,7 +205,7 @@ def entity_list(args: argparse.Namespace) -> None:
     page = perform(
         lambda db: page_of(
             db,
-            administration.entities_query(),
+            administration.entities_query(args.removed),
             args.page,
             args.size,
             administration.entity_return,
@@ -236,6 +241,7 @@ def entity_show(args: argparse.Namespace) -> None:
         ("Entity", "name"),
         ("UUID", "uuid"),
         ("Sharing enabled", "sharing_enabled"),
+        ("Disabled", "disabled"),
     ]
     render_record(entity, fields, args.json)
 
@@ -244,9 +250,9 @@ async def update_entity(
     db: AsyncSession, entity_uuid: UUID, changes: dict[str, Any]
 ) -> None:
     current = await entity_by_uuid(db, entity_uuid)
-    values = {key: current.get(key) for key in schemas.EntityBase.model_fields}
+    values = {key: current.get(key) for key in schemas.EntityUpdate.model_fields}
     values.update({key: value for key, value in changes.items() if key in values})
-    await administration.update_entity(db, entity_uuid, schemas.EntityBase(**values))
+    await administration.update_entity(db, entity_uuid, schemas.EntityUpdate(**values))
 
 
 def entity_update(args: argparse.Namespace) -> None:
@@ -265,12 +271,20 @@ def entity_update(args: argparse.Namespace) -> None:
         say(f"✓ Entity {args.entity_uuid} updated")
 
 
+def entity_restore(args: argparse.Namespace) -> None:
+    perform(lambda db: administration.restore_entity(db, args.entity_uuid, args.name))
+    if args.json:
+        print_json({"success": True})
+    else:
+        say(f"✓ Entity {args.entity_uuid} restored")
+
+
 def entity_delete(args: argparse.Namespace) -> None:
     perform(lambda db: administration.delete_entity(db, args.entity_uuid))
     if args.json:
         print_json({"success": True})
     else:
-        say(f"✓ Entity {args.entity_uuid} deleted")
+        say(f"✓ Entity {args.entity_uuid} removed")
 
 
 def user_create(args: argparse.Namespace) -> None:
@@ -823,9 +837,10 @@ def _action(group, name: str, func: Callable, help_text: str, json_output: bool 
     return sub
 
 
-def _paged(sub) -> None:
+def _paged(sub):
     sub.add_argument("--page", type=int, default=1, help="Page number (default: 1)")
     sub.add_argument("--size", type=int, default=100, help="Items per page (default: 100)")
+    return sub
 
 
 def _entity_commands(resources) -> None:
@@ -835,7 +850,10 @@ def _entity_commands(resources) -> None:
     sub.add_argument(
         "--config", "-c", required=True, help="Path to JSON config file with entity details"
     )
-    _paged(_action(entity_actions, "list", entity_list, "List all entities"))
+    sub = _paged(_action(entity_actions, "list", entity_list, "List all entities"))
+    sub.add_argument(
+        "--removed", action="store_true", help="List the removed entities instead"
+    )
     _action(
         entity_actions,
         "sample",
@@ -858,9 +876,19 @@ def _entity_commands(resources) -> None:
         help="JSON string with fields to update (e.g. '{\"sharing_enabled\": true}')",
     )
     sub = _action(
-        entity_actions, "delete", entity_delete, "Delete an entity that has no users"
+        entity_actions,
+        "delete",
+        entity_delete,
+        "Remove an entity that has no users; entity restore brings it back",
     )
     sub.add_argument("entity_uuid", type=UUID, help="UUID of the entity")
+    sub = _action(
+        entity_actions, "restore", entity_restore, "Restore a removed entity"
+    )
+    sub.add_argument("entity_uuid", type=UUID, help="UUID of the removed entity")
+    sub.add_argument(
+        "--name", help="Name to give the entity (default: the name it had before)"
+    )
 
 
 def _user_commands(resources) -> None:

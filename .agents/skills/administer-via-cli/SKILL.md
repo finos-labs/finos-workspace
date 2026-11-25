@@ -26,11 +26,12 @@ Never run this against a production database without the operator's explicit sig
 | Verb | Arguments | Does |
 |---|---|---|
 | `create` | `--config FILE` | Creates the entity from a JSON config and prints its UUID. The JSON has `entity.name`, `entity.admin_email`, optional `entity.sharing_enabled`. |
-| `list` | `[--page N] [--size N]` (default 1/100) | One row per entity: `UUID | name | Sharing: on/off`. |
+| `list` | `[--removed] [--page N] [--size N]` (default 1/100) | One row per entity: `UUID | name | Sharing: on/off`. `--removed` lists the removed entities instead, under their old names. |
 | `sample` | — | Prints the shape of the create config. |
-| `show` | `ENTITY_UUID` | Record view: `Entity`, `UUID`, `Sharing enabled`. |
-| `update` | `ENTITY_UUID (--config FILE | --data JSON)` | Replaces only the fields named; `--data '{"sharing_enabled": true}'` is the shortest form. |
-| `delete` | `ENTITY_UUID` | Refuses when any user still belongs to the entity; remove them first with `user delete` or `user move`. |
+| `show` | `ENTITY_UUID` | Record view: `Entity`, `UUID`, `Sharing enabled`, `Disabled`. |
+| `update` | `ENTITY_UUID (--config FILE | --data JSON)` | Replaces only the fields named; `--data '{"sharing_enabled": true}'` is the shortest form. `--data '{"disabled": true}'` blocks sign-in for the entity's users and ends their sessions; it refuses an entity that has a superuser. |
+| `delete` | `ENTITY_UUID` | Removes the entity: it leaves every list and its name is free, but the record, theme, backends and audit rows stay. Refuses when any user still belongs to the entity; remove them first with `user delete` or `user move`. |
+| `restore` | `ENTITY_UUID [--name NAME]` | Brings a removed entity back under its old name, or under `--name` when the old one is taken again. |
 
 A config for `create`:
 
