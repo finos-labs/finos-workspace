@@ -52,6 +52,8 @@ import {
   buildWidgetRequest,
   type RequestProblem,
 } from "~/lib/utils/widgetRequest";
+import { widgetRows } from "~/lib/widgetRowsRegistry";
+import { resolveVizHandler } from "~/plugins/registry";
 import { buildHtmlWidget, buildNoteWidget } from "./buildWidget";
 import { useShallowAppWidgetsStore } from "./useGetAppWidgets";
 import { findTabMatch } from "./useManageNavigationBar";
@@ -293,6 +295,18 @@ export function useFunctionCall() {
               args: input_args,
             })
           ) {
+            const rows = widgetRows(widgetUuid);
+            if (rows) {
+              finalResults.push(
+                await rows.then(convertToCopilotData, (error) =>
+                  toFunctionCallError(
+                    error,
+                    `Reading the rows of ${describeDataSource(dataSource)} failed.`,
+                  ),
+                ),
+              );
+              continue;
+            }
             try {
               const widgetData = workspaceApi.readWidget(
                 currentDashboardId,
@@ -826,6 +840,16 @@ async function getCustomWidgetsData(
       `Widget with id ${dataSource.id} not found`,
     );
   }
+
+  const plugin = customWidget.raw ? null : resolveVizHandler(customWidget.type);
+  if (
+    plugin?.widget.handles.find((h) => h.type === plugin.vizType)?.response.accepts ===
+    "file"
+  )
+    throw new CopilotError(
+      CopilotErrorType.NOT_FOUND,
+      `${describeDataSource(dataSource)} shows a file that its plugin reads in the browser, so its rows come only from its card on a dashboard, with that card's parameters. Read the card, after adding the widget to the dashboard or setting the card's parameters if needed.`,
+    );
 
   try {
     const request = getRequest(customWidget, dataSource.input_args);

@@ -159,6 +159,21 @@ class TestTheServerCallsTheConnection:
         assert "set-cookie" not in response.headers
 
     @pytest.mark.asyncio
+    async def test_the_browser_may_read_the_name_of_a_file_the_connection_sends(self, member, source):
+        source.server.answer = lambda _r: Answer(
+            content_type="text/csv",
+            body=b"country,sales\n",
+            headers={
+                "Content-Disposition": 'attachment; filename="sales.csv"',
+                "Access-Control-Expose-Headers": "X-Total-Count",
+            },
+        )
+        response = await call(member, source)
+        assert response.headers["content-disposition"] == 'attachment; filename="sales.csv"'
+        exposed = {name.strip().lower() for name in response.headers["access-control-expose-headers"].split(",")}
+        assert {"content-disposition", "x-total-count"} <= exposed
+
+    @pytest.mark.asyncio
     async def test_a_redirect_on_the_same_origin_is_followed_with_the_credentials(self, member, source):
         base = f"http://127.0.0.1:{source.server.port}"
         source.server.answer = lambda r: (

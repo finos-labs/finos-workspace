@@ -177,6 +177,41 @@ describe("the guest contract, spec cases", () => {
     expect(conformance.order).toEqual(["render"]);
   });
 
+  it("offers the members its exports have, and answers the host's call to one", async () => {
+    const shell = await startShell();
+    await shell.load(
+      `export default {
+        initialize({ model }) {
+          return {
+            async copilotRows() { return model.get("data").rows; },
+            async copilotContext() { return { rows: model.get("data").rows.length }; },
+            other() {},
+          };
+        },
+      };`,
+      { state: { data: { rows: [{ region: "emea" }, { region: "apac" }] } } },
+    );
+    expect(shell.posted("loaded")).toEqual([
+      { t: "loaded", exports: ["copilotContext", "copilotRows"] },
+    ]);
+    shell.deliver({
+      t: "call-export",
+      id: 7,
+      member: "copilotRows",
+      args: [],
+      timeout: 1000,
+    });
+    await until(() => shell.posted("export-result").length === 1);
+    expect(shell.posted("export-result")).toEqual([
+      {
+        t: "export-result",
+        id: 7,
+        ok: true,
+        value: [{ region: "emea" }, { region: "apac" }],
+      },
+    ]);
+  });
+
   it.each([
     "initialize",
     "render",

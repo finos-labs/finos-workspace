@@ -69,6 +69,10 @@ A write to `config` or `config:<key>` needs the permission `core:config:write`. 
 
 A backend widget that sets `raw` has a button that shows its rows instead of its view. When the widget has no `data.rawType`, or when the user may not use the plugin that `rawType` names, the module itself shows the rows. In that case `data` holds the rows, usually as an array of objects, and the frame starts again with them. It starts again when the user switches back to the view. The module should show the rows as a table, or it should say that it cannot show them. The AI agent receives the rows in either case, so a widget with `raw` does not need to provide `copilotContext`. [Widget rows](../protocols/raw-rows.md) describes the feature.
 
+### File answers
+
+A handle whose `response` has `accepts: "file"` gets its endpoint's answer as a file instead of JSON, for a widget that shows a CSV, a workbook or a Parquet file. The host reads the answer's bytes and sets the `data` trait to `{ file: { name, mime, base64 } }`. The name comes from the answer's `Content-Disposition` header, or else from the last segment of the URL, and the host replaces every character other than letters, digits, spaces and `_ . - ( )`. The media type comes from `Content-Type`, and the bytes are encoded in base64. The widget's `dataKey` does not apply to a file. The AI agent sees the file's name and media type, never its bytes, so a module that reads the file into rows hands them to the agent with `copilotRows`.
+
 ## Exports
 
 The `initialize` function may return an object instead of a cleanup function. The host calls the members of that object:
@@ -85,6 +89,9 @@ async initialize({ model }) {
     async copilotContext() {
       return { rows: model.get("data")?.length ?? 0 };
     },
+    async copilotRows() {
+      return model.get("data") ?? [];
+    },
   };
 }
 ```
@@ -94,6 +101,8 @@ The function `exportOptions` returns the exports that the widget offers right no
 A widget may offer at most <PluginValue of="limits.MAX_EXPORT_OPTIONS" /> options, and the fields of an option are on [Plugin permissions and commands](commands-and-permissions.mdx#exports). The exported file may be at most <PluginValue of="limits.maxExportBytes" unit="bytes" />. The function `exportOptions` has <PluginValue of="limits.EXPORT_TIMEOUTS_MS.exportOptions" unit="ms" /> and `exportData` has <PluginValue of="limits.EXPORT_TIMEOUTS_MS.exportData" unit="ms" />.
 
 The host calls `copilotContext` when the user asks the AI agent about the dashboard, provided that the widget has the permission `core:copilot:context`. The result may be at most <PluginValue of="limits.MAX_COPILOT_CONTEXT_BYTES" unit="bytes" />, and the function has <PluginValue of="limits.EXPORT_TIMEOUTS_MS.copilotContext" unit="ms" /> to produce it.
+
+The host calls `copilotRows`, with the same permission, when the AI agent reads the widget's data. It returns every row of the widget, as an array of objects, and the agent loads them as a table that it queries with SQL. A module whose `data` holds something other than its rows, such as a [file](#file-answers) that it reads, provides `copilotRows` so that the agent gets the table instead. The rows may be at most <PluginValue of="limits.maxExportBytes" unit="bytes" />, and the function has <PluginValue of="limits.EXPORT_TIMEOUTS_MS.copilotRows" unit="ms" /> to produce them. A widget with `raw` gives the agent its backend's rows instead.
 
 A module that returns exports from `initialize` cannot return a cleanup function as well, so it performs its cleanup through `signal`.
 

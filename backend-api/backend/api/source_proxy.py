@@ -39,6 +39,7 @@ BREAKER_ENTRIES = 4096
 BODY_BUDGET_BYTES = 256 * 1024 * 1024
 AGENT_WAITS = (120.0, 600.0)
 AGENT_EXPOSED_HEADERS = "X-Trace-Id, X-Completion-Id"
+EXPOSED_HEADERS = "Content-Disposition"
 REQUESTS_PER_MINUTE = parse("1200/minute")
 FRAME_REQUESTS_PER_MINUTE = parse("6000/minute")
 GRANTS_PER_MINUTE = parse("120/minute")
@@ -589,6 +590,9 @@ async def send(  # noqa: PLR0913
         else:
             answer_headers["Content-Security-Policy"] = SANDBOX
             answer_headers["X-Content-Type-Options"] = "nosniff"
+            answer_headers["access-control-expose-headers"] = ", ".join(
+                filter(None, [answer_headers.get("access-control-expose-headers"), EXPOSED_HEADERS])
+            )
         return Relayed(
             response,
             client,
