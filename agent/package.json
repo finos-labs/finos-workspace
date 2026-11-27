@@ -55,7 +55,7 @@
     "@types/node": "^26.6.5",
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.18.2",
-    "concurrently": "9.2.1",
+    "concurrently": "10.0.7",
     "expect": "^30.5.2",
     "jest-mock": "^30.5.2",
     "typescript": "^7.0.2"
