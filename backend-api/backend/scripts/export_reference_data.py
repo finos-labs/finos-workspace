@@ -305,7 +305,7 @@ PERMISSION_MEANINGS = {
         "Writing to config and to config:<key>. Only the settings that the widget declares can be written, "
         "and each value must satisfy its setting."
     ),
-    "core:copilot:context": "Letting the host call the module's copilotContext() function.",
+    "core:copilot:context": "Letting the host call the module's copilotContext() and copilotRows() functions.",
     "core:export:provide": "Letting the Export entry call the module's exportOptions() and exportData() functions.",
     "core:ui:notify": "Showing the user a notice, with the command core:ui:notify.",
     "core:ui:open-link": "Opening a link after the user confirms, with the command core:ui:open-link.",

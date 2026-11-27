@@ -28,4 +28,5 @@ export const EXPORT_TIMEOUTS_MS: Record<ExportMember, number> = {
   exportOptions: 10_000,
   exportData: 60_000,
   copilotContext: 10_000,
+  copilotRows: 60_000,
 };

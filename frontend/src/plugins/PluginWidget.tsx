@@ -30,6 +30,7 @@ import { LIMITS } from "~/lib/types/widgetsContract";
 import { cn, uuidv4 } from "~/lib/utils";
 import { fetchRequest, sourceStreamHref } from "~/lib/utils/fetch";
 import { bodyParamNames, buildWidgetRequest } from "~/lib/utils/widgetRequest";
+import { provideWidgetRows } from "~/lib/widgetRowsRegistry";
 import { useActionIcon } from "./actionIcon";
 import {
   assetPath,
@@ -58,6 +59,7 @@ import {
 } from "./authority";
 import { BundleIntegrityError, loadAsset } from "./bundle";
 import { validateDefinition } from "./definition";
+import { type FileAnswer, fileAnswerOf } from "./fileAnswer";
 import {
   ACTION_GRANT_MS,
   MAX_CLIPBOARD_BYTES,
@@ -235,6 +237,10 @@ function PluginWidgetBody({
     {
       request,
       responseCb: async (response, resolve) => {
+        if (handle?.response.accepts === "file") {
+          resolve(await fileAnswerOf(response, request?.ok ? request.request.url : ""));
+          return;
+        }
         const json = await response.json();
         resolve(dataKey ? get(json, dataKey, json) : json);
       },
@@ -804,6 +810,26 @@ function PluginWidgetBody({
       .catch(() => undefined);
   }, [wantsCopilotContext, data]);
 
+  const providesRows =
+    !widget.raw &&
+    permissions.has("core:copilot:context") &&
+    exportsAvailable.includes("copilotRows");
+  useEffect(() => {
+    if (!providesRows) return;
+    return provideWidgetRows(
+      widget.id,
+      () =>
+        frameRef.current?.callExport("copilotRows", []) ??
+        Promise.reject(new Error("the widget is not running")),
+    );
+  }, [providesRows, widget.id]);
+
+  const file = (data as FileAnswer | undefined)?.file;
+  const shownData =
+    handle?.response.accepts === "file"
+      ? file && { file: { name: file.name, mime: file.mime } }
+      : data;
+
   const settingsSchema = pluginWidget.settings?.schema;
   const hasSettings = Object.keys(settingsSchema?.properties ?? {}).length > 0;
   const [draft, setDraft] = useState<Record<string, unknown>>(config);
@@ -967,8 +993,8 @@ function PluginWidgetBody({
           widget.raw
             ? rows.data
             : copilotContext === undefined
-              ? data
-              : { data, context: copilotContext }
+              ? shownData
+              : { data: shownData, context: copilotContext }
         }
         extraNavbarElements={
           navbarButtons.length || widget.raw ? (

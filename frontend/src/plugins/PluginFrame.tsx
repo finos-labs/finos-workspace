@@ -418,10 +418,11 @@ export default function PluginFrame(props: PluginFrameProps) {
           return;
         }
         const data = portEvent.data as { t?: unknown; id?: unknown } | null;
-        const answersExport =
-          data?.t === "export-result" &&
-          typeof data.id === "number" &&
-          current.pendingExports.get(data.id)?.member === "exportData";
+        const member =
+          data?.t === "export-result" && typeof data.id === "number"
+            ? current.pendingExports.get(data.id)?.member
+            : undefined;
+        const answersExport = member === "exportData" || member === "copilotRows";
         const limit = answersExport ? MAX_EXPORT_BYTES : MAX_GUEST_MESSAGE_BYTES;
         if (approximateSize(portEvent.data, limit) > limit) {
           protocolViolation("message too large");
