@@ -75,7 +75,7 @@
     "react": "^19.3.1",
     "react-colorful": "^5.6.1",
     "react-complex-tree": "^2.6.1",
-    "react-day-picker": "^9.0.8",
+    "react-day-picker": "^10.0.2",
     "react-dom": "^19.3.1",
     "react-dropzone": "^14.2.3",
     "react-error-boundary": "^4.0.12",
