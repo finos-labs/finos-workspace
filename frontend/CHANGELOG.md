@@ -34,7 +34,7 @@
 
 - #### Dependency updates
 
-  Updated hono, @hono/node-server and poetry to resolve 16 Dependabot alerts, and SQLAlchemy to 2.1.
+  Updated hono, @hono/node-server, poetry, dnspython, opentelemetry-api and tornado to resolve 19 Dependabot alerts, and SQLAlchemy to 2.1.
 
 ## Version 1.0.0 - October 7th, 2026
 
