@@ -1,0 +1,134 @@
+name: Images
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The release tag that the images are published under, like v0.2.0.
+        required: true
+        type: string
+      publish:
+        description: Push the images. Without it the images are built and discarded.
+        type: boolean
+        default: false
+    secrets:
+      DOCKER_PASSWORD:
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  # The Docker Hub account of the DOCKER_PASSWORD secret.
+  DOCKER_HUB_USERNAME: finos
+  # An image is named <IMAGE_PREFIX>-<image> on Docker Hub, for example finos/workspace-agent.
+  IMAGE_PREFIX: finos/workspace
+
+jobs:
+  node:
+    name: Node for the web app and the agent
+    if: github.repository_owner == 'finos' || github.repository_owner == 'finos-labs'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/agent-node.yml
+
+  build:
+    name: Build ${{ matrix.image }}
+    if: github.repository_owner == 'finos' || github.repository_owner == 'finos-labs'
+    needs: node
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - image: backend
+            context: backend-api/backend
+            file: backend-api/backend/fastapi.Dockerfile
+          - image: web
+            context: frontend
+            file: frontend/Dockerfile
+            node: true
+          - image: agent
+            context: agent
+            file: agent/Dockerfile
+            target: agent
+            node: true
+          - image: agent-mcp
+            context: agent
+            file: agent/Dockerfile
+            target: agent-mcp
+            node: true
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download the release's changelog
+        if: matrix.image == 'web'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: ${{ runner.temp }}/release
+
+      - name: Put the changelog into the web app
+        if: matrix.image == 'web'
+        run: cp "$RUNNER_TEMP/release/changelog.md" frontend/CHANGELOG.md
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: inputs.publish
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Publish Docker Image
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          build-contexts: ${{ matrix.node && format('node=docker-image://{0}', needs.node.outputs.image) || '' }}
+          build-args: ${{ matrix.image == 'agent' && format('GIT_SHA={0}', github.sha) || '' }}
+          platforms: linux/amd64
+          push: ${{ inputs.publish }}
+          tags: ${{ env.IMAGE_PREFIX }}-${{ matrix.image }}:${{ github.sha }}
+          provenance: true
+
+  tag:
+    name: Tag the images
+    if: inputs.publish
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Tag the images that all built
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          for image in backend web agent agent-mcp; do
+            ref="$IMAGE_PREFIX-$image"
+            docker buildx imagetools create -t "$ref:$TAG" -t "$ref:latest" "$ref:$GITHUB_SHA"
+            digest=$(docker buildx imagetools inspect "$ref:$TAG" --format '{{.Manifest.Digest}}')
+            echo "- [$ref](https://hub.docker.com/r/$ref/tags): \`$TAG\` at \`$digest\`" >> "$GITHUB_STEP_SUMMARY"
+          done

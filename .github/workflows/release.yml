@@ -1,0 +1,210 @@
+name: Release
+
+on:
+  pull_request:
+    branches:
+      - main
+  merge_group:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  plan:
+    name: Plan the release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      release: ${{ steps.plan.outputs.release }}
+      tag: ${{ steps.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Work out the version, the changelog and the notes
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          QUEUE_REF: ${{ github.event.merge_group.head_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: |
+          case $EVENT in
+            merge_group) pr=$(sed -nE 's|.*/pr-([0-9]+)-.*|\1|p' <<< "$QUEUE_REF") ;;
+            push) pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[0].number // empty') ;;
+            *) pr=$PR ;;
+          esac
+
+          if [ "$EVENT" = push ] && [ -n "$(git tag --list 'v[0-9]*' --points-at "$GITHUB_SHA")" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          previous=$(git -c versionsort.suffix=- tag --list 'v[0-9]*' --sort=-v:refname | sed -n 1p)
+          label=
+          if [ -n "$pr" ]; then
+            label=$(gh api "repos/$GITHUB_REPOSITORY/issues/$pr/labels" --jq '[.[].name | select(startswith("release:")) | ltrimstr("release:")] | join(" ")')
+          fi
+          counter='^(.+[.-])([0-9]+)$'
+          if [ -n "$label" ]; then
+            version=$label
+          elif [[ ${previous#v} =~ $counter ]]; then
+            version="${BASH_REMATCH[1]}$((10#${BASH_REMATCH[2]} + 1))"
+          else
+            echo "::error::There is no release before this one to count on. Label the pull request release:X.Y.Z" >&2
+            exit 1
+          fi
+          if ! grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' <<< "$version"; then
+            echo "::error::'$version' is not a semantic version. The label must be release:X.Y.Z or release:X.Y.Z-prerelease" >&2
+            exit 1
+          fi
+          tag="v$version"
+          if git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+            echo "::error::$tag exists already. Take the label release:$version off the pull request" >&2
+            exit 1
+          fi
+
+          args=(-f "tag_name=$tag" -f "target_commitish=$HEAD_SHA")
+          [ -z "$previous" ] || args+=(-f "previous_tag_name=$previous")
+          changes=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" "${args[@]}" --jq .body \
+            | { grep -vE " by @[^ ]+\[bot\] in |/pull/${pr:-0}\$" || true; } \
+            | sed -nE 's|^\* (.+) by @[^ ]+ in (https://[^ ]+/pull/([0-9]+))$|- \1 ([#\3](\2))|p')
+          if [ -z "$changes" ]; then
+            echo "::error::No pull request was merged since ${previous:-the start}, so there is nothing to release" >&2
+            exit 1
+          fi
+
+          mkdir "$RUNNER_TEMP/release"
+          printf '%s\n' "$changes" > "$RUNNER_TEMP/release/notes.md"
+          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+            | jq -sr --arg version "$version" --arg body "$changes" '
+              def pretty:
+                fromdateiso8601 as $t
+                | ($t | strftime("%-d") | tonumber) as $d
+                | ($t | strftime("%B ")) + ($d | tostring)
+                  + (if $d >= 11 and $d <= 13 then "th" elif $d % 10 == 1 then "st" elif $d % 10 == 2 then "nd" elif $d % 10 == 3 then "rd" else "th" end)
+                  + ($t | strftime(", %Y"));
+              [{version: $version, date: (now | todate), body: $body}]
+              + [add[] | select((.draft | not) and (.tag_name | test("^v[0-9]"))) | {version: (.tag_name | ltrimstr("v")), date: .published_at, body: ((.body // "No notes.") | gsub("\r"; ""))}]
+              | .[]
+              | "## Version \(.version) - \(.date | pretty)\n\n### Changes\n\n\(.body)\n"' \
+            > "$RUNNER_TEMP/entries.md"
+          cat "$RUNNER_TEMP/entries.md" frontend/CHANGELOG.md > "$RUNNER_TEMP/release/changelog.md"
+
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          {
+            echo "### $tag"
+            echo
+            cat "$RUNNER_TEMP/release/notes.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the changelog and the notes for the other jobs
+        if: steps.plan.outputs.release == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: ${{ runner.temp }}/release
+          if-no-files-found: error
+          retention-days: 1
+
+  images:
+    name: Images
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/images.yml
+    with:
+      tag: ${{ needs.plan.outputs.tag }}
+      publish: ${{ github.event_name == 'push' }}
+    secrets: inherit
+
+  release:
+    name: Tag and release
+    needs: [plan, images]
+    if: github.event_name == 'push' && needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: ${{ runner.temp }}/release
+
+      - name: Create the tag and the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          [[ $TAG == *-* ]] && kind=--prerelease || kind=--latest
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" --notes-file "$RUNNER_TEMP/release/notes.md" "$kind"
+
+  backmerge:
+    name: Merge main back into develop
+    needs: [plan, release]
+    if: github.event_name == 'push' && needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Open the pull request from main into develop
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          ahead=$(gh api "repos/$GITHUB_REPOSITORY/compare/develop...main" --jq .ahead_by)
+          if [ "$ahead" = 0 ]; then
+            echo "develop has everything that main has, so there is nothing to merge back." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          open=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main --state open --json url --jq '.[0].url // empty')
+          if [ -n "$open" ]; then
+            echo "$open is open already and follows main." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          body=$(printf '%s\n\n%s\n\n%s\n' \
+            "Release [$TAG]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG) is on \`main\`. This brings its merge commit, and anything else that is only on \`main\`, back into \`develop\`." \
+            "Merge it with a merge commit. A squash or a rebase makes \`develop\` and \`main\` diverge again, and the next release pull request conflicts." \
+            "Opened by the [release run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID).")
+          url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head main --title "Merge main back into develop after $TAG" --body "$body")
+          echo "Opened $url" >> "$GITHUB_STEP_SUMMARY"
+
+  ready:
+    name: Ready to release
+    if: always()
+    needs: [plan, images]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Check that every release step passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          case " $RESULTS " in
+            *" failure "* | *" cancelled "*)
+              echo "A release step did not pass: $RESULTS" >&2
+              exit 1
+              ;;
+          esac
