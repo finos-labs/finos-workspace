@@ -10,6 +10,7 @@ import {
   pageApi,
 } from "./plugins/api";
 import {
+  FILE_CSV,
   HOSTILE_ENTRY,
   hostileManifest,
   startBackend,
@@ -169,6 +170,8 @@ test.beforeAll(async ({ browser }, testInfo) => {
   await grantBackend(api, roleUuid as string, entityUuid, BACKEND_NAME, [
     "e2e_rows",
     "e2e_probe",
+    "e2e_file",
+    "e2e_query",
   ]);
 
   await page.goto("/app");
@@ -397,4 +400,27 @@ test("the-host-refuses-files-that-differ-from-the-approved-version", async () =>
   await expect(tampered.locator('iframe[title^="E2E rows"]')).toHaveCount(0);
   expect(served).toBeGreaterThan(0);
   await tampered.close();
+});
+
+test("plugin-widget-receives-its-backend-answer-as-a-file", async () => {
+  await addWidgets(["E2E file"]);
+  await card("E2E file").scrollIntoViewIfNeeded();
+  const file = page.frameLocator('iframe[title^="E2E file"]').locator("#e2e-file");
+  await expect(file).toHaveText(`sales.csv|text/csv|${FILE_CSV}`, {
+    useInnerText: false,
+    timeout: 30000,
+  });
+  expect(backendReceived.some((request) => request.path === "/file")).toBe(true);
+});
+
+test("plugin-queries-its-endpoint-with-its-own-body", async () => {
+  await addWidgets(["E2E query"]);
+  const query = card("E2E query");
+  await query.scrollIntoViewIfNeeded();
+  const result = page.frameLocator('iframe[title^="E2E query"]').locator("#e2e-query");
+  await expect(result).toBeVisible({ timeout: 30000 });
+  expect(JSON.parse((await result.textContent()) ?? "{}")).toEqual({
+    answer: { table: "sales", rows: ["Spain", "Japan"], lastRow: 5 },
+    clash: "out_of_scope",
+  });
 });

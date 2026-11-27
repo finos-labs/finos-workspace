@@ -577,7 +577,7 @@
       }
     }
     const exported = exportsObject
-      ? ["exportOptions", "exportData", "copilotContext"].filter(
+      ? ["exportOptions", "exportData", "copilotContext", "copilotRows"].filter(
           (k) => typeof exportsObject[k] === "function",
         )
       : [];

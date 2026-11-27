@@ -292,6 +292,10 @@ PERMISSION_MEANINGS = {
         "Receiving the messages of the widget's stream, which the host opens as a WebSocket "
         "through the FINOS Workspace API, at the `data.streamEndpoint` of the widget."
     ),
+    "core:data:query": (
+        "Sending the widget's own request with more keys in its JSON body and receiving the answer, "
+        "with the command core:data:query."
+    ),
     "core:params:write": (
         "Writing to params and to param:<name>. Only declared names can be written, "
         "and the host coerces each value to the type of its parameter."
@@ -301,7 +305,7 @@ PERMISSION_MEANINGS = {
         "Writing to config and to config:<key>. Only the settings that the widget declares can be written, "
         "and each value must satisfy its setting."
     ),
-    "core:copilot:context": "Letting the host call the module's copilotContext() function.",
+    "core:copilot:context": "Letting the host call the module's copilotContext() and copilotRows() functions.",
     "core:export:provide": "Letting the Export entry call the module's exportOptions() and exportData() functions.",
     "core:ui:notify": "Showing the user a notice, with the command core:ui:notify.",
     "core:ui:open-link": "Opening a link after the user confirms, with the command core:ui:open-link.",
@@ -412,7 +416,6 @@ def collect_widget_plugins() -> dict[str, Any]:
     return {
         "host": {"api": plugin_manifest.HOST_API, "afm": plugin_manifest.HOST_AFM},
         "permissions": _permissions(),
-        "permissionsLater": sorted(plugin_manifest.PERMISSIONS_LATER),
         "builtInTypes": sorted(plugin_manifest.BUILT_IN_TYPES),
         "actionIcons": sorted(plugin_manifest.ACTION_ICONS),
         "actionIconTags": sorted(plugin_manifest.ACTION_ICON_TAGS),

@@ -249,6 +249,14 @@ function requestParams(params: WidgetT["params"]): ParamDef[] {
     .filter((param) => param && param.type !== "form" && !!param.paramName);
 }
 
+export function bodyParamNames(params: WidgetT["params"]): Set<string> {
+  return new Set(
+    requestParams(params)
+      .filter((param) => param.in === "body")
+      .map((param) => param.paramName),
+  );
+}
+
 function currentValue(
   param: AnyParam,
   values: Record<string, unknown> | undefined,

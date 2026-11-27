@@ -78,7 +78,7 @@ class TestEntityCreate:
             try:
                 listed = (await auth_client.get("/entity/entity", params={"size": 1000})).json()
                 [entity] = [item for item in listed["items"] if item["uuid"] == entity_uuid]
-                assert entity == {"uuid": entity_uuid, "name": name, "sharing_enabled": True}
+                assert entity == {"uuid": entity_uuid, "name": name, "sharing_enabled": True, "disabled": False}
             finally:
                 await auth_client.delete(f"/entity/entity/{entity_uuid}")
 

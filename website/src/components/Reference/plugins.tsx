@@ -48,7 +48,6 @@ export function PluginList({
   or,
 }: {
   of:
-    | "permissionsLater"
     | "commandErrors"
     | "exportMembers"
     | "traits"

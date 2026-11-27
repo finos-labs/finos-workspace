@@ -16,6 +16,7 @@ const ACME: Entity = {
   uuid: "0d1b9b0e-7c2b-4a58-8d63-5c1f6f0c8a21",
   name: "Acme",
   sharing_enabled: true,
+  disabled: false,
 };
 
 const ACME_ADMIN: EntityMapItem = {

@@ -9,6 +9,7 @@ export const PERMISSIONS = [
   "core:default",
   "core:data:read",
   "core:data:stream",
+  "core:data:query",
   "core:params:write",
   "core:state:write",
   "core:config:write",
@@ -57,7 +58,7 @@ const HandleSchema = z.object({
   definition: z.record(z.string(), z.unknown()).nullish(),
   response: z
     .object({
-      accepts: z.literal("json").default("json"),
+      accepts: z.enum(["json", "file"]).default("json"),
       description: z.string().default(""),
       schema: z.record(z.string(), z.unknown()).nullish(),
     })

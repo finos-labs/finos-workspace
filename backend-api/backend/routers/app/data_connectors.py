@@ -326,7 +326,8 @@ async def _readable_source(db: AsyncSession, user, source_uuid: UUID):
     description=(
         "Sends the request to the data connection with its stored credentials and the user's email as "
         "`X-Workspace-User`, and streams the answer back with the connection's own status code. Nothing "
-        "secret reaches the browser. For a connection that a role grants and the user does not keep, the route "
+        "secret reaches the browser, and the browser can read the answer's `Content-Disposition`, which names a "
+        "file. For a connection that a role grants and the user does not keep, the route "
         "forwards only the catalog files of the connection and the routes that its widgets.json declares for "
         "widgets that one of the user's roles grants, and answers 403 to any other. A refusal by this route "
         "carries the header `X-Workspace-Proxy-Error`."

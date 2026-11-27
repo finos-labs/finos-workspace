@@ -34,6 +34,7 @@ PERMISSIONS = frozenset(
         "core:default",
         "core:data:read",
         "core:data:stream",
+        "core:data:query",
         "core:params:write",
         "core:state:write",
         "core:config:write",
@@ -51,7 +52,6 @@ PERMISSIONS = frozenset(
         "core:presets",
     }
 )
-PERMISSIONS_LATER = frozenset({"core:data:query"})
 ACTION_ICONS = frozenset(
     {
         "bell",
@@ -367,7 +367,13 @@ class ModelSpec(BaseModel):
 class Response(BaseModel):
     model_config = closed
 
-    accepts: Literal["json"] = Field(default="json", description="The kind of answer that the backend returns.")
+    accepts: Literal["json", "file"] = Field(
+        default="json",
+        description=(
+            "The kind of answer that the backend returns: `json`, or `file`, which the host reads as bytes and gives "
+            "the module as `{ file: { name, mime, base64 } }`."
+        ),
+    )
     description: Sentence = Field(default="", description="What the backend returns.")
     schema_: dict[str, Any] | None = Field(default=None, alias="schema", description="A JSON Schema of the answer.")
 
@@ -584,8 +590,6 @@ class Widget(BaseModel):
         if len(set(types)) != len(types):
             raise ValueError("a type is handled twice")
         for permission in self.permissions:
-            if permission in PERMISSIONS_LATER:
-                raise ValueError(f"{permission} is not available on this FINOS Workspace yet")
             if permission not in PERMISSIONS:
                 raise ValueError(f"{permission!r} is not a host permission")
         if len(set(self.permissions)) != len(self.permissions):

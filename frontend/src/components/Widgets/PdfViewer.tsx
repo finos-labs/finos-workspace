@@ -83,6 +83,21 @@ export default function PdfViewer() {
     [clearQuoteBoundingBoxes],
   );
 
+  const objectUrl = widgetData?.objectUrl;
+  const exportFns = useMemo(
+    () => ({
+      pdfFunction: (title: string) => {
+        if (!objectUrl) return;
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = `${title}.pdf`;
+        link.click();
+        link.remove();
+      },
+    }),
+    [objectUrl],
+  );
+
   useEffect(clearQuoteBoundingBoxes, [currentChat]);
   const { renderRow0Params, renderBelowNavbarRows } = useWidgetParamsPositions();
 
@@ -116,6 +131,7 @@ export default function PdfViewer() {
       elementBelowNavbar={renderBelowNavbarRows}
       aiEnabled={true}
       aiData={widgetData?.aiData}
+      exportFns={exportFns}
     >
       <SetLoadingOnResize>
         <PdfViewerCore
