@@ -56,7 +56,7 @@ gcloud-aio-storage = "^9.6.5"
 defusedxml = "^0.7.1"
 
 [tool.poetry.group.dev.dependencies]
-vcrpy = { version = ">=8.3.0", markers = "platform_python_implementation == 'CPython'" }
+vcrpy = { version = ">=9.4.2", markers = "platform_python_implementation == 'CPython'" }
 pytest = "^9.0.3"
 pytest-mock = "^3"
 pytest-vcr = "^1"
