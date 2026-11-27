@@ -65,18 +65,20 @@ async def add_entity(
 @router.put(
     "/entity/{entity_uuid}",
     response_model=schemas.SuccessReturn,
-    summary="Change an organization's name and sharing",
+    summary="Change an organization's name, sharing and disabled state",
     description=(
-        "Changes the name and the sharing setting of an organization. When sharing is switched off, the shares that the "
-        "change no longer allows are revoked. Answers 404 when the organization does not exist and 409 when another "
-        "organization has the name."
+        "Changes the name, the sharing setting and, when the request has `disabled`, whether the organization is "
+        "disabled. When sharing is switched off, the shares that the change no longer allows are revoked. Disabling an "
+        "organization ends the sessions of its users and stops them from signing in. Answers 404 when the organization "
+        "does not exist, and 409 when another organization has the name or when the organization to disable has a "
+        "superuser."
     ),
 )
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def put_entity(
     entity_uuid: Annotated[UUID, Path(description="The UUID of the organization.")],
     request: Request,
-    entity: schemas.EntityBase,
+    entity: schemas.EntityUpdate,
     db: AsyncSession = Depends(aget_write_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
@@ -89,24 +91,28 @@ async def put_entity(
     response_model=CustomPage[schemas.EntityReturn],
     summary="List the organizations",
     description=(
-        "Returns a page of the organizations, ordered by name. The query parameters `page` and `size` select the page."
+        "Returns a page of the organizations, ordered by name. The query parameter `removed` lists the removed "
+        "organizations instead, under the names they had before. The query parameters `page` and `size` select the "
+        "page."
     ),
 )
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_entities(
     request: Request,
+    removed: Annotated[bool, Query(description="List the removed organizations instead.")] = False,
     db: AsyncSession = Depends(aget_read_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
     def transformer(items: list[Entity]):
         return [administration.entity_return(item) for item in items]
 
-    return await paginate(db, administration.entities_query(), transformer=transformer)
+    return await paginate(db, administration.entities_query(removed), transformer=transformer)
 
 
 async def check_entity_map_free(
     db: AsyncSession, entity_map: schemas.EntityMapCreate, map_uuid: UUID | None = None
 ) -> None:
+    await administration.check_entity_active(db, entity_map.entity_uuid)
     query = select(PermissionsEntityMap.uuid).where(
         PermissionsEntityMap.entity_uuid == entity_map.entity_uuid,
         PermissionsEntityMap.name == entity_map.name,
@@ -200,8 +206,34 @@ async def get_entity_maps(
     db: AsyncSession = Depends(aget_read_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    query = select(PermissionsEntityMap)
+    query = select(PermissionsEntityMap).where(
+        PermissionsEntityMap.entity_uuid.in_(
+            select(Entity.uuid).where(Entity.deleted_at.is_(None))
+        )
+    )
     return await paginate(db, query)
+
+
+@router.post(
+    "/entity/{entity_uuid}/restore",
+    response_model=schemas.SuccessReturn,
+    summary="Restore a removed organization",
+    description=(
+        "Brings a removed organization back, with its permission maps, roles, settings and backends, under the name "
+        "it had before or under the `name` in the request. Answers 404 when the organization does not exist or was "
+        "not removed, and 409 when another organization has the name."
+    ),
+)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
+async def restore_entity(
+    entity_uuid: Annotated[UUID, Path(description="The UUID of the removed organization.")],
+    request: Request,
+    body: schemas.EntityRestore | None = None,
+    db: AsyncSession = Depends(aget_write_db),
+    _=Depends(auth_helpers.get_current_superuser),
+):
+    await administration.restore_entity(db, entity_uuid, body.name if body else None)
+    return schemas.SuccessReturn.success_instance()
 
 
 @router.post(
@@ -222,6 +254,7 @@ async def register_admin(
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
 ):
+    await administration.check_map_entity_active(db, user.permissions_uuid)
     extra_info = schemas.RegisterAppUser(inviting_uuid=admin.uuid)
     result = await routers_helpers.register_app_user(db, user, extra_info)
     return schemas.SuccessReturn.from_bool(result)
@@ -235,7 +268,7 @@ async def register_admin(
         "Gives the user the permissions map, which may belong to another organization, and ends the user's web app "
         "sessions. When the organization changes, the shares between the user and the old organization's users are "
         "removed and the user receives the default roles of the new organization. Answers 404 when the map or the user "
-        "does not exist."
+        "does not exist, or when the map's organization was removed."
     ),
 )
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
@@ -275,10 +308,11 @@ async def get_users(
 @router.delete(
     "/entity/{entity_uuid}",
     response_model=schemas.SuccessReturn,
-    summary="Delete an organization",
+    summary="Remove an organization",
     description=(
-        "Deletes an organization that has no users. Answers 400 when the organization still has users and 404 when it "
-        "does not exist."
+        "Removes an organization that has no users: it leaves every list, its name is freed for another "
+        "organization, and its data stays in the database. Answers 400 when the organization still has users and 404 "
+        "when it does not exist or was removed."
     ),
 )
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)

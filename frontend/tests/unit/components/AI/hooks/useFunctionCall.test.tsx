@@ -4,6 +4,9 @@ import { apiClient } from "~/api/api";
 import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
 import type { CopilotCommandResultT } from "~/lib/state/copilot";
 import type { AddGenerativeWidgetInputArgumentsT, DataSourceT } from "~/lib/utils/ai";
+import { provideWidgetRows } from "~/lib/widgetRowsRegistry";
+import { usePluginRegistryStore } from "~/plugins/registry";
+import { PluginListingSchema } from "~/plugins/types";
 
 vi.mock("react-router-dom", () => ({
   useParams: vi.fn(() => ({ id: "test-dashboard-id" })),
@@ -293,6 +296,92 @@ describe("useFunctionCall", () => {
       expect(new Headers(otherInit.headers).has("X-API-KEY")).toBe(false);
 
       useBackendConnectorStore.setState({ apiSources: [] });
+    });
+
+    it("asks a plugin card for all of its rows when it offers them", async () => {
+      const rows = Array.from({ length: 5000 }, (_, i) => ({ id: i, value: i * 2 }));
+      mockCheckWidgetSignature.mockReturnValue(true);
+      const withdraw = provideWidgetRows("plugin-card-uuid", async () => rows);
+      const { result } = renderUseFunctionCall();
+      const source = {
+        origin: "Reference Backend",
+        id: "positions_file",
+        widget_uuid: "plugin-card-uuid",
+        input_args: {},
+      };
+
+      await act(async () => {
+        await expect(result.current.getWidgetData([source])).resolves.toEqual([
+          { items: [{ content: JSON.stringify(rows) }] },
+        ]);
+      });
+      expect(mockReadWidget).not.toHaveBeenCalled();
+      expect(fetch).not.toHaveBeenCalled();
+
+      withdraw();
+      const failing = provideWidgetRows("plugin-card-uuid", () =>
+        Promise.reject(new Error("copilotRows did not answer in time")),
+      );
+      await act(async () => {
+        await expect(result.current.getWidgetData([source])).resolves.toEqual([
+          {
+            error_type: "unexpected_error",
+            content: "copilotRows did not answer in time",
+          },
+        ]);
+      });
+      failing();
+    });
+
+    it("does not re-fetch a file that only a plugin can read", async () => {
+      usePluginRegistryStore.getState().setListing(
+        PluginListingSchema.parse({
+          enabled: true,
+          etag: "1",
+          plugins: [
+            {
+              id: "grid-kit",
+              version: "1.0.0",
+              name: "Grid kit",
+              digest: `sha256-${"A".repeat(43)}`,
+              entry: { module: "entry.js", styles: [] },
+              files: { "entry.js": { size: 10, sha256: "a".repeat(64) } },
+              csp: {},
+              widgets: [
+                {
+                  id: "file",
+                  name: "File",
+                  handles: [{ type: "grid-file", response: { accepts: "file" } }],
+                  permissions: ["core:data:read"],
+                },
+              ],
+            },
+          ],
+          vizHandlers: { "grid-file": { plugin: "grid-kit", widget: "file" } },
+        }),
+      );
+      mockGetAppWidget.mockReturnValue({
+        widgetId: "positions_file",
+        name: "Positions",
+        type: "grid-file",
+        endpoint: "https://reference-backend.test/positions.xlsx",
+      });
+
+      const { result } = renderUseFunctionCall();
+      let response:
+        | Awaited<ReturnType<typeof result.current.getWidgetData>>
+        | undefined;
+      await act(async () => {
+        response = await result.current.getWidgetData([
+          { origin: "Reference Backend", id: "positions_file", input_args: {} },
+        ]);
+      });
+      expect(required(response)[0]).toMatchObject({
+        error_type: "not_found",
+        content: expect.stringContaining("its rows come only from its card"),
+      });
+      expect(fetch).not.toHaveBeenCalled();
+      usePluginRegistryStore.getState().clear();
     });
 
     it("resolves dropped-file widgets from the widget id, not the composer store", async () => {

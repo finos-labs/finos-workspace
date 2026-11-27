@@ -4,7 +4,7 @@ import { DataTable } from "~/components/ds/molecules/DataTable";
 import SettingsMenu from "~/components/ds/molecules/SettingsMenu";
 import { BaseDialog } from "../ds/dialogs/BaseDialog";
 import { DialogHeader, DialogTitle } from "../ds/dialogs/Dialog";
-import { type App, formatDate } from "./adminApps";
+import { type App, formatDate, ownerLabel } from "./adminApps";
 
 const getAppId = (app: App) => app.uuid;
 
@@ -27,7 +27,7 @@ export default function AppUsersDialog({ open, onClose, appName, apps }: Props) 
         header: "User",
         width: "fill",
         minWidth: 200,
-        cell: (app) => app.user_email || "-",
+        cell: ownerLabel,
       },
       {
         id: "created",

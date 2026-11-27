@@ -1,3 +1,41 @@
+## Version 0.1.0-alpha.2 - November 26th, 2026
+
+### New Features
+
+- #### Email signup
+
+  Opt-in signup by email, off by default. Turn it on with `SIGNUP_ENABLED` and `AUTHENTICATION_ALLOW_SIGNUP`, and configure a mailer.
+
+---
+
+- #### Disable and remove organizations and apps
+
+  A superuser can disable, remove and restore organizations. Administrators can disable, enable and remove apps.
+
+---
+
+- #### Plugin widget data
+
+  Plugin widgets can query their endpoint with their own request body, accept file responses, and give the agent the rows they parsed.
+
+### Bug Fixes and Improvements
+
+- #### Widget export
+
+  PDF, HTML and Markdown widgets export the original file. Widgets without their own export no longer offer a PNG screenshot.
+
+---
+
+- #### Plugin Settings dialog
+
+  Uses the app's own controls, with searchable presets.
+
+---
+
+- #### Dependency updates
+
+  Updated hono, @hono/node-server, poetry, dnspython, opentelemetry-api and tornado to resolve 19 Dependabot alerts, and SQLAlchemy to 2.1.
+
 ## Version 1.0.0 - October 7th, 2026
 
 ### New Features

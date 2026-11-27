@@ -94,6 +94,7 @@ export const EXPORT_MEMBERS = [
   "exportOptions",
   "exportData",
   "copilotContext",
+  "copilotRows",
 ] as const;
 export type ExportMember = (typeof EXPORT_MEMBERS)[number];
 

@@ -34,6 +34,29 @@ export function EntityBaseFields() {
   );
 }
 
+export function EntityDisabledField() {
+  const { control } = useFormContext<EntityFormValues>();
+  return (
+    <FormField
+      name="disabled"
+      control={control}
+      render={({ field }) => (
+        <div className="flex flex-col gap-1">
+          <Switch
+            label="Disabled"
+            checked={field.value}
+            onCheckedChange={field.onChange}
+          />
+          <p className="body-xs-regular text-ds-text-caption">
+            When on, no one in this organization can sign in, and their sessions end. An
+            organization with a superuser cannot be disabled.
+          </p>
+        </div>
+      )}
+    />
+  );
+}
+
 export function EntityAdminFields() {
   const { control } = useFormContext<NewEntityFormValues>();
   return (

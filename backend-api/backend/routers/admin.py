@@ -386,10 +386,11 @@ async def see_users(
 @router.get(
     "/apps",
     response_model=list[schemas.AppReturn],
-    summary="List the backends of the organization's users",
+    summary="List the backends of the organization and its users",
     description=(
-        "Returns the data backends that users of the admin's organization have connected, ordered by owner, with the "
-        "name and URL of each backend and the email of its owner."
+        "Returns the data backends that users of the admin's organization have connected and the backends that were "
+        "added for the organization, ordered by owner, with the name and URL of each backend. A backend of the "
+        "organization has no owner, so its `user_uuid` and `user_email` are null."
     ),
 )
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
@@ -419,11 +420,17 @@ async def get_apps(
             models.ApiSource.name,
             models.ApiSource.url,
             models.ApiSource.user_uuid,
+            models.ApiSource.enabled,
             models.ApiSource.created_date,
             models.ApiSource.updated_date,
         )
-        .where(models.ApiSource.user_uuid.in_(user_dict.keys()))
-        .order_by(models.ApiSource.user_uuid)
+        .where(
+            or_(
+                models.ApiSource.user_uuid.in_(user_dict.keys()),
+                models.ApiSource.entity_uuid == admin_result,
+            )
+        )
+        .order_by(models.ApiSource.user_uuid, models.ApiSource.name)
     )
 
     apps_result = (await db.execute(apps_query)).all()
@@ -438,11 +445,83 @@ async def get_apps(
             url=str(app.url),
             user_email=user_dict.get(app.user_uuid),
             user_uuid=app.user_uuid,
+            enabled=app.enabled,
             created_date=app.created_date,
             updated_date=app.updated_date,
         )
         for app in apps_result
     ]
+
+
+async def admin_app_filters(db: AsyncSession, admin: Row, app_uuid: UUID):
+    entity_uuid = await get_admin_entity(db, admin.permissions_uuid)
+    members = (
+        select(User.uuid)
+        .join(PermissionsEntityMap, PermissionsEntityMap.uuid == User.permissions_uuid)
+        .where(
+            PermissionsEntityMap.entity_uuid == entity_uuid,
+            User.deleted.is_(False),
+        )
+    )
+    return (
+        models.ApiSource.uuid == app_uuid,
+        or_(
+            models.ApiSource.user_uuid.in_(members),
+            models.ApiSource.entity_uuid == entity_uuid,
+        ),
+    )
+
+
+@router.patch(
+    "/apps/{app_uuid}",
+    response_model=SuccessReturn,
+    summary="Enable or disable a backend of the organization or its users",
+    description=(
+        "Sets whether a backend that a user of the admin's organization connected, or that was added for the "
+        "organization, is enabled. A disabled backend is unavailable to its users and their requests through it are "
+        "refused. Answers 404 when the organization has no such backend."
+    ),
+)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
+async def put_app_enabled(
+    request: Request,
+    app_uuid: Annotated[UUID, Path(description="The UUID of the backend.")],
+    body: schemas.AppEnabledPut,
+    db: Annotated[AsyncSession, Depends(aget_write_db)],
+    admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
+):
+    filters = await admin_app_filters(db, admin, app_uuid)
+    result = await db.execute(
+        update(models.ApiSource).where(*filters).values(enabled=body.enabled)
+    )
+    await db.commit()
+    if result.rowcount == 0:  # type: ignore
+        raise HTTPException(404, detail="Backend not found")
+    return SuccessReturn.success_instance()
+
+
+@router.delete(
+    "/apps/{app_uuid}",
+    response_model=SuccessReturn,
+    summary="Delete a backend of the organization or its users",
+    description=(
+        "Deletes a backend that a user of the admin's organization connected, or that was added for the organization, "
+        "together with the access that roles gave to it. Answers 404 when the organization has no such backend."
+    ),
+)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
+async def delete_app(
+    request: Request,
+    app_uuid: Annotated[UUID, Path(description="The UUID of the backend.")],
+    db: Annotated[AsyncSession, Depends(aget_write_db)],
+    admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
+):
+    filters = await admin_app_filters(db, admin, app_uuid)
+    result = await db.execute(delete(models.ApiSource).where(*filters))
+    await db.commit()
+    if result.rowcount == 0:  # type: ignore
+        raise HTTPException(404, detail="Backend not found")
+    return SuccessReturn.success_instance()
 
 
 async def ensure_user_in_admin_entity(

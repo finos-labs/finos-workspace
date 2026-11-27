@@ -126,6 +126,17 @@ class TestManifest:
     def test_a_valid_manifest(self):
         Manifest.model_validate(manifest())
 
+    @pytest.mark.parametrize(("accepts", "valid"), [("json", True), ("file", True), ("binary", False), ("text", False)])
+    def test_a_handle_accepts_json_or_a_file(self, accepts, valid):
+        candidate = manifest()
+        handle = candidate["contributes"]["widgets"][0]["handles"][0]
+        handle["response"] = {"accepts": accepts}
+        if valid:
+            assert Manifest.model_validate(candidate).contributes.widgets[0].handles[0].response.accepts == accepts
+        else:
+            with pytest.raises(ValueError):
+                Manifest.model_validate(candidate)
+
     @pytest.mark.parametrize(
         "change",
         [
@@ -185,6 +196,12 @@ class TestManifest:
             {"model": {"traits": traits}, "permissions": ["core:data:read", "core:config:write"]}
         )
         Manifest.model_validate(data)
+
+    def test_a_widget_may_query_its_endpoint(self):
+        data = manifest()
+        data["contributes"]["widgets"][0]["permissions"] = ["core:data:read", "core:data:query"]
+        widget = Manifest.model_validate(data).contributes.widgets[0]
+        assert "core:data:query" in widget.permissions
 
 
 HEATMAP_SETTINGS = {

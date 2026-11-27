@@ -28,8 +28,9 @@ import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { LIMITS } from "~/lib/types/widgetsContract";
 import { cn, uuidv4 } from "~/lib/utils";
-import { sourceStreamHref } from "~/lib/utils/fetch";
-import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
+import { fetchRequest, sourceStreamHref } from "~/lib/utils/fetch";
+import { bodyParamNames, buildWidgetRequest } from "~/lib/utils/widgetRequest";
+import { provideWidgetRows } from "~/lib/widgetRowsRegistry";
 import { useActionIcon } from "./actionIcon";
 import {
   assetPath,
@@ -39,6 +40,8 @@ import {
   checkStateWrite,
   coerceParamValue,
   commandPermission,
+  dataQueryAnswer,
+  dataQueryRequest,
   defaultPreset,
   exportFile,
   jsonSize,
@@ -56,6 +59,7 @@ import {
 } from "./authority";
 import { BundleIntegrityError, loadAsset } from "./bundle";
 import { validateDefinition } from "./definition";
+import { type FileAnswer, fileAnswerOf } from "./fileAnswer";
 import {
   ACTION_GRANT_MS,
   MAX_CLIPBOARD_BYTES,
@@ -227,11 +231,16 @@ function PluginWidgetBody({
       }),
     [widget.endpoint, widget.params, widget.storage?.params, widget.sourceId, theme],
   );
+  const bodyParams = useMemo(() => bodyParamNames(widget.params), [widget.params]);
   const dataKey = widget.data?.dataKey;
   const answer = useJsonData(
     {
       request,
       responseCb: async (response, resolve) => {
+        if (handle?.response.accepts === "file") {
+          resolve(await fileAnswerOf(response, request?.ok ? request.request.url : ""));
+          return;
+        }
         const json = await response.json();
         resolve(dataKey ? get(json, dataKey, json) : json);
       },
@@ -660,6 +669,15 @@ function PluginWidgetBody({
           });
           return { value: answer.body };
         }
+        case "core:data:query": {
+          const query = dataQueryRequest(args, request, bodyParams);
+          if (!serverLimiter.current.take())
+            throw new CommandError("rate_limited", "too many server calls");
+          const response = await fetchRequest(query).catch(() => {
+            throw new CommandError("unavailable", "the endpoint did not answer");
+          });
+          return { value: await dataQueryAnswer(response) };
+        }
         case "core:presets:list":
         case "core:presets:apply":
         case "core:presets:save": {
@@ -711,6 +729,7 @@ function PluginWidgetBody({
     [
       activeDashboardId,
       addWidget,
+      bodyParams,
       config,
       isShared,
       permissions,
@@ -718,6 +737,7 @@ function PluginWidgetBody({
       pluginWidget.id,
       pluginWidget.proxies,
       pluginWidget.routes,
+      request,
       widget.id,
       widget.innerTab,
       widget.name,
@@ -789,6 +809,26 @@ function PluginWidgetBody({
       })
       .catch(() => undefined);
   }, [wantsCopilotContext, data]);
+
+  const providesRows =
+    !widget.raw &&
+    permissions.has("core:copilot:context") &&
+    exportsAvailable.includes("copilotRows");
+  useEffect(() => {
+    if (!providesRows) return;
+    return provideWidgetRows(
+      widget.id,
+      () =>
+        frameRef.current?.callExport("copilotRows", []) ??
+        Promise.reject(new Error("the widget is not running")),
+    );
+  }, [providesRows, widget.id]);
+
+  const file = (data as FileAnswer | undefined)?.file;
+  const shownData =
+    handle?.response.accepts === "file"
+      ? file && { file: { name: file.name, mime: file.mime } }
+      : data;
 
   const settingsSchema = pluginWidget.settings?.schema;
   const hasSettings = Object.keys(settingsSchema?.properties ?? {}).length > 0;
@@ -953,8 +993,8 @@ function PluginWidgetBody({
           widget.raw
             ? rows.data
             : copilotContext === undefined
-              ? data
-              : { data, context: copilotContext }
+              ? shownData
+              : { data: shownData, context: copilotContext }
         }
         extraNavbarElements={
           navbarButtons.length || widget.raw ? (
@@ -977,6 +1017,7 @@ function PluginWidgetBody({
         errorMessage={error?.message}
         settings={{ overrideSettings: false, showExport: canExport }}
         onExport={canExport ? onExport : undefined}
+        settingsDialogClassName="sm:max-w-3xl"
         settingsModalChildren={
           <>
             <PresetsPanel
@@ -994,6 +1035,7 @@ function PluginWidgetBody({
             />
             {settingsSchema && hasSettings ? (
               <SettingsForm
+                title="Settings"
                 schema={settingsSchema}
                 values={draft}
                 onChange={setDraft}

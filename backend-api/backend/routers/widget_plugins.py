@@ -495,7 +495,8 @@ async def put_plugin_entity(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    if await db.get(models.Entity, entity_uuid) is None:
+    entity = await db.get(models.Entity, entity_uuid)
+    if entity is None or entity.deleted_at is not None:
         raise HTTPException(404, detail="Entity not found")
     await service.update_entity(
         db, entity_uuid, plugin_id, body.model_dump(mode="json", exclude_unset=True), superuser.uuid

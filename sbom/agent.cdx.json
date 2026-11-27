@@ -812,10 +812,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40hono/node-server@2.1.5?package-id=39746fe64f3dda67",
+      "bom-ref": "pkg:npm/%40hono/node-server@2.1.8?package-id=4a385e4bf0aefb5a",
       "type": "library",
       "name": "@hono/node-server",
-      "version": "2.1.5",
+      "version": "2.1.8",
       "licenses": [
         {
           "license": {
@@ -823,8 +823,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@hono\\/node-server:\\@hono\\/node-server:2.1.5:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40hono/node-server@2.1.5",
+      "cpe": "cpe:2.3:a:\\@hono\\/node-server:\\@hono\\/node-server:2.1.8:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40hono/node-server@2.1.8",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -844,23 +844,23 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@hono\\/node-server:\\@hono\\/node_server:2.1.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@hono\\/node-server:\\@hono\\/node_server:2.1.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@hono\\/node_server:\\@hono\\/node-server:2.1.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@hono\\/node_server:\\@hono\\/node-server:2.1.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@hono\\/node_server:\\@hono\\/node_server:2.1.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@hono\\/node_server:\\@hono\\/node_server:2.1.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@hono\\/node:\\@hono\\/node-server:2.1.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@hono\\/node:\\@hono\\/node-server:2.1.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@hono\\/node:\\@hono\\/node_server:2.1.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@hono\\/node:\\@hono\\/node_server:2.1.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -5134,7 +5134,7 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/agent?package-id=c77a472101521eaa",
+      "bom-ref": "pkg:npm/agent?package-id=a576c6c5820090d8",
       "type": "library",
       "name": "agent",
       "version": "UNKNOWN",
@@ -10124,10 +10124,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/hono@4.13.13?package-id=7c5c5d04bd18d75d",
+      "bom-ref": "pkg:npm/hono@4.13.18?package-id=e4010d438740631c",
       "type": "library",
       "name": "hono",
-      "version": "4.13.13",
+      "version": "4.13.18",
       "licenses": [
         {
           "license": {
@@ -10135,8 +10135,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:hono:hono:4.13.13:*:*:*:*:node.js:*:*",
-      "purl": "pkg:npm/hono@4.13.13",
+      "cpe": "cpe:2.3:a:hono:hono:4.13.18:*:*:*:*:node.js:*:*",
+      "purl": "pkg:npm/hono@4.13.18",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -17993,7 +17993,7 @@
     {
       "ref": "pkg:npm/%40modelcontextprotocol/sdk@1.32.1?package-id=27bdcf43e38a1334",
       "dependsOn": [
-        "pkg:npm/%40hono/node-server@2.1.5?package-id=39746fe64f3dda67",
+        "pkg:npm/%40hono/node-server@2.1.8?package-id=4a385e4bf0aefb5a",
         "pkg:npm/ajv-formats@3.0.1?package-id=a9f9624d21a14fb7",
         "pkg:npm/ajv@8.20.0?package-id=f834af5b78b8b4ec",
         "pkg:npm/content-type@1.0.5?package-id=97c124b07ec3e060",
@@ -18004,7 +18004,7 @@
         "pkg:npm/eventsource@3.0.7?package-id=907d1152bee7dd22",
         "pkg:npm/express-rate-limit@8.7.1?package-id=0aabf03adebb1870",
         "pkg:npm/express@5.3.0?package-id=0e5b177262dd0e4d",
-        "pkg:npm/hono@4.13.13?package-id=7c5c5d04bd18d75d",
+        "pkg:npm/hono@4.13.18?package-id=e4010d438740631c",
         "pkg:npm/jose@6.2.12?package-id=256109c03500152c",
         "pkg:npm/json-schema-typed@8.0.2?package-id=32e07e826c169d53",
         "pkg:npm/pkce-challenge@5.0.1?package-id=ea8c63e778177d68",
@@ -18191,7 +18191,7 @@
       ]
     },
     {
-      "ref": "pkg:npm/agent?package-id=c77a472101521eaa",
+      "ref": "pkg:npm/agent?package-id=a576c6c5820090d8",
       "dependsOn": [
         "pkg:npm/%40ai-sdk/groq@3.0.72?package-id=4553ca4ee2661481",
         "pkg:npm/%40ai-sdk/openai@3.0.125?package-id=c919641eab0da204",
@@ -18200,7 +18200,7 @@
         "pkg:npm/%40ai-sdk/provider@3.0.8?package-id=d6dce1d298f1be09",
         "pkg:npm/%40grpc/grpc-js@1.14.6?package-id=b8f9a49c190a07b8",
         "pkg:npm/%40hono/mcp@0.2.5?package-id=8938bd6e61baff34",
-        "pkg:npm/%40hono/node-server@2.1.5?package-id=39746fe64f3dda67",
+        "pkg:npm/%40hono/node-server@2.1.8?package-id=4a385e4bf0aefb5a",
         "pkg:npm/%40logtape/hono@2.4.0?package-id=f7e7b792580f83fc",
         "pkg:npm/%40logtape/logtape@2.4.0?package-id=eee45118cc2233c6",
         "pkg:npm/%40mixmark-io/domino@2.2.0?package-id=cf4b4ebfdc624213",
@@ -18217,7 +18217,7 @@
         "pkg:npm/cheerio@1.2.0?package-id=24f9e4c7ba0d25d9",
         "pkg:npm/exceljs@4.4.0?package-id=abe7a740762c8239",
         "pkg:npm/gpt-tokenizer@3.4.0?package-id=f33846e9fb3fa829",
-        "pkg:npm/hono@4.13.13?package-id=7c5c5d04bd18d75d",
+        "pkg:npm/hono@4.13.18?package-id=e4010d438740631c",
         "pkg:npm/ioredis@5.10.1?package-id=bcd36b93cdd7e0a3",
         "pkg:npm/mammoth@1.13.0?package-id=c1dc392c0cdd09ad",
         "pkg:npm/ollama-ai-provider-v2@3.6.0?package-id=744cb3cee5d045a3",

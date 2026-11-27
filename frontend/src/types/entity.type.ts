@@ -10,6 +10,7 @@ export interface Entity {
   uuid: string;
   name: string;
   sharing_enabled: boolean;
+  disabled: boolean;
 }
 
 export interface EntityMapItem {

@@ -65,7 +65,31 @@ export default {
       },
     };
   },
-  render({ model, el, experimental }) {
+  async render({ model, el, experimental }) {
+    if (model.get("meta")?.widgetId === "query") {
+      const outcome = (call) => call.then(([value]) => value, (error) => error.name);
+      const answer = await outcome(experimental.invoke("core:data:query", { body: { startRow: 1, endRow: 3 } }));
+      const clash = await outcome(experimental.invoke("core:data:query", { body: { table: "users" } }));
+      const result = document.createElement("pre");
+      result.id = "e2e-query";
+      result.textContent = JSON.stringify({ answer, clash });
+      el.replaceChildren(result);
+      return;
+    }
+    if (model.get("meta")?.widgetId === "file") {
+      const drawFile = () => {
+        const file = model.get("data")?.file;
+        const shown = document.createElement("pre");
+        shown.id = "e2e-file";
+        shown.textContent = file
+          ? [file.name, file.mime, new TextDecoder().decode(Uint8Array.from(atob(file.base64), (c) => c.charCodeAt(0)))].join("|")
+          : "no file";
+        el.replaceChildren(shown);
+      };
+      model.on("change:data", drawFile);
+      drawFile();
+      return;
+    }
     if (model.get("meta")?.widgetId === "note") {
       const drawNote = () => {
         const note = document.createElement("p");
@@ -234,6 +258,18 @@ export function tableManifest(id = "e2e-table") {
           ],
         },
         {
+          id: "file",
+          name: "End-to-end file",
+          handles: [{ type: "e2e_file", response: { accepts: "file" } }],
+          permissions: ["core:data:read"],
+        },
+        {
+          id: "query",
+          name: "End-to-end query",
+          handles: [{ type: "e2e_query" }],
+          permissions: ["core:data:query"],
+        },
+        {
           id: "note",
           name: "End-to-end note",
           description: "A note the plugin renders from its settings",
@@ -322,7 +358,26 @@ const WIDGETS = {
     params: [{ paramName: "region", type: "text", value: "emea", label: "Region" }],
     mcp_tool: { mcp_server: "E2E MCP", tool_id: "lookup", args: { region: "$region" } },
   },
+  e2e_file: {
+    name: "E2E file",
+    description: "A CSV file that the plugin reads",
+    type: "e2e_file",
+    endpoint: "/file",
+  },
+  e2e_query: {
+    name: "E2E query",
+    description: "Rows the plugin asks for by range",
+    type: "e2e_query",
+    endpoint: "/query",
+    method: "POST",
+    params: [
+      { paramName: "table", type: "text", value: "sales", label: "Table", in: "body" },
+    ],
+  },
 };
+
+export const FILE_CSV = "country,sales\nJapan,12\nIndia,9\n";
+export const QUERY_ROWS = ["France", "Spain", "Japan", "India", "Korea"];
 
 const ROWS: Record<string, unknown[]> = {
   emea: [
@@ -366,7 +421,25 @@ export function startBackend(
       ]);
     else if (url.pathname === "/rows")
       send(200, ROWS[url.searchParams.get("region") ?? "emea"] ?? []);
-    else send(404, { detail: "not found" });
+    else if (url.pathname === "/file")
+      response
+        .writeHead(200, {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": 'attachment; filename="sales.csv"',
+        })
+        .end(FILE_CSV);
+    else if (url.pathname === "/query" && request.method === "POST") {
+      const chunks: Buffer[] = [];
+      request.on("data", (chunk: Buffer) => chunks.push(chunk));
+      request.on("end", () => {
+        const body = JSON.parse(Buffer.concat(chunks).toString() || "{}");
+        send(200, {
+          table: body.table,
+          rows: QUERY_ROWS.slice(body.startRow ?? 0, body.endRow ?? QUERY_ROWS.length),
+          lastRow: QUERY_ROWS.length,
+        });
+      });
+    } else send(404, { detail: "not found" });
   });
   return new Promise((resolve) =>
     server.listen(port, listen, () => resolve({ server, received })),

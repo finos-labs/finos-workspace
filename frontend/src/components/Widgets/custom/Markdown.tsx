@@ -26,6 +26,7 @@ import type { ArtifactT, Citation as CitationT } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { protectAiMarkers } from "~/lib/utils/citationMarkers";
 import { HTML_SANITIZE_CONFIG } from "~/lib/utils/sanitize";
+import { downloadText } from "~/lib/utils/widget";
 import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
 
 const AICitation = lazy(() => import("~/components/AI/Citation"));
@@ -195,6 +196,20 @@ export default function Markdown() {
     widget.storage?.artifacts,
   ]);
 
+  const exportFns = useMemo(() => {
+    if (extension === "docx") return undefined;
+    const content = markdownPayload.content;
+    return extension === "txt"
+      ? {
+          txtFunction: (title: string) =>
+            downloadText(content, `${title}.txt`, "text/plain"),
+        }
+      : {
+          mdFunction: (title: string) =>
+            downloadText(content, `${title}.md`, "text/markdown"),
+        };
+  }, [extension, markdownPayload.content]);
+
   const handleExternalLinkClick = useCallback((url: string) => {
     setExternalLinkDialog({ open: true, url });
   }, []);
@@ -222,6 +237,7 @@ export default function Markdown() {
         title={widget.name}
         aiEnabled={true}
         aiData={body}
+        exportFns={exportFns}
         elementRightNextToTitle={renderRow0Params}
         lastUpdated={validEndpoint ? dataUpdatedAt : undefined}
         loading={isLoading}

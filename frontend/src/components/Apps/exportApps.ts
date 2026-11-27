@@ -10,7 +10,7 @@ export function buildAppExportRows(apps: App[]): Record<string, string>[] {
   return apps.map((app) => ({
     Name: app.name ?? "",
     URL: app.url ?? "",
-    "User Email": app.user_email ?? "",
+    "User Email": app.user_uuid ? (app.user_email ?? "") : "Organization",
     "Created Date": formatDate(app.created_date),
     "Last Updated": formatDate(app.updated_date),
   }));

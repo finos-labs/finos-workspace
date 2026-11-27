@@ -2,6 +2,7 @@ const FIELDS = [
   ["urls", "backend", "BACKEND_URL", "string"],
   ["urls", "ai", "AI_API_URL", "string"],
   ["authentication", "allowEmailLogin", "AUTHENTICATION_ALLOW_EMAIL_LOGIN", "bool"],
+  ["authentication", "allowSignup", "AUTHENTICATION_ALLOW_SIGNUP", "bool"],
   ["authentication", "identityProviders", "AUTHENTICATION_IDENTITY_PROVIDERS", "list"],
   ["authentication", "sendUserEmailAsHeader", "AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER", "bool"],
   ["authProviders", "googleClientId", "GOOGLE_OAUTH_CLIENT_ID", "string"],
@@ -61,7 +62,7 @@ function valueOf(variable, type, raw) {
   throw new Error("unknown type " + type + " for " + variable);
 }
 
-const PLUGIN_SHELL_HASH = "'sha256-SwQ+ybsi2+FldUwGr9q2n39PxMGAMlGhGuKJ5K4cSdY='";
+const PLUGIN_SHELL_HASH = "'sha256-o3J6mRIe3HpqMV3sOjoxQ0uBXGWcicLOp7G54CyigpE='";
 const GOOGLE_SIGN_IN = "https://accounts.google.com/gsi/";
 const LOCAL_FRAMES = ["http://localhost:*", "http://127.0.0.1:*", "http://0.0.0.0:*"];
 const DIRECTIVES = [
