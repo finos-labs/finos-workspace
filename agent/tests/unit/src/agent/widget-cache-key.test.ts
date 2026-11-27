@@ -16,6 +16,17 @@ describe("_widgetCacheKey — determinism", () => {
   });
 });
 
+describe("_widgetCacheKey — the version of the rows", () => {
+  it("is a different key for a different version, so that old rows are not served", () => {
+    expect(_widgetCacheKey("u-1", { x: 1 }, 1)).not.toBe(_widgetCacheKey("u-1", { x: 1 }, 2));
+  });
+
+  it("leaves the key of a widget with no version as it was", () => {
+    expect(_widgetCacheKey("u-1", { x: 1 }, undefined)).toBe(_widgetCacheKey("u-1", { x: 1 }));
+    expect(_widgetCacheKey("u-1", { x: 1 })).toBe(JSON.stringify({ uuid: "u-1", args: { x: 1 } }));
+  });
+});
+
 describe("_widgetCacheKey — type-strictness (real bug class — string vs number)", () => {
   it('regression: `"47"` and `47` are different cache keys', () => {
     expect(_widgetCacheKey("u-1", { id: "47" })).not.toBe(_widgetCacheKey("u-1", { id: 47 }));

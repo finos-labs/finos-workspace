@@ -50,6 +50,8 @@ export interface McpTool {
   enabled: boolean;
   inputSchema?: McpInputSchema;
   annotations?: ToolAnnotations;
+  /** Raw `_meta` from tools/list. MCP Apps keeps `ui.resourceUri` and `ui.visibility` here. */
+  _meta?: Record<string, unknown>;
   lastExecuted?: number;
   executionCount?: number;
   lastError?: string;
@@ -77,6 +79,8 @@ export interface McpServer {
 
 export interface McpConnection {
   callTool: UseMcpResult["callTool"] | undefined;
+  readResource?: UseMcpResult["readResource"];
+  resources?: UseMcpResult["resources"];
   error: UseMcpResult["error"];
   state: UseMcpResult["state"] | "disconnected";
   tools: UseMcpResult["tools"];
@@ -113,6 +117,25 @@ interface McpToolsState {
   updateServers: (servers: McpServer[]) => void;
   removeSourceServer: (sourceId: string) => void;
   clearAllStorage: () => void;
+}
+
+/**
+ * MCP Apps: who may call a tool, from its `_meta.ui.visibility`. A tool with no
+ * visibility is for both the model and the app; otherwise only an audience the
+ * list names may call it.
+ */
+export function toolVisibleTo(
+  tool: Pick<McpTool, "_meta">,
+  audience: "model" | "app",
+): boolean {
+  const visibility = (tool._meta?.ui as { visibility?: unknown } | undefined)
+    ?.visibility;
+  return !Array.isArray(visibility) || visibility.includes(audience);
+}
+
+/** The spec says the host must not offer the model a tool for the app only. */
+export function modelMayCallTool(tool: Pick<McpTool, "_meta">): boolean {
+  return toolVisibleTo(tool, "model");
 }
 
 let serversSaved: Promise<void> = Promise.resolve();
@@ -477,7 +500,12 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
 
         if (!(isConnected && server.toolsEnabled)) return count;
         for (const tool of server.tools) {
-          if (tool.enabled && isMcpToolAllowed(access, server.url, tool.id)) count += 1;
+          if (
+            tool.enabled &&
+            modelMayCallTool(tool) &&
+            isMcpToolAllowed(access, server.url, tool.id)
+          )
+            count += 1;
         }
         return count;
       }, 0);
@@ -547,7 +575,7 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
             }
 
             for (const tool of server.tools) {
-              if (!tool.enabled) continue;
+              if (!tool.enabled || !modelMayCallTool(tool)) continue;
               let schema = tool.inputSchema;
               if (agreedParams.length > 0 && schema?.properties) {
                 const properties = structuredClone(schema.properties);
@@ -573,7 +601,7 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         }
 
         if (!(server.enabled && server.toolsEnabled)) continue;
-        connection?.retry?.();
+        if (connection?.state === "failed") connection.retry?.();
 
         while (connection?.state === "connecting" || connection?.state === "loading") {
           connection = getMCPConnection(server.id);
@@ -582,7 +610,7 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         }
 
         for (const tool of server.tools) {
-          if (tool.enabled) {
+          if (tool.enabled && modelMayCallTool(tool)) {
             pushEnabledTool({
               server_id: server.id,
               name: `${server.name}_${tool.id}`,

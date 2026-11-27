@@ -51,6 +51,12 @@ This group has one setting, which controls whether scripts in HTML widgets and A
 
 <WebConfigTable group="data" />
 
+## mcpApps
+
+This group has one setting, the address of the separate origin that runs MCP App views. [Add an MCP App to a dashboard](../../features/widgets/add-an-mcp-app.md) explains how to set it up.
+
+<WebConfigTable group="mcpApps" />
+
 ## links
 
 This group has one setting, the address of the documentation that the interface links to.
@@ -75,7 +81,7 @@ The web container sends a `Content-Security-Policy` header with the app, built b
 
 - scripts only from the app itself, plus `blob:` and the hash of the plugin frame shell, with `'unsafe-eval'` and `'wasm-unsafe-eval'`, which the app's schema validation and code highlighting need. When `ALLOW_HTML_JS_EXECUTION` is `true`, it also allows `'unsafe-inline'` and `https:` scripts, because HTML widgets run the scripts of the HTML that a backend returns.
 - connections to the app, to the origins of `BACKEND_URL` and `AI_API_URL`, to the API's WebSockets, and to any `https:` or `wss:` address, which agents, data connections and approved plugins use.
-- images, fonts, media and frames from the app, `data:`, `blob:` and any `https:` address, plus the origins of the API, of the white-label images and of the `WL_STYLESHEET` stylesheet, and frames on `localhost`, `127.0.0.1` and `0.0.0.0`.
+- images, fonts, media and frames from the app, `data:`, `blob:` and any `https:` address, plus the origins of the API, of the white-label images and of the `WL_STYLESHEET` stylesheet, and frames on `localhost`, `127.0.0.1` and `0.0.0.0`, and on the MCP App sandbox origin of `MCP_APPS_SANDBOX_URL`, with its `*` kept as a wildcard.
 - Google's sign-in script, styles and frames only when `AUTHENTICATION_IDENTITY_PROVIDERS` includes `google`.
 
 It sets `object-src 'none'`, `base-uri 'none'`, `form-action 'self' https:`, `worker-src 'self' blob:` and `frame-ancestors 'self'`, so no other site can frame the app. Frames that the app builds itself, plugin frames, artifacts and HTML widgets, inherit this policy in addition to their own.
@@ -86,6 +92,12 @@ Two variables adjust it:
 |---|---|
 | `CSP_EXTRA_SOURCES` | Sources to add, written like a policy: directives separated by semicolons, each followed by its sources, for example `script-src https://cdn.plugins.example.com; frame-ancestors https://portal.example.com`. Add the hosts that an approved plugin loads scripts from, an `http:` host that the app reaches directly, or a portal that frames the app. A source cannot be `'none'`, and only the directives of the policy can be named. |
 | `CSP_REPORT_ONLY` | `true` sends the policy as `Content-Security-Policy-Report-Only`, so the browser reports what it would block in its console without blocking it. Use it to try the policy with your plugins and backends first. Must be `true` or `false`. |
+
+The MCP App sandbox page, on the container's port 8081, gets a policy of its own instead. It allows nothing beyond the page itself, plus the domains that the MCP App declares when they are plain origins, and its `frame-ancestors` lists the origins of `MCP_APPS_HOST_ORIGINS`:
+
+| Variable | What it does |
+|---|---|
+| `MCP_APPS_HOST_ORIGINS` | Origins that may frame the MCP App sandbox page, separated by spaces, for example `https://workspace.example.com`. Only plain `http` and `https` origins count, and a path or a trailing slash is dropped. With none valid, the page refuses to be framed. Docker Compose sets it to `WEB_URL`; the container's own default is `http://localhost:3000 http://localhost:5173`. |
 
 When either variable is invalid, the container sends `default-src 'none'`, which stops the app from loading, logs the error, and `/healthz` answers 500, so a mistake never leaves the app without a policy. The development server, `npm run dev`, sends no policy.
 

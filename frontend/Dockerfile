@@ -117,6 +117,6 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 USER 101:101
 
-EXPOSE 8080
+EXPOSE 8080 8081
 STOPSIGNAL SIGQUIT
 CMD ["/usr/sbin/nginx"]

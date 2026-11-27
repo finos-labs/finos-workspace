@@ -1006,6 +1006,34 @@ describe("useMcpToolsStore", () => {
       expect(useMcpToolsStore.getState().getEnabledToolCount()).toBe(2);
     });
 
+    it("does not count a tool whose visibility is for an MCP App only", () => {
+      const server = createMockServer({
+        id: "server-1",
+        enabled: true,
+        toolsEnabled: true,
+        tools: [
+          { id: "tool-1", name: "Tool 1", enabled: true },
+          {
+            id: "tool-2",
+            name: "Tool 2",
+            enabled: true,
+            _meta: { ui: { visibility: ["app"] } },
+          },
+        ],
+      });
+
+      act(() => {
+        useMcpToolsStore.setState({
+          servers: [server],
+          mcpConnectionRegistry: {
+            "server-1": createMockConnection({ state: "ready" }),
+          },
+        });
+      });
+
+      expect(useMcpToolsStore.getState().getEnabledToolCount()).toBe(1);
+    });
+
     it("should count across multiple enabled and connected servers", () => {
       const servers = [
         createMockServer({

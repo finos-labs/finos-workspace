@@ -8,6 +8,18 @@
     "widgetId": "iframe",
     "connectionType": "websites"
   },
+  "mcp_app": {
+    "name": "MCP App",
+    "description": "Shows the interactive app that an MCP server offers for one of its tools.",
+    "category": "Others",
+    "subCategory": "Utils",
+    "keywords": ["mcp", "app", "apps", "ui", "tool", "interactive"],
+    "widgetId": "mcp_app",
+    "gridData": {
+      "w": 20,
+      "h": 22
+    }
+  },
   "navigation_bar": {
     "name": "Navigation Bar",
     "description": "Create nested tabs inside the main tab for navigation.",
